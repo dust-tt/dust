@@ -74,7 +74,6 @@ import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionConfigurationWithId,
-  AssistantBuilderMCPServerConfiguration,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderReasoningConfiguration,
@@ -186,7 +185,7 @@ export default function ActionsScreen({
   enableReasoningTool,
   reasoningModels,
 }: ActionScreenProps) {
-  const { spaces } = useContext(AssistantBuilderContext);
+  const { spaces, mcpServerViews } = useContext(AssistantBuilderContext);
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -238,6 +237,13 @@ export default function ActionsScreen({
               addActionToSpace(config.dataSourceView.spaceId);
             });
           }
+          if (action.configuration.mcpServerViewId) {
+            addActionToSpace(
+              mcpServerViews.find(
+                (v) => v.id === action.configuration.mcpServerViewId
+              )?.spaceId
+            );
+          }
           break;
 
         case "WEB_NAVIGATION":
@@ -249,7 +255,7 @@ export default function ActionsScreen({
       }
       return acc;
     }, {});
-  }, [configurableActions]);
+  }, [configurableActions, mcpServerViews]);
 
   const nonGlobalSpacessUsedInActions = useMemo(() => {
     const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
@@ -609,7 +615,7 @@ function NewActionModal({
 
   const descriptionValid = (newAction?.description?.trim() ?? "").length > 0;
 
-  const onCloseLocal = () => {
+  const onCloseLocal = useCallback(() => {
     onClose();
     setTimeout(() => {
       setNewAction(null);
@@ -617,32 +623,63 @@ function NewActionModal({
       setShowInvalidActionDescError(null);
       setShowInvalidActionError(null);
     }, 500);
-  };
+  }, [onClose]);
 
-  const onModalSave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    if (
-      newAction &&
-      !titleError &&
-      descriptionValid &&
-      !hasActionError(newAction)
-    ) {
-      newAction.name = newAction.name.trim();
-      newAction.description = newAction.description.trim();
-      onSave(newAction);
-      onCloseLocal();
-    } else {
-      if (titleError) {
-        setShowInvalidActionNameError(titleError);
+  const onModalSave = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      if (
+        newAction &&
+        !titleError &&
+        descriptionValid &&
+        !hasActionError(newAction)
+      ) {
+        newAction.name = newAction.name.trim();
+        newAction.description = newAction.description.trim();
+        onSave(newAction);
+        onCloseLocal();
+      } else {
+        if (titleError) {
+          setShowInvalidActionNameError(titleError);
+        }
+        if (!descriptionValid) {
+          setShowInvalidActionDescError("Description cannot be empty.");
+        }
+        if (newAction) {
+          setShowInvalidActionError(hasActionError(newAction));
+        }
       }
-      if (!descriptionValid) {
-        setShowInvalidActionDescError("Description cannot be empty.");
-      }
-      if (newAction) {
-        setShowInvalidActionError(hasActionError(newAction));
-      }
-    }
-  };
+    },
+    [newAction, onCloseLocal, onSave, titleError, descriptionValid]
+  );
+
+  const updateAction = useCallback(
+    ({
+      actionName,
+      actionDescription,
+      getNewActionConfig,
+    }: {
+      actionName: string;
+      actionDescription: string;
+      getNewActionConfig: (
+        old: AssistantBuilderActionConfiguration["configuration"]
+      ) => AssistantBuilderActionConfiguration["configuration"];
+    }) => {
+      setNewAction((prev) => {
+        if (!prev) {
+          return null;
+        }
+        return {
+          ...prev,
+          configuration: getNewActionConfig(prev.configuration) as any,
+          description: actionDescription,
+          name: actionName,
+        };
+      });
+      setShowInvalidActionError(null);
+    },
+    []
+  );
 
   return (
     <Sheet
@@ -666,21 +703,7 @@ function NewActionModal({
               <ActionEditor
                 action={newAction}
                 spacesUsedInActions={spacesUsedInActions}
-                updateAction={({
-                  actionName,
-                  actionDescription,
-                  getNewActionConfig,
-                }) => {
-                  setNewAction({
-                    ...newAction,
-                    configuration: getNewActionConfig(
-                      newAction.configuration
-                    ) as any,
-                    description: actionDescription,
-                    name: actionName,
-                  });
-                  setShowInvalidActionError(null);
-                }}
+                updateAction={updateAction}
                 owner={owner}
                 setEdited={setEdited}
                 builderState={builderState}
@@ -879,16 +902,9 @@ function ActionConfigEditor({
       return (
         <ActionMCP
           owner={owner}
-          actionConfiguration={action.configuration}
+          action={action}
           allowedSpaces={allowedSpaces}
-          updateAction={(setNewAction) => {
-            updateAction({
-              actionName: action.name,
-              actionDescription: action.description,
-              getNewActionConfig: (old) =>
-                setNewAction(old as AssistantBuilderMCPServerConfiguration),
-            });
-          }}
+          updateAction={updateAction}
           setEdited={setEdited}
         />
       );

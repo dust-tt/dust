@@ -36,7 +36,7 @@ export type MCPServerType = {
   version: string;
   description: string;
   icon: AllowedIconType;
-  authorization?: AuthorizationInfo;
+  authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
 };
 
@@ -161,7 +161,7 @@ export function extractMetadataFromServerVersion(
       authorization:
         "authorization" in r && typeof r.authorization === "object"
           ? (r.authorization as AuthorizationInfo)
-          : undefined,
+          : null,
       description:
         "description" in r && typeof r.description === "string" && r.description
           ? r.description
@@ -178,6 +178,7 @@ export function extractMetadataFromServerVersion(
     version: DEFAULT_MCP_ACTION_VERSION,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
     icon: DEFAULT_MCP_ACTION_ICON,
+    authorization: null,
   };
 }
 

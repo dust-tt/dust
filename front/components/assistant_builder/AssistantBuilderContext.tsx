@@ -1,11 +1,13 @@
 import { createContext } from "react";
 
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import type { AppType, DataSourceViewType, SpaceType } from "@app/types";
 
 type AssistantBuilderContextType = {
   dustApps: AppType[];
   dataSourceViews: DataSourceViewType[];
   spaces: SpaceType[];
+  mcpServerViews: MCPServerViewType[];
 };
 
 export const AssistantBuilderContext =
@@ -13,12 +15,14 @@ export const AssistantBuilderContext =
     dustApps: [],
     dataSourceViews: [],
     spaces: [],
+    mcpServerViews: [],
   });
 
 export function AssistantBuilderProvider({
   dustApps,
   dataSourceViews,
   spaces,
+  mcpServerViews,
   children,
 }: AssistantBuilderContextType & {
   children: React.ReactNode;
@@ -29,6 +33,7 @@ export function AssistantBuilderProvider({
         dustApps,
         dataSourceViews,
         spaces,
+        mcpServerViews,
       }}
     >
       {children}

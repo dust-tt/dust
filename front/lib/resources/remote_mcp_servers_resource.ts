@@ -234,9 +234,10 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       name: this.name,
       description: this.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
       tools: this.cachedTools,
-      // TODO(mcp) remove this once we have a real version & icon
+      // TODO(mcp) for @adrsimon remove this once we have a real version & icon & authorization cached
       version: DEFAULT_MCP_ACTION_VERSION,
       icon: DEFAULT_MCP_ACTION_ICON,
+      authorization: null,
 
       // Remote MCP Server specifics
       url: this.url,
