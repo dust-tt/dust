@@ -1,8 +1,11 @@
-import { Button, Cog6ToothIcon, Spinner } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 
-import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
+import { AuthorizationInfo } from "@app/components/actions/mcp/AuthorizationInfo";
+import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
+import { ToolsList } from "@app/components/actions/mcp/ToolsList";
+import { useRemoteMCPForm } from "@app/components/actions/mcp/useRemoteMCPForm";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 
 type MCPServerDetailsInfoProps = {
@@ -14,59 +17,43 @@ export function MCPServerDetailsInfo({
   mcpServer,
   owner,
 }: MCPServerDetailsInfoProps) {
-  const { connections, isConnectionsLoading } = useMCPServerConnections({
-    owner,
-  });
+  const serverType = getServerTypeAndIdFromSId(mcpServer.id).serverType;
 
-  const connection = connections.find(
-    (c) => c.internalMCPServerId === mcpServer.id
-  );
-
-  const { createAndSaveMCPServerConnection, deleteMCPServerConnection } =
-    useMCPConnectionManagement({ owner });
-
-  const authorization = mcpServer.authorization;
-  if (!authorization) {
-    return null;
-  }
+  const {
+    formState,
+    dispatch,
+    serverState,
+    sharedSecret,
+    handleSubmit,
+    handleSynchronize,
+  } = useRemoteMCPForm(owner, mcpServer);
 
   return (
-    mcpServer.authorization && (
-      <div>
-        <div className="text-text-foreground dark:text-text-foreground-night heading-lg pb-2"></div>
-
-        {mcpServer?.authorization &&
-          (isConnectionsLoading ? (
-            <Spinner />
-          ) : connection ? (
+    <div className="flex flex-col gap-2">
+      <AuthorizationInfo mcpServer={mcpServer} owner={owner} />
+      {serverType === "remote" && (
+        <>
+          <RemoteMCPForm
+            state={formState}
+            dispatch={dispatch}
+            isConfigurationLoading={false}
+            onSynchronize={handleSynchronize}
+            isSynchronized={true}
+            sharedSecret={sharedSecret}
+            isSynchronizing={serverState === "synchronizing"}
+          />
+          <div className="flex flex-col items-center gap-2">
             <Button
-              variant="warning"
-              disabled={isConnectionsLoading}
-              icon={Cog6ToothIcon}
-              label={"Disconnect"}
-              size="sm"
-              onClick={() => {
-                void deleteMCPServerConnection({
-                  connectionId: connection.sId,
-                });
+              label="Save"
+              onClick={async (event: Event) => {
+                event.preventDefault();
+                await handleSubmit();
               }}
             />
-          ) : (
-            <Button
-              variant="outline"
-              disabled={isConnectionsLoading}
-              icon={Cog6ToothIcon}
-              label={"Connect"}
-              size="sm"
-              onClick={() => {
-                void createAndSaveMCPServerConnection({
-                  authorizationInfo: authorization,
-                  mcpServerId: mcpServer.id,
-                });
-              }}
-            />
-          ))}
-      </div>
-    )
+          </div>
+        </>
+      )}
+      <ToolsList tools={mcpServer.tools} />
+    </div>
   );
 }

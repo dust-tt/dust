@@ -127,10 +127,10 @@ export function MCPServerDetailsSharing({
   const [filter, setFilter] = useState("");
 
   return (
-    <div>
+    <div className="flex flex-col gap-2">
       <div className="mb-2 flex w-full flex-col gap-y-2 pt-2">
         <div className="flex w-full items-center justify-between overflow-visible">
-          <Page.SectionHeader title="Restricted Accexss" />
+          <Page.SectionHeader title="Restricted Access" />
           <SliderToggle
             disabled={loading}
             selected={isRestricted}

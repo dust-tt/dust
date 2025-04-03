@@ -1,7 +1,6 @@
 import {
   Avatar,
   classNames,
-  CloudArrowDownIcon,
   InformationCircleIcon,
   LockIcon,
   Sheet,
@@ -16,33 +15,46 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import React, { useState } from "react";
 
-import {
-  MCPServerDetailsConnection,
-  MCPServerDetailsInfo,
-} from "@app/components/actions/mcp/MCPServerDetailsInfo";
+import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   DEFAULT_MCP_SERVER_ICON,
   MCP_SERVER_ICONS,
 } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import { useMCPServer } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
 
-type ActionDetailsProps = {
+type MCPServerDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
   mcpServer: MCPServerType | null;
+  isOpen: boolean;
 };
 
-export function InternalMCPServerDetails({
+export function MCPServerDetails({
   owner,
   mcpServer,
+  isOpen,
   onClose,
-}: ActionDetailsProps) {
+}: MCPServerDetailsProps) {
   const [selectedTab, setSelectedTab] = useState<string>("info");
 
+  const serverType = mcpServer
+    ? getServerTypeAndIdFromSId(mcpServer.id).serverType
+    : "internal";
+
+  const { server: updatedMCPServer } = useMCPServer({
+    owner,
+    serverId: mcpServer?.id || "",
+    disabled: serverType !== "remote",
+  });
+
+  const effectiveMCPServer = updatedMCPServer || mcpServer;
+
   return (
-    <Sheet open={!!mcpServer} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent size="lg">
         <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
           <VisuallyHidden>
@@ -58,15 +70,16 @@ export function InternalMCPServerDetails({
               <div
                 className={classNames(
                   "text-foreground dark:text-foreground-night",
-                  mcpServer?.name && mcpServer.name.length > 20
+                  effectiveMCPServer?.name &&
+                    effectiveMCPServer.name.length > 20
                     ? "heading-md"
                     : "heading-lg"
                 )}
               >
-                {mcpServer?.name}
+                {effectiveMCPServer?.name}
               </div>
               <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {mcpServer?.description}
+                {effectiveMCPServer?.description}
               </div>
             </div>
           </div>
@@ -90,13 +103,19 @@ export function InternalMCPServerDetails({
         </SheetHeader>
 
         <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
-          {mcpServer && (
+          {effectiveMCPServer && (
             <>
               {selectedTab === "info" && (
-                <MCPServerDetailsInfo mcpServer={mcpServer} owner={owner} />
+                <MCPServerDetailsInfo
+                  mcpServer={effectiveMCPServer}
+                  owner={owner}
+                />
               )}
               {selectedTab === "sharing" && (
-                <MCPServerDetailsSharing mcpServer={mcpServer} owner={owner} />
+                <MCPServerDetailsSharing
+                  mcpServer={effectiveMCPServer}
+                  owner={owner}
+                />
               )}
             </>
           )}

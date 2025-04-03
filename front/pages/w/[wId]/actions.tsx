@@ -3,11 +3,10 @@ import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
 import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
-import { InternalMCPServerDetails } from "@app/components/actions/mcp/InternalMCPServerDetails";
+import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { RemoteMCPServerDetails } from "@app/components/actions/mcp/RemoteMCPServerDetails";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
@@ -46,21 +45,17 @@ export default function AdminActions({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [showDetails, setShowDetails] = useState<MCPServerType | null>(null);
+  const [mcpServer, setMcpServer] = useState<MCPServerType | null>(null);
+  const [isDetailsPanelOpened, setIsDetailsPanelOpened] = useState(false);
   const [isRemoteCreationModalOpened, setRemoteCreationModalOpened] =
     useState(false);
-  const serverType = showDetails
-    ? getServerTypeAndIdFromSId(showDetails.id).serverType
-    : isRemoteCreationModalOpened
-      ? "remote"
-      : null;
 
   const { mutateMCPServers } = useMCPServers({
     owner,
   });
 
   const closePanel = () => {
-    setShowDetails(null);
+    setMcpServer(null);
     void mutateMCPServers();
     setRemoteCreationModalOpened(false);
   };
@@ -71,18 +66,21 @@ export default function AdminActions({
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "actions" })}
     >
-      {serverType === "internal" && (
-        <InternalMCPServerDetails
+      {mcpServer && (
+        <MCPServerDetails
           owner={owner}
-          mcpServer={showDetails}
-          onClose={closePanel}
+          mcpServer={mcpServer}
+          onClose={() => {
+            setIsDetailsPanelOpened(false);
+          }}
+          isOpen={isDetailsPanelOpened}
         />
       )}
 
-      {serverType === "remote" && (
+      {isRemoteCreationModalOpened && (
         <RemoteMCPServerDetails
           owner={owner}
-          mcpServer={showDetails}
+          mcpServer={mcpServer}
           onClose={closePanel}
           open={isRemoteCreationModalOpened}
           mutateServers={mutateMCPServers}
@@ -98,7 +96,11 @@ export default function AdminActions({
         <Page.Vertical align="stretch" gap="md">
           <AdminActionsList
             owner={owner}
-            setShowDetails={setShowDetails}
+            setMcpServer={(mcpServer) => {
+              setMcpServer(mcpServer);
+              setIsDetailsPanelOpened(true);
+              setRemoteCreationModalOpened(false);
+            }}
             openRemoteMCPCreationModal={() =>
               setRemoteCreationModalOpened(true)
             }

@@ -11,7 +11,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { Cross } from "lucide-react";
 import React, { useMemo, useState } from "react";
 
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
@@ -38,7 +37,7 @@ type RowData = {
 
 type AdminActionsListProps = {
   owner: LightWorkspaceType;
-  setShowDetails: (mcpServer: MCPServerType) => void;
+  setMcpServer: (mcpServer: MCPServerType) => void;
   openRemoteMCPCreationModal: () => void;
 };
 
@@ -97,7 +96,7 @@ const ActionCell = ({
 
 export const AdminActionsList = ({
   owner,
-  setShowDetails,
+  setMcpServer,
   openRemoteMCPCreationModal,
 }: AdminActionsListProps) => {
   const { spaces } = useSpacesAsAdmin({
@@ -201,7 +200,7 @@ export const AdminActionsList = ({
       serverView,
       onClick: () => {
         if (serverView && mcpServer) {
-          setShowDetails(mcpServer);
+          setMcpServer(mcpServer);
         }
       },
     };

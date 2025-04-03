@@ -4,6 +4,7 @@ import type { Fetcher } from "swr";
 
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
+import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { DeleteMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type {
@@ -11,7 +12,6 @@ import type {
   PostMCPServerViewResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { useMCPServers } from "@app/lib/swr/mcp_servers";
 
 function getMCPServerViewsKey(owner: LightWorkspaceType, space?: SpaceType) {
   return space ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views` : null;
@@ -73,7 +73,7 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
           description:
             "Your actions have been added to the space successfully.",
         });
-        mutateMCPServers();
+        void mutateMCPServers();
       } else {
         sendNotification({
           type: "error",
@@ -84,7 +84,7 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
 
       return response.json();
     },
-    [sendNotification, owner]
+    [sendNotification, owner, mutateMCPServers]
   );
 
   return { addToSpace: createView };
@@ -119,7 +119,7 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
           description:
             "Your actions have been removed from the space successfully.",
         });
-        mutateMCPServers();
+        void mutateMCPServers();
       } else {
         sendNotification({
           type: "error",
@@ -130,7 +130,7 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
 
       return response.json();
     },
-    [sendNotification, owner]
+    [sendNotification, owner, mutateMCPServers]
   );
 
   return { removeFromSpace: deleteView };

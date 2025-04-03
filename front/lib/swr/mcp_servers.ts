@@ -4,7 +4,6 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
-  AllowedFilter,
   CreateMCPServerResponseBody,
   GetMCPServersResponseBody,
 } from "@app/pages/api/w/[wId]/mcp";

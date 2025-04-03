@@ -97,6 +97,7 @@ export function RemoteMCPForm({
           <div className="flex-grow">
             <Input
               id="url"
+              disabled={isSynchronized}
               placeholder="https://example.com/api/mcp"
               value={state.url}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -186,34 +187,6 @@ export function RemoteMCPForm({
               </p>
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label>Available Tools</Label>
-            <div className="space-y-4 rounded-md border p-4">
-              {state.tools && state.tools.length > 0 ? (
-                state.tools.map(
-                  (
-                    tool: { name: string; description: string },
-                    index: number
-                  ) => (
-                    <div
-                      key={index}
-                      className="border-b pb-4 last:border-b-0 last:pb-0"
-                    >
-                      <h4 className="text-sm font-medium">{tool.name}</h4>
-                      {tool.description && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          {tool.description}
-                        </p>
-                      )}
-                    </div>
-                  )
-                )
-              ) : (
-                <p className="text-sm text-gray-500">No tools available</p>
-              )}
-            </div>
-          </div>
         </>
       )}
     </div>
