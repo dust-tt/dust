@@ -4,6 +4,8 @@ const STATIC_ALLOWED_ORIGINS = [
   // Chrome extension.
   "chrome-extension://okjldflokifdjecnhbmkdanjjbnmlihg",
   "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
+  // readme.io documentation
+  "https://try.readme.io",
 ] as const;
 
 const ALLOWED_ORIGIN_PATTERNS = [
