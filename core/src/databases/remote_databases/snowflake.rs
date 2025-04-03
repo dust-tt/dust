@@ -308,7 +308,11 @@ impl SnowflakeRemoteDatabase {
                 None => None,
             })
             .collect();
-        let allowed_tables: HashSet<&str> = tables.iter().map(|table| table.name()).collect();
+        let allowed_tables: HashSet<&str> = tables
+            .iter()
+            .filter_map(|table| table.remote_database_table_id())
+            .collect();
+
         let used_forbidden_tables = used_tables
             .into_iter()
             .filter(|table| !allowed_tables.contains(*table))
