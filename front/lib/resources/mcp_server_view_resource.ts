@@ -35,6 +35,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
   static model: ModelStatic<MCPServerView> = MCPServerView;
   readonly editedByUser?: Attributes<UserModel>;
 
+  private remoteMCPServer?: RemoteMCPServerResource;
+  private internalMCPServer?: InternalMCPServerInMemoryResource;
+
   constructor(
     model: ModelStatic<MCPServerView>,
     blob: Attributes<MCPServerView>,
@@ -45,6 +48,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
 
     this.editedByUser = editedByUser;
   }
+
+  private async init(auth: Authenticator) {
+    this.remoteMCPServer =
+      (this.remoteMCPServerId &&
+        (await RemoteMCPServerResource.findByPk(
+          auth,
+          this.remoteMCPServerId
+        ))) ||
+      undefined;
+    this.internalMCPServer =
+      (this.internalMCPServerId &&
+        (await InternalMCPServerInMemoryResource.fetchById(
+          auth,
+          this.internalMCPServerId
+        ))) ||
+      undefined;
+  }
+
   private static async makeNew(
     auth: Authenticator,
     blob: Omit<
@@ -74,7 +95,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       },
       { transaction }
     );
-    return new this(MCPServerViewResource.model, server.get(), space);
+
+    const res = new this(MCPServerViewResource.model, server.get(), space);
+
+    await res.init(auth);
+
+    return res;
   }
 
   public static async create(
@@ -120,6 +146,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       ],
     });
 
+    for (const view of views) {
+      await view.init(auth);
+    }
     return views;
   }
 
@@ -270,9 +299,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     return new Ok(deletedCount);
   }
 
-  async getRemoteMCPServer(
-    auth: Authenticator
-  ): Promise<RemoteMCPServerResource> {
+  getRemoteMCPServer(): RemoteMCPServerResource {
     if (this.serverType !== "remote") {
       throw new Error("This MCP server view is not a remote server view");
     }
@@ -281,22 +308,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       throw new Error("This MCP server view is missing a remote server ID");
     }
 
-    const remoteMCPServer = await RemoteMCPServerResource.findByPk(
-      auth,
-      this.remoteMCPServerId
-    );
-    if (!remoteMCPServer) {
+    if (!this.remoteMCPServer) {
       throw new Error(
         "This MCP server view is referencing a non-existent remote server"
       );
     }
 
-    return remoteMCPServer;
+    return this.remoteMCPServer;
   }
 
-  async getInternalMCPServer(
-    auth: Authenticator
-  ): Promise<InternalMCPServerInMemoryResource> {
+  getInternalMCPServer(): InternalMCPServerInMemoryResource {
     if (this.serverType !== "internal") {
       throw new Error("This MCP server view is not an internal server view");
     }
@@ -305,17 +326,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       throw new Error("This MCP server view is missing an internal server ID");
     }
 
-    const internalMCPServer = await InternalMCPServerInMemoryResource.fetchById(
-      auth,
-      this.internalMCPServerId
-    );
-    if (!internalMCPServer) {
+    if (!this.internalMCPServer) {
       throw new Error(
         "This MCP server view is referencing a non-existent internal server"
       );
     }
 
-    return internalMCPServer;
+    return this.internalMCPServer;
   }
 
   get sId(): string {
@@ -362,22 +379,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
   }
 
   // Serialization.
-  async toJSON(auth: Authenticator): Promise<MCPServerViewType> {
-    let server: MCPServerType;
-    if (this.serverType === "remote") {
-      const mcpServer = await this.getRemoteMCPServer(auth);
-      server = mcpServer.toJSON();
-    } else {
-      const mcpServer = await this.getInternalMCPServer(auth);
-      server = await mcpServer.toJSON(auth);
-    }
-
+  toJSON(): MCPServerViewType {
     return {
       id: this.sId,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       spaceId: this.space.sId,
-      server,
+      server:
+        this.serverType === "remote"
+          ? this.getRemoteMCPServer().toJSON()
+          : this.getInternalMCPServer().toJSON(),
     };
   }
 }

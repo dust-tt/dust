@@ -82,7 +82,7 @@ export async function fetchMCPServerActionConfigurations(
 
     let metadata: MCPServerType | null = null;
     if (mcpServerView.serverType === "remote") {
-      const remoteMCPServer = await mcpServerView.getRemoteMCPServer(auth);
+      const remoteMCPServer = mcpServerView.getRemoteMCPServer();
 
       // Note: this won't attempt to connect to remote servers and will use the cached metadata.
       metadata = remoteMCPServer.toJSON();
@@ -105,7 +105,7 @@ export async function fetchMCPServerActionConfigurations(
         );
       }
 
-      metadata = await internalMCPServer.toJSON(auth);
+      metadata = internalMCPServer.toJSON();
     } else {
       assertNever(mcpServerView.serverType);
     }

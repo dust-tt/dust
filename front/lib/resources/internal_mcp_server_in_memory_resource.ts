@@ -15,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
 
@@ -22,8 +23,33 @@ export class InternalMCPServerInMemoryResource {
   // SID of the internal MCP server, scoped to a workspace.
   readonly id: string;
 
+  private metadata: Omit<MCPServerType, "id"> = {
+    ...extractMetadataFromServerVersion(undefined),
+    tools: [],
+  };
+
   constructor(id: string) {
     this.id = id;
+  }
+
+  private static async init(auth: Authenticator, id: string) {
+    const server = new InternalMCPServerInMemoryResource(id);
+
+    const mcpClient = await connectToMCPServer(auth, {
+      type: "mcpServerId",
+      mcpServerId: id,
+    });
+
+    server.metadata = {
+      ...extractMetadataFromServerVersion(mcpClient.getServerVersion()),
+      tools: extractMetadataFromTools(
+        (await mcpClient.listTools()).tools
+      ) as any,
+    };
+
+    await mcpClient.close();
+
+    return server;
   }
 
   static async makeNew(
@@ -38,7 +64,8 @@ export class InternalMCPServerInMemoryResource {
       "The user is not authorized to create an MCP server"
     );
 
-    const server = new InternalMCPServerInMemoryResource(
+    const server = await InternalMCPServerInMemoryResource.init(
+      auth,
       InternalMCPServerInMemoryResource.nameToSId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -100,18 +127,26 @@ export class InternalMCPServerInMemoryResource {
       return null;
     }
 
-    return new InternalMCPServerInMemoryResource(server.internalMCPServerId);
+    return InternalMCPServerInMemoryResource.init(
+      auth,
+      server.internalMCPServerId
+    );
   }
 
-  static listAvailableInternalMCPServers(auth: Authenticator) {
+  static async listAvailableInternalMCPServers(auth: Authenticator) {
     const ids = AVAILABLE_INTERNAL_MCPSERVER_NAMES.map((name) =>
       InternalMCPServerInMemoryResource.nameToSId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
       })
     );
-
-    return ids.map((id) => new InternalMCPServerInMemoryResource(id));
+    return concurrentExecutor(
+      ids,
+      (id) => InternalMCPServerInMemoryResource.init(auth, id),
+      {
+        concurrency: 10,
+      }
+    );
   }
 
   static async listByWorkspace(auth: Authenticator) {
@@ -130,28 +165,21 @@ export class InternalMCPServerInMemoryResource {
       },
     });
 
-    return removeNulls(servers.map((server) => server.internalMCPServerId)).map(
-      (internalMCPServerId) =>
-        new InternalMCPServerInMemoryResource(internalMCPServerId)
+    return concurrentExecutor(
+      removeNulls(servers.map((server) => server.internalMCPServerId)),
+      async (internalMCPServerId) =>
+        InternalMCPServerInMemoryResource.init(auth, internalMCPServerId),
+      {
+        concurrency: 10,
+      }
     );
   }
 
   // Serialization.
-  async toJSON(auth: Authenticator): Promise<MCPServerType> {
-    // This is "free" as we're using an in-memory transport.
-    const mcpClient = await connectToMCPServer(auth, {
-      type: "mcpServerId",
-      mcpServerId: this.id,
-    });
-
-    const r = mcpClient.getServerVersion();
-    const tools = await mcpClient.listTools();
-    await mcpClient.close();
-
+  toJSON(): MCPServerType {
     return {
       id: this.id,
-      ...extractMetadataFromServerVersion(r),
-      tools: extractMetadataFromTools(tools),
+      ...this.metadata,
     };
   }
 }

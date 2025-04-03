@@ -47,8 +47,8 @@ async function handler(
       );
       return res.status(200).json({
         success: true,
-        serverViews: await Promise.all(
-          mcpServerViews.map((mcpServerView) => mcpServerView.toJSON(auth))
+        serverViews: mcpServerViews.map((mcpServerView) =>
+          mcpServerView.toJSON()
         ),
       });
     }
@@ -86,7 +86,7 @@ async function handler(
 
       return res.status(200).json({
         success: true,
-        serverView: await mcpServerView.toJSON(auth),
+        serverView: mcpServerView.toJSON(),
       });
     }
   }
