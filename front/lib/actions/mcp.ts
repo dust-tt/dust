@@ -298,12 +298,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       });
 
       let status = "none";
-      localLogger.info(
-        {
-          actionId: mcpAction.id,
-        },
-        "Waiting for action validation"
-      );
+      localLogger.info("Waiting for action validation");
 
       // Start listening for action events
       for await (const event of actionEventGenerator) {
