@@ -4,12 +4,14 @@ import { useState } from "react";
 
 import { InternalMCPServerDetails } from "@app/components/actions/mcp/ActionDetails";
 import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
+import { RemoteMCPServerDetails } from "@app/components/actions/mcp/RemoteMCPServerDetails";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
@@ -45,9 +47,24 @@ export default function AdminActions({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showDetails, setShowDetails] = useState<MCPServerType | null>(null);
+  const [isRemoteCreationModalOpened, setRemoteCreationModalOpened] =
+    useState(false);
   const serverType = showDetails
     ? getServerTypeAndIdFromSId(showDetails.id).serverType
-    : null;
+    : isRemoteCreationModalOpened
+      ? "remote"
+      : null;
+
+  const { mutateMCPServers } = useMCPServers({
+    owner,
+    filter: "all",
+  });
+
+  const closePanel = () => {
+    setShowDetails(null);
+    void mutateMCPServers();
+    setRemoteCreationModalOpened(false);
+  };
 
   return (
     <AppLayout
@@ -55,11 +72,23 @@ export default function AdminActions({
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "actions" })}
     >
-      <InternalMCPServerDetails
-        owner={owner}
-        mcpServer={serverType === "internal" ? showDetails : null}
-        onClose={() => setShowDetails(null)}
-      />
+      {serverType === "internal" && (
+        <InternalMCPServerDetails
+          owner={owner}
+          mcpServer={showDetails}
+          onClose={closePanel}
+        />
+      )}
+
+      {serverType === "remote" && (
+        <RemoteMCPServerDetails
+          owner={owner}
+          mcpServer={showDetails}
+          onClose={closePanel}
+          open={isRemoteCreationModalOpened}
+          mutateServers={mutateMCPServers}
+        />
+      )}
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
@@ -68,7 +97,13 @@ export default function AdminActions({
           description="Actions let you connect tools and automate tasks. Find all available actions here and set up new ones."
         />
         <Page.Vertical align="stretch" gap="md">
-          <AdminActionsList owner={owner} setShowDetails={setShowDetails} />
+          <AdminActionsList
+            owner={owner}
+            setShowDetails={setShowDetails}
+            openRemoteMCPCreationModal={() =>
+              setRemoteCreationModalOpened(true)
+            }
+          />
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
