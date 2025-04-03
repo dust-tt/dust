@@ -59,8 +59,8 @@ interface FileAttachmentCitation extends BaseAttachmentCitation {
 interface NodeAttachmentCitation extends BaseAttachmentCitation {
   type: "node";
   spaceName: string;
-  path: string;
-  spaceIcon: React.ComponentType;
+  path?: string;
+  spaceIcon?: React.ComponentType;
   preview?: never;
   isUploading?: never;
 }
