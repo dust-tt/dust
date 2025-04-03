@@ -70,7 +70,8 @@ const UserMessageView = ({ message }: { message: UserMessageType }) => {
         <div className="font-bold">
           [user] @{message.user.username} (fullName={message.user.fullName}{" "}
           email=
-          {message.user.email})
+          {message.user.email}) (posted{" "}
+          {new Date(message.created).toLocaleString()})
         </div>
       )}
       <div className="text-muted-foreground dark:text-muted-foreground-night">
@@ -101,7 +102,7 @@ const AgentMessageView = ({
         >
           {message.configuration.sId}
         </a>
-        {")"}
+        {")"}(posted {new Date(message.created).toLocaleString()})
       </div>
 
       <div className="text-muted-foreground dark:text-muted-foreground-night">
@@ -156,7 +157,10 @@ const AgentMessageView = ({
 const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
   return (
     <div className="ml-4 pt-2 text-sm text-muted-foreground">
-      <div className="font-bold">[content_fragment] {message.title}</div>
+      <div className="font-bold">
+        [content_fragment] {message.title} (posted{" "}
+        {new Date(message.created).toLocaleString()})
+      </div>
       <div className="text-muted-foreground dark:text-muted-foreground-night">
         version={message.version}
       </div>
