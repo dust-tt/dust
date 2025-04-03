@@ -1,16 +1,8 @@
-import { Chip } from "@dust-tt/sparkle";
+import { AttachmentChip } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
-export function ContentNodeMentionBlock({
-  title,
-  url,
-}: {
-  title: string;
-  url: string;
-}) {
-  return (
-    <Chip label={title} size="xs" color="sky" href={url} target="_blank" />
-  );
+export function ContentNodeMentionBlock({ title }: { title: string }) {
+  return <AttachmentChip label={title} />;
 }
 
 export function contentNodeMentionDirective() {
