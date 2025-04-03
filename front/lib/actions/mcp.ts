@@ -236,8 +236,14 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     void
   > {
     const owner = auth.getNonNullableWorkspace();
-
     const { actionConfiguration } = this;
+
+    const localLogger = logger.child({
+      actionConfigurationId: actionConfiguration.sId,
+      conversationId: conversation.sId,
+      messageId: agentMessage.sId,
+      workspaceId: conversation.owner.sId,
+    });
 
     // Create the action object in the database and yield an event for
     // the generation of the params. We store the action here as the params have been generated, if
@@ -292,12 +298,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       });
 
       let status = "none";
-      logger.info(
+      localLogger.info(
         {
           actionId: mcpAction.id,
-          conversationId: conversation.sId,
-          messageId: agentMessage.sId,
-          workspaceId: conversation.owner.sId,
         },
         "Waiting for action validation"
       );
@@ -320,14 +323,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
       // The action timed-out, status was not updated
       if (status === "none") {
-        logger.info(
-          {
-            conversationId: conversation.sId,
-            messageId: agentMessage.sId,
-            workspaceId: conversation.owner.sId,
-          },
-          "Action validation timed out"
-        );
+        localLogger.info("Action validation timed out");
 
         // We yield a tool success, with a message that the action timed out
         yield {
@@ -361,15 +357,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       }
 
       if (status === "rejected") {
-        logger.info(
-          {
-            actionId: actionConfiguration.id,
-            conversationId: conversation.sId,
-            messageId: agentMessage.sId,
-            workspaceId: conversation.owner.sId,
-          },
-          "Action execution rejected by user"
-        );
+        localLogger.info("Action execution rejected by user");
 
         // Yield a tool success, with a message that the action was rejected.
         yield {
@@ -402,24 +390,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         return;
       }
 
-      logger.info(
-        {
-          actionId: actionConfiguration.id,
-          conversationId: conversation.sId,
-          messageId: agentMessage.sId,
-          workspaceId: conversation.owner.sId,
-        },
-        "Proceeding with action execution after validation"
-      );
+      localLogger.info("Proceeding with action execution after validation");
     } catch (error) {
-      logger.error(
-        {
-          conversationId: conversation.sId,
-          error,
-          workspaceId: conversation.owner.sId,
-        },
-        "Error checking action validation status"
-      );
+      localLogger.error({ error }, "Error checking action validation status");
 
       yield {
         type: "tool_error",
@@ -448,12 +421,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     });
 
     if (r.isErr()) {
-      logger.error(
+      localLogger.error(
         {
-          actionConfigurationId: actionConfiguration.sId,
-          conversationId: conversation.sId,
           error: r.error.message,
-          workspaceId: owner.id,
         },
         `Error calling MCP tool.`
       );
