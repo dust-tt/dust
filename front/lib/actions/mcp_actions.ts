@@ -88,10 +88,10 @@ export async function tryCallMCPTool(
   auth: Authenticator,
   {
     actionConfiguration,
-    rawInputs,
+    inputs,
   }: {
     actionConfiguration: MCPToolConfigurationType;
-    rawInputs: Record<string, unknown> | undefined;
+    inputs: Record<string, unknown> | undefined;
   }
 ): Promise<Result<MCPToolResultContent[], Error>> {
   try {
@@ -108,7 +108,7 @@ export async function tryCallMCPTool(
     });
     const toolCallResult = await mcpClient.callTool({
       name: actionConfiguration.name,
-      arguments: rawInputs,
+      arguments: inputs,
     });
 
     await mcpClient.close();
