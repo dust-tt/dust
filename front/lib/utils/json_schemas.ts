@@ -4,6 +4,8 @@ import type {
 } from "json-schema";
 import { isEqual } from "lodash";
 
+import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+
 /**
  * Type guard to check if a value is a JSONSchema object
  */
@@ -140,10 +142,10 @@ export function findSchemaAtPath(
  * Sets a value at a specific path in a nested object structure.
  * Assumes that intermediate objects already exist.
  */
-export function setValueAtPath<T>(
+export function setValueAtPath(
   obj: Record<string, unknown>,
   path: string[],
-  value: T
+  value: ConfigurableToolInputType
 ): void {
   if (path.length === 0) {
     return;

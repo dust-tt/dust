@@ -38,6 +38,10 @@ export const ConfigurableToolInputSchemas: Record<
   ),
 } as const;
 
+export type ConfigurableToolInputType = z.infer<
+  (typeof ConfigurableToolInputSchemas)[InternalConfigurationMimeType]
+>;
+
 const ConfigurableToolInputJSONSchemas = Object.fromEntries(
   Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
     key,
@@ -164,35 +168,6 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
 }
 
 /**
- * Injects a value into the inputs based on the MIME type of a property schema.
- */
-function injectValueForMimeType({
-  owner,
-  inputs,
-  path,
-  schema,
-  actionConfiguration,
-}: {
-  owner: WorkspaceType;
-  inputs: Record<string, unknown>;
-  path: string[];
-  schema: JSONSchema;
-  actionConfiguration: MCPToolConfigurationType;
-}) {
-  // Check if this property has a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION
-  for (const mimeType of Object.values(INTERNAL_MIME_TYPES.CONFIGURATION)) {
-    if (containsSubSchema(schema, ConfigurableToolInputJSONSchemas[mimeType])) {
-      // We found a matching mimeType, augment the inputs
-      setValueAtPath(
-        inputs,
-        path,
-        generateConfiguredInput({ owner, actionConfiguration, mimeType })
-      );
-    }
-  }
-}
-
-/**
  * Augments the inputs with configuration data from actionConfiguration.
  * For each missing property that has a mimeType matching a value in INTERNAL_MIME_TYPES.CONFIGURATION,
  * it adds the corresponding data from actionConfiguration.
@@ -240,13 +215,23 @@ export function augmentInputsWithConfiguration({
 
       // If we found a schema and it has a matching MIME type, inject the value
       if (propSchema) {
-        injectValueForMimeType({
-          owner,
-          inputs,
-          path: fullPath,
-          schema: propSchema,
-          actionConfiguration,
-        });
+        for (const mimeType of Object.values(
+          INTERNAL_MIME_TYPES.CONFIGURATION
+        )) {
+          if (
+            schemasAreEqual(
+              propSchema,
+              ConfigurableToolInputJSONSchemas[mimeType]
+            )
+          ) {
+            // We found a matching mimeType, augment the inputs
+            setValueAtPath(
+              inputs,
+              fullPath,
+              generateConfiguredInput({ owner, actionConfiguration, mimeType })
+            );
+          }
+        }
       }
     }
   }
