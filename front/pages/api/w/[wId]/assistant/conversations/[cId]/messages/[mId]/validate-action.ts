@@ -13,7 +13,6 @@ import type { WithAPIErrorResponse } from "@app/types";
 const ValidateActionSchema = z.object({
   actionId: z.number(),
   approved: z.boolean(),
-  paramsHash: z.any(),
 });
 
 type ValidateActionResponse = {
@@ -70,7 +69,7 @@ async function handler(
     });
   }
 
-  const { actionId, approved, paramsHash } = parseResult.data;
+  const { actionId, approved } = parseResult.data;
 
   try {
     const actionChannel = `action-${actionId}`;
@@ -96,7 +95,6 @@ async function handler(
         created: Date.now(),
         actionId: actionId,
         messageId: mId,
-        paramsHash: paramsHash,
       }),
     });
 

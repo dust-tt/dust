@@ -1287,7 +1287,6 @@ const MCPApproveExecutionEventSchema = z.object({
   messageId: z.string(),
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
-  hash: z.string(),
 });
 
 const AgentErrorEventSchema = z.object({
