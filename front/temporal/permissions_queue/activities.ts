@@ -1,5 +1,7 @@
 import assert from "assert";
 
+import { getDataSource } from "@app/lib/actions/configuration/retrieval";
+import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import {
   getAgentConfigurationGroupIdsFromActions,
@@ -89,7 +91,16 @@ export async function updateSpacePermissions({
 
     const requestedGroupIds = await getAgentConfigurationGroupIdsFromActions(
       auth,
-      ac.actions
+      // TODO(mcp): rationalize the typing post migration of current actions to MCP internal servers.
+      ac.actions.map((action) =>
+        isMCPServerConfiguration(action)
+          ? {
+              ...action,
+              dataSources:
+                action.dataSourceConfigurations?.map(getDataSource) || null,
+            }
+          : action
+      )
     );
 
     const requestedGroupIdsToSIds = requestedGroupIds.map((gs) =>
