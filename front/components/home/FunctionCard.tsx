@@ -68,21 +68,19 @@ export function FunctionCard({
         <H3 className="text-white" mono>
           {title}
         </H3>
-        <P size="sm" className="flex-grow font-medium text-white/80">
-          <ul>
-            {features.map((feature, i) => (
-              <li
-                key={i}
-                className="flex min-h-6 items-start gap-1 py-1.5 text-white/80"
-              >
-                <div className="pt-0.5">
-                  <Icon visual={ChevronRightIcon} size="sm" />
-                </div>
-                {feature}
-              </li>
-            ))}
-          </ul>
-        </P>
+        <ul className="copy-base flex-grow font-medium text-white/80">
+          {features.map((feature, i) => (
+            <li
+              key={i}
+              className="flex min-h-6 items-start gap-1 py-1.5 text-white/80"
+            >
+              <div className="pt-0.5">
+                <Icon visual={ChevronRightIcon} size="sm" />
+              </div>
+              {feature}
+            </li>
+          ))}
+        </ul>
         <div className="mt-4">
           <Link href={href} shallow>
             <Button variant="outline" label="Learn more" size="sm" />
