@@ -2,6 +2,7 @@ import type {
   JSONSchema7 as JSONSchema,
   JSONSchema7Definition as JSONSchemaDefinition,
 } from "json-schema";
+import { isEqual } from "lodash";
 
 /**
  * Type guard to check if a value is a JSONSchema object
@@ -12,17 +13,26 @@ export function isJSONSchemaObject(
   return value !== null && typeof value === "object";
 }
 
+/**
+ * Compares two JSON schemas for equality, only checking the properties, items and required fields.
+ * In particular, it ignores the $schema field.
+ */
 export function schemasAreEqual(
   schemaA: JSONSchema,
   schemaB: JSONSchema
 ): boolean {
-  return (
-    schemaA.type === schemaB.type &&
-    schemaA.items === schemaB.items &&
-    schemaA.properties === schemaB.properties &&
-    schemaA.required === schemaB.required
-  );
+  if (schemaA.type !== schemaB.type) {
+    return false;
+  }
+  if (!isEqual(schemaA.required, schemaB.required)) {
+    return false;
+  }
+  if (!isEqual(schemaA.items, schemaB.items)) {
+    return false;
+  }
+  return isEqual(schemaA.properties, schemaB.properties);
 }
+
 /**
  * Recursively checks if a schema contains a specific sub-schema anywhere in its structure.
  * This function handles nested objects and arrays.
