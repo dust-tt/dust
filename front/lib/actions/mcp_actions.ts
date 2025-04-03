@@ -193,7 +193,7 @@ export async function listMCPServerTools(
     do {
       const toolsResult = await mcpClient.listTools();
       nextPageCursor = toolsResult.nextCursor;
-      allTools = [...allTools, ...extractMetadataFromTools(toolsResult)];
+      allTools = [...allTools, ...extractMetadataFromTools(toolsResult.tools)];
     } while (nextPageCursor);
 
     await mcpClient.close();
