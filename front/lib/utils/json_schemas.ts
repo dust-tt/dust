@@ -2,7 +2,6 @@ import type {
   JSONSchema7 as JSONSchema,
   JSONSchema7Definition as JSONSchemaDefinition,
 } from "json-schema";
-import logger from "@app/logger/logger";
 
 /**
  * Type guard to check if a value is a JSONSchema object
@@ -21,7 +20,6 @@ export function containsSubSchema(
   inputSchema: JSONSchema,
   targetSubSchema: JSONSchema
 ): boolean {
-  logger.info({ inputSchema, targetSubSchema }, "CHECKING");
   if (
     inputSchema.properties === targetSubSchema.properties &&
     inputSchema.required === targetSubSchema.required
