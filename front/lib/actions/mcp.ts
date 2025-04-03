@@ -454,10 +454,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     if (r.isErr()) {
       logger.error(
         {
-          workspaceId: owner.id,
-          conversationId: conversation.sId,
           actionConfigurationId: actionConfiguration.sId,
+          conversationId: conversation.sId,
           error: r.error.message,
+          workspaceId: owner.id,
         },
         `Error calling MCP tool.`
       );
