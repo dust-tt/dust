@@ -48,7 +48,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const conversations =
-        await ConversationResource.listUserConversations(auth);
+        await ConversationResource.listConversationsForUser(auth);
       res.status(200).json({ conversations });
       return;
 

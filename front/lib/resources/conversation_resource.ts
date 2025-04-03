@@ -55,7 +55,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     blob: Omit<CreationAttributes<ConversationModel>, "workspaceId">
   ): Promise<ConversationResource> {
     const workspace = auth.getNonNullableWorkspace();
-    const conversation = await ConversationResource.model.create({
+    const conversation = await this.model.create({
       ...blob,
       workspaceId: workspace.id,
     });
@@ -84,9 +84,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     options?: FetchConversationOptions
   ) {
     const workspace = auth.getNonNullableWorkspace();
-    const { where } = ConversationResource.getOptions(options);
+    const { where } = this.getOptions(options);
 
-    const conversations = await ConversationResource.model.findAll({
+    const conversations = await this.model.findAll({
       where: {
         sId: sIds,
         workspaceId: workspace.id,
@@ -94,9 +94,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
     });
 
-    return conversations.map(
-      (c) => new ConversationResource(ConversationResource.model, c.get())
-    );
+    return conversations.map((c) => new this(this.model, c.get()));
   }
 
   static async fetchById(
@@ -104,7 +102,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     sId: string,
     options?: FetchConversationOptions
   ): Promise<ConversationResource | null> {
-    const res = await ConversationResource.fetchByIds(auth, [sId], options);
+    const res = await this.fetchByIds(auth, [sId], options);
 
     return res.length > 0 ? res[0] : null;
   }
@@ -114,16 +112,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     options?: FetchConversationOptions
   ): Promise<ConversationResource[]> {
     const workspace = auth.getNonNullableWorkspace();
-    const { where } = ConversationResource.getOptions(options);
-    const conversations = await ConversationResource.model.findAll({
+    const { where } = this.getOptions(options);
+    const conversations = await this.model.findAll({
       where: {
         workspaceId: workspace.id,
         ...where,
       },
     });
-    return conversations.map(
-      (c) => new ConversationResource(ConversationModel, c.get())
-    );
+    return conversations.map((c) => new this(this.model, c.get()));
   }
 
   static async listMentionsByConfiguration(
@@ -138,7 +134,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): Promise<ConversationResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const mentions = await ConversationResource.model.findAll({
+    const mentions = await this.model.findAll({
       attributes: [
         [Sequelize.literal('"messages->userMessage"."userId"'), "userId"],
         [
@@ -185,10 +181,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       raw: true,
     });
 
-    return mentions.map(
-      (mention) =>
-        new ConversationResource(ConversationResource.model, mention.get())
-    );
+    return mentions.map((mention) => new this(this.model, mention.get()));
   }
 
   static getConversationRequestedGroupIdsFromModel(
@@ -236,7 +229,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
     const owner = auth.getNonNullableWorkspace();
 
-    const conversation = await ConversationResource.fetchById(auth, sId, {
+    const conversation = await this.fetchById(auth, sId, {
       includeDeleted: options?.includeDeleted,
     });
 
@@ -258,17 +251,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       owner,
       title: conversation.title,
       visibility: conversation.visibility,
-      requestedGroupIds:
-        ConversationResource.getConversationRequestedGroupIdsFromModel(
-          owner,
-          conversation
-        ),
+      requestedGroupIds: this.getConversationRequestedGroupIdsFromModel(
+        owner,
+        conversation
+      ),
       // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
       groupIds: [],
     });
   }
 
-  protected static async update(
+  private static async update(
     auth: Authenticator,
     sId: string,
     blob: Partial<
@@ -276,7 +268,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     >,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
-    const conversation = await ConversationResource.fetchById(auth, sId);
+    const conversation = await this.fetchById(auth, sId);
     if (conversation == null) {
       return new Err(new ConversationError("conversation_not_found"));
     }
@@ -285,7 +277,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
-  static async listUserConversations(
+  static async listConversationsForUser(
     auth: Authenticator,
     options?: FetchConversationOptions
   ): Promise<ConversationWithoutContentType[]> {
@@ -330,7 +322,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
 
     const conversations = (
-      await ConversationResource.model.findAll({
+      await this.model.findAll({
         where: {
           workspaceId: owner.id,
           id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
@@ -338,7 +330,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       })
     )
-      .map((c) => new ConversationResource(ConversationResource.model, c.get()))
+      .map((c) => new this(this.model, c.get()))
       .map(
         (c) =>
           ({
@@ -349,11 +341,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             owner,
             title: c.title,
             visibility: c.visibility,
-            requestedGroupIds:
-              ConversationResource.getConversationRequestedGroupIdsFromModel(
-                owner,
-                c
-              ),
+            requestedGroupIds: this.getConversationRequestedGroupIdsFromModel(
+              owner,
+              c
+            ),
             // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
             groupIds: [],
           }) satisfies ConversationWithoutContentType
@@ -415,7 +406,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
   }
 
-  static async updateRequestedGroupsIds(
+  static async updateRequestedGroupIds(
     auth: Authenticator,
     sId: string,
     requestedGroupIds: number[][],
@@ -436,7 +427,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     title: string,
     transaction?: Transaction
   ) {
-    return ConversationResource.update(
+    return this.update(
       auth,
       sId,
       {
@@ -477,6 +468,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     try {
       await ConversationParticipantModel.destroy({
         where: { conversationId: this.id },
+        transaction,
       });
       await ConversationResource.model.destroy({
         where: {

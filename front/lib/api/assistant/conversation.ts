@@ -1991,7 +1991,7 @@ export async function updateConversationRequestedGroupIds(
     return req;
   });
 
-  await ConversationResource.updateRequestedGroupsIds(
+  await ConversationResource.updateRequestedGroupIds(
     auth,
     conversation.sId,
     updatedRequirements,
