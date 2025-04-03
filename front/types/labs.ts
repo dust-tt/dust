@@ -34,6 +34,7 @@ export type LabsTranscriptsConfigurationType = {
 export type LabsConnectionItemType = {
   id: LabsConnectionType;
   featureFlag: WhitelistableFeature;
+  visibleWithoutAccess: boolean;
   logo: React.ComponentType;
   label: string;
   description: string;
@@ -42,6 +43,7 @@ export type LabsConnectionItemType = {
 export type LabsFeatureItemType = {
   id: LabsFeatureType;
   featureFlag: WhitelistableFeature;
+  visibleWithoutAccess: boolean;
   icon: React.ComponentType;
   label: string;
   description: string;
