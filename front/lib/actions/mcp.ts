@@ -297,10 +297,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       let status = "none";
       logger.info(
         {
-          workspaceId: conversation.owner.sId,
+          actionId: mcpAction.id,
           conversationId: conversation.sId,
           messageId: agentMessage.sId,
-          actionId: mcpAction.id,
+          workspaceId: conversation.owner.sId,
         },
         "Waiting for action validation"
       );
@@ -325,10 +325,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       if (status === "none") {
         logger.info(
           {
-            workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
             messageId: agentMessage.sId,
-            actionId: mcpAction.id,
+            workspaceId: conversation.owner.sId,
           },
           "Action validation timed out"
         );
@@ -367,10 +366,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       if (status === "rejected") {
         logger.info(
           {
-            workspaceId: conversation.owner.sId,
+            actionId: actionConfiguration.id,
             conversationId: conversation.sId,
             messageId: agentMessage.sId,
-            actionId: actionConfiguration.id,
+            workspaceId: conversation.owner.sId,
           },
           "Action execution rejected by user"
         );
@@ -408,19 +407,19 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
       logger.info(
         {
-          workspaceId: conversation.owner.sId,
+          actionId: actionConfiguration.id,
           conversationId: conversation.sId,
           messageId: agentMessage.sId,
-          actionId: actionConfiguration.id,
+          workspaceId: conversation.owner.sId,
         },
         "Proceeding with action execution after validation"
       );
     } catch (error) {
       logger.error(
         {
-          workspaceId: conversation.owner.sId,
           conversationId: conversation.sId,
           error,
+          workspaceId: conversation.owner.sId,
         },
         "Error checking action validation status"
       );
