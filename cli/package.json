@@ -29,6 +29,7 @@
   "dependencies": {
     "@dust-tt/client": "^1.0.34",
     "@modelcontextprotocol/sdk": "^1.8.0",
+    "clipboardy": "^4.0.0",
     "express": "^5.1.0",
     "ink": "^5.2.0",
     "ink-select-input": "^6.0.0",
@@ -48,6 +49,7 @@
     "node": ">=21.2.0"
   },
   "devDependencies": {
+    "@types/clipboardy": "^2.0.4",
     "@types/express": "^5.0.1",
     "@types/node": "^22.13.16",
     "@types/react": "^19.0.12",
