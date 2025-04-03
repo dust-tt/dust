@@ -23,6 +23,7 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import logger from "@app/logger/logger";
 import type { OAuthProvider, OAuthUseCase } from "@app/types";
 import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
+import { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 
 export type MCPToolType = {
   name: string;
@@ -38,6 +39,10 @@ export type MCPServerType = {
   icon: AllowedIconType;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
+};
+
+export type MCPServerTypeWithViews = MCPServerType & {
+  views: MCPServerViewType[];
 };
 
 export type MCPServerDefinitionType = Omit<MCPServerType, "tools" | "id">;

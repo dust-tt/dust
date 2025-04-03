@@ -2,8 +2,8 @@ import { CommandLineIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
-import { InternalMCPServerDetails } from "@app/components/actions/mcp/ActionDetails";
 import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
+import { InternalMCPServerDetails } from "@app/components/actions/mcp/InternalMCPServerDetails";
 import { RemoteMCPServerDetails } from "@app/components/actions/mcp/RemoteMCPServerDetails";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -57,7 +57,6 @@ export default function AdminActions({
 
   const { mutateMCPServers } = useMCPServers({
     owner,
-    filter: "all",
   });
 
   const closePanel = () => {

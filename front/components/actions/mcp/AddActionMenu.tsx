@@ -49,23 +49,28 @@ export const AddActionMenu = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuLabel label="Default actions" />
-
-        {availableMCPServers
-          .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.id))
-          .map((mcpServer) => (
-            <DropdownMenuItem
-              key={mcpServer.id}
-              label={mcpServer.name}
-              icon={MCP_SERVER_ICONS[mcpServer.icon || DEFAULT_MCP_SERVER_ICON]}
-              onClick={async () => {
-                await createInternalMCPServer(mcpServer.name);
-              }}
-            />
-          ))}
-        <DropdownMenuSeparator />
+        {availableMCPServers?.length > 0 && (
+          <>
+            {availableMCPServers
+              .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.id))
+              .map((mcpServer) => (
+                <DropdownMenuItem
+                  key={mcpServer.id}
+                  label={mcpServer.name}
+                  icon={
+                    MCP_SERVER_ICONS[mcpServer.icon || DEFAULT_MCP_SERVER_ICON]
+                  }
+                  onClick={async () => {
+                    await createInternalMCPServer(mcpServer.name);
+                  }}
+                />
+              ))}
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem
           icon={CloudArrowLeftRightIcon}
-          label="Add Remote MCP Server"
+          label="Add MCP Server"
           onClick={createRemoteMCP}
         />
       </DropdownMenuContent>
