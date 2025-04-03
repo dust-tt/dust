@@ -1,20 +1,19 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
 
 const VideoPlayer = () => {
   return (
-    <div className="relative w-full pt-[56.25%]">
-      <iframe
-        src="https://fast.wistia.net/embed/iframe/v90n8beuh9?web_component=true&seo=true"
-        title="Dust demo"
-        allow="fullscreen"
-        frameBorder="0"
-        className="absolute inset-0 h-full w-full rounded-lg"
-      ></iframe>
-    </div>
+    <DemoVideoSection
+      demoVideo={{
+        videoUrl: "https://fast.wistia.net/embed/iframe/v90n8beuh9",
+        autoPlay: false,
+        showCaptions: false,
+      }}
+    />
   );
 };
 
@@ -24,11 +23,11 @@ export function ProductIntroSection() {
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
-            <H1 className="text-red-400">Build your team of AI agents</H1>
+            <H1>Build your team of&nbsp;AI&nbsp;agents</H1>
             <div className="w-full md:hidden">
               <VideoPlayer />
             </div>
-            <P size="lg" className="text-slate-50">
+            <P size="lg" className="text-muted-foreground">
               Dust empowers all teams with agents with company context you can
               fully customize to match your unique requirements. Deploy
               seamlessly from simple workflows to complex enterprise

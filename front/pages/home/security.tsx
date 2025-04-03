@@ -98,10 +98,8 @@ export default function Security() {
             <P size="lg" className="text-muted-foreground">
               Designed for enterprises
             </P>
-            <H1 from="from-golden-200" to="to-golden-200">
-              Enterprise-grade Security
-            </H1>
-            <P size="lg" className="text-slate-50">
+            <H1>Enterprise-grade Security</H1>
+            <P size="lg" className="text-muted-foreground">
               We've made security our core focus from day&nbsp;one to safeguard
               your&nbsp;company&nbsp;data and workspace&nbsp;privacy. <br></br>
               <Strong>GDPR, HIPAA Compliant & SOC2 Type II Certified.</Strong>
@@ -121,15 +119,13 @@ export default function Security() {
                 target="_blank"
               />
             </div>
-            <div className="flex gap-4"></div>
+            <div className="flex gap-8"></div>
           </div>
         </Grid>
         <Grid className="md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H2 from="from-white" to="to-white">
-              Ingest data on your terms
-            </H2>
-            <P size="lg" className="pb-6 text-slate-50">
+            <H2>Ingest data on your terms</H2>
+            <P size="lg" className="pb-6 text-muted-foreground">
               Control data selection and hosting location within rigorous
               security parameters.
             </P>
@@ -138,17 +134,17 @@ export default function Security() {
             <div className="hidden sm:block">
               <MainVisualData />
             </div>
-            <P size="md" dotCSS="text-amber-300" shape="triangle">
+            <P size="md" dotCSS="text-brand-orange-golden" shape="triangle">
               <Strong>Granular Data Selection</Strong>
               <br />
               Fully control which data Dust ingests from each source.
             </P>
-            <P size="md" dotCSS="text-red-400" shape="rectangle">
+            <P size="md" dotCSS="text-brand-red-rose" shape="rectangle">
               <Strong>End-to-End Encryption</Strong>
               <br />
               Data is encrypted with AES-256 at rest, TLS in transit.
             </P>
-            <P size="md" dotCSS="text-sky-400" shape="circle">
+            <P size="md" dotCSS="text-brand-hunter-green" shape="circle">
               <Strong>Regional Hosting</Strong>
               <br />
               Host in the EU or US to meet your regulatory needs.
@@ -158,10 +154,8 @@ export default function Security() {
 
         <Grid className="mt-12 md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H2 from="from-slate-200" to="to-slate-400">
-              Select trusted models, keep data protected
-            </H2>
-            <P size="lg" className="pb-6 text-slate-50">
+            <H2>Select trusted models, keep data protected</H2>
+            <P size="lg" className="pb-6 text-muted-foreground">
               Control risk: only trusted providers, with no data fed into
               training.
             </P>
@@ -170,17 +164,17 @@ export default function Security() {
             <div className="hidden sm:block">
               <MainVisualModels />
             </div>
-            <P size="md" dotCSS="text-amber-300" shape="triangle">
+            <P size="md" dotCSS="text-brand-orange-golden" shape="triangle">
               <Strong>No Model Training</Strong>
               <br />
               Your data is never used to train models.
             </P>
-            <P size="md" dotCSS="text-red-400" shape="rectangle">
+            <P size="md" dotCSS="text-brand-red-rose" shape="rectangle">
               <Strong>Zero Data Retention</Strong>
               <br />
               No data is stored by third-party model providers.
             </P>
-            <P size="md" dotCSS="text-sky-400" shape="circle">
+            <P size="md" dotCSS="text-brand-hunter-green" shape="circle">
               <Strong>Flexible Providers</Strong>
               <br />
               Pick the providers and embedding models you want.
@@ -190,10 +184,8 @@ export default function Security() {
 
         <Grid className="mt-12 md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H2 from="from-slate-200" to="to-slate-400">
-              Maintain rigorous access control at all levels
-            </H2>
-            <P size="lg" className="pb-6 text-slate-50">
+            <H2>Maintain rigorous access control at all levels</H2>
+            <P size="lg" className="pb-6 text-muted-foreground">
               Tailor Dust's features to each user according to specified access
               rights.
             </P>
@@ -202,17 +194,17 @@ export default function Security() {
             <div className="hidden sm:block">
               <MainVisualUsers />
             </div>
-            <P size="md" dotCSS="text-amber-300" shape="triangle">
+            <P size="md" dotCSS="text-brand-orange-golden" shape="triangle">
               <Strong>Single Sign-On (SSO)</Strong>
               <br />
               Use SSO to manage user access across the workspace.
             </P>
-            <P size="md" dotCSS="text-red-400" shape="rectangle">
+            <P size="md" dotCSS="text-brand-red-rose" shape="rectangle">
               <Strong>Role-Based Access</Strong>
               <br />
               Assign user, builder, or admin roles to control permissions.
             </P>
-            <P size="md" dotCSS="text-sky-400" shape="circle">
+            <P size="md" dotCSS="text-brand-hunter-green" shape="circle">
               <Strong>Private Spaces</Strong>
               <br />
               Use private spaces for sensitive data, restricting access by role.

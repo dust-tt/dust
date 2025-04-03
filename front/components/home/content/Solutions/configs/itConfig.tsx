@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "IT",
   title: <>Automate Support, Empower Employees</>,
-  from: "from-golden-200",
-  to: "to-golden-200",
+  accentColor: "text-brand-orange-golden",
   description: (
     <>
       Scale IT support, automate routine requests, and keep your IT desk clean.
@@ -107,15 +106,27 @@ export const Metrics: MetricProps = {
   metrics: [
     {
       value: "30%",
-      description: <>fewer IT tickets</>,
+      description: (
+        <>
+          Fewer IT
+          <br />
+          tickets
+        </>
+      ),
     },
     {
       value: "4h",
-      description: <> saved weekly filling RFP</>,
+      description: (
+        <>
+          {" "}
+          Saved weekly
+          <br />
+          filling RFP
+        </>
+      ),
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -155,13 +166,13 @@ export const Quote: QuoteProps = {
     "One of the things that impressed me about Dust is that all the use cases around internal and external support for teams who need to maintain processes are impressive. Being able to call an agent that parses all the knowledge is a huge pain reliever.",
   name: "Raphael Brousse ",
   title: "VP Operations at Lifen",
-  logo: "/static/landing/logos/lifen.png",
+  logo: "/static/landing/logos/color/lifen.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/4a4bjtxdpf?seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/4a4bjtxdpf",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
