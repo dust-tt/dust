@@ -1,13 +1,12 @@
 import { Button, Cog6ToothIcon } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 
 import { RequestFeatureAccessModal } from "@app/components/labs/RequestFeatureAccessModal";
-import type { WorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 interface FeatureAccessButtonProps {
   accessible: boolean;
   featureName: string;
   managePath: string;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }
 
 export function FeatureAccessButton({
@@ -16,8 +15,6 @@ export function FeatureAccessButton({
   managePath,
   owner,
 }: FeatureAccessButtonProps) {
-  const router = useRouter();
-
   return (
     <>
       {accessible ? (
@@ -26,7 +23,7 @@ export function FeatureAccessButton({
           label="Manage"
           size="sm"
           icon={Cog6ToothIcon}
-          onClick={() => router.push(managePath)}
+          href={managePath}
         />
       ) : (
         <RequestFeatureAccessModal owner={owner} featureName={featureName} />

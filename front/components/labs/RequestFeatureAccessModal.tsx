@@ -42,7 +42,8 @@ export function RequestFeatureAccessModal({
       sendNotification({
         type: "success",
         title: "Email sent!",
-        description: `Your request was sent to the Dust support team. We'll get back to you as soon as possible.`,
+        description:
+          "Your request was sent to the Dust support team. We'll get back to you as soon as possible.",
       });
       setMessage("");
     } catch (e) {
