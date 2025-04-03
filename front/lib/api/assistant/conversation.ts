@@ -43,6 +43,7 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -596,10 +597,11 @@ export async function* postUserMessage(
   }
 
   const results = await Promise.all([
-    Promise.all(
-      mentions.filter(isAgentMention).map((mention) => {
-        return getLightAgentConfiguration(auth, mention.configurationId);
-      })
+    concurrentExecutor(
+      mentions.filter(isAgentMention),
+      async (mention) =>
+        getLightAgentConfiguration(auth, mention.configurationId),
+      { concurrency: 4 }
     ),
     ConversationResource.upsertParticipation(auth, conversation),
   ]);
