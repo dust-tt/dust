@@ -7,6 +7,7 @@ interface FeatureAccessButtonProps {
   featureName: string;
   managePath: string;
   owner: LightWorkspaceType;
+  canRequestAccess: boolean;
 }
 
 export function FeatureAccessButton({
@@ -14,6 +15,7 @@ export function FeatureAccessButton({
   featureName,
   managePath,
   owner,
+  canRequestAccess,
 }: FeatureAccessButtonProps) {
   return (
     <>
@@ -26,7 +28,11 @@ export function FeatureAccessButton({
           href={managePath}
         />
       ) : (
-        <RequestFeatureAccessModal owner={owner} featureName={featureName} />
+        <RequestFeatureAccessModal
+          owner={owner}
+          featureName={featureName}
+          canRequestAccess={canRequestAccess}
+        />
       )}
     </>
   );

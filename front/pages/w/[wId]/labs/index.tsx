@@ -135,6 +135,7 @@ export default function LabsTranscriptsIndex({
                       featureName={item.label}
                       managePath={`/w/${owner.sId}/labs/${item.id}`}
                       owner={owner}
+                      canRequestAccess={isAdmin}
                     />
                   }
                   visual={<Icon visual={item.icon} />}
@@ -160,6 +161,7 @@ export default function LabsTranscriptsIndex({
                           featureName={`${item.label} connection`}
                           managePath={`/w/${owner.sId}/labs/connections/${item.id}`}
                           owner={owner}
+                          canRequestAccess={isAdmin}
                         />
                       }
                       visual={<ContextItem.Visual visual={item.logo} />}
