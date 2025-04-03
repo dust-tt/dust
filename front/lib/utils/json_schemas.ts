@@ -25,12 +25,7 @@ export function containsSubSchema(
       return true;
     }
 
-    // Recursively check nested objects, but avoid null values
-    if (value !== null && typeof value === "object") {
-      if (containsSubSchema(value, targetSubSchema)) {
-        return true;
-      }
-    }
+    // TODO(2025-04-03): check nested objects and arrays.
   }
 
   return false;
