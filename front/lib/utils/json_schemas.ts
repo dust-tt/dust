@@ -16,10 +16,10 @@ export function isJSONSchema(
  * Recursively checks if any property or nested property of an object has a mimeType matching the target value.
  */
 export function containsSubSchema(
-  obj: Record<string, any>,
+  inputSchema: JSONSchema,
   targetSubSchema: JSONSchema
 ): boolean {
-  for (const value of Object.values(obj)) {
+  for (const value of Object.values(inputSchema)) {
     // Check whether the current value matches the input subSchema
     if (isJSONSchema(value) && value === targetSubSchema) {
       return true;
