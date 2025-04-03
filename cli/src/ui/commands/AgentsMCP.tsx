@@ -1,5 +1,5 @@
 import React, { FC, ReactNode, useCallback, useEffect, useState } from "react";
-import { Box, Text, useStdout } from "ink";
+import { Box, Text, useStdout, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { getDustClient } from "../../utils/dustClient.js";
 import AuthService from "../../utils/authService.js";
@@ -9,26 +9,11 @@ import {
   BaseItem,
 } from "../components/MultiSelectWithSearch.js";
 import { startMcpServer } from "../../utils/mcpServer.js";
-import os from "os";
+import process from "process";
+import clipboardy from "clipboardy";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
-
-function getLocalIPs(): string[] {
-  const interfaces = os.networkInterfaces();
-  const ips: string[] = [];
-  for (const name of Object.keys(interfaces)) {
-    const ifaceArr = interfaces[name];
-    if (ifaceArr) {
-      for (const iface of ifaceArr) {
-        if (iface.family === "IPv4" && !iface.internal) {
-          ips.push(iface.address);
-        }
-      }
-    }
-  }
-  return ips;
-}
 
 interface AgentItem extends BaseItem {
   description: string;
@@ -36,7 +21,12 @@ interface AgentItem extends BaseItem {
   userFavorite?: boolean;
 }
 
-const AgentsMCP: FC = () => {
+interface AgentsMCPProps {
+  port?: number;
+  sId?: string[];
+}
+
+const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [allAgents, setAllAgents] = useState<AgentConfiguration[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -48,74 +38,106 @@ const AgentsMCP: FC = () => {
   );
   const [isServerStarted, setIsServerStarted] = useState(false);
   const [serverUrl, setServerUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const { stdout } = useStdout();
 
+  // Clear the terminal on mount
   useEffect(() => {
-    const fetchAgents = async () => {
+    process.stdout.write("\x1bc");
+  }, []);
+
+  useEffect(() => {
+    const fetchAgentsAndStartServer = async () => {
       setIsLoading(true);
       setError(null);
-      try {
-        const workspaceId = await AuthService.getSelectedWorkspaceId();
-        if (!workspaceId) {
-          setError(
-            "No workspace selected. Run `dust login` to select a workspace."
-          );
+
+      const workspaceId = await AuthService.getSelectedWorkspaceId();
+      if (!workspaceId) {
+        setError(
+          "No workspace selected. Run `dust login` to select a workspace."
+        );
+        setIsLoading(false);
+        return;
+      }
+      setCurrentWorkspaceId(workspaceId);
+
+      const dustClient = await getDustClient();
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        setIsLoading(false);
+        return;
+      }
+
+      const agentsRes = await dustClient.getAgentConfigurations({
+        view: "all",
+      });
+
+      if (agentsRes.isErr()) {
+        setError(`API Error fetching agents: ${agentsRes.error.message}`);
+        setIsLoading(false);
+        return;
+      }
+
+      setAllAgents(agentsRes.value);
+
+      // If sIds were provided via CLI, validate and use them directly
+      if (requestedSIds && requestedSIds.length > 0) {
+        const validRequestedAgents = agentsRes.value.filter((agent) =>
+          requestedSIds.includes(agent.sId)
+        );
+        const invalidSIds = requestedSIds.filter(
+          (id) => !validRequestedAgents.some((agent) => agent.sId === id)
+        );
+
+        if (invalidSIds.length > 0) {
+          setError(`Invalid agent sId(s) provided: ${invalidSIds.join(", ")}`);
           setIsLoading(false);
           return;
         }
-        setCurrentWorkspaceId(workspaceId);
 
-        const dustClient = await getDustClient();
-        if (!dustClient) {
-          setError("Authentication required. Run `dust login` first.");
+        if (validRequestedAgents.length === 0) {
+          setError("No valid agents found for the provided sId(s).");
           setIsLoading(false);
           return;
         }
 
-        const agentsRes = await dustClient.getAgentConfigurations({
-          view: "all",
-        });
-        if (agentsRes.isOk()) {
-          const sortedAgents: AgentConfiguration[] = [];
-          const addedAgentIds = new Set<string>();
-          const addAgentOnce = (agent: AgentConfiguration) => {
-            if (!addedAgentIds.has(agent.sId)) {
-              sortedAgents.push(agent);
-              addedAgentIds.add(agent.sId);
-            }
-          };
-          for (const agent of agentsRes.value) {
-            if (agent.userFavorite) addAgentOnce(agent);
-          }
-          for (const agent of agentsRes.value) {
-            if (agent.scope === "workspace") addAgentOnce(agent);
-          }
-          for (const agent of agentsRes.value) {
-            if (agent.scope === "published") addAgentOnce(agent);
-          }
-          for (const agent of agentsRes.value) {
-            if (agent.scope !== "global") addAgentOnce(agent);
-          }
-          for (const agent of agentsRes.value) addAgentOnce(agent);
-          setAllAgents(sortedAgents);
-        } else {
-          setError(`API Error: ${agentsRes.error.message}`);
-        }
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
+        // Directly set confirmedSelection and trigger server start
+        setConfirmedSelection(validRequestedAgents.map((a) => a.sId));
+      } else {
+        // Proceed to interactive selection
         setIsLoading(false);
       }
     };
-    fetchAgents();
-  }, []);
 
-  const agentItems: AgentItem[] = allAgents.map((agent) => ({
-    id: agent.sId,
-    label: agent.name,
-    description: agent.description,
-  }));
+    fetchAgentsAndStartServer();
+  }, [requestedSIds]);
+
+  // This useEffect handles starting the server after confirmedSelection is set
+  useEffect(() => {
+    if (confirmedSelection && currentWorkspaceId && !isServerStarted) {
+      // Find selected agent objects
+      const selectedAgentObjects = allAgents.filter((agent) =>
+        confirmedSelection.includes(agent.sId)
+      );
+
+      startMcpServer(
+        selectedAgentObjects,
+        currentWorkspaceId,
+        (url) => {
+          setIsServerStarted(true);
+          setServerUrl(url);
+        },
+        port
+      );
+    }
+  }, [
+    confirmedSelection,
+    currentWorkspaceId,
+    allAgents,
+    isServerStarted,
+    port,
+  ]);
 
   const renderAgentItem = useCallback(
     (item: AgentItem, isSelected: boolean, isFocused: boolean): ReactNode => {
@@ -184,83 +206,140 @@ const AgentsMCP: FC = () => {
     setConfirmedSelection(selectedIds);
   }, []);
 
-  useEffect(() => {
-    if (confirmedSelection && currentWorkspaceId && !isServerStarted) {
-      const selectedAgentObjects = allAgents.filter((agent) =>
-        confirmedSelection.includes(agent.sId)
-      );
-      startMcpServer(selectedAgentObjects, currentWorkspaceId, (url) => {
-        setIsServerStarted(true);
-        setServerUrl(url);
-      });
+  // Handle 'c' key press to copy URL
+  useInput((input, key) => {
+    if (isServerStarted && serverUrl && input === "c") {
+      const port = new URL(serverUrl).port;
+      const url = `http://localhost:${port}/sse`;
+      clipboardy.writeSync(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     }
-  }, [confirmedSelection, currentWorkspaceId, allAgents, isServerStarted]);
+  });
 
-  if (confirmedSelection) {
-    if (!isServerStarted) {
-      const orderedSelectedAgents = confirmedSelection
-        .map((id) => allAgents.find((agent) => agent.sId === id))
-        .filter((agent): agent is AgentConfiguration => agent !== undefined);
-      return (
-        <Box flexDirection="column">
-          <Text>Selected Agents:</Text>
+  if (error) {
+    return <Text color="red">Error: {error}</Text>;
+  }
+
+  // 1. Show loading indicator if fetching initial data or if starting directly via sId
+  if (isLoading && (!confirmedSelection || isServerStarted === false)) {
+    const loadingMessage =
+      requestedSIds && requestedSIds.length > 0
+        ? "Fetching agent details and starting server..."
+        : "Fetching agents...";
+    return (
+      <Box>
+        <Text color="green">
+          <Spinner type="dots" /> {loadingMessage}
+        </Text>
+      </Box>
+    );
+  }
+
+  // 2. If selection is confirmed (either via CLI or interactive) and server is not started yet
+  if (confirmedSelection && !isServerStarted) {
+    const orderedSelectedAgents = confirmedSelection
+      .map((id) => allAgents.find((agent) => agent.sId === id))
+      .filter((agent): agent is AgentConfiguration => agent !== undefined);
+
+    return (
+      <Box flexDirection="column">
+        <Text>Starting MCP Server with selected agents:</Text>
+        {orderedSelectedAgents.length === 0 ? (
+          <Text color="yellow"> None</Text>
+        ) : (
+          orderedSelectedAgents.map((agent) => (
+            <Text key={agent.sId}>
+              - {agent.name} ({agent.sId})
+            </Text>
+          ))
+        )}
+        <Box marginTop={1}>
+          <Text color="green">
+            <Spinner type="dots" /> Starting...
+          </Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  // 3. If server is started (final state)
+  if (isServerStarted) {
+    const port = serverUrl ? new URL(serverUrl).port : "";
+    const orderedSelectedAgents = confirmedSelection
+      ? confirmedSelection
+          .map((id) => allAgents.find((agent) => agent.sId === id))
+          .filter((agent): agent is AgentConfiguration => agent !== undefined)
+      : [];
+
+    return (
+      <Box
+        flexDirection="column"
+        borderStyle="round"
+        padding={1}
+        borderColor="gray"
+        marginTop={1}
+      >
+        <Text>
+          Listening at: http://localhost:{port}/sse{" "}
+          {copied && <Text color="green"> (Copied!)</Text>}
+        </Text>
+
+        <Box marginTop={1} flexDirection="row">
+          <Text color="gray">Use MCP client to interact (Ctrl+C to stop).</Text>
+          <Box marginLeft={1}>
+            <Text color="gray">(Press 'c' to copy URL)</Text>
+          </Box>
+        </Box>
+
+        <Box marginTop={1} flexDirection="column">
+          <Text bold>Selected Agents:</Text>
           {orderedSelectedAgents.length === 0 ? (
-            <Text color="yellow"> None</Text>
+            <Text color="yellow"> No agents selected.</Text>
           ) : (
             orderedSelectedAgents.map((agent) => (
               <Text key={agent.sId}>
+                {" "}
                 - {agent.name} ({agent.sId})
               </Text>
             ))
           )}
-          <Box marginTop={1}>
-            <Text color="green">
-              <Spinner type="dots" /> Starting MCP Server...
-            </Text>
-          </Box>
         </Box>
-      );
-    } else {
-      const localIPs = getLocalIPs();
-      const port = serverUrl ? new URL(serverUrl).port : "";
+      </Box>
+    );
+  }
 
-      return (
-        <Box flexDirection="column" alignItems="flex-start">
-          <Text color="green">MCP Server running.</Text>
-          <Box marginTop={1} flexDirection="column">
-            <Text>Listening at:</Text>
-            <Text color="blueBright" underline>
-              http://localhost:{port}/sse
-            </Text>
-            {localIPs.map((ip) => (
-              <Text key={ip} color="blueBright" underline>
-                http://{ip}:{port}/sse
-              </Text>
-            ))}
-          </Box>
-          <Box marginTop={1}>
-            <Text color="gray">
-              Use MCP client to interact (Ctrl+C to stop).
-            </Text>
-          </Box>
-        </Box>
-      );
-    }
+  // 4. If no sIds provided and not loading, show interactive selector
+  // Ensure allAgents is populated before rendering MultiSelect
+  if (!isLoading && allAgents.length > 0) {
+    const agentItems: AgentItem[] = allAgents.map((agent) => ({
+      id: agent.sId,
+      label: agent.name,
+      description: agent.description,
+    }));
+
+    return (
+      <MultiSelectWithSearch<AgentItem>
+        items={agentItems}
+        onConfirm={handleConfirm}
+        renderItem={renderAgentItem}
+        renderSelectedItem={renderSelectedAgentItem}
+        // Number of terminal lines allocated per item to render
+        itemLines={4}
+        // Number of lines of room that we need to render the search
+        legRoom={7}
+        searchPrompt="Search Agents:"
+        selectPrompt="Select Agents"
+      />
+    );
   }
 
   return (
-    <MultiSelectWithSearch<AgentItem>
-      items={agentItems}
-      isLoading={isLoading}
-      error={error}
-      onConfirm={handleConfirm}
-      renderItem={renderAgentItem}
-      renderSelectedItem={renderSelectedAgentItem}
-      itemLines={4}
-      legRoom={7}
-      searchPrompt="Search Agents:"
-      selectPrompt="Select Agents"
-    />
+    <Box>
+      <Text color="green">
+        <Spinner type="dots" /> Initializing...
+      </Text>
+    </Box>
   );
 };
 

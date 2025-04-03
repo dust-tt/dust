@@ -1,14 +1,9 @@
 import express, { Request, Response, NextFunction } from "express";
 import http from "http";
-import os from "os";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { z } from "zod";
-import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
-import {
-  GetAgentConfigurationsResponseType,
-  UserMessageType,
-} from "@dust-tt/client";
+import { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { getDustClient } from "./dustClient.js";
 import { normalizeError } from "./errors.js";
 
@@ -30,9 +25,21 @@ function slugify(text: string): string {
 // Export the main server function
 export async function startMcpServer(
   selectedAgents: AgentConfiguration[],
-  workspaceId: string,
-  onServerStart: (url: string) => void
+  onServerStart: (url: string) => void,
+  requestedPort?: number
 ) {
+  const dustClient = await getDustClient();
+  if (!dustClient) {
+    throw new Error("Dust client not initialized. Please run 'dust login'.");
+  }
+
+  const meRes = await dustClient.me();
+  if (meRes.isErr()) {
+    throw new Error(`Failed to get user information: ${meRes.error.message}`);
+  }
+
+  const user = meRes.value;
+
   const app = express();
 
   // Add explicit types for req, res, next inside the middleware
@@ -64,15 +71,6 @@ export async function startMcpServer(
     { server: McpServer; transport: SSEServerTransport }
   >();
 
-  // Add explicit types for req, res, next inside the middleware
-  app.use("/", ((req: Request, res: Response, next: NextFunction) => {
-    console.error(`[${req.method}] ${req.path}`, {
-      query: req.query,
-      headers: req.headers,
-    });
-    next();
-  }) as any);
-
   // SSE endpoint
   app.get("/sse", async (req: Request, res: Response) => {
     console.error(
@@ -88,55 +86,40 @@ export async function startMcpServer(
       req.socket.setNoDelay(true);
       req.socket.setKeepAlive(true);
 
-      // Create transport - passing res allows it to control the response stream
       transport = new SSEServerTransport("/message", res);
       sessionId = transport.sessionId;
       console.error(`[SSE] Session ${sessionId} created`);
 
-      // Create MCP server instance
-      const server = new McpServer(
-        {
-          name: "dust-cli-mcp-server",
-          version: process.env.npm_package_version || "0.1.0",
-        },
-        {
-          capabilities: { tools: {} },
-        }
-      );
+      const server = new McpServer({
+        name: "dust-cli-mcp-server",
+        version: process.env.npm_package_version || "0.1.0",
+      });
 
-      // Register agent tools
       for (const agent of selectedAgents) {
-        const toolName = `run_agent_${slugify(
-          agent.name
-        )}_${agent.sId.substring(0, 4)}`;
-        const toolDescription =
-          agent.description || `Runs the ${agent.name} agent.`;
+        const toolName = `run_agent_${slugify(agent.name)}`;
+        let toolDescription = `This tool allows to call a Dust AI agent name ${agent.name}.`;
+        if (agent.description) {
+          toolDescription += `\nThe agent is described as follows: ${agent.description}`;
+        }
 
         server.tool(
           toolName,
           toolDescription,
-          { userInput: z.string() },
+          { userInput: z.string().describe("The user input to the agent.") },
           async ({ userInput }: { userInput: string }) => {
             try {
-              const dustClient = await getDustClient();
-              if (!dustClient) {
-                throw new Error(
-                  "Dust client not initialized. Please run 'dust login'."
-                );
-              }
-
               const convRes = await dustClient.createConversation({
                 title: `MCP CLI (${toolName}) - ${new Date().toISOString()}`,
-                visibility: "workspace",
+                visibility: "unlisted",
                 message: {
                   content: userInput,
                   mentions: [{ configurationId: agent.sId }],
                   context: {
                     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                     username: "mcp_cli_user",
-                    fullName: null,
-                    email: null,
-                    profilePictureUrl: null,
+                    fullName: user.fullName,
+                    email: user.email,
+                    profilePictureUrl: user.image,
                     origin: "api",
                   },
                 },
@@ -173,6 +156,9 @@ export async function startMcpServer(
                 }
               }
 
+              console.error(
+                `[MCP Tool Success ${toolName}] Execution finished.`
+              );
               return { content: [{ type: "text", text: finalContent.trim() }] };
             } catch (error) {
               console.error(`[MCP Tool Error ${toolName}]`, error);
@@ -225,9 +211,6 @@ export async function startMcpServer(
   // Message handling endpoint
   app.post("/message", async (req: Request, res: Response) => {
     const sessionId = req.query.sessionId as string;
-    console.error(
-      `[POST /message] Received for session ${sessionId} from ${req.ip}. Host: ${req.headers.host}, Path: ${req.originalUrl}`
-    );
 
     try {
       if (!sessionId) {
@@ -241,26 +224,15 @@ export async function startMcpServer(
         return;
       }
 
-      // Add logging around handlePostMessage
-      console.error(
-        `[POST /message] Attempting to handle message for ${sessionId}...`
-      );
-      session.transport
-        .handlePostMessage(req, res)
-        .then(() => {
-          console.error(
-            `[POST /message] Successfully handled message for ${sessionId}`
-          );
-        })
-        .catch((handlerError) => {
-          console.error(
-            `[POST /message] Error handling message for session ${sessionId}:`,
-            handlerError
-          );
-          if (!res.headersSent) {
-            res.status(500).send("Error processing message");
-          }
-        });
+      session.transport.handlePostMessage(req, res).catch((handlerError) => {
+        console.error(
+          `[POST /message] Error handling message for session ${sessionId}:`,
+          handlerError
+        );
+        if (!res.headersSent) {
+          res.status(500).send("Error processing message");
+        }
+      });
     } catch (error) {
       console.error(
         `[POST /message] Error handling message for session ${sessionId}:`,
@@ -272,14 +244,14 @@ export async function startMcpServer(
     }
   });
 
-  // Create HTTP server
   const httpServer = http.createServer(app);
 
-  // Server startup function with automatic port selection
-  const startHttpServer = (port = 0): Promise<number> =>
+  const startHttpServer = (port = requestedPort || 0): Promise<number> =>
     new Promise((resolve, reject) => {
       httpServer.once("error", (err: NodeJS.ErrnoException) => {
-        if (err.code === "EADDRINUSE") {
+        if (requestedPort && err.code === "EADDRINUSE") {
+          reject(new Error(`Port ${requestedPort} is already in use.`));
+        } else if (err.code === "EADDRINUSE") {
           console.error(`Port ${port} in use, trying another...`);
           setTimeout(() => startHttpServer(0).then(resolve, reject), 100);
         } else {

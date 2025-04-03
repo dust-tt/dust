@@ -1,18 +1,13 @@
-import React, { FC, ReactNode, useCallback, useEffect, useState } from "react";
-import { Box, Text, useInput, useStdout, useApp } from "ink";
-import Spinner from "ink-spinner";
+import React, { FC, ReactNode, useEffect, useState } from "react";
+import { Box, Text, useInput, useStdout } from "ink";
 
-// Base constraint for the generic item type
 export interface BaseItem {
   id: string;
   label: string; // Used for searching
 }
 
-// Update interface to use generic type T
 interface MultiSelectWithSearchProps<T extends BaseItem> {
   items: T[];
-  isLoading: boolean;
-  error: string | null;
   onConfirm: (selectedIds: string[]) => void;
   renderItem: (item: T, isSelected: boolean, isFocused: boolean) => ReactNode;
   renderSelectedItem?: (item: T) => ReactNode;
@@ -29,11 +24,8 @@ const DEFAULT_SELECT_PROMPT = "Select Items";
 
 export const MultiSelectWithSearch = <T extends BaseItem>({
   items,
-  isLoading,
-  error,
   onConfirm,
   renderItem,
-  // Update default renderSelectedItem type
   renderSelectedItem = (item: T) => (
     <Text key={item.id}>
       - {item.label} ({item.id})
@@ -45,7 +37,6 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
   selectPrompt = DEFAULT_SELECT_PROMPT,
 }: MultiSelectWithSearchProps<T>) => {
   const { stdout } = useStdout();
-  const { exit } = useApp();
   const terminalHeight = stdout?.rows || 24;
 
   const [cursor, setCursor] = useState(0);
@@ -53,7 +44,8 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
   const [selectionOrder, setSelectionOrder] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [forceRerenderKey, setForceRerenderKey] = useState(0);
+  // Used to trigger re-render on "enter" press when the terminal size is too small.
+  const [_forceRerenderKey, setForceRerenderKey] = useState(0);
 
   const selectedBlockHeight =
     selectionOrder.length > 0
@@ -103,10 +95,6 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
         if (key.return) {
           setForceRerenderKey((k) => k + 1);
         }
-        return;
-      }
-
-      if (isLoading) {
         return;
       }
 
@@ -177,29 +165,14 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
         setSearchQuery((prev) => prev + input);
       }
     },
-    { isActive: !isLoading }
+    { isActive: true }
   );
-
-  if (isLoading) {
-    return (
-      <Box>
-        <Text color="green">
-          <Spinner type="dots" />
-        </Text>
-        <Text> Loading items...</Text>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return <Text color="red">Error: {error}</Text>;
-  }
 
   if (terminalHeight < 30) {
     return (
       <Box>
         <Text color="red">
-          Terminal height must be at least 30 lines. Resize and press Enter.
+          Terminal height must be at least 25 lines. Resize and press Enter.
         </Text>
       </Box>
     );
