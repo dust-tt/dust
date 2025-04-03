@@ -10,6 +10,7 @@ const serverInfo: MCPServerDefinitionType = {
   description:
     "Demo server showing a basic interaction with a data source configuration.",
   icon: "command",
+  authorization: null,
 };
 
 const createServer = (): McpServer => {

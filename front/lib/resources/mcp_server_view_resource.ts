@@ -226,11 +226,20 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     return this.baseFetch(auth);
   }
 
+  static async listBySpaces(auth: Authenticator, spaces: SpaceResource[]) {
+    return this.baseFetch(auth, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: spaces.map((s) => s.id),
+      },
+    });
+  }
+
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource
   ): Promise<MCPServerViewResource[]> {
-    return this.baseFetch(auth, { where: { vaultId: space.id } });
+    return this.listBySpaces(auth, [space]);
   }
 
   static async listByMCPServer(
@@ -382,8 +391,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
   toJSON(): MCPServerViewType {
     return {
       id: this.sId,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
+      createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,
       server:
         this.serverType === "remote"
@@ -395,8 +404,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
 
 export interface MCPServerViewType {
   id: string;
-  createdAt: Date;
-  updatedAt: Date;
-  spaceId: string | null;
+  createdAt: number;
+  updatedAt: number;
+  spaceId: string;
   server: MCPServerType;
 }

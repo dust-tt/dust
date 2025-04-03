@@ -104,8 +104,8 @@ async function handler(
               await MCPServerViewResource.listByMCPServer(auth, server.id)
             ).map((v) => ({
               id: v.sId,
-              createdAt: v.createdAt,
-              updatedAt: v.updatedAt,
+              createdAt: v.createdAt.getTime(),
+              updatedAt: v.updatedAt.getTime(),
               spaceId: v.space.sId,
               server,
             }));

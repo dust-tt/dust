@@ -84,8 +84,8 @@ export const ACTION_SPECIFICATIONS: Record<
     flag: null,
   },
   MCP: {
-    label: "Calling a MCP Server",
-    description: "Call a tool to answer a question.",
+    label: "Run an Action",
+    description: "Run an action, then reply",
     cardIcon: CommandIcon,
     dropDownIcon: CommandIcon,
     flag: "mcp_actions",
