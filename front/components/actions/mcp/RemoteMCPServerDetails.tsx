@@ -70,9 +70,7 @@ export function RemoteMCPServerDetails({
   mutateServers,
 }: RemoteMCPServerDetailsProps) {
   const sendNotification = useSendNotification();
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSynchronizing, setIsSynchronizing] = useState(false);
-  const [isSynchronized, setIsSynchronized] = useState(false);
+  const [serverState, setServerState] = useState<"idle" | "saving" | "synchronizing" | "synchronized">("idle");
   const [sharedSecret, setSharedSecret] = useState<string | undefined>(
     undefined
   );
@@ -151,7 +149,7 @@ export function RemoteMCPServerDetails({
       setSharedSecret(serverData.sharedSecret);
     }
 
-    setIsSynchronized(true);
+    setServerState("synchronized");
 
     // Update the serverId state
     setServerId(serverData.id);
@@ -179,7 +177,7 @@ export function RemoteMCPServerDetails({
       return;
     }
 
-    setIsSaving(true);
+    setServerState("saving");
     try {
       const serverIdToUse = serverId;
 
@@ -204,13 +202,13 @@ export function RemoteMCPServerDetails({
           type: "error",
           description: "Missing MCP server ID. Please try synchronizing again.",
         });
-        setIsSaving(false);
+        setServerState("idle");
         return;
       }
 
       onClose();
       dispatch({ type: "RESET" });
-      setIsSynchronized(false);
+      setServerState("idle");
       setSharedSecret(undefined);
       setServerId(null);
     } catch (err) {
@@ -221,7 +219,7 @@ export function RemoteMCPServerDetails({
       });
     } finally {
       mutateServers();
-      setIsSaving(false);
+      setServerState("idle");
     }
   };
 
@@ -235,7 +233,7 @@ export function RemoteMCPServerDetails({
       return;
     }
 
-    setIsSynchronizing(true);
+    setServerState("synchronizing");
     try {
       let result;
 
@@ -266,9 +264,9 @@ export function RemoteMCPServerDetails({
         description:
           error instanceof Error ? error.message : "An error occurred",
       });
+      setServerState("idle");
     } finally {
       mutateServers();
-      setIsSynchronizing(false);
     }
   };
 
@@ -293,9 +291,9 @@ export function RemoteMCPServerDetails({
             dispatch={dispatch}
             isConfigurationLoading={isServerLoading && !mcpServer}
             onSynchronize={handleSynchronize}
-            isSynchronized={isSynchronized}
+            isSynchronized={serverState === "synchronized"}
             sharedSecret={sharedSecret}
-            isSynchronizing={isSynchronizing}
+            isSynchronizing={serverState === "synchronizing"}
           />
         </SheetContainer>
         <SheetFooter
@@ -308,16 +306,16 @@ export function RemoteMCPServerDetails({
             label: "Save",
             onClick: async (event: Event) => {
               event.preventDefault();
-              if (isSynchronized || mcpServer) {
+              if (serverState === "synchronized" || mcpServer) {
                 await handleSubmit();
               } else {
                 await handleSynchronize();
               }
             },
             disabled:
-              isSaving ||
-              isSynchronizing ||
-              (!isSynchronized && !mcpServer && !serverId),
+              serverState === "saving" ||
+              serverState === "synchronizing" ||
+              (serverState !== "synchronized" && !mcpServer && !serverId),
           }}
         />
       </SheetContent>
