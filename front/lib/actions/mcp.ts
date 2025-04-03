@@ -289,8 +289,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       inputs: rawInputs,
     };
 
-    // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
-
     try {
       const actionEventGenerator = getMCPEvents({
         actionId: mcpAction.id,
