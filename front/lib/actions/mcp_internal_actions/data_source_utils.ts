@@ -33,7 +33,7 @@ async function fetchAgentDataSourceConfiguration(
     );
   }
 
-  const [, workspaceId, dataSourceConfigId] = match;
+  const [, , dataSourceConfigId] = match;
   const sIdParts = getResourceNameAndIdFromSId(dataSourceConfigId);
   if (!sIdParts) {
     return new Err(
@@ -53,16 +53,18 @@ async function fetchAgentDataSourceConfiguration(
       nest: true,
       include: [{ model: DataSourceModel, as: "dataSource", required: true }],
     });
+
   if (
     agentDataSourceConfiguration &&
-    agentDataSourceConfiguration.workspaceId !== parseInt(workspaceId, 10)
+    agentDataSourceConfiguration.workspaceId !== sIdParts.workspaceId
   ) {
     return new Err(
       new Error(
-        `Data source configuration ${dataSourceConfigId} does not belong to workspace ${workspaceId}`
+        `Data source configuration ${dataSourceConfigId} does not belong to workspace ${sIdParts.workspaceId}`
       )
     );
   }
+
   return new Ok(agentDataSourceConfiguration);
 }
 
@@ -92,7 +94,7 @@ function createServer(): McpServer {
             .filter((res) => res.isErr())
             .map((res) => ({
               type: "text",
-              text: res.isErr() ? res.error.message : "",
+              text: res.isErr() ? res.error.message : "unknown error",
             })),
         };
       }
