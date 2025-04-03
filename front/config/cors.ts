@@ -4,6 +4,8 @@ const STATIC_ALLOWED_ORIGINS = [
   // Chrome extension.
   "chrome-extension://okjldflokifdjecnhbmkdanjjbnmlihg",
   "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
+  // Documentation website.
+  "https://docs.dust.tt",
 ] as const;
 
 const ALLOWED_ORIGIN_PATTERNS = [
