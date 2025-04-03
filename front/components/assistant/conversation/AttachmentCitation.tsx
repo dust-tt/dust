@@ -72,13 +72,11 @@ export type AttachmentCitation =
 type AttachmentCitationProps = {
   attachmentCitation: AttachmentCitation;
   onRemove?: () => void;
-  className?: string;
 };
 
 export function AttachmentCitation({
   attachmentCitation,
   onRemove,
-  className = "w-40",
 }: AttachmentCitationProps) {
   const tooltipContent =
     attachmentCitation.type === "file" ? (
@@ -100,7 +98,7 @@ export function AttachmentCitation({
     <Tooltip
       trigger={
         <Citation
-          className={className}
+          className="w-40"
           href={attachmentCitation.sourceUrl ?? undefined}
           isLoading={
             attachmentCitation.type === "file" && attachmentCitation.isUploading
@@ -125,9 +123,7 @@ export function AttachmentCitation({
           </CitationTitle>
           {attachmentCitation.type === "node" && (
             <CitationDescription className="truncate text-ellipsis">
-              <div className="flex items-center gap-1">
-                <span>{attachmentCitation.spaceName}</span>
-              </div>
+              <span>{attachmentCitation.spaceName}</span>
             </CitationDescription>
           )}
         </Citation>
@@ -146,10 +142,10 @@ export function contentFragmentToAttachmentCitation(
 
     const visual =
       provider && ["webcrawler", "folder"].includes(provider) ? (
-        <Icon visual={logo} size="sm" />
+        <Icon visual={logo} />
       ) : (
         <>
-          <Icon visual={logo} size="sm" />
+          <Icon visual={logo} />
           <Icon
             visual={
               nodeType === "table"
@@ -158,7 +154,6 @@ export function contentFragmentToAttachmentCitation(
                   ? FolderIcon
                   : DocumentIcon
             }
-            size="sm"
           />
         </>
       );
@@ -179,7 +174,7 @@ export function contentFragmentToAttachmentCitation(
     id: contentFragment.sId,
     title: contentFragment.title,
     sourceUrl: contentFragment.sourceUrl,
-    visual: <Icon visual={isImageType ? ImageIcon : DocumentIcon} size="sm" />,
+    visual: <Icon visual={isImageType ? ImageIcon : DocumentIcon} />,
   };
 }
 
