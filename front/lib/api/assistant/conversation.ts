@@ -174,10 +174,7 @@ export async function updateConversation(
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
-  await conversation.updateAttributes({
-    title: title,
-    visibility: visibility,
-  });
+  await conversation.updateVisiblity(visibility, title);
 
   return getConversation(auth, conversationId);
 }
@@ -214,9 +211,7 @@ export async function deleteConversation(
   if (destroy) {
     await conversation.delete(auth);
   } else {
-    await conversation.updateAttributes({
-      visibility: "deleted",
-    });
+    await conversation.updateVisiblity("deleted");
   }
   return new Ok({ success: true });
 }
@@ -907,9 +902,7 @@ export async function* postUserMessage(
       );
     } else {
       const title = titleRes.value;
-      await ConversationResource.updateAttributes(auth, conversation.sId, {
-        title,
-      });
+      await ConversationResource.updateTitle(auth, conversation.sId, title);
       yield {
         type: "conversation_title",
         created: Date.now(),
@@ -2004,12 +1997,10 @@ export async function updateConversationRequestedGroupIds(
     return req;
   });
 
-  await ConversationResource.updateAttributes(
+  await ConversationResource.updateRequestedGroupsIds(
     auth,
     conversation.sId,
-    {
-      requestedGroupIds: updatedRequirements,
-    },
+    updatedRequirements,
     t
   );
 }

@@ -104,7 +104,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where,
     }: {
       where?: WhereOptions<
-        Omit<ConversationModel, "workspaceId" | "workspace">
+        InferAttributes<ConversationModel, { omit: "workspaceId" }>
       >;
     } = {}
   ): Promise<ConversationResource[]> {
@@ -268,7 +268,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
   }
 
-  static async updateAttributes(
+  protected static async update(
     auth: Authenticator,
     sId: string,
     blob: Partial<
@@ -281,7 +281,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
-    await conversation.updateAttributes(blob, transaction);
+    await conversation.update(blob, transaction);
     return new Ok(undefined);
   }
 
@@ -413,13 +413,57 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
   }
 
-  async updateAttributes(
-    blob: Partial<
-      Omit<InferAttributes<ConversationModel>, "workspace" | "workspaceId">
-    >,
+  static async updateRequestedGroupsIds(
+    auth: Authenticator,
+    sId: string,
+    requestedGroupIds: number[][],
     transaction?: Transaction
-  ): Promise<[affectedCount: number]> {
-    return this.update(blob, transaction);
+  ) {
+    const conversation = await ConversationResource.fetchWithId(auth, sId);
+    if (conversation == null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    await conversation.updateRequestedGroupIds(requestedGroupIds, transaction);
+    return new Ok(undefined);
+  }
+
+  static async updateTitle(
+    auth: Authenticator,
+    sId: string,
+    title: string,
+    transaction?: Transaction
+  ) {
+    return ConversationResource.update(
+      auth,
+      sId,
+      {
+        title,
+      },
+      transaction
+    );
+  }
+
+  async updateVisiblity(
+    visibility: ConversationVisibility,
+    title?: string | null
+  ) {
+    return this.update({
+      title,
+      visibility,
+    });
+  }
+
+  async updateRequestedGroupIds(
+    requestedGroupIds: number[][],
+    transaction?: Transaction
+  ) {
+    return this.update(
+      {
+        requestedGroupIds,
+      },
+      transaction
+    );
   }
 
   async delete(
