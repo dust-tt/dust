@@ -318,7 +318,7 @@ async function handler(
         });
       }
       const conversations =
-        await ConversationResource.getUserConversations(auth);
+        await ConversationResource.listUserConversations(auth);
       res.status(200).json({ conversations });
       return;
 

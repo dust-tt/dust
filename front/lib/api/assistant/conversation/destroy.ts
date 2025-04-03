@@ -227,7 +227,7 @@ export async function destroyConversation(
 
   await destroyConversationDataSource(auth, { conversation });
 
-  const c = await ConversationResource.fetchWithId(auth, conversation.sId);
+  const c = await ConversationResource.fetchById(auth, conversation.sId);
   if (c) {
     await c.delete(auth);
   }

@@ -1,6 +1,5 @@
 import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
@@ -163,12 +162,10 @@ export async function updateConversation(
     visibility: ConversationVisibility;
   }
 ): Promise<Result<ConversationType, ConversationError>> {
-  const conversation = await ConversationResource.fetchOne(auth, {
-    where: {
-      sId: conversationId,
-      visibility: { [Op.ne]: "deleted" },
-    },
-  });
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
 
   if (!conversation) {
     throw new Error(`Conversation ${conversationId} not found`);
@@ -193,12 +190,10 @@ export async function deleteConversation(
     destroy?: boolean;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
-  const conversation = await ConversationResource.fetchOne(auth, {
-    where: {
-      sId: conversationId,
-      visibility: { [Op.ne]: "deleted" },
-    },
-  });
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
 
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));
@@ -223,12 +218,11 @@ export async function getConversation(
 ): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const conversation = await ConversationResource.fetchOne(auth, {
-    where: {
-      sId: conversationId,
-      ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
-    },
-  });
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId,
+    { includeDeleted }
+  );
 
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));

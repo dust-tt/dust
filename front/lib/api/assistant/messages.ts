@@ -437,12 +437,10 @@ export async function fetchConversationMessages(
     return new Err(new Error("Unexpected `auth` without `workspace`."));
   }
 
-  const conversation = await ConversationResource.fetchOne(auth, {
-    where: {
-      sId: conversationId,
-      visibility: { [Op.ne]: "deleted" },
-    },
-  });
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
 
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));

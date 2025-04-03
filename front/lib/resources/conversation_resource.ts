@@ -31,6 +31,17 @@ import { Err, Ok } from "@app/types";
 
 import { GroupResource } from "./group_resource";
 import { frontSequelize } from "./storage";
+import { getResourceIdFromSId } from "./string_ids";
+import type { ResourceFindOptions } from "./types";
+
+export type FetchConversationOptions = {
+  includeDeleted?: boolean;
+  includeTest?: boolean;
+  /**
+   * before updatedAt. Less Than
+   */
+  updatedBefore?: Date;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -57,49 +68,55 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  static async fetchWithId(
-    auth: Authenticator,
-    sId: string
-  ): Promise<ConversationResource | null> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const conversation = await ConversationResource.model.findOne({
+  private static getOptions(
+    options?: FetchConversationOptions
+  ): ResourceFindOptions<ConversationModel> {
+    const result: ResourceFindOptions<ConversationModel> = {
       where: {
-        sId,
-        workspaceId: workspace.id,
+        visibility: options?.includeDeleted ? {} : { [Op.ne]: "deleted" },
       },
-    });
+    };
 
-    return conversation
-      ? new ConversationResource(ConversationModel, conversation.get())
-      : null;
+    return result;
   }
 
-  static async fetchOne(
+  static async fetchByIds(
     auth: Authenticator,
-    {
-      where,
-    }: {
-      where?: WhereOptions<
-        Omit<ConversationModel, "workspaceId" | "workspace">
-      >;
-    } = {}
-  ): Promise<ConversationResource | null> {
+    sIds: string[],
+    options?: FetchConversationOptions
+  ) {
     const workspace = auth.getNonNullableWorkspace();
-    const conversation = await ConversationResource.model.findOne({
+    const { where } = ConversationResource.getOptions(options);
+
+    const conversationModelIds = removeNulls(
+      sIds.map((id) => getResourceIdFromSId(id))
+    );
+    const conversations = await ConversationResource.model.findAll({
       where: {
+        sId: conversationModelIds,
         workspaceId: workspace.id,
         ...where,
       },
     });
 
-    return conversation
-      ? new ConversationResource(ConversationResource.model, conversation.get())
-      : null;
+    return conversations.map(
+      (c) => new ConversationResource(ConversationResource.model, c.get())
+    );
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    sId: string,
+    options?: FetchConversationOptions
+  ): Promise<ConversationResource | null> {
+    const res = await ConversationResource.fetchByIds(auth, [sId], options);
+
+    return res.length > 0 ? res[0] : null;
   }
 
   static async listAll(
     auth: Authenticator,
+    options?: FetchConversationOptions,
     {
       where,
     }: {
@@ -120,7 +137,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  static async fetchMetionsByConfiguration(
+  static async fetchMentionsByConfiguration(
     auth: Authenticator,
     {
       agentConfiguration,
@@ -224,20 +241,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,
-    options?: {
-      includeDeleted?: boolean;
+    options?: FetchConversationOptions & {
       dangerouslySkipPermissionFiltering?: boolean;
     }
   ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
     const owner = auth.getNonNullableWorkspace();
 
-    const conversation = await ConversationResource.fetchOne(auth, {
-      where: {
-        sId,
-        ...(options?.includeDeleted
-          ? {}
-          : { visibility: { [Op.ne]: "deleted" } }),
-      },
+    const conversation = await ConversationResource.fetchById(auth, sId, {
+      includeDeleted: options?.includeDeleted,
     });
 
     if (!conversation) {
@@ -276,7 +287,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     >,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
-    const conversation = await ConversationResource.fetchWithId(auth, sId);
+    const conversation = await ConversationResource.fetchById(auth, sId);
     if (conversation == null) {
       return new Err(new ConversationError("conversation_not_found"));
     }
@@ -285,10 +296,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
-  static async getUserConversations(
+  static async listUserConversations(
     auth: Authenticator,
-    includeDeleted?: boolean,
-    includeTest?: boolean
+    options?: FetchConversationOptions
   ): Promise<ConversationWithoutContentType[]> {
     const owner = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
@@ -307,10 +317,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       "workspace",
     ];
 
-    if (includeDeleted) {
+    if (options?.includeDeleted) {
       includedConversationVisibilities.push("deleted");
     }
-    if (includeTest) {
+    if (options?.includeTest) {
       includedConversationVisibilities.push("test");
     }
 
@@ -331,31 +341,34 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
 
     const conversations = (
-      await ConversationResource.listAll(auth, {
+      await ConversationResource.model.findAll({
         where: {
+          workspaceId: owner.id,
           id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
           visibility: { [Op.in]: includedConversationVisibilities },
         },
       })
-    ).map(
-      (c) =>
-        ({
-          id: c.id,
-          created: c.createdAt.getTime(),
-          updated: conversationUpdated(c) ?? c.updatedAt.getTime(),
-          sId: c.sId,
-          owner,
-          title: c.title,
-          visibility: c.visibility,
-          requestedGroupIds:
-            ConversationResource.getConversationRequestedGroupIdsFromModel(
-              owner,
-              c
-            ),
-          // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-          groupIds: [],
-        }) satisfies ConversationWithoutContentType
-    );
+    )
+      .map((c) => new ConversationResource(ConversationResource.model, c.get()))
+      .map(
+        (c) =>
+          ({
+            id: c.id,
+            created: c.createdAt.getTime(),
+            updated: conversationUpdated(c) ?? c.updatedAt.getTime(),
+            sId: c.sId,
+            owner,
+            title: c.title,
+            visibility: c.visibility,
+            requestedGroupIds:
+              ConversationResource.getConversationRequestedGroupIdsFromModel(
+                owner,
+                c
+              ),
+            // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+            groupIds: [],
+          }) satisfies ConversationWithoutContentType
+      );
 
     const conversationById = _.keyBy(conversations, "id");
 
@@ -419,7 +432,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     requestedGroupIds: number[][],
     transaction?: Transaction
   ) {
-    const conversation = await ConversationResource.fetchWithId(auth, sId);
+    const conversation = await ConversationResource.fetchById(auth, sId);
     if (conversation == null) {
       return new Err(new ConversationError("conversation_not_found"));
     }
