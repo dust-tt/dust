@@ -177,8 +177,8 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
 
 // If we get other categories of mimeTypes we'll do the same as above and add a templated variable.
 function generateConfigurableResourcesMimeTypes<T extends Uppercase<string>[]>({
-                                                                                 resourceTypes,
-                                                                               }: {
+  resourceTypes,
+}: {
   resourceTypes: T;
 }): {
   [K in T[number]]: `application/vnd.dust.configuration.${Lowercase<
