@@ -107,6 +107,8 @@ export function ActionMCP({
         return {
           ...prevConfig,
           mcpServerViewId: selectedMCPServerView.id,
+          // We control here the relationship between the field in AssistantBuilderMCPServerConfiguration
+          // and the mimeType to look for in the server metadata.
           dataSourceConfigurations:
             selectedMCPServerView &&
             serverRequiresInternalConfiguration({

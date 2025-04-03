@@ -3,6 +3,8 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getDataSource } from "@app/lib/actions/configuration/retrieval";
+import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -91,6 +93,16 @@ async function handler(
         auth,
         assistant: {
           ...assistant,
+          actions: assistant.actions.map((action) =>
+            // TODO(mcp): rationalize the typing post migration of current actions to MCP internal servers.
+            isMCPServerConfiguration(action)
+              ? {
+                  ...action,
+                  dataSources:
+                    action.dataSourceConfigurations?.map(getDataSource) || null,
+                }
+              : action
+          ),
           scope: bodyValidation.right.scope,
           status: assistant.status as AgentStatus,
           templateId: assistant.templateId,

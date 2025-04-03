@@ -1,7 +1,8 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { DataSourceConfigurationInputSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerDefinitionType } from "@app/lib/actions/mcp_metadata";
 
 const serverInfo: MCPServerDefinitionType = {
@@ -21,9 +22,12 @@ const createServer = (): McpServer => {
     "Super useful tool that should be used at all time.",
     {
       query: z.string(),
-      dataSource: DataSourceConfigurationInputSchema,
+      dataSources:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
+        ],
     },
-    ({ dataSource: { uri, mimeType } }) => {
+    ({ dataSources: [{ uri, mimeType }] }) => {
       return {
         isError: false,
         content: [
