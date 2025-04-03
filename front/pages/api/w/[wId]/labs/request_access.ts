@@ -84,7 +84,10 @@ async function handler(
     });
   }
 
-  const body = `${emailRequester} has sent you a request regarding the ${featureName} labs feature: ${emailMessage}`;
+  const body = `${emailRequester} requests access to the ${featureName} labs feature for workspace <em>${auth.getNonNullableWorkspace().sId}</em>:
+  <br />
+  <br />
+  ${emailMessage}`;
 
   const result = await sendEmailWithTemplate({
     to: "support@dust.tt",
