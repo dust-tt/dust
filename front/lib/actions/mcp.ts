@@ -1,7 +1,12 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import {
+  augmentInputsWithConfiguration,
+  hideInternalConfiguration,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
-import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   BaseActionRunParams,
   ExtractActionBlob,
@@ -10,11 +15,9 @@ import {
   BaseAction,
   BaseActionConfigurationServerRunner,
 } from "@app/lib/actions/types";
-import type {
-  AgentActionSpecification,
-  InputSchemaType,
-} from "@app/lib/actions/types/agent";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
@@ -39,7 +42,7 @@ export type MCPServerConfigurationType = {
   name: string;
   description: string | null;
 
-  dataSources: DataSourceConfiguration[] | null;
+  dataSourceConfigurations: AgentDataSourceConfiguration[] | null;
   // TODO(mcp): add other kind of configurations here such as table query.
 };
 
@@ -48,7 +51,7 @@ export type MCPToolConfigurationType = Omit<
   "type"
 > & {
   type: "mcp_configuration";
-  inputSchema: InputSchemaType;
+  inputSchema: JSONSchema;
 };
 
 type MCPApproveExecutionEvent = {
@@ -204,14 +207,17 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         "Unexpected unauthenticated call to `runMCPConfiguration`"
       );
     }
-    //TODO(mcp): remove inputs that have been preconfigured in the agent configuration so we don't show them to the model.
-    // They will be added back in the `run` method.
+
+    // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION
+    const filteredInputSchema = hideInternalConfiguration(
+      this.actionConfiguration.inputSchema
+    );
 
     return new Ok({
       name: this.actionConfiguration.name,
       description: this.actionConfiguration.description ?? "",
       inputs: [],
-      inputSchema: this.actionConfiguration.inputSchema,
+      inputSchema: filteredInputSchema,
     });
   }
 
@@ -282,8 +288,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       action: mcpAction,
       inputs: rawInputs,
     };
-
-    // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
     try {
       const actionEventGenerator = getMCPEvents({
@@ -434,11 +438,18 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       return;
     }
 
+    // We put back the preconfigured inputs (data sources for instance) from the agent configuration if any.
+    const inputs = augmentInputsWithConfiguration({
+      owner: auth.getNonNullableWorkspace(),
+      rawInputs,
+      actionConfiguration,
+    });
+
     // TODO(mcp): listen to sse events to provide live feedback to the user
     const r = await tryCallMCPTool(auth, {
       owner,
       actionConfiguration,
-      rawInputs,
+      rawInputs: inputs,
     });
 
     if (r.isErr()) {
