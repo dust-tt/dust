@@ -170,17 +170,15 @@ export function RemoteMCPForm({
                   readOnly
                   type={isSecretVisible ? "text" : "password"}
                 />
-                <button
-                  type="button"
-                  onClick={toggleSecretVisibility}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3"
-                >
-                  {isSecretVisible ? (
-                    <EyeSlashIcon className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-1">
+                  <Button
+                    icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
+                    variant="tertiary"
+                    size="xs"
+                    onClick={toggleSecretVisibility}
+                    labelVisible={false}
+                  />
+                </div>
               </div>
               <p className="text-xs text-gray-500">
                 This is the secret key used to authenticate your MCP server with
