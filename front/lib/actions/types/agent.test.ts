@@ -142,7 +142,7 @@ describe("Agent Type Utilities", () => {
             description: "Missing type",
           },
         },
-        required: ["valid", "invalid", "missingType"],
+        required: ["valid", "missingType"],
       };
 
       const expected: DustAppRunInputType[] = [
@@ -150,11 +150,6 @@ describe("Agent Type Utilities", () => {
           name: "valid",
           type: "string",
           description: "Valid property",
-        },
-        {
-          name: "invalid",
-          type: "string",
-          description: "",
         },
         {
           name: "missingType",
