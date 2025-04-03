@@ -447,12 +447,20 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     // TODO(mcp): listen to sse events to provide live feedback to the user
     const r = await tryCallMCPTool(auth, {
-      owner,
       actionConfiguration,
       rawInputs: inputs,
     });
 
     if (r.isErr()) {
+      logger.error(
+        {
+          workspaceId: owner.id,
+          conversationId: conversation.sId,
+          actionConfigurationId: actionConfiguration.sId,
+          error: r.error.message,
+        },
+        `Error calling MCP tool.`
+      );
       await action.update({
         isError: true,
       });

@@ -16,7 +16,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, Result } from "@app/types";
+import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
@@ -87,11 +87,9 @@ function makeMCPConfigurations({
 export async function tryCallMCPTool(
   auth: Authenticator,
   {
-    owner,
     actionConfiguration,
     rawInputs,
   }: {
-    owner: LightWorkspaceType;
     actionConfiguration: MCPToolConfigurationType;
     rawInputs: Record<string, unknown> | undefined;
   }
@@ -116,16 +114,7 @@ export async function tryCallMCPTool(
     await mcpClient.close();
 
     if (toolCallResult.isError) {
-      const errorMessage = JSON.stringify(toolCallResult.content);
-      logger.error(
-        {
-          workspaceId: owner.id,
-          actionConfiguration,
-          error: errorMessage,
-        },
-        `Error calling MCP tool.`
-      );
-      return new Err(new Error(errorMessage));
+      return new Err(new Error(JSON.stringify(toolCallResult.content)));
     }
 
     // Type inference is not working here because of them using passthrough in the zod schema.
@@ -134,14 +123,6 @@ export async function tryCallMCPTool(
 
     return new Ok(content);
   } catch (error) {
-    logger.error(
-      {
-        workspaceId: owner.id,
-        actionConfiguration,
-        error,
-      },
-      `Error calling MCP tool.`
-    );
     return new Err(normalizeError(error));
   }
 }
