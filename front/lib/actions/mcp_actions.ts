@@ -196,8 +196,6 @@ export async function listMCPServerTools(
       allTools = [...allTools, ...extractMetadataFromTools(toolsResult.tools)];
     } while (nextPageCursor);
 
-    await mcpClient.close();
-
     return allTools;
   } catch (e) {
     logger.error(
