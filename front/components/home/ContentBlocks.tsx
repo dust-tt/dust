@@ -268,7 +268,7 @@ interface QuoteProps {
 }
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 mt-16 flex flex-col items-center justify-center lg:col-span-10 lg:col-start-2">
+  <div className="col-span-12 my-16 flex flex-col items-center justify-center md:my-12 lg:col-span-10 lg:col-start-2 lg:my-8">
     <div
       className={cn(
         "flex max-w-[500px] flex-col items-center p-4 text-center font-sans italic text-foreground",

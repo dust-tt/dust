@@ -25,11 +25,11 @@ function CardCarousel({ title, children }: CardCarouselProps) {
           </div>
         </div>
 
-        <CarouselContent>
+        <CarouselContent className="-ml-4">
           {React.Children.map(children, (child, index) => (
             <CarouselItem
               key={index}
-              className="pr-6 sm:basis-1/2 lg:basis-1/3"
+              className="pl-4 pr-4 sm:basis-1/2 lg:basis-1/3"
             >
               {child}
             </CarouselItem>
