@@ -186,6 +186,10 @@ id: ModelId;
 }
 ```
 
+### [BACK11] Model to Resource migration strategy
+
+When migrating models to the Resource framework, create the Resource class in a separate PR from the model deletion.
+
 ## TESTING
 
 ### [TEST1] Functionally test endpoints
