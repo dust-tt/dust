@@ -44,6 +44,35 @@ const ConfigurableToolInputJSONSchemas = Object.fromEntries(
   ])
 ) as Record<InternalConfigurationMimeType, JSONSchema>;
 
+function generateConfiguredInput({
+  actionConfiguration,
+  owner,
+  mimeType,
+}: {
+  owner: WorkspaceType;
+  actionConfiguration: MCPToolConfigurationType;
+  mimeType: InternalConfigurationMimeType;
+}) {
+  switch (mimeType) {
+    case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
+      return (
+        actionConfiguration.dataSourceConfigurations?.map((config) => ({
+          // TODO: create a Resource for AgentDataSourceConfiguration and move the makeSId to a method in it.
+          uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${makeSId(
+            "data_source_configuration",
+            {
+              id: config.id,
+              workspaceId: config.workspaceId,
+            }
+          )}`,
+          mimeType,
+        })) || []
+      );
+    default:
+      assertNever(mimeType);
+  }
+}
+
 /**
  * Checks if a server requires internal configuration by examining if any tool's inputSchema
  * contains the specified mimeType.
@@ -154,28 +183,11 @@ function injectValueForMimeType({
   for (const mimeType of Object.values(INTERNAL_MIME_TYPES.CONFIGURATION)) {
     if (containsSubSchema(schema, ConfigurableToolInputJSONSchemas[mimeType])) {
       // We found a matching mimeType, augment the inputs
-      switch (mimeType) {
-        case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE: {
-          setValueAtPath(
-            inputs,
-            path,
-            actionConfiguration.dataSourceConfigurations?.map((config) => ({
-              // TODO: create a Resource for AgentDataSourceConfiguration and move the makeSId to a method in it.
-              uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${makeSId(
-                "data_source_configuration",
-                {
-                  id: config.id,
-                  workspaceId: config.workspaceId,
-                }
-              )}`,
-              mimeType,
-            })) || []
-          );
-          break;
-        }
-        default:
-          assertNever(mimeType);
-      }
+      setValueAtPath(
+        inputs,
+        path,
+        generateConfiguredInput({ owner, actionConfiguration, mimeType })
+      );
     }
   }
 }
