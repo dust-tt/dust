@@ -116,7 +116,7 @@ export async function tryCallMCPTool(
     await mcpClient.close();
 
     if (toolCallResult.isError) {
-      return new Err(new Error(toolCallResult.content as string));
+      return new Err(new Error(JSON.stringify(toolCallResult.content)));
     }
 
     // Type inference is not working here because of them using passthrough in the zod schema.
