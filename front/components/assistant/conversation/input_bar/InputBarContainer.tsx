@@ -149,8 +149,16 @@ const InputBarContainer = ({
         }));
       });
 
-      if (nodesWithViews.length > 0) {
-        const sortedNodes = nodesWithViews.sort(
+      const nodes = nodesWithViews.filter(
+        (node) =>
+          isNodeCandidate(nodeOrUrlCandidate) ||
+          // For nodes whose lookup is done on URL, since search was done also
+          // on title, we ensure the match was on the URL.
+          node.sourceUrl === nodeOrUrlCandidate?.url
+      );
+
+      if (nodes.length > 0) {
+        const sortedNodes = nodes.sort(
           (a, b) => b.spacePriority - a.spacePriority
         );
         const node = sortedNodes[0];
@@ -161,14 +169,15 @@ const InputBarContainer = ({
       // Reset node candidate after processing.
       // FIXME: This causes reset to early and it requires pasting the url twice.
       setNodeOrUrlCandidate(null);
-    } else {
-      sendNotification({
-        title: "No match for URL",
-        description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
-        type: "info",
-      });
-      setNodeOrUrlCandidate(null);
+      return;
     }
+
+    sendNotification({
+      title: "No match for URL",
+      description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
+      type: "info",
+    });
+    setNodeOrUrlCandidate(null);
   }, [
     searchResultNodes,
     onNodeSelect,
