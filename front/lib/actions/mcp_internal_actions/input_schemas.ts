@@ -55,20 +55,16 @@ export function serverRequiresInternalConfiguration({
   serverMetadata: MCPServerType;
   mimeType: InternalConfigurationMimeType;
 }): boolean {
-  if (!serverMetadata?.tools) {
-    return false;
-  }
-
-  return serverMetadata.tools.some((tool) => {
-    if (!tool?.inputSchema) {
-      return false;
-    }
-
-    return containsSubSchema(
-      tool.inputSchema,
-      ConfigurableToolInputJSONSchemas[mimeType]
-    );
-  });
+  return (
+    serverMetadata?.tools?.some(
+      (tool) =>
+        tool?.inputSchema &&
+        containsSubSchema(
+          tool.inputSchema,
+          ConfigurableToolInputJSONSchemas[mimeType]
+        )
+    ) ?? false
+  );
 }
 
 /**
