@@ -12,6 +12,7 @@ import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPActionConfiguration } from "@app/lib/actions/types/guards";
 import { makeSId } from "@app/lib/resources/string_ids";
+import type { WorkspaceType } from "@app/types";
 
 /**
  * Recursively checks if any property or nested property of an object has a mimeType matching the target value.
@@ -236,11 +237,13 @@ function findSchemaAtPath(
  * Returns true if a value was injected, false otherwise.
  */
 function injectValueForMimeType({
+  owner,
   inputs,
   path,
   schema,
   actionConfiguration,
 }: {
+  owner: WorkspaceType;
   inputs: Record<string, unknown>;
   path: string[];
   schema: JSONSchema;
@@ -257,7 +260,7 @@ function injectValueForMimeType({
             path,
             actionConfiguration.dataSourceConfigurations?.map((config) => ({
               // TODO: create a Resource for AgentDataSourceConfiguration and move the makeSId to a method in it.
-              uri: `data_source_configuration://dust/w/${config.workspaceId}/data_source_configurations/${makeSId(
+              uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${makeSId(
                 "data_source_configuration",
                 {
                   id: config.id,
@@ -283,9 +286,11 @@ function injectValueForMimeType({
  * This function uses Ajv validation errors to identify missing properties.
  */
 export function augmentInputsWithConfiguration({
+  owner,
   rawInputs,
   actionConfiguration,
 }: {
+  owner: WorkspaceType;
   rawInputs: Record<string, unknown>;
   actionConfiguration: ActionConfigurationType;
 }): Record<string, unknown> {
@@ -329,6 +334,7 @@ export function augmentInputsWithConfiguration({
       // If we found a schema and it has a matching MIME type, inject the value
       if (propSchema) {
         injectValueForMimeType({
+          owner,
           inputs,
           path: fullPath,
           schema: propSchema,
