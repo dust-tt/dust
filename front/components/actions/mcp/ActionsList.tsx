@@ -1,8 +1,6 @@
 import {
   Avatar,
-  Button,
   classNames,
-  CloudArrowLeftRightIcon,
   DataTable,
   IconButton,
   SearchInput,
@@ -13,6 +11,7 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import React, { useMemo, useState } from "react";
 
+import { CreateRemoteMCPServerModal } from "@app/components/actions/mcp/CreateRemoteMCPServerModal";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   DEFAULT_MCP_SERVER_ICON,
@@ -35,21 +34,13 @@ type RowData = {
   onClick: () => void;
 };
 
-type AdminActionsListProps = {
-  owner: LightWorkspaceType;
-  setMcpServer: (mcpServer: MCPServerType) => void;
-  openRemoteMCPCreationModal: () => void;
-};
-
-const ActionCell = ({
-  mcpServer,
-  mcpServerView,
-  owner,
-}: {
+type ActionCellProps = {
   mcpServer: MCPServerType;
   mcpServerView?: MCPServerViewType;
   owner: LightWorkspaceType;
-}) => {
+};
+
+const ActionCell = ({ mcpServer, mcpServerView, owner }: ActionCellProps) => {
   const { deleteServer } = useDeleteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
@@ -94,10 +85,14 @@ const ActionCell = ({
   }
 };
 
+type AdminActionsListProps = {
+  owner: LightWorkspaceType;
+  setMcpServer: (mcpServer: MCPServerType) => void;
+};
+
 export const AdminActionsList = ({
   owner,
   setMcpServer,
-  openRemoteMCPCreationModal,
 }: AdminActionsListProps) => {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -116,6 +111,8 @@ export const AdminActionsList = ({
   const { mcpServers, isMCPServersLoading } = useMCPServers({
     owner,
   });
+
+  const [isCreating, setIsCreating] = useState(false);
 
   const getTableColumns = (): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -193,7 +190,6 @@ export const AdminActionsList = ({
     const serverView = mcpServerWithViews?.views.find(
       (v) => v.spaceId === systemSpace?.sId
     );
-    console.log(serverView);
 
     return {
       mcpServer,
@@ -210,7 +206,7 @@ export const AdminActionsList = ({
   const [filter, setFilter] = useState("");
 
   return (
-    <div>
+    <>
       <div className="flex flex-row gap-2">
         <SearchInput
           name="filter"
@@ -218,15 +214,14 @@ export const AdminActionsList = ({
           value={filter}
           onChange={(e) => setFilter(e)}
         />
-        <Button
-          icon={CloudArrowLeftRightIcon}
-          label="Add MCP Server"
-          onClick={openRemoteMCPCreationModal}
-          size="sm"
+        <CreateRemoteMCPServerModal
+          owner={owner}
+          setMCPServer={setMcpServer}
+          setIsCreating={setIsCreating}
         />
       </div>
 
-      {isAvailableMCPServersLoading || isMCPServersLoading ? (
+      {isAvailableMCPServersLoading || isMCPServersLoading || isCreating ? (
         <div className="mt-16 flex justify-center">
           <Spinner />
         </div>
@@ -239,6 +234,6 @@ export const AdminActionsList = ({
           filterColumn="name"
         />
       )}
-    </div>
+    </>
   );
 };

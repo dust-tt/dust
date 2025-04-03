@@ -4,13 +4,11 @@ import { useState } from "react";
 
 import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
-import { RemoteMCPServerDetails } from "@app/components/actions/mcp/RemoteMCPServerDetails";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
@@ -47,18 +45,6 @@ export default function AdminActions({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [mcpServer, setMcpServer] = useState<MCPServerType | null>(null);
   const [isDetailsPanelOpened, setIsDetailsPanelOpened] = useState(false);
-  const [isRemoteCreationModalOpened, setRemoteCreationModalOpened] =
-    useState(false);
-
-  const { mutateMCPServers } = useMCPServers({
-    owner,
-  });
-
-  const closePanel = () => {
-    setMcpServer(null);
-    void mutateMCPServers();
-    setRemoteCreationModalOpened(false);
-  };
 
   return (
     <AppLayout
@@ -77,16 +63,6 @@ export default function AdminActions({
         />
       )}
 
-      {isRemoteCreationModalOpened && (
-        <RemoteMCPServerDetails
-          owner={owner}
-          mcpServer={mcpServer}
-          onClose={closePanel}
-          open={isRemoteCreationModalOpened}
-          mutateServers={mutateMCPServers}
-        />
-      )}
-
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Actions"
@@ -99,11 +75,7 @@ export default function AdminActions({
             setMcpServer={(mcpServer) => {
               setMcpServer(mcpServer);
               setIsDetailsPanelOpened(true);
-              setRemoteCreationModalOpened(false);
             }}
-            openRemoteMCPCreationModal={() =>
-              setRemoteCreationModalOpened(true)
-            }
           />
         </Page.Vertical>
       </Page.Vertical>

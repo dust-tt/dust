@@ -60,6 +60,7 @@ type RemoteMCPServerDetailsProps = {
   mcpServer: RemoteMCPServerType | null;
   open: boolean;
   mutateServers: () => void;
+  setMcpServer: (mcpServer: RemoteMCPServerType) => void;
 };
 
 export function RemoteMCPServerDetails({
@@ -68,6 +69,7 @@ export function RemoteMCPServerDetails({
   mcpServer,
   open,
   mutateServers,
+  setMcpServer,
 }: RemoteMCPServerDetailsProps) {
   const sendNotification = useSendNotification();
   const [serverState, setServerState] = useState<
@@ -248,6 +250,8 @@ export function RemoteMCPServerDetails({
       }
 
       if (result.success) {
+        onClose();
+        setMcpServer(result.server);
         // Populate the form with the server data returned from the API
         populateFormFromServer(result.server);
 
