@@ -42,30 +42,6 @@ export async function startMcpServer(
 
   const app = express();
 
-  // Add explicit types for req, res, next inside the middleware
-  app.use("/", ((req: Request, res: Response, next: NextFunction) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    );
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    if (req.method === "OPTIONS") {
-      return res.sendStatus(204);
-    }
-    next();
-  }) as any);
-
-  // Add explicit types for req, res, next inside the middleware
-  app.use("/", ((req: Request, res: Response, next: NextFunction) => {
-    if (!req.path.startsWith("/message")) {
-      express.json()(req, res, next);
-    } else {
-      next();
-    }
-  }) as any);
-
-  // Store active sessions
   const activeSessions = new Map<
     string,
     { server: McpServer; transport: SSEServerTransport }
@@ -168,6 +144,8 @@ export async function startMcpServer(
                     content: [{ type: "text", text: errorMessage }],
                     isError: true,
                   };
+                } else if (event.type === "agent_message_success") {
+                  break;
                 }
               }
             } catch (streamError) {

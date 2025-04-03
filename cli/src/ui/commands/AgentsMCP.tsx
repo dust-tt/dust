@@ -123,7 +123,6 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
 
       startMcpServer(
         selectedAgentObjects,
-        currentWorkspaceId,
         (url) => {
           setIsServerStarted(true);
           setServerUrl(url);
