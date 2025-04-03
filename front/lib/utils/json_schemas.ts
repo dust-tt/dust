@@ -13,20 +13,62 @@ export function isJSONSchema(
 }
 
 /**
- * Recursively checks if any property or nested property of an object has a mimeType matching the target value.
+ * Recursively checks if a schema contains a specific sub-schema anywhere in its structure.
+ * This function handles nested objects and arrays.
  */
 export function containsSubSchema(
   inputSchema: JSONSchema,
   targetSubSchema: JSONSchema
 ): boolean {
+  if (inputSchema === targetSubSchema) {
+    return true;
+  }
+
+  if (!isJSONSchema(inputSchema)) {
+    return false;
+  }
+
+  // Check all properties and values in the schema
   for (const value of Object.values(inputSchema)) {
-    // Check whether the current value matches the input subSchema
-    if (isJSONSchema(value) && value === targetSubSchema) {
+    if (
+      value === targetSubSchema ||
+      (isJSONSchema(value) && containsSubSchema(value, targetSubSchema))
+    ) {
       return true;
     }
-
-    // TODO(2025-04-03): check nested objects and arrays.
   }
+
+  // Check properties in object schemas
+  if (inputSchema.properties) {
+    for (const propSchema of Object.values(inputSchema.properties)) {
+      if (
+        isJSONSchema(propSchema) &&
+        containsSubSchema(propSchema, targetSubSchema)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // Check items in array schemas
+  if (inputSchema.type === "array" && inputSchema.items) {
+    if (isJSONSchema(inputSchema.items)) {
+      // Single schema for all items
+      if (containsSubSchema(inputSchema.items, targetSubSchema)) {
+        return true;
+      }
+    } else if (Array.isArray(inputSchema.items)) {
+      // Array of schemas for tuple validation
+      for (const item of inputSchema.items) {
+        if (isJSONSchema(item) && containsSubSchema(item, targetSubSchema)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  // Note: we don't handle anyOf, allOf, oneOf yet as we cannot disambiguate whether to inject the configuration
+  // since we entirely hide the configuration from the agent.
 
   return false;
 }
