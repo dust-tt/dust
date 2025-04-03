@@ -116,7 +116,16 @@ export async function tryCallMCPTool(
     await mcpClient.close();
 
     if (toolCallResult.isError) {
-      return new Err(new Error(JSON.stringify(toolCallResult.content)));
+      const errorMessage = JSON.stringify(toolCallResult.content);
+      logger.error(
+        {
+          workspaceId: owner.id,
+          actionConfiguration,
+          error: errorMessage,
+        },
+        `Error calling MCP tool.`
+      );
+      return new Err(new Error(errorMessage));
     }
 
     // Type inference is not working here because of them using passthrough in the zod schema.
@@ -131,7 +140,7 @@ export async function tryCallMCPTool(
         actionConfiguration,
         error,
       },
-      `Error calling MCP tool, returning error.`
+      `Error calling MCP tool.`
     );
     return new Err(normalizeError(error));
   }
