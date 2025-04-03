@@ -66,7 +66,7 @@ export async function fetchMCPServerActionConfigurations(
       );
     }
 
-    let metadata: MCPServerType | null = null;
+    let metadata: MCPServerType;
     if (mcpServerView.serverType === "remote") {
       const remoteMCPServer = mcpServerView.getRemoteMCPServer();
 
