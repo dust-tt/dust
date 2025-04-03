@@ -38,9 +38,6 @@ export function UserMenu({
   const router = useRouter();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const hasBetaAccess = featureFlags.some((flag: string) =>
-    flag.startsWith("labs_")
-  );
   const sendNotification = useSendNotification();
 
   const forceRoleUpdate = useMemo(
@@ -89,16 +86,12 @@ export function UserMenu({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
-        {hasBetaAccess && (
-          <>
-            <DropdownMenuLabel label="Beta" />
-            <DropdownMenuItem
-              label="Exploratory features"
-              icon={TestTubeIcon}
-              href={`/w/${owner.sId}/labs`}
-            />
-          </>
-        )}
+        <DropdownMenuLabel label="Beta" />
+        <DropdownMenuItem
+          label="Exploratory features"
+          icon={TestTubeIcon}
+          href={`/w/${owner.sId}/labs`}
+        />
 
         {showDebugTools(featureFlags) && (
           <>
