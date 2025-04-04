@@ -44,7 +44,7 @@ export type DataSourceFilter = {
 
 // TODO(mcp): move function and types relative to data sources to a dedicated file instead of retrieval.ts.
 export type DataSourceConfiguration = {
-  sId: string;
+  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
   workspaceId: string;
   dataSourceViewId: string;
   filter: DataSourceFilter;
