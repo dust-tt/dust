@@ -45,7 +45,8 @@ export const AuthorizationInfo = ({
             {OAUTH_PROVIDER_NAMES[authorization.provider]}.
           </Label>
           <span className="w-full font-semibold text-red-500">
-            Authentication credentials is shared by all users of this workspace.
+            Authentication credentials is shared by all users of this workspace
+            when they use this action.
           </span>
           <Button
             variant="warning"
@@ -68,7 +69,7 @@ export const AuthorizationInfo = ({
           </Label>
           <span className="w-full font-semibold text-red-500">
             Authentication credentials will be shared by all users of this
-            workspace.
+            workspace when they use this action.
           </span>
           <Button
             variant="outline"
