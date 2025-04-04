@@ -3,10 +3,14 @@ import _ from "lodash";
 
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
-import type { ExtractActionBlob } from "@app/lib/actions/types";
-import type { BaseActionRunParams } from "@app/lib/actions/types";
-import { BaseAction } from "@app/lib/actions/types";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
+import type {
+  BaseActionRunParams,
+  ExtractActionBlob,
+} from "@app/lib/actions/types";
+import {
+  BaseAction,
+  BaseActionConfigurationServerRunner,
+} from "@app/lib/actions/types";
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
@@ -38,7 +42,9 @@ export type DataSourceFilter = {
   tags?: TagsFilter;
 };
 
+// TODO(mcp): move function and types relative to data sources to a dedicated file instead of retrieval.ts.
 export type DataSourceConfiguration = {
+  sId: string;
   workspaceId: string;
   dataSourceViewId: string;
   filter: DataSourceFilter;

@@ -17,7 +17,6 @@ import {
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
@@ -30,6 +29,7 @@ import type {
   Result,
 } from "@app/types";
 import { Ok } from "@app/types";
+import { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 
 export type MCPServerConfigurationType = {
   id: ModelId;
@@ -42,7 +42,7 @@ export type MCPServerConfigurationType = {
   name: string;
   description: string | null;
 
-  dataSourceConfigurations: AgentDataSourceConfiguration[] | null;
+  dataSources: DataSourceConfiguration[] | null;
   // TODO(mcp): add other kind of configurations here such as table query.
 };
 
