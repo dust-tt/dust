@@ -3,6 +3,10 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
+  isDefaultInternalMCPServer,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import {
   augmentInputsWithConfiguration,
   hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -30,8 +34,6 @@ import type {
   Result,
 } from "@app/types";
 import { Ok } from "@app/types";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { isDefaultInternalMCPServer, isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 
 export type MCPServerConfigurationType = {
   id: ModelId;
@@ -284,8 +286,15 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       action: mcpAction,
     };
 
-    let status: "allowed_implicitly" | "allowed_explicitly" | "pending" | "denied" = "pending";
-    if (isInternalMCPServerName(actionConfiguration.name) && isDefaultInternalMCPServer(actionConfiguration.name)) {
+    let status:
+      | "allowed_implicitly"
+      | "allowed_explicitly"
+      | "pending"
+      | "denied" = "pending";
+    if (
+      isInternalMCPServerName(actionConfiguration.name) &&
+      isDefaultInternalMCPServer(actionConfiguration.name)
+    ) {
       status = "allowed_implicitly";
     } else {
       yield {
@@ -308,7 +317,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         for await (const event of actionEventGenerator) {
           const { data } = event;
 
-          if (data.type === "action_approved" && data.actionId === mcpAction.id) {
+          if (
+            data.type === "action_approved" &&
+            data.actionId === mcpAction.id
+          ) {
             status = "allowed_explicitly";
             break;
           } else if (
