@@ -310,7 +310,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
     case "archived":
       // Get the latest version of all archived agents.
-      // For each sId, we want to fetch the one with the highest version, only if it's status is "archived".
+      // For each sId, we want to fetch the one with the highest version, only if its status is "archived".
       return AgentConfiguration.findAll({
         attributes: [[Sequelize.fn("MAX", Sequelize.col("id")), "maxId"]],
         group: "sId",
@@ -1234,7 +1234,7 @@ export async function createAgentActionConfiguration(
 }
 
 /**
- * Create the AgentDataSourceConfiguration rows in database.
+ * Create the AgentDataSourceConfiguration rows in the database.
  *
  * Knowing that a datasource is uniquely identified by its name and its workspaceId
  * We need to fetch the dataSources from the database from that.
@@ -1440,7 +1440,7 @@ export async function setAgentScope(
   return new Ok({ agentId, scope });
 }
 
-// Should only be called when we need to cleanup the agent configuration
+// Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
   agentConfiguration: LightAgentConfigurationType
