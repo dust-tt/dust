@@ -7,6 +7,7 @@ import {
   hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   BaseActionRunParams,
   ExtractActionBlob,
@@ -29,7 +30,6 @@ import type {
   Result,
 } from "@app/types";
 import { Ok } from "@app/types";
-import { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 
 export type MCPServerConfigurationType = {
   id: ModelId;
