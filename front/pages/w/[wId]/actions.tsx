@@ -9,7 +9,6 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
@@ -30,8 +29,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       notFound: true,
     };
   }
-
-  await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
 
   return {
     props: {
