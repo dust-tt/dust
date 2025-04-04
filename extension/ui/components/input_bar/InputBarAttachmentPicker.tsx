@@ -36,14 +36,12 @@ interface InputBarAttachmentsPickerProps {
   onNodeSelect: (node: DataSourceViewContentNodeType) => void;
   isLoading?: boolean;
   attachedNodes: DataSourceViewContentNodeType[];
-  isAttachedFromDataSourceActivated: boolean;
 }
 
 export const InputBarAttachmentsPicker = ({
   fileUploaderService,
   onNodeSelect,
   attachedNodes,
-  isAttachedFromDataSourceActivated,
   isLoading = false,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,7 +96,7 @@ export const InputBarAttachmentsPicker = ({
     }
   };
 
-  return isAttachedFromDataSourceActivated ? (
+  return (
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
@@ -202,28 +200,5 @@ export const InputBarAttachmentsPicker = ({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-  ) : (
-    <>
-      <Input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        onChange={async (e) => {
-          setIsOpen(false);
-          await fileUploaderService.handleFileChange(e);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-          }
-        }}
-        multiple={true}
-      />
-      <Button
-        size="xs"
-        variant="ghost-secondary"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={isLoading}
-        icon={AttachmentIcon}
-      />
-    </>
   );
 };
