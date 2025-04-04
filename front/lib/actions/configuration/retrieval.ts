@@ -1,8 +1,10 @@
 import _ from "lodash";
 import { Op } from "sequelize";
 
-import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/data_sources";
-import { renderRetrievalTimeframeType } from "@app/lib/actions/configuration/helpers";
+import {
+  renderDataSourceConfiguration,
+  renderRetrievalTimeframeType,
+} from "@app/lib/actions/configuration/helpers";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
