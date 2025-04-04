@@ -66,10 +66,17 @@ function generateConfiguredInput({
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
       return (
-        actionConfiguration.dataSources?.map((config) => ({
-          uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
-          mimeType,
-        })) || []
+        actionConfiguration.dataSources?.map((config) => {
+          if (!config.sId) {
+            throw new Error(
+              "Unexpected: data source configuration without an sId."
+            );
+          }
+          return {
+            uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
+            mimeType,
+          };
+        }) || []
       );
     default:
       assertNever(mimeType);
