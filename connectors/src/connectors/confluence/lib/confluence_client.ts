@@ -434,6 +434,11 @@ export class ConfluenceClient {
       );
     }
 
+    logRateLimitHeaders(response, {
+      endpoint,
+      statusCode: response.status,
+    });
+
     // When approaching the rate limit, we defer the handling of the backoff to Temporal.
     // We have no accurate estimation of the time we should wait here, the goal here is more to warm up the exponential
     // backoff to slow down the queries as soon as they approach the rate limit.
@@ -442,10 +447,6 @@ export class ConfluenceClient {
         "provider:confluence",
         "status:near_rate_limit",
       ]);
-      logRateLimitHeaders(response, {
-        endpoint,
-        statusCode: response.status,
-      });
 
       throw new ConfluenceClientError(
         `Near rate limit: ${this.apiUrl}${endpoint}`,
