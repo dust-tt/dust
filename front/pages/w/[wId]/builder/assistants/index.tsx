@@ -24,7 +24,6 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { subFilter } from "@app/lib/utils";
 import type {
@@ -47,8 +46,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
-
-  await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
 
   const tabScope = ASSISTANT_MANAGER_TABS.map((tab) => tab.id).includes(
     context.query.tabScope as AssistantManagerTabsType
