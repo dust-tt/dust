@@ -13,10 +13,10 @@ import {
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
-import { isValidInternalMCPServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCPSERVER_NAMES,
   isDefaultInternalMCPServer,
+  isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
@@ -351,6 +351,39 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     }
 
     return this.internalMCPServer;
+  }
+
+  async getMCPServerMetadata(auth: Authenticator): Promise<MCPServerType> {
+    switch (this.serverType) {
+      case "remote": {
+        const remoteMCPServer = this.getRemoteMCPServer();
+
+        // Note: this won't attempt to connect to remote servers and will use the cached metadata.
+        return remoteMCPServer.toJSON();
+      }
+      case "internal": {
+        if (!this.internalMCPServerId) {
+          throw new Error(
+            `Internal MCP server ID is required for internal server type.`
+          );
+        }
+
+        const internalMCPServer =
+          await InternalMCPServerInMemoryResource.fetchById(
+            auth,
+            this.internalMCPServerId
+          );
+        if (!internalMCPServer) {
+          throw new Error(
+            `Internal MCP server with ID ${this.internalMCPServerId} not found.`
+          );
+        }
+        return internalMCPServer.toJSON();
+      }
+      default: {
+        assertNever(this.serverType);
+      }
+    }
   }
 
   get sId(): string {

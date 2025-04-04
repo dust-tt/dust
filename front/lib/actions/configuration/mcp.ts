@@ -3,53 +3,14 @@ import { Op } from "sequelize";
 import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import { getTableConfiguration } from "@app/lib/actions/configuration/table_query";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
-import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
-import { assertNever } from "@app/types";
-
-async function getMCPServerMetadata(
-  auth: Authenticator,
-  { mcpServerView }: { mcpServerView: MCPServerViewResource }
-): Promise<MCPServerType> {
-  switch (mcpServerView.serverType) {
-    case "remote": {
-      const remoteMCPServer = mcpServerView.getRemoteMCPServer();
-
-      // Note: this won't attempt to connect to remote servers and will use the cached metadata.
-      return remoteMCPServer.toJSON();
-    }
-    case "internal": {
-      if (!mcpServerView.internalMCPServerId) {
-        throw new Error(
-          `Internal MCP server ID is required for internal server type.`
-        );
-      }
-
-      const internalMCPServer =
-        await InternalMCPServerInMemoryResource.fetchById(
-          auth,
-          mcpServerView.internalMCPServerId
-        );
-      if (!internalMCPServer) {
-        throw new Error(
-          `Internal MCP server with ID ${mcpServerView.internalMCPServerId} not found.`
-        );
-      }
-      return internalMCPServer.toJSON();
-    }
-    default: {
-      assertNever(mcpServerView.serverType);
-    }
-  }
-}
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
@@ -145,9 +106,8 @@ export async function fetchMCPServerActionConfigurations(
       );
     }
 
-    const { name, description } = await getMCPServerMetadata(auth, {
-      mcpServerView,
-    });
+    const { name, description } =
+      await mcpServerView.getMCPServerMetadata(auth);
 
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
       actionsByConfigurationId.set(agentConfigurationId, []);
