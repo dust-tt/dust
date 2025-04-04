@@ -9,6 +9,8 @@ import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_m
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { Workspace } from "@app/lib/models/workspace";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
@@ -40,6 +42,18 @@ export async function fetchMCPServerActionConfigurations(
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
         },
       },
+      include: [
+        {
+          model: DataSourceViewModel,
+          as: "dataSourceView",
+          include: [
+            {
+              model: Workspace,
+              as: "workspace",
+            },
+          ],
+        },
+      ],
     });
 
   const actionsByConfigurationId = new Map<
