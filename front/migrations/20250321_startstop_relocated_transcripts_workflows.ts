@@ -78,6 +78,8 @@ makeScript(
       workspaceIdsArray = workspaceIds.split(",").map((id) => id.trim());
     }
 
+    workspaceIdsArray = [...new Set(workspaceIdsArray)];
+
     for (const workspaceId of workspaceIdsArray) {
       await actionWorkflowsForWorkspace(workspaceId, logger, execute, action);
     }
