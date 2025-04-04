@@ -1,8 +1,6 @@
 import {
   Avatar,
-  BookOpenIcon,
   ChevronDownIcon,
-  CloudArrowLeftRightIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -13,7 +11,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeIcon,
   Icon,
   LightbulbIcon,
   LightModeIcon,
@@ -41,9 +38,6 @@ export function UserMenu({
   const router = useRouter();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const hasBetaAccess = featureFlags.some((flag: string) =>
-    flag.startsWith("labs_")
-  );
   const sendNotification = useSendNotification();
 
   const forceRoleUpdate = useMemo(
@@ -92,39 +86,12 @@ export function UserMenu({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
-        {hasBetaAccess && (
-          <>
-            <DropdownMenuLabel label="Beta" />
-            {featureFlags.includes("labs_features") && (
-              <DropdownMenuItem
-                label="Beta features"
-                icon={TestTubeIcon}
-                href={`/w/${owner.sId}/labs`}
-              />
-            )}
-            {featureFlags.includes("labs_transcripts") && (
-              <DropdownMenuItem
-                label="Meeting transcripts"
-                icon={BookOpenIcon}
-                href={`/w/${owner.sId}/labs/transcripts`}
-              />
-            )}
-            {featureFlags.includes("labs_trackers") && (
-              <DropdownMenuItem
-                label="Trackers"
-                icon={EyeIcon}
-                href={`/w/${owner.sId}/labs/trackers`}
-              />
-            )}
-            {featureFlags.includes("labs_github_actions") && (
-              <DropdownMenuItem
-                label="Platform Actions"
-                icon={CloudArrowLeftRightIcon}
-                href={`/w/${owner.sId}/labs/platform_actions`}
-              />
-            )}
-          </>
-        )}
+        <DropdownMenuLabel label="Beta" />
+        <DropdownMenuItem
+          label="Exploratory features"
+          icon={TestTubeIcon}
+          href={`/w/${owner.sId}/labs`}
+        />
 
         {showDebugTools(featureFlags) && (
           <>

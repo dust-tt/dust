@@ -19,11 +19,13 @@ import type { LightWorkspaceType } from "@app/types";
 interface RequestFeatureAccessModal {
   owner: LightWorkspaceType;
   featureName: string;
+  canRequestAccess: boolean;
 }
 
 export function RequestFeatureAccessModal({
   owner,
   featureName,
+  canRequestAccess,
 }: RequestFeatureAccessModal) {
   const [message, setMessage] = useState("");
   const sendNotification = useSendNotification();
@@ -33,6 +35,9 @@ export function RequestFeatureAccessModal({
   };
 
   const onSave = async () => {
+    if (!canRequestAccess) {
+      return;
+    }
     try {
       await sendRequestFeatureAccessEmail({
         emailMessage: message,
@@ -66,17 +71,25 @@ export function RequestFeatureAccessModal({
         <SheetContainer>
           <div className="flex flex-col gap-4 p-4">
             <div className="flex flex-col gap-2">
-              <div className="flex flex-col gap-2">
+              {canRequestAccess ? (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <p className="text-element-700 mb-2 text-sm">
+                      {`This feature is currently in beta. If you'd like to request access, please fill out the form below.`}
+                    </p>
+                  </div>
+                  <TextArea
+                    placeholder={`Please tell us why you'd like to access ${featureName}`}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="mb-2"
+                  />
+                </>
+              ) : (
                 <p className="text-element-700 mb-2 text-sm">
-                  {`This feature is currently in beta. If you'd like to request access, please fill out the form below.`}
+                  {`You don't have permission to request access to this feature. Please ask a Dust administrator to make the request.`}
                 </p>
-              </div>
-              <TextArea
-                placeholder={`Please tell us why you'd like to access ${featureName}`}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="mb-2"
-              />
+              )}
             </div>
           </div>
         </SheetContainer>
@@ -89,7 +102,7 @@ export function RequestFeatureAccessModal({
           rightButtonProps={{
             label: "Send",
             onClick: onSave,
-            disabled: message.length === 0,
+            disabled: message.length === 0 || !canRequestAccess,
           }}
         />
       </SheetContent>

@@ -166,7 +166,7 @@ export default function TrackerConfigurations({
 
   const items = [
     {
-      label: "Beta features",
+      label: "Exploratory features",
       href: `/w/${owner.sId}/labs`,
     },
     {

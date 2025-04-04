@@ -145,7 +145,7 @@ export default function LabsTranscriptsIndex({
   const agents = agentConfigurations.filter((a) => a.status === "active");
   const items = [
     {
-      label: "Beta features",
+      label: "Exploratory features",
       href: `/w/${owner.sId}/labs`,
     },
     {
