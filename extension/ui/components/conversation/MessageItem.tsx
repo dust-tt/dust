@@ -3,6 +3,10 @@ import { useDustAPI } from "@app/shared/lib/dust_api";
 import type { AgentMessageFeedbackType } from "@app/shared/lib/feedbacks";
 import type { StoredUser } from "@app/shared/services/auth";
 import { AgentMessage } from "@app/ui/components/conversation/AgentMessage";
+import {
+  AttachmentCitation,
+  contentFragmentToAttachmentCitation,
+} from "@app/ui/components/conversation/AttachmentCitation";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { UserMessage } from "@app/ui/components/conversation/UserMessage";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
@@ -10,16 +14,6 @@ import type {
   ConversationMessageReactionsType,
   LightWorkspaceType,
 } from "@dust-tt/client";
-import {
-  Avatar,
-  Citation,
-  CitationIcons,
-  CitationImage,
-  CitationTitle,
-  DocumentTextIcon,
-  Icon,
-  SlackLogo,
-} from "@dust-tt/sparkle";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -100,50 +94,20 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "user_message":
         const citations = message.contenFragments
           ? message.contenFragments.map((contentFragment) => {
-              const citationType = ["dust-application/slack"].includes(
-                contentFragment.contentType
-              )
-                ? "slack"
-                : "document";
-
-              const icon =
-                citationType === "slack" ? SlackLogo : DocumentTextIcon;
+              const attachmentCitation =
+                contentFragmentToAttachmentCitation(contentFragment);
 
               return (
-                <Citation
-                  key={contentFragment.sId}
-                  href={contentFragment.sourceUrl ?? undefined}
-                >
-                  <div className="flex gap-2">
-                    {contentFragment.context.profilePictureUrl && (
-                      <CitationIcons>
-                        <Avatar
-                          visual={contentFragment.context.profilePictureUrl}
-                          size="xs"
-                        />
-                      </CitationIcons>
-                    )}
-                    {contentFragment.sourceUrl ? (
-                      <>
-                        <CitationImage imgSrc={contentFragment.sourceUrl} />
-                        <CitationIcons>
-                          <Icon visual={icon} />
-                        </CitationIcons>
-                      </>
-                    ) : (
-                      <CitationIcons>
-                        <Icon visual={icon} />
-                      </CitationIcons>
-                    )}
-                  </div>
-                  <CitationTitle>{contentFragment.title}</CitationTitle>
-                </Citation>
+                <AttachmentCitation
+                  key={attachmentCitation.id}
+                  attachmentCitation={attachmentCitation}
+                />
               );
             })
           : undefined;
 
         return (
-          <div key={`message-id-${sId}`} ref={ref}>
+          <div key={`message-id-${sId}`} ref={ref} className="w-full">
             <UserMessage
               citations={citations}
               conversationId={conversationId}
