@@ -143,6 +143,8 @@ export const SlackCommandSchema = t.type({
     t.literal("whitelist-domains"),
     t.literal("whitelist-bot"),
     t.literal("sync-channel-metadata"),
+    t.literal("add-channel-to-sync"),
+    t.literal("remove-channel-from-sync"),
   ]),
   args: t.record(
     t.string,

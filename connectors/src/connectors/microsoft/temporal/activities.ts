@@ -1103,6 +1103,7 @@ export async function microsoftGarbageCollectionActivity({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
+                deleteRootNode: true,
               });
             }
             break;

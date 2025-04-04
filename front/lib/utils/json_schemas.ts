@@ -2,14 +2,37 @@ import type {
   JSONSchema7 as JSONSchema,
   JSONSchema7Definition as JSONSchemaDefinition,
 } from "json-schema";
+import { isEqual } from "lodash";
+
+import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 /**
  * Type guard to check if a value is a JSONSchema object
  */
-export function isJSONSchema(
+export function isJSONSchemaObject(
   value: JSONSchema | JSONSchemaDefinition | JSONSchemaDefinition[] | boolean
 ): value is JSONSchema {
   return value !== null && typeof value === "object";
+}
+
+/**
+ * Compares two JSON schemas for equality, only checking the properties, items and required fields.
+ * In particular, it ignores the $schema field.
+ */
+export function schemasAreEqual(
+  schemaA: JSONSchema,
+  schemaB: JSONSchema
+): boolean {
+  if (schemaA.type !== schemaB.type) {
+    return false;
+  }
+  if (!isEqual(schemaA.required, schemaB.required)) {
+    return false;
+  }
+  if (!isEqual(schemaA.items, schemaB.items)) {
+    return false;
+  }
+  return isEqual(schemaA.properties, schemaB.properties);
 }
 
 /**
@@ -20,14 +43,11 @@ export function containsSubSchema(
   inputSchema: JSONSchema,
   targetSubSchema: JSONSchema
 ): boolean {
-  if (
-    inputSchema.properties === targetSubSchema.properties &&
-    inputSchema.required === targetSubSchema.required
-  ) {
+  if (schemasAreEqual(inputSchema, targetSubSchema)) {
     return true;
   }
 
-  if (!isJSONSchema(inputSchema)) {
+  if (!isJSONSchemaObject(inputSchema)) {
     return false;
   }
 
@@ -35,7 +55,7 @@ export function containsSubSchema(
   for (const value of Object.values(inputSchema)) {
     if (
       value === targetSubSchema ||
-      (isJSONSchema(value) && containsSubSchema(value, targetSubSchema))
+      (isJSONSchemaObject(value) && containsSubSchema(value, targetSubSchema))
     ) {
       return true;
     }
@@ -45,7 +65,7 @@ export function containsSubSchema(
   if (inputSchema.properties) {
     for (const propSchema of Object.values(inputSchema.properties)) {
       if (
-        isJSONSchema(propSchema) &&
+        isJSONSchemaObject(propSchema) &&
         containsSubSchema(propSchema, targetSubSchema)
       ) {
         return true;
@@ -55,7 +75,7 @@ export function containsSubSchema(
 
   // Check items in array schemas
   if (inputSchema.type === "array" && inputSchema.items) {
-    if (isJSONSchema(inputSchema.items)) {
+    if (isJSONSchemaObject(inputSchema.items)) {
       // Single schema for all items
       if (containsSubSchema(inputSchema.items, targetSubSchema)) {
         return true;
@@ -63,7 +83,10 @@ export function containsSubSchema(
     } else if (Array.isArray(inputSchema.items)) {
       // Array of schemas for tuple validation
       for (const item of inputSchema.items) {
-        if (isJSONSchema(item) && containsSubSchema(item, targetSubSchema)) {
+        if (
+          isJSONSchemaObject(item) &&
+          containsSubSchema(item, targetSubSchema)
+        ) {
           return true;
         }
       }
@@ -99,7 +122,7 @@ export function findSchemaAtPath(
     if (currentSchema.properties && segment in currentSchema.properties) {
       const propSchema: JSONSchemaDefinition =
         currentSchema.properties[segment];
-      if (isJSONSchema(propSchema)) {
+      if (isJSONSchemaObject(propSchema)) {
         currentSchema = propSchema;
       } else {
         return null; // Not a valid schema
@@ -116,10 +139,10 @@ export function findSchemaAtPath(
  * Sets a value at a specific path in a nested object structure.
  * Assumes that intermediate objects already exist.
  */
-export function setValueAtPath<T>(
+export function setValueAtPath(
   obj: Record<string, unknown>,
   path: string[],
-  value: T
+  value: ConfigurableToolInputType
 ): void {
   if (path.length === 0) {
     return;

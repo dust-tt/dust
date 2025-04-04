@@ -794,6 +794,7 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   roundedAvatar?: boolean;
   children?: ReactNode;
   description?: string;
+  grow?: boolean;
 }
 
 DataTable.CellContent = function CellContent({
@@ -805,10 +806,18 @@ DataTable.CellContent = function CellContent({
   icon,
   iconClassName,
   description,
+  grow = false,
   ...props
 }: CellContentProps) {
   return (
-    <div className={cn("s-flex s-items-center", className)} {...props}>
+    <div
+      className={cn(
+        "s-flex s-items-center",
+        grow ? "s-flex-grow" : "",
+        className
+      )}
+      {...props}
+    >
       {avatarUrl && avatarTooltipLabel && (
         <Tooltip
           trigger={
@@ -840,15 +849,18 @@ DataTable.CellContent = function CellContent({
           )}
         />
       )}
-      <div className="s-flex s-shrink s-truncate">
-        <span
+      <div
+        className={cn("s-flex s-shrink s-truncate", grow ? "s-flex-grow" : "")}
+      >
+        <div
           className={cn(
+            grow ? "s-flex-grow" : "",
             "s-truncate s-text-sm",
             "s-text-foreground dark:s-text-foreground-night"
           )}
         >
           {children}
-        </span>
+        </div>
         {description && (
           <span
             className={cn(

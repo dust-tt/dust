@@ -2,36 +2,26 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  MCPServerType,
+  MCPServerTypeWithViews,
+} from "@app/lib/actions/mcp_metadata";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
-import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-const allowedFiltersSchema = t.union([
-  t.literal("internal"),
-  t.literal("remote"),
-  t.literal("all"),
-]);
-
-export type AllowedFilter = t.TypeOf<typeof allowedFiltersSchema>;
-
-const QueryParamsSchema = t.type({
-  filter: allowedFiltersSchema,
-});
-
-export type GetMCPServersQueryParams = t.TypeOf<typeof QueryParamsSchema>;
-
 export type GetMCPServersResponseBody = {
   success: boolean;
-  servers: (MCPServerType & { views?: MCPServerViewType[] })[];
+  servers: MCPServerTypeWithViews[];
 };
 
 export type CreateMCPServerResponseBody = {
@@ -43,31 +33,14 @@ const PostQueryParamsSchema = t.union([
   t.type({
     serverType: t.literal("remote"),
     url: t.string,
+    includeGlobal: t.union([t.boolean, t.undefined]),
   }),
   t.type({
     serverType: t.literal("internal"),
     name: t.string,
+    includeGlobal: t.union([t.boolean, t.undefined]),
   }),
 ]);
-
-async function getMCPServers(auth: Authenticator, filter: AllowedFilter) {
-  switch (filter) {
-    case "internal": {
-      return InternalMCPServerInMemoryResource.listByWorkspace(auth);
-    }
-
-    case "remote": {
-      return RemoteMCPServerResource.listByWorkspace(auth);
-    }
-
-    case "all":
-      const remoteMCPs = await RemoteMCPServerResource.listByWorkspace(auth);
-      const internalMCPs =
-        await InternalMCPServerInMemoryResource.listByWorkspace(auth);
-
-      return [...remoteMCPs, ...internalMCPs];
-  }
-}
 
 async function handler(
   req: NextApiRequest,
@@ -82,22 +55,18 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      const r = QueryParamsSchema.decode(req.query);
+      const remoteMCPs = await RemoteMCPServerResource.listByWorkspace(auth);
+      const internalMCPs =
+        await InternalMCPServerInMemoryResource.listByWorkspace(auth);
 
-      if (isLeft(r)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid query parameters.",
-          },
-        });
-      }
+      const servers = [...remoteMCPs, ...internalMCPs].sort((a, b) =>
+        a.toJSON().name.localeCompare(b.toJSON().name)
+      );
 
       return res.status(200).json({
         success: true,
         servers: await concurrentExecutor(
-          await getMCPServers(auth, r.right.filter),
+          servers,
           async (r) => {
             const server = r.toJSON();
             const views = (
@@ -116,7 +85,6 @@ async function handler(
           }
         ),
       });
-      break;
     }
     case "POST": {
       const r = PostQueryParamsSchema.decode(req.body);
@@ -170,6 +138,16 @@ async function handler(
           cachedTools: metadata.tools,
         });
 
+        if (body.includeGlobal) {
+          const globalSpace =
+            await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+          await MCPServerViewResource.create(auth, {
+            mcpServerId: newRemoteMCPServer.sId,
+            space: globalSpace,
+          });
+        }
+
         return res.status(201).json({
           success: true,
           server: {
@@ -190,12 +168,10 @@ async function handler(
           });
         }
 
-        const internalMCPServerId = InternalMCPServerInMemoryResource.nameToSId(
-          {
-            name,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          }
-        );
+        const internalMCPServerId = internalMCPServerNameToSId({
+          name,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        });
 
         const existingServer =
           await InternalMCPServerInMemoryResource.fetchById(
@@ -215,6 +191,16 @@ async function handler(
 
         const newInternalMCPServer =
           await InternalMCPServerInMemoryResource.makeNew(auth, name);
+
+        if (body.includeGlobal) {
+          const globalSpace =
+            await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+          await MCPServerViewResource.create(auth, {
+            mcpServerId: newInternalMCPServer.id,
+            space: globalSpace,
+          });
+        }
 
         return res.status(201).json({
           success: true,

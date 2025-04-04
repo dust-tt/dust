@@ -4,6 +4,7 @@ import type { Result } from "meow";
 import Auth from "./commands/Auth.js";
 import Status from "./commands/Status.js";
 import Logout from "./commands/Logout.js";
+import AgentsMCP from "./commands/AgentsMCP.js";
 import Help from "./Help.js";
 
 interface AppProps {
@@ -19,6 +20,14 @@ interface AppProps {
     help: {
       type: "boolean";
       shortFlag: "h";
+    };
+    port: {
+      type: "number";
+      shortFlag: "p";
+    };
+    sId: {
+      type: "string";
+      isMultiple: true;
     };
   }>;
 }
@@ -43,15 +52,17 @@ const App: FC<AppProps> = ({ cli }) => {
       return <Status />;
     case "logout":
       return <Logout />;
+    case "agents-mcp":
+      return <AgentsMCP port={flags.port} sId={flags.sId} />;
     case "help":
       return <Help />;
     default:
       return (
         <Box flexDirection="column">
           <Text color="red">Unknown command: {command}</Text>
-          <Text>Run </Text>
-          <Text color="green">dust help</Text>
-          <Text> to see available commands.</Text>
+          <Box marginTop={1}>
+            <Help />
+          </Box>
         </Box>
       );
   }

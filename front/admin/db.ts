@@ -49,8 +49,8 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import {
   AgentMessage,
   AgentMessageFeedback,
-  Conversation,
-  ConversationParticipant,
+  ConversationModel,
+  ConversationParticipantModel,
   Mention,
   Message,
   MessageReaction,
@@ -127,8 +127,8 @@ async function main() {
   await DustAppSecret.sync({ alter: true });
   await GroupSpaceModel.sync({ alter: true });
 
-  await Conversation.sync({ alter: true });
-  await ConversationParticipant.sync({ alter: true });
+  await ConversationModel.sync({ alter: true });
+  await ConversationParticipantModel.sync({ alter: true });
 
   await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });

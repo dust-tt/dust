@@ -9,34 +9,40 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPActionConfiguration } from "@app/lib/actions/types/guards";
-import { makeSId } from "@app/lib/resources/string_ids";
 import {
   containsSubSchema,
   findSchemaAtPath,
-  isJSONSchema,
+  isJSONSchemaObject,
+  schemasAreEqual,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 
+export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
+  /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
+
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  */
-export const ConfigurableToolInputSchemas: Record<
-  InternalConfigurationMimeType,
-  z.ZodSchema
-> = {
+export const ConfigurableToolInputSchemas = {
   [INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE]: z.array(
     z.object({
-      uri: z
-        .string()
-        .regex(
-          /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/
-        ),
+      uri: z.string().regex(DATA_SOURCE_CONFIGURATION_URI_PATTERN),
       mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE),
     })
   ),
-} as const;
+  // We use a satisfies here to ensure that all the InternalConfigurationMimeType are covered whilst preserving the type
+  // inference in tools definitions (server.tool is templated).
+} as const satisfies Record<InternalConfigurationMimeType, z.ZodSchema>;
 
+export type ConfigurableToolInputType = z.infer<
+  (typeof ConfigurableToolInputSchemas)[InternalConfigurationMimeType]
+>;
+
+/**
+ * Mapping between the mime types we used to identify a configurable resource
+ * and the JSON schema resulting from the Zod schema defined above.
+ */
 const ConfigurableToolInputJSONSchemas = Object.fromEntries(
   Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
     key,
@@ -44,6 +50,10 @@ const ConfigurableToolInputJSONSchemas = Object.fromEntries(
   ])
 ) as Record<InternalConfigurationMimeType, JSONSchema>;
 
+/**
+ * Defines how we fill the actual inputs of the tool for each mime type.
+ * TODO(mcp): typing too weak here, testing the inference is hard before we have more INTERNAL_MIME_TYPES.CONFIGURATION.
+ */
 function generateConfiguredInput({
   actionConfiguration,
   owner,
@@ -56,16 +66,19 @@ function generateConfiguredInput({
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
       return (
-        actionConfiguration.dataSourceConfigurations?.map((config) => ({
-          uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${makeSId(
-            "data_source_configuration",
-            {
-              id: config.id,
-              workspaceId: config.workspaceId,
-            }
-          )}`,
-          mimeType,
-        })) || []
+        actionConfiguration.dataSources?.map((config) => {
+          if (!config.sId) {
+            // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
+            // TODO(mcp): improve typing wrt this.
+            throw new Error(
+              "Unreachable: data source configuration without an sId."
+            );
+          }
+          return {
+            uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
+            mimeType,
+          };
+        }) || []
       );
     default:
       assertNever(mimeType);
@@ -100,23 +113,23 @@ export function serverRequiresInternalConfiguration({
  * This function handles nested objects and arrays.
  */
 export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
-  const filteredSchema = { ...inputSchema };
+  const resultingSchema = { ...inputSchema };
 
   // Filter properties
-  if (filteredSchema.properties) {
+  if (inputSchema.properties) {
     const filteredProperties: JSONSchema["properties"] = {};
     const removedRequiredProps: string[] = [];
 
-    for (const [key, value] of Object.entries(filteredSchema.properties)) {
+    for (const [key, property] of Object.entries(inputSchema.properties)) {
       let shouldInclude = true;
 
-      if (isJSONSchema(value)) {
-        // Check if this property has a matching mimeType
+      if (isJSONSchemaObject(property)) {
+        // Check if this property has a matching mimeType.
         for (const schema of Object.values(ConfigurableToolInputJSONSchemas)) {
-          if (containsSubSchema(value, schema)) {
+          if (schemasAreEqual(property, schema)) {
             shouldInclude = false;
-            // Track removed properties that were required
-            if (filteredSchema.required?.includes(key)) {
+            // Track removed properties that were in the required array.
+            if (resultingSchema.required?.includes(key)) {
               removedRequiredProps.push(key);
             }
             break;
@@ -125,33 +138,33 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
 
         if (shouldInclude) {
           // Recursively filter nested properties
-          filteredProperties[key] = hideInternalConfiguration(value);
+          filteredProperties[key] = hideInternalConfiguration(property);
         }
-      } else if (value !== null && value !== undefined) {
+      } else {
         // Keep non-object values as is
-        filteredProperties[key] = value;
+        filteredProperties[key] = property;
       }
     }
 
-    filteredSchema.properties = filteredProperties;
+    resultingSchema.properties = filteredProperties;
 
     // Update required properties if any were removed
-    if (removedRequiredProps.length > 0 && filteredSchema.required) {
-      filteredSchema.required = filteredSchema.required.filter(
+    if (removedRequiredProps.length > 0 && resultingSchema.required) {
+      resultingSchema.required = resultingSchema.required.filter(
         (prop) => !removedRequiredProps.includes(prop)
       );
     }
   }
 
   // Filter array items
-  if (filteredSchema.type === "array" && filteredSchema.items) {
-    if (isJSONSchema(filteredSchema.items)) {
+  if (resultingSchema.type === "array" && resultingSchema.items) {
+    if (isJSONSchemaObject(resultingSchema.items)) {
       // Single schema for all items
-      filteredSchema.items = hideInternalConfiguration(filteredSchema.items);
-    } else if (Array.isArray(filteredSchema.items)) {
+      resultingSchema.items = hideInternalConfiguration(resultingSchema.items);
+    } else if (Array.isArray(resultingSchema.items)) {
       // Array of schemas for tuple validation
-      filteredSchema.items = filteredSchema.items.map((item) =>
-        isJSONSchema(item) ? hideInternalConfiguration(item) : item
+      resultingSchema.items = resultingSchema.items.map((item) =>
+        isJSONSchemaObject(item) ? hideInternalConfiguration(item) : item
       );
     }
   }
@@ -159,36 +172,7 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
   // Note: we don't handle anyOf, allOf, oneOf yet as we cannot disambiguate whether to inject the configuration
   // since we entirely hide the configuration from the agent.
 
-  return filteredSchema;
-}
-
-/**
- * Injects a value into the inputs based on the MIME type of a property schema.
- */
-function injectValueForMimeType({
-  owner,
-  inputs,
-  path,
-  schema,
-  actionConfiguration,
-}: {
-  owner: WorkspaceType;
-  inputs: Record<string, unknown>;
-  path: string[];
-  schema: JSONSchema;
-  actionConfiguration: MCPToolConfigurationType;
-}) {
-  // Check if this property has a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION
-  for (const mimeType of Object.values(INTERNAL_MIME_TYPES.CONFIGURATION)) {
-    if (containsSubSchema(schema, ConfigurableToolInputJSONSchemas[mimeType])) {
-      // We found a matching mimeType, augment the inputs
-      setValueAtPath(
-        inputs,
-        path,
-        generateConfiguredInput({ owner, actionConfiguration, mimeType })
-      );
-    }
-  }
+  return resultingSchema;
 }
 
 /**
@@ -239,13 +223,23 @@ export function augmentInputsWithConfiguration({
 
       // If we found a schema and it has a matching MIME type, inject the value
       if (propSchema) {
-        injectValueForMimeType({
-          owner,
-          inputs,
-          path: fullPath,
-          schema: propSchema,
-          actionConfiguration,
-        });
+        for (const mimeType of Object.values(
+          INTERNAL_MIME_TYPES.CONFIGURATION
+        )) {
+          if (
+            schemasAreEqual(
+              propSchema,
+              ConfigurableToolInputJSONSchemas[mimeType]
+            )
+          ) {
+            // We found a matching mimeType, augment the inputs
+            setValueAtPath(
+              inputs,
+              fullPath,
+              generateConfiguredInput({ owner, actionConfiguration, mimeType })
+            );
+          }
+        }
       }
     }
   }
