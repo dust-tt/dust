@@ -111,7 +111,7 @@ export async function fetchAgentRetrievalActionConfigurations({
 
 export function getDataSource(
   dataSourceConfig: AgentDataSourceConfiguration
-): DataSourceConfiguration {
+): DataSourceConfiguration & { sId: string } {
   const { dataSourceView } = dataSourceConfig;
 
   let tags: DataSourceFilter["tags"] = null;
