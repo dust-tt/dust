@@ -135,7 +135,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       agentConfiguration: LightAgentConfigurationType;
       rankingUsageDays: number;
     }
-  ): Promise<ConversationResource[]> {
+  ) {
     const workspace = auth.getNonNullableWorkspace();
 
     const mentions = await this.model.findAll({
@@ -185,7 +185,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       raw: true,
     });
 
-    return mentions.map((mention) => new this(this.model, mention.get()));
+    return mentions;
   }
 
   static canAccessConversation(
