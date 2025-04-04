@@ -254,6 +254,21 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     return this.listBySpaces(auth, [space]);
   }
 
+  static async countBySpace(
+    auth: Authenticator,
+    space: SpaceResource
+  ): Promise<number> {
+    if (space.canRead(auth)) {
+      return this.model.count({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          vaultId: space.id,
+        },
+      });
+    }
+    return 0;
+  }
+
   static async listByMCPServer(
     auth: Authenticator,
     mcpServerId: string
