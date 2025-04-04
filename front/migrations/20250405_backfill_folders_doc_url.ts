@@ -1,12 +1,4 @@
-import type { Sequelize } from "sequelize";
-import { Op, QueryTypes } from "sequelize";
-
-import {
-  getCorePrimaryDbConnection,
-  getFrontPrimaryDbConnection,
-} from "@app/lib/production_checks/utils";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import type Logger from "@app/logger/logger";
+import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { makeScript } from "@app/scripts/helpers";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -32,6 +24,7 @@ makeScript({}, async ({ execute }, logger) => {
   const batchSize = 1000;
   const batches = _.chunk(filesURLSuffixes, batchSize);
   for (const batch of batches) {
+    logger.info({ batchSize: batch.length, execute }, "Updating batch");
     if (execute) {
       await coreSequelize.query(
         `UPDATE data_sources_nodes dsn
