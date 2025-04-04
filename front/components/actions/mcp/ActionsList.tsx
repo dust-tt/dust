@@ -200,6 +200,11 @@ export const AdminActionsList = ({
           )
         );
       },
+      sortingFn: (rowA, rowB) => {
+        return rowA.original.mcpServer.name.localeCompare(
+          rowB.original.mcpServer.name
+        );
+      },
     });
 
     return columns;
