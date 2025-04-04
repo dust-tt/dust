@@ -91,6 +91,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
   ) {
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
+    assert(serverType !== "local", "Local MCP server views are not supported");
+
     return this.makeNew(
       auth,
       {

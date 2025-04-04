@@ -1018,6 +1018,7 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
+  localMCPServerIds: z.array(z.string()).optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -1801,6 +1802,15 @@ export const PostMessageFeedbackResponseSchema = z.object({
   success: z.literal(true),
 });
 
+export const PublicPostMCPResultsRequestBodySchema = z.object({
+  requestId: z.string(),
+  result: z.unknown(),
+});
+
+export type PublicPostMCPResultsRequestBody = z.infer<
+  typeof PublicPostMCPResultsRequestBodySchema
+>;
+
 export const PostUserMessageResponseSchema = z.object({
   message: UserMessageSchema,
 });
@@ -1855,7 +1865,9 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
         configurationId: z.string(),
       })
     ),
-    context: UserMessageContextSchema,
+    context: UserMessageContextSchema.extend({
+      localMCPServerIds: z.array(z.number()).optional().nullable(),
+    }),
   }),
   z
     .object({

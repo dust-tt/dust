@@ -149,19 +149,13 @@ ConversationParticipant.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
-interface LocalMCPServer {
-  id: string;
-  name: string;
-  version: string;
-}
-
 export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare content: string;
 
-  declare localMCPServers: LocalMCPServer[] | null;
+  declare localMCPServerIds: string[];
 
   declare userContextUsername: string;
   declare userContextTimezone: string;
@@ -189,9 +183,10 @@ UserMessage.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
-    localMCPServers: {
-      type: DataTypes.ARRAY(DataTypes.JSONB),
-      allowNull: true,
+    localMCPServerIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
     },
     userContextUsername: {
       type: DataTypes.STRING,

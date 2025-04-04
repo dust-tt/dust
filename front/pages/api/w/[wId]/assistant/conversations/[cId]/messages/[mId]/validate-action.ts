@@ -43,11 +43,6 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversation(auth, cId);
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
   if (req.method !== "POST") {
     return apiError(req, res, {
       status_code: 405,
@@ -58,7 +53,7 @@ async function handler(
     });
   }
 
-  // Validate request body
+  // Validate request body.
   const parseResult = ValidateActionSchema.safeParse(req.body);
   if (!parseResult.success) {
     return apiError(req, res, {
@@ -68,6 +63,11 @@ async function handler(
         message: `Invalid request body: ${parseResult.error.message}`,
       },
     });
+  }
+
+  const conversationRes = await getConversation(auth, cId);
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
   }
 
   const { actionId, approved, paramsHash } = parseResult.data;
@@ -96,7 +96,7 @@ async function handler(
         created: Date.now(),
         actionId: actionId,
         messageId: mId,
-        paramsHash: paramsHash,
+        paramsHash,
       }),
     });
 

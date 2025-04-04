@@ -138,6 +138,10 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     mcpServerId: string;
   }): Promise<Result<MCPServerConnectionResource, DustError>> {
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    assert(
+      serverType !== "local",
+      "Local MCP server connections are not supported"
+    );
 
     const connections = await this.baseFetch(auth, {
       where: {
@@ -204,6 +208,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       workspaceId,
     });
   }
+
   // Serialization.
   toJSON(): MCPServerConnectionType {
     return {

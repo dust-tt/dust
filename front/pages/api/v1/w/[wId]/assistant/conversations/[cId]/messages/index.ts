@@ -3,11 +3,14 @@ import { PublicPostMessagesRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
+import { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import { makeLocalMCPServerStringId } from "@app/lib/api/actions/mcp_local";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { makeSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isEmptyString } from "@app/types";
@@ -105,6 +108,11 @@ async function handler(
         });
       }
 
+      // Create sIds for the local MCP servers.
+      const localMCPServerIds = (context.localMCPServerIds ?? []).map((id) =>
+        makeLocalMCPServerStringId(auth, { serverId: id })
+      );
+
       const messageRes = await postUserMessageWithPubSub(
         auth,
         {
@@ -118,6 +126,7 @@ async function handler(
             email: context.email ?? null,
             profilePictureUrl: context.profilePictureUrl ?? null,
             origin: context.origin ?? "api",
+            localMCPServerIds,
           },
         },
         { resolveAfterFullGeneration: blocking === true }

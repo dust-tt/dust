@@ -262,12 +262,12 @@ export function actionRefsOffset({
   return refsOffset;
 }
 
-export function hashMCPInputParams(params: Record<string, any>): string {
+export function hashMCPInputParams(params: Record<string, unknown>): string {
   if (!params || Object.keys(params).length === 0) {
     params = { query: "" };
   }
 
-  // Sort keys to ensure consistent hashing
+  // Sort keys to ensure consistent hashing.
   const sortedParams = Object.keys(params)
     .sort()
     .reduce(
