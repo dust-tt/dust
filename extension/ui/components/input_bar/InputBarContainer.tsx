@@ -73,17 +73,11 @@ export const InputBarContainer = ({
     []
   );
 
-  const isAttachedFromDataSourceActivated: boolean = false;
-
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     disableAutoFocus,
-    ...(isAttachedFromDataSourceActivated
-      ? {
-          onUrlDetected: handleUrlDetected,
-        }
-      : {}),
+    onUrlDetected: handleUrlDetected,
   });
 
   const sendNotification = useSendNotification();
@@ -112,10 +106,7 @@ export const InputBarContainer = ({
           searchSourceUrls: true,
           includeDataSources: true,
           viewType: "all",
-          disabled:
-            isSpacesLoading ||
-            !nodeOrUrlCandidate ||
-            !isAttachedFromDataSourceActivated,
+          disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
         }
   );
@@ -234,9 +225,6 @@ export const InputBarContainer = ({
               onNodeSelect || ((node) => console.log(`Selected ${node.title}`))
             }
             attachedNodes={attachedNodes}
-            isAttachedFromDataSourceActivated={
-              isAttachedFromDataSourceActivated
-            }
           />
           <AssistantPicker
             owner={owner}
