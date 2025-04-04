@@ -1,7 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   classNames,
-  CommandLineIcon,
   ContentMessage,
   Icon,
   InformationCircleIcon,
@@ -28,6 +27,7 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
+import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
 import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -225,7 +225,7 @@ export function ActionMCP({
           </ContentMessage>
         ) : (
           <>
-            <div className="text-element-700 text-sm">
+            <div className="text-sm text-element-700">
               The agent will execute an{" "}
               <a
                 className="font-bold"
@@ -274,7 +274,11 @@ export function ActionMCP({
                                 customItem={
                                   <div className="flex items-center gap-1 pl-2">
                                     <Icon
-                                      visual={CommandLineIcon}
+                                      visual={
+                                        MCP_SERVER_ICONS[
+                                          mcpServerView.server.icon
+                                        ]
+                                      }
                                       size="md"
                                       className={classNames(
                                         "inline-block flex-shrink-0 align-middle"
@@ -296,7 +300,7 @@ export function ActionMCP({
                                   handleServerSelection(mcpServerView);
                                 }}
                               >
-                                <div className="text-element-700 dark:text-element-700-night ml-10 mt-1 text-sm">
+                                <div className="ml-10 mt-1 text-sm text-element-700 dark:text-element-700-night">
                                   {mcpServerView.server.description}
                                 </div>
                               </RadioGroupCustomItem>

@@ -36,6 +36,7 @@ export const DATA_SOURCE_VIEW_CATEGORIES = [
   "folder",
   "website",
   "apps",
+  "actions",
 ] as const;
 
 export type DataSourceViewCategory =

@@ -13,6 +13,7 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 
+import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 
@@ -190,7 +191,7 @@ export const subNavigationAdmin = ({
         {
           id: "actions",
           label: "Actions",
-          icon: CommandIcon,
+          icon: ACTION_SPECIFICATIONS["MCP"].cardIcon,
           href: `/w/${owner.sId}/actions`,
           current: current === "actions",
           subMenuLabel: current === "actions" ? subMenuLabel : undefined,
