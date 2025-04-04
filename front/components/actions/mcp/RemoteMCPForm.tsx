@@ -4,6 +4,7 @@ import {
   EyeSlashIcon,
   Input,
   Label,
+  Page,
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -107,7 +108,10 @@ export function RemoteMCPForm({
         </div>
       </div>
 
-      <div className="space-y-2">
+      <hr />
+
+      <Page.SectionHeader title="Settings" />
+      <div>
         <Label htmlFor="name">Name</Label>
         <Input
           id="name"

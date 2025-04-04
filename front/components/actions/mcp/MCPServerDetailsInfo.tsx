@@ -126,7 +126,7 @@ export function MCPServerDetailsInfo({
             sharedSecret={sharedSecret}
             isSynchronizing={serverState === "synchronizing"}
           />
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-end gap-2">
             <Button
               label="Save"
               onClick={async (event: Event) => {
@@ -135,6 +135,7 @@ export function MCPServerDetailsInfo({
               }}
             />
           </div>
+          <hr />
         </>
       )}
       <ToolsList tools={mcpServer.tools} />
