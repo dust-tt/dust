@@ -1,7 +1,9 @@
 import { Op } from "sequelize";
 
-import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
-import { getTableConfiguration } from "@app/lib/actions/configuration/table_query";
+import {
+  getTableConfiguration,
+  renderDataSourceConfiguration,
+} from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";

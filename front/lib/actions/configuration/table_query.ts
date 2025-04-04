@@ -3,6 +3,7 @@ import _ from "lodash";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+import { getTableConfiguration } from "@app/lib/actions/configuration/helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import type {
   TableDataSourceConfiguration,
@@ -149,19 +150,4 @@ export async function createTableDataSourceConfiguration(
       );
     })
   );
-}
-
-export function getTableConfiguration(
-  table: AgentTablesQueryConfigurationTable
-): TableDataSourceConfiguration {
-  const { dataSourceView } = table;
-
-  return {
-    dataSourceViewId: DataSourceViewResource.modelIdToSId({
-      id: dataSourceView.id,
-      workspaceId: dataSourceView.workspaceId,
-    }),
-    workspaceId: dataSourceView.workspace.sId,
-    tableId: table.tableId,
-  };
 }
