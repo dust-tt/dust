@@ -311,7 +311,10 @@ export class ConfluenceClient {
   private async request<T>(
     endpoint: string,
     codec: t.Type<T>,
-    retryCount: number = 0
+    {
+      retryCount = 0,
+      bypassThrottle = false,
+    }: { retryCount?: number; bypassThrottle?: boolean } = {}
   ): Promise<T> {
     const response = await (async () => {
       try {
@@ -403,7 +406,10 @@ export class ConfluenceClient {
             delayMs < MAX_RETRY_AFTER_DELAY
           ) {
             await setTimeoutAsync(delayMs);
-            return this.request(endpoint, codec, retryCount + 1);
+            return this.request(endpoint, codec, {
+              retryCount: retryCount + 1,
+              bypassThrottle: bypassThrottle,
+            });
           }
         }
 
@@ -636,7 +642,8 @@ export class ConfluenceClient {
 
     const spaces = await this.request(
       `${this.restApiBaseUrl}/spaces?${params.toString()}`,
-      ConfluencePaginatedResults(ConfluenceSpaceCodec)
+      ConfluencePaginatedResults(ConfluenceSpaceCodec),
+      { bypassThrottle: true }
     );
 
     const nextPageCursor = extractCursorFromLinks(spaces._links);
