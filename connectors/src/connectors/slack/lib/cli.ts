@@ -8,6 +8,7 @@ import {
 } from "@connectors/connectors/slack/lib/utils";
 import { getChannel } from "@connectors/connectors/slack/temporal/activities";
 import {
+  launchSlackGarbageCollectWorkflow,
   launchSlackSyncOneThreadWorkflow,
   launchSlackSyncWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
@@ -324,12 +325,11 @@ export const slack = async ({
         permission: "write",
       });
 
-      const workflowRes = await launchSlackSyncWorkflow(connector.id, null, [
-        channel.slackChannelId,
-      ]);
+      const workflowRes = await launchSlackGarbageCollectWorkflow(connector.id);
       if (workflowRes.isErr()) {
         throw new Error(
-          `Could not launch workflow for channel ${args.channelId}: ${workflowRes.error}`
+          `Could not launch garbage collect workflow for channel ${args.channelId}: ` +
+            `${workflowRes.error}`
         );
       }
 
