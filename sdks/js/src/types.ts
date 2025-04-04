@@ -2652,6 +2652,19 @@ export const GetSpacesResponseSchema = z.object({
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
+const ValidateActionResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type ValidateActionResponseType = z.infer<
+  typeof ValidateActionResponseSchema
+>;
+
+export const ValidateActionRequestBodySchema = z.object({
+  actionId: z.number(),
+  approved: z.boolean(),
+});
+
 export const ContentNodeTypeSchema = z.union([
   z.literal("document"),
   z.literal("table"),
