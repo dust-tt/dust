@@ -105,12 +105,14 @@ export class InternalMCPServerInMemoryResource {
       },
     });
 
-    await Promise.all(
-      mcpServerViews.map(async (mcpServerView) => {
+    await concurrentExecutor(
+      mcpServerViews,
+      async (mcpServerView) => {
         await destroyMCPServerViewDependencies(auth, {
           mcpServerViewId: mcpServerView.id,
         });
-      })
+      },
+      { concurrency: 10 }
     );
 
     await MCPServerView.destroy({

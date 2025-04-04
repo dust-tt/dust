@@ -23,6 +23,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
 import { Ok, removeNulls } from "@app/types";
 
@@ -167,14 +168,17 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       },
     });
 
-    await Promise.all(
-      mcpServerViews.map(async (mcpServerView) => {
+    await concurrentExecutor(
+      mcpServerViews,
+      async (mcpServerView) => {
         await destroyMCPServerViewDependencies(auth, {
           mcpServerViewId: mcpServerView.id,
         });
-      })
+      },
+      { concurrency: 10 }
     );
-    // Directly delete the DataSourceViewModel here to avoid a circular dependency.
+
+    // Directly delete the MCPServerView here to avoid a circular dependency.
     await MCPServerView.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
