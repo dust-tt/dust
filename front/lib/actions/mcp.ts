@@ -30,6 +30,8 @@ import type {
   Result,
 } from "@app/types";
 import { Ok } from "@app/types";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { isDefaultInternalMCPServer, isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 
 export type MCPServerConfigurationType = {
   id: ModelId;
@@ -282,111 +284,115 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       action: mcpAction,
     };
 
-    yield {
-      type: "tool_approve_execution",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      action: mcpAction,
-      inputs: rawInputs,
-    };
-
-    try {
-      const actionEventGenerator = getMCPEvents({
-        actionId: mcpAction.id,
-      });
-
-      let status = "none";
-      localLogger.info("Waiting for action validation");
-
-      // Start listening for action events
-      for await (const event of actionEventGenerator) {
-        const { data } = event;
-
-        if (data.type === "action_approved" && data.actionId === mcpAction.id) {
-          status = "approved";
-          break;
-        } else if (
-          data.type === "action_rejected" &&
-          data.actionId === mcpAction.id
-        ) {
-          status = "rejected";
-          break;
-        }
-      }
-
-      // The action timed-out, status was not updated
-      if (status === "none") {
-        localLogger.info("Action validation timed out");
-
-        // We yield a tool success, with a message that the action timed out
-        yield {
-          type: "tool_success",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          action: new MCPActionType({
-            ...actionBaseParams,
-            executionState: "denied",
-            id: action.id,
-            isError: false,
-            output: [
-              {
-                type: "text",
-                text:
-                  "The action validation timed out. " +
-                  "Using this action is hence forbidden for this message.",
-              },
-            ],
-            type: "tool_action",
-          }),
-        };
-        return;
-      }
-
-      if (status === "rejected") {
-        localLogger.info("Action execution rejected by user");
-
-        // Yield a tool success, with a message that the action was rejected.
-        yield {
-          type: "tool_success",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          action: new MCPActionType({
-            ...actionBaseParams,
-            executionState: "denied",
-            id: action.id,
-            isError: false,
-            output: [
-              {
-                type: "text",
-                text:
-                  "The user rejected this specific action execution. " +
-                  "Using this action is hence forbidden for this message.",
-              },
-            ],
-            type: "tool_action",
-          }),
-        };
-        return;
-      }
-
-      localLogger.info("Proceeding with action execution after validation");
-    } catch (error) {
-      localLogger.error({ error }, "Error checking action validation status");
-
+    let status: "allowed_implicitly" | "allowed_explicitly" | "pending" | "denied" = "pending";
+    if (isInternalMCPServerName(actionConfiguration.name) && isDefaultInternalMCPServer(actionConfiguration.name)) {
+      status = "allowed_implicitly";
+    } else {
       yield {
-        type: "tool_error",
+        type: "tool_approve_execution",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        error: {
-          code: "tool_error",
-          message: `Error checking action validation status: ${JSON.stringify(error)}`,
-        },
+        action: mcpAction,
+        inputs: rawInputs,
       };
-      return;
+
+      try {
+        const actionEventGenerator = getMCPEvents({
+          actionId: mcpAction.id,
+        });
+
+        localLogger.info("Waiting for action validation");
+
+        // Start listening for action events
+        for await (const event of actionEventGenerator) {
+          const { data } = event;
+
+          if (data.type === "action_approved" && data.actionId === mcpAction.id) {
+            status = "allowed_explicitly";
+            break;
+          } else if (
+            data.type === "action_rejected" &&
+            data.actionId === mcpAction.id
+          ) {
+            status = "denied";
+            break;
+          }
+        }
+
+        // The action timed-out, status was not updated
+        if (status === "pending") {
+          localLogger.info("Action validation timed out");
+
+          // Yield a tool success, with a message that the action timed out
+          yield {
+            type: "tool_success",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            action: new MCPActionType({
+              ...actionBaseParams,
+              executionState: "denied",
+              id: action.id,
+              isError: false,
+              output: [
+                {
+                  type: "text",
+                  text:
+                    "The action validation timed out. " +
+                    "Using this action is hence forbidden for this message.",
+                },
+              ],
+              type: "tool_action",
+            }),
+          };
+          return;
+        }
+
+        if (status === "denied") {
+          localLogger.info("Action execution rejected by user");
+
+          // Yield a tool success, with a message that the action was rejected.
+          yield {
+            type: "tool_success",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            action: new MCPActionType({
+              ...actionBaseParams,
+              executionState: "denied",
+              id: action.id,
+              isError: false,
+              output: [
+                {
+                  type: "text",
+                  text:
+                    "The user rejected this specific action execution. " +
+                    "Using this action is hence forbidden for this message.",
+                },
+              ],
+              type: "tool_action",
+            }),
+          };
+          return;
+        }
+
+        localLogger.info("Proceeding with action execution after validation");
+      } catch (error) {
+        localLogger.error({ error }, "Error checking action validation status");
+
+        yield {
+          type: "tool_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "tool_error",
+            message: `Error checking action validation status: ${JSON.stringify(error)}`,
+          },
+        };
+        return;
+      }
     }
 
     // We put back the preconfigured inputs (data sources for instance) from the agent configuration if any.
@@ -442,7 +448,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       messageId: agentMessage.sId,
       action: new MCPActionType({
         ...actionBaseParams,
-        executionState: "allowed_explicitly",
+        executionState: status,
         id: action.id,
         isError: false,
         output: content,
