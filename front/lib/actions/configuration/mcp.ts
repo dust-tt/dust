@@ -125,6 +125,7 @@ export async function fetchMCPServerActionConfigurations(
         description: metadata.description,
         mcpServerViewId: mcpServerView.sId,
         dataSources: dataSourceConfigurations.map(getDataSource),
+        tables: null,
       });
     }
   }
