@@ -977,6 +977,28 @@ const ContentFragmentContextSchema = z.object({
   profilePictureUrl: z.string().optional().nullable(),
 });
 
+export const ContentNodeTypeSchema = z.union([
+  z.literal("document"),
+  z.literal("table"),
+  z.literal("folder"),
+]);
+
+export const ContentNodesViewTypeSchema = z.union([
+  z.literal("table"),
+  z.literal("document"),
+  z.literal("all"),
+]);
+
+export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
+
+const ContentFragmentNodeData = z.object({
+  nodeId: z.string(),
+  nodeDataSourceViewId: z.string(),
+  nodeType: ContentNodeTypeSchema,
+  provider: ConnectorProvidersSchema.nullable(),
+  spaceName: z.string(),
+});
+
 const ContentFragmentSchema = z.object({
   id: ModelIdSchema,
   sId: z.string(),
@@ -996,6 +1018,7 @@ const ContentFragmentSchema = z.object({
     z.literal("latest"),
     z.literal("superseded"),
   ]),
+  contentNodeData: ContentFragmentNodeData.nullable(),
 });
 export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
@@ -2652,20 +2675,6 @@ export const GetSpacesResponseSchema = z.object({
 });
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
-
-export const ContentNodeTypeSchema = z.union([
-  z.literal("document"),
-  z.literal("table"),
-  z.literal("folder"),
-]);
-
-export const ContentNodesViewTypeSchema = z.union([
-  z.literal("table"),
-  z.literal("document"),
-  z.literal("all"),
-]);
-
-export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
 
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,
