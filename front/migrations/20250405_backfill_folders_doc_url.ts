@@ -30,14 +30,14 @@ makeScript({}, async ({ execute }, logger) => {
     if (execute) {
       await coreSequelize.query(
         `UPDATE data_sources_nodes dsn
-         SET dsn.source_url = NULL
+         SET source_url = NULL
          FROM (
-          SELECT UNNEST(ARRAY [:sourceUrlSuffixes]::text[]) AS source_url_suffix
+          SELECT UNNEST(ARRAY [:source_url_suffixes]::text[]) AS source_url_suffix
          ) unnested
          WHERE dsn.source_url LIKE unnested.source_url_suffix`,
         {
           replacements: {
-            sourceUrlSuffix: batch.map((s) => `%${s}`),
+            source_url_suffixes: batch.map((s) => `%${s}`),
           },
         }
       );
