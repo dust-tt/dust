@@ -440,6 +440,7 @@ export class ConfluenceClient {
         endpoint,
         statusCode: response.status,
       });
+
       throw new ConfluenceClientError(
         `Near rate limit: ${this.apiUrl}${endpoint}`,
         {
