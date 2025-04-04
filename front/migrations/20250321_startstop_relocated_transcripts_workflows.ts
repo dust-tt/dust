@@ -5,6 +5,8 @@ import {
   startActiveLabsWorkflows,
 } from "@app/lib/api/labs";
 import { Authenticator } from "@app/lib/auth";
+import { Workspace } from "@app/lib/models/workspace";
+import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { makeScript } from "@app/scripts/helpers";
 import type { Result } from "@app/types";
 
@@ -58,9 +60,25 @@ makeScript(
       throw new Error('Action must be either "start" or "stop"');
     }
 
-    const ids = workspaceIds.split(",").map((id) => id.trim());
+    let workspaceIdsArray: string[] = [];
 
-    for (const workspaceId of ids) {
+    if (workspaceIds === "all") {
+      const labsConfigs = await LabsTranscriptsConfigurationModel.findAll({
+        include: [
+          {
+            model: Workspace,
+            attributes: ["sId"],
+          },
+        ],
+      });
+      workspaceIdsArray = labsConfigs.map(
+        (labsConfig) => labsConfig.workspace.sId
+      );
+    } else {
+      workspaceIdsArray = workspaceIds.split(",").map((id) => id.trim());
+    }
+
+    for (const workspaceId of workspaceIdsArray) {
       await actionWorkflowsForWorkspace(workspaceId, logger, execute, action);
     }
   }
