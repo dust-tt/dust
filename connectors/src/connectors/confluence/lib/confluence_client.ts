@@ -246,7 +246,7 @@ function logRateLimitHeaders(
       rateLimitHeaders,
       ...loggerArgs,
     },
-    "[Confluence] Rate limit information provided by Confluence"
+    "[Confluence] Headers relative to the rate limit"
   );
 }
 
