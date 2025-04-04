@@ -93,7 +93,7 @@ export function isTextExtractionSupportedContentType(
 }
 
 const DEFAULT_HANDLER = "text";
-const DEFAULT_TIMEOUT_IN_MS = 300000;
+const DEFAULT_TIMEOUT_IN_MS = 60000;
 
 export class TextExtraction {
   constructor(
@@ -129,15 +129,38 @@ export class TextExtraction {
     fileStream: Readable,
     contentType: SupportedContentTypes
   ): Promise<Readable> {
-    const response = await fetch(`${this.url}/tika/`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": contentType,
-        ...this.getAdditionalHeaders(),
-      },
-      body: Readable.toWeb(fileStream),
-      duplex: "half",
-    } as RequestInitWithDuplex);
+    const response = await withRetries(
+      this.options.logger,
+      ({
+        url,
+        additionalHeaders,
+        contentType,
+        fileStream,
+      }: {
+        url: string;
+        additionalHeaders: HeadersInit;
+        contentType: SupportedContentTypes;
+        fileStream: Readable;
+      }) =>
+        fetch(`${url}/tika/`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": contentType,
+            ...additionalHeaders,
+          },
+          body: Readable.toWeb(fileStream),
+          duplex: "half",
+        } as RequestInitWithDuplex),
+      {
+        retries: 3,
+        delayBetweenRetriesMs: 1000,
+      }
+    )({
+      url: this.url,
+      additionalHeaders: this.getAdditionalHeaders(),
+      contentType,
+      fileStream,
+    });
 
     if (!response.body) {
       throw new Error("Response body is null");
