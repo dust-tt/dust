@@ -1200,15 +1200,13 @@ export async function createAgentActionConfiguration(
           { transaction: t }
         );
 
-        let agentDataSourcesConfigurations = null;
         if (action.dataSources) {
-          agentDataSourcesConfigurations =
-            await _createAgentDataSourcesConfigData(auth, t, {
-              dataSourceConfigurations: action.dataSources,
-              retrievalConfigurationId: null,
-              processConfigurationId: null,
-              mcpConfigurationId: mcpConfig.id,
-            });
+          await _createAgentDataSourcesConfigData(auth, t, {
+            dataSourceConfigurations: action.dataSources,
+            retrievalConfigurationId: null,
+            processConfigurationId: null,
+            mcpConfigurationId: mcpConfig.id,
+          });
         }
 
         return new Ok({
@@ -1218,7 +1216,7 @@ export async function createAgentActionConfiguration(
           name: action.name,
           description: action.description,
           mcpServerViewId: action.mcpServerViewId,
-          dataSourceConfigurations: agentDataSourcesConfigurations,
+          dataSources: action.dataSources,
         });
       });
     }
