@@ -9,6 +9,7 @@ import {
   DialogTrigger,
   Input,
   Label,
+  PlusIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -55,7 +56,7 @@ export function CreateRemoteMCPServerModal({
 
     setIsCreating(true);
     try {
-      const result = await createWithUrlSync(url);
+      const result = await createWithUrlSync(url, true);
       await mutateMCPServers();
 
       if (result.success) {
@@ -85,7 +86,7 @@ export function CreateRemoteMCPServerModal({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button label="Add MCP Server" />
+        <Button icon={PlusIcon} label="Add MCP Server" />
       </DialogTrigger>
       <DialogContent size="lg">
         <DialogHeader>

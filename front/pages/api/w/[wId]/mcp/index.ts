@@ -14,6 +14,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -32,10 +33,12 @@ const PostQueryParamsSchema = t.union([
   t.type({
     serverType: t.literal("remote"),
     url: t.string,
+    includeGlobal: t.union([t.boolean, t.undefined]),
   }),
   t.type({
     serverType: t.literal("internal"),
     name: t.string,
+    includeGlobal: t.union([t.boolean, t.undefined]),
   }),
 ]);
 
@@ -135,6 +138,16 @@ async function handler(
           cachedTools: metadata.tools,
         });
 
+        if (body.includeGlobal) {
+          const globalSpace =
+            await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+          await MCPServerViewResource.create(auth, {
+            mcpServerId: newRemoteMCPServer.sId,
+            space: globalSpace,
+          });
+        }
+
         return res.status(201).json({
           success: true,
           server: {
@@ -178,6 +191,16 @@ async function handler(
 
         const newInternalMCPServer =
           await InternalMCPServerInMemoryResource.makeNew(auth, name);
+
+        if (body.includeGlobal) {
+          const globalSpace =
+            await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+          await MCPServerViewResource.create(auth, {
+            mcpServerId: newInternalMCPServer.id,
+            space: globalSpace,
+          });
+        }
 
         return res.status(201).json({
           success: true,

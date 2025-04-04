@@ -55,10 +55,10 @@ const Cell = ({ owner, row }: CellProps) => {
 
   const enabled = mcpServerView !== undefined;
   return (
-    <DataTable.CellContent>
+    <DataTable.CellContent grow>
       <div
         className={classNames(
-          "flex flex-row items-center gap-2 py-3 [&&_*]:grow-0",
+          "flex flex-row items-center gap-2 py-3",
           mcpServerView ? "" : "opacity-50"
         )}
       >
@@ -69,7 +69,7 @@ const Cell = ({ owner, row }: CellProps) => {
             )}
           />
         </div>
-        <div className="flex items-center justify-between overflow-hidden truncate [&&&]:flex-grow">
+        <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
           <div className="flex flex-col gap-1">
             <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
               {mcpServer.name}
@@ -120,7 +120,7 @@ const Cell = ({ owner, row }: CellProps) => {
                   if (enabled) {
                     await deleteServer(mcpServer.id);
                   } else {
-                    await createInternalMCPServer(mcpServer.name);
+                    await createInternalMCPServer(mcpServer.name, true);
                   }
                   setLoading(false);
                 }}
@@ -187,8 +187,18 @@ export const AdminActionsList = ({
       cell: (info: CellContext<RowData, string>) => (
         <Cell row={info.row.original} owner={owner} />
       ),
-      meta: {
-        className: "[&_*]:flex-grow",
+      filterFn: (row, id, filterValue) => {
+        return (
+          row.original.mcpServer.name
+            .toLowerCase()
+            .includes(filterValue.toLowerCase()) ||
+          row.original.mcpServer.description
+            .toLowerCase()
+            .includes(filterValue.toLowerCase()) ||
+          row.original.mcpServer.tools.some((tool) =>
+            tool.name.toLowerCase().includes(filterValue.toLowerCase())
+          )
+        );
       },
     });
 
