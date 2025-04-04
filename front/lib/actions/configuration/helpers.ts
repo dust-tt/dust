@@ -13,7 +13,7 @@ import { makeSId } from "@app/lib/resources/string_ids";
 
 export function renderRetrievalTimeframeType(
   action: AgentRetrievalConfiguration | AgentProcessConfiguration
-) {
+): RetrievalTimeframe {
   let timeframe: RetrievalTimeframe = "auto";
   if (
     action.relativeTimeFrame === "custom" &&
