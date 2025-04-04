@@ -44,6 +44,10 @@ export const AuthorizationInfo = ({
             This action has been successfully authenticated with{" "}
             {OAUTH_PROVIDER_NAMES[authorization.provider]}.
           </Label>
+          <span className="w-full font-semibold text-red-500">
+            Authentication credentials is shared by all users of this workspace
+            when they use this action.
+          </span>
           <Button
             variant="warning"
             disabled={isConnectionsLoading}
@@ -59,9 +63,13 @@ export const AuthorizationInfo = ({
         </div>
       ) : (
         <div className="flex flex-col items-center gap-2">
-          <span className="w-full">
+          <Label className="self-start">
             This action requires authentication with{" "}
             {OAUTH_PROVIDER_NAMES[authorization.provider]}.
+          </Label>
+          <span className="w-full font-semibold text-red-500">
+            Authentication credentials will be shared by all users of this
+            workspace when they use this action.
           </span>
           <Button
             variant="outline"
