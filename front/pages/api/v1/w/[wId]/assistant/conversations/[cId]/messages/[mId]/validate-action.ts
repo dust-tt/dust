@@ -1,8 +1,5 @@
-import type {
-  ValidateActionResponseType} from "@dust-tt/client";
-import {
-  ValidateActionRequestBodySchema
-} from "@dust-tt/client";
+import type { ValidateActionResponseType } from "@dust-tt/client";
+import { ValidateActionRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
