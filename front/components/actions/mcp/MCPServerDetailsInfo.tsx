@@ -7,7 +7,7 @@ import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import {
   useRemoteMCPForm,
   validateFormState,
-} from "@app/components/actions/mcp/useRemoteMCPForm";
+} from "@app/hooks/useRemoteMCPForm";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import {
