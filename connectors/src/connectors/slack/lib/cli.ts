@@ -1,4 +1,7 @@
-import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
+import {
+  joinChannel,
+  updateSlackChannelInConnectorsDb,
+} from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
@@ -283,6 +286,103 @@ export const slack = async ({
         sourceUrl: getSlackChannelSourceUrl(args.channelId, slackConfiguration),
         providerVisibility: channel.private ? "private" : "public",
       });
+      return { success: true };
+    }
+
+    case "remove-channel-from-sync": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.channelId) {
+        throw new Error("Missing --channelId argument");
+      }
+      const connector = await ConnectorModel.findOne({
+        where: { workspaceId: `${args.wId}`, type: "slack" },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      const remoteChannel = await getChannel(connector.id, args.channelId);
+      if (!remoteChannel.name) {
+        throw new Error(
+          `Could not find channel name for channel ${args.channelId}`
+        );
+      }
+
+      const channel = await SlackChannel.findOne({
+        where: {
+          connectorId: connector.id,
+          slackChannelId: args.channelId,
+        },
+      });
+      if (!channel) {
+        throw new Error(`Could not find channel ${args.channelId} in database`);
+      }
+
+      await channel.update({
+        permission: "write",
+      });
+
+      const workflowRes = await launchSlackSyncWorkflow(connector.id, null, [
+        channel.slackChannelId,
+      ]);
+      if (workflowRes.isErr()) {
+        throw new Error(
+          `Could not launch workflow for channel ${args.channelId}: ${workflowRes.error}`
+        );
+      }
+
+      return { success: true };
+    }
+
+    case "add-channel-to-sync": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.channelId) {
+        throw new Error("Missing --channelId argument");
+      }
+      const connector = await ConnectorModel.findOne({
+        where: { workspaceId: `${args.wId}`, type: "slack" },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      const remoteChannel = await getChannel(connector.id, args.channelId);
+      if (!remoteChannel.name) {
+        throw new Error(
+          `Could not find channel name for channel ${args.channelId}`
+        );
+      }
+
+      const joinRes = await joinChannel(connector.id, args.channelId);
+      if (joinRes.isErr()) {
+        throw new Error(
+          `Could not join channel ${args.channelId}: ${joinRes.error}`
+        );
+      }
+
+      const channel = await updateSlackChannelInConnectorsDb({
+        slackChannelId: args.channelId,
+        slackChannelName: remoteChannel.name,
+        connectorId: connector.id,
+        createIfNotExistsWithParams: {
+          permission: "read_write",
+          private: !!remoteChannel.is_private,
+        },
+      });
+
+      const workflowRes = await launchSlackSyncWorkflow(connector.id, null, [
+        channel.slackId,
+      ]);
+      if (workflowRes.isErr()) {
+        throw new Error(
+          `Could not launch workflow for channel ${args.channelId}: ${workflowRes.error}`
+        );
+      }
+
       return { success: true };
     }
 
