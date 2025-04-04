@@ -1,4 +1,10 @@
-import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getResourceNameAndIdFromSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
+import type { ModelId } from "@app/types";
 
 export const getServerTypeAndIdFromSId = (
   mcpServerId: string
@@ -23,4 +29,30 @@ export const getServerTypeAndIdFromSId = (
         `Invalid MCP server ID: ${mcpServerId} resourceName: ${resourceName}`
       );
   }
+};
+
+export const internalMCPServerNameToSId = ({
+  name,
+  workspaceId,
+}: {
+  name: InternalMCPServerNameType;
+  workspaceId: ModelId;
+}): string => {
+  return makeSId("internal_mcp_server", {
+    id: INTERNAL_MCP_SERVERS[name].id,
+    workspaceId,
+  });
+};
+
+export const remoteMCPServerNameToSId = ({
+  remoteMCPServerId,
+  workspaceId,
+}: {
+  remoteMCPServerId: ModelId;
+  workspaceId: ModelId;
+}): string => {
+  return makeSId("remote_mcp_server", {
+    id: remoteMCPServerId,
+    workspaceId,
+  });
 };

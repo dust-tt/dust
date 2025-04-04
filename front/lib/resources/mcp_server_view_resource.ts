@@ -7,17 +7,26 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { isValidInternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
+import {
+  getServerTypeAndIdFromSId,
+  internalMCPServerNameToSId,
+  remoteMCPServerNameToSId,
+} from "@app/lib/actions/mcp_helper";
+import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
+import { isValidInternalMCPServerId } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  AVAILABLE_INTERNAL_MCPSERVER_NAMES,
+  isDefaultInternalMCPServer,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -80,7 +89,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
 
     if (blob.internalMCPServerId) {
       assert(
-        isValidInternalMCPServerId(auth, blob.internalMCPServerId),
+        isValidInternalMCPServerId(
+          auth.getNonNullableWorkspace().id,
+          blob.internalMCPServerId
+        ),
         "Invalid internal MCP server ID"
       );
     }
@@ -286,11 +298,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
-    // Delete agent configurations elements pointing to this data source view.
-    await AgentMCPServerConfiguration.destroy({
-      where: {
-        mcpServerViewId: this.id,
-      },
+    await destroyMCPServerViewDependencies(auth, {
+      mcpServerViewId: this.id,
       transaction,
     });
 
@@ -357,8 +366,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
         throw new Error("This MCP server view is missing a remote server ID");
       }
 
-      return RemoteMCPServerResource.modelIdToSId({
-        id: this.remoteMCPServerId,
+      return remoteMCPServerNameToSId({
+        remoteMCPServerId: this.remoteMCPServerId,
         workspaceId: this.workspaceId,
       });
     } else if (this.serverType === "internal") {
@@ -371,6 +380,78 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       return this.internalMCPServerId;
     } else {
       assertNever(this.serverType);
+    }
+  }
+
+  static async ensureAllDefaultActionsAreCreated(auth: Authenticator) {
+    const names = AVAILABLE_INTERNAL_MCPSERVER_NAMES;
+
+    const defaultInternalMCPServerIds: string[] = [];
+    for (const name of names) {
+      const isEnabled = await isEnabledForWorkspace(auth, name);
+      const isDefault = isDefaultInternalMCPServer(name);
+
+      if (isEnabled && isDefault) {
+        defaultInternalMCPServerIds.push(
+          internalMCPServerNameToSId({
+            name,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          })
+        );
+      }
+    }
+
+    // Get system and global spaces
+    const spaces = await SpaceResource.listWorkspaceDefaultSpaces(auth);
+
+    // There should be MCPServerView for theses ids both in system and global spaces
+    const views = await MCPServerView.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        serverType: "internal",
+        internalMCPServerId: {
+          [Op.in]: defaultInternalMCPServerIds,
+        },
+        vaultId: { [Op.in]: spaces.map((s) => s.id) },
+      },
+    });
+
+    // Quick check : there should be 2 views for each default internal mcp server (ensured by unique constraint), if so
+    // no need to check further
+    if (views.length !== defaultInternalMCPServerIds.length * 2) {
+      const systemSpace = spaces.find((s) => s.isSystem());
+      const globalSpace = spaces.find((s) => s.isGlobal());
+
+      if (!systemSpace || !globalSpace) {
+        throw new Error(
+          "System or global space not found. Should never happen."
+        );
+      }
+
+      // Create the missing views
+      for (const id of defaultInternalMCPServerIds) {
+        // Check if exists in system space.
+        const isInSystemSpace = views.some(
+          (v) => v.internalMCPServerId === id && v.vaultId === systemSpace.id
+        );
+        if (!isInSystemSpace) {
+          await MCPServerViewResource.create(auth, {
+            mcpServerId: id,
+            space: systemSpace,
+          });
+        }
+
+        // Check if exists in global space.
+        const isInGlobalSpace = views.some(
+          (v) => v.internalMCPServerId === id && v.vaultId === globalSpace.id
+        );
+        if (!isInGlobalSpace) {
+          await MCPServerViewResource.create(auth, {
+            mcpServerId: id,
+            space: globalSpace,
+          });
+        }
+      }
     }
   }
 
