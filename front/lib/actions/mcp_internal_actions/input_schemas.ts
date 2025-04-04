@@ -68,8 +68,10 @@ function generateConfiguredInput({
       return (
         actionConfiguration.dataSources?.map((config) => {
           if (!config.sId) {
+            // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
+            // TODO(mcp): improve typing wrt this.
             throw new Error(
-              "Unexpected: data source configuration without an sId."
+              "Unreachable: data source configuration without an sId."
             );
           }
           return {
