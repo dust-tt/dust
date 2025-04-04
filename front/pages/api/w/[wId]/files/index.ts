@@ -23,6 +23,7 @@ const FileUploadUrlRequestSchema = t.type({
     t.literal("conversation"),
     t.literal("avatar"),
     t.literal("upsert_document"),
+    t.literal("folders_document"),
     t.literal("upsert_table"),
   ]),
   useCaseMetadata: t.union([t.undefined, t.type({ conversationId: t.string })]),

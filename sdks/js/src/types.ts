@@ -2482,7 +2482,13 @@ const FileTypeStatusSchema = FlexibleEnumSchema<
 >();
 
 const FileTypeUseCaseSchema = FlexibleEnumSchema<
-  "conversation" | "avatar" | "tool_output" | "upsert_document" | "upsert_table"
+  | "conversation"
+  | "avatar"
+  | "tool_output"
+  | "upsert_document"
+  | "upsert_table"
+  // See also front/types/files.ts.
+  | "folders_document"
 >();
 
 export const FileTypeSchema = z.object({

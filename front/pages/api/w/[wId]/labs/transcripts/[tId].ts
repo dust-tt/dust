@@ -12,7 +12,7 @@ import { apiError } from "@app/logger/withlogging";
 import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
-} from "@app/temporal/labs/client";
+} from "@app/temporal/labs/transcripts/client";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
 
