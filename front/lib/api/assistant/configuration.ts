@@ -66,7 +66,6 @@ import type {
   AgentsGetViewType,
   AgentStatus,
   LightAgentConfigurationType,
-  ModelId,
   Result,
   WorkspaceType,
 } from "@app/types";
@@ -1012,9 +1011,9 @@ export async function createAgentActionConfiguration(
         );
         await createAgentDataSourcesConfigData(auth, t, {
           dataSourceConfigurations: action.dataSources,
-          retrievalConfigurationId: retrievalConfig.id,
-          processConfigurationId: null,
-          mcpConfigurationId: null,
+          retrievalConfiguration: retrievalConfig,
+          processConfiguration: null,
+          mcpServerConfiguration: null,
         });
 
         return new Ok({
@@ -1102,9 +1101,9 @@ export async function createAgentActionConfiguration(
         );
         await createAgentDataSourcesConfigData(auth, t, {
           dataSourceConfigurations: action.dataSources,
-          retrievalConfigurationId: null,
-          processConfigurationId: processConfig.id,
-          mcpConfigurationId: null,
+          retrievalConfiguration: null,
+          processConfiguration: processConfig,
+          mcpServerConfiguration: null,
         });
 
         return new Ok({
@@ -1202,9 +1201,9 @@ export async function createAgentActionConfiguration(
         if (action.dataSources) {
           await createAgentDataSourcesConfigData(auth, t, {
             dataSourceConfigurations: action.dataSources,
-            retrievalConfigurationId: null,
-            processConfigurationId: null,
-            mcpConfigurationId: mcpConfig.id,
+            retrievalConfiguration: null,
+            processConfiguration: null,
+            mcpServerConfiguration: mcpConfig,
           });
         }
         // Creating the AgentTablesQueryConfigurationTable if configured
@@ -1245,14 +1244,14 @@ async function createAgentDataSourcesConfigData(
   t: Transaction,
   {
     dataSourceConfigurations,
-    retrievalConfigurationId,
-    processConfigurationId,
-    mcpConfigurationId,
+    retrievalConfiguration,
+    processConfiguration,
+    mcpServerConfiguration,
   }: {
     dataSourceConfigurations: DataSourceConfiguration[];
-    retrievalConfigurationId: ModelId | null;
-    processConfigurationId: ModelId | null;
-    mcpConfigurationId: ModelId | null;
+    retrievalConfiguration: AgentRetrievalConfiguration | null;
+    processConfiguration: AgentProcessConfiguration | null;
+    mcpServerConfiguration: AgentMCPServerConfiguration | null;
   }
 ): Promise<AgentDataSourceConfiguration[]> {
   const owner = auth.getNonNullableWorkspace();
@@ -1303,10 +1302,10 @@ async function createAgentDataSourcesConfigData(
             dataSourceId: dataSourceView.dataSource.id,
             parentsIn: dsConfig.filter.parents?.in,
             parentsNotIn: dsConfig.filter.parents?.not,
-            retrievalConfigurationId: retrievalConfigurationId,
-            processConfigurationId: processConfigurationId,
+            retrievalConfigurationId: retrievalConfiguration?.id || null,
+            processConfigurationId: processConfiguration?.id || null,
             dataSourceViewId: dataSourceView.id,
-            mcpServerConfigurationId: mcpConfigurationId,
+            mcpServerConfigurationId: mcpServerConfiguration?.id || null,
             tagsMode,
             tagsIn,
             tagsNotIn,
