@@ -12,6 +12,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   BaseActionRunParams,
   ExtractActionBlob,
@@ -47,7 +48,8 @@ export type MCPServerConfigurationType = {
   description: string | null;
 
   dataSources: DataSourceConfiguration[] | null;
-  // TODO(mcp): add other kind of configurations here such as table query.
+  tables: TableDataSourceConfiguration[] | null;
+  // TODO(mcp): add other kinds of configurations here.
 };
 
 export type MCPToolConfigurationType = Omit<

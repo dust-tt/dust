@@ -489,6 +489,7 @@ export async function createOrUpgradeAgentConfiguration({
           name: action.name,
           description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
           dataSources: action.dataSources,
+          tables: action.tables,
         },
         agentConfigurationRes.value
       );

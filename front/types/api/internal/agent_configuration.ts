@@ -144,6 +144,16 @@ const MCPServerActionConfigurationSchema = t.type({
       })
     ),
   ]),
+  tables: t.union([
+    t.null,
+    t.array(
+      t.type({
+        dataSourceViewId: t.string,
+        tableId: t.string,
+        workspaceId: t.string,
+      })
+    ),
+  ]),
 });
 
 const ProcessActionConfigurationSchema = t.type({
