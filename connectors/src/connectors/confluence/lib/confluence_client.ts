@@ -237,6 +237,10 @@ function logRateLimitHeaders(
     }
   });
 
+  if (Object.keys(rateLimitHeaders).length === 0) {
+    return;
+  }
+
   logger.info(
     {
       rateLimitHeaders,
