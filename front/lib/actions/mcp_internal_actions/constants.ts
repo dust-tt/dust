@@ -18,12 +18,12 @@ export const INTERNAL_MCP_SERVERS: Record<
   helloworld: {
     id: 1,
     isDefault: true,
-    flag: null,
+    flag: "mcp_actions",
   },
   "data-source-utils": {
     id: 2,
     isDefault: false,
-    flag: null,
+    flag: "mcp_actions",
   },
 };
 

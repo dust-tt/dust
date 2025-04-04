@@ -401,6 +401,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       }
     }
 
+    if (defaultInternalMCPServerIds.length === 0) {
+      return;
+    }
+
+    // TODO(mcp): Think this through and determine how / when we create the default internal mcp server views
+    // For now, only admins can create the default internal mcp server views otherwise, we would have an assert error
+    if (!auth.isAdmin()) {
+      return;
+    }
+
     // Get system and global spaces
     const spaces = await SpaceResource.listWorkspaceDefaultSpaces(auth);
 
