@@ -15,6 +15,38 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 
+async function getMCPServerMetadata(
+  auth: Authenticator,
+  { mcpServerView }: { mcpServerView: MCPServerViewResource }
+): Promise<MCPServerType> {
+  if (mcpServerView.serverType === "remote") {
+    const remoteMCPServer = mcpServerView.getRemoteMCPServer();
+
+    // Note: this won't attempt to connect to remote servers and will use the cached metadata.
+    return remoteMCPServer.toJSON();
+  } else if (mcpServerView.serverType === "internal") {
+    if (!mcpServerView.internalMCPServerId) {
+      throw new Error(
+        `Internal MCP server ID is required for internal server type.`
+      );
+    }
+
+    const internalMCPServer = await InternalMCPServerInMemoryResource.fetchById(
+      auth,
+      mcpServerView.internalMCPServerId
+    );
+    if (!internalMCPServer) {
+      throw new Error(
+        `Internal MCP server with ID ${mcpServerView.internalMCPServerId} not found.`
+      );
+    }
+
+    return internalMCPServer.toJSON();
+  } else {
+    assertNever(mcpServerView.serverType);
+  }
+}
+
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
   {
@@ -103,41 +135,13 @@ export async function fetchMCPServerActionConfigurations(
       auth,
       mcpServerViewId
     );
-
     if (!mcpServerView) {
       throw new Error(
         `MCPServerView with mcpServerViewId ${mcpServerViewId} not found.`
       );
     }
 
-    let metadata: MCPServerType;
-    if (mcpServerView.serverType === "remote") {
-      const remoteMCPServer = mcpServerView.getRemoteMCPServer();
-
-      // Note: this won't attempt to connect to remote servers and will use the cached metadata.
-      metadata = remoteMCPServer.toJSON();
-    } else if (mcpServerView.serverType === "internal") {
-      if (!mcpServerView.internalMCPServerId) {
-        throw new Error(
-          `Internal MCP server ID is required for internal server type.`
-        );
-      }
-
-      const internalMCPServer =
-        await InternalMCPServerInMemoryResource.fetchById(
-          auth,
-          mcpServerView.internalMCPServerId
-        );
-      if (!internalMCPServer) {
-        throw new Error(
-          `Internal MCP server with ID ${mcpServerView.internalMCPServerId} not found.`
-        );
-      }
-
-      metadata = internalMCPServer.toJSON();
-    } else {
-      assertNever(mcpServerView.serverType);
-    }
+    const metadata = await getMCPServerMetadata(auth, { mcpServerView });
 
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
       actionsByConfigurationId.set(agentConfigurationId, []);
