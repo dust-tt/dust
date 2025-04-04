@@ -351,7 +351,10 @@ const getProcessingFunction = ({
         useCase === "upsert_table"
       ) {
         return upsertTableToDatasource;
-      } else if (useCase === "upsert_document") {
+      } else if (
+        useCase === "upsert_document" ||
+        useCase === "folders_document"
+      ) {
         return upsertDocumentToDatasource;
       } else {
         return undefined;
@@ -366,7 +369,10 @@ const getProcessingFunction = ({
     case "application/vnd.ms-excel":
       if (useCase === "conversation" || useCase === "upsert_table") {
         return upsertExcelToDatasource;
-      } else if (useCase === "upsert_document") {
+      } else if (
+        useCase === "upsert_document" ||
+        useCase === "folders_document"
+      ) {
         return upsertDocumentToDatasource;
       } else {
         return undefined;
@@ -375,7 +381,12 @@ const getProcessingFunction = ({
 
   if (
     isSupportedPlainTextContentType(contentType) &&
-    ["conversation", "tool_output", "upsert_document"].includes(useCase)
+    [
+      "conversation",
+      "tool_output",
+      "upsert_document",
+      "folders_document",
+    ].includes(useCase)
   ) {
     return upsertDocumentToDatasource;
   }

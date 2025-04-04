@@ -224,6 +224,7 @@ const getProcessingFunction = ({
       [
         "conversation",
         "upsert_document",
+        "folders_document",
         "upsert_table",
         "tool_output",
       ].includes(useCase)
@@ -241,7 +242,11 @@ const getProcessingFunction = ({
     case "application/vnd.google-apps.document":
     case "application/vnd.google-apps.presentation":
     case "application/pdf":
-      if (["conversation", "upsert_document"].includes(useCase)) {
+      if (
+        ["conversation", "upsert_document", "folders_document"].includes(
+          useCase
+        )
+      ) {
         return extractTextFromFileAndUpload;
       }
       break;
@@ -277,7 +282,12 @@ const getProcessingFunction = ({
     case "text/x-perl":
     case "text/x-perl-script":
       if (
-        ["conversation", "upsert_document", "tool_output"].includes(useCase)
+        [
+          "conversation",
+          "upsert_document",
+          "tool_output",
+          "folders_document",
+        ].includes(useCase)
       ) {
         return storeRawText;
       }
