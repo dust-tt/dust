@@ -9,8 +9,6 @@ import type {
 
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
-  DEFAULT_MCP_ACTION_ICON,
-  DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType, MCPToolType } from "@app/lib/actions/mcp_metadata";
@@ -60,7 +58,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     const sharedSecret = randomBytes(32).toString("hex");
 
     const server = await RemoteMCPServer.create(
-      { ...blob, sharedSecret, lastSyncAt: new Date() },
+      { ...blob, authorization: null, sharedSecret, lastSyncAt: new Date() },
       { transaction }
     );
 
@@ -238,13 +236,14 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   } {
     return {
       id: this.sId,
+
       name: this.name,
       description: this.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+      version: this.version,
+      icon: this.icon,
       tools: this.cachedTools,
-      // TODO(mcp) for @adrsimon remove this once we have a real version & icon & authorization cached
-      version: DEFAULT_MCP_ACTION_VERSION,
-      icon: DEFAULT_MCP_ACTION_ICON,
-      authorization: null,
+
+      authorization: this.authorization,
       isDefault: false, // So far we don't have defaults remote MCP servers.
 
       // Remote MCP Server specifics
