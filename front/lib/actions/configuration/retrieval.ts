@@ -97,7 +97,7 @@ export async function fetchAgentRetrievalActionConfigurations({
         query: retrievalConfig.query,
         relativeTimeFrame: renderRetrievalTimeframeType(retrievalConfig),
         topK,
-        dataSources: dataSourceConfig.map(getDataSource),
+        dataSources: dataSourceConfig.map(extractDataSourceConfiguration),
         name: retrievalConfig.name || DEFAULT_RETRIEVAL_ACTION_NAME,
         description: retrievalConfig.description,
       });
@@ -109,7 +109,7 @@ export async function fetchAgentRetrievalActionConfigurations({
   return actionsByConfigurationId;
 }
 
-export function getDataSource(
+export function extractDataSourceConfiguration(
   dataSourceConfig: AgentDataSourceConfiguration
 ): DataSourceConfiguration & { sId: string } {
   const { dataSourceView } = dataSourceConfig;
