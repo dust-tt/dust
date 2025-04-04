@@ -5,7 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
   AgentMessage,
-  Conversation,
+  ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
@@ -43,7 +43,7 @@ async function updateConversationsForWorkspace(
   execute: boolean,
   logger: Logger
 ) {
-  const conversations = await Conversation.findAll({
+  const conversations = await ConversationModel.findAll({
     attributes: ["id", "sId", "groupIds"],
     where: { workspaceId },
   });
@@ -81,7 +81,7 @@ async function updateConversationsForWorkspace(
 
 async function updateConversation(
   auth: Authenticator,
-  conversation: Conversation,
+  conversation: ConversationModel,
   execute: boolean,
   logger: Logger
 ) {
