@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -8,7 +9,6 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { z } from "zod";
 
 export const ValidateActionSchema = z.object({
   actionId: z.number(),
@@ -28,10 +28,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { cId, mId, wId } = req.query;
-  if (
-    typeof cId !== "string" ||
-    typeof mId !== "string"
-  ) {
+  if (typeof cId !== "string" || typeof mId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

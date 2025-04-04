@@ -1,3 +1,8 @@
+import type {
+  ValidateActionResponseType} from "@dust-tt/client";
+import {
+  ValidateActionRequestBodySchema
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
@@ -8,7 +13,6 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { ValidateActionRequestBodySchema, ValidateActionResponseType } from "@dust-tt/client";
 
 /**
  * @ignoreswagger
@@ -22,10 +26,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { cId, mId, wId } = req.query;
-  if (
-    typeof cId !== "string" ||
-    typeof mId !== "string"
-  ) {
+  if (typeof cId !== "string" || typeof mId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
