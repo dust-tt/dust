@@ -574,10 +574,10 @@ export function AgentMessage({
       avatarBusy={agentMessageToRender.status === "created"}
       renderName={() => {
         return (
-          <strong>
+          <span>
             {/* TODO(Ext) Any CTA here ? */}
             {agentConfiguration.name}
-          </strong>
+          </span>
         );
       }}
       type="agent"
