@@ -96,7 +96,7 @@ export async function submitAssistantBuilderForm({
   let { handle, description, instructions, avatarUrl } = builderState;
   if (!handle || !description || !instructions || !avatarUrl) {
     if (!isDraft) {
-      // Should be unreachable we keep this for TS
+      // Should be unreachable, we keep this for TS
       throw new Error("Form not valid (unreachable)");
     } else {
       handle = handle?.trim() || "Preview";
@@ -157,8 +157,8 @@ export async function submitAssistantBuilderForm({
             type: "dust_app_run_configuration",
             appWorkspaceId: owner.sId,
             appId: a.configuration.app.sId,
-            // These field are required by the API (`name` and `description`) but will be overriden
-            // with the app name and description.
+            // These fields are required by the API (`name` and `description`)
+            // but will be overridden with the app name and description.
             name: a.configuration.app.name,
             description: a.configuration.app.description,
           },
@@ -340,11 +340,11 @@ export async function submitAssistantBuilderForm({
   } = await res.json();
   const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
 
-  // PATCH the linked slack channels if either:
+  // PATCH the linked Slack channels if either:
   // - there were already linked channels
   // - there are newly selected channels
   // If the user selected channels that were already routed to a different agent, the current behavior is to
-  // unlink them from the previous agent and link them to the this one.
+  // unlink them from the previous agent and link them to this one.
   if (
     selectedSlackChannels.length ||
     slackChannelsLinkedWithAgent.filter(
