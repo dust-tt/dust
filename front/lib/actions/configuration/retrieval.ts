@@ -1,19 +1,14 @@
 import _ from "lodash";
 import { Op } from "sequelize";
 
+import { extractDataSourceConfiguration } from "@app/lib/actions/configuration/data_sources";
 import { renderRetrievalTimeframeType } from "@app/lib/actions/configuration/helpers";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
-import type {
-  DataSourceConfiguration,
-  DataSourceFilter,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types";
 
 export async function fetchAgentRetrievalActionConfigurations({
@@ -107,42 +102,4 @@ export async function fetchAgentRetrievalActionConfigurations({
   }
 
   return actionsByConfigurationId;
-}
-
-export function extractDataSourceConfiguration(
-  dataSourceConfig: AgentDataSourceConfiguration
-): DataSourceConfiguration & { sId: string } {
-  const { dataSourceView } = dataSourceConfig;
-
-  let tags: DataSourceFilter["tags"] = null;
-
-  if (dataSourceConfig.tagsMode) {
-    tags = {
-      in: dataSourceConfig.tagsIn ?? [],
-      not: dataSourceConfig.tagsNotIn ?? [],
-      mode: dataSourceConfig.tagsMode,
-    };
-  }
-
-  return {
-    sId: makeSId("data_source_configuration", {
-      id: dataSourceConfig.id,
-      workspaceId: dataSourceView.workspaceId,
-    }),
-    workspaceId: dataSourceView.workspace.sId,
-    dataSourceViewId: DataSourceViewResource.modelIdToSId({
-      id: dataSourceView.id,
-      workspaceId: dataSourceView.workspaceId,
-    }),
-    filter: {
-      parents:
-        dataSourceConfig.parentsIn && dataSourceConfig.parentsNotIn
-          ? {
-              in: dataSourceConfig.parentsIn,
-              not: dataSourceConfig.parentsNotIn,
-            }
-          : null,
-      tags,
-    },
-  };
 }
