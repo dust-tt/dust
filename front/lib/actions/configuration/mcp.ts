@@ -11,6 +11,7 @@ import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { Workspace } from "@app/lib/models/workspace";
+import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
@@ -123,7 +124,7 @@ export async function fetchMCPServerActionConfigurations(
         name: metadata.name,
         description: metadata.description,
         mcpServerViewId: mcpServerView.sId,
-        dataSourceConfigurations,
+        dataSources: dataSourceConfigurations.map(getDataSource),
       });
     }
   }
