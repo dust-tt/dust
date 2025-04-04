@@ -4,8 +4,27 @@ import TokenStorage from "./tokenStorage.js";
 
 let dustApiInstance: DustAPI | null = null;
 
+const getApiDomain = (region: string | null): string => {
+  const url = (() => {
+    switch (region) {
+      case "europe-west1":
+        return process.env.DUST_EU_URL || process.env.DEFAULT_DUST_API_DOMAIN;
+      case "us-central1":
+        return process.env.DUST_US_URL || process.env.DEFAULT_DUST_API_DOMAIN;
+      default:
+        return process.env.DEFAULT_DUST_API_DOMAIN;
+    }
+  })();
+
+  if (!url) {
+    throw new Error("Unable to determine API domain.");
+  }
+
+  return url;
+};
+
 /**
- * Gets or creates a DustAPI instance with the stored authentication token
+ * Gets or creates a DustAPI instance with the stored authentication token and region
  * @returns A Promise resolving to a DustAPI instance or null if no token is available
  */
 export const getDustClient = async (): Promise<DustAPI | null> => {
@@ -20,7 +39,8 @@ export const getDustClient = async (): Promise<DustAPI | null> => {
     return null;
   }
 
-  const apiDomain = process.env.DEFAULT_DUST_API_DOMAIN || "https://dust.tt";
+  const region = await TokenStorage.getRegion();
+  const apiDomain = getApiDomain(region);
 
   dustApiInstance = new DustAPI(
     {
@@ -44,8 +64,7 @@ export const getDustClient = async (): Promise<DustAPI | null> => {
 };
 
 /**
- * Reset the DustAPI client instance
- * Call this when authentication changes or when you need a fresh client
+ * Resets the cached DustAPI instance. Should be called after logout or token changes.
  */
 export const resetDustClient = (): void => {
   dustApiInstance = null;

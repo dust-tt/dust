@@ -120,7 +120,7 @@ export function InputBarAttachments({
   }
 
   return (
-    <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
+    <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3">
       {allAttachments.map((attachment) => {
         const isFile = attachment.type === "file";
 

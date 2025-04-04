@@ -1,6 +1,5 @@
 import { chunk } from "lodash";
 
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
@@ -16,14 +15,13 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import {
   AgentMessage,
   AgentMessageFeedback,
-  Conversation,
-  ConversationParticipant,
   Mention,
   Message,
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import type { ConversationWithoutContentType, ModelId } from "@app/types";
@@ -164,13 +162,14 @@ export async function destroyConversation(
   }
 ) {
   const workspace = auth.getNonNullableWorkspace();
-  const conversationRes = await getConversationWithoutContent(
-    auth,
-    conversationId,
-    // We skip access checks as some conversations associated with deleted spaces may have become
-    // inaccessible, yet we want to be able to delete them here.
-    { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
-  );
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      conversationId,
+      // We skip access checks as some conversations associated with deleted spaces may have become
+      // inaccessible, yet we want to be able to delete them here.
+      { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
+    );
   if (conversationRes.isErr()) {
     throw conversationRes.error;
   }
@@ -226,16 +225,10 @@ export async function destroyConversation(
     await destroyMessageRelatedResources(messageIds);
   }
 
-  await ConversationParticipant.destroy({
-    where: { conversationId: conversation.id },
-  });
-
   await destroyConversationDataSource(auth, { conversation });
 
-  const c = await Conversation.findOne({
-    where: { id: conversation.id },
-  });
+  const c = await ConversationResource.fetchById(auth, conversation.sId);
   if (c) {
-    await c.destroy();
+    await c.delete(auth);
   }
 }

@@ -6,6 +6,7 @@ const SERVICE_NAME = "dust-cli";
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 const WORKSPACE_KEY = "workspace_sid";
+const REGION_KEY = "region";
 
 interface JWTPayload {
   exp: number;
@@ -13,7 +14,7 @@ interface JWTPayload {
 }
 
 /**
- * Utility for securely storing and retrieving authentication tokens
+ * Utility for securely storing and retrieving authentication tokens and user info
  */
 export const TokenStorage = {
   /**
@@ -69,12 +70,27 @@ export const TokenStorage = {
   },
 
   /**
-   * Clears all stored tokens and workspace
+   * Saves the user's region
+   */
+  async saveRegion(region: string): Promise<void> {
+    await keytar.setPassword(SERVICE_NAME, REGION_KEY, region);
+  },
+
+  /**
+   * Retrieves the user's region
+   */
+  async getRegion(): Promise<string | null> {
+    return keytar.getPassword(SERVICE_NAME, REGION_KEY);
+  },
+
+  /**
+   * Clears all stored tokens, workspace, and region
    */
   async clearTokens(): Promise<void> {
     await keytar.deletePassword(SERVICE_NAME, ACCESS_TOKEN_KEY);
     await keytar.deletePassword(SERVICE_NAME, REFRESH_TOKEN_KEY);
     await keytar.deletePassword(SERVICE_NAME, WORKSPACE_KEY);
+    await keytar.deletePassword(SERVICE_NAME, REGION_KEY);
   },
 };
 

@@ -5,13 +5,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   createConversation,
   getConversation,
-  getUserConversations,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   ContentFragmentType,
@@ -47,7 +47,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const conversations = await getUserConversations(auth);
+      const conversations =
+        await ConversationResource.listConversationsForUser(auth);
       res.status(200).json({ conversations });
       return;
 

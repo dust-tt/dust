@@ -579,8 +579,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
-      // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-      groupIds: [],
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
@@ -984,10 +982,7 @@ export async function createAgentActionConfiguration(
   action: UnsavedAgentActionConfigurationType,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<Result<AgentActionConfigurationType, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   switch (action.type) {
     case "retrieval_configuration": {
@@ -1233,7 +1228,7 @@ export async function createAgentActionConfiguration(
  *
  * Knowing that a datasource is uniquely identified by its name and its workspaceId
  * We need to fetch the dataSources from the database from that.
- * We obvisously need to do as few queries as possible.
+ * We obviously need to do as few queries as possible.
  */
 async function _createAgentDataSourcesConfigData(
   auth: Authenticator,

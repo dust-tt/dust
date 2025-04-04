@@ -4,7 +4,7 @@ import {
   EyeSlashIcon,
   Input,
   Label,
-  Spinner,
+  Page,
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -16,9 +16,7 @@ import type { MCPFormAction, MCPFormState } from "@app/lib/actions/mcp";
 interface RemoteMCPFormProps {
   state: MCPFormState;
   dispatch: React.Dispatch<MCPFormAction>;
-  isConfigurationLoading: boolean;
   onSynchronize: () => Promise<void>;
-  isSynchronized: boolean;
   sharedSecret?: string;
   isSynchronizing?: boolean;
 }
@@ -26,9 +24,7 @@ interface RemoteMCPFormProps {
 export function RemoteMCPForm({
   state,
   dispatch,
-  isConfigurationLoading,
   onSynchronize,
-  isSynchronized,
   sharedSecret,
   isSynchronizing = false,
 }: RemoteMCPFormProps) {
@@ -63,14 +59,6 @@ export function RemoteMCPForm({
     setIsSecretVisible(!isSecretVisible);
   };
 
-  if (isConfigurationLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Spinner />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {syncError && (
@@ -97,6 +85,7 @@ export function RemoteMCPForm({
           <div className="flex-grow">
             <Input
               id="url"
+              disabled
               placeholder="https://example.com/api/mcp"
               value={state.url}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -112,109 +101,79 @@ export function RemoteMCPForm({
           </div>
           <Button
             label={isSynchronizing ? "Synchronizing..." : "Synchronize"}
-            variant="tertiary"
+            variant="outline"
             onClick={handleSynchronize}
-            disabled={isSynchronizing || !state.url}
+            disabled={isSynchronizing}
           />
         </div>
       </div>
 
-      {isSynchronized && (
-        <>
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+      <hr />
+      <Page.SectionHeader title="Settings" />
+      <div>
+        <Label htmlFor="name">Name</Label>
+        <Input
+          id="name"
+          placeholder="MCP Server Name"
+          value={state.name}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            dispatch({
+              type: "SET_FIELD",
+              field: "name",
+              value: e.target.value,
+            })
+          }
+          isError={!!state.errors?.name}
+          message={state.errors?.name}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <TextArea
+          id="description"
+          placeholder="Description of the MCP Server"
+          value={state.description}
+          onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+            dispatch({
+              type: "SET_FIELD",
+              field: "description",
+              value: e.target.value,
+            })
+          }
+        />
+        {state.errors?.description && (
+          <p className="mt-1 text-sm text-red-600">
+            {state.errors.description}
+          </p>
+        )}
+      </div>
+
+      {sharedSecret && (
+        <div className="space-y-2">
+          <Label htmlFor="sharedSecret">Shared Secret</Label>
+          <div className="relative">
             <Input
-              id="name"
-              placeholder="MCP Server Name"
-              value={state.name}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "name",
-                  value: e.target.value,
-                })
-              }
-              isError={!!state.errors?.name}
-              message={state.errors?.name}
+              id="sharedSecret"
+              value={sharedSecret}
+              readOnly
+              type={isSecretVisible ? "text" : "password"}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <TextArea
-              id="description"
-              placeholder="Description of the MCP Server"
-              value={state.description}
-              onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "description",
-                  value: e.target.value,
-                })
-              }
-            />
-            {state.errors?.description && (
-              <p className="mt-1 text-sm text-warning">
-                {state.errors.description}
-              </p>
-            )}
-          </div>
-
-          {sharedSecret && (
-            <div className="space-y-2">
-              <Label htmlFor="sharedSecret">Shared Secret</Label>
-              <div className="relative">
-                <Input
-                  id="sharedSecret"
-                  value={sharedSecret}
-                  readOnly
-                  type={isSecretVisible ? "text" : "password"}
-                />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-1">
-                  <Button
-                    icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
-                    variant="tertiary"
-                    size="xs"
-                    onClick={toggleSecretVisibility}
-                    labelVisible={false}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                This is the secret key used to authenticate your MCP server with
-                Dust. Keep it secure.
-              </p>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label>Available Tools</Label>
-            <div className="space-y-4 rounded-md border p-4">
-              {state.tools && state.tools.length > 0 ? (
-                state.tools.map(
-                  (
-                    tool: { name: string; description: string },
-                    index: number
-                  ) => (
-                    <div
-                      key={index}
-                      className="border-b pb-4 last:border-b-0 last:pb-0"
-                    >
-                      <h4 className="text-sm font-medium">{tool.name}</h4>
-                      {tool.description && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          {tool.description}
-                        </p>
-                      )}
-                    </div>
-                  )
-                )
-              ) : (
-                <p className="text-sm text-gray-500">No tools available</p>
-              )}
+            <div className="absolute inset-y-0 right-0 flex items-center pr-1">
+              <Button
+                icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
+                variant="tertiary"
+                size="xs"
+                onClick={toggleSecretVisibility}
+                labelVisible={false}
+              />
             </div>
           </div>
-        </>
+          <p className="text-xs text-gray-500">
+            This is the secret key used to authenticate your MCP server with
+            Dust. Keep it secure.
+          </p>
+        </div>
       )}
     </div>
   );

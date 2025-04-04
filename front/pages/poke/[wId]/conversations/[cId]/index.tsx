@@ -3,10 +3,10 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { Action } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { usePokeConversation } from "@app/poke/swr";
 import type {
@@ -38,7 +38,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const cRes = await getConversationWithoutContent(auth, cId);
+  const cRes = await ConversationResource.fetchConversationWithoutContent(
+    auth,
+    cId
+  );
   if (cRes.isErr()) {
     return {
       notFound: true,
@@ -70,7 +73,8 @@ const UserMessageView = ({ message }: { message: UserMessageType }) => {
         <div className="font-bold">
           [user] @{message.user.username} (fullName={message.user.fullName}{" "}
           email=
-          {message.user.email})
+          {message.user.email}) (posted{" "}
+          {new Date(message.created).toLocaleString()})
         </div>
       )}
       <div className="text-muted-foreground dark:text-muted-foreground-night">
@@ -101,7 +105,7 @@ const AgentMessageView = ({
         >
           {message.configuration.sId}
         </a>
-        {")"}
+        {")"}(posted {new Date(message.created).toLocaleString()})
       </div>
 
       <div className="text-muted-foreground dark:text-muted-foreground-night">
@@ -156,7 +160,10 @@ const AgentMessageView = ({
 const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
   return (
     <div className="ml-4 pt-2 text-sm text-muted-foreground">
-      <div className="font-bold">[content_fragment] {message.title}</div>
+      <div className="font-bold">
+        [content_fragment] {message.title} (posted{" "}
+        {new Date(message.created).toLocaleString()})
+      </div>
       <div className="text-muted-foreground dark:text-muted-foreground-night">
         version={message.version}
       </div>

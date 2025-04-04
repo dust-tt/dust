@@ -33,6 +33,7 @@ const RESOURCES_PREFIX = {
   remote_mcp_server: "rms",
   internal_mcp_server: "ims",
   mcp_server_view: "msv",
+  data_source_configuration: "dsc",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

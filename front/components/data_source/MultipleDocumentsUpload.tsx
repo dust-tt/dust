@@ -61,7 +61,7 @@ export const MultipleDocumentsUpload = ({
   // Used for creating files, with text extraction post-processing
   const fileUploaderService = useFileUploaderService({
     owner,
-    useCase: "upsert_document",
+    useCase: "folders_document",
   });
 
   const doUpsertFileAsDataSourceEntry = useUpsertFileAsDatasourceEntry(
