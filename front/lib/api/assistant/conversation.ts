@@ -146,8 +146,6 @@ export async function createConversation(
     content: [],
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
   };
 }
 
@@ -300,8 +298,6 @@ export async function getConversation(
     content,
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
   });
 }
 

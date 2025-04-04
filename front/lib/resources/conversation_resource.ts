@@ -238,8 +238,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       visibility: conversation.visibility,
       requestedGroupIds:
         conversation.getConversationRequestedGroupIdsFromModel(auth),
-      // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-      groupIds: [],
     });
   }
 
@@ -324,8 +322,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             visibility: c.visibility,
             requestedGroupIds:
               c.getConversationRequestedGroupIdsFromModel(auth),
-            // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-            groupIds: [],
           }) satisfies ConversationWithoutContentType
       );
 
