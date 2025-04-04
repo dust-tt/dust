@@ -363,7 +363,10 @@ export class ConfluenceClient {
           "provider:confluence",
           "status:rate_limited",
         ]);
-        logRateLimitHeaders(response, { endpoint });
+        logRateLimitHeaders(response, {
+          endpoint,
+          statusCode: response.status,
+        });
 
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs = getRetryAfterDuration(response);
