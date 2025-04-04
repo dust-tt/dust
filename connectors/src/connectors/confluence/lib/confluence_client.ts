@@ -226,7 +226,10 @@ function getRetryAfterDuration(response: Response): number {
   return NO_RETRY_AFTER_DELAY;
 }
 
-function logRateLimitHeaders(response: Response, endpoint: string) {
+function logRateLimitHeaders(
+  response: Response,
+  loggerArgs: Record<string, string | number | null>
+) {
   const rateLimitHeaders: Record<string, string> = {};
   response.headers.forEach((value, key) => {
     if (key.toLowerCase().startsWith("x-ratelimit")) {
@@ -237,7 +240,7 @@ function logRateLimitHeaders(response: Response, endpoint: string) {
   logger.info(
     {
       rateLimitHeaders,
-      endpoint,
+      ...loggerArgs,
     },
     "[Confluence] Headers relative to the rate limit"
   );
@@ -350,7 +353,7 @@ export class ConfluenceClient {
           "provider:confluence",
           "status:rate_limited",
         ]);
-        logRateLimitHeaders(response, endpoint);
+        logRateLimitHeaders(response, { endpoint });
 
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs = getRetryAfterDuration(response);
