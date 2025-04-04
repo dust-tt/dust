@@ -1,7 +1,7 @@
-import { CommandLineIcon, RocketIcon } from "@dust-tt/sparkle";
+import { CommandIcon, RocketIcon } from "@dust-tt/sparkle";
 
 export const MCP_SERVER_ICONS: Record<AllowedIconType, React.ComponentType> = {
-  command: CommandLineIcon,
+  command: CommandIcon,
   rocket: RocketIcon,
 } as const;
 

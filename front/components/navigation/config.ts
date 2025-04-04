@@ -3,6 +3,7 @@ import {
   BracesIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
+  CommandIcon,
   CommandLineIcon,
   CompanyIcon,
   DocumentTextIcon,
@@ -189,7 +190,7 @@ export const subNavigationAdmin = ({
         {
           id: "actions",
           label: "Actions",
-          icon: CommandLineIcon,
+          icon: CommandIcon,
           href: `/w/${owner.sId}/actions`,
           current: current === "actions",
           subMenuLabel: current === "actions" ? subMenuLabel : undefined,

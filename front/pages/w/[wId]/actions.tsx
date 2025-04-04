@@ -1,4 +1,4 @@
-import { CommandLineIcon, Page } from "@dust-tt/sparkle";
+import { CommandIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
@@ -69,7 +69,7 @@ export default function AdminActions({
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Actions"
-          icon={CommandLineIcon}
+          icon={CommandIcon}
           description="Actions let you connect tools and automate tasks. Find all available actions here and set up new ones."
         />
         <Page.Vertical align="stretch" gap="md">

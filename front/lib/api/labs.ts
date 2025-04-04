@@ -5,7 +5,7 @@ import logger from "@app/logger/logger";
 import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
-} from "@app/temporal/labs/client";
+} from "@app/temporal/labs/transcripts/client";
 import { Ok } from "@app/types";
 
 /**

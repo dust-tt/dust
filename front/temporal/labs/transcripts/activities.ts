@@ -18,19 +18,19 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
-import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
+import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import {
   retrieveGongTranscriptContent,
   retrieveGongTranscripts,
-} from "@app/temporal/labs/utils/gong";
+} from "@app/temporal/labs/transcripts/utils/gong";
 import {
   retrieveGoogleTranscriptContent,
   retrieveGoogleTranscripts,
-} from "@app/temporal/labs/utils/google";
+} from "@app/temporal/labs/transcripts/utils/google";
 import {
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
-} from "@app/temporal/labs/utils/modjo";
+} from "@app/temporal/labs/transcripts/utils/modjo";
 import type { AgentMessageType, ModelId } from "@app/types";
 import {
   assertNever,
