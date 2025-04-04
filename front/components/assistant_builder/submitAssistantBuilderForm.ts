@@ -30,7 +30,7 @@ type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
 };
 
-function processDataSourceViewSelectionConfigurations({
+function processDataSourcesSelection({
   owner,
   dataSourceConfigurations,
 }: {
@@ -51,6 +51,24 @@ function processDataSourceViewSelectionConfigurations({
         tags: tagsFilter,
       },
     })
+  );
+}
+
+function processTableSelection({
+  owner,
+  tablesConfigurations,
+}: {
+  owner: WorkspaceType;
+  tablesConfigurations: DataSourceViewSelectionConfigurations;
+}) {
+  return Object.values(tablesConfigurations).flatMap(
+    ({ dataSourceView, selectedResources }) => {
+      return selectedResources.map((resource) => ({
+        dataSourceViewId: dataSourceView.sId,
+        workspaceId: owner.sId,
+        tableId: getTableIdForContentNode(dataSourceView.dataSource, resource),
+      }));
+    }
   );
 }
 
@@ -122,7 +140,7 @@ export async function submitAssistantBuilderForm({
             query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
             relativeTimeFrame: timeFrame,
             topK: "auto",
-            dataSources: processDataSourceViewSelectionConfigurations({
+            dataSources: processDataSourcesSelection({
               owner,
               dataSourceConfigurations:
                 a.configuration.dataSourceConfigurations,
@@ -152,18 +170,10 @@ export async function submitAssistantBuilderForm({
             type: "tables_query_configuration",
             name: a.name,
             description: a.description,
-            tables: Object.values(a.configuration).flatMap(
-              ({ dataSourceView, selectedResources }) => {
-                return selectedResources.map((resource) => ({
-                  dataSourceViewId: dataSourceView.sId,
-                  workspaceId: owner.sId,
-                  tableId: getTableIdForContentNode(
-                    dataSourceView.dataSource,
-                    resource
-                  ),
-                }));
-              }
-            ),
+            tables: processTableSelection({
+              owner,
+              tablesConfigurations: a.configuration,
+            }),
           },
         ];
 
@@ -189,26 +199,17 @@ export async function submitAssistantBuilderForm({
             description: a.description,
             mcpServerViewId: a.configuration.mcpServerViewId,
             dataSources: a.configuration.dataSourceConfigurations
-              ? processDataSourceViewSelectionConfigurations({
+              ? processDataSourcesSelection({
                   owner,
                   dataSourceConfigurations:
                     a.configuration.dataSourceConfigurations,
                 })
               : null,
-            // TODO(2025-04-04 aubin): extract a function here.
             tables: a.configuration.tablesConfigurations
-              ? Object.values(a.configuration.tablesConfigurations).flatMap(
-                  ({ dataSourceView, selectedResources }) => {
-                    return selectedResources.map((resource) => ({
-                      dataSourceViewId: dataSourceView.sId,
-                      workspaceId: owner.sId,
-                      tableId: getTableIdForContentNode(
-                        dataSourceView.dataSource,
-                        resource
-                      ),
-                    }));
-                  }
-                )
+              ? processTableSelection({
+                  owner,
+                  tablesConfigurations: a.configuration.tablesConfigurations,
+                })
               : null,
           },
         ];
