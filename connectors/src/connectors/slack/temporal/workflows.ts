@@ -27,10 +27,12 @@ const {
   startToCloseTimeout: "10 minutes",
 });
 
-const { deleteChannel, syncThread, syncNonThreaded } = proxyActivities<
-  typeof activities
->({
+const { deleteChannel, syncThread } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
+});
+
+const { syncNonThreaded } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "50 minutes",
 });
 
 /**
