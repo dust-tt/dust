@@ -131,8 +131,8 @@ export class MCPActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly executionState:
     | "pending"
-    | "allowed_explicitely"
-    | "allowed_implicitely"
+    | "allowed_explicitly"
+    | "allowed_implicitly"
     | "denied" = "pending";
 
   readonly mcpServerConfigurationId: string;
@@ -442,7 +442,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       messageId: agentMessage.sId,
       action: new MCPActionType({
         ...actionBaseParams,
-        executionState: "allowed_explicitely",
+        executionState: "allowed_explicitly",
         id: action.id,
         isError: false,
         output: content,
