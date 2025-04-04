@@ -4,9 +4,9 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { QUEUE_NAME } from "@app/temporal/labs/config";
-import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/utils";
-import { retrieveNewTranscriptsWorkflow } from "@app/temporal/labs/workflows";
+import { TRANSCRIPTS_QUEUE_NAME } from "@app/temporal/labs/transcripts/config";
+import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/transcripts/utils";
+import { retrieveNewTranscriptsWorkflow } from "@app/temporal/labs/transcripts/workflows";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -19,7 +19,7 @@ export async function launchRetrieveTranscriptsWorkflow(
   try {
     await client.workflow.start(retrieveNewTranscriptsWorkflow, {
       args: [transcriptsConfiguration.id],
-      taskQueue: QUEUE_NAME,
+      taskQueue: TRANSCRIPTS_QUEUE_NAME,
       workflowId: workflowId,
       cronSchedule: "*/5 * * * *",
       memo: {
