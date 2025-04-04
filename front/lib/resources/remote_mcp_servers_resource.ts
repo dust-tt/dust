@@ -56,7 +56,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     const sharedSecret = randomBytes(32).toString("hex");
 
     const server = await RemoteMCPServer.create(
-      { ...blob, authorization: null, sharedSecret, lastSyncAt: new Date() },
+      { ...blob, sharedSecret, lastSyncAt: new Date() },
       { transaction }
     );
 
@@ -208,7 +208,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       lastSyncAt,
     }: {
       name?: string;
-      description?: string | null;
+      description?: string;
       url?: string;
       sharedSecret?: string;
       cachedTools: MCPToolType[];
@@ -236,7 +236,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       id: this.sId,
 
       name: this.name,
-      description: this.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+      description: this.description,
       version: this.version,
       icon: this.icon,
       tools: this.cachedTools,

@@ -20,7 +20,7 @@ export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
 
   declare url: string;
   declare name: string;
-  declare description: string | null;
+  declare description: string;
   declare icon: AllowedIconType;
   declare version: string;
 
@@ -53,7 +53,7 @@ RemoteMCPServer.init(
     },
     description: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: false,
     },
     icon: {
       type: DataTypes.STRING,
@@ -63,9 +63,6 @@ RemoteMCPServer.init(
     version: {
       type: DataTypes.STRING,
       allowNull: false,
-      validate: {
-        is: /^\d+\.\d+\.\d+$/,
-      },
       defaultValue: DEFAULT_MCP_ACTION_VERSION,
     },
     cachedTools: {
@@ -92,7 +89,7 @@ RemoteMCPServer.init(
     modelName: "remote_mcp_server",
     hooks: {
       beforeValidate: (server: RemoteMCPServer) => {
-        if (!isAllowedIconType(server.icon)) {
+        if (server.icon && !isAllowedIconType(server.icon)) {
           throw new Error(`Invalid icon type: ${server.icon}`);
         }
       },
