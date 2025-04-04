@@ -13,7 +13,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
@@ -50,6 +50,12 @@ export function MCPServerDetails({
     serverId: mcpServer?.id || "",
     disabled: serverType !== "remote",
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedTab("info");
+    }
+  }, [isOpen]);
 
   const effectiveMCPServer = updatedMCPServer || mcpServer;
 
@@ -92,12 +98,14 @@ export function MCPServerDetails({
                 icon={InformationCircleIcon}
                 onClick={() => setSelectedTab("info")}
               />
-              <TabsTrigger
-                value="sharing"
-                label="Sharing"
-                icon={LockIcon}
-                onClick={() => setSelectedTab("sharing")}
-              />
+              {!mcpServer?.isDefault && (
+                <TabsTrigger
+                  value="sharing"
+                  label="Sharing"
+                  icon={LockIcon}
+                  onClick={() => setSelectedTab("sharing")}
+                />
+              )}
             </TabsList>
           </Tabs>
         </SheetHeader>

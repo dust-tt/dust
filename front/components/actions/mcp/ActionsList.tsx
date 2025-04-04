@@ -108,32 +108,36 @@ const Cell = ({ owner, row }: CellProps) => {
             icon={Cog6ToothIcon}
           />
         )}
-        {serverType === "internal" && !mcpServer.isDefault ? (
-          <SliderToggle
-            disabled={loading}
-            selected={enabled}
-            onClick={async (e) => {
-              e.stopPropagation();
-              setLoading(true);
-              if (enabled) {
-                await deleteServer(mcpServer.id);
-              } else {
-                await createInternalMCPServer(mcpServer.name);
-              }
-              setLoading(false);
-            }}
-          />
-        ) : (
-          <IconButton
-            variant="outline"
-            icon={TrashIcon}
-            onClick={async (e) => {
-              e.stopPropagation();
+        {!mcpServer.isDefault && (
+          <>
+            {serverType === "internal" ? (
+              <SliderToggle
+                disabled={loading}
+                selected={enabled}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  setLoading(true);
+                  if (enabled) {
+                    await deleteServer(mcpServer.id);
+                  } else {
+                    await createInternalMCPServer(mcpServer.name);
+                  }
+                  setLoading(false);
+                }}
+              />
+            ) : (
+              <IconButton
+                variant="outline"
+                icon={TrashIcon}
+                onClick={async (e) => {
+                  e.stopPropagation();
 
-              await deleteServer(mcpServer.id);
-            }}
-            size="sm"
-          />
+                  await deleteServer(mcpServer.id);
+                }}
+                size="sm"
+              />
+            )}
+          </>
         )}
       </div>
     </DataTable.CellContent>
