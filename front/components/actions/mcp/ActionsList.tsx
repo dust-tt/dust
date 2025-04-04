@@ -1,12 +1,15 @@
 import {
   Avatar,
+  Button,
+  Chip,
   classNames,
+  Cog6ToothIcon,
   DataTable,
   IconButton,
   SearchInput,
   SliderToggle,
   Spinner,
-  XMarkIcon,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import React, { useMemo, useState } from "react";
@@ -23,66 +26,118 @@ import {
   useAvailableMCPServers,
   useCreateInternalMCPServer,
   useDeleteMCPServer,
+  useMCPServerConnections,
   useMCPServers,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 type RowData = {
   mcpServer: MCPServerType;
-  serverView?: MCPServerViewType;
+  mcpServerView?: MCPServerViewType;
+  isConnected: boolean;
+  spaces: SpaceType[];
   onClick: () => void;
 };
 
-type ActionCellProps = {
-  mcpServer: MCPServerType;
-  mcpServerView?: MCPServerViewType;
+type CellProps = {
   owner: LightWorkspaceType;
+  row: RowData;
 };
 
-const ActionCell = ({ mcpServer, mcpServerView, owner }: ActionCellProps) => {
+const Cell = ({ owner, row }: CellProps) => {
+  const { mcpServer, mcpServerView, isConnected, spaces } = row;
   const { deleteServer } = useDeleteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
   const [loading, setLoading] = useState(false);
   const { serverType } = getServerTypeAndIdFromSId(mcpServer.id);
 
-  if (serverType === "internal") {
-    const enabled = mcpServerView !== undefined;
-    return (
-      <DataTable.CellContent>
-        <SliderToggle
-          disabled={loading}
-          selected={enabled}
-          onClick={async (e) => {
-            e.stopPropagation();
-            setLoading(true);
-            if (enabled) {
-              await deleteServer(mcpServer.id);
-            } else {
-              await createInternalMCPServer(mcpServer.name);
-            }
-            setLoading(false);
-          }}
-        />
-      </DataTable.CellContent>
-    );
-  } else {
-    return (
-      <DataTable.CellContent>
-        <IconButton
-          variant="outline"
-          icon={XMarkIcon}
-          onClick={async (e) => {
-            e.stopPropagation();
+  const enabled = mcpServerView !== undefined;
+  return (
+    <DataTable.CellContent>
+      <div
+        className={classNames(
+          "flex flex-row items-center gap-2 py-3 [&&_*]:grow-0",
+          mcpServerView ? "" : "opacity-50"
+        )}
+      >
+        <div>
+          <Avatar
+            visual={React.createElement(
+              MCP_SERVER_ICONS[mcpServer.icon || DEFAULT_MCP_SERVER_ICON]
+            )}
+          />
+        </div>
+        <div className="flex items-center justify-between overflow-hidden truncate [&&&]:flex-grow">
+          <div className="flex flex-col gap-1">
+            <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              {mcpServer.name}
+            </div>
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {mcpServer.description}
+            </div>
+          </div>
+        </div>
 
-            await deleteServer(mcpServer.id);
-          }}
-          size="sm"
-        />
-      </DataTable.CellContent>
-    );
-  }
+        <div className="flex gap-2">
+          {mcpServerView && !spaces.find((s) => s.kind === "global") && (
+            <Chip color="red" size="xs">
+              Restricted
+            </Chip>
+          )}
+
+          {mcpServerView && isConnected && (
+            <Chip color="emerald" size="xs">
+              Connected
+            </Chip>
+          )}
+          {mcpServerView && !isConnected && mcpServer.authorization && (
+            <Chip color="red" size="xs">
+              Disconnected
+            </Chip>
+          )}
+        </div>
+
+        {mcpServerView && (
+          <Button
+            disabled={!mcpServerView}
+            variant="outline"
+            label="Manage"
+            size="sm"
+            icon={Cog6ToothIcon}
+          />
+        )}
+        {serverType === "internal" ? (
+          <SliderToggle
+            disabled={loading}
+            selected={enabled}
+            onClick={async (e) => {
+              e.stopPropagation();
+              setLoading(true);
+              if (enabled) {
+                await deleteServer(mcpServer.id);
+              } else {
+                await createInternalMCPServer(mcpServer.name);
+              }
+              setLoading(false);
+            }}
+          />
+        ) : (
+          <IconButton
+            variant="outline"
+            icon={TrashIcon}
+            onClick={async (e) => {
+              e.stopPropagation();
+
+              await deleteServer(mcpServer.id);
+            }}
+            size="sm"
+          />
+        )}
+      </div>
+    </DataTable.CellContent>
+  );
 };
 
 type AdminActionsListProps = {
@@ -114,63 +169,22 @@ export const AdminActionsList = ({
 
   const [isCreating, setIsCreating] = useState(false);
 
+  const { connections } = useMCPServerConnections({
+    owner,
+  });
+
   const getTableColumns = (): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
 
     columns.push({
       id: "name",
+      accessorKey: "name",
       header: "Name",
-      accessorKey: "mcpServer",
-      filterFn: (row, id, filterValue) => {
-        return row.original.mcpServer.name
-          .toLowerCase()
-          .includes(filterValue.toLowerCase());
-      },
-      sortingFn: (a, b) =>
-        a.original.mcpServer.name.localeCompare(b.original.mcpServer.name),
-      cell: (info: CellContext<RowData, MCPServerType>) => (
-        <DataTable.CellContent>
-          <div
-            className={classNames(
-              "flex flex-row items-center gap-2 py-3",
-              info.row.original.serverView ? "" : "opacity-50"
-            )}
-          >
-            <div>
-              <Avatar
-                visual={React.createElement(
-                  MCP_SERVER_ICONS[
-                    info.getValue().icon || DEFAULT_MCP_SERVER_ICON
-                  ]
-                )}
-              />
-            </div>
-            <div className="flex min-w-0 grow flex-col">
-              <div className="overflow-hidden truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-                {info.getValue().name}
-              </div>
-              <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {info.getValue().description}
-              </div>
-            </div>
-          </div>
-        </DataTable.CellContent>
-      ),
-    });
-
-    columns.push({
-      id: "action",
-      accessorKey: "mcpServer",
-      header: "",
-      cell: (info: CellContext<RowData, MCPServerType>) => (
-        <ActionCell
-          mcpServer={info.getValue()}
-          mcpServerView={info.row.original.serverView}
-          owner={owner}
-        />
+      cell: (info: CellContext<RowData, string>) => (
+        <Cell row={info.row.original} owner={owner} />
       ),
       meta: {
-        className: "w-28",
+        className: "[&_*]:flex-grow",
       },
     });
 
@@ -187,15 +201,21 @@ export const AdminActionsList = ({
 
   const rows: RowData[] = allServers.map((mcpServer) => {
     const mcpServerWithViews = mcpServers.find((s) => s.id === mcpServer.id);
-    const serverView = mcpServerWithViews?.views.find(
+    const mcpServerView = mcpServerWithViews?.views.find(
       (v) => v.spaceId === systemSpace?.sId
     );
-
+    const spaceIds = mcpServerWithViews
+      ? mcpServerWithViews.views.map((v) => v.spaceId)
+      : [];
     return {
       mcpServer,
-      serverView,
+      mcpServerView,
+      spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
+      isConnected: !!connections.find(
+        (c) => c.internalMCPServerId === mcpServer.id
+      ),
       onClick: () => {
-        if (serverView && mcpServer) {
+        if (mcpServerView && mcpServer) {
           setMcpServer(mcpServer);
         }
       },
