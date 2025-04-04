@@ -13,10 +13,7 @@ import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configurati
 import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
 import { fetchReasoningActionConfigurations } from "@app/lib/actions/configuration/reasoning";
 import { fetchAgentRetrievalActionConfigurations } from "@app/lib/actions/configuration/retrieval";
-import {
-  createTableDataSourceConfiguration,
-  fetchTableQueryActionConfigurations,
-} from "@app/lib/actions/configuration/table_query";
+import { fetchTableQueryActionConfigurations } from "@app/lib/actions/configuration/table_query";
 import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configuration/websearch";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
@@ -27,6 +24,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
@@ -46,7 +44,10 @@ import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/m
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
+import {
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
@@ -1317,6 +1318,60 @@ async function _createAgentDataSourcesConfigData(
     );
 
   return agentDataSourcesConfigRows;
+}
+
+async function createTableDataSourceConfiguration(
+  auth: Authenticator,
+  t: Transaction,
+  {
+    tableConfigurations,
+    tablesQueryConfig,
+    mcpConfig,
+  }: {
+    tableConfigurations: TableDataSourceConfiguration[];
+    tablesQueryConfig: AgentTablesQueryConfiguration | null;
+    mcpConfig: AgentMCPServerConfiguration | null;
+  }
+) {
+  const owner = auth.getNonNullableWorkspace();
+  // Although we have the capability to support multiple workspaces,
+  // currently, we only support one workspace, which is the one the user is in.
+  // This allows us to use the current authenticator to fetch resources.
+  assert(tableConfigurations.every((tc) => tc.workspaceId === owner.sId));
+
+  // DataSourceViewResource.listByWorkspace() applies the permissions check.
+  const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
+  const dataSourceViewsMap = dataSourceViews.reduce(
+    (acc, dsv) => {
+      acc[dsv.sId] = dsv;
+      return acc;
+    },
+    {} as Record<string, DataSourceViewResource>
+  );
+
+  return Promise.all(
+    tableConfigurations.map(async (tc) => {
+      const dataSourceView = dataSourceViewsMap[tc.dataSourceViewId];
+      assert(
+        dataSourceView,
+        "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
+      );
+
+      const { dataSource } = dataSourceView;
+
+      await AgentTablesQueryConfigurationTable.create(
+        {
+          dataSourceId: dataSource.id,
+          dataSourceViewId: dataSourceView.id,
+          tableId: tc.tableId,
+          tablesQueryConfigurationId: tablesQueryConfig?.id || null,
+          mcpServerConfigurationId: mcpConfig?.id || null,
+          workspaceId: owner.id,
+        },
+        { transaction: t }
+      );
+    })
+  );
 }
 
 export async function getAgentSIdFromName(
