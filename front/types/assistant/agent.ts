@@ -31,10 +31,10 @@ export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 
 /**
  * Agent configuration scope
- * - 'global' scope are Dust agents, not editable, inside-list for all, cannot be overriden
+ * - 'global' scope are Dust agents, not editable, inside-list for all, cannot be overridden
  * - 'workspace' scope are editable by builders only,  inside-list by default but user can change it
  * - 'published' scope are editable by everybody, outside-list by default
- * - 'private' scope are editable by author only, inside-list for author, cannot be overriden (so no
+ * - 'private' scope are editable by author only, inside-list for author, cannot be overridden (so no
  *   entry in the table
  */
 export const AGENT_CONFIGURATION_SCOPES = [
@@ -165,7 +165,7 @@ export const MAX_STEPS_USE_PER_RUN_LIMIT = 12;
  * Agent events
  */
 
-// Event sent when an agent error occured before we have a agent message in the database.
+// Event sent when an agent error occurred before we have an agent message in the database.
 export type AgentMessageErrorEvent = {
   type: "agent_message_error";
   created: number;
@@ -176,7 +176,7 @@ export type AgentMessageErrorEvent = {
   };
 };
 
-// Generic event sent when an error occured (whether it's during the action or the message generation).
+// Generic event sent when an error occurred (whether it's during the action or the message generation).
 export type AgentErrorEvent = {
   type: "agent_error";
   created: number;
