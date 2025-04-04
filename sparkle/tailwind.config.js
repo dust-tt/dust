@@ -184,6 +184,7 @@ Object.assign(colors, {
   golden: customColors.golden,
   //For compatibility, to be removed after all direct color ref are edited for golden
   emerald: customColors.emerald,
+  lime: customColors.lime,
   red: customColors.red,
   pink: customColors.pink,
   //to remove

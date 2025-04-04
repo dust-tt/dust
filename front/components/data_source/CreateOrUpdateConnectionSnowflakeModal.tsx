@@ -251,7 +251,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
             <Page.SectionHeader title="Snowflake Credentials" />
 
-            {error && <Chip variant="warning" label={error} />}
+            {error && <Chip variant="red" label={error} />}
 
             <div className="w-full space-y-4">
               <Input
