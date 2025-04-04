@@ -705,6 +705,14 @@ module.exports = {
     require("tailwindcss-animate"),
     plugin(function ({ addBase, theme }) {
       addBase({
+        // Base styles for H1
+        h1: {
+          fontFamily: theme("fontFamily.mono"),
+        },
+        // Utility class to override H1 to use regular Geist
+        ".h1-sans": {
+          fontFamily: theme("fontFamily.sans"),
+        },
         ".label-xs": {
           fontSize: theme("fontSize.xs[0]"),
           lineHeight: theme("fontSize.xs[1].lineHeight"),
@@ -727,19 +735,19 @@ module.exports = {
           fontSize: theme("fontSize.base[0]"),
           lineHeight: theme("fontSize.base[1].lineHeight"),
           letterSpacing: theme("fontSize.base[1].letterSpacing"),
-          fontWeight: "600",
+          fontWeight: "300",
         },
         ".heading-lg": {
           fontSize: theme("fontSize.lg[0]"),
           lineHeight: theme("fontSize.lg[1].lineHeight"),
           letterSpacing: theme("fontSize.lg[1].letterSpacing"),
-          fontWeight: "600",
+          fontWeight: "300",
         },
         ".heading-xl": {
           fontSize: theme("fontSize.xl[0]"),
           lineHeight: theme("fontSize.xl[1].lineHeight"),
           letterSpacing: theme("fontSize.xl[1].letterSpacing"),
-          fontWeight: "600",
+          fontWeight: "500",
         },
         ".heading-2xl": {
           fontSize: theme("fontSize.2xl[0]"),
@@ -751,7 +759,7 @@ module.exports = {
           fontSize: theme("fontSize.3xl[0]"),
           lineHeight: theme("fontSize.3xl[1].lineHeight"),
           letterSpacing: theme("fontSize.3xl[1].letterSpacing"),
-          fontWeight: "600",
+          fontWeight: "500",
         },
         ".heading-4xl": {
           fontSize: theme("fontSize.4xl[0]"),
@@ -776,6 +784,24 @@ module.exports = {
           lineHeight: theme("fontSize.7xl[1].lineHeight"),
           letterSpacing: theme("fontSize.7xl[1].letterSpacing"),
           fontWeight: "500",
+        },
+        // Add specific H1 class that uses Geist Mono
+        ".h1-title": {
+          fontSize: theme("fontSize.5xl[0]"),
+          lineHeight: theme("fontSize.5xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.5xl[1].letterSpacing"),
+          fontWeight: "500",
+          fontFamily: theme("fontFamily.mono"),
+          "@media (min-width: 768px)": {
+            fontSize: theme("fontSize.6xl[0]"),
+            lineHeight: theme("fontSize.6xl[1].lineHeight"),
+            letterSpacing: theme("fontSize.6xl[1].letterSpacing"),
+          },
+          "@media (min-width: 1024px)": {
+            fontSize: theme("fontSize.8xl[0]"),
+            lineHeight: theme("fontSize.8xl[1].lineHeight"),
+            letterSpacing: theme("fontSize.8xl[1].letterSpacing"),
+          },
         },
         ".heading-8xl": {
           fontSize: theme("fontSize.8xl[0]"),

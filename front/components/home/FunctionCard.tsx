@@ -65,9 +65,7 @@ export function FunctionCard({
       <div
         className={`flex flex-grow flex-col gap-2 p-8 ${cardVariants({ color })}`}
       >
-        <H3 className="text-white" mono>
-          {title}
-        </H3>
+        <H3 className="text-white">{title}</H3>
         <ul className="copy-base flex-grow font-medium text-white/80">
           {features.map((feature, i) => (
             <li

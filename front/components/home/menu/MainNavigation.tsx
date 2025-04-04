@@ -38,9 +38,7 @@ export function MainNavigation() {
                   <NavigationMenuTrigger>{item.title}</NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <div className="flex flex-col gap-4 p-6 pb-8">
-                      <H4 className="text-muted-foreground" mono>
-                        {item.label}
-                      </H4>
+                      <H4 className="text-muted-foreground">{item.label}</H4>
                       <ul
                         className={classNames(
                           "grid-rows-" + item.rows,

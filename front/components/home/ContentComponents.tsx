@@ -36,11 +36,11 @@ export const Grid = ({
 );
 
 const hClasses = {
-  h1: "heading-5xl md:heading-6xl lg:heading-8xl py-2 text-left",
-  h2: "heading-3xl lg:heading-4xl xl:heading-5xl py-2 text-left",
-  h3: "heading-xl lg:heading-2xl xl:heading-3xl py-1 text-left",
-  h4: "heading-lg lg:heading-xl xl:heading-2xl text-left",
-  h5: "heading-lg lg:heading-xl xl:heading-xl text-left",
+  h1: "h1-title py-2 text-left",
+  h2: "heading-2xl lg:heading-3xl xl:heading-4xl py-2 text-left",
+  h3: "heading-lg lg:heading-xl xl:heading-2xl py-1 text-left",
+  h4: "heading-base lg:heading-lg xl:heading-xl text-left",
+  h5: "heading-base lg:heading-lg xl:heading-lg text-left",
 };
 
 interface ContentProps {
@@ -62,15 +62,36 @@ const createHeadingComponent = (Tag: TagName) => {
   const Component: React.FC<HContentProps> = ({
     children,
     className = "",
-    mono = false,
+    mono = Tag === "h1",
   }) => {
+    const fontWeightClass =
+      Tag === "h1" && mono
+        ? "!font-normal"
+        : Tag === "h2"
+          ? "!font-medium"
+          : Tag === "h3"
+            ? "!font-medium"
+            : Tag === "h4" || Tag === "h5"
+              ? "!font-medium"
+              : "";
+
     const baseClasses = mono
       ? classNames(
           hClasses[Tag].replace(/heading-/g, "heading-mono-"),
           "font-mono"
         )
-      : classNames(hClasses[Tag], "font-sans");
-    return <Tag className={classNames(className, baseClasses)}>{children}</Tag>;
+      : classNames(hClasses[Tag], "font-sans", fontWeightClass);
+    return (
+      <Tag
+        className={classNames(
+          className,
+          baseClasses,
+          mono && Tag === "h1" ? fontWeightClass : ""
+        )}
+      >
+        {children}
+      </Tag>
+    );
   };
   Component.displayName = Tag.toUpperCase();
   return Component;

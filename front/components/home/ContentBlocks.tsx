@@ -54,9 +54,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
         <div className="max-w-[400px]">{children ? children : null}</div>
       </div>
       <div className="flex flex-col gap-3 px-6 pb-6 pt-4">
-        <H3 className="text-foreground" mono>
-          {title}
-        </H3>
+        <H3 className="text-foreground">{title}</H3>
         {renderContent()}
       </div>
     </div>
@@ -112,9 +110,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       ) : null}
       <div className="flex flex-col p-8">
         <div className="flex flex-col gap-2">
-          <H5 className="line-clamp-2 text-foreground" mono>
-            {title}
-          </H5>
+          <H5 className="line-clamp-2 text-foreground">{title}</H5>
           <P size="sm" className="line-clamp-3 text-muted-foreground">
             {content}
           </P>

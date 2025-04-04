@@ -358,7 +358,7 @@ export default function About() {
             About us
           </P>
           <div className="flex flex-row justify-center">
-            <H1 className="max-w-2xl text-center" mono>
+            <H1 className="max-w-2xl text-center">
               Our mission is to transform how work gets done
             </H1>
           </div>
