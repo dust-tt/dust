@@ -1061,12 +1061,11 @@ export async function createAgentActionConfiguration(
           { transaction: t }
         );
 
-        await createTableDataSourceConfiguration(
-          auth,
-          action.tables,
+        await createTableDataSourceConfiguration(auth, t, {
+          tableConfigurations: action.tables,
           tablesQueryConfig,
-          t
-        );
+          mcpConfig: null,
+        });
 
         return new Ok({
           id: tablesQueryConfig.id,
@@ -1198,12 +1197,21 @@ export async function createAgentActionConfiguration(
           { transaction: t }
         );
 
+        // Creating the AgentDataSourceConfiguration if configured
         if (action.dataSources) {
           await _createAgentDataSourcesConfigData(auth, t, {
             dataSourceConfigurations: action.dataSources,
             retrievalConfigurationId: null,
             processConfigurationId: null,
             mcpConfigurationId: mcpConfig.id,
+          });
+        }
+        // Creating the AgentTablesQueryConfigurationTable if configured
+        if (action.tables) {
+          await createTableDataSourceConfiguration(auth, t, {
+            tableConfigurations: action.tables,
+            tablesQueryConfig: null,
+            mcpConfig,
           });
         }
 
@@ -1215,6 +1223,7 @@ export async function createAgentActionConfiguration(
           description: action.description,
           mcpServerViewId: action.mcpServerViewId,
           dataSources: action.dataSources,
+          tables: action.tables,
         });
       });
     }

@@ -195,6 +195,21 @@ export async function submitAssistantBuilderForm({
                     a.configuration.dataSourceConfigurations,
                 })
               : null,
+            // TODO(2025-04-04 aubin): extract a function here.
+            tables: a.configuration.tablesConfigurations
+              ? Object.values(a.configuration.tablesConfigurations).flatMap(
+                  ({ dataSourceView, selectedResources }) => {
+                    return selectedResources.map((resource) => ({
+                      dataSourceViewId: dataSourceView.sId,
+                      workspaceId: owner.sId,
+                      tableId: getTableIdForContentNode(
+                        dataSourceView.dataSource,
+                        resource
+                      ),
+                    }));
+                  }
+                )
+              : null,
           },
         ];
 
