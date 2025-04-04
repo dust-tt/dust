@@ -188,7 +188,7 @@ export default function Welcome({
         )}
         <div>
           <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">
-            How much do you know about AI agent?
+            How much do you know about AI agents?
           </p>
           <RadioGroup
             value={expertise}
