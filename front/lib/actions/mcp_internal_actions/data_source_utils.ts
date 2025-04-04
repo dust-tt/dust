@@ -33,6 +33,7 @@ async function fetchAgentDataSourceConfiguration(
     );
   }
 
+  // It's safe to do this because the inputs are already checked against the zod schema here.
   const [, , dataSourceConfigId] = match;
   const sIdParts = getResourceNameAndIdFromSId(dataSourceConfigId);
   if (!sIdParts) {
@@ -53,6 +54,17 @@ async function fetchAgentDataSourceConfiguration(
       nest: true,
       include: [{ model: DataSourceModel, as: "dataSource", required: true }],
     });
+
+  if (
+    agentDataSourceConfiguration &&
+    agentDataSourceConfiguration.workspaceId !== sIdParts.workspaceId
+  ) {
+    return new Err(
+      new Error(
+        `Data source configuration ${dataSourceConfigId} does not belong to workspace ${sIdParts.workspaceId}`
+      )
+    );
+  }
 
   return new Ok(agentDataSourceConfiguration);
 }
