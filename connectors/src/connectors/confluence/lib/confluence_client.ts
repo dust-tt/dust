@@ -190,6 +190,16 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
+// Headers provided by Confluence API to provide information on the rate limiting.
+// https://developer.atlassian.com/cloud/confluence/rate-limiting/
+// The exact rate limit model is not detailed, but can be assumed to be a combination of multiple different systems.
+const RATE_LIMIT_HEADERS = {
+  // As per the doc: "maximum number of requests that a user can make within a specific (unspecified) time window".
+  limit: "x-ratelimit-limit",
+  // As per the doc: "number of requests remaining in the current rate limit window before the limit is reached".
+  remaining: "x-ratelimit-remaining",
+} as const;
+
 // If Confluence does not provide a retry-after header, we use this constant to signal no delay.
 const NO_RETRY_AFTER_DELAY = -1;
 // Number of times we retry when rate limited and Confluence does provide a retry-after header.
