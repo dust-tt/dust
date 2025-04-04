@@ -244,7 +244,7 @@ async function getMCPServerActionConfiguration(
 
   builderAction.configuration.dataSourceConfigurations = action.dataSources
     ? await renderDataSourcesConfigurations(
-        { ...action, dataSources: action.dataSources },
+        { ...action, dataSources: action.dataSources }, // overriding to satisfy the typing
         dataSourceViews
       )
     : null;

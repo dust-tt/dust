@@ -108,7 +108,7 @@ const Cell = ({ owner, row }: CellProps) => {
             icon={Cog6ToothIcon}
           />
         )}
-        {serverType === "internal" ? (
+        {serverType === "internal" && !mcpServer.isDefault ? (
           <SliderToggle
             disabled={loading}
             selected={enabled}

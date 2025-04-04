@@ -587,7 +587,7 @@ export default function DatasetView({
                 {datasetKeys.map((k, j) => (
                   <div key={j} className="grid sm:grid-cols-10">
                     <div className="sm:col-span-3">
-                      <div className="group flex items-center bg-slate-300 dark:bg-slate-300-night">
+                      <div className="group flex items-center bg-primary-300 dark:bg-primary-300-night">
                         <div className="flex flex-1">
                           <Input
                             readOnly={readOnly}
@@ -703,7 +703,7 @@ export default function DatasetView({
                     {datasetKeys.map((k, j) => (
                       <div key={j} className="grid grid-cols-10">
                         <div className="col-span-3">
-                          <div className="group flex items-center bg-slate-300 dark:bg-slate-300-night">
+                          <div className="group flex items-center bg-primary-300 dark:bg-primary-300-night">
                             <Input
                               readOnly={true}
                               value={k}
@@ -725,7 +725,7 @@ export default function DatasetView({
                                 getValueType(d[k]),
                                 datasetTypes[datasetKeys.indexOf(k)]
                               )
-                              ? "border-slate-100 dark:border-slate-100-night"
+                              ? "border-border dark:border-border-night"
                               : "border-red-500"
                           )}
                         >

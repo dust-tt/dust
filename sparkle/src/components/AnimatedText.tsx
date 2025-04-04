@@ -37,12 +37,12 @@ const animatedVariants: Record<AnimatedTextVariantType, string> = {
     "dark:s-from-amber-800-night dark:s-via-amber-950-night dark:s-via-50% dark:s-to-amber-800-night"
   ),
   white: cn(
-    "s-from-slate-600 s-via-slate-950 s-via-50% s-to-slate-600",
-    "dark:s-from-slate-600-night dark:s-via-slate-950-night dark:s-via-50% dark:s-to-slate-600-night"
+    "s-from-primary-600 s-via-primary-950 s-via-50% s-to-primary-600",
+    "dark:s-from-primary-600-night dark:s-via-primary-950-night dark:s-via-50% dark:s-to-primary-600-night"
   ),
   slate: cn(
-    "s-from-slate-600 s-via-slate-950 s-via-50% s-to-slate-600",
-    "dark:s-from-slate-600-night dark:s-via-slate-950-night dark:s-via-50% dark:s-to-slate-600-night"
+    "s-from-primary-600 s-via-primary-950 s-via-50% s-to-primary-600",
+    "dark:s-from-primary-600-night dark:s-via-primary-950-night dark:s-via-50% dark:s-to-primary-600-night"
   ),
   purple: cn(
     "s-from-purple-800 s-via-purple-950 s-via-50% s-to-purple-800",

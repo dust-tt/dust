@@ -69,8 +69,8 @@ const isInvalidJson = (value: string | null | undefined): boolean => {
     return false;
   }
   try {
-    JSON.parse(value);
-    return false;
+    const parsed = JSON.parse(value);
+    return !parsed || typeof parsed !== "object";
   } catch {
     return true;
   }

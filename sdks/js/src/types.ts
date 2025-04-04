@@ -790,7 +790,9 @@ type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
+  | "labs_features"
   | "labs_transcripts"
+  | "labs_connection_hubspot"
   | "labs_trackers"
   | "document_tracker"
   | "openai_o1_feature"
@@ -804,7 +806,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "index_private_slack_channel"
   | "disable_run_logs"
   | "show_debug_tools"
-  | "labs_github_actions"
   | "deepseek_r1_global_agent_feature"
   | "salesforce_feature"
   | "advanced_notion_management"

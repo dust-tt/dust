@@ -2,7 +2,8 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions";
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPServerType,
   MCPServerTypeWithViews,
@@ -154,12 +155,10 @@ async function handler(
           });
         }
 
-        const internalMCPServerId = InternalMCPServerInMemoryResource.nameToSId(
-          {
-            name,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          }
-        );
+        const internalMCPServerId = internalMCPServerNameToSId({
+          name,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        });
 
         const existingServer =
           await InternalMCPServerInMemoryResource.fetchById(

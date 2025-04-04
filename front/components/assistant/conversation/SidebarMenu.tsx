@@ -369,13 +369,13 @@ const RenderConversation = ({
         <div className="flex items-center px-2 py-2">
           <Checkbox
             id={`conversation-${conversation.sId}`}
-            className="bg-white dark:bg-slate-950"
+            className="bg-background dark:bg-background-night"
             checked={selectedConversations.includes(conversation)}
             onCheckedChange={() => toggleConversationSelection(conversation)}
           />
           <Label
             htmlFor={`conversation-${conversation.sId}`}
-            className="ml-2 text-sm font-light text-muted-foreground dark:text-muted-foreground-night"
+            className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
           >
             {conversationLabel}
           </Label>

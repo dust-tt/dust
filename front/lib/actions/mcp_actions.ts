@@ -1,11 +1,14 @@
-import type { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
+import type { MCPToolType } from "@app/lib/actions/mcp_metadata";
+import {
+  connectToMCPServer,
+  extractMetadataFromTools,
+} from "@app/lib/actions/mcp_metadata";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,7 +16,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, Result } from "@app/types";
+import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
@@ -53,18 +56,16 @@ const Schema = z.union([
   EmbeddedResourceSchema,
 ]);
 
-export type ToolType = ListToolsResult["tools"][number];
-
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
 function makeMCPConfigurations({
   config,
-  listToolsResult,
+  tools,
 }: {
   config: MCPServerConfigurationType;
-  listToolsResult: ToolType[];
+  tools: MCPToolType[];
 }): MCPToolConfigurationType[] {
-  return listToolsResult.map((tool) => {
+  return tools.map((tool) => {
     return {
       id: config.id,
       sId: generateRandomModelSId(),
@@ -72,7 +73,7 @@ function makeMCPConfigurations({
       mcpServerViewId: config.mcpServerViewId,
       name: tool.name,
       description: tool.description ?? null,
-      inputSchema: tool.inputSchema,
+      inputSchema: tool.inputSchema || { type: "object", properties: {} },
       dataSources: config.dataSources,
     };
   });
@@ -86,13 +87,11 @@ function makeMCPConfigurations({
 export async function tryCallMCPTool(
   auth: Authenticator,
   {
-    owner,
     actionConfiguration,
-    rawInputs,
+    inputs,
   }: {
-    owner: LightWorkspaceType;
     actionConfiguration: MCPToolConfigurationType;
-    rawInputs: Record<string, unknown> | undefined;
+    inputs: Record<string, unknown> | undefined;
   }
 ): Promise<Result<MCPToolResultContent[], Error>> {
   try {
@@ -101,41 +100,29 @@ export async function tryCallMCPTool(
       actionConfiguration.mcpServerViewId
     );
     if (res.isErr()) {
-      throw new Error(
-        `MCP server view with id ${actionConfiguration.mcpServerViewId} not found.`
-      );
+      return res;
     }
-    const mcpServerView = res.value;
-
     const mcpClient = await connectToMCPServer(auth, {
       type: "mcpServerId",
-      mcpServerId: mcpServerView.mcpServerId,
+      mcpServerId: res.value.mcpServerId,
     });
-    const r = await mcpClient.callTool({
+    const toolCallResult = await mcpClient.callTool({
       name: actionConfiguration.name,
-      arguments: rawInputs,
+      arguments: inputs,
     });
 
     await mcpClient.close();
 
-    if (r.isError) {
-      return new Err(new Error(r.content as string));
+    if (toolCallResult.isError) {
+      return new Err(new Error(JSON.stringify(toolCallResult.content)));
     }
 
     // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: MCPToolResultContent[] = (r.content ??
+    const content: MCPToolResultContent[] = (toolCallResult.content ??
       []) as MCPToolResultContent[];
 
     return new Ok(content);
   } catch (error) {
-    logger.error(
-      {
-        workspaceId: owner.id,
-        actionConfiguration,
-        error,
-      },
-      `Error calling MCP tool, returning error.`
-    );
     return new Err(normalizeError(error));
   }
 }
@@ -161,37 +148,21 @@ export async function tryGetMCPTools(
   // Discover all the tools exposed by all the mcp server available.
   const configurations = await Promise.all(
     agentActions.filter(isMCPServerConfiguration).map(async (action) => {
-      try {
-        const res = await MCPServerViewResource.fetchById(
-          auth,
-          action.mcpServerViewId
+      const res = await MCPServerViewResource.fetchById(
+        auth,
+        action.mcpServerViewId
+      );
+      if (res.isErr()) {
+        throw new Error(
+          `MCP server view with id ${action.mcpServerViewId} not found.`
         );
-        if (res.isErr()) {
-          throw new Error(
-            `MCP server view with id ${action.mcpServerViewId} not found.`
-          );
-        }
-        const mcpServerView = res.value;
-        const r: ToolType[] = await listMCPServerTools(
-          auth,
-          mcpServerView.mcpServerId
-        );
-
-        return makeMCPConfigurations({
-          config: action,
-          listToolsResult: r,
-        });
-      } catch (error) {
-        logger.error(
-          {
-            workspaceId: owner.id,
-            action,
-            error,
-          },
-          `Error listing tools for MCP server, returning empty list.`
-        );
-        return [];
       }
+      const tools = await listMCPServerTools(auth, res.value.mcpServerId);
+
+      return makeMCPConfigurations({
+        config: action,
+        tools,
+      });
     })
   );
 
@@ -201,21 +172,31 @@ export async function tryGetMCPTools(
 export async function listMCPServerTools(
   auth: Authenticator,
   mcpServerId: string
-): Promise<ToolType[]> {
+): Promise<MCPToolType[]> {
   const mcpClient = await connectToMCPServer(auth, {
     type: "mcpServerId",
     mcpServerId,
   });
+  try {
+    let allTools: MCPToolType[] = [];
+    let nextPageCursor;
+    do {
+      const toolsResult = await mcpClient.listTools();
+      nextPageCursor = toolsResult.nextCursor;
+      allTools = [...allTools, ...extractMetadataFromTools(toolsResult.tools)];
+    } while (nextPageCursor);
 
-  let allTools: ToolType[] = [];
-  let nextPageCursor;
-  do {
-    const { tools, nextCursor } = await mcpClient.listTools();
-    nextPageCursor = nextCursor;
-    allTools = [...allTools, ...tools];
-  } while (nextPageCursor);
-
-  await mcpClient.close();
-
-  return allTools;
+    return allTools;
+  } catch (e) {
+    logger.error(
+      {
+        mcpServerId,
+        error: e,
+      },
+      `Error listing tools for MCP server.`
+    );
+    return [];
+  } finally {
+    await mcpClient.close();
+  }
 }

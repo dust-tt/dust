@@ -196,7 +196,7 @@ export default function DataSourceView({
                                     </span>
                                   </div>
                                   <div
-                                    className="ml-2 mr-4 flex-1 cursor-pointer border-l-4 border-slate-400"
+                                    className="ml-2 mr-4 flex-1 cursor-pointer border-l-4 border-border-dark"
                                     onClick={() => {
                                       expandedChunkId == chunkId
                                         ? setExpandedChunkId(null)

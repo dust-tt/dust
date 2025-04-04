@@ -21,7 +21,7 @@ export default function DropzoneOverlay({
     <Icon
       visual={ArrowUpOnSquareIcon}
       size="lg"
-      className="s-text-white dark:s-text-slate-950"
+      className="s-text-white dark:s-text-primary-950"
     />
   ),
 }: DropzoneOverlayProps) {

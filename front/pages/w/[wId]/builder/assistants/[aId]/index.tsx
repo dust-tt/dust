@@ -16,6 +16,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
   AppType,
@@ -58,6 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     await Promise.all([
       getAccessibleSourcesAndApps(auth),
       getAgentConfiguration(auth, context.params?.aId as string, "full"),
+      MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth),
     ]);
 
   if (configuration?.scope === "workspace" && !auth.isBuilder()) {

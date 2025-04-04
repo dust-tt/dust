@@ -10,6 +10,10 @@ html {
   font-synthesis: none;
 }
 
+#InputBarContainer {
+  font-size: 14px;
+}
+
 .animate-\[bgblink_200ms_3\] {
   animation: bgblink 200ms 3;
 }

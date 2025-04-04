@@ -1,8 +1,8 @@
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect } from "vitest";
 
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { Authenticator } from "@app/lib/auth";
-import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -38,7 +38,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
     const regularSpace = await SpaceFactory.regular(workspace, t);
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const mcpServerId = InternalMCPServerInMemoryResource.nameToSId({
+    const mcpServerId = internalMCPServerNameToSId({
       name: "helloworld",
       workspaceId: workspace.id,
     });
@@ -90,7 +90,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
   itInTransaction("only supports DELETE method", async (t) => {
     const { req, res, workspace, space } = await setupTest(t, "admin", "GET");
-    const mcpServerId = InternalMCPServerInMemoryResource.nameToSId({
+    const mcpServerId = internalMCPServerNameToSId({
       name: "helloworld",
       workspaceId: workspace.id,
     });

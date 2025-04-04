@@ -8,7 +8,6 @@ import type {
 import { Spinner } from "@viz/app/components/Components";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { toBlob, toSvg } from "html-to-image";
-import { ImageDown, ImageUpscale, SquareTerminal } from "lucide-react";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -298,23 +297,26 @@ export function VisualizationWrapper({
   return (
     <div className="relative font-sans group/viz">
       <div className="flex flex-row gap-2 absolute top-2 right-2 bg-white rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
-        <button onClick={handleScreenshotDownload} title="Download screenshot">
-          <ImageDown
-            size={17}
-            className="text-slate-500 hover:text-slate-900"
-          />
+        <button
+          onClick={handleScreenshotDownload}
+          title="Download screenshot"
+          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border dark:border-border-night text-primary dark:text-primary-night bg-background dark:bg-background-night hover:text-primary dark:hover:text-primary-night hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-150 dark:hover:border-border-night active:bg-primary-300 dark:active:bg-primary-900"
+        >
+          Png
         </button>
-        <button onClick={handleSVGDownload} title="Download SVG">
-          <ImageUpscale
-            size={17}
-            className="text-slate-500 hover:text-slate-900"
-          />
+        <button
+          onClick={handleSVGDownload}
+          title="Download SVG"
+          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border dark:border-border-night text-primary dark:text-primary-night bg-background dark:bg-background-night hover:text-primary dark:hover:text-primary-night hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-150 dark:hover:border-border-night active:bg-primary-300 dark:active:bg-primary-900"
+        >
+          Svg
         </button>
-        <button title="Show code" onClick={handleDisplayCode}>
-          <SquareTerminal
-            size={17}
-            className="text-slate-500 hover:text-slate-900"
-          />
+        <button
+          title="Show code"
+          onClick={handleDisplayCode}
+          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border dark:border-border-night text-primary dark:text-primary-night bg-background dark:bg-background-night hover:text-primary dark:hover:text-primary-night hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-150 dark:hover:border-border-night active:bg-primary-300 dark:active:bg-primary-900"
+        >
+          Code
         </button>
       </div>
       <div ref={ref}>

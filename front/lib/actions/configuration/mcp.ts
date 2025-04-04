@@ -36,25 +36,26 @@ export async function fetchMCPServerActionConfigurations(
   }
 
   // Find the associated data sources configurations.
-  const dataSourceConfigurations = await AgentDataSourceConfiguration.findAll({
-    where: {
-      mcpServerConfigurationId: {
-        [Op.in]: mcpServerConfigurations.map((r) => r.id),
+  const allDataSourceConfigurations =
+    await AgentDataSourceConfiguration.findAll({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
       },
-    },
-    include: [
-      {
-        model: DataSourceViewModel,
-        as: "dataSourceView",
-        include: [
-          {
-            model: Workspace,
-            as: "workspace",
-          },
-        ],
-      },
-    ],
-  });
+      include: [
+        {
+          model: DataSourceViewModel,
+          as: "dataSourceView",
+          include: [
+            {
+              model: Workspace,
+              as: "workspace",
+            },
+          ],
+        },
+      ],
+    });
 
   const actionsByConfigurationId = new Map<
     ModelId,
@@ -64,8 +65,8 @@ export async function fetchMCPServerActionConfigurations(
   for (const config of mcpServerConfigurations) {
     const { agentConfigurationId, sId, id, mcpServerViewId } = config;
 
-    const dataSourceConfiguration =
-      dataSourceConfigurations.filter(
+    const dataSourceConfigurations =
+      allDataSourceConfigurations.filter(
         (ds) => ds.mcpServerConfigurationId === config.id
       ) ?? [];
 
@@ -80,7 +81,7 @@ export async function fetchMCPServerActionConfigurations(
       );
     }
 
-    let metadata: MCPServerType | null = null;
+    let metadata: MCPServerType;
     if (mcpServerView.serverType === "remote") {
       const remoteMCPServer = mcpServerView.getRemoteMCPServer();
 
@@ -123,7 +124,7 @@ export async function fetchMCPServerActionConfigurations(
         name: metadata.name,
         description: metadata.description,
         mcpServerViewId: mcpServerView.sId,
-        dataSources: dataSourceConfiguration.map(getDataSource),
+        dataSources: dataSourceConfigurations.map(getDataSource),
       });
     }
   }

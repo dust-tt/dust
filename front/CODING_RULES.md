@@ -186,6 +186,23 @@ id: ModelId;
 }
 ```
 
+### [BACK11] Resource invariant: Use "Model" suffix for Sequelize models when creating Resources
+
+When creating a new Resource that wraps a Sequelize model, the model should be renamed to include
+the "Model" suffix for clarity (e.g., `Conversation` becomes `ConversationModel`).
+This naming convention helps distinguish between the Resource interface and
+the underlying Sequelize model implementation.
+
+Example:
+
+```
+// BAD
+class Conversation extends Model { }
+
+// GOOD
+class ConversationModel extends Model { }
+```
+
 ## TESTING
 
 ### [TEST1] Functionally test endpoints

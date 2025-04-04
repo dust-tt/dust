@@ -1,3 +1,5 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+
 import type {
   BrowseActionRunningEvents,
   BrowseConfigurationType,
@@ -85,7 +87,7 @@ export function isActionConfigurationType(
   }
 }
 
-// We need to apply Omit to each member of the union separately rather than the whole union
+// We need to apply "Omit" to each member of the union separately rather than the whole union
 // because Omit<A | B, "k"> is different from Omit<A, "k"> | Omit<B, "k">.
 // The first form loses the discriminated union properties needed for type narrowing.
 type UnsavedConfiguration<T> = Omit<T, "id" | "sId">;
@@ -105,7 +107,7 @@ export type UnsavedAgentActionConfigurationType = {
 // ```
 //
 // The params generator model for this action would be tasked to generate that query. If the
-// retrieval configuration sets `relativeTimeFrame` to "auto" as well we would get:
+// retrieval configuration sets `relativeTimeFrame` to "auto" as well, we would get:
 //
 // ```
 // {
@@ -124,25 +126,17 @@ export type DustAppRunInputType = {
     type: "string" | "number" | "boolean";
   };
 };
-export type InputSchemaType = {
-  type: "object";
-  [x: string]: unknown;
-  properties?:
-    | {
-        [x: string]: unknown;
-      }
-    | undefined;
-};
+
 export type AgentActionSpecification = {
   name: string;
   description: string;
-  inputSchema: InputSchemaType;
+  inputSchema: JSONSchema;
 };
 
 export function dustAppRunInputsToInputSchema(
   inputs: DustAppRunInputType[]
-): InputSchemaType {
-  const properties: Record<string, unknown> = {};
+): JSONSchema {
+  const properties: JSONSchema["properties"] = {};
   for (const i of inputs) {
     properties[i.name] = {
       type: i.type,
@@ -158,7 +152,7 @@ export function dustAppRunInputsToInputSchema(
 }
 
 export function inputSchemaToDustAppRunInputs(
-  inputSchema: InputSchemaType
+  inputSchema: JSONSchema
 ): DustAppRunInputType[] {
   return Object.entries(inputSchema.properties || {}).map(
     ([name, property]) => {
@@ -188,7 +182,7 @@ export function inputSchemaToDustAppRunInputs(
   );
 }
 
-// Event sent during the execution of an action. These are action specific.
+// Event sent during the execution of an action. These are action-specific.
 export type AgentActionSpecificEvent =
   | BrowseActionRunningEvents
   | ConversationIncludeFileActionRunningEvents
