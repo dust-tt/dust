@@ -78,23 +78,36 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return result;
   }
 
+  private static async baseFetch(
+    auth: Authenticator,
+    fetchConversationOptions?: FetchConversationOptions,
+    options: ResourceFindOptions<ConversationModel> = {}
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+    const { where } = this.getOptions(fetchConversationOptions);
+
+    const conversations = await this.model.findAll({
+      where: {
+        ...options.where,
+        ...where,
+        workspaceId: workspace.id,
+      },
+      limit: options.limit,
+    });
+
+    return conversations.map((c) => new this(this.model, c.get()));
+  }
+
   static async fetchByIds(
     auth: Authenticator,
     sIds: string[],
     options?: FetchConversationOptions
   ) {
-    const workspace = auth.getNonNullableWorkspace();
-    const { where } = this.getOptions(options);
-
-    const conversations = await this.model.findAll({
+    return this.baseFetch(auth, options, {
       where: {
         sId: sIds,
-        workspaceId: workspace.id,
-        ...where,
       },
     });
-
-    return conversations.map((c) => new this(this.model, c.get()));
   }
 
   static async fetchById(
@@ -111,15 +124,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     options?: FetchConversationOptions
   ): Promise<ConversationResource[]> {
-    const workspace = auth.getNonNullableWorkspace();
-    const { where } = this.getOptions(options);
-    const conversations = await this.model.findAll({
-      where: {
-        workspaceId: workspace.id,
-        ...where,
-      },
-    });
-    return conversations.map((c) => new this(this.model, c.get()));
+    return this.baseFetch(auth, options);
   }
 
   static async listMentionsByConfiguration(
