@@ -77,8 +77,8 @@ export function CapabilitySection() {
           title={<>Leverage the best models on the market.</>}
           content={
             <>
-              "Choose OpenAI, Anthropic, Gemini, Mistral, or any cutting-edge
-              model to ensure your agents stay smartest."
+              Choose OpenAI, Anthropic, Gemini, Mistral, or any cutting-edge
+              model to ensure your agents stay smartest.
             </>
           }
         >
