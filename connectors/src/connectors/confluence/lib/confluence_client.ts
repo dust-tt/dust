@@ -190,6 +190,20 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
+// Headers provided by Confluence API to provide information on the rate limiting.
+// https://developer.atlassian.com/cloud/confluence/rate-limiting/
+// The exact rate limit model is not detailed, but can be assumed to be a combination of multiple different systems.
+const RATE_LIMIT_HEADERS = {
+  // As per the doc: "maximum number of requests that a user can make within a specific (unspecified) time window".
+  limit: "x-ratelimit-limit",
+  // As per the doc: "number of requests remaining in the current rate limit window before the limit is reached".
+  remaining: "x-ratelimit-remaining",
+  // As per the doc: "When true, indicates that less than 20% of any budget remains."
+  nearLimit: "x-ratelimit-nearlimit",
+} as const;
+
+// Ratio remaining / limit at which we start to slow down the requests.
+const THROTTLE_TRIGGER_RATIO = 0.3;
 // If Confluence does not provide a retry-after header, we use this constant to signal no delay.
 const NO_RETRY_AFTER_DELAY = -1;
 // Number of times we retry when rate limited and Confluence does provide a retry-after header.
@@ -224,6 +238,19 @@ function getRetryAfterDuration(response: Response): number {
   }
 
   return NO_RETRY_AFTER_DELAY;
+}
+
+function checkNearRateLimit(response: Response): boolean {
+  const nearLimit = response.headers.get(RATE_LIMIT_HEADERS.nearLimit);
+  const remaining = response.headers.get(RATE_LIMIT_HEADERS.remaining);
+  const limit = response.headers.get(RATE_LIMIT_HEADERS.limit);
+
+  return (
+    nearLimit?.toLowerCase() === "true" ||
+    (!!remaining &&
+      !!limit &&
+      parseInt(remaining, 10) / parseInt(limit, 10) < THROTTLE_TRIGGER_RATIO)
+  );
 }
 
 function logRateLimitHeaders(
@@ -395,6 +422,25 @@ export class ConfluenceClient {
 
       throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
+        {
+          type: "http_response_error",
+          status: response.status,
+          data: { url: `${this.apiUrl}${endpoint}`, response },
+        }
+      );
+    }
+
+    // When approaching the rate limit, we defer the handling of the backoff to Temporal.
+    // We have no accurate estimation of the time we should wait here, the goal here is more to warm up the exponential
+    // backoff to slow down the queries as soon as they approach the rate limit.
+    if (checkNearRateLimit(response)) {
+      statsDClient.increment("external.api.calls", 1, [
+        "provider:confluence",
+        "status:near_rate_limit",
+      ]);
+
+      throw new ConfluenceClientError(
+        `Near rate limit: ${this.apiUrl}${endpoint}`,
         {
           type: "http_response_error",
           status: response.status,
