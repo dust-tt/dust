@@ -43,10 +43,7 @@ export function containsSubSchema(
   inputSchema: JSONSchema,
   targetSubSchema: JSONSchema
 ): boolean {
-  if (
-    inputSchema.properties === targetSubSchema.properties &&
-    inputSchema.required === targetSubSchema.required
-  ) {
+  if (schemasAreEqual(inputSchema, targetSubSchema)) {
     return true;
   }
 
