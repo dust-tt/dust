@@ -230,7 +230,7 @@ export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
   private readonly legacyRestApiBaseUrl: string;
-  private readonly proxyAgent: ProxyAgent | undefined;
+  private readonly proxyAgent?: ProxyAgent;
 
   constructor(
     private readonly authToken: string,
@@ -244,17 +244,17 @@ export class ConfluenceClient {
   ) {
     this.restApiBaseUrl = `/ex/confluence/${cloudId}/wiki/api/v2`;
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
-    this.proxyAgent = useProxy
-      ? new ProxyAgent(
-          `http://${EnvironmentConfig.getEnvVariable(
-            "PROXY_USER_NAME"
-          )}:${EnvironmentConfig.getEnvVariable(
-            "PROXY_USER_PASSWORD"
-          )}@${EnvironmentConfig.getEnvVariable(
-            "PROXY_HOST"
-          )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
-        )
-      : undefined;
+    if (useProxy) {
+      this.proxyAgent = new ProxyAgent(
+        `http://${EnvironmentConfig.getEnvVariable(
+          "PROXY_USER_NAME"
+        )}:${EnvironmentConfig.getEnvVariable(
+          "PROXY_USER_PASSWORD"
+        )}@${EnvironmentConfig.getEnvVariable(
+          "PROXY_HOST"
+        )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
+      );
+    }
   }
 
   private async request<T>(
