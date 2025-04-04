@@ -197,6 +197,10 @@ impl Table {
         self.remote_database_table_id.as_deref()
     }
     pub fn remote_database_secret_id(&self) -> Option<&str> {
+        println!(
+            "-----------remote_database_secret_id: {:?}",
+            self.remote_database_secret_id
+        );
         self.remote_database_secret_id.as_deref()
     }
     pub fn table_id_for_dbml(&self) -> &str {

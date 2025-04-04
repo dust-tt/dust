@@ -18,7 +18,6 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import type { CSVRecord } from "@app/lib/api/csv";
-import { getUserMetadata } from "@app/lib/api/user";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
@@ -491,10 +490,9 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     ]);
     const connectionIds: Record<string, string> = {};
     for (const dataSourceView of dataSourceViews) {
-      const connectionId = await getUserMetadata(
-        auth.getNonNullableUser(),
-        `connection_id_${dataSourceView.dataSource.sId}`
-      );
+      const connectionId = await auth
+        .getNonNullableUser()
+        .getMetadata(`connection_id_${dataSourceView.dataSource.sId}`);
       if (connectionId && connectionId.value.length > 0) {
         connectionIds[dataSourceView.sId] = connectionId.value;
       }
@@ -506,6 +504,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       // Note: This value is passed to the registry for lookup. The registry will return the
       // associated data source's dustAPIDataSourceId.
       data_source_id: t.dataSourceViewId,
+      remote_database_secret_id: connectionIds[t.dataSourceViewId],
     }));
     if (tables.length === 0) {
       yield {

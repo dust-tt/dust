@@ -4,19 +4,6 @@ import {
   Page,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceType,
-  DataSourceWithConnectorDetailsType,
-  SubscriptionType,
-  WithConnector,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  concurrentExecutor,
-  OAuthAPI,
-  removeNulls,
-  setupOAuthConnection,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -26,10 +13,18 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { default as config } from "@app/lib/api/config";
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
-import { getUserMetadata } from "@app/lib/api/user";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type {
+  DataSourceType,
+  DataSourceWithConnectorDetailsType,
+  SubscriptionType,
+  WithConnector,
+  WorkspaceType,
+} from "@app/types";
+import { OAuthAPI, removeNulls, setupOAuthConnection } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -45,7 +40,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  const user = auth.user();
+  const user = auth.getNonNullableUser();
 
   if (!owner || !subscription || !user) {
     return {
@@ -71,8 +66,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         if (!augmentedDataSource.connector) {
           return null;
         }
-        const personalConnection = await getUserMetadata(
-          user,
+        const personalConnection = await user.getMetadata(
           `connection_id_${ds.sId}`
         );
         const connectionRes = await oauthApi.getAccessToken({
@@ -82,6 +76,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         if (connectionRes.isErr()) {
           return null;
         }
+
+        const clientId = connectionRes.value.connection.metadata
+          .client_id as string;
+        if (!clientId) {
+          throw new Error(
+            "No client_id found for salesforce connection, please disconnect/reconnect"
+          );
+        }
+
         return {
           ...augmentedDataSource,
           personalConnection: personalConnection?.value ?? "",
@@ -168,16 +171,19 @@ export default function SalesforceIndex({
 
   const saveOAuthConnection = async (connectionId: string) => {
     try {
-      const response = await fetch(`/api/w/${owner.sId}/labs/salesforce`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connectionId,
-          dataSourceId: dataSource.sId,
-        }),
-      });
+      const response = await fetch(
+        `/api/w/${owner.sId}/labs/personal_connections`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            connectionId,
+            dataSourceId: dataSource.sId,
+          }),
+        }
+      );
       if (!response.ok) {
         sendNotification({
           type: "error",

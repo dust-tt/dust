@@ -414,11 +414,12 @@ const PROVIDER_STRATEGIES: Record<
     },
     getRelatedCredential: (extraConfig, workspaceId, userId) => {
       const { client_secret, ...restConfig } = extraConfig;
-
+      // Keep client_id in metadata in clear text.
       return {
         credential: {
           content: {
             client_secret,
+            client_id: extraConfig.client_id,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
         },
