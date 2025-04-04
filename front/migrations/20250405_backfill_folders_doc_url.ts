@@ -7,7 +7,7 @@ import _ from "lodash";
 makeScript({}, async ({ execute }, logger) => {
   const coreSequelize = getCorePrimaryDbConnection();
 
-  // That's ~ 40K files in US
+  // Find all upsert_document files. That's ~ 40K files in US.
   const filesToBackfill = await FileModel.findAll({
     where: {
       useCase: "upsert_document",
@@ -20,11 +20,19 @@ makeScript({}, async ({ execute }, logger) => {
     return `/files/${sId}`;
   });
 
-  // In batches of 1000, set URLs finishing with the suffixes to null.
-  const batchSize = 1000;
+  // Set URLs finishing with the suffixes to null.
+  const batchSize = 100;
+
   const batches = _.chunk(filesURLSuffixes, batchSize);
   for (const batch of batches) {
-    logger.info({ batchSize: batch.length, execute }, "Updating batch");
+    logger.info(
+      {
+        batchSize: batch.length,
+        execute,
+        firstIds: batch.slice(0, 2).join("---"),
+      },
+      "Updating batch"
+    );
     if (execute) {
       await coreSequelize.query(
         `UPDATE data_sources_nodes dsn

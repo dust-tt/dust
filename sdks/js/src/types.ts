@@ -2487,6 +2487,7 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
   | "tool_output"
   | "upsert_document"
   | "upsert_table"
+  // See also front/types/files.ts.
   | "folders_document"
 >();
 
