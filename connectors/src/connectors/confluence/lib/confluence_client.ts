@@ -226,6 +226,23 @@ function getRetryAfterDuration(response: Response): number {
   return NO_RETRY_AFTER_DELAY;
 }
 
+function logRateLimitHeaders(response: Response, endpoint: string) {
+  const rateLimitHeaders: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    if (key.toLowerCase().startsWith("x-ratelimit")) {
+      rateLimitHeaders[key] = value;
+    }
+  });
+
+  logger.info(
+    {
+      rateLimitHeaders,
+      endpoint,
+    },
+    "[Confluence] Headers relative to the rate limit"
+  );
+}
+
 export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
@@ -333,20 +350,7 @@ export class ConfluenceClient {
           "provider:confluence",
           "status:rate_limited",
         ]);
-        const rateLimitHeaders: Record<string, string> = {};
-        response.headers.forEach((value, key) => {
-          if (key.toLowerCase().startsWith("x-ratelimit")) {
-            rateLimitHeaders[key] = value;
-          }
-        });
-
-        logger.info(
-          {
-            rateLimitHeaders,
-            endpoint,
-          },
-          "[Confluence] Headers relative to the rate limit"
-        );
+        logRateLimitHeaders(response, endpoint);
 
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs = getRetryAfterDuration(response);
