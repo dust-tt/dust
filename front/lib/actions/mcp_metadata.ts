@@ -19,6 +19,7 @@ import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_action
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { OAuthProvider, OAuthUseCase } from "@app/types";
@@ -39,6 +40,16 @@ export type MCPServerType = {
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   isDefault: boolean;
+};
+
+export type RemoteMCPServerType = MCPServerType & {
+  url?: string;
+  sharedSecret?: string;
+  lastSyncAt?: Date | null;
+};
+
+export type MCPServerTypeWithViews = MCPServerType & {
+  views: MCPServerViewType[];
 };
 
 export type MCPServerDefinitionType = Omit<

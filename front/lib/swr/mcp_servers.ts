@@ -4,7 +4,6 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
-  AllowedFilter,
   CreateMCPServerResponseBody,
   GetMCPServersResponseBody,
 } from "@app/pages/api/w/[wId]/mcp";
@@ -114,16 +113,14 @@ export function useRemoteMCPServer({
 
 export function useMCPServers({
   owner,
-  filter,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  filter: AllowedFilter;
   disabled?: boolean;
 }) {
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
-  const url = `/api/w/${owner.sId}/mcp?filter=${filter}`;
+  const url = `/api/w/${owner.sId}/mcp`;
 
   const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
     url,
@@ -150,7 +147,6 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
   const { mutateMCPServers } = useMCPServers({
     disabled: true,
     owner,
-    filter: "remote",
   });
 
   const deleteServer = async (
@@ -176,7 +172,6 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
   const { mutateMCPServers } = useMCPServers({
     disabled: true,
     owner,
-    filter: "internal",
   });
 
   const createInternalMCPServer = async (
@@ -207,7 +202,6 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
   const { mutateMCPServers } = useMCPServers({
     disabled: true,
     owner,
-    filter: "remote",
   });
 
   const createWithUrlSync = async (
