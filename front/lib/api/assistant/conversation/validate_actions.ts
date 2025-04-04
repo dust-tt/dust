@@ -1,7 +1,7 @@
 import { publishEvent } from "@app/lib/api/assistant/pubsub";
 import logger from "@app/logger/logger";
 
-export function getActionChannel(actionId: number): string {
+function getActionChannel(actionId: number): string {
   return `action-${actionId}`;
 }
 
