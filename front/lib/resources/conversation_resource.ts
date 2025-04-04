@@ -23,7 +23,6 @@ import type {
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   Result,
-  WorkspaceType,
 } from "@app/types";
 import { ConversationError, removeNulls } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -189,20 +188,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return mentions.map((mention) => new this(this.model, mention.get()));
   }
 
-  static getConversationRequestedGroupIdsFromModel(
-    owner: WorkspaceType,
-    conversation: ConversationResource
-  ): string[][] {
-    return conversation.requestedGroupIds.map((groups) =>
-      groups.map((g) =>
-        GroupResource.modelIdToSId({
-          id: g,
-          workspaceId: owner.id,
-        })
-      )
-    );
-  }
-
   static canAccessConversation(
     auth: Authenticator,
     conversation:
@@ -210,14 +195,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       | ConversationType
       | ConversationResource
   ): boolean {
-    const owner = auth.getNonNullableWorkspace();
-
     const requestedGroupIds =
       conversation instanceof ConversationResource
-        ? ConversationResource.getConversationRequestedGroupIdsFromModel(
-            owner,
-            conversation
-          )
+        ? conversation.getConversationRequestedGroupIdsFromModel(auth)
         : conversation.requestedGroupIds;
 
     return auth.canRead(
@@ -256,10 +236,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       owner,
       title: conversation.title,
       visibility: conversation.visibility,
-      requestedGroupIds: this.getConversationRequestedGroupIdsFromModel(
-        owner,
-        conversation
-      ),
+      requestedGroupIds:
+        conversation.getConversationRequestedGroupIdsFromModel(auth),
       // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
       groupIds: [],
     });
@@ -344,10 +322,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             owner,
             title: c.title,
             visibility: c.visibility,
-            requestedGroupIds: this.getConversationRequestedGroupIdsFromModel(
-              owner,
-              c
-            ),
+            requestedGroupIds:
+              c.getConversationRequestedGroupIdsFromModel(auth),
             // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
             groupIds: [],
           }) satisfies ConversationWithoutContentType
@@ -416,7 +392,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     transaction?: Transaction
   ) {
     const conversation = await ConversationResource.fetchById(auth, sId);
-    if (conversation == null) {
+    if (conversation === null) {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
@@ -484,5 +460,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  getConversationRequestedGroupIdsFromModel(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+    return this.requestedGroupIds.map((groups) =>
+      groups.map((g) =>
+        GroupResource.modelIdToSId({
+          id: g,
+          workspaceId: workspace.id,
+        })
+      )
+    );
   }
 }

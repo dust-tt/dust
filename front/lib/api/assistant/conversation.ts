@@ -145,10 +145,7 @@ export async function createConversation(
     visibility: conversation.visibility,
     content: [],
     requestedGroupIds:
-      ConversationResource.getConversationRequestedGroupIdsFromModel(
-        owner,
-        conversation
-      ),
+      conversation.getConversationRequestedGroupIdsFromModel(auth),
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
     groupIds: [],
   };
@@ -302,10 +299,7 @@ export async function getConversation(
     visibility: conversation.visibility,
     content,
     requestedGroupIds:
-      ConversationResource.getConversationRequestedGroupIdsFromModel(
-        owner,
-        conversation
-      ),
+      conversation.getConversationRequestedGroupIdsFromModel(auth),
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
     groupIds: [],
   });
