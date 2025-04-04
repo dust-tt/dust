@@ -192,24 +192,20 @@ export async function submitAssistantBuilderForm({
         ];
 
       case "MCP":
+        const {
+          configuration: { tablesConfigurations, dataSourceConfigurations },
+        } = a;
         return [
           {
             type: "mcp_server_configuration",
             name: a.name,
             description: a.description,
             mcpServerViewId: a.configuration.mcpServerViewId,
-            dataSources: a.configuration.dataSourceConfigurations
-              ? processDataSourcesSelection({
-                  owner,
-                  dataSourceConfigurations:
-                    a.configuration.dataSourceConfigurations,
-                })
+            dataSources: dataSourceConfigurations
+              ? processDataSourcesSelection({ owner, dataSourceConfigurations })
               : null,
-            tables: a.configuration.tablesConfigurations
-              ? processTableSelection({
-                  owner,
-                  tablesConfigurations: a.configuration.tablesConfigurations,
-                })
+            tables: tablesConfigurations
+              ? processTableSelection({ owner, tablesConfigurations })
               : null,
           },
         ];
