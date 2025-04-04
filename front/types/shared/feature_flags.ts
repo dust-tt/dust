@@ -4,7 +4,6 @@ export const WHITELISTABLE_FEATURES = [
   "labs_features",
   "labs_transcripts",
   "labs_connection_hubspot",
-  "labs_github_actions",
   "labs_trackers",
   "openai_o1_feature",
   "openai_o1_mini_feature",
