@@ -55,7 +55,7 @@ async function handler(
     });
   }
 
-  // Only folder document, document and table upserts are supported on this endpoint.
+  // Only folder document and table upserts are supported on this endpoint.
   if (
     !["upsert_document", "upsert_table", "folders_document"].includes(
       file.useCase
