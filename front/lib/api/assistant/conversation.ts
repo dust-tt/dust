@@ -5,7 +5,10 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  getAgentConfigurations,
+  getLightAgentConfiguration,
+} from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import {
@@ -43,7 +46,6 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -597,12 +599,15 @@ export async function* postUserMessage(
   }
 
   const results = await Promise.all([
-    concurrentExecutor(
-      mentions.filter(isAgentMention),
-      async (mention) =>
-        getLightAgentConfiguration(auth, mention.configurationId),
-      { concurrency: 4 }
-    ),
+    getAgentConfigurations({
+      auth,
+      agentsGetView: {
+        agentIds: mentions
+          .filter(isAgentMention)
+          .map((mention) => mention.configurationId),
+      },
+      variant: "light",
+    }),
     ConversationResource.upsertParticipation(auth, conversation),
   ]);
 
