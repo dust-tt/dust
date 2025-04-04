@@ -3,6 +3,10 @@ import { useDustAPI } from "@app/shared/lib/dust_api";
 import type { AgentMessageFeedbackType } from "@app/shared/lib/feedbacks";
 import type { StoredUser } from "@app/shared/services/auth";
 import { AgentMessage } from "@app/ui/components/conversation/AgentMessage";
+import {
+  AttachmentCitation,
+  contentFragmentToAttachmentCitation,
+} from "@app/ui/components/conversation/AttachmentCitation";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { UserMessage } from "@app/ui/components/conversation/UserMessage";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
@@ -12,10 +16,6 @@ import type {
 } from "@dust-tt/client";
 import React from "react";
 import { useSWRConfig } from "swr";
-import {
-  AttachmentCitation,
-  contentFragmentToAttachmentCitation,
-} from "@app/ui/components/conversation/AttachmentCitation";
 
 interface MessageItemProps {
   conversationId: string;

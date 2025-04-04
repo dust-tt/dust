@@ -3,18 +3,20 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/shared/lib/content_nodes";
+import type {
+  Attachment,
+  FileAttachment,
+  NodeAttachment,
+} from "@app/ui/components/conversation/AttachmentCitation";
+import {
+  AttachmentCitation,
+  attachmentToAttachmentCitation,
+} from "@app/ui/components/conversation/AttachmentCitation";
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import type { DataSourceViewContentNodeType } from "@dust-tt/client";
 import { isFolder, isWebsite } from "@dust-tt/client";
 import { Icon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-import {
-  Attachment,
-  AttachmentCitation,
-  attachmentToAttachmentCitation,
-  FileAttachment,
-  NodeAttachment,
-} from "@app/ui/components/conversation/AttachmentCitation";
 
 interface FileAttachmentsProps {
   service: FileUploaderService;
