@@ -84,10 +84,10 @@ interface BlogSectionProps {
 
 export function BlogSection({ className = "" }: BlogSectionProps) {
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`w-full rounded-2xl ${className}`}>
       <Carousel className="w-full">
         <div className="mb-8 flex flex-col items-start justify-between space-y-4 md:flex-row md:items-end md:space-y-0">
-          <div>
+          <div className="rounded-xl">
             <H2>Customer Stories</H2>
             <P size="lg" className="text-muted-foreground">
               Leading enterprises are already transforming their operations with
@@ -100,21 +100,23 @@ export function BlogSection({ className = "" }: BlogSectionProps) {
           </div>
         </div>
 
-        <CarouselContent className="-ml-4">
+        <CarouselContent className="-ml-4 rounded-xl">
           {blogPosts.map((post, index) => (
             <CarouselItem
               key={index}
-              className="basis-full pl-8 sm:basis-1/2 lg:basis-1/3"
+              className="basis-full rounded-xl pl-8 sm:basis-1/2 lg:basis-1/3"
             >
               <BlogBlock
                 title={post.title}
                 content={post.content}
                 href={post.href}
+                className="overflow-hidden"
               >
                 <img
                   src={post.imageUrl}
                   alt={`${post.title} thumbnail`}
-                  className="aspect-video w-full rounded-t-lg object-cover"
+                  className="aspect-video w-full object-cover"
+                  style={{ borderRadius: 0 }}
                 />
               </BlogBlock>
             </CarouselItem>
