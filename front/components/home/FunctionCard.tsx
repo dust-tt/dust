@@ -16,29 +16,33 @@ interface FunctionCardProps {
 const colorVariants = {
   green: {
     card: "bg-brand-hunter-green",
-    visual: "bg-brand-tea-green",
+    visual: "bg-green-50",
+    inner: "bg-green-100",
   },
   blue: {
     card: "bg-brand-electric-blue",
-    visual: "bg-brand-sky-blue",
+    visual: "bg-blue-50",
+    inner: "bg-blue-100",
   },
   golden: {
     card: "bg-brand-orange-golden",
-    visual: "bg-brand-sunshine-golden",
+    visual: "bg-amber-50",
+    inner: "bg-amber-100",
   },
   rose: {
     card: "bg-brand-red-rose",
-    visual: "bg-brand-pink-rose",
+    visual: "bg-rose-50",
+    inner: "bg-rose-100",
   },
 };
 
 const cardVariants = cva("", {
   variants: {
     color: {
-      green: "bg-brand-hunter-green",
-      blue: "bg-brand-electric-blue",
-      golden: "bg-brand-orange-golden",
-      rose: "bg-brand-red-rose",
+      green: "bg-green-50",
+      blue: "bg-blue-50",
+      golden: "bg-amber-50",
+      rose: "bg-rose-50",
     },
   },
 });
@@ -51,28 +55,34 @@ export function FunctionCard({
   href,
 }: FunctionCardProps) {
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className={`h-60 w-full px-4 ${colorVariants[color].visual}`}>
+    <div className="flex h-full flex-col overflow-hidden rounded-3xl font-sans">
+      <div
+        className={`h-60 w-full ${colorVariants[color].visual} rounded-t-2xl p-4`}
+      >
         <div className="flex h-full w-full items-center justify-center">
-          <img
-            src={visualSrc}
-            alt={`${title} visual`}
-            className="h-full w-full object-contain"
-          />
+          <div
+            className={`${colorVariants[color].inner} flex h-full w-full items-center justify-center rounded-lg p-4`}
+          >
+            <img
+              src={visualSrc}
+              alt={`${title} visual`}
+              className="max-h-full max-w-full object-contain"
+            />
+          </div>
         </div>
       </div>
 
       <div
-        className={`flex flex-grow flex-col gap-2 p-8 ${cardVariants({ color })}`}
+        className={`flex flex-grow flex-col gap-2 px-6 pb-6 ${cardVariants({ color })}`}
       >
-        <H3 className="text-white" mono>
+        <H3 className="font-medium text-black" mono>
           {title}
         </H3>
-        <ul className="copy-base flex-grow font-medium text-white/80">
+        <ul className="flex-grow font-sans font-medium text-black/80">
           {features.map((feature, i) => (
             <li
               key={i}
-              className="flex min-h-6 items-start gap-1 py-1.5 text-white/80"
+              className="flex min-h-6 items-start gap-1 py-1.5 text-base font-medium text-black/80"
             >
               <div className="pt-0.5">
                 <Icon visual={ChevronRightIcon} size="sm" />
@@ -81,7 +91,7 @@ export function FunctionCard({
             </li>
           ))}
         </ul>
-        <div className="mt-4">
+        <div>
           <Link href={href} shallow>
             <Button variant="outline" label="Learn more" size="sm" />
           </Link>

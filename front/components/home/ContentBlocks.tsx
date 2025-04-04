@@ -43,14 +43,57 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
     }
   };
 
+  // Generate a color class based on the title text to ensure consistent but different colors for each block
+  const getColorClass = () => {
+    // Extract the first word of the title if it's a string
+    let titleText = "";
+    if (typeof title === "string") {
+      titleText = title;
+    } else if (React.isValidElement(title)) {
+      titleText = React.Children.toArray(title.props.children).join(" ");
+    }
+
+    // Map common words to specific colors
+    if (titleText.includes("Answer")) {
+      return "bg-blue-50";
+    }
+    if (titleText.includes("Unlock")) {
+      return "bg-green-50";
+    }
+    if (titleText.includes("Analyze")) {
+      return "bg-golden-50";
+    }
+    if (titleText.includes("Automate")) {
+      return "bg-rose-50";
+    }
+
+    // Default fallback colors based on first character
+    const firstChar = titleText.trim().charAt(0).toLowerCase();
+    if (firstChar >= "a" && firstChar <= "g") {
+      return "bg-blue-50";
+    }
+    if (firstChar >= "h" && firstChar <= "n") {
+      return "bg-green-50";
+    }
+    if (firstChar >= "o" && firstChar <= "u") {
+      return "bg-golden-50";
+    }
+    return "bg-rose-50";
+  };
+
   return (
     <div
       className={classNames(
-        "flex flex-col gap-2 overflow-hidden bg-muted-background",
+        "flex flex-col gap-2 overflow-hidden rounded-2xl bg-muted-background",
         className
       )}
     >
-      <div className="flex aspect-video items-center justify-center bg-primary-800 p-4">
+      <div
+        className={classNames(
+          "flex aspect-video items-center justify-center rounded-t-2xl p-4",
+          getColorClass()
+        )}
+      >
         <div className="max-w-[400px]">{children ? children : null}</div>
       </div>
       <div className="flex flex-col gap-3 px-6 pb-6 pt-4">
@@ -84,7 +127,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex h-full w-full flex-col overflow-hidden bg-muted-background",
+        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-muted-background",
         "group transition duration-300 ease-out",
         "hover:bg-primary-100"
       )}
@@ -271,40 +314,43 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
   <div className="col-span-12 my-16 flex flex-col items-center justify-center md:my-12 lg:col-span-10 lg:col-start-2 lg:my-8">
     <div
       className={cn(
-        "flex max-w-[500px] flex-col items-center p-4 text-center font-sans italic text-foreground",
-        "copy-base xs:copy-lg sm:copy-xl md:copy-xl lg:copy-2xl"
+        "relative w-full max-w-[800px] rounded-2xl bg-gray-50 p-6",
+        "font-sans text-foreground"
       )}
     >
-      &ldquo; {quote} &rdquo;
-    </div>
-    <div className="align-center flex justify-center">
-      <div className="flex items-center justify-center gap-4">
-        <Image
-          src={logo}
-          width={160}
-          height={40}
-          alt="Company Logo"
-          className="h-auto w-[120px] object-contain xs:w-[140px] sm:w-[160px]"
-        />
-        <div className="flex flex-col">
-          <P
-            size="md"
-            className={cn(
-              "text-foreground",
-              "xs:copy-left copy-base sm:copy-lg md:copy-xl"
-            )}
-          >
-            <Strong>{name}</Strong>
-          </P>
-          <P
-            size="sm"
-            className={cn(
-              "-mt-1 italic text-muted-foreground",
-              "xs:copy-left copy-sm xs:copy-base sm:copy-lg md:copy-lg"
-            )}
-          >
-            {title}
-          </P>
+      <div className="flex w-full flex-col">
+        <div
+          className={cn(
+            "mb-4 w-full text-left font-sans italic text-foreground",
+            "copy-base xs:copy-lg sm:copy-xl md:copy-xl lg:copy-xl"
+          )}
+        >
+          &ldquo; {quote} &rdquo;
+        </div>
+
+        <div className="flex w-full flex-row items-end justify-between">
+          <div className="flex flex-col">
+            <P
+              size="md"
+              className={cn("text-foreground", "copy-base sm:copy-lg")}
+            >
+              <Strong>{name}</Strong>
+            </P>
+            <P
+              size="sm"
+              className={cn("text-muted-foreground", "copy-sm xs:copy-base")}
+            >
+              {title}
+            </P>
+          </div>
+
+          <Image
+            src={logo}
+            width={120}
+            height={30}
+            alt="Company Logo"
+            className="h-auto w-[100px] object-contain md:w-[120px]"
+          />
         </div>
       </div>
     </div>
@@ -323,16 +369,18 @@ export function ContentBlock({
   imageAlt: string;
 }) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 overflow-hidden rounded-2xl">
       <Image
         src={image}
         alt={imageAlt}
         width={1200}
         height={630}
-        className="w-full"
+        className="w-full rounded-t-2xl"
       />
-      <H2>{title}</H2>
-      <P>{description}</P>
+      <div className="p-4">
+        <H2>{title}</H2>
+        <P>{description}</P>
+      </div>
     </div>
   );
 }
