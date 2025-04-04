@@ -68,7 +68,7 @@ export function renderDataSourceConfiguration(
   };
 }
 
-export function getTableConfiguration(
+export function renderTableConfiguration(
   table: AgentTablesQueryConfigurationTable
 ): TableDataSourceConfiguration {
   const { dataSourceView } = table;

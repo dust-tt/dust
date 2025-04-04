@@ -3,7 +3,7 @@ import _ from "lodash";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import { getTableConfiguration } from "@app/lib/actions/configuration/helpers";
+import { renderTableConfiguration } from "@app/lib/actions/configuration/helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import type {
   TableDataSourceConfiguration,
@@ -86,7 +86,7 @@ export async function fetchTableQueryActionConfigurations({
         id: c.id,
         sId: c.sId,
         type: "tables_query_configuration",
-        tables: tablesQueryConfigTables.map(getTableConfiguration),
+        tables: tablesQueryConfigTables.map(renderTableConfiguration),
         name: c.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
         description: c.description,
       });
