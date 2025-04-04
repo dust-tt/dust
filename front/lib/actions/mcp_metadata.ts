@@ -38,9 +38,13 @@ export type MCPServerType = {
   icon: AllowedIconType;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
+  isDefault: boolean;
 };
 
-export type MCPServerDefinitionType = Omit<MCPServerType, "tools" | "id">;
+export type MCPServerDefinitionType = Omit<
+  MCPServerType,
+  "tools" | "id" | "isDefault"
+>;
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
@@ -219,6 +223,7 @@ export async function fetchRemoteServerMetaDataByURL(
     return {
       ...metadata,
       tools: serverTools,
+      isDefault: false,
     };
   } finally {
     await mcpClient.close();

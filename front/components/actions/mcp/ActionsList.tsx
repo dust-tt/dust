@@ -243,64 +243,67 @@ export const AdminActionsList = ({
       onClick: () => {
         setShowDetails(serverView.server);
       },
-      actions: [
-        {
-          disabled:
-            !groupedSpaces.available || groupedSpaces.available.length === 0,
-          kind: "submenu",
-          label: "Add to space",
-          items: (groupedSpaces.available || []).map((s) => ({
-            id: s.sId,
-            name: s.name,
-          })),
-          onSelect: async (spaceId) => {
-            const space = availableSpaces.find((s) => s.sId === spaceId);
-            if (!space) {
-              throw new Error("Space not found");
-            }
-            await addToSpace(serverView.server, space);
-            await mutateMCPServers();
-          },
-        },
-        {
-          disabled:
-            !groupedSpaces.included || groupedSpaces.included.length === 0,
-          kind: "submenu",
-          label: "Remove from space",
-          items: (groupedSpaces.included || []).map((s) => ({
-            id: s.sId,
-            name: s.name,
-          })),
-          onSelect: async (spaceId) => {
-            const space = availableSpaces.find((s) => s.sId === spaceId);
-            if (!space) {
-              throw new Error("Space not found");
-            }
+      actions: serverView.server.isDefault
+        ? []
+        : [
+            {
+              disabled:
+                !groupedSpaces.available ||
+                groupedSpaces.available.length === 0,
+              kind: "submenu",
+              label: "Add to space",
+              items: (groupedSpaces.available || []).map((s) => ({
+                id: s.sId,
+                name: s.name,
+              })),
+              onSelect: async (spaceId) => {
+                const space = availableSpaces.find((s) => s.sId === spaceId);
+                if (!space) {
+                  throw new Error("Space not found");
+                }
+                await addToSpace(serverView.server, space);
+                await mutateMCPServers();
+              },
+            },
+            {
+              disabled:
+                !groupedSpaces.included || groupedSpaces.included.length === 0,
+              kind: "submenu",
+              label: "Remove from space",
+              items: (groupedSpaces.included || []).map((s) => ({
+                id: s.sId,
+                name: s.name,
+              })),
+              onSelect: async (spaceId) => {
+                const space = availableSpaces.find((s) => s.sId === spaceId);
+                if (!space) {
+                  throw new Error("Space not found");
+                }
 
-            const viewToDelete = linkedServerViews?.find(
-              (v) => v.spaceId === spaceId
-            );
-            if (viewToDelete) {
-              await removeFromSpace(viewToDelete, space);
-              await mutateMCPServers();
-            }
-          },
-        },
-        {
-          kind: "item",
-          label: "Edit",
-          onSelect: () => {
-            setShowDetails(serverView.server);
-          },
-        },
-        {
-          kind: "item",
-          label: serverType === "internal" ? "Disable" : "Delete",
-          onSelect: async () => {
-            await deleteServer(serverView.server.id);
-          },
-        },
-      ],
+                const viewToDelete = linkedServerViews?.find(
+                  (v) => v.spaceId === spaceId
+                );
+                if (viewToDelete) {
+                  await removeFromSpace(viewToDelete, space);
+                  await mutateMCPServers();
+                }
+              },
+            },
+            {
+              kind: "item",
+              label: "Edit",
+              onSelect: () => {
+                setShowDetails(serverView.server);
+              },
+            },
+            {
+              kind: "item",
+              label: serverType === "internal" ? "Disable" : "Delete",
+              onSelect: async () => {
+                await deleteServer(serverView.server.id);
+              },
+            },
+          ],
     };
   });
   const columns = getTableColumns();

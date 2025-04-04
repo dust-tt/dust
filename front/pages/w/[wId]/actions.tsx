@@ -11,6 +11,7 @@ import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
@@ -32,6 +33,8 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       notFound: true,
     };
   }
+
+  await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
 
   return {
     props: {
