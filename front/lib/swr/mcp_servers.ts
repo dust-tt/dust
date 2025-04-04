@@ -175,12 +175,17 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
   });
 
   const createInternalMCPServer = async (
-    name: string
+    name: string,
+    includeGlobal: boolean
   ): Promise<CreateMCPServerResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, serverType: "internal" }),
+      body: JSON.stringify({
+        name,
+        serverType: "internal",
+        includeGlobal,
+      }),
     });
 
     if (!response.ok) {
@@ -205,12 +210,13 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
   });
 
   const createWithUrlSync = async (
-    url: string
+    url: string,
+    includeGlobal: boolean
   ): Promise<CreateMCPServerResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, serverType: "remote" }),
+      body: JSON.stringify({ url, serverType: "remote", includeGlobal }),
     });
 
     if (!response.ok) {

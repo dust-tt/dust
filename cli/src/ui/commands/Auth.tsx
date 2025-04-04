@@ -30,6 +30,14 @@ interface TokenErrorResponse {
   error_description?: string;
 }
 
+// Define the expected structure of the decoded access token payload
+interface DecodedAccessToken {
+  exp: number;
+  // Use dynamic claim name based on environment variable
+  [claimName: `https://${string}/region`]: string | undefined;
+  [key: string]: any; // Allow other claims
+}
+
 interface AuthProps {
   force?: boolean;
 }
@@ -161,6 +169,37 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
         } else {
           // Store tokens in secure storage
           await TokenStorage.saveTokens(data.access_token, data.refresh_token);
+
+          // Decode the access token to get the region
+          try {
+            const decodedToken = jwtDecode<DecodedAccessToken>(
+              data.access_token
+            );
+            // Construct the claim name dynamically
+            const claimNamespace = process.env.AUTH0_CLAIM_NAMESPACE || ""; // Use env var with fallback
+            const regionClaimName = `${claimNamespace}region`;
+
+            // Use the specific claim namespace from Auth0
+            const region = decodedToken[regionClaimName];
+            if (region) {
+              // Save the exact region value (e.g., 'us-central1', 'europe-west1')
+              await TokenStorage.saveRegion(region);
+            } else {
+              // Default to a standard value if region is not found in token
+              console.warn(
+                `Region claim ('${regionClaimName}') not found in token, defaulting to 'us-central1'.`
+              );
+              // Store a default value like 'us-central1' consistent with extension logic if needed
+              await TokenStorage.saveRegion("us-central1");
+            }
+          } catch (decodeError) {
+            console.error("Failed to decode access token:", decodeError);
+            // Save default region on error
+            await TokenStorage.saveRegion("us-central1");
+            setError(
+              "Authentication succeeded, but failed to process user region."
+            );
+          }
 
           resetDustClient();
 

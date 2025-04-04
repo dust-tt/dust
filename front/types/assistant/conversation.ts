@@ -213,9 +213,6 @@ export type ConversationWithoutContentType = {
   title: string | null;
   visibility: ConversationVisibility;
   requestedGroupIds: string[][];
-
-  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-  groupIds?: string[];
 };
 
 /**

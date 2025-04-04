@@ -11,7 +11,15 @@ export type FileUseCase =
   | "conversation"
   | "avatar"
   | "tool_output"
+  // Upsert document: case in which a document first exists as a file resource
+  // on our end, and we wish to upsert it in a datasource. In that case, it will
+  // be temporarily stored in the upsert queue during the upsert operation (and
+  // exists permanently as a file resource).
   | "upsert_document"
+  // Folders document: case in which a document is uploaded from scratch (e.g.
+  // via the UI in a Folder). In that case, it will be stored permanently as a file
+  // resource even for the upsert (no need to transit via upsert queue).
+  | "folders_document"
   | "upsert_table";
 
 export type FileUseCaseMetadata = {
