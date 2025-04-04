@@ -3,8 +3,8 @@ import { Op } from "sequelize";
 
 import {
   AgentMessage,
-  Conversation,
-  ConversationParticipant,
+  ConversationModel,
+  ConversationParticipantModel,
   Mention,
   Message,
   MessageReaction,
@@ -24,10 +24,10 @@ type TableConfig = {
 
 const TABLES: TableConfig[] = [
   {
-    model: ConversationParticipant,
+    model: ConversationParticipantModel,
     include: (workspaceId: number) => [
       {
-        model: Conversation,
+        model: ConversationModel,
         required: true,
         where: { workspaceId },
       },
@@ -38,7 +38,7 @@ const TABLES: TableConfig[] = [
     include: (workspaceId: number) => [
       {
         as: "conversation",
-        model: Conversation,
+        model: ConversationModel,
         required: true,
         where: { workspaceId },
       },
@@ -54,7 +54,7 @@ const TABLES: TableConfig[] = [
         include: [
           {
             as: "conversation",
-            model: Conversation,
+            model: ConversationModel,
             required: true,
             where: { workspaceId },
           },
@@ -72,7 +72,7 @@ const TABLES: TableConfig[] = [
         include: [
           {
             as: "conversation",
-            model: Conversation,
+            model: ConversationModel,
             required: true,
             where: { workspaceId },
           },
@@ -90,7 +90,7 @@ const TABLES: TableConfig[] = [
         include: [
           {
             as: "conversation",
-            model: Conversation,
+            model: ConversationModel,
             required: true,
             where: { workspaceId },
           },
@@ -107,7 +107,7 @@ const TABLES: TableConfig[] = [
         include: [
           {
             as: "conversation",
-            model: Conversation,
+            model: ConversationModel,
             required: true,
             where: { workspaceId },
           },
@@ -124,7 +124,7 @@ const TABLES: TableConfig[] = [
         include: [
           {
             as: "conversation",
-            model: Conversation,
+            model: ConversationModel,
             required: true,
             where: { workspaceId },
           },

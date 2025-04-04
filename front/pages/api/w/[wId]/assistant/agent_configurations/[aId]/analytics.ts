@@ -102,7 +102,7 @@ async function handler(
       const period = parseInt(queryValidation.right.period);
 
       const owner = auth.getNonNullableWorkspace();
-      const agentUsers = await getAgentUsers(owner, assistant, period);
+      const agentUsers = await getAgentUsers(auth, assistant, period);
       const users = await UserResource.fetchByModelIds(
         agentUsers.map((r) => r.userId)
       );

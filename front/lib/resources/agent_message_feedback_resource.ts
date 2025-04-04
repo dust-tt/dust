@@ -15,7 +15,7 @@ import {
   AgentMessage,
   AgentMessage as AgentMessageModel,
   AgentMessageFeedback,
-  Conversation,
+  ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -156,7 +156,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
               attributes: ["id", "sId"],
               include: [
                 {
-                  model: Conversation,
+                  model: ConversationModel,
                   as: "conversation",
                   attributes: ["id", "sId"],
                 },

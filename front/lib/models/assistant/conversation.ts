@@ -15,7 +15,7 @@ import type {
   UserMessageOrigin,
 } from "@app/types";
 
-export class Conversation extends WorkspaceAwareModel<Conversation> {
+export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -29,7 +29,7 @@ export class Conversation extends WorkspaceAwareModel<Conversation> {
   declare groupIds?: number[];
 }
 
-Conversation.init(
+ConversationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -83,19 +83,19 @@ Conversation.init(
   }
 );
 
-export class ConversationParticipant extends WorkspaceAwareModel<ConversationParticipant> {
+export class ConversationParticipantModel extends WorkspaceAwareModel<ConversationParticipantModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare action: ParticipantActionType;
 
-  declare conversationId: ForeignKey<Conversation["id"]>;
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
 
-  declare conversation?: NonAttribute<Conversation>;
+  declare conversation?: NonAttribute<ConversationModel>;
   declare user?: NonAttribute<UserModel>;
 }
-ConversationParticipant.init(
+ConversationParticipantModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -134,18 +134,18 @@ ConversationParticipant.init(
     ],
   }
 );
-Conversation.hasMany(ConversationParticipant, {
+ConversationModel.hasMany(ConversationParticipantModel, {
   foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "RESTRICT",
 });
-ConversationParticipant.belongsTo(Conversation, {
+ConversationParticipantModel.belongsTo(ConversationModel, {
   foreignKey: { name: "conversationId", allowNull: false },
 });
-UserModel.hasMany(ConversationParticipant, {
+UserModel.hasMany(ConversationParticipantModel, {
   foreignKey: { name: "userId", allowNull: false },
   onDelete: "RESTRICT",
 });
-ConversationParticipant.belongsTo(UserModel, {
+ConversationParticipantModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
@@ -380,7 +380,7 @@ export class Message extends WorkspaceAwareModel<Message> {
   declare rank: number;
   declare visibility: CreationOptional<MessageVisibility>;
 
-  declare conversationId: ForeignKey<Conversation["id"]>;
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
 
   declare parentId: ForeignKey<Message["id"]> | null;
   declare userMessageId: ForeignKey<UserMessage["id"]> | null;
@@ -392,7 +392,7 @@ export class Message extends WorkspaceAwareModel<Message> {
   declare contentFragment?: NonAttribute<ContentFragmentModel>;
   declare reactions?: NonAttribute<MessageReaction[]>;
 
-  declare conversation?: NonAttribute<Conversation>;
+  declare conversation?: NonAttribute<ConversationModel>;
 }
 
 Message.init(
@@ -472,11 +472,11 @@ Message.init(
   }
 );
 
-Conversation.hasMany(Message, {
+ConversationModel.hasMany(Message, {
   foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "RESTRICT",
 });
-Message.belongsTo(Conversation, {
+Message.belongsTo(ConversationModel, {
   as: "conversation",
   foreignKey: { name: "conversationId", allowNull: false },
 });
