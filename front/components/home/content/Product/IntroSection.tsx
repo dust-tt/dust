@@ -1,6 +1,7 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
+import { ScrollProgressSection } from "@app/components/home/content/Product/ScrollProgressSection";
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { H1, P } from "@app/components/home/ContentComponents";
@@ -53,6 +54,7 @@ export function IntroSection() {
           </div>
         </div>
         <TrustedBy />
+        <ScrollProgressSection />
         <ValuePropSection />
       </div>
     </div>
