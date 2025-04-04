@@ -48,7 +48,7 @@ import {
 } from "@app/lib/swr/spaces";
 import type {
   ConnectorProvider,
-  DataSourceViewCategory,
+  DataSourceViewCategoryWithoutApps,
   DataSourceViewsWithDetails,
   DataSourceViewType,
   PlanType,
@@ -237,7 +237,7 @@ interface SpaceResourcesListProps {
   canWriteInSpace: boolean;
   space: SpaceType;
   systemSpace: SpaceType;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
   onSelect: (sId: string) => void;
   integrations: DataSourceIntegration[];
 }

@@ -23,6 +23,7 @@ import React from "react";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type {
@@ -183,6 +184,12 @@ export const SpaceCategoriesList = ({
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
             icon={CommandLineIcon}
             label="Create a Dust App"
+          />
+          <DropdownMenuItem
+            disabled={!isAdmin}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/actions`}
+            icon={ACTION_SPECIFICATIONS["MCP"].cardIcon}
+            label="Actions"
           />
         </DropdownMenuContent>
       </DropdownMenu>

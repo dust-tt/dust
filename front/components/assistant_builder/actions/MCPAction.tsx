@@ -1,7 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   classNames,
-  CommandLineIcon,
   ContentMessage,
   Icon,
   InformationCircleIcon,
@@ -28,6 +27,7 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
+import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
 import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -274,7 +274,11 @@ export function ActionMCP({
                                 customItem={
                                   <div className="flex items-center gap-1 pl-2">
                                     <Icon
-                                      visual={CommandLineIcon}
+                                      visual={
+                                        MCP_SERVER_ICONS[
+                                          mcpServerView.server.icon
+                                        ]
+                                      }
                                       size="md"
                                       className={classNames(
                                         "inline-block flex-shrink-0 align-middle"

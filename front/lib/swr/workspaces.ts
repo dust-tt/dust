@@ -135,8 +135,11 @@ export function useFeatureFlags({
   );
 
   const hasFeature = useCallback(
-    (feature: WhitelistableFeature) => {
-      return !!data?.feature_flags.includes(feature);
+    (flag: WhitelistableFeature | null | undefined) => {
+      if (!flag) {
+        return true;
+      }
+      return !!data?.feature_flags.includes(flag);
     },
     [data]
   );
