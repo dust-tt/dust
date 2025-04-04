@@ -214,8 +214,6 @@ function _getHelperGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -252,8 +250,6 @@ function _getGPT35TurboGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -299,8 +295,6 @@ function _getGPT4GlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -342,7 +336,6 @@ function _getO3MiniGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -380,8 +373,6 @@ function _getO1GlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -419,8 +410,6 @@ function _getO1MiniGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -460,8 +449,6 @@ function _getO1HighReasoningGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -494,8 +481,6 @@ function _getClaudeInstantGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -535,8 +520,6 @@ function _getClaude2GlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -570,8 +553,6 @@ function _getClaude3HaikuGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -610,8 +591,6 @@ function _getClaude3OpusGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -653,8 +632,6 @@ function _getClaude3GlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -696,8 +673,6 @@ function _getClaude3_7GlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -740,8 +715,6 @@ function _getMistralLargeGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -784,8 +757,6 @@ function _getMistralMediumGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -822,8 +793,6 @@ function _getMistralSmallGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -865,8 +834,6 @@ function _getGeminiProGlobalAgent({
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -906,8 +873,6 @@ function _getDeepSeekR1GlobalAgent({
     maxStepsPerRun: 1,
     visualizationEnabled: false,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -975,8 +940,6 @@ function _getManagedDataSourceAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
-      // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-      groupIds: [],
       requestedGroupIds: [],
     };
   }
@@ -1004,8 +967,6 @@ function _getManagedDataSourceAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
-      // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-      groupIds: [],
       requestedGroupIds: [],
     };
   }
@@ -1045,8 +1006,6 @@ function _getManagedDataSourceAgent(
     maxStepsPerRun: 1,
     visualizationEnabled: false,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
@@ -1225,8 +1184,6 @@ function _getDustGlobalAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: true,
       templateId: null,
-      // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-      groupIds: [],
       requestedGroupIds: [],
     };
   }
@@ -1254,8 +1211,6 @@ function _getDustGlobalAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: true,
       templateId: null,
-      // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-      groupIds: [],
       requestedGroupIds: [],
     };
   }
@@ -1361,8 +1316,6 @@ function _getDustGlobalAgent(
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
     requestedGroupIds: [],
   };
 }
