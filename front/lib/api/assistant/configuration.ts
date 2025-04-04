@@ -1009,7 +1009,7 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await createAgentDataSourcesConfigData(auth, t, {
+        await createAgentDataSourcesConfiguration(auth, t, {
           dataSourceConfigurations: action.dataSources,
           retrievalConfiguration: retrievalConfig,
           processConfiguration: null,
@@ -1099,7 +1099,7 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await createAgentDataSourcesConfigData(auth, t, {
+        await createAgentDataSourcesConfiguration(auth, t, {
           dataSourceConfigurations: action.dataSources,
           retrievalConfiguration: null,
           processConfiguration: processConfig,
@@ -1199,7 +1199,7 @@ export async function createAgentActionConfiguration(
 
         // Creating the AgentDataSourceConfiguration if configured
         if (action.dataSources) {
-          await createAgentDataSourcesConfigData(auth, t, {
+          await createAgentDataSourcesConfiguration(auth, t, {
             dataSourceConfigurations: action.dataSources,
             retrievalConfiguration: null,
             processConfiguration: null,
@@ -1239,7 +1239,7 @@ export async function createAgentActionConfiguration(
  * We need to fetch the dataSources from the database from that.
  * We obviously need to do as few queries as possible.
  */
-async function createAgentDataSourcesConfigData(
+async function createAgentDataSourcesConfiguration(
   auth: Authenticator,
   t: Transaction,
   {
