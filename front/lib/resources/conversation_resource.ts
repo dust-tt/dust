@@ -438,6 +438,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  async getConversationMessageType(
+    messageId: string
+  ): Promise<"user_message" | "agent_message" | "content_fragment" | null> {
+    const message = await Message.findOne({
+      where: {
+        conversationId: this.id,
+        sId: messageId,
+      },
+    });
+
+    if (!message) {
+      return null;
+    }
+
+    if (message.userMessageId) {
+      return "user_message";
+    }
+    if (message.agentMessageId) {
+      return "agent_message";
+    }
+    if (message.contentFragment) {
+      return "content_fragment";
+    }
+
+    return null;
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}

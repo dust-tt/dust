@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -8,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { ConversationError } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -24,34 +24,31 @@ async function handler(
     });
   }
   const conversationId = req.query.cId;
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+
+  if (conversation === null) {
+    return apiErrorForConversation(
+      req,
+      res,
+      new ConversationError("conversation_not_found")
     );
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
   }
-
-  const conversation = conversationRes.value;
 
   if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
+        message: "Invalid query parameters, `mId` (string) is required.",
       },
     });
   }
 
   const messageId = req.query.mId;
-  const messageType = await getConversationMessageType(
-    auth,
-    conversation,
-    messageId
-  );
+  const messageType = await conversation.getConversationMessageType(messageId);
 
   if (!messageType) {
     return apiError(req, res, {
