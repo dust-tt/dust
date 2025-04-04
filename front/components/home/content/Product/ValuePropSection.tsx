@@ -7,7 +7,7 @@ import { H2 } from "../../ContentComponents";
 
 export function ValuePropSection() {
   return (
-    <div className="w-full">
+    <div className="w-full rounded-2xl">
       <div className="mb-8">
         <H2>Amplify your team's performance</H2>
         {/* <P size="lg" className="mt-6 text-muted-foreground">
@@ -29,7 +29,7 @@ export function ValuePropSection() {
           <Hover3D
             depth={0}
             perspective={1000}
-            className={classNames("relative")}
+            className={classNames("relative rounded-xl")}
           >
             <Div3D depth={-10}>
               <img src="/static/landing/docexpert/docexpert1.png" />
@@ -58,7 +58,7 @@ export function ValuePropSection() {
           <Hover3D
             depth={0}
             perspective={1000}
-            className={classNames("relative")}
+            className={classNames("relative rounded-xl")}
           >
             <Div3D depth={-10}>
               <img src="/static/landing/code/code1.png" />
@@ -86,7 +86,7 @@ export function ValuePropSection() {
           <Hover3D
             depth={0}
             perspective={1000}
-            className={classNames("relative")}
+            className={classNames("relative rounded-xl")}
           >
             <Div3D depth={-10}>
               <img src="/static/landing/analysis/analysis1.png" />
@@ -117,7 +117,7 @@ export function ValuePropSection() {
           <Hover3D
             depth={0}
             perspective={1000}
-            className={classNames("relative")}
+            className={classNames("relative rounded-xl")}
           >
             <Div3D depth={-20}>
               <img src="/static/landing/crm/crm1.png" />

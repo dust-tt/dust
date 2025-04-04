@@ -46,7 +46,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
   return (
     <div
       className={classNames(
-        "flex flex-col gap-2 overflow-hidden bg-muted-background",
+        "flex flex-col gap-2 overflow-hidden rounded-2xl bg-muted-background",
         className
       )}
     >
@@ -69,6 +69,7 @@ interface BlogBlockProps {
   content: React.ReactNode;
   href: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export const BlogBlock: React.FC<BlogBlockProps> = ({
@@ -77,6 +78,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
   content,
   href,
   className = "",
+  style,
 }) => {
   return (
     <a
@@ -84,10 +86,11 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex h-full w-full flex-col overflow-hidden bg-muted-background",
+        "flex h-full w-full flex-col overflow-hidden rounded-xl bg-muted-background",
         "group transition duration-300 ease-out",
         "hover:bg-primary-100"
       )}
+      style={style}
     >
       {children ? (
         <div className="relative aspect-[16/9] w-full overflow-hidden">
@@ -104,6 +107,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
                   "brightness-100 transition duration-300 ease-out",
                   "group-hover:brightness-110"
                 ),
+                style: { borderRadius: 0 },
               });
             }
             return child;
@@ -268,10 +272,10 @@ interface QuoteProps {
 }
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 my-16 flex flex-col items-center justify-center md:my-12 lg:col-span-10 lg:col-start-2 lg:my-8">
+  <div className="col-span-12 my-16 flex flex-col items-center justify-center rounded-2xl md:my-12 lg:col-span-10 lg:col-start-2 lg:my-8">
     <div
       className={cn(
-        "flex max-w-[500px] flex-col items-center p-4 text-center font-sans italic text-foreground",
+        "flex max-w-[500px] flex-col items-center rounded-xl p-4 text-center font-sans italic text-foreground",
         "copy-base xs:copy-lg sm:copy-xl md:copy-xl lg:copy-2xl"
       )}
     >
@@ -323,7 +327,7 @@ export function ContentBlock({
   imageAlt: string;
 }) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 overflow-hidden rounded-2xl">
       <Image
         src={image}
         alt={imageAlt}
