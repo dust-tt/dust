@@ -86,15 +86,13 @@ export async function fetchMCPServerActionConfigurations(
   for (const config of mcpServerConfigurations) {
     const { agentConfigurationId, sId, id, mcpServerViewId } = config;
 
-    const dataSourceConfigurations =
-      allDataSourceConfigurations.filter(
-        (ds) => ds.mcpServerConfigurationId === config.id
-      ) ?? [];
+    const dataSourceConfigurations = allDataSourceConfigurations.filter(
+      (ds) => ds.mcpServerConfigurationId === config.id
+    );
 
-    const tablesConfigurations =
-      allTablesConfigurations.filter(
-        (tc) => tc.mcpServerConfigurationId === config.id
-      ) ?? [];
+    const tablesConfigurations = allTablesConfigurations.filter(
+      (tc) => tc.mcpServerConfigurationId === config.id
+    );
 
     const mcpServerView = await MCPServerViewResource.fetchByModelPk(
       auth,
