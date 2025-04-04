@@ -9,7 +9,6 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPActionConfiguration } from "@app/lib/actions/types/guards";
-import { makeSId } from "@app/lib/resources/string_ids";
 import {
   containsSubSchema,
   findSchemaAtPath,
@@ -67,14 +66,8 @@ function generateConfiguredInput({
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
       return (
-        actionConfiguration.dataSourceConfigurations?.map((config) => ({
-          uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${makeSId(
-            "data_source_configuration",
-            {
-              id: config.id,
-              workspaceId: config.workspaceId,
-            }
-          )}`,
+        actionConfiguration.dataSources?.map((config) => ({
+          uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
           mimeType,
         })) || []
       );
