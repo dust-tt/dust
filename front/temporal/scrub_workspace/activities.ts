@@ -1,11 +1,9 @@
-import { ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import _ from "lodash";
 
 import {
   archiveAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
-import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
 import {
@@ -20,11 +18,11 @@ import {
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -34,6 +32,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { ConnectorsAPI, removeNulls } from "@app/types";
 
 export async function sendDataDeletionEmail({
   remainingDays,
@@ -122,9 +121,7 @@ export async function pauseAllConnectors({
 
 export async function deleteAllConversations(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
-  const conversations = await Conversation.findAll({
-    where: { workspaceId: workspace.id },
-  });
+  const conversations = await ConversationResource.listAll(auth);
   logger.info(
     { workspaceId: workspace.sId, conversationsCount: conversations.length },
     "Deleting all conversations for workspace."
@@ -134,7 +131,7 @@ export async function deleteAllConversations(auth: Authenticator) {
   for (const conversationChunk of conversationChunks) {
     await Promise.all(
       conversationChunk.map(async (c) => {
-        await destroyConversation(auth, { conversationId: c.sId });
+        await c.delete(auth);
       })
     );
   }

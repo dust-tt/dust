@@ -12,18 +12,6 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  ConnectorType,
-  ContentNodesViewType,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightWorkspaceType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
@@ -37,7 +25,7 @@ import {
 } from "react";
 
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
-import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import type {
@@ -63,6 +51,18 @@ import {
 } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type {
+  APIError,
+  ConnectorType,
+  ContentNodesViewType,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  LightWorkspaceType,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { isValidContentNodesViewType } from "@app/types";
 
 const DEFAULT_VIEW_TYPE = "all";
 const PAGE_SIZE = 25;
@@ -563,7 +563,7 @@ export const SpaceDataSourceViewContentList = ({
         connector &&
         !parentId &&
         space.kind === "system" && (
-          <div className="flex flex-col items-center gap-2 text-sm text-element-700">
+          <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
             {isEmpty && <div>Connection ready. Select the data to sync.</div>}
 
             <ConnectorPermissionsModal

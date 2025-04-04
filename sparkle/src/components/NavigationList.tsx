@@ -20,17 +20,16 @@ const NavigationListItemStyles = cva(
     "data-[disabled]:s-pointer-events-none",
     "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night",
     "hover:s-text-foreground dark:hover:s-text-foreground-night",
-    "hover:s-bg-structure-150 dark:hover:s-bg-structure-150-night"
+    "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night"
   ),
   {
     variants: {
       state: {
-        active:
-          "active:s-bg-structure-200 dark:active:s-bg-structure-200-night",
+        active: "active:s-bg-primary-150 dark:active:s-bg-primary-150-night",
         selected: cn(
           "s-text-foreground dark:s-text-foreground-night",
           "s-font-medium",
-          "s-bg-structure-150 dark:s-bg-structure-150-night"
+          "s-bg-primary-100 dark:s-bg-primary-100-night"
         ),
         unselected:
           "s-text-muted-foreground dark:s-text-muted-foreground-night",
@@ -177,8 +176,8 @@ const variantStyles = cva("", {
     },
     isSticky: {
       true: cn(
-        "s-sticky s-top-0 s-z-10 s-border-b s-bg-white dark:s-bg-primary-950",
-        "s-border-border-dark/60 dark:s-border-border-dark-night/60"
+        "s-sticky s-top-0 s-z-10 s-border-b s-bg-background dark:s-bg-background-night",
+        "s-border-border dark:s-border-border-night"
       ),
     },
   },

@@ -1,16 +1,4 @@
 import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-  ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  MessageType,
-  Result,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
-import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
@@ -27,13 +15,25 @@ import {
   AgentMessage,
   AgentMessage as AgentMessageModel,
   AgentMessageFeedback,
-  Conversation,
+  ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+  ConversationWithoutContentType,
+  LightAgentConfigurationType,
+  MessageType,
+  Result,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -156,7 +156,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
               attributes: ["id", "sId"],
               include: [
                 {
-                  model: Conversation,
+                  model: ConversationModel,
                   as: "conversation",
                   attributes: ["id", "sId"],
                 },

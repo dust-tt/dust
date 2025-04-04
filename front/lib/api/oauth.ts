@@ -1,16 +1,19 @@
-import type {
-  OAuthAPIError,
-  OAuthConnectionType,
-  Result,
-} from "@dust-tt/types";
-import type { OAuthProvider, OAuthUseCase } from "@dust-tt/types";
-import { Err, isValidZendeskSubdomain, OAuthAPI, Ok } from "@dust-tt/types";
 import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { OAuthAPIError, OAuthConnectionType, Result } from "@app/types";
+import type { OAuthProvider, OAuthUseCase } from "@app/types";
+import {
+  Err,
+  isValidSalesforceDomain,
+  isValidZendeskSubdomain,
+  OAuthAPI,
+  Ok,
+} from "@app/types";
 
 export type OAuthError = {
   code:
@@ -40,10 +43,19 @@ const PROVIDER_STRATEGIES: Record<
       connection,
       useCase,
       clientId,
+      forceLabelsScope,
+      relatedCredential,
+      extraConfig,
     }: {
       connection: OAuthConnectionType;
       useCase: OAuthUseCase;
       clientId?: string;
+      forceLabelsScope?: boolean;
+      relatedCredential?: {
+        content: Record<string, unknown>;
+        metadata: { workspace_id: string; user_id: string };
+      };
+      extraConfig?: Record<string, string>;
     }) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
@@ -90,7 +102,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   google_drive: {
-    setupUri: ({ connection, useCase }) => {
+    setupUri: ({ connection, useCase, forceLabelsScope }) => {
       const scopes =
         useCase === "labs_transcripts"
           ? ["https://www.googleapis.com/auth/drive.meet.readonly"]
@@ -98,6 +110,10 @@ const PROVIDER_STRATEGIES: Record<
               "https://www.googleapis.com/auth/drive.metadata.readonly",
               "https://www.googleapis.com/auth/drive.readonly",
             ];
+
+      if (forceLabelsScope) {
+        scopes.push("https://www.googleapis.com/auth/drive.labels.readonly");
+      }
       const qs = querystring.stringify({
         response_type: "code",
         client_id: config.getOAuthGoogleDriveClientId(),
@@ -267,7 +283,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   microsoft: {
-    setupUri: ({ connection }) => {
+    setupUri: ({ connection, relatedCredential }) => {
       const scopes = [
         "User.Read",
         "Sites.Read.All",
@@ -278,14 +294,18 @@ const PROVIDER_STRATEGIES: Record<
         "ChannelMessage.Read.All",
         "offline_access",
       ];
-      const qs = querystring.stringify({
-        response_type: "code",
-        client_id: config.getOAuthMicrosoftClientId(),
-        state: connection.connection_id,
-        redirect_uri: finalizeUriForProvider("microsoft"),
-        scope: scopes.join(" "),
-      });
-      return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
+      if (relatedCredential) {
+        return `${config.getClientFacingUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
+      } else {
+        const qs = querystring.stringify({
+          response_type: "code",
+          client_id: config.getOAuthMicrosoftClientId(),
+          state: connection.connection_id,
+          redirect_uri: finalizeUriForProvider("microsoft"),
+          scope: scopes.join(" "),
+        });
+        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
+      }
     },
     codeFromQuery: (query) => {
       return getStringFromQuery(query, "code");
@@ -294,7 +314,30 @@ const PROVIDER_STRATEGIES: Record<
       return getStringFromQuery(query, "state");
     },
     isExtraConfigValid: (extraConfig) => {
-      return Object.keys(extraConfig).length === 0;
+      return (
+        Object.keys(extraConfig).length === 0 ||
+        !!(
+          extraConfig.client_id &&
+          extraConfig.client_secret &&
+          extraConfig.tenant_id
+        )
+      );
+    },
+    getRelatedCredential: (extraConfig, workspaceId, userId) => {
+      const { client_id, client_secret, ...restConfig } = extraConfig;
+      if (!client_id || !client_secret) {
+        return null;
+      }
+      return {
+        credential: {
+          content: {
+            client_id,
+            client_secret,
+          },
+          metadata: { workspace_id: workspaceId, user_id: userId },
+        },
+        cleanedConfig: restConfig,
+      };
     },
   },
   zendesk: {
@@ -367,14 +410,7 @@ const PROVIDER_STRATEGIES: Record<
       ) {
         return false;
       }
-      try {
-        const url = new URL(extraConfig.instance_url);
-        return (
-          url.protocol === "https:" && url.hostname.endsWith(".salesforce.com")
-        );
-      } catch {
-        return false;
-      }
+      return isValidSalesforceDomain(extraConfig.instance_url);
     },
     getRelatedCredential: (extraConfig, workspaceId, userId) => {
       const { client_secret, ...restConfig } = extraConfig;
@@ -463,8 +499,18 @@ export async function createConnectionAndGetSetupUrl(
 
   const connection = cRes.value.connection;
 
+  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const forceLabelsScope = flags.includes("force_gdrive_labels_scope");
+
   return new Ok(
-    PROVIDER_STRATEGIES[provider].setupUri({ connection, useCase, clientId })
+    PROVIDER_STRATEGIES[provider].setupUri({
+      connection,
+      extraConfig,
+      relatedCredential,
+      useCase,
+      clientId,
+      forceLabelsScope,
+    })
   );
 }
 

@@ -1,13 +1,12 @@
+import { FileResource } from "@app/lib/resources/file_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
   FileStatus,
   FileUseCase,
   FileUseCaseMetadata,
   SupportedFileContentType,
   WorkspaceType,
-} from "@dust-tt/types";
-
-import { FileResource } from "@app/lib/resources/file_resource";
-import type { UserResource } from "@app/lib/resources/user_resource";
+} from "@app/types";
 
 export class FileFactory {
   // We don't support passing a content as GCS has to be mocked in test so the content part can be

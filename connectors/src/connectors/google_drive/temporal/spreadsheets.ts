@@ -1,10 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import {
-  getGoogleSheetTableId,
-  InvalidStructuredDataHeaderError,
-  MIME_TYPES,
-  slugify,
-} from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { stringify } from "csv-stringify/sync";
 import tracer from "dd-trace";
@@ -34,7 +27,14 @@ import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import type { ModelId } from "@connectors/types";
+import type { GoogleDriveObjectType } from "@connectors/types";
+import {
+  getGoogleSheetTableId,
+  INTERNAL_MIME_TYPES,
+  InvalidStructuredDataHeaderError,
+  slugify,
+} from "@connectors/types";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 50000;
 
@@ -528,7 +528,7 @@ export async function syncSpreadSheet(
         parents,
         parentId: parents[1] || null,
         title: spreadsheet.data.properties?.title ?? "Untitled Spreadsheet",
-        mimeType: MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
+        mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
         sourceUrl: getSourceUrlForGoogleDriveFiles(file),
       });
 

@@ -1,9 +1,3 @@
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
@@ -18,6 +12,12 @@ import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data
 import type { PostTagSearchBody } from "@app/pages/api/w/[wId]/data_source_views/tags/search";
 import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
+import type {
+  ContentNodesViewType,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;

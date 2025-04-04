@@ -195,7 +195,7 @@ const ExploreMenuConfig: MenuConfig = {
     },
     {
       title: "Events",
-      href: "https://www.youtube.com/playlist?list=PLv-ZZddHqz5B7ORswb588oAtRHMYAMVDb",
+      href: "https://lu.ma/dust",
       isExternal: true,
     },
     {
@@ -326,7 +326,7 @@ export const menuConfig: DocsConfig = {
   mobileNav: [
     {
       title: "Product",
-      href: "/home",
+      href: "/home/product",
     },
     {
       title: "Pricing",
@@ -371,7 +371,7 @@ export const menuConfig: DocsConfig = {
       items: [
         {
           title: "Product",
-          href: "/home",
+          href: "/home/product",
         },
         {
           title: "Pricing",

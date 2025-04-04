@@ -1,11 +1,3 @@
-import type {
-  ConnectorType,
-  DataSourceType,
-  DataSourceViewCategory,
-  DataSourceViewType,
-  SpaceType,
-} from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -18,6 +10,14 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  ConnectorType,
+  DataSourceType,
+  DataSourceViewCategory,
+  DataSourceViewType,
+  SpaceType,
+} from "@app/types";
+import { ConnectorsAPI } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {

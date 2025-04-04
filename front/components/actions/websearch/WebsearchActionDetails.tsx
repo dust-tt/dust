@@ -5,11 +5,11 @@ import {
   InformationCircleIcon,
   PaginatedCitationsGrid,
 } from "@dust-tt/sparkle";
-import type { WebsearchActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { makeWebsearchResultsCitations } from "@app/components/actions/websearch/utils";
+import type { WebsearchActionType } from "@app/lib/actions/websearch";
 
 export function WebsearchActionDetails({
   action,

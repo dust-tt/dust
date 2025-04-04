@@ -1,6 +1,5 @@
-import type { ModelId } from "@dust-tt/types";
-
 import type { GongTranscriptMetadata } from "@connectors/connectors/gong/lib/gong_api";
+import { makeGongTranscriptInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { syncGongTranscript } from "@connectors/connectors/gong/lib/upserts";
 import {
   getGongUsers,
@@ -13,10 +12,17 @@ import {
 } from "@connectors/connectors/gong/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import { GongUserResource } from "@connectors/resources/gong_resources";
+import {
+  GongTranscriptResource,
+  GongUserResource,
+} from "@connectors/resources/gong_resources";
+import type { ModelId } from "@connectors/types";
+
+const GARBAGE_COLLECT_BATCH_SIZE = 100;
 
 export async function gongSaveStartSyncActivity({
   connectorId,
@@ -98,7 +104,7 @@ export async function gongSyncTranscriptsActivity({
   const gongClient = await getGongClient(connector);
 
   const { transcripts, nextPageCursor } = await gongClient.getTranscripts({
-    startTimestamp: configuration.lastSyncTimestamp,
+    startTimestamp: configuration.getSyncStartTimestamp(),
     pageCursor,
   });
 
@@ -193,4 +199,77 @@ export async function gongListAndSaveUsersActivity({
 
     pageCursor = nextPageCursor;
   } while (pageCursor);
+}
+
+export async function gongCheckGarbageCollectionStateActivity({
+  connectorId,
+  currentTimestamp,
+}: {
+  connectorId: ModelId;
+  currentTimestamp: number;
+}): Promise<{ shouldRunGarbageCollection: boolean }> {
+  const connector = await fetchGongConnector({ connectorId });
+  const configuration = await fetchGongConfiguration(connector);
+
+  return configuration.checkGarbageCollectionState({
+    currentTimestamp,
+  });
+}
+
+export async function gongSaveGarbageCollectionSuccessActivity({
+  connectorId,
+  lastGarbageCollectionTimestamp,
+}: {
+  connectorId: ModelId;
+  lastGarbageCollectionTimestamp: number;
+}) {
+  const connector = await fetchGongConnector({ connectorId });
+  const configuration = await fetchGongConfiguration(connector);
+
+  // Update the last garbage collection timestamp.
+  await configuration.setLastGarbageCollectionTimestamp(
+    lastGarbageCollectionTimestamp
+  );
+}
+
+export async function gongDeleteOutdatedTranscriptsActivity({
+  connectorId,
+  garbageCollectionStartTs,
+}: {
+  connectorId: ModelId;
+  garbageCollectionStartTs: number;
+}): Promise<{ hasMore: boolean }> {
+  const connector = await fetchGongConnector({ connectorId });
+  const configuration = await fetchGongConfiguration(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const outdatedTranscripts = await GongTranscriptResource.fetchOutdated(
+    connector,
+    configuration,
+    {
+      garbageCollectionStartTs,
+      limit: GARBAGE_COLLECT_BATCH_SIZE,
+    }
+  );
+
+  // Delete the data from core.
+  for (const transcript of outdatedTranscripts) {
+    await deleteDataSourceDocument(
+      dataSourceConfig,
+      makeGongTranscriptInternalId(connector, transcript.callId),
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+        provider: "gong",
+        callId: transcript.callId,
+      }
+    );
+  }
+
+  // Delete the data from connectors.
+  await GongTranscriptResource.batchDelete(connector, outdatedTranscripts);
+
+  return {
+    hasMore: outdatedTranscripts.length === GARBAGE_COLLECT_BATCH_SIZE,
+  };
 }

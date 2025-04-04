@@ -1,12 +1,3 @@
-import type {
-  AgentMessageType,
-  ConversationType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import { Err, isAgentMessageType, isDevelopment, Ok } from "@dust-tt/types";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
@@ -26,6 +17,15 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type {
+  AgentMessageType,
+  ConversationType,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+  Result,
+  UserType,
+} from "@app/types";
+import { Err, isAgentMessageType, isDevelopment, Ok } from "@app/types";
 
 import { toFileContentFragment } from "./conversation/content_fragment";
 
@@ -281,7 +281,7 @@ export async function triggerFromEmail({
     return new Err({
       type: "unexpected_error",
       message:
-        "An unexpected error occurred. Please try again or contact us at team@dust.tt.",
+        "An unexpected error occurred. Please try again or contact us at support@dust.tt.",
     });
   }
 
@@ -332,9 +332,9 @@ export async function triggerFromEmail({
       cfRes.value,
       {
         username: user.username,
-        fullName: user.fullName,
+        fullName: user.fullName(),
         email: user.email,
-        profilePictureUrl: user.image,
+        profilePictureUrl: user.imageUrl,
       }
     );
     if (contentFragmentRes.isErr()) {
@@ -386,9 +386,9 @@ export async function triggerFromEmail({
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
         username: user.username,
-        fullName: user.fullName,
+        fullName: user.fullName(),
         email: user.email,
-        profilePictureUrl: user.image,
+        profilePictureUrl: user.imageUrl,
         origin: "email",
       },
     },

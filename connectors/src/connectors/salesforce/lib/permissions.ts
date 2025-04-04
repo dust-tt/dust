@@ -1,5 +1,5 @@
-import type { ContentNode, ModelId, Result } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
 import {
@@ -16,6 +16,13 @@ import {
   getContentNodeFromInternalId,
   getContentNodeTypeFromInternalId,
 } from "@connectors/lib/remote_databases/content_nodes";
+import {
+  buildInternalId,
+  parseInternalId,
+} from "@connectors/lib/remote_databases/utils";
+import type { ContentNode } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieves the existing content nodes for a parent in the Salesforce account.
@@ -51,7 +58,7 @@ export const fetchAvailableChildrenInSalesforce = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         );
       })
     );
@@ -60,6 +67,7 @@ export const fetchAvailableChildrenInSalesforce = async ({
   const parentType = getContentNodeTypeFromInternalId(parentInternalId);
 
   if (parentType === "database") {
+    const { databaseName } = parseInternalId(parentInternalId);
     const syncedSchemas = await RemoteSchemaModel.findAll({
       where: { connectorId, permission: "selected" },
     });
@@ -69,20 +77,24 @@ export const fetchAvailableChildrenInSalesforce = async ({
 
     return new Ok(
       allSchemas.map((row) => {
-        const internalId = `${parentInternalId}.${row.name}`;
+        const internalId = buildInternalId({
+          databaseName,
+          schemaName: row.name,
+        });
         const permission = syncedSchemasInternalIds.includes(internalId)
           ? "read"
           : "none";
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         );
       })
     );
   }
 
   if (parentType === "schema") {
+    const { databaseName, schemaName } = parseInternalId(parentInternalId);
     const syncedTables = await RemoteTableModel.findAll({
       where: { connectorId },
     });
@@ -97,14 +109,18 @@ export const fetchAvailableChildrenInSalesforce = async ({
     }
     return new Ok(
       allTablesRes.value.map((row) => {
-        const internalId = `${parentInternalId}.${row.name}`;
+        const internalId = buildInternalId({
+          databaseName,
+          schemaName,
+          tableName: row.name,
+        });
         const permission = syncedTablesInternalIds.includes(internalId)
           ? "read"
           : "none";
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         );
       })
     );
@@ -137,20 +153,24 @@ export const fetchReadNodes = async ({
 
   return new Ok([
     ...availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read", MIME_TYPES.SALESFORCE)
+      getContentNodeFromInternalId(
+        db.internalId,
+        "read",
+        INTERNAL_MIME_TYPES.SALESFORCE
+      )
     ),
     ...availableSchemas.map((schema) =>
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     ),
     ...availableTables.map((table) =>
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     ),
   ]);
@@ -193,7 +213,7 @@ export const fetchSyncedChildren = async ({
         getContentNodeFromInternalId(
           schema.internalId,
           "read",
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         )
       );
       return new Ok(schemaContentNodes);
@@ -222,17 +242,20 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     );
     availableTables.forEach((table) => {
-      const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
-      if (!schemas.find((s) => s.internalId === schemaToAdd)) {
+      const schemaToAddInternalId = buildInternalId({
+        databaseName: table.databaseName,
+        schemaName: table.schemaName,
+      });
+      if (!schemas.find((s) => s.internalId === schemaToAddInternalId)) {
         schemas.push(
           getContentNodeFromInternalId(
-            schemaToAdd,
+            schemaToAddInternalId,
             "none",
-            MIME_TYPES.SALESFORCE
+            INTERNAL_MIME_TYPES.SALESFORCE
           )
         );
       }
@@ -242,7 +265,7 @@ export const fetchSyncedChildren = async ({
 
   // Since we have all tables in the database, we can just return all the tables we have for this schema.
   if (parentType === "schema") {
-    const [databaseName, schemaName] = parentInternalId.split(".");
+    const { databaseName, schemaName } = parseInternalId(parentInternalId);
     const availableTables = await RemoteTableModel.findAll({
       where: {
         connectorId,
@@ -254,7 +277,7 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     );
     return new Ok(tables);
@@ -263,65 +286,38 @@ export const fetchSyncedChildren = async ({
   return new Ok([]);
 };
 
-export const isStandardObjectWhitelisted = (objectName: string) => {
-  const whitelist = [
-    // From https://architect.salesforce.com/diagrams/data-models/sales-cloud/sales-cloud-overview
-    "Account",
-    "AccountContactRelation",
-    "AccountTeamMember",
-    "Asset",
-    "Case",
-    "Campaign",
-    "CampaignMember",
-    "Contact",
-    "Contract",
-    "ContractContactRole",
-    "ForecastItem",
-    "Lead",
-    "Opportunity",
-    "OpportunityHistory",
-    "OpportunityContactRole",
-    "OpportunityForecast",
-    "OpportunityLineItem",
-    "OpportunityTeamMember",
-    "Order",
-    "Partner",
-    "PartnerRole",
-    "PricebookEntry",
-    "Product2",
-    "Quote",
-    "User",
-    "Territory",
-    "AccountTerritory",
-    // https://architect.salesforce.com/diagrams/data-models/service-cloud/service-cloud-overview
-    "Account",
-    "AccountContactRelation",
-    "Case",
-    "CaseArticle",
-    "CaseComment",
-    "CaseHistory",
-    "CaseMilestone",
-    "CaseRelatedIssue",
-    "CaseSolution",
-    "CaseTeamMember",
-    "CaseTeamRole",
-    "CategoryData",
-    "CategoryNode",
-    "Contact",
-    "ContactRequest",
-    "ContractLineItem",
-    "EmailMessage",
-    "Entitlement",
-    "EntitlementContact",
-    "Incident",
-    "KnowledgeArticle",
-    "KnowledgeArticleVersion",
-    "Milestone",
-    "Problem",
-    "ServiceContract",
-    "Solution",
-    "Swarm",
-    "SwarmMember",
-  ];
-  return whitelist.includes(objectName);
+const STANDARD_OBJECT_PREFIXES = [
+  "Account",
+  "Asset",
+  "Campaign",
+  "Category",
+  "Case",
+  "Contact",
+  "Content",
+  "Contract",
+  "Conversation",
+  "Email",
+  "Entitlement",
+  "Event",
+  "Knowledge",
+  "Lead",
+  "Note",
+  "Opportunity",
+  "Order",
+  "Partner",
+  "Pricebook",
+  "Problem",
+  "Product",
+  "Quote",
+  "Service",
+  "Task",
+  "Territory",
+  "User",
+  "Voice",
+] as const;
+
+export const isStandardObjectPrefix = (objectName: string) => {
+  return STANDARD_OBJECT_PREFIXES.some((prefix) =>
+    objectName.startsWith(prefix)
+  );
 };

@@ -33,7 +33,7 @@ use super::sandbox::structured_query::{StructuredQuery, Validator};
 
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 pub const GET_SESSION_MAX_TRIES: usize = 3;
-pub const REDIS_CACHE_TTL_SECONDS: u64 = 60 * 60; // 1 hour
+pub const REDIS_CACHE_TTL_SECONDS: u64 = 60 * 60 * 24; // 1 day
 
 pub struct SalesforceRemoteDatabase {
     client: reqwest::Client,
@@ -222,10 +222,10 @@ impl SalesforceRemoteDatabase {
                     QueryDatabaseError::GenericError(anyhow!("Error getting response text: {}", e))
                 })?;
 
-                return Err(QueryDatabaseError::ExecutionError(format!(
-                    "Query failed: {}",
-                    error_text
-                )));
+                return Err(QueryDatabaseError::ExecutionError(
+                    format!("Query failed: {}", error_text),
+                    Some(query.to_string()),
+                ));
             }
 
             let response_text = response.text().await.map_err(|e| {
@@ -335,10 +335,10 @@ impl SalesforceRemoteDatabase {
                 QueryDatabaseError::GenericError(anyhow!("Error getting response text: {}", e))
             })?;
 
-            return Err(QueryDatabaseError::ExecutionError(format!(
-                "Failed to describe object {}: {}",
-                sobject, error_text
-            )));
+            return Err(QueryDatabaseError::ExecutionError(
+                format!("Failed to describe object {}: {}", sobject, error_text),
+                None,
+            ));
         }
 
         let response_text = response.text().await.map_err(|e| {
@@ -405,6 +405,10 @@ impl SalesforceRemoteDatabase {
                     QueryDatabaseError::GenericError(anyhow!("Field `soapType` not found"))
                 })?;
 
+                let filterable = field["filterable"].as_bool().ok_or_else(|| {
+                    QueryDatabaseError::GenericError(anyhow!("Field `filterable` not found"))
+                })?;
+
                 let value_type = match soap_type.to_lowercase().as_str() {
                     "tns:id" => match field["relationshipName"].as_str() {
                         Some(rel_name) => TableSchemaFieldType::Reference(rel_name.to_string()),
@@ -449,6 +453,7 @@ impl SalesforceRemoteDatabase {
                     name,
                     value_type,
                     possible_values: possible_values,
+                    non_filterable: Some(!filterable),
                 })
             })
             .collect::<Result<Vec<_>>>()?;
@@ -535,8 +540,16 @@ impl SalesforceRemoteDatabase {
         // RecordType should always be allowed
         allowed_objects.insert("RecordType".to_lowercase());
 
-        // The primary object is always allowed
-        allowed_objects.insert(primary_object.to_lowercase());
+        // Check if primary object is allowed, same as for relationships
+        if !allowed_objects.contains(&primary_object.to_lowercase()) {
+            return Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Primary object '{}' is not allowed. You don't have access to this object.",
+                    primary_object
+                ),
+                None,
+            ));
+        }
 
         // Check for objects that aren't directly allowed
         let mut unknown_objects: Vec<&String> = referenced_objects
@@ -606,14 +619,17 @@ impl SalesforceRemoteDatabase {
 
         // If we still have unknown objects, they're not allowed
         if !unknown_objects.is_empty() {
-            return Err(QueryDatabaseError::ExecutionError(format!(
-                "Query uses tables/relationships that are not allowed: {}",
-                unknown_objects
-                    .iter()
-                    .map(|s| s.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )));
+            return Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query uses tables/relationships that are not allowed: {}",
+                    unknown_objects
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                None,
+            ));
         }
 
         Ok(())
@@ -633,15 +649,15 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         // Parse the JSON query
         let parsed_query = serde_json::from_str::<StructuredQuery>(query).map_err(|e| {
-            QueryDatabaseError::ExecutionError(format!("Failed to parse JSON query: {}", e))
+            QueryDatabaseError::ExecutionError(format!("Failed to parse JSON query: {}", e), None)
         })?;
 
         // Validate the structured query
         if let Err(e) = parsed_query.validate() {
-            return Err(QueryDatabaseError::ExecutionError(format!(
-                "Invalid structured query: {}",
-                e
-            )));
+            return Err(QueryDatabaseError::ExecutionError(
+                format!("Invalid structured query: {}", e),
+                None,
+            ));
         }
 
         // Extract all objects referenced in the query
@@ -671,10 +687,10 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
 
         // Convert the structured query to SOQL
         let soql_query = convert_to_soql(&parsed_query).map_err(|e| {
-            QueryDatabaseError::ExecutionError(format!(
-                "Error converting JSON query to SOQL: {}",
-                e
-            ))
+            QueryDatabaseError::ExecutionError(
+                format!("Error converting JSON query to SOQL: {}", e),
+                None,
+            )
         })?;
 
         // Execute the SOQL query

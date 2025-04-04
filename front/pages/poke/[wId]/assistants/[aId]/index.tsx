@@ -1,6 +1,4 @@
 import { ContextItem, Page, TextArea } from "@dust-tt/sparkle";
-import type { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
@@ -9,6 +7,8 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type { AgentConfigurationType, WorkspaceType } from "@app/types";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   agentConfigurations: AgentConfigurationType[];
@@ -41,10 +41,10 @@ const AssistantDetailsPage = ({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { isDark } = useTheme();
   return (
-    <div className="mx-auto max-w-4xl pt-8">
+    <div className="max-w-4xl">
       <h3 className="text-xl font-bold">
         Assistant of workspace:{" "}
-        <a href={`/poke/${workspace.sId}`} className="text-action-500">
+        <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
           {workspace.name}
         </a>
       </h3>
@@ -58,27 +58,27 @@ const AssistantDetailsPage = ({
             >
               <ContextItem.Description>
                 <div className="flex flex-col gap-2">
-                  <div className="ml-4 pt-2 text-sm text-element-700">
+                  <div className="ml-4 pt-2 text-sm text-muted-foreground">
                     <div className="font-bold">Created At:</div>
                     <div>{`${a.versionCreatedAt}`}</div>
                   </div>
-                  <div className="ml-4 pt-2 text-sm text-element-700">
+                  <div className="ml-4 pt-2 text-sm text-muted-foreground">
                     <div className="font-bold">Scope:</div>
                     <div>{a.scope}</div>
                   </div>
-                  <div className="ml-4 pt-2 text-sm text-element-700">
+                  <div className="ml-4 pt-2 text-sm text-muted-foreground">
                     <div className="font-bold">versionAuthorId:</div>
                     <div>{a.versionAuthorId}</div>
                   </div>
-                  <div className="ml-4 pt-2 text-sm text-element-700">
+                  <div className="ml-4 pt-2 text-sm text-muted-foreground">
                     <div className="font-bold">Description:</div>
                     <div>{a.description}</div>
                   </div>
-                  <div className="ml-4 text-sm text-element-700">
+                  <div className="ml-4 text-sm text-muted-foreground">
                     <div className="font-bold">Instructions:</div>
                     <TextArea placeholder="" value={a.instructions ?? ""} />
                   </div>
-                  <div className="ml-4 text-sm text-element-700">
+                  <div className="ml-4 text-sm text-muted-foreground">
                     <div className="font-bold">
                       Model:{" "}
                       {SUPPORTED_MODEL_CONFIGS.find(
@@ -92,11 +92,14 @@ const AssistantDetailsPage = ({
                       defaultInspectDepth={0}
                     />
                   </div>
-                  <div className="ml-4 text-sm text-element-700">
+                  <div className="ml-4 text-sm text-muted-foreground">
                     {a.actions.map((action, index) => (
                       <div key={index}>
                         <div className="font-bold">
-                          Action {index + 1}: {action.type}
+                          Action {index + 1}: {action.type} (
+                          {action.type === "retrieval_configuration" &&
+                            (action.query === "auto" ? "search" : "include")}
+                          )
                         </div>
                         <JsonViewer
                           theme={isDark ? "dark" : "light"}

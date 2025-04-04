@@ -1,8 +1,3 @@
-import type {
-  MembershipInvitationType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 import React from "react";
@@ -13,6 +8,11 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { getPendingInvitations } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type {
+  MembershipInvitationType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   members: UserTypeWithWorkspaces[];
@@ -51,7 +51,7 @@ const MembershipsPage = ({
     <>
       <h3 className="text-xl font-bold">
         Members of workspace:{" "}
-        <a href={`/poke/${owner.sId}`} className="text-action-500">
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
       </h3>

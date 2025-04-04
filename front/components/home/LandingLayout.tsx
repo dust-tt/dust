@@ -1,11 +1,11 @@
 import {
   Button,
   Div3D,
+  DustLogo,
+  DustLogoLayer1,
+  DustLogoLayer2,
   Hover3D,
   LoginIcon,
-  LogoHorizontalColorLayer1Logo,
-  LogoHorizontalColorLayer2Logo,
-  LogoHorizontalColorLogo,
 } from "@dust-tt/sparkle";
 import Head from "next/head";
 import Link from "next/link";
@@ -17,7 +17,7 @@ import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
-import Particles, { shapeNamesArray } from "@app/components/home/Particles";
+// import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import { classNames } from "@app/lib/utils";
 
@@ -34,16 +34,11 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const {
-    postLoginReturnToUrl = "/api/login",
-    shape,
-    gtmTrackingId,
-  } = pageProps;
+  const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
 
   const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
     "dust-cookies-accepted",
   ]);
-  const [currentShape, setCurrentShape] = useState(shape);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
 
@@ -52,31 +47,6 @@ export default function LandingLayout({
     setHasAcceptedCookies(hasAccepted);
     setShowCookieBanner(!hasAccepted);
   }, [acceptedCookie]);
-
-  useEffect(() => {
-    setCurrentShape(shape);
-  }, [shape]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft") {
-        setCurrentShape(
-          (prevShape) =>
-            (prevShape - 1 + shapeNamesArray.length) % shapeNamesArray.length
-        );
-      } else if (event.key === "ArrowRight") {
-        setCurrentShape(
-          (prevShape) => (prevShape + 1) % shapeNamesArray.length
-        );
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
 
   return (
     <>
@@ -87,17 +57,19 @@ export default function LandingLayout({
             <Link href="/home">
               <Hover3D className="relative h-[24px] w-[96px]">
                 <Div3D depth={0} className="h-[24px] w-[96px]">
-                  <LogoHorizontalColorLayer1Logo className="h-[24px] w-[96px]" />
+                  <DustLogoLayer1 className="h-[24px] w-[96px]" />
                 </Div3D>
                 <Div3D depth={25} className="absolute top-0">
-                  <LogoHorizontalColorLayer2Logo className="h-[24px] w-[96px]" />
+                  <DustLogoLayer2 className="h-[24px] w-[96px]" />
                 </Div3D>
               </Hover3D>
             </Link>
           </div>
           <MobileNavigation />
           <div className="block xl:hidden">
-            <LogoHorizontalColorLogo className="h-[24px] w-[96px]" />
+            <Link href="/">
+              <DustLogo className="h-[24px] w-[96px]" />
+            </Link>
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
@@ -120,11 +92,11 @@ export default function LandingLayout({
           </div>
         </div>
       </ScrollingHeader>
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
-      <div className="fixed inset-0 -z-30 bg-slate-900/50" />
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50" />
+      <div className="fixed inset-0 -z-30" />
+      {/* <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
         <Particles currentShape={currentShape} />
-      </div>
+      </div> */}
       <main className="z-10 flex flex-col items-center">
         <div
           className={classNames(
@@ -194,7 +166,7 @@ const CookieBanner = ({
   return (
     <div
       className={classNames(
-        "z-30 flex w-64 flex-col gap-3 rounded-xl border border-structure-100 bg-white p-4 shadow-xl",
+        "z-30 flex w-64 flex-col gap-3 rounded-xl border border-border bg-white p-4 shadow-xl",
         "s-transition-opacity s-duration-300 s-ease-in-out",
         isVisible ? "s-opacity-100" : "s-opacity-0",
         className || ""
@@ -240,7 +212,27 @@ const Header = () => {
     <Head>
       <title>Accelerate your entire organization with custom AI agents</title>
       <link rel="shortcut icon" href="/static/favicon.png" />
-
+      <link
+        rel="preload"
+        href="/static/fonts/Geist-Regular.woff2"
+        as="font"
+        type="font/woff2"
+        crossOrigin="anonymous"
+      />
+      <link
+        rel="preload"
+        href="/static/fonts/Geist-Medium.woff2"
+        as="font"
+        type="font/woff2"
+        crossOrigin="anonymous"
+      />
+      <link
+        rel="preload"
+        href="/static/fonts/Geist-Bold.woff2"
+        as="font"
+        type="font/woff2"
+        crossOrigin="anonymous"
+      />
       <meta name="apple-mobile-web-app-title" content="Dust" />
       <link rel="apple-touch-icon" href="/static/AppIcon.png" />
       <link
@@ -295,8 +287,6 @@ const Header = () => {
         content="Dust - Accelerate your entire organization with custom AI agents"
       />
       <meta id="og-image" property="og:image" content="/static/og_image.png" />
-
-      <link rel="stylesheet" href="https://use.typekit.net/lzv1deb.css"></link>
     </Head>
   );
 };

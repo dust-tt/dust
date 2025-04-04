@@ -29,15 +29,6 @@ import {
   Spinner,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
-import type {
-  GroupType,
-  KeyType,
-  ModelId,
-  SubscriptionType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { prettifyGroupName } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import React, { useMemo, useState } from "react";
@@ -50,6 +41,15 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { useKeys } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type {
+  GroupType,
+  KeyType,
+  ModelId,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { prettifyGroupName } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -59,7 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
-  const user = auth.getNonNullableUser();
+  const user = auth.getNonNullableUser().toJSON();
   if (!auth.isAdmin()) {
     return {
       notFound: true,
@@ -154,7 +154,7 @@ export function APIKeys({
           </SheetHeader>
           <SheetContainer>
             <div className="mt-4">
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-muted-foreground">
                 Your API key will remain visible for 10 minutes only. You can
                 use it to authenticate with the Dust API.
               </p>
@@ -162,7 +162,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">Domain</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2 dark:bg-slate-950">
+                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
                     {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
                   </pre>
                   <IconButton
@@ -179,7 +179,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">Workspace ID</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2 dark:bg-slate-950">
+                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
                     {owner.sId}
                   </pre>
                   <IconButton
@@ -196,7 +196,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">API Key</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="font-mono flex-grow overflow-x-auto rounded bg-slate-50 p-2 dark:bg-slate-950">
+                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
                     {keys[0]?.secret}
                   </pre>
                   <IconButton
@@ -245,7 +245,7 @@ export function APIKeys({
                 onChange={(e) => setNewApiKeyName(e.target.value)}
               />
               <div className="align-center flex flex-row items-center gap-2 p-2">
-                <span className="dark:text-gray-700-night mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-gray-700">
+                <span className="mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-muted-foreground dark:text-muted-foreground-night">
                   Assign permissions to space:{" "}
                 </span>
                 <DropdownMenu>
@@ -308,7 +308,7 @@ export function APIKeys({
           </DialogContent>
         </Dialog>
       </Page.Horizontal>
-      <div className="dark:divide-gray-200-night space-y-4 divide-y divide-gray-200">
+      <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
         <ul role="list" className="pt-4">
           {keys
             .sort((a, b) => (b.status === "active" ? 1 : -1))
@@ -333,8 +333,8 @@ export function APIKeys({
                         <div>
                           <p
                             className={classNames(
-                              "font-mono truncate text-sm",
-                              "text-slate-700 dark:text-slate-700-night"
+                              "truncate font-mono text-sm",
+                              "text-muted-foreground dark:text-muted-foreground-night"
                             )}
                           >
                             Name:{" "}
@@ -342,8 +342,8 @@ export function APIKeys({
                           </p>
                           <p
                             className={classNames(
-                              "font-mono truncate text-sm",
-                              "text-slate-700 dark:text-slate-700-night"
+                              "truncate font-mono text-sm",
+                              "text-muted-foreground dark:text-muted-foreground-night"
                             )}
                           >
                             Domain:{" "}
@@ -354,8 +354,8 @@ export function APIKeys({
                           {key.groupId && (
                             <p
                               className={classNames(
-                                "font-mono truncate text-sm",
-                                "text-slate-700 dark:text-slate-700-night"
+                                "truncate font-mono text-sm",
+                                "text-muted-foreground dark:text-muted-foreground-night"
                               )}
                             >
                               Scoped to space:{" "}
@@ -368,7 +368,7 @@ export function APIKeys({
                           <p
                             className={classNames(
                               "front-normal text-xs",
-                              "text-element-700 dark:text-element-700-night"
+                              "text-muted-foreground dark:text-muted-foreground-night"
                             )}
                           >
                             Created {key.creator ? `by ${key.creator} ` : ""}
@@ -380,7 +380,7 @@ export function APIKeys({
                           <p
                             className={classNames(
                               "front-normal text-xs",
-                              "text-element-700 dark:text-element-700-night"
+                              "text-muted-foreground dark:text-muted-foreground-night"
                             )}
                           >
                             {key.lastUsedAt ? (

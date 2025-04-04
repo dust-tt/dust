@@ -1,5 +1,4 @@
-import type { ConnectorProvider } from "@dust-tt/types";
-import { setupGlobalErrorHandler } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/client";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -10,6 +9,7 @@ import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/wo
 import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
+import { setupGlobalErrorHandler } from "@connectors/types";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";

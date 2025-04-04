@@ -7,15 +7,6 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  LightWorkspaceType,
-  PlanType,
-} from "@dust-tt/types";
-import {
-  concurrentExecutor,
-  getSupportedNonImageFileExtensions,
-} from "@dust-tt/types";
 import type { ChangeEvent } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -27,6 +18,13 @@ import type {
 } from "@app/hooks/useFileUploaderService";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/file";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type {
+  DataSourceViewType,
+  LightWorkspaceType,
+  PlanType,
+} from "@app/types";
+import { getSupportedNonImageFileExtensions } from "@app/types";
 
 type MultipleDocumentsUploadProps = {
   dataSourceView: DataSourceViewType;
@@ -63,7 +61,7 @@ export const MultipleDocumentsUpload = ({
   // Used for creating files, with text extraction post-processing
   const fileUploaderService = useFileUploaderService({
     owner,
-    useCase: "upsert_document",
+    useCase: "folders_document",
   });
 
   const doUpsertFileAsDataSourceEntry = useUpsertFileAsDatasourceEntry(

@@ -1,7 +1,3 @@
-import type {
-  ConversationWithoutContentType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -12,10 +8,14 @@ import {
   updateConversation,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  ConversationWithoutContentType,
+  WithAPIErrorResponse,
+} from "@app/types";
 
 export const PatchConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),
@@ -48,10 +48,11 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversationWithoutContent(
-    auth,
-    req.query.cId
-  );
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      req.query.cId
+    );
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);

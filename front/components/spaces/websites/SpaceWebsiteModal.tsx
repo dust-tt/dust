@@ -9,21 +9,6 @@ import {
   TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  SpaceType,
-  WebCrawlerConfigurationType,
-  WebsiteFormAction,
-  WebsiteFormState,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  isDataSourceNameValid,
-  isWebCrawlerConfiguration,
-  WEBCRAWLER_DEFAULT_CONFIGURATION,
-  WEBCRAWLER_MAX_PAGES,
-} from "@dust-tt/types";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import { useRouter } from "next/router";
 import { useEffect, useReducer, useState } from "react";
 
@@ -33,6 +18,21 @@ import { createWebsite, updateWebsite } from "@app/lib/api/website";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { urlToDataSourceName } from "@app/lib/webcrawler";
+import type {
+  DataSourceViewType,
+  SpaceType,
+  WebCrawlerConfigurationType,
+  WebsiteFormAction,
+  WebsiteFormState,
+  WorkspaceType,
+} from "@app/types";
+import {
+  isDataSourceNameValid,
+  isWebCrawlerConfiguration,
+  validateUrl,
+  WEBCRAWLER_DEFAULT_CONFIGURATION,
+  WEBCRAWLER_MAX_PAGES,
+} from "@app/types";
 
 const WEBSITE_CAT = "website";
 

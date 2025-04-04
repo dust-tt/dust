@@ -18,7 +18,9 @@ export type RedisUsageTagsType =
   | "update_authors"
   | "user_message_events"
   | "reasoning_generation"
-  | "notion_url_sync";
+  | "notion_url_sync"
+  | "action_validation"
+  | "lock";
 
 export async function getRedisClient({
   origin,

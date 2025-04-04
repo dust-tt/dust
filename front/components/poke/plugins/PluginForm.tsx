@@ -1,5 +1,4 @@
 import { Button, Checkbox } from "@dust-tt/sparkle";
-import { createIoTsCodecFromArgs } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
 import { useMemo, useState } from "react";
@@ -25,6 +24,7 @@ import {
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
+import { createIoTsCodecFromArgs } from "@app/types";
 
 type FallbackArgs = Record<string, unknown>;
 
@@ -136,7 +136,7 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                             </PokeSelectTrigger>
                           </PokeFormControl>
                           <PokeSelectContent>
-                            <div className="bg-slate-100 dark:bg-slate-100-night">
+                            <div className="bg-muted-background dark:bg-muted-background-night">
                               {arg.values.map((option) => (
                                 <PokeSelectItem key={option} value={option}>
                                   {option}

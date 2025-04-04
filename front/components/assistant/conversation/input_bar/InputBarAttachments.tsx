@@ -1,180 +1,119 @@
-import {
-  AttachmentIcon,
-  Button,
-  CloudArrowUpIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Input,
-  ScrollArea,
-  ScrollBar,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type {
-  DataSourceViewContentNode,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { isFolder, isWebsite } from "@dust-tt/client";
+import { Icon } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
+import type {
+  Attachment,
+  FileAttachment,
+  NodeAttachment,
+} from "@app/components/assistant/conversation/AttachmentCitation";
+import {
+  AttachmentCitation,
+  attachmentToAttachmentCitation,
+} from "@app/components/assistant/conversation/AttachmentCitation";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import type { DataSourceViewContentNode } from "@app/types";
 
-interface InputBarAttachmentsProps {
-  owner: LightWorkspaceType;
-  fileUploaderService: FileUploaderService;
-  onNodeSelect: (node: DataSourceViewContentNode) => void;
-  isLoading?: boolean;
+interface FileAttachmentsProps {
+  service: FileUploaderService;
 }
 
-export const InputBarAttachments = ({
-  owner,
-  fileUploaderService,
-  onNodeSelect,
-  isLoading = false,
-}: InputBarAttachmentsProps) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
-  const [isDebouncing, setIsDebouncing] = useState(false);
-
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
-    includeDataSources: true,
-    owner,
-    search: debouncedSearch,
-    viewType: "all",
-    disabled: isSpacesLoading || !debouncedSearch,
-    spaceIds: spaces.map((s) => s.sId),
-  });
-
-  useEffect(() => {
-    setIsDebouncing(true);
-    const timeout = setTimeout(() => {
-      setDebouncedSearch(search.length >= MIN_SEARCH_QUERY_SIZE ? search : "");
-      setIsDebouncing(false);
-    }, 300);
-    return () => {
-      clearTimeout(timeout);
-      setIsDebouncing(false);
+interface NodeAttachmentsProps {
+  items: DataSourceViewContentNode[];
+  spacesMap: {
+    [k: string]: {
+      name: string;
+      icon: React.ComponentType;
     };
-  }, [search]);
-
-  const spacesMap = useMemo(
-    () => Object.fromEntries(spaces.map((space) => [space.sId, space.name])),
-    [spaces]
-  );
-
-  const unfoldedNodes: DataSourceViewContentNode[] = useMemo(
-    () =>
-      searchResultNodes.flatMap((node) => {
-        const { dataSourceViews, ...rest } = node;
-        return dataSourceViews.map((view) => ({
-          ...rest,
-          dataSourceView: view,
-        }));
-      }),
-    [searchResultNodes]
-  );
-
-  const showSearchResults = search.length >= MIN_SEARCH_QUERY_SIZE;
-
-  const searchbarRef = (element: HTMLInputElement) => {
-    if (element) {
-      element.focus();
-    }
   };
+  onRemove: (node: DataSourceViewContentNode) => void;
+}
+
+interface InputBarAttachmentsProps {
+  files?: FileAttachmentsProps;
+  nodes?: NodeAttachmentsProps;
+}
+
+export function InputBarAttachments({
+  files,
+  nodes,
+}: InputBarAttachmentsProps) {
+  // Convert file blobs to FileAttachment objects
+  const fileAttachments: FileAttachment[] = useMemo(() => {
+    return (
+      files?.service.fileBlobs.map((blob) => ({
+        type: "file",
+        id: blob.id,
+        title: blob.id,
+        preview: blob.preview,
+        isUploading: blob.isUploading,
+        onRemove: () => files.service.removeFile(blob.id),
+      })) || []
+    );
+  }, [files?.service]);
+
+  // Convert content nodes to NodeAttachment objects
+  const nodeAttachments: NodeAttachment[] = useMemo(() => {
+    return (
+      nodes?.items.map((node) => {
+        const logo = getConnectorProviderLogoWithFallback({
+          provider: node.dataSourceView.dataSource.connectorProvider,
+        });
+
+        const spaceName =
+          nodes.spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
+        const { dataSource } = node.dataSourceView;
+
+        const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
+        const visual = isWebsiteOrFolder ? (
+          <Icon visual={logo} size="sm" />
+        ) : (
+          <>
+            <Icon visual={logo} size="sm" />
+            {getVisualForDataSourceViewContentNode(node)({
+              className: "h-5 w-5",
+            })}
+          </>
+        );
+
+        return {
+          type: "node",
+          id: `${node.dataSourceView.dataSource.sId}-${node.internalId}`,
+          title: node.title,
+          url: node.sourceUrl,
+          spaceName,
+          spaceIcon: nodes.spacesMap[node.dataSourceView.spaceId].icon,
+          path: getLocationForDataSourceViewContentNode(node),
+          visual,
+          onRemove: () => nodes.onRemove(node),
+        };
+      }) || []
+    );
+  }, [nodes]);
+
+  const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
+
+  if (allAttachments.length === 0) {
+    return null;
+  }
 
   return (
-    <DropdownMenu
-      onOpenChange={(open) => {
-        if (!open) {
-          setSearch("");
-        }
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost-secondary"
-          icon={AttachmentIcon}
-          size="xs"
-          disabled={isLoading}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-125" side="bottom">
-        <div className="items-end pb-2">
-          <DropdownMenuSearchbar
-            ref={searchbarRef}
-            name="search-files"
-            placeholder="Search knowledge or attach files"
-            value={search}
-            onChange={setSearch}
-            disabled={isLoading}
+    <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
+      {allAttachments.map((attachment) => {
+        const attachmentCitation = attachmentToAttachmentCitation(attachment);
+        return (
+          <AttachmentCitation
+            key={attachmentCitation.id}
+            attachmentCitation={attachmentCitation}
+            onRemove={attachment.onRemove}
           />
-          <DropdownMenuSeparator />
-          <ScrollArea className="max-h-125 flex flex-col" hideScrollBar>
-            {showSearchResults ? (
-              <div className="pt-2">
-                {unfoldedNodes.length > 0 ? (
-                  unfoldedNodes.map((item, index) => (
-                    <DropdownMenuItem
-                      key={index}
-                      label={item.title}
-                      icon={() =>
-                        getVisualForDataSourceViewContentNode(item)({
-                          className: "min-w-4",
-                        })
-                      }
-                      description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
-                      onClick={() => {
-                        setSearch("");
-                        onNodeSelect(item);
-                      }}
-                    />
-                  ))
-                ) : isSearchLoading || isDebouncing ? (
-                  <div className="flex justify-center py-4">
-                    <Spinner variant="dark" size="sm" />
-                  </div>
-                ) : (
-                  <div className="p-2 text-sm text-gray-500">
-                    No results found
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-end gap-4 pr-1">
-                <Input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  onChange={async (e) => {
-                    await fileUploaderService.handleFileChange(e);
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = "";
-                    }
-                  }}
-                  multiple={true}
-                />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading}
-                  icon={CloudArrowUpIcon}
-                  label="Upload file"
-                />
-              </div>
-            )}
-            <ScrollBar className="py-0" />
-          </ScrollArea>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        );
+      })}
+    </div>
   );
-};
+}

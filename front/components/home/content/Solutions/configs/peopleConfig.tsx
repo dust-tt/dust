@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Recruiting & People",
   title: <>Streamline Operations, Focus on People</>,
-  from: "from-blue-200",
-  to: "to-blue-500",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
@@ -111,8 +110,7 @@ export const Metrics: MetricProps = {
       description: <>time savings on employee questions</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -150,15 +148,15 @@ export const UseCases: UseCaseProps = {
 export const Quote: QuoteProps = {
   quote:
     "We asked ourselves for years: what if your team had 20% more time? Dust has made it possible, empowering our employees to work smarter, innovate, and push boundaries.",
-  name: "Matthieu Birach ",
+  name: "Matthieu Birach",
   title: "Chief People Officer at Doctolib",
-  logo: "/static/landing/logos/doctolib.png",
+  logo: "/static/landing/logos/color/doctolib.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/eu73efeak9?seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/eu73efeak9",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [

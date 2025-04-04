@@ -1,5 +1,3 @@
-import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever, PatchDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -11,6 +9,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { DataSourceViewType, WithAPIErrorResponse } from "@app/types";
+import { assertNever, PatchDataSourceViewSchema } from "@app/types";
 
 export type PatchDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;

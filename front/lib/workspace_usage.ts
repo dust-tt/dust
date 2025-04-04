@@ -1,8 +1,3 @@
-import type {
-  AgentConfigurationType,
-  ModelId,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
@@ -10,7 +5,7 @@ import { Op, QueryTypes, Sequelize } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
-  Conversation,
+  ConversationModel,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
@@ -18,6 +13,11 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import type {
+  LightAgentConfigurationType,
+  ModelId,
+  WorkspaceType,
+} from "@app/types";
 
 export interface WorkspaceUsageQueryResult {
   createdAt: string;
@@ -275,7 +275,7 @@ export async function getUserUsageData(
         },
       },
       {
-        model: Conversation,
+        model: ConversationModel,
         as: "conversation",
         attributes: [],
         required: true,
@@ -390,7 +390,7 @@ export async function getAssistantUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType,
-  agentConfiguration: AgentConfigurationType
+  agentConfiguration: LightAgentConfigurationType
 ): Promise<number> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
@@ -551,9 +551,11 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
     where: { workspaceId: auth.getNonNullableWorkspace().id },
   });
 
-  const hasRecentConversation = await Conversation.findOne({
+  // INFO: keep accessing the model for now to avoid circular deps warning
+  const owner = auth.getNonNullableWorkspace();
+  const hasRecentConversation = await ConversationModel.findAll({
     where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId: owner.id,
       updatedAt: { [Op.gte]: sevenDaysAgo },
     },
   });

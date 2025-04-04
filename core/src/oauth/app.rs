@@ -68,7 +68,7 @@ async fn connections_create(
         // Create credential
         match Credential::create(
             state.store.clone(),
-            crate::oauth::credential::CredentialProvider::Salesforce,
+            crate::oauth::credential::CredentialProvider::from(payload.provider),
             credential_metadata,
             credential_content,
         )

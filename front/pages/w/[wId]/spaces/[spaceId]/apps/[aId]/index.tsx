@@ -7,17 +7,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  APIErrorResponse,
-  AppType,
-  BlockRunConfig,
-  BlockType,
-  CoreAPIError,
-  SpecificationBlockType,
-  SpecificationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef, useState } from "react";
@@ -41,6 +30,17 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr/apps";
+import type {
+  APIErrorResponse,
+  AppType,
+  BlockRunConfig,
+  BlockType,
+  CoreAPIError,
+  SpecificationBlockType,
+  SpecificationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -108,7 +108,8 @@ const isRunnable = (
         key != "error_as_output" &&
         key != "function_call" &&
         key != "logprobs" &&
-        key != "top_logprobs"
+        key != "top_logprobs" &&
+        key != "response_format"
       ) {
         if (!config[name][key] || config[name][key].length == 0) {
           return false;

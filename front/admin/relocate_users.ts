@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { ApiResponse } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
@@ -10,6 +8,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import type { Result } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 let remaining = 10;
 let resetTime = Date.now();
@@ -93,10 +93,12 @@ export async function updateAllWorkspaceUsersRegionMetadata(
     execute,
     newRegion,
     rateLimitThreshold,
+    forceUsersWithMultipleMemberships,
   }: {
     execute: boolean;
     newRegion: RegionType;
     rateLimitThreshold: number;
+    forceUsersWithMultipleMemberships: boolean;
   }
 ): Promise<Result<void, Error>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -120,10 +122,13 @@ export async function updateAllWorkspaceUsersRegionMetadata(
           workspaceId: m.workspaceId,
         })),
       },
-      "Some users have mutiple memberships"
+      "Some users have multiple memberships. Can be ignored by setting the " +
+        "forceUsersWithMultipleMemberships flag."
     );
 
-    return new Err(new Error("Some users have mutiple memberships"));
+    if (!forceUsersWithMultipleMemberships) {
+      return new Err(new Error("Some users have mutiple memberships"));
+    }
   }
 
   const users = await UserResource.fetchByModelIds(userIds);
@@ -155,40 +160,55 @@ export async function updateAllWorkspaceUsersRegionMetadata(
   return new Ok(undefined);
 }
 
-makeScript(
-  {
-    destinationRegion: {
-      type: "string",
-      required: true,
-      choices: SUPPORTED_REGIONS,
+// Only run the script if this file is being executed directly.
+if (require.main === module) {
+  makeScript(
+    {
+      destinationRegion: {
+        type: "string",
+        required: true,
+        choices: SUPPORTED_REGIONS,
+      },
+      workspaceId: {
+        type: "string",
+        required: true,
+      },
+      rateLimitThreshold: {
+        type: "number",
+        required: false,
+        default: 3,
+      },
+      forceUsersWithMultipleMemberships: {
+        type: "boolean",
+        required: false,
+        default: false,
+      },
     },
-    workspaceId: {
-      type: "string",
-      required: true,
-    },
-    rateLimitThreshold: {
-      type: "number",
-      required: false,
-      default: 3,
-    },
-  },
-  async (
-    { destinationRegion, workspaceId, rateLimitThreshold, execute },
-    logger
-  ) => {
-    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+    async (
+      {
+        destinationRegion,
+        workspaceId,
+        rateLimitThreshold,
+        forceUsersWithMultipleMemberships,
+        execute,
+      },
+      logger
+    ) => {
+      const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-    const res = await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
-      execute,
-      newRegion: destinationRegion as RegionType,
-      rateLimitThreshold,
-    });
+      const res = await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
+        execute,
+        newRegion: destinationRegion as RegionType,
+        rateLimitThreshold,
+        forceUsersWithMultipleMemberships,
+      });
 
-    if (res.isErr()) {
-      logger.error(res.error.message);
-      return;
+      if (res.isErr()) {
+        logger.error(res.error.message);
+        return;
+      }
+
+      logger.info("Done");
     }
-
-    logger.info("Done");
-  }
-);
+  );
+}

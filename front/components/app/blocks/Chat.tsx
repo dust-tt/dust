@@ -7,6 +7,12 @@ import {
   Label,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
+import { useState } from "react";
+
+import ModelPicker from "@app/components/app/ModelPicker";
+import { supportsResponseFormat } from "@app/lib/providers";
+import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
   BlockType,
@@ -14,12 +20,7 @@ import type {
   SpecificationBlockType,
   SpecificationType,
   WorkspaceType,
-} from "@dust-tt/types";
-import dynamic from "next/dynamic";
-import { useState } from "react";
-
-import ModelPicker from "@app/components/app/ModelPicker";
-import { classNames, shallowBlockClone } from "@app/lib/utils";
+} from "@app/types";
 
 import Block from "./Block";
 
@@ -68,7 +69,14 @@ export default function Chat({
     const b = shallowBlockClone(block);
     b.config.provider_id = model.provider_id;
     b.config.model_id = model.model_id;
+
+    const allowResponseFormat = supportsResponseFormat(model);
+    if (!allowResponseFormat) {
+      delete b.config.response_format;
+    }
     onBlockUpdate(b);
+
+    setIsModelSupportsResponseFormat(allowResponseFormat);
   };
 
   const handleTemperatureChange = (temperature: string) => {
@@ -120,6 +128,23 @@ export default function Chat({
     onBlockUpdate(b);
   };
 
+  const handleResponseFormatChange = (responseFormat: string) => {
+    setResponseFormatText(responseFormat);
+    const b = shallowBlockClone(block);
+    try {
+      const parsed = responseFormat.trim()
+        ? JSON.parse(responseFormat)
+        : undefined;
+      parsed
+        ? (b.config.response_format = parsed)
+        : delete b.config.response_format;
+      setIsResponseFormatJsonValid(true);
+      onBlockUpdate(b);
+    } catch (e) {
+      setIsResponseFormatJsonValid(false);
+    }
+  };
+
   const handleInstructionsChange = (instructions: string) => {
     const b = shallowBlockClone(block);
     b.spec.instructions = instructions;
@@ -168,6 +193,16 @@ export default function Chat({
   if (typeof block.config.temperature === "number") {
     temperature = block.config.temperature.toString();
   }
+
+  const [responseFormatText, setResponseFormatText] = useState(
+    block.config.response_format
+      ? JSON.stringify(block.config.response_format, null, 2)
+      : ""
+  );
+  const [isResponseFormatJsonValid, setIsResponseFormatJsonValid] =
+    useState(true);
+  const [isModelSupportsResponseFormat, setIsModelSupportsResponseFormat] =
+    useState(config ? supportsResponseFormat(config) : false);
 
   const theme = localStorage.getItem("theme");
 
@@ -241,7 +276,7 @@ export default function Chat({
                     (stop: string, i: number) => (
                       <div
                         key={i}
-                        className="flex rounded-md bg-slate-100 px-1"
+                        className="flex rounded-md bg-muted-background px-1"
                       >
                         {stop}
                         <span
@@ -291,7 +326,7 @@ export default function Chat({
             rootProps={{ defaultOpen: false }}
             triggerProps={{ label: "Advanced" }}
             contentChildren={
-              <div className="flex flex-row gap-2">
+              <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <div className="flex items-center space-x-2">
                     <Label>frequency_penalty</Label>
@@ -348,6 +383,39 @@ export default function Chat({
                     />
                   </div>
                 </div>
+
+                {isModelSupportsResponseFormat ? (
+                  <div className="flex flex-col gap-2 text-sm">
+                    <Label>Structured Response Format</Label>
+                    <div className="flex w-full font-normal">
+                      <div className="w-full leading-5">
+                        <CodeEditor
+                          data-color-mode={theme === "dark" ? "dark" : "light"}
+                          readOnly={readOnly}
+                          value={responseFormatText}
+                          language="json"
+                          placeholder="Define a structured format for chat responses"
+                          onChange={(e) =>
+                            handleResponseFormatChange(e.target.value)
+                          }
+                          padding={3}
+                          minHeight={80}
+                          className={classNames(
+                            "rounded-lg",
+                            isResponseFormatJsonValid
+                              ? "bg-muted-background dark:bg-muted-background-night"
+                              : "border-2 border-red-500 bg-muted-background dark:bg-muted-background-night"
+                          )}
+                          style={{
+                            fontSize: 13,
+                            fontFamily:
+                              "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             }
           />
@@ -366,9 +434,8 @@ export default function Chat({
                 onChange={(e) => handleInstructionsChange(e.target.value)}
                 padding={3}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
-                  color: "rgb(55 65 81)",
                   fontSize: 13,
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
@@ -391,7 +458,7 @@ export default function Chat({
                 onChange={(e) => handleMessagesCodeChange(e.target.value)}
                 padding={15}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
                   fontSize: 12,
                   fontFamily:
@@ -420,7 +487,7 @@ export default function Chat({
                       }
                       padding={15}
                       minHeight={80}
-                      className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                      className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                       style={{
                         fontSize: 12,
                         fontFamily:

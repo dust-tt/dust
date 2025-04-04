@@ -7,6 +7,11 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
+import { useState } from "react";
+
+import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
+import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
   BlockType,
@@ -14,12 +19,7 @@ import type {
   SpecificationBlockType,
   SpecificationType,
   WorkspaceType,
-} from "@dust-tt/types";
-import dynamic from "next/dynamic";
-import { useState } from "react";
-
-import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
-import { shallowBlockClone } from "@app/lib/utils";
+} from "@app/types";
 
 import Block from "./Block";
 
@@ -264,9 +264,8 @@ export default function DataSource({
                 onChange={(e) => handleQueryChange(e.target.value)}
                 padding={3}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
-                  color: "rgb(55 65 81)",
                   fontSize: 13,
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
@@ -292,7 +291,7 @@ export default function DataSource({
                     onChange={(e) => handleFilterCodeChange(e.target.value)}
                     padding={15}
                     minHeight={80}
-                    className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                    className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                     style={{
                       fontSize: 12,
                       fontFamily:

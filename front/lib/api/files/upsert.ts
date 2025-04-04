@@ -1,17 +1,7 @@
-import { isSupportedPlainTextContentType } from "@dust-tt/client";
-import type {
-  FileUseCase,
-  Result,
-  SupportedFileContentType,
-} from "@dust-tt/types";
 import {
-  assertNever,
-  Err,
-  isSupportedImageContentType,
-  Ok,
-  slugify,
-  TABLE_PREFIX,
-} from "@dust-tt/types";
+  isDustMimeType,
+  isSupportedPlainTextContentType,
+} from "@dust-tt/client";
 
 import type {
   UpsertDocumentArgs,
@@ -30,6 +20,20 @@ import type { DustError } from "@app/lib/error";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type {
+  CoreAPIDataSourceDocumentSection,
+  FileUseCase,
+  Result,
+  SupportedFileContentType,
+} from "@app/types";
+import {
+  assertNever,
+  Err,
+  isSupportedImageContentType,
+  Ok,
+  slugify,
+  TABLE_PREFIX,
+} from "@app/types";
 
 // Upload to dataSource
 const upsertDocumentToDatasource: ProcessingFunction = async (
@@ -69,6 +73,65 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
 
     // Used to override defaults.
     ...restArgs,
+  });
+
+  if (upsertDocumentRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "There was an error upserting the document.",
+      data_source_error: upsertDocumentRes.error,
+    });
+  }
+
+  return new Ok(undefined);
+};
+
+// Upload seachable document to dataSource
+// We expect the content of the file to be the JSON representation of a CoreAPIDataSourceDocumentSection.
+const upsertSectionDocumentToDatasource: ProcessingFunction = async (
+  auth,
+  { file, dataSource, upsertArgs }
+) => {
+  // Get the content of the file.
+  const content = await getFileContent(auth, file);
+  if (!content) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message:
+        "There was an error upserting the document: failed to get file content.",
+    });
+  }
+
+  // Parse the content of the file to get the section.
+  let section: CoreAPIDataSourceDocumentSection | null = null;
+  try {
+    section = JSON.parse(content);
+  } catch (e) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "There was an error upserting the document.",
+    });
+  }
+
+  const upsertDocumentRes = await upsertDocument({
+    auth,
+    dataSource,
+    title: file.fileName,
+    mime_type: file.contentType,
+    document_id: file.sId,
+    source_url: file.getPrivateUrl(auth),
+    parents: [file.sId],
+    section,
+    tags: [
+      `title:${file.fileName}`,
+      `fileId:${file.sId}`,
+      `fileName:${file.fileName}`,
+    ],
+    light_document_output: true,
+    ...upsertArgs,
   });
 
   if (upsertDocumentRes.isErr()) {
@@ -288,8 +351,17 @@ const getProcessingFunction = ({
         useCase === "upsert_table"
       ) {
         return upsertTableToDatasource;
-      } else if (useCase === "upsert_document") {
+      } else if (
+        useCase === "upsert_document" ||
+        useCase === "folders_document"
+      ) {
         return upsertDocumentToDatasource;
+      } else {
+        return undefined;
+      }
+    case "application/vnd.dust.section.json":
+      if (useCase === "tool_output") {
+        return upsertSectionDocumentToDatasource;
       } else {
         return undefined;
       }
@@ -297,7 +369,10 @@ const getProcessingFunction = ({
     case "application/vnd.ms-excel":
       if (useCase === "conversation" || useCase === "upsert_table") {
         return upsertExcelToDatasource;
-      } else if (useCase === "upsert_document") {
+      } else if (
+        useCase === "upsert_document" ||
+        useCase === "folders_document"
+      ) {
         return upsertDocumentToDatasource;
       } else {
         return undefined;
@@ -306,12 +381,22 @@ const getProcessingFunction = ({
 
   if (
     isSupportedPlainTextContentType(contentType) &&
-    ["conversation", "tool_output", "upsert_document"].includes(useCase)
+    [
+      "conversation",
+      "tool_output",
+      "upsert_document",
+      "folders_document",
+    ].includes(useCase)
   ) {
     return upsertDocumentToDatasource;
   }
 
   if (isSupportedPlainTextContentType(contentType)) {
+    return undefined;
+  }
+
+  // Processing is assumed to be irrelevant for internal mime types.
+  if (isDustMimeType(contentType)) {
     return undefined;
   }
 
@@ -392,6 +477,19 @@ export async function processAndUpsertToDataSource(
       code: "invalid_request_error",
       message: "File is not supported for upsert.",
     });
+  }
+
+  // When we upsert a file we don't want to be able to pass section or text in Upsert Args
+  // We want to return an Error in the future but we start by logging the error to see if there are
+  // places that are using it and need to be updated. first
+  if (upsertArgs && ("section" in upsertArgs || "text" in upsertArgs)) {
+    logger.error(
+      {
+        workspaceId: auth.workspace()?.sId,
+        fileId: file.sId,
+      },
+      "We should not pass section or text in Upsert Args anymore when upserting a file."
+    );
   }
 
   const [processingRes, snippetRes] = await Promise.all([

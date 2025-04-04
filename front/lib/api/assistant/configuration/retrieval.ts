@@ -1,19 +1,19 @@
-import type {
-  DataSourceConfiguration,
-  DataSourceFilter,
-  ModelId,
-  RetrievalConfigurationType,
-} from "@dust-tt/types";
 import _ from "lodash";
 import { Op } from "sequelize";
 
-import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
-import { renderRetrievalTimeframeType } from "@app/lib/api/assistant/configuration/helpers";
+import { renderRetrievalTimeframeType } from "@app/lib/actions/configuration/helpers";
+import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
+import type {
+  DataSourceConfiguration,
+  DataSourceFilter,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/retrieval";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import type { ModelId } from "@app/types";
 
 export async function fetchAgentRetrievalActionConfigurations({
   configurationIds,

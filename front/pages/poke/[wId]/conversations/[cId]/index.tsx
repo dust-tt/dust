@@ -1,21 +1,21 @@
 import { Button, Page } from "@dust-tt/sparkle";
+import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react";
+
+import PokeLayout from "@app/components/poke/PokeLayout";
+import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type { Action } from "@app/lib/registry";
+import { getDustProdAction } from "@app/lib/registry";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { usePokeConversation } from "@app/poke/swr";
 import type {
   ContentFragmentType,
   PokeAgentMessageType,
   UserMessageType,
   WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import type { InferGetServerSidePropsType } from "next";
-import type { ReactElement } from "react";
-
-import PokeLayout from "@app/components/poke/PokeLayout";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import type { Action } from "@app/lib/registry";
-import { getDustProdAction } from "@app/lib/registry";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { usePokeConversation } from "@app/poke/swr";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   workspace: WorkspaceType;
@@ -38,7 +38,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const cRes = await getConversationWithoutContent(auth, cId);
+  const cRes = await ConversationResource.fetchConversationWithoutContent(
+    auth,
+    cId
+  );
   if (cRes.isErr()) {
     return {
       notFound: true,
@@ -65,15 +68,18 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
 const UserMessageView = ({ message }: { message: UserMessageType }) => {
   return (
-    <div className="ml-4 pt-2 text-sm text-element-700">
+    <div className="ml-4 pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
       {message.user && (
         <div className="font-bold">
           [user] @{message.user.username} (fullName={message.user.fullName}{" "}
           email=
-          {message.user.email})
+          {message.user.email}) (posted{" "}
+          {new Date(message.created).toLocaleString()})
         </div>
       )}
-      <div className="text-element-600">version={message.version}</div>
+      <div className="text-muted-foreground dark:text-muted-foreground-night">
+        version={message.version}
+      </div>
       <div>{message.content}</div>
     </div>
   );
@@ -82,25 +88,27 @@ const UserMessageView = ({ message }: { message: UserMessageType }) => {
 const AgentMessageView = ({
   message,
   multiActionsApp,
+  workspaceId,
 }: {
   message: PokeAgentMessageType;
   multiActionsApp: Action;
+  workspaceId: string;
 }) => {
   return (
-    <div className="ml-4 pt-2 text-sm text-element-700">
+    <div className="ml-4 pt-2 text-sm text-muted-foreground">
       <div className="font-bold">
         [agent] @{message.configuration.name} {"(sId="}
         <a
-          href={`/poke/${multiActionsApp.app.workspaceId}/assistants/${message.configuration.sId}`}
+          href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
           target="_blank"
-          className="text-action-500"
+          className="text-highlight-500"
         >
           {message.configuration.sId}
         </a>
-        {")"}
+        {")"}(posted {new Date(message.created).toLocaleString()})
       </div>
 
-      <div className="text-element-600">
+      <div className="text-muted-foreground dark:text-muted-foreground-night">
         version={message.version}
         {message.runIds && (
           <>
@@ -110,7 +118,7 @@ const AgentMessageView = ({
                 key={`runId-${i}`}
                 href={`/w/${multiActionsApp.app.workspaceId}/spaces/${multiActionsApp.app.appSpaceId}/apps/${multiActionsApp.app.appId}/runs/${runId}`}
                 target="_blank"
-                className="text-action-500"
+                className="text-highlight-500"
               >
                 {runId.substring(0, 8)}{" "}
               </a>
@@ -120,7 +128,10 @@ const AgentMessageView = ({
       </div>
       {message.actions.map((a, i) => {
         return (
-          <div key={`action-${i}`} className="pl-2 text-element-600">
+          <div
+            key={`action-${i}`}
+            className="pl-2 text-muted-foreground dark:text-muted-foreground-night"
+          >
             action: step={a.step} type={a.type}{" "}
             {a.runId && (
               <>
@@ -129,7 +140,7 @@ const AgentMessageView = ({
                   key={`runId-${i}`}
                   href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
                   target="_blank"
-                  className="text-action-500"
+                  className="text-highlight-500"
                 >
                   {a.runId.substring(0, 8)}{" "}
                 </a>
@@ -148,15 +159,22 @@ const AgentMessageView = ({
 
 const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
   return (
-    <div className="ml-4 pt-2 text-sm text-element-700">
-      <div className="font-bold">[content_fragment] {message.title}</div>
-      <div className="text-element-600">version={message.version}</div>
-      <div className="text-element-600">textBytes={message.textBytes}</div>
+    <div className="ml-4 pt-2 text-sm text-muted-foreground">
+      <div className="font-bold">
+        [content_fragment] {message.title} (posted{" "}
+        {new Date(message.created).toLocaleString()})
+      </div>
+      <div className="text-muted-foreground dark:text-muted-foreground-night">
+        version={message.version}
+      </div>
+      <div className="text-muted-foreground dark:text-muted-foreground-night">
+        textBytes={message.textBytes}
+      </div>
       {message.sourceUrl && (
         <a
           href={message.sourceUrl ?? ""}
           target="_blank"
-          className="text-action-500"
+          className="text-highlight-500"
         >
           [sourceUrl]
         </a>
@@ -164,7 +182,7 @@ const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
       <a
         href={message.textUrl ?? ""}
         target="_blank"
-        className="text-action-500"
+        className="text-highlight-500"
       >
         [textUrl]
       </a>
@@ -184,10 +202,10 @@ const ConversationPage = ({
   return (
     <>
       {conversation && (
-        <div className="mx-auto max-w-4xl pt-8">
+        <div className="max-w-4xl">
           <h3 className="text-xl font-bold">
             Conversation of workspace:{" "}
-            <a href={`/poke/${workspaceId}`} className="text-action-500">
+            <a href={`/poke/${workspaceId}`} className="text-highlight-500">
               {workspace.name}
             </a>
           </h3>
@@ -220,6 +238,7 @@ const ConversationPage = ({
                             key={`message-${i}-${j}`}
                             multiActionsApp={multiActionsApp}
                             message={m}
+                            workspaceId={workspaceId}
                           />
                         );
                       }

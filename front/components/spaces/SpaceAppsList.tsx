@@ -7,27 +7,27 @@ import {
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  ConnectorType,
-  LightWorkspaceType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { sortBy } from "lodash";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
+import type {
+  AppType,
+  ConnectorType,
+  LightWorkspaceType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
 
 type RowData = {
   app: AppType;
@@ -156,7 +156,8 @@ export const SpaceAppsList = ({
   const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
-  const { searchTerm: appSearch } = useContext(SpaceSearchContext);
+  const { q: searchParam } = useQueryParams(["q"]);
+  const searchTerm = searchParam.value || "";
 
   const { apps, isAppsLoading } = useApps({ owner, space });
 
@@ -228,7 +229,7 @@ export const SpaceAppsList = ({
     <>
       {!isEmpty && portalToHeader(actionButtons)}
       {isEmpty ? (
-        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-structure-50 dark:bg-structure-50-night">
+        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-muted-background dark:bg-muted-background-night">
           <Button
             label="Create App"
             disabled={!canWriteInSpace}
@@ -242,7 +243,7 @@ export const SpaceAppsList = ({
           data={rows}
           columns={columns}
           className="pb-4"
-          filter={appSearch}
+          filter={searchTerm}
           filterColumn="name"
           pagination={pagination}
           setPagination={setPagination}

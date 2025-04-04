@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   proxyActivities,
@@ -12,6 +11,7 @@ import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/te
 import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
+import type { ModelId } from "@connectors/types";
 
 const {
   getRootNodesToSync,

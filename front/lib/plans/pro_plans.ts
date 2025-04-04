@@ -1,4 +1,3 @@
-import { isDevelopment } from "@dust-tt/types";
 import type { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models/plan";
@@ -6,6 +5,7 @@ import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
+import { isDevelopment, isTest } from "@app/types";
 
 export type PlanAttributes = Omit<
   Attributes<Plan>,
@@ -29,7 +29,7 @@ export type PlanAttributes = Omit<
 
 const PRO_PLANS_DATA: PlanAttributes[] = [];
 
-if (isDevelopment()) {
+if (isDevelopment() || isTest()) {
   PRO_PLANS_DATA.push({
     code: PRO_PLAN_SEAT_29_CODE,
     name: "Pro",
@@ -45,6 +45,7 @@ if (isDevelopment()) {
     isManagedGithubAllowed: true,
     isManagedIntercomAllowed: true,
     isManagedWebCrawlerAllowed: true,
+    isManagedSalesforceAllowed: false,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
@@ -66,6 +67,7 @@ if (isDevelopment()) {
     isManagedGithubAllowed: true,
     isManagedIntercomAllowed: true,
     isManagedWebCrawlerAllowed: true,
+    isManagedSalesforceAllowed: false,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,

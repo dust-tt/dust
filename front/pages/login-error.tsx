@@ -1,8 +1,8 @@
 import {
   Button,
+  DustLogoSquare,
   Icon,
   LoginIcon,
-  LogoSquareColorLogo,
   Page,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
@@ -40,7 +40,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-const defaultErrorMessageClassName = "text-base font-normal text-slate-100";
+const defaultErrorMessageClassName = "text-base text-primary-100";
 
 function getErrorMessage(domain: string | null, reason: string | null) {
   const headerNode = (
@@ -111,7 +111,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             <br />
             Check your inbox for a verification email.
           </p>
-          <p className="text-sm font-normal italic text-slate-300">
+          <p className="text-sm font-normal italic text-primary-300">
             Not seeing it?
             <br />
             Check your spam folder.
@@ -194,11 +194,11 @@ export default function LoginError({
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-primary-800" />
       <main className="z-10 mx-6">
         <div className="flex h-full flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={LogoSquareColorLogo} size="lg" />
+            <Icon visual={DustLogoSquare} size="lg" />
             <div className="flex flex-col items-center gap-6">
               {errorMessage}
             </div>

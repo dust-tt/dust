@@ -9,9 +9,9 @@ const SvgGoogleSpreadsheet = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="#6EE7B7" d="m14 2 6 6h-6V2Z" />
+    <path fill="#E2F78C" d="m14 2 6 6h-6V2Z" />
     <path
-      fill="#10B981"
+      fill="#6AA668"
       d="M4 4a2 2 0 0 1 2-2h8v4a2 2 0 0 0 2 2h4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Z"
     />
     <path fill="#fff" d="M8 11h8v1H8z" />

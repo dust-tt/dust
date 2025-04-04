@@ -1,6 +1,7 @@
 import Lottie from "lottie-react";
 import React from "react";
 
+import { customColors } from "@sparkle/lib/colors";
 import animColor from "@sparkle/lottie/spinnerColor";
 import animColorLG from "@sparkle/lottie/spinnerColorLG";
 import animColorXS from "@sparkle/lottie/spinnerColorXS";
@@ -11,26 +12,22 @@ import animLightXS from "@sparkle/lottie/spinnerLight";
 import animLightLG from "@sparkle/lottie/spinnerLightLG";
 import animSimpleLight from "@sparkle/lottie/spinnerLightXS";
 
-const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "xxl"] as const;
-
 type SpinnerSizeType = (typeof SPINNER_SIZES)[number];
-
-const SPINNER_VARIANTS = [
-  "color",
-  "light",
-  "dark",
-  "pink900",
-  "purple900",
-  "slate400",
-] as const;
-
-type SpinnerVariantType = (typeof SPINNER_VARIANTS)[number];
+const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "xxl"] as const;
 
 export interface SpinnerProps {
   size?: SpinnerSizeType;
   variant?: SpinnerVariantType;
 }
 
+// Generate all possible color-shade combinations
+const colorVariants = Object.entries(customColors).flatMap(([color, shades]) =>
+  Object.keys(shades).map((shade) => `${color}${shade}` as const)
+);
+
+const SPINNER_VARIANTS = ["color", "light", "dark", ...colorVariants] as const;
+
+type SpinnerVariantType = (typeof SPINNER_VARIANTS)[number];
 const pxSizeClasses: Record<SpinnerSizeType, string> = {
   xs: "16",
   sm: "20",
@@ -42,12 +39,26 @@ const pxSizeClasses: Record<SpinnerSizeType, string> = {
 
 type LottieColorType = [number, number, number, number];
 
+// Convert hex to RGB array [r, g, b, a]
+const hexToRgba = (hex: string): [number, number, number, number] => {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  return [r, g, b, 1];
+};
+
 const colors: Record<Exclude<SpinnerVariantType, "color">, LottieColorType> = {
   light: [1, 1, 1, 1],
-  dark: [0.0588, 0.0902, 0.1647, 1],
-  purple900: [0.298, 0.1137, 0.5843, 1], // #4C1D95
-  pink900: [0.5137, 0.0941, 0.2627, 1], // #831843
-  slate400: [0.5804, 0.6392, 0.7216, 1], // #94A3B8
+  dark: hexToRgba(customColors.gray[900]),
+  ...Object.fromEntries(
+    colorVariants.map((variant) => {
+      const color = variant.match(/[a-z]+/)?.[0] as keyof typeof customColors;
+      const shade = variant.match(
+        /\d+/
+      )?.[0] as unknown as keyof (typeof customColors)[typeof color];
+      return [variant, hexToRgba(customColors[color][shade])];
+    })
+  ),
 };
 
 const isColorArray = (arr: unknown): arr is LottieColorType => {

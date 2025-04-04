@@ -1,14 +1,3 @@
-import type {
-  AdminSuccessResponseType,
-  ModelId,
-  NotionCheckUrlResponseType,
-  NotionCommandType,
-  NotionDeleteUrlResponseType,
-  NotionFindUrlResponseType,
-  NotionMeResponseType,
-  NotionSearchPagesResponseType,
-  NotionUpsertResponseType,
-} from "@dust-tt/types";
 import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
@@ -37,6 +26,17 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type {
+  AdminSuccessResponseType,
+  NotionCheckUrlResponseType,
+  NotionCommandType,
+  NotionDeleteUrlResponseType,
+  NotionFindUrlResponseType,
+  NotionMeResponseType,
+  NotionSearchPagesResponseType,
+  NotionUpsertResponseType,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
 
 import { getParsedDatabase, retrievePage } from "./notion_api";
 

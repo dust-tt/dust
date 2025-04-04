@@ -1,6 +1,6 @@
-import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { isEqual } from "lodash";
-import { v4 as uuidv4 } from "uuid";
+
+import type { LightAgentConfigurationType } from "@app/types";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
 
@@ -8,24 +8,11 @@ export function classNames(...classes: (string | null | boolean)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export function client_side_new_id() {
-  // blake3 is not available in the browser
-  // remove the dashes from the uuid
-  const u = uuidv4().replace(/-/g, "");
-  // return the last 10 characters of the uuid
-  return u.substring(u.length - 10);
-}
-
 export const shallowBlockClone = (block: any) => {
   const b = Object.assign({}, block);
   b.spec = Object.assign({}, block.spec);
   b.config = Object.assign({}, block.config || {});
   return b;
-};
-
-export const utcDateFrom = (millisSinceEpoch: number | string | Date) => {
-  const d = new Date(millisSinceEpoch);
-  return d.toUTCString();
 };
 
 function maybePlural(unit: number, label: string) {
@@ -65,6 +52,24 @@ export const timeAgoFrom = (
 
   return "<1m";
 };
+
+export function getWeekBoundaries(date: Date): {
+  startDate: Date;
+  endDate: Date;
+} {
+  const startDate = new Date(date);
+  startDate.setHours(0, 0, 0, 0);
+  const diff =
+    startDate.getDate() -
+    startDate.getDay() +
+    (startDate.getDay() === 0 ? -6 : 1);
+  startDate.setDate(diff);
+
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 7);
+
+  return { startDate, endDate };
+}
 
 export function formatTimestampToFriendlyDate(
   timestamp: number,
@@ -248,11 +253,6 @@ export function filterAndSortAgents(
   }
 
   return filtered;
-}
-
-export function trimText(text: string, maxLength = 20, removeNewLines = true) {
-  const t = removeNewLines ? text.replaceAll("\n", " ") : text;
-  return t.length > maxLength ? t.substring(0, maxLength) + "..." : t;
 }
 
 export function sanitizeJSONOutput(obj: unknown): unknown {

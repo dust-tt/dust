@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/types": "file:../types",
     "@google-cloud/bigquery": "^7.9.2",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@microsoft/microsoft-graph-types": "^2.40.0",
@@ -28,6 +27,7 @@
     "@temporalio/common": "^1.9.3",
     "@temporalio/worker": "^1.9.3",
     "@temporalio/workflow": "^1.9.3",
+    "@types/cls-hooked": "^4.3.9",
     "@types/express": "^4.17.17",
     "@types/fs-extra": "^11.0.1",
     "@types/minimist": "^1.2.2",
@@ -37,6 +37,7 @@
     "axios": "^1.7.9",
     "blake3": "^2.1.7",
     "body-parser": "^1.20.2",
+    "cls-hooked": "^4.2.2",
     "crawlee": "^3.10.1",
     "dd-trace": "^5.1.0",
     "eventsource-parser": "^1.0.0",
@@ -47,6 +48,7 @@
     "hot-shots": "^10.0.0",
     "io-ts": "^2.2.20",
     "io-ts-reporters": "^2.0.1",
+    "io-ts-types": "^0.5.19",
     "jsforce": "^3.6.4",
     "lodash": "^4.17.21",
     "mdast-util-gfm": "^3.0.0",
@@ -73,9 +75,6 @@
     "uuid": "^9.0.0",
     "yargs": "^17.7.2"
   },
-  "overrides": {
-    "@octokit/request": "9.2.2"
-  },
   "devDependencies": {
     "@types/eslint": "^8.56.10",
     "@types/fast-levenshtein": "^0.0.2",
@@ -95,6 +94,6 @@
     "tsx": "^4.10.2",
     "typescript": "^5.4.5",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^2.1.9"
+    "vitest": "^3.0.8"
   }
 }

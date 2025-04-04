@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever, ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import type Stripe from "stripe";
@@ -21,10 +19,10 @@ import {
   createCustomerPortalSession,
   getStripeClient,
 } from "@app/lib/plans/stripe";
-import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -33,6 +31,8 @@ import {
   launchScheduleWorkspaceScrubWorkflow,
   terminateScheduleWorkspaceScrubWorkflow,
 } from "@app/temporal/scrub_workspace/client";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever, ConnectorsAPI, removeNulls } from "@app/types";
 
 export type GetResponseBody = {
   success: boolean;
@@ -94,7 +94,7 @@ async function handler(
 
       logger.info(
         { sig, stripeError: false, event },
-        "Processing Strip event."
+        "Processing Stripe event."
       );
 
       let subscription;
@@ -704,7 +704,7 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          await maybeCancelInactiveTrials(
+          await SubscriptionResource.maybeCancelInactiveTrials(
             await Authenticator.internalAdminForWorkspace(
               trialingSubscription.workspace.sId
             ),

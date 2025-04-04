@@ -1,5 +1,3 @@
-import type { ConnectorProvider } from "@dust-tt/types";
-import { concurrentExecutor, isConnectorProvider } from "@dust-tt/types";
 import _ from "lodash";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
@@ -7,7 +5,10 @@ import { Op } from "sequelize";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
+import type { ConnectorProvider } from "@app/types";
+import { isConnectorProvider } from "@app/types";
 
 type ProviderMigrator = (parents: string[]) => string[];
 

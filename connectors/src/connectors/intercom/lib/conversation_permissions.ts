@@ -1,11 +1,3 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  ModelId,
-} from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
   fetchIntercomTeam,
@@ -21,6 +13,13 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 export async function allowSyncTeam({
   connectorId,
@@ -144,7 +143,7 @@ export async function retrieveIntercomConversationsPermissions({
         preventSelection: false,
         permission: isAllConversationsSynced ? "read" : "none",
         lastUpdatedAt: null,
-        mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
+        mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAMS_FOLDER,
       });
     } else if (isRootLevel && hasTeamsWithReadPermission) {
       nodes.push({
@@ -157,7 +156,7 @@ export async function retrieveIntercomConversationsPermissions({
         preventSelection: false,
         permission: "read",
         lastUpdatedAt: null,
-        mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
+        mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAMS_FOLDER,
       });
     }
 
@@ -172,7 +171,7 @@ export async function retrieveIntercomConversationsPermissions({
           expandable: false,
           permission: team.permission,
           lastUpdatedAt: null,
-          mimeType: MIME_TYPES.INTERCOM.TEAM,
+          mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAM,
         });
       });
     }
@@ -190,7 +189,7 @@ export async function retrieveIntercomConversationsPermissions({
         preventSelection: false,
         permission: isAllConversationsSynced ? "read" : "none",
         lastUpdatedAt: null,
-        mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
+        mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAMS_FOLDER,
       });
     }
     if (parentInternalId === allTeamsInternalId) {
@@ -207,7 +206,7 @@ export async function retrieveIntercomConversationsPermissions({
           expandable: false,
           permission: isTeamInDb ? "read" : "none",
           lastUpdatedAt: null,
-          mimeType: MIME_TYPES.INTERCOM.TEAM,
+          mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAM,
         });
       });
     }

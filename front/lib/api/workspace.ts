@@ -1,21 +1,3 @@
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  Result,
-  RoleType,
-  SubscriptionType,
-  UserTypeWithWorkspaces,
-  WorkspaceDomain,
-  WorkspaceSegmentationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  ACTIVE_ROLES,
-  assertNever,
-  Err,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -36,6 +18,18 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
+import type {
+  LightWorkspaceType,
+  MembershipRoleType,
+  Result,
+  RoleType,
+  SubscriptionType,
+  UserTypeWithWorkspaces,
+  WorkspaceDomain,
+  WorkspaceSegmentationType,
+  WorkspaceType,
+} from "@app/types";
+import { ACTIVE_ROLES, assertNever, Err, Ok, removeNulls } from "@app/types";
 
 export async function getWorkspaceInfos(
   wId: string
@@ -360,18 +354,31 @@ export async function areAllSubscriptionsCanceled(
 }
 
 export async function deleteWorkspace(
-  owner: LightWorkspaceType
+  owner: LightWorkspaceType,
+  {
+    workspaceHasBeenRelocated = false,
+  }: { workspaceHasBeenRelocated?: boolean } = {}
 ): Promise<Result<void, Error>> {
-  const allSubscriptionsCanceled = await areAllSubscriptionsCanceled(owner);
-  if (!allSubscriptionsCanceled) {
-    return new Err(
-      new Error(
-        "The workspace cannot be deleted because there are active subscriptions."
-      )
-    );
+  // If the workspace has not been relocated, we expect all subscriptions to be canceled.
+  if (!workspaceHasBeenRelocated) {
+    const allSubscriptionsCanceled = await areAllSubscriptionsCanceled(owner);
+    if (!allSubscriptionsCanceled) {
+      return new Err(
+        new Error(
+          "The workspace cannot be deleted because there are active subscriptions."
+        )
+      );
+    }
   }
 
-  await launchDeleteWorkspaceWorkflow({ workspaceId: owner.sId });
+  const res = await launchDeleteWorkspaceWorkflow({
+    workspaceId: owner.sId,
+    workspaceHasBeenRelocated,
+  });
+
+  if (res.isErr()) {
+    return new Err(res.error);
+  }
 
   return new Ok(undefined);
 }

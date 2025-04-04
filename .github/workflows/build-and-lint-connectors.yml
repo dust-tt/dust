@@ -3,7 +3,6 @@ name: Lint & Build (connectors)
 on:
   push:
     paths:
-      - types/**
       - sdks/js/**
       - connectors/**
       - .github/workflows/build-and-lint-connectors.yml
@@ -18,20 +17,27 @@ jobs:
           node-version: 20.13.0
           cache: "npm"
           cache-dependency-path: ./connectors/package-lock.json
-      - name: Build dust-types
-        working-directory: types
-        run: npm install &&  npm run build
       - name: Build sdk js
         working-directory: sdks/js
         run: npm install && npm run build
       - name: Lint and format:check
         working-directory: connectors
         run: npm install && npm run build && npm run lint && npm run format:check
+      - name: Install Postgres
+        uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
+        with:
+          postgresql docker image: mirror.gcr.io/postgres
+          postgresql version: "14.13"
+          postgresql db: connectors_test
+          postgresql user: test
+          postgresql password: test
+          postgresql port: 5433
       - name: Run Tests
         working-directory: connectors
         env:
+          CONNECTORS_DATABASE_URI: "postgres://test:test@localhost:5433/connectors_test"
           NODE_ENV: test
-        run: npm run test:ci
+        run: npx tsx src/admin/db.ts && npm run test:ci
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5

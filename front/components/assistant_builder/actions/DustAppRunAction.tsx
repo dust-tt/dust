@@ -9,8 +9,6 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
-import { assertNever, slugify } from "@dust-tt/types";
 import { sortBy } from "lodash";
 import React, { useContext, useMemo } from "react";
 
@@ -19,6 +17,8 @@ import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSel
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { assertNever, slugify } from "@app/types";
 
 export function isActionDustAppRunValid(
   action: AssistantBuilderActionConfiguration
@@ -65,6 +65,12 @@ export function ActionDustAppRun({
 
   const noDustApp = dustApps.length === 0;
 
+  const hasNoDustAppsInAllowedSpaces = useMemo(() => {
+    // No n^2 complexity.
+    const allowedSet = new Set(allowedSpaces.map((space) => space.sId));
+    return dustApps.every((app) => !allowedSet.has(app.space.sId));
+  }, [dustApps, allowedSpaces]);
+
   if (!action.configuration) {
     return null;
   }
@@ -108,7 +114,7 @@ export function ActionDustAppRun({
         </ContentMessage>
       ) : (
         <>
-          <div className="text-sm text-element-700">
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             The agent will execute a{" "}
             <a
               className="font-bold"
@@ -125,7 +131,7 @@ export function ActionDustAppRun({
           </div>
 
           {hasSomeUnselectableApps && (
-            <div className="mb-4 text-sm text-element-700">
+            <div className="mb-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
               Dust apps without a description are not selectable. To make a Dust
               App selectable, edit it and add a description.
             </div>
@@ -141,7 +147,7 @@ export function ActionDustAppRun({
                 const appsInSpace = space
                   ? dustApps.filter((app) => app.space.sId === space.sId)
                   : dustApps;
-                if (appsInSpace.length === 0) {
+                if (appsInSpace.length === 0 || hasNoDustAppsInAllowedSpaces) {
                   return <>No Dust Apps available.</>;
                 }
 
@@ -157,7 +163,7 @@ export function ActionDustAppRun({
                       appsInSpace,
                       (a) => !a.description || a.description.length === 0,
                       "name"
-                    ).map((app) => {
+                    ).map((app, idx, arr) => {
                       const disabled =
                         !app.description || app.description.length === 0;
                       return (
@@ -175,7 +181,7 @@ export function ActionDustAppRun({
                                   className={classNames(
                                     "inline-block flex-shrink-0 align-middle",
                                     disabled
-                                      ? "text-element-700 dark:text-element-700-night"
+                                      ? "text-muted-foreground dark:text-muted-foreground-night"
                                       : ""
                                   )}
                                 />
@@ -184,7 +190,7 @@ export function ActionDustAppRun({
                                     "font-bold",
                                     "align-middle",
                                     disabled
-                                      ? "text-element-700 dark:text-element-700-night"
+                                      ? "text-muted-foreground dark:text-muted-foreground-night"
                                       : "text-foreground dark:text-foreground-night"
                                   )}
                                   htmlFor={app.sId}
@@ -209,12 +215,12 @@ export function ActionDustAppRun({
                             }}
                           >
                             {app.description && (
-                              <div className="ml-10 mt-1 text-sm text-element-700 dark:text-element-700-night">
+                              <div className="ml-10 mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
                                 {app.description}
                               </div>
                             )}
                           </RadioGroupCustomItem>
-                          <Separator />
+                          {idx !== arr.length - 1 && <Separator />}
                         </React.Fragment>
                       );
                     })}

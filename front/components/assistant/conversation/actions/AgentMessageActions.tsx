@@ -1,15 +1,15 @@
 import { Button, Chip, CommandLineIcon } from "@dust-tt/sparkle";
-import type {
-  AgentActionType,
-  AgentMessageType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
 import type { AgentStateClassification } from "@app/components/assistant/conversation/AgentMessage";
+import type {
+  AgentActionType,
+  AgentMessageType,
+  LightWorkspaceType,
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;

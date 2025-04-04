@@ -1,9 +1,9 @@
 import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
-import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 export function makeColumnsForSpaces(
   owner: WorkspaceType

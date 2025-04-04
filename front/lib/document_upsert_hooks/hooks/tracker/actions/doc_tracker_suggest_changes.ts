@@ -1,9 +1,9 @@
-import type { APIError, Result } from "@dust-tt/types";
 import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import type { APIError, Result } from "@app/types";
 
 // Part of the new doc tracker pipeline, suggest changes  based on a "source_document" (new incoming doc)
 // and a "target_document" (the tracked doc)

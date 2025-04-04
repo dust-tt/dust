@@ -9,15 +9,6 @@ import {
   PlusIcon,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  DataSourceViewCategory,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
-import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
 import { sortBy, uniqBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
@@ -42,6 +33,15 @@ import {
   useSpaces,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
+import type {
+  AppType,
+  DataSourceViewCategory,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
+import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;

@@ -2,38 +2,19 @@ import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
-// import { MetricSection } from "@app/components/home/ContentBlocks";
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
 
-// const METRICS = {
-//   metrics: [
-//     {
-//       value: "90%",
-//       description: <>Weekly active users at Alan</>,
-//     },
-//     {
-//       value: "50,000",
-//       description: <>Annual hours saved at Qonto</>,
-//     },
-//   ],
-//   from: "from-amber-200",
-//   to: "to-amber-500",
-// };
-
 const VideoPlayer = () => {
   return (
-    <div className="relative w-full pt-[56.25%]">
-      {" "}
-      {/* 16:9 aspect ratio */}
-      <iframe
-        src="https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true&autoPlay=true"
-        title="Dust product tour"
-        allow="autoplay; fullscreen"
-        frameBorder="0"
-        className="absolute inset-0 h-full w-full rounded-lg"
-      ></iframe>
-    </div>
+    <DemoVideoSection
+      demoVideo={{
+        videoUrl: "https://fast.wistia.net/embed/iframe/7ynip6mgfx",
+        autoPlay: true,
+        showCaptions: false,
+      }}
+    />
   );
 };
 
@@ -45,11 +26,11 @@ export function IntroSection() {
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
-            <H1 className="text-red-400">Transform how work gets done</H1>
+            <H1>Transform how work gets done</H1>
             <div className="w-full md:hidden">
               <MainVisual />
             </div>
-            <P size="lg" className="text-slate-50">
+            <P size="lg" className="text-muted-foreground">
               Build custom AI agents: secure, connected to your company
               knowledge, and powered by the best AI models.
             </P>
@@ -73,7 +54,6 @@ export function IntroSection() {
         </div>
         <TrustedBy />
         <ValuePropSection />
-        {/* <MetricSection {...METRICS}></MetricSection> */}
       </div>
     </div>
   );

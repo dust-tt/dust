@@ -1,8 +1,3 @@
-import type {
-  SupportedEnterpriseConnectionStrategies,
-  WithAPIErrorResponse,
-  WorkspaceEnterpriseConnection,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -19,6 +14,11 @@ import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  SupportedEnterpriseConnectionStrategies,
+  WithAPIErrorResponse,
+  WorkspaceEnterpriseConnection,
+} from "@app/types";
 
 export type GetEnterpriseConnectionResponseBody = {
   connection: WorkspaceEnterpriseConnection;

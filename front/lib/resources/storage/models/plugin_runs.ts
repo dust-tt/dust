@@ -1,10 +1,10 @@
-import type { SupportedResourceType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import type { SupportedResourceType } from "@app/types";
 
 export const POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH = 4096;
 

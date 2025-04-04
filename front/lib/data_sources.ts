@@ -1,14 +1,12 @@
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type {
   ConnectorProvider,
   CoreAPIDocument,
   DataSourceType,
   DataSourceViewType,
   WithConnector,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+} from "@app/types";
 
 export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   const titleTagPrefix = "title:";
@@ -21,25 +19,10 @@ export function getDisplayNameForDocument(document: CoreAPIDocument): string {
 
 export function getDisplayNameForDataSource(ds: DataSourceType) {
   if (ds.connectorProvider) {
-    switch (ds.connectorProvider) {
-      case "confluence":
-      case "slack":
-      case "google_drive":
-      case "github":
-      case "intercom":
-      case "microsoft":
-      case "notion":
-      case "zendesk":
-      case "snowflake":
-      case "bigquery":
-      case "salesforce":
-      case "gong":
-        return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
-      case "webcrawler":
-        return ds.name;
-      default:
-        assertNever(ds.connectorProvider);
+    if (ds.connectorProvider === "webcrawler") {
+      return ds.name;
     }
+    return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
   } else {
     return ds.name;
   }

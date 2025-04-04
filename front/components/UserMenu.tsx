@@ -1,8 +1,6 @@
 import {
   Avatar,
-  BookOpenIcon,
   ChevronDownIcon,
-  CloudArrowLeftRightIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -13,7 +11,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeIcon,
   Icon,
   LightbulbIcon,
   LightModeIcon,
@@ -22,14 +19,14 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
-import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@dust-tt/types";
-import { BugIcon } from "lucide-react";
+import { BugIcon, TestTubeIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { UserType, WorkspaceType } from "@app/types";
+import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 export function UserMenu({
   user,
@@ -41,9 +38,6 @@ export function UserMenu({
   const router = useRouter();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const hasBetaAccess = featureFlags.some((flag: string) =>
-    flag.startsWith("labs_")
-  );
   const sendNotification = useSendNotification();
 
   const forceRoleUpdate = useMemo(
@@ -92,38 +86,12 @@ export function UserMenu({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
-        {hasBetaAccess && (
-          <>
-            <DropdownMenuLabel label="Beta" />
-            <DropdownMenuItem
-              label="Salesforce"
-              icon={BookOpenIcon}
-              href={`/w/${owner.sId}/assistant/labs/salesforce`}
-            />
-
-            {featureFlags.includes("labs_transcripts") && (
-              <DropdownMenuItem
-                label="Meeting transcripts"
-                icon={BookOpenIcon}
-                href={`/w/${owner.sId}/assistant/labs/transcripts`}
-              />
-            )}
-            {featureFlags.includes("labs_trackers") && (
-              <DropdownMenuItem
-                label="Trackers"
-                icon={EyeIcon}
-                href={`/w/${owner.sId}/assistant/labs/trackers`}
-              />
-            )}
-            {featureFlags.includes("labs_github_actions") && (
-              <DropdownMenuItem
-                label="Platform Actions"
-                icon={CloudArrowLeftRightIcon}
-                href={`/w/${owner.sId}/assistant/labs/platform_actions`}
-              />
-            )}
-          </>
-        )}
+        <DropdownMenuLabel label="Beta" />
+        <DropdownMenuItem
+          label="Exploratory features"
+          icon={TestTubeIcon}
+          href={`/w/${owner.sId}/labs`}
+        />
 
         {showDebugTools(featureFlags) && (
           <>

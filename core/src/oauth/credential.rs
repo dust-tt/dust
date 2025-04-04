@@ -7,6 +7,7 @@ use crate::oauth::store::OAuthStore;
 use crate::utils::{self, ParseError};
 use anyhow::Result;
 
+use super::connection::ConnectionProvider;
 use super::encryption::{seal_str, unseal_str};
 
 pub static CREDENTIAL_ID_PREFIX: &str = "cred";
@@ -18,6 +19,17 @@ pub enum CredentialProvider {
     Modjo,
     Bigquery,
     Salesforce,
+    Microsoft,
+}
+
+impl From<ConnectionProvider> for CredentialProvider {
+    fn from(provider: ConnectionProvider) -> Self {
+        match provider {
+            ConnectionProvider::Microsoft => CredentialProvider::Microsoft,
+            ConnectionProvider::Salesforce => CredentialProvider::Salesforce,
+            _ => panic!("Unsupported provider: {:?}", provider),
+        }
+    }
 }
 
 impl fmt::Display for CredentialProvider {
@@ -133,6 +145,9 @@ impl Credential {
             }
             CredentialProvider::Salesforce => {
                 vec!["client_secret"]
+            }
+            CredentialProvider::Microsoft => {
+                vec!["client_id", "client_secret"]
             }
         };
 

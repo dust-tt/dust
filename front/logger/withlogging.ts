@@ -1,7 +1,3 @@
-import type {
-  APIErrorWithStatusCode,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import tracer from "dd-trace";
 import StatsD from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -11,6 +7,7 @@ import type {
   CustomGetServerSideProps,
   UserPrivilege,
 } from "@app/lib/iam/session";
+import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
 
 import logger from "./logger";
 
@@ -54,6 +51,10 @@ export function withLogging<T>(
 
     // Extract commit hash from headers or query params.
     const commitHash = req.headers["x-commit-hash"] ?? req.query.commitHash;
+    const extensionVersion =
+      req.headers["x-dust-extension-version"] ?? req.query.extensionVersion;
+    const cliVersion =
+      req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
     try {
       await handler(req, res);
@@ -62,6 +63,8 @@ export function withLogging<T>(
       logger.error(
         {
           commitHash,
+          extensionVersion,
+          cliVersion,
           durationMs: elapsed,
           error: err,
           method: req.method,

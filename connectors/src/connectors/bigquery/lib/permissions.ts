@@ -1,10 +1,5 @@
-import type {
-  BigQueryCredentialsWithLocation,
-  ContentNode,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import { Err, EXCLUDE_SCHEMAS, MIME_TYPES, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import {
   fetchDatabases,
@@ -20,6 +15,16 @@ import {
   getContentNodeFromInternalId,
   getContentNodeTypeFromInternalId,
 } from "@connectors/lib/remote_databases/content_nodes";
+import {
+  buildInternalId,
+  parseInternalId,
+} from "@connectors/lib/remote_databases/utils";
+import type {
+  BigQueryCredentialsWithLocation,
+  ContentNode,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { EXCLUDE_SCHEMAS, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieves the existing content nodes for a parent in the BigQuery account.
@@ -55,7 +60,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.BIGQUERY
+          INTERNAL_MIME_TYPES.BIGQUERY
         );
       })
     );
@@ -64,6 +69,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
   const parentType = getContentNodeTypeFromInternalId(parentInternalId);
 
   if (parentType === "database") {
+    const { databaseName } = parseInternalId(parentInternalId);
     const syncedSchemas = await RemoteSchemaModel.findAll({
       where: { connectorId, permission: "selected" },
     });
@@ -82,20 +88,24 @@ export const fetchAvailableChildrenInBigQuery = async ({
 
     return new Ok(
       allDatasets.map((row) => {
-        const internalId = `${parentInternalId}.${row.name}`;
+        const internalId = buildInternalId({
+          databaseName,
+          schemaName: row.name,
+        });
         const permission = syncedSchemasInternalIds.includes(internalId)
           ? "read"
           : "none";
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.BIGQUERY
+          INTERNAL_MIME_TYPES.BIGQUERY
         );
       })
     );
   }
 
   if (parentType === "schema") {
+    const { databaseName, schemaName } = parseInternalId(parentInternalId);
     const syncedTables = await RemoteTableModel.findAll({
       where: { connectorId },
     });
@@ -112,14 +122,18 @@ export const fetchAvailableChildrenInBigQuery = async ({
     }
     return new Ok(
       allTablesRes.value.map((row) => {
-        const internalId = `${parentInternalId}.${row.name}`;
+        const internalId = buildInternalId({
+          databaseName,
+          schemaName,
+          tableName: row.name,
+        });
         const permission = syncedTablesInternalIds.includes(internalId)
           ? "read"
           : "none";
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.BIGQUERY
+          INTERNAL_MIME_TYPES.BIGQUERY
         );
       })
     );
@@ -152,20 +166,24 @@ export const fetchReadNodes = async ({
 
   return new Ok([
     ...availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read", MIME_TYPES.BIGQUERY)
+      getContentNodeFromInternalId(
+        db.internalId,
+        "read",
+        INTERNAL_MIME_TYPES.BIGQUERY
+      )
     ),
     ...availableSchemas.map((schema) =>
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.BIGQUERY
+        INTERNAL_MIME_TYPES.BIGQUERY
       )
     ),
     ...availableTables.map((table) =>
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.BIGQUERY
+        INTERNAL_MIME_TYPES.BIGQUERY
       )
     ),
   ]);
@@ -208,7 +226,7 @@ export const fetchSyncedChildren = async ({
         getContentNodeFromInternalId(
           schema.internalId,
           "read",
-          MIME_TYPES.BIGQUERY
+          INTERNAL_MIME_TYPES.BIGQUERY
         )
       );
       return new Ok(schemaContentNodes);
@@ -237,14 +255,21 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.BIGQUERY
+        INTERNAL_MIME_TYPES.BIGQUERY
       )
     );
     availableTables.forEach((table) => {
-      const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
-      if (!schemas.find((s) => s.internalId === schemaToAdd)) {
+      const schemaToAddInternalId = buildInternalId({
+        databaseName: table.databaseName,
+        schemaName: table.schemaName,
+      });
+      if (!schemas.find((s) => s.internalId === schemaToAddInternalId)) {
         schemas.push(
-          getContentNodeFromInternalId(schemaToAdd, "none", MIME_TYPES.BIGQUERY)
+          getContentNodeFromInternalId(
+            schemaToAddInternalId,
+            "none",
+            INTERNAL_MIME_TYPES.BIGQUERY
+          )
         );
       }
     });
@@ -253,7 +278,7 @@ export const fetchSyncedChildren = async ({
 
   // Since we have all tables in the database, we can just return all the tables we have for this schema.
   if (parentType === "schema") {
-    const [databaseName, schemaName] = parentInternalId.split(".");
+    const { databaseName, schemaName } = parseInternalId(parentInternalId);
     const availableTables = await RemoteTableModel.findAll({
       where: {
         connectorId,
@@ -265,7 +290,7 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.BIGQUERY
+        INTERNAL_MIME_TYPES.BIGQUERY
       )
     );
     return new Ok(tables);

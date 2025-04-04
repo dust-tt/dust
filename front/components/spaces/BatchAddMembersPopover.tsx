@@ -8,12 +8,12 @@ import {
   UserGroupIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, UserType } from "@dust-tt/types";
 import React, { useCallback, useState } from "react";
 
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { isEmailValid } from "@app/lib/utils";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
+import type { LightWorkspaceType, UserType } from "@app/types";
 
 interface BatchAddMembersPopoverProps {
   owner: LightWorkspaceType;
@@ -103,7 +103,7 @@ export function BatchAddMembersPopover({
         <Button label="Batch add" icon={UserGroupIcon} size="sm" />
       </PopoverTrigger>
       <PopoverContent className="mr-2 p-4">
-        <div className="text-sm font-normal text-element-700">
+        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
           Enter the list of emails, one per line, max {MAX_SEARCH_EMAILS} per
           batch.
         </div>

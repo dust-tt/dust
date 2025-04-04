@@ -1,16 +1,13 @@
-import type {
-  AppType,
-  DataSourceViewType,
-  PlatformActionsConfigurationType,
-  SpaceType,
-} from "@dust-tt/types";
 import { createContext } from "react";
+
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
+import type { AppType, DataSourceViewType, SpaceType } from "@app/types";
 
 type AssistantBuilderContextType = {
   dustApps: AppType[];
   dataSourceViews: DataSourceViewType[];
   spaces: SpaceType[];
-  platformActionsConfigurations: PlatformActionsConfigurationType[];
+  mcpServerViews: MCPServerViewType[];
 };
 
 export const AssistantBuilderContext =
@@ -18,14 +15,14 @@ export const AssistantBuilderContext =
     dustApps: [],
     dataSourceViews: [],
     spaces: [],
-    platformActionsConfigurations: [],
+    mcpServerViews: [],
   });
 
 export function AssistantBuilderProvider({
   dustApps,
   dataSourceViews,
   spaces,
-  platformActionsConfigurations,
+  mcpServerViews,
   children,
 }: AssistantBuilderContextType & {
   children: React.ReactNode;
@@ -36,7 +33,7 @@ export function AssistantBuilderProvider({
         dustApps,
         dataSourceViews,
         spaces,
-        platformActionsConfigurations,
+        mcpServerViews,
       }}
     >
       {children}

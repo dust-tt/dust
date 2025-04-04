@@ -1,5 +1,5 @@
-import type { ConnectorPermission, ContentNode, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import type {
   CreateConnectorErrorCode,
@@ -35,7 +35,8 @@ import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce"
 import { saveNodesFromPermissions } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorPermission, ContentNode } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 const logger = mainLogger.child({
   connector: "salesforce",
@@ -287,6 +288,15 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     return fetchRes;
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
+  }
+
   async setPermissions({
     permissions,
   }: {
@@ -315,11 +325,39 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method pause not implemented.");
+    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
+      this.connectorId
+    );
+    if (getConnectorAndCredentialsRes.isErr()) {
+      return new Err(getConnectorAndCredentialsRes.error);
+    }
+    const { connector } = getConnectorAndCredentialsRes.value;
+
+    await connector.markAsPaused();
+    const stopRes = await this.stop();
+    if (stopRes.isErr()) {
+      return stopRes;
+    }
+
+    return new Ok(undefined);
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method unpause not implemented.");
+    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
+      this.connectorId
+    );
+    if (getConnectorAndCredentialsRes.isErr()) {
+      return new Err(getConnectorAndCredentialsRes.error);
+    }
+    const { connector } = getConnectorAndCredentialsRes.value;
+
+    await connector.markAsUnpaused();
+    const r = await this.resume();
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(undefined);
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {

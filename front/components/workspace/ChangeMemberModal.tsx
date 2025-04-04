@@ -18,8 +18,6 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { ActiveRoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
-import { isActiveRoleType } from "@dust-tt/types";
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
@@ -27,6 +25,8 @@ import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import type { ActiveRoleType, UserTypeWithWorkspaces } from "@app/types";
+import { isActiveRoleType } from "@app/types";
 
 export function ChangeMemberModal({
   onClose,
@@ -77,7 +77,7 @@ export function ChangeMemberModal({
               <SheetTitle>{member.fullName || "Unreachable"}</SheetTitle>
             </SheetHeader>
             <SheetContainer>
-              <div className="flex flex-col gap-9 text-sm text-element-700">
+              <div className="flex flex-col gap-9 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 <div className="flex items-center gap-4">
                   <Avatar
                     size="lg"

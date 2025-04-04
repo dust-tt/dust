@@ -1,12 +1,12 @@
-import type {
-  DataSourceViewCategory,
-  DataSourceViewType,
-  SpaceType,
-} from "@dust-tt/types";
 import React from "react";
 
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
+import type {
+  DataSourceViewCategory,
+  DataSourceViewType,
+  SpaceType,
+} from "@app/types";
 
 interface SearchLocationProps {
   category: DataSourceViewCategory | undefined;

@@ -6,9 +6,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import type { AppType, WorkspaceType } from "@dust-tt/types";
 
 import { useDatasets } from "@app/lib/swr/datasets";
+import type { AppType, WorkspaceType } from "@app/types";
 
 export default function DatasetPicker({
   owner,

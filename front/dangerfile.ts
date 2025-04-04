@@ -115,8 +115,13 @@ function warnDocumentationAck(documentationAckLabel: string) {
   );
 }
 
-function checkModifiedFiles() {
-  const modifiedModelFiles = danger.git.modified_files.filter((path) => {
+function checkDiffFiles() {
+  const diffFiles = danger.git.modified_files
+    .concat(danger.git.created_files)
+    .concat(danger.git.deleted_files);
+
+  // Model files
+  const modifiedModelFiles = diffFiles.filter((path) => {
     return (
       path.startsWith("front/lib/models/") ||
       path.startsWith("front/lib/resources/storage/models/") ||
@@ -130,7 +135,8 @@ function checkModifiedFiles() {
     checkDeployPlanSection();
   }
 
-  const modifiedPublicApiFiles = danger.git.modified_files.filter((path) => {
+  // Public API files
+  const modifiedPublicApiFiles = diffFiles.filter((path) => {
     return path.startsWith("front/pages/api/v1/");
   });
 
@@ -138,7 +144,8 @@ function checkModifiedFiles() {
     checkDocumentationLabel();
   }
 
-  const modifiedAuth0Files = danger.git.modified_files.filter((path) => {
+  // Auth0 files
+  const modifiedAuth0Files = diffFiles.filter((path) => {
     return path.startsWith("front/lib/utils/blacklisted_email_domains.ts");
   });
 
@@ -146,7 +153,8 @@ function checkModifiedFiles() {
     checkAuth0UpdateLabel();
   }
 
-  const modifiedSdksFiles = danger.git.modified_files.filter((path) => {
+  // SDK files
+  const modifiedSdksFiles = diffFiles.filter((path) => {
     return path.startsWith("sdks/js/");
   });
 
@@ -155,4 +163,4 @@ function checkModifiedFiles() {
   }
 }
 
-checkModifiedFiles();
+checkDiffFiles();

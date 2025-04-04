@@ -1,13 +1,4 @@
 import type {
-  ConnectorProvider,
-  ConversationWithoutContentType,
-  DataSourceType,
-  ModelId,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
-import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
@@ -32,6 +23,15 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import type {
+  ConnectorProvider,
+  ConversationWithoutContentType,
+  DataSourceType,
+  ModelId,
+  Result,
+  UserType,
+} from "@app/types";
+import { formatUserFullName, Ok, removeNulls } from "@app/types";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 
@@ -386,11 +386,11 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   }
 
   static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
-    const [dataSource] = await this.baseFetch(auth, undefined, {
+    const r = await this.baseFetch(auth, undefined, {
       where: { id },
     });
 
-    return dataSource ?? null;
+    return r.length > 0 ? r[0] : null;
   }
 
   protected async softDelete(

@@ -1,12 +1,12 @@
-import type { ModelId, OAuthProvider } from "@dust-tt/types";
-import { getOAuthConnectionAccessToken } from "@dust-tt/types";
 import { google } from "googleapis";
 
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import logger from "@app/logger/logger";
-import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
+import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
+import type { ModelId, OAuthProvider } from "@app/types";
+import { getOAuthConnectionAccessToken } from "@app/types";
 
 // Google Auth
 export async function getTranscriptsGoogleAuth(

@@ -1,14 +1,3 @@
-import type {
-  ContentFragmentType,
-  ConversationType,
-  ConversationWithoutContentType,
-  UserMessageType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  ConversationError,
-  InternalPostConversationsRequestBodySchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -16,14 +5,25 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   createConversation,
   getConversation,
-  getUserConversations,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  ContentFragmentType,
+  ConversationType,
+  ConversationWithoutContentType,
+  UserMessageType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  ConversationError,
+  InternalPostConversationsRequestBodySchema,
+} from "@app/types";
 
 export type GetConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
@@ -47,7 +47,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const conversations = await getUserConversations(auth);
+      const conversations =
+        await ConversationResource.listConversationsForUser(auth);
       res.status(200).json({ conversations });
       return;
 
@@ -81,7 +82,7 @@ async function handler(
 
       const baseContext = {
         username: user.username,
-        fullName: user.fullName,
+        fullName: user.fullName(),
         email: user.email,
       };
 
@@ -148,7 +149,7 @@ async function handler(
             context: {
               timezone: message.context.timezone,
               username: user.username,
-              fullName: user.fullName,
+              fullName: user.fullName(),
               email: user.email,
               profilePictureUrl: message.context.profilePictureUrl,
               origin: "web",

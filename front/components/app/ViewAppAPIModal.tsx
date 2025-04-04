@@ -4,6 +4,7 @@ import {
   Button,
   ClipboardIcon,
   CubeIcon,
+  Hoverable,
   Page,
   Sheet,
   SheetContainer,
@@ -12,16 +13,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  RunConfig,
-  RunType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useState } from "react";
+
+import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
+import { assertNever } from "@app/types";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -94,6 +90,8 @@ export function ViewAppAPIModal({
     }
   };
 
+  const theme = localStorage.getItem("theme");
+
   return (
     <Sheet>
       <SheetTrigger>
@@ -135,12 +133,12 @@ export function ViewAppAPIModal({
                 <span className="italic">{app.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode="light"
+                data-color-mode={theme === "dark" ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("run")}`}
                 language="shell"
                 padding={15}
-                className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
                 style={{
                   fontSize: 13,
                   fontFamily:
@@ -169,12 +167,12 @@ export function ViewAppAPIModal({
               <Page.P>
                 <div className="pb-2">
                   {owner.role === "admin" ? (
-                    <Link
+                    <Hoverable
                       href={`/w/${owner.sId}/developers/api-keys`}
-                      className="py-1 font-bold text-action-600"
+                      variant="highlight"
                     >
                       Manage workspace API keys
-                    </Link>
+                    </Hoverable>
                   ) : (
                     <span>API keys are managed by workspace admins.</span>
                   )}
@@ -191,14 +189,14 @@ export function ViewAppAPIModal({
               <Page.P>
                 For a detailed documentation of the Data source API, please
                 refer to the{" "}
-                <Link
+                <Hoverable
                   href={
                     "https://docs.dust.tt/reference/post_api-v1-w-wid-vaults-vid-apps-aid-runs"
                   }
-                  className="py-1 font-bold text-action-600"
+                  variant="highlight"
                 >
                   API Reference
-                </Link>
+                </Hoverable>
               </Page.P>
             </Page.Vertical>
           </div>

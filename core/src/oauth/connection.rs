@@ -22,7 +22,7 @@ use std::time::Duration;
 use std::{env, fmt};
 use tracing::{error, info};
 
-use super::providers::utils::ProviderHttpRequestError;
+use super::{credential::Credential, providers::utils::ProviderHttpRequestError};
 
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
@@ -141,14 +141,47 @@ pub struct RefreshResult {
 pub trait Provider {
     fn id(&self) -> ConnectionProvider;
 
+    fn reqwest_client(&self) -> reqwest::Client {
+        if let (Ok(proxy_host), Ok(proxy_port), Ok(proxy_user_name), Ok(proxy_user_password)) = (
+            env::var("PROXY_HOST"),
+            env::var("PROXY_PORT"),
+            env::var("PROXY_USER_NAME"),
+            env::var("PROXY_USER_PASSWORD"),
+        ) {
+            match reqwest::Proxy::all(format!(
+                "http://{}:{}@{}:{}",
+                proxy_user_name, proxy_user_password, proxy_host, proxy_port
+            )) {
+                Ok(proxy) => match reqwest::Client::builder().proxy(proxy).build() {
+                    Ok(client) => client,
+                    Err(e) => {
+                        error!(error = ?e, "Failed to create client with proxy");
+                        reqwest::Client::new()
+                    }
+                },
+                Err(e) => {
+                    error!(error = ?e, "Failed to create proxy, falling back to no proxy");
+                    reqwest::Client::new()
+                }
+            }
+        } else {
+            reqwest::Client::new()
+        }
+    }
+
     async fn finalize(
         &self,
         connection: &Connection,
+        related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError>;
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError>;
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError>;
 
     // This method scrubs raw_json to remove information that should not exfill `oauth`, in
     // particular the `refresh_token`. By convetion the `access_token` should be scrubbed as well
@@ -558,8 +591,13 @@ impl Connection {
 
         let now = utils::now();
 
+        let credential = match self.related_credential_id() {
+            Some(id) => store.retrieve_credential(&id).await.ok(),
+            None => None,
+        };
+
         let finalize = provider(self.provider)
-            .finalize(self, code, redirect_uri)
+            .finalize(self, credential, code, redirect_uri)
             .await?;
 
         self.status = ConnectionStatus::Finalized;
@@ -704,7 +742,12 @@ impl Connection {
 
         let now = utils::now();
 
-        let refresh = provider(self.provider).refresh(self).await?;
+        let credential = match self.related_credential_id() {
+            Some(id) => store.retrieve_credential(&id).await.ok(),
+            None => None,
+        };
+
+        let refresh = provider(self.provider).refresh(self, credential).await?;
 
         self.access_token_expiry = refresh.access_token_expiry;
         self.encrypted_access_token = Some(seal_str(&refresh.access_token)?);

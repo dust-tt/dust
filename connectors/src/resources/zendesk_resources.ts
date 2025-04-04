@@ -1,5 +1,5 @@
-import type { ContentNode, Result } from "@dust-tt/types";
-import { MIME_TYPES, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Ok } from "@dust-tt/client";
 import type {
   Attributes,
   CreationAttributes,
@@ -26,6 +26,8 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
+import type { ContentNode } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -322,7 +324,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
           ? "read"
           : "none",
       lastUpdatedAt: this.updatedAt.getTime(),
-      mimeType: MIME_TYPES.ZENDESK.BRAND,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.BRAND,
     };
   }
 
@@ -340,7 +342,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
       expandable: true,
       permission: this.helpCenterPermission,
       lastUpdatedAt: null,
-      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.HELP_CENTER,
     };
   }
 
@@ -361,7 +363,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
       expandable: expandable,
       permission: this.ticketsPermission,
       lastUpdatedAt: null,
-      mimeType: MIME_TYPES.ZENDESK.TICKETS,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKETS,
     };
   }
 }
@@ -613,7 +615,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
       expandable: expandable,
       permission,
       lastUpdatedAt: this.updatedAt.getTime(),
-      mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
     };
   }
 
@@ -698,7 +700,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
       preventSelection: true,
-      mimeType: MIME_TYPES.ZENDESK.TICKET,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKET,
     };
   }
 
@@ -902,7 +904,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticleModel> {
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
       preventSelection: true,
-      mimeType: MIME_TYPES.ZENDESK.ARTICLE,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.ARTICLE,
     };
   }
 

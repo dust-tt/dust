@@ -1,10 +1,10 @@
-import { CoreAPI } from "@dust-tt/types";
 import { describe, expect, vi } from "vitest";
 
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
+import { CoreAPI } from "@app/types";
 
 import handler from "./index";
 
@@ -26,7 +26,6 @@ vi.mock(
        */
       CoreAPI: vi.fn().mockReturnValue({
         searchNodes: vi.fn().mockImplementation(() => {
-          console.log("LAAAAA");
           return {
             isErr: () => false,
             value: {
@@ -201,7 +200,6 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables", (
       };
 
       vi.spyOn(CoreAPI.prototype, "searchNodes").mockImplementation(() => {
-        console.log("searchNodes called");
         return {
           isErr: () => false,
           value: {

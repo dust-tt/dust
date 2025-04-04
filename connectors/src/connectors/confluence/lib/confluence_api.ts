@@ -1,5 +1,5 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
@@ -10,6 +10,8 @@ import { apiConfig } from "@connectors/lib/api/config";
 import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
+import { getOAuthConnectionAccessToken } from "@connectors/types";
 
 export async function getConfluenceCloudInformation(accessToken: string) {
   const client = new ConfluenceClient(accessToken);
@@ -76,6 +78,7 @@ export async function listConfluenceSpaces(
 
   const client = new ConfluenceClient(confluenceAccessTokenRes.value, {
     cloudId: config?.cloudId,
+    useProxy: connector.useProxy ?? false,
   });
 
   const allSpaces = new Map<string, ConfluenceSpaceType>();

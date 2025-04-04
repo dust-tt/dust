@@ -8,12 +8,12 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import type { MouseEvent } from "react";
 import React, { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { checkProvider } from "@app/lib/providers";
+import type { WorkspaceType } from "@app/types";
 
 export type ProviderField = {
   name: string;
@@ -41,7 +41,7 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
         <p>
           To use OpenAI models you must provide your API key. It can be found{" "}
           <a
-            className="font-bold text-action-600 hover:text-action-500"
+            className="font-bold text-highlight-600 hover:text-highlight-500"
             href="https://platform.openai.com/account/api-keys"
             target="_blank"
           >
@@ -82,7 +82,7 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
         <p>
           To use Anthropic models you must provide your API key. It can be found{" "}
           <a
-            className="font-bold text-action-600 hover:text-action-500"
+            className="font-bold text-highlight-600 hover:text-highlight-500"
             href="https://console.anthropic.com/account/keys"
             target="_blank"
           >
@@ -105,7 +105,7 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
           To use Mistral AI models you must provide your API key. It can be
           found{" "}
           <a
-            className="font-bold text-action-600 hover:text-action-500"
+            className="font-bold text-highlight-600 hover:text-highlight-500"
             href="https://console.mistral.ai/api-keys/"
             target="_blank"
           >
@@ -128,7 +128,7 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
           To use Google AI Studio models you must provide your API key. It can
           be found{" "}
           <a
-            className="font-bold text-action-600 hover:text-action-500"
+            className="font-bold text-highlight-600 hover:text-highlight-500"
             href="https://aistudio.google.com/app/apikey"
             target="_blank"
           >
@@ -190,7 +190,7 @@ export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
           SerpAPI lets you search Google (and other search engines). To use
           SerpAPI you must provide your API key. It can be found{" "}
           <a
-            className="font-bold text-action-600 hover:text-action-500"
+            className="font-bold text-highlight-600 hover:text-highlight-500"
             href="https://serpapi.com/manage-api-key"
             target="_blank"
           >
@@ -212,7 +212,7 @@ export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
           Serper lets you search Google (and other search engines). To use
           Serper you must provide your API key. It can be found{" "}
           <a
-            className="font-bold text-action-600 hover:text-action-500"
+            className="font-bold text-highlight-600 hover:text-highlight-500"
             href="https://serper.dev/api-key"
             target="_blank"
           >
@@ -234,7 +234,7 @@ export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
           Browserless lets you use headless browsers to scrape web content. To
           use Browserless, you must provide your API key. It can be found{" "}
           <a
-            className="font-bold text-action-600 hover:text-action-500"
+            className="font-bold text-highlight-600 hover:text-highlight-500"
             href="https://cloud.browserless.io/account/"
             target="_blank"
           >
@@ -406,7 +406,9 @@ export function ProviderSetup({
             {renderFields()}
             <div className="text-sm">
               {testError ? (
-                <span className="text-red-500">Error: {testError}</span>
+                <span className="text-red-500">
+                  Error: {JSON.stringify(testError)}
+                </span>
               ) : testSuccessful ? (
                 <span className="text-green-600">
                   {testSuccessMessage ||

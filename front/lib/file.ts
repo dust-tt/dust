@@ -1,4 +1,4 @@
-import { contentTypeForExtension } from "@dust-tt/types";
+import { contentTypeForExtension } from "@app/types";
 
 export function getMimeTypeFromFile(file: File): string {
   const fileExtension = file.name.split(".").at(-1)?.toLowerCase();

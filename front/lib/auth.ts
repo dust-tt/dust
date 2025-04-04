@@ -1,29 +1,4 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
-import type {
-  APIErrorWithStatusCode,
-  GroupType,
-  LightWorkspaceType,
-  PermissionType,
-  PlanType,
-  ResourcePermission,
-  Result,
-  RoleType,
-  SubscriptionType,
-  UserType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  Err,
-  hasRolePermissions,
-  isAdmin,
-  isBuilder,
-  isDevelopment,
-  isSupportedEnterpriseConnectionStrategy,
-  isUser,
-  Ok,
-  WHITELISTABLE_FEATURES,
-} from "@dust-tt/types";
 import memoizer from "lru-memoizer";
 import type {
   GetServerSidePropsContext,
@@ -52,6 +27,30 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type {
+  APIErrorWithStatusCode,
+  GroupType,
+  LightWorkspaceType,
+  PermissionType,
+  PlanType,
+  ResourcePermission,
+  Result,
+  RoleType,
+  SubscriptionType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@app/types";
+import {
+  Err,
+  hasRolePermissions,
+  isAdmin,
+  isBuilder,
+  isDevelopment,
+  isSupportedEnterpriseConnectionStrategy,
+  isUser,
+  Ok,
+  WHITELISTABLE_FEATURES,
+} from "@app/types";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
@@ -732,6 +731,22 @@ export class Authenticator {
     return subscription;
   }
 
+  subscriptionResource(): SubscriptionResource | null {
+    return this._subscription;
+  }
+
+  getNonNullableSubscriptionResource(): SubscriptionResource {
+    const subscriptionResource = this.subscriptionResource();
+
+    if (!subscriptionResource) {
+      throw new Error(
+        "Unexpected unauthenticated call to `getNonNullableSubscriptionResource`."
+      );
+    }
+
+    return subscriptionResource;
+  }
+
   plan(): PlanType | null {
     return this._subscription ? this._subscription.getPlan() : null;
   }
@@ -753,15 +768,15 @@ export class Authenticator {
   }
 
   /**
-   * This is a convenience method to get the user from the Authenticator. The returned UserType
+   * This is a convenience method to get the user from the Authenticator. The returned UserResource
    * object won't have the user's workspaces set.
    * @returns
    */
-  user(): UserType | null {
-    return this._user ? this._user.toJSON() : null;
+  user(): UserResource | null {
+    return this._user ?? null;
   }
 
-  getNonNullableUser(): UserType {
+  getNonNullableUser(): UserResource {
     const user = this.user();
 
     if (!user) {

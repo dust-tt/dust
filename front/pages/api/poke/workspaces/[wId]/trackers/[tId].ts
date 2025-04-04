@@ -1,7 +1,3 @@
-import type {
-  TrackerConfigurationType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -9,6 +5,10 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  TrackerConfigurationType,
+  WithAPIErrorResponse,
+} from "@app/types";
 
 export type PokeFetchTrackerResponse = {
   tracker: TrackerConfigurationType;

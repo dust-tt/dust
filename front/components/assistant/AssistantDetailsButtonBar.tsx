@@ -12,11 +12,6 @@ import {
   StarStrokeIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -25,6 +20,8 @@ import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistant
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import { isBuilder } from "@app/types";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;

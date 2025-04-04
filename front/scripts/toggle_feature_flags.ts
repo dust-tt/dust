@@ -1,9 +1,8 @@
-import type { WhitelistableFeature } from "@dust-tt/types";
-import { WHITELISTABLE_FEATURES } from "@dust-tt/types";
-
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Workspace } from "@app/lib/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
+import type { WhitelistableFeature } from "@app/types";
+import { WHITELISTABLE_FEATURES } from "@app/types";
 
 async function enableFeatureFlag(
   workspace: Workspace,

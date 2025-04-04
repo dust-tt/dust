@@ -1,4 +1,3 @@
-import type { FileType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -11,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { FileType, WithAPIErrorResponse } from "@app/types";
 
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
@@ -56,13 +56,17 @@ async function handler(
   }
 
   // Only folder document and table upserts are supported on this endpoint.
-  if (!["upsert_document", "upsert_table"].includes(file.useCase)) {
+  if (
+    !["upsert_document", "upsert_table", "folders_document"].includes(
+      file.useCase
+    )
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message:
-          "Only document and folder upserts are supported on this endpoint.",
+          "Only folder document and table upserts are supported on this endpoint.",
       },
     });
   }

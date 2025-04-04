@@ -1,17 +1,4 @@
-import type {
-  FileUseCase,
-  Result,
-  SupportedFileContentType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isSupportedDelimitedTextContentType,
-  isSupportedImageContentType,
-  isTextExtractionSupportedContentType,
-  Ok,
-  TextExtraction,
-} from "@dust-tt/types";
+import { isDustMimeType } from "@dust-tt/client";
 import type { IncomingMessage } from "http";
 import sharp from "sharp";
 import { Readable } from "stream";
@@ -23,6 +10,16 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type { FileUseCase, Result, SupportedFileContentType } from "@app/types";
+import {
+  assertNever,
+  Err,
+  isSupportedDelimitedTextContentType,
+  isSupportedImageContentType,
+  isTextExtractionSupportedContentType,
+  Ok,
+  TextExtraction,
+} from "@app/types";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
@@ -94,7 +91,6 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
 
   try {
     await pipeline(readStream, resizedImageStream, writeStream);
-
     return new Ok(undefined);
   } catch (err) {
     logger.error(
@@ -228,6 +224,7 @@ const getProcessingFunction = ({
       [
         "conversation",
         "upsert_document",
+        "folders_document",
         "upsert_table",
         "tool_output",
       ].includes(useCase)
@@ -242,8 +239,14 @@ const getProcessingFunction = ({
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     case "application/vnd.ms-powerpoint":
     case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    case "application/vnd.google-apps.document":
+    case "application/vnd.google-apps.presentation":
     case "application/pdf":
-      if (["conversation", "upsert_document"].includes(useCase)) {
+      if (
+        ["conversation", "upsert_document", "folders_document"].includes(
+          useCase
+        )
+      ) {
         return extractTextFromFileAndUpload;
       }
       break;
@@ -279,7 +282,12 @@ const getProcessingFunction = ({
     case "text/x-perl":
     case "text/x-perl-script":
       if (
-        ["conversation", "upsert_document", "tool_output"].includes(useCase)
+        [
+          "conversation",
+          "upsert_document",
+          "tool_output",
+          "folders_document",
+        ].includes(useCase)
       ) {
         return storeRawText;
       }
@@ -289,8 +297,16 @@ const getProcessingFunction = ({
         return storeRawText;
       }
       break;
-
+    case "application/vnd.dust.section.json":
+      if (useCase === "tool_output") {
+        return storeRawText;
+      }
+      break;
+    // Processing is assumed to be irrelevant for internal mime types.
     default:
+      if (isDustMimeType(contentType)) {
+        break;
+      }
       assertNever(contentType);
   }
 
@@ -326,25 +342,21 @@ const maybeApplyProcessing: ProcessingFunction = async (
   }
 };
 
+export type ProcessAndStoreFileError = Omit<DustError, "code"> & {
+  code:
+    | "internal_server_error"
+    | "invalid_request_error"
+    | "file_too_large"
+    | "file_type_not_supported"
+    | "file_is_empty";
+};
 export async function processAndStoreFile(
   auth: Authenticator,
   {
     file,
     reqOrString,
   }: { file: FileResource; reqOrString: IncomingMessage | string }
-): Promise<
-  Result<
-    FileResource,
-    Omit<DustError, "code"> & {
-      code:
-        | "internal_server_error"
-        | "invalid_request_error"
-        | "file_too_large"
-        | "file_type_not_supported"
-        | "file_is_empty";
-    }
-  >
-> {
+): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   if (file.isReady || file.isFailed) {
     return new Err({
       name: "dust_error",
@@ -382,10 +394,16 @@ export async function processAndStoreFile(
   const processingRes = await maybeApplyProcessing(auth, file);
   if (processingRes.isErr()) {
     await file.markAsFailed();
+    // Unfortunately, there is no better way to catch this image format error.
+    const code = processingRes.error.message.includes(
+      "Input buffer contains unsupported image format"
+    )
+      ? "file_type_not_supported"
+      : "internal_server_error";
 
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code,
       message: `Failed to process the file : ${processingRes.error}`,
     });
   }

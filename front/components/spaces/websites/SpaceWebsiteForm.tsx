@@ -15,21 +15,21 @@ import {
   RadioGroupItem,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useCallback } from "react";
+
+import { AdvancedSettingsSection } from "@app/components/spaces/websites/AdvancedSettingsSection";
 import type {
   WebCrawlerConfigurationType,
   WebsiteFormAction,
   WebsiteFormState,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   CrawlingFrequencies,
   DEPTH_DISPLAY_TEXT,
   DepthOptions,
   FREQUENCY_DISPLAY_TEXT,
   WEBCRAWLER_MAX_PAGES,
-} from "@dust-tt/types";
-import { useCallback } from "react";
-
-import { AdvancedSettingsSection } from "@app/components/spaces/websites/AdvancedSettingsSection";
+} from "@app/types";
 
 type SpaceWebsiteFormProps = {
   state: WebsiteFormState;

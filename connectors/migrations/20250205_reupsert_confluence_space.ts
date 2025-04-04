@@ -1,4 +1,3 @@
-import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import { makeSpaceInternalId } from "@connectors/connectors/confluence/lib/internal_ids";
@@ -10,6 +9,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConfluenceSpace } from "@connectors/lib/models/confluence";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 makeScript(
   {
@@ -41,7 +41,7 @@ makeScript(
         parents: [folderId],
         parentId: null,
         title: space.name,
-        mimeType: MIME_TYPES.CONFLUENCE.SPACE,
+        mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.SPACE,
         sourceUrl: `${baseUrl}/wiki${space._links.webui}`,
       });
       const spaceInDb = await ConfluenceSpace.findOne({

@@ -1,27 +1,28 @@
 export type DustErrorCode =
-  | "resource_not_found"
-  | "unauthorized"
-  | "invalid_id"
   | "core_api_error"
   | "internal_error"
+  | "invalid_id"
   | "limit_reached"
+  | "resource_not_found"
+  | "unauthorized"
   // Data source
   | "data_source_error"
   | "data_source_quota_error"
-  | "text_or_section_required"
-  | "invalid_url"
-  | "invalid_parents"
   | "invalid_parent_id"
-  | "title_too_long"
+  | "invalid_parents"
   | "invalid_title_in_tags"
+  | "invalid_url"
+  | "text_or_section_required"
+  | "title_is_empty"
+  | "title_too_long"
   // Table
-  | "missing_csv"
   | "invalid_rows"
+  | "missing_csv"
   // Group errors
+  | "system_or_global_group"
+  | "user_already_member"
   | "user_not_found"
   | "user_not_member"
-  | "user_already_member"
-  | "system_or_global_group"
   // Space errors
   | "space_already_exists";
 

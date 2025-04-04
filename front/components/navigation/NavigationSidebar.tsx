@@ -1,5 +1,6 @@
 import {
   classNames,
+  cn,
   CollapseButton,
   NavigationList,
   NavigationListItem,
@@ -9,11 +10,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  SubscriptionType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -23,6 +19,12 @@ import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { UserMenu } from "@app/components/UserMenu";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type {
+  SubscriptionType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -49,6 +51,9 @@ export const NavigationSidebar = React.forwardRef<
   const router = useRouter();
   const [activePath, setActivePath] = useState("");
 
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   useEffect(() => {
     if (router.isReady && router.route) {
       setActivePath(router.route);
@@ -63,13 +68,7 @@ export const NavigationSidebar = React.forwardRef<
   );
 
   return (
-    <div
-      ref={ref}
-      className={classNames(
-        "flex min-w-0 grow flex-col",
-        "bg-structure-50 dark:bg-structure-50-night"
-      )}
-    >
+    <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className="flex flex-col">
         <AppStatusBanner />
         {subscription.endDate && (
@@ -101,49 +100,55 @@ export const NavigationSidebar = React.forwardRef<
                     {subNavigation && tab.isCurrent(activePath) && (
                       <>
                         {subNavigation.map((nav) => (
-                          <>
+                          <React.Fragment key={`nav-${nav.label}`}>
                             {nav.label && (
                               <NavigationListLabel
                                 label={nav.label}
                                 variant={nav.variant}
                               />
                             )}
-                            {nav.menus.map((menu) => (
-                              <React.Fragment key={menu.id}>
-                                <NavigationListItem
-                                  selected={menu.current}
-                                  label={menu.label}
-                                  icon={menu.icon}
-                                  href={menu.href}
-                                  target={menu.target}
-                                />
-                                {menu.subMenuLabel && (
-                                  <div
-                                    className={classNames(
-                                      "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
-                                      "text-slate-400 dark:text-slate-400-night"
-                                    )}
-                                  >
-                                    {menu.subMenuLabel}
-                                  </div>
-                                )}
-                                {menu.subMenu && (
-                                  <div className="mb-2 flex flex-col">
-                                    {menu.subMenu.map((nav) => (
-                                      <NavigationListItem
-                                        key={nav.id}
-                                        selected={nav.current}
-                                        label={nav.label}
-                                        icon={nav.icon}
-                                        className="grow pl-14 pr-4"
-                                        href={nav.href ? nav.href : undefined}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-                              </React.Fragment>
-                            ))}
-                          </>
+                            {nav.menus
+                              .filter(
+                                (menu) =>
+                                  !menu.featureFlag ||
+                                  featureFlags.includes(menu.featureFlag)
+                              )
+                              .map((menu) => (
+                                <React.Fragment key={menu.id}>
+                                  <NavigationListItem
+                                    selected={menu.current}
+                                    label={menu.label}
+                                    icon={menu.icon}
+                                    href={menu.href}
+                                    target={menu.target}
+                                  />
+                                  {menu.subMenuLabel && (
+                                    <div
+                                      className={classNames(
+                                        "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
+                                        "text-muted-foreground dark:text-muted-foreground-night"
+                                      )}
+                                    >
+                                      {menu.subMenuLabel}
+                                    </div>
+                                  )}
+                                  {menu.subMenu && (
+                                    <div className="mb-2 flex flex-col">
+                                      {menu.subMenu.map((nav) => (
+                                        <NavigationListItem
+                                          key={nav.id}
+                                          selected={nav.current}
+                                          label={nav.label}
+                                          icon={nav.icon}
+                                          className="grow pl-14 pr-4"
+                                          href={nav.href ? nav.href : undefined}
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+                                </React.Fragment>
+                              ))}
+                          </React.Fragment>
                         ))}
                       </>
                     )}
@@ -172,6 +177,46 @@ export const NavigationSidebar = React.forwardRef<
   );
 });
 
+interface StatusBannerProps {
+  variant?: "info" | "warning";
+  title: string;
+  description: React.ReactNode;
+  footer?: React.ReactNode;
+}
+
+function StatusBanner({
+  variant = "info",
+  title,
+  description,
+  footer,
+}: StatusBannerProps) {
+  const colorClasses = {
+    info: cn(
+      "border-info-200 dark:border-info-200-night",
+      "bg-info-100 dark:bg-info-100-night",
+      "text-info-900 dark:text-info-900-night"
+    ),
+    warning: cn(
+      "border-warning-200 dark:border-warning-200-night",
+      "bg-warning-100 dark:bg-warning-100-night",
+      "text-warning-900 dark:text-warning-900-night"
+    ),
+  };
+
+  return (
+    <div
+      className={cn(
+        "space-y-2 border-y px-3 py-3 text-xs",
+        colorClasses[variant]
+      )}
+    >
+      <div className="font-bold">{title}</div>
+      <div className="font-normal">{description}</div>
+      {footer && <div>{footer}</div>}
+    </div>
+  );
+}
+
 function AppStatusBanner() {
   const { appStatus } = useAppStatus();
 
@@ -183,39 +228,28 @@ function AppStatusBanner() {
 
   if (dustStatus) {
     return (
-      <div
-        className={classNames(
-          "space-y-2 border-y px-3 py-3 text-xs",
-          "border-pink-200 dark:border-pink-200-night",
-          "bg-pink-100 dark:bg-pink-100-night",
-          "text-pink-900 dark:text-pink-900-night"
-        )}
-      >
-        <div className="font-bold">{dustStatus.name}</div>
-        <div className="font-normal">{dustStatus.description}</div>
-        <div>
-          Check our{" "}
-          <Link href={dustStatus.link} target="_blank" className="underline">
-            status page
-          </Link>{" "}
-          for updates.
-        </div>
-      </div>
+      <StatusBanner
+        title={dustStatus.name}
+        description={dustStatus.description}
+        footer={
+          <>
+            Check our{" "}
+            <Link href={dustStatus.link} target="_blank" className="underline">
+              status page
+            </Link>{" "}
+            for updates.
+          </>
+        }
+      />
     );
   }
+
   if (providersStatus) {
     return (
-      <div
-        className={classNames(
-          "space-y-2 border-y px-3 py-3 text-xs",
-          "border-pink-200 dark:border-pink-200-night",
-          "bg-pink-100 dark:bg-pink-100-night",
-          "text-pink-900 dark:text-pink-900-night"
-        )}
-      >
-        <div className="font-bold">{providersStatus.name}</div>
-        <div className="font-normal">{providersStatus.description}</div>
-      </div>
+      <StatusBanner
+        title={providersStatus.name}
+        description={providersStatus.description}
+      />
     );
   }
 
@@ -230,59 +264,51 @@ function SubscriptionEndBanner({ endDate }: { endDate: number }) {
   });
 
   return (
-    <div
-      className={classNames(
-        "border-y px-3 py-3 text-xs",
-        "border-pink-200 dark:border-pink-200-night",
-        "bg-pink-100 dark:bg-pink-100-night",
-        "text-pink-900 dark:text-pink-900-night"
-      )}
-    >
-      <div className="font-bold">Subscription ending on {formattedEndDate}</div>
-      <div className="font-normal">
-        Connections will be deleted and members will be revoked. Details{" "}
-        <Link
-          href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-          target="_blank"
-          className="underline"
-        >
-          here
-        </Link>
-        .
-      </div>
-    </div>
+    <StatusBanner
+      variant="warning"
+      title={`Subscription ending on ${formattedEndDate}`}
+      description={
+        <>
+          Connections will be deleted and members will be revoked. Details{" "}
+          <Link
+            href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
+            target="_blank"
+            className="underline"
+          >
+            here
+          </Link>
+          .
+        </>
+      }
+    />
   );
 }
 
 function SubscriptionPastDueBanner() {
   return (
-    <div
-      className={classNames(
-        "border-y px-3 py-3 text-xs",
-        "border-warning-200 dark:border-warning-200-night",
-        "bg-warning-100 dark:bg-warning-100-night",
-        "text-warning-900 dark:text-warning-900-night"
-      )}
-    >
-      <div className="font-bold">Your payment has failed!</div>
-      <div className="font-normal">
-        <br />
-        Please make sure to update your payment method in the Admin section to
-        maintain access to your workspace. We will retry in a few days.
-        <br />
-        <br />
-        After 3 attempts, your workspace will be downgraded to the free plan.
-        Connections will be deleted and members will be revoked. Details{" "}
-        <Link
-          href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-          target="_blank"
-          className="underline"
-        >
-          here
-        </Link>
-        .
-      </div>
-    </div>
+    <StatusBanner
+      variant="warning"
+      title="Your payment has failed!"
+      description={
+        <>
+          <br />
+          Please make sure to update your payment method in the Admin section to
+          maintain access to your workspace. We will retry in a few days.
+          <br />
+          <br />
+          After 3 attempts, your workspace will be downgraded to the free plan.
+          Connections will be deleted and members will be revoked. Details{" "}
+          <Link
+            href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
+            target="_blank"
+            className="underline"
+          >
+            here
+          </Link>
+          .
+        </>
+      }
+    />
   );
 }
 
@@ -312,7 +338,7 @@ export const ToggleNavigationSidebarButton = React.forwardRef<
 
   return (
     <div ref={ref} onClick={handleClick} className="lg:top-1/2 lg:flex lg:w-5">
-      <CollapseButton direction={direction} />
+      <CollapseButton direction={direction} variant="light" />
     </div>
   );
 });

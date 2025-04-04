@@ -1,9 +1,9 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import { DataTable, Tooltip } from "@dust-tt/sparkle";
-import type { DataSourceViewContentNode } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { DataSourceViewContentNode } from "@app/types";
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -36,7 +36,15 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       id: "location",
       enableSorting: false,
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.BasicCellContent label={info.getValue()} className="pr-2" />
+        <DataTable.BasicCellContent
+          label={
+            // Displaying data source name for folders
+            info.row.original.dataSourceView.category === "folder"
+              ? info.row.original.dataSourceView.dataSource.name
+              : info.getValue()
+          }
+          className="pr-2"
+        />
       ),
       meta: {
         sizeRatio: 25,

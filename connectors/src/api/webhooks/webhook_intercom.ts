@@ -1,4 +1,3 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import type { IntercomConversationWithPartsType } from "@connectors/connectors/intercom/lib/types";
@@ -13,6 +12,7 @@ import { syncFailed } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "intercom" });
 

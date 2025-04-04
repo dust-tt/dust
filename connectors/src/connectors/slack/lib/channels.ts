@@ -1,9 +1,8 @@
-import type { ConnectorPermission, ModelId, Result } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
-import type { CodedError, WebAPIPlatformError } from "@slack/web-api";
-import { ErrorCode } from "@slack/web-api";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 
+import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
@@ -14,6 +13,9 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { ConnectorPermission } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 import { getSlackClient } from "./slack_client";
 
@@ -32,10 +34,15 @@ export async function updateSlackChannelInConnectorsDb({
   slackChannelId,
   slackChannelName,
   connectorId,
+  createIfNotExistsWithParams,
 }: {
   slackChannelId: string;
   slackChannelName: string;
   connectorId: number;
+  createIfNotExistsWithParams?: {
+    permission: ConnectorPermission;
+    private: boolean;
+  };
 }): Promise<SlackChannelType> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -50,9 +57,19 @@ export async function updateSlackChannelInConnectorsDb({
   });
 
   if (!channel) {
-    throw new Error(
-      `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
-    );
+    if (createIfNotExistsWithParams) {
+      channel = await SlackChannel.create({
+        connectorId,
+        slackChannelId,
+        slackChannelName,
+        permission: createIfNotExistsWithParams.permission,
+        private: createIfNotExistsWithParams.private,
+      });
+    } else {
+      throw new Error(
+        `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
+      );
+    }
   } else {
     if (channel.slackChannelName !== slackChannelName) {
       channel = await channel.update({
@@ -115,7 +132,7 @@ export async function updateSlackChannelInCoreDb(
     title: `#${channelOnDb.slackChannelName}`,
     parentId: null,
     parents: [folderId],
-    mimeType: MIME_TYPES.SLACK.CHANNEL,
+    mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
     sourceUrl: getSlackChannelSourceUrl(channelId, slackConfiguration),
     providerVisibility: channelOnDb.private ? "private" : "public",
     timestampMs,
@@ -155,15 +172,13 @@ export async function joinChannel(
       return new Ok({ result: "already_joined", channel: channelInfo.channel });
     }
   } catch (e) {
-    const slackError = e as CodedError;
-    if (slackError.code === ErrorCode.PlatformError) {
-      const platformError = slackError as WebAPIPlatformError;
-      if (platformError.data.error === "missing_scope") {
+    if (isSlackWebAPIPlatformError(e)) {
+      if (e.data.error === "missing_scope") {
         logger.error(
           {
             channelId,
             connectorId,
-            error: platformError,
+            error: e,
           },
           "Could not join the channel because of a missing scope. Please re-authorize your Slack connection and try again."
         );
@@ -181,9 +196,19 @@ export async function joinChannel(
         },
         "Can't join the channel"
       );
-      return new Err(e as Error);
-    }
-  }
 
-  return new Err(new Error(`Can't join the channel`));
+      return new Err(e);
+    }
+
+    logger.error(
+      {
+        connectorId,
+        channelId,
+        error: e,
+      },
+      "Can't join the channel. Unknown error."
+    );
+
+    return new Err(new Error(`Can't join the channel`));
+  }
 }

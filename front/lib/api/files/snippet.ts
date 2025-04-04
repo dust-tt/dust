@@ -1,15 +1,4 @@
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
-import type { Result } from "@dust-tt/types";
-import {
-  assertNever,
-  CoreAPI,
-  Err,
-  getSmallWhitelistedModel,
-  isSupportedDelimitedTextContentType,
-  isSupportedImageContentType,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
 
 import { runAction } from "@app/lib/actions/server";
 import config from "@app/lib/api/config";
@@ -19,6 +8,17 @@ import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import {
+  assertNever,
+  CoreAPI,
+  Err,
+  getSmallWhitelistedModel,
+  isSupportedDelimitedTextContentType,
+  isSupportedImageContentType,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 const ENABLE_LLM_SNIPPETS = false;
 

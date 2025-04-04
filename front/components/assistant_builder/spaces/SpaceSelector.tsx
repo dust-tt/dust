@@ -12,7 +12,6 @@ import {
   RadioGroupCustomItem,
   Separator,
 } from "@dust-tt/sparkle";
-import type { SpaceType } from "@dust-tt/types";
 import React, { useState } from "react";
 
 import {
@@ -20,6 +19,7 @@ import {
   getSpaceName,
   groupSpacesForDisplay,
 } from "@app/lib/spaces";
+import type { SpaceType } from "@app/types";
 
 interface SpaceSelectorProps {
   allowedSpaces?: SpaceType[];
@@ -97,7 +97,7 @@ export function SpaceSelector({
                         className={cn(
                           "inline-block flex-shrink-0 align-middle",
                           isDisabled
-                            ? "text-element-700 dark:text-element-700-night"
+                            ? "text-muted-foreground dark:text-muted-foreground-night"
                             : ""
                         )}
                       />
@@ -107,7 +107,7 @@ export function SpaceSelector({
                           "font-bold",
                           "align-middle",
                           isDisabled
-                            ? "text-element-700 dark:text-element-700-night"
+                            ? "text-muted-foreground dark:text-muted-foreground-night"
                             : "text-foreground dark:text-foreground-night"
                         )}
                       >
@@ -116,9 +116,9 @@ export function SpaceSelector({
                     </div>
                   }
                 >
-                  <div className="mt-4 flex w-full flex-col">
+                  <div className="flex w-full flex-col">
                     {selectedSpace === space.sId && (
-                      <div className="ml-4 mt-1">
+                      <div className="ml-4 mt-1 mt-4">
                         {renderChildren(selectedSpaceObj)}
                       </div>
                     )}

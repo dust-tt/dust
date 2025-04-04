@@ -1,7 +1,7 @@
+import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,
   Button,
-  CloudArrowLeftRightIcon,
   ContentMessage,
   Icon,
   InformationCircleIcon,
@@ -18,6 +18,14 @@ import {
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { isRight } from "fp-ts/lib/Either";
+import { formatValidationErrors } from "io-ts-reporters";
+import { useEffect, useMemo, useState } from "react";
+
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { useBigQueryLocations } from "@app/lib/swr/bigquery";
+import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
 import type {
   BigQueryCredentialsWithLocation,
   CheckBigQueryCredentials,
@@ -25,19 +33,8 @@ import type {
   ConnectorType,
   DataSourceType,
   WorkspaceType,
-} from "@dust-tt/types";
-import {
-  CheckBigQueryCredentialsSchema,
-  isConnectorsAPIError,
-} from "@dust-tt/types";
-import { isRight } from "fp-ts/lib/Either";
-import { formatValidationErrors } from "io-ts-reporters";
-import React, { useEffect, useMemo, useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
-import { useBigQueryLocations } from "@app/lib/swr/bigquery";
-import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
+} from "@app/types";
+import { CheckBigQueryCredentialsSchema } from "@app/types";
 
 type CreateOrUpdateConnectionBigQueryModalProps = {
   owner: WorkspaceType;
@@ -325,7 +322,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
             <Page.SectionHeader title="BigQuery Credentials" />
             <TextArea
-              className="font-mono min-h-[300px] text-[13px]"
+              className="min-h-[300px] font-mono text-[13px]"
               name="service_account_json"
               value={credentials}
               placeholder="Paste service account JSON here"
@@ -376,12 +373,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isLoading
-              ? "Connecting..."
-              : dataSourceToUpdate
-                ? "Update Connection"
-                : "Connect Tables",
-            icon: CloudArrowLeftRightIcon,
+            label: isLoading ? "Saving..." : "Save",
             onClick: () => {
               setIsLoading(true);
               dataSourceToUpdate
@@ -393,7 +385,6 @@ export function CreateOrUpdateConnectionBigQueryModal({
               isLocationsLoading ||
               !credentialsState.valid ||
               !selectedLocation,
-            size: "md",
           }}
         />
       </SheetContent>

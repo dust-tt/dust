@@ -1,12 +1,4 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationScope,
-  AgentConfigurationType,
-  AgentsGetViewType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  UserType,
-} from "@dust-tt/types";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -29,6 +21,14 @@ import type { PostAgentScopeRequestBody } from "@app/pages/api/w/[wId]/assistant
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
+import type {
+  AgentConfigurationScope,
+  AgentConfigurationType,
+  AgentsGetViewType,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+  UserType,
+} from "@app/types";
 
 export function useAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =

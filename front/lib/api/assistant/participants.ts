@@ -1,3 +1,13 @@
+import { Op } from "sequelize";
+
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import type { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessage,
+  Message,
+  UserMessage,
+} from "@app/lib/models/assistant/conversation";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
   AgentParticipantType,
   ConversationParticipantsType,
@@ -5,19 +15,8 @@ import type {
   ModelId,
   Result,
   UserParticipantType,
-} from "@dust-tt/types";
-import { ConversationError, Err, formatUserFullName, Ok } from "@dust-tt/types";
-import { Op } from "sequelize";
-
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
-import type { Authenticator } from "@app/lib/auth";
-import type { Conversation } from "@app/lib/models/assistant/conversation";
-import {
-  AgentMessage,
-  Message,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
-import { UserModel } from "@app/lib/resources/storage/models/user";
+} from "@app/types";
+import { ConversationError, Err, formatUserFullName, Ok } from "@app/types";
 
 async function fetchAllUsersById(
   userIds: ModelId[]
@@ -59,7 +58,7 @@ async function fetchAllAgentsById(
 
 export async function fetchConversationParticipants(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType | Conversation
+  conversation: ConversationWithoutContentType
 ): Promise<Result<ConversationParticipantsType, Error>> {
   const owner = auth.workspace();
   if (!owner) {

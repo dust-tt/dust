@@ -1,15 +1,3 @@
-import type {
-  AgentConfigurationType,
-  AppType,
-  DataSourceViewType,
-  PlanType,
-  PlatformActionsConfigurationType,
-  SpaceType,
-  SubscriptionType,
-  TemplateAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
@@ -24,12 +12,23 @@ import type {
   BuilderFlow,
 } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { PlatformActionsConfigurationResource } from "@app/lib/resources/platform_actions_configuration_resource";
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
+import type {
+  AgentConfigurationType,
+  AppType,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  SubscriptionType,
+  TemplateAgentConfigurationType,
+  WorkspaceType,
+} from "@app/types";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;
@@ -48,6 +47,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   spaces: SpaceType[];
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
+  mcpServerViews: MCPServerViewType[];
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
     | AgentConfigurationType
@@ -56,7 +56,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
-  platformActionsConfigurations: PlatformActionsConfigurationType[];
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -67,11 +66,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [{ spaces, dataSourceViews, dustApps }, platformActionsConfigurations] =
-    await Promise.all([
-      getAccessibleSourcesAndApps(auth),
-      PlatformActionsConfigurationResource.listByWorkspace(auth),
-    ]);
+  const { spaces, dataSourceViews, dustApps, mcpServerViews } =
+    await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -87,7 +83,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     context.query
   );
   if (duplicate) {
-    configuration = await getAgentConfiguration(auth, duplicate);
+    configuration = await getAgentConfiguration(auth, duplicate, "full");
 
     if (!configuration) {
       return {
@@ -121,6 +117,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       })
     : [];
 
+  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
+
   return {
     props: {
       actions,
@@ -128,15 +126,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       baseUrl: config.getClientFacingUrl(),
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
+      mcpServerViews: mcpServerViewsJSON,
       flow,
       owner,
       plan,
       subscription,
       templateId,
       spaces: spaces.map((s) => s.toJSON()),
-      platformActionsConfigurations: platformActionsConfigurations.map((c) =>
-        c.toJSON()
-      ),
     },
   };
 });
@@ -148,12 +144,12 @@ export default function CreateAssistant({
   spaces,
   dataSourceViews,
   dustApps,
+  mcpServerViews,
   flow,
   owner,
   plan,
   subscription,
   templateId,
-  platformActionsConfigurations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
 
@@ -170,7 +166,7 @@ export default function CreateAssistant({
       spaces={spaces}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
-      platformActionsConfigurations={platformActionsConfigurations}
+      mcpServerViews={mcpServerViews}
     >
       <AssistantBuilder
         owner={owner}
@@ -200,6 +196,7 @@ export default function CreateAssistant({
                     modelId: agentConfiguration.model.modelId,
                   },
                   temperature: agentConfiguration.model.temperature,
+                  responseFormat: agentConfiguration.model.responseFormat,
                 },
                 maxStepsPerRun: agentConfiguration.maxStepsPerRun ?? null,
                 visualizationEnabled: agentConfiguration.visualizationEnabled,

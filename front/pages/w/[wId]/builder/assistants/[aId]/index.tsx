@@ -1,14 +1,3 @@
-import type {
-  AgentConfigurationType,
-  AppType,
-  DataSourceViewType,
-  PlanType,
-  PlatformActionsConfigurationType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
@@ -22,10 +11,21 @@ import type {
   BuilderFlow,
 } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { PlatformActionsConfigurationResource } from "@app/lib/resources/platform_actions_configuration_resource";
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type {
+  AgentConfigurationType,
+  AppType,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];
@@ -33,12 +33,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   baseUrl: string;
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
+  mcpServerViews: MCPServerViewType[];
   flow: BuilderFlow;
   owner: WorkspaceType;
   plan: PlanType;
   spaces: SpaceType[];
   subscription: SubscriptionType;
-  platformActionsConfigurations: PlatformActionsConfigurationType[];
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -55,15 +55,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [
-    { spaces, dataSourceViews, dustApps },
-    configuration,
-    platformActionsConfigurations,
-  ] = await Promise.all([
-    getAccessibleSourcesAndApps(auth),
-    getAgentConfiguration(auth, context.params?.aId as string),
-    PlatformActionsConfigurationResource.listByWorkspace(auth),
-  ]);
+  const [{ spaces, dataSourceViews, dustApps, mcpServerViews }, configuration] =
+    await Promise.all([
+      getAccessibleSourcesAndApps(auth),
+      getAgentConfiguration(auth, context.params?.aId as string, "full"),
+      MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth),
+    ]);
 
   if (configuration?.scope === "workspace" && !auth.isBuilder()) {
     return {
@@ -89,6 +86,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration,
   });
 
+  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
+
   return {
     props: {
       actions,
@@ -96,14 +95,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       baseUrl: config.getClientFacingUrl(),
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
+      mcpServerViews: mcpServerViewsJSON,
       flow,
       owner,
       plan,
       subscription,
       spaces: spaces.map((s) => s.toJSON()),
-      platformActionsConfigurations: platformActionsConfigurations.map((c) =>
-        c.toJSON()
-      ),
     },
   };
 });
@@ -115,11 +112,11 @@ export default function EditAssistant({
   spaces,
   dataSourceViews,
   dustApps,
+  mcpServerViews,
   flow,
   owner,
   plan,
   subscription,
-  platformActionsConfigurations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   throwIfInvalidAgentConfiguration(agentConfiguration);
 
@@ -136,7 +133,7 @@ export default function EditAssistant({
       spaces={spaces}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
-      platformActionsConfigurations={platformActionsConfigurations}
+      mcpServerViews={mcpServerViews}
     >
       <AssistantBuilder
         owner={owner}
@@ -156,6 +153,7 @@ export default function EditAssistant({
               reasoningEffort: agentConfiguration.model.reasoningEffort,
             },
             temperature: agentConfiguration.model.temperature,
+            responseFormat: agentConfiguration.model.responseFormat,
           },
           actions,
           visualizationEnabled: agentConfiguration.visualizationEnabled,

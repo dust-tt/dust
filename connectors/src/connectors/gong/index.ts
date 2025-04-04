@@ -1,5 +1,5 @@
-import type { ContentNode, Result } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
@@ -32,11 +32,14 @@ import {
 } from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ContentNode, DataSourceConfig } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "gong" });
 
 const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
+
+const RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
 
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
@@ -78,7 +81,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       parents: [makeGongTranscriptFolderInternalId(connector)],
       parentId: null,
       title: TRANSCRIPTS_FOLDER_TITLE,
-      mimeType: MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
+      mimeType: INTERNAL_MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
     const result = await createSchedule({
@@ -244,6 +247,15 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     return new Ok([]);
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // Gong only let you select root nodes.
+    return new Ok([internalId]);
+  }
+
   async setPermissions(): Promise<Result<void, Error>> {
     throw new Error("Method not supported.");
   }
@@ -272,11 +284,72 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     throw new Error("Method not supported.");
   }
 
-  async setConfigurationKey(): Promise<Result<void, Error>> {
-    throw new Error("Method not supported.");
+  async getConfigurationKey({
+    configKey,
+  }: {
+    configKey: string;
+  }): Promise<Result<string | null, Error>> {
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
+
+    switch (configKey) {
+      case RETENTION_PERIOD_CONFIG_KEY: {
+        const configuration = await fetchGongConfiguration(connector);
+
+        return new Ok(configuration.retentionPeriodDays?.toString() || null);
+      }
+      default:
+        return new Err(new Error(`Invalid config key ${configKey}`));
+    }
   }
 
-  async getConfigurationKey(): Promise<Result<string | null, Error>> {
-    throw new Error("Method not supported.");
+  async setConfigurationKey({
+    configKey,
+    configValue,
+  }: {
+    configKey: string;
+    configValue: string;
+  }): Promise<Result<void, Error>> {
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
+
+    switch (configKey) {
+      case RETENTION_PERIOD_CONFIG_KEY: {
+        const configuration = await fetchGongConfiguration(connector);
+        const retentionPeriodDays = configValue
+          ? parseInt(configValue, 10)
+          : null;
+
+        if (
+          retentionPeriodDays !== null &&
+          !Number.isFinite(retentionPeriodDays)
+        ) {
+          logger.error(
+            {
+              connectorId: connector.id,
+              configValue,
+              retentionPeriodDays,
+            },
+            "[Gong] Invalid retention period value."
+          );
+          return new Err(new Error("Invalid retention period"));
+        }
+
+        logger.info(
+          {
+            connectorId: connector.id,
+            retentionPeriodDays,
+          },
+          "[Gong] Update retention period."
+        );
+        await configuration.setRetentionPeriodDays(retentionPeriodDays);
+
+        return new Ok(undefined);
+      }
+      default:
+        return new Err(new Error(`Invalid config key ${configKey}`));
+    }
   }
 }

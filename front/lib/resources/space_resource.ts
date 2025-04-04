@@ -1,12 +1,3 @@
-import type {
-  ModelId,
-  ResourcePermission,
-  Result,
-  SpaceKind,
-  SpaceType,
-} from "@dust-tt/types";
-import { concurrentExecutor, Err } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
 import assert from "assert";
 import type {
   Attributes,
@@ -30,7 +21,17 @@ import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappe
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchUpdateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/client";
+import type {
+  CombinedResourcePermissions,
+  ModelId,
+  Result,
+  SpaceKind,
+  SpaceType,
+} from "@app/types";
+import { Err } from "@app/types";
+import { Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -533,7 +534,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    *
    * @returns Array of ResourcePermission objects based on space type
    */
-  requestedPermissions(): ResourcePermission[] {
+  requestedPermissions(): CombinedResourcePermissions[] {
     const globalGroup = this.isRegular()
       ? this.groups.find((group) => group.isGlobal())
       : undefined;
@@ -589,11 +590,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Open space:
-    // Currently only using global group for simplicity
-    // TODO(2024-10-25 flav): Refactor to store a list of ResourcePermission on conversations
-    // and agent_configurations. This will allow proper handling of multiple groups instead
-    // of only using the global group as a temporary solution.
+    // Open space.
+    // Currently only using global group for simplicity.
+    // TODO(2024-10-25 flav): Refactor to store a list of ResourcePermission on conversations and
+    // agent_configurations. This will allow proper handling of multiple groups instead of only
+    // using the global group as a temporary solution.
     if (globalGroup) {
       return [
         {

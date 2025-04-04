@@ -1,10 +1,10 @@
-import { Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { createPlugin } from "@app/lib/api/poke/types";
 import { Workspace } from "@app/lib/models/workspace";
-import { internalSubscribeWorkspaceToFreeNoPlan } from "@app/lib/plans/subscription";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
+import { Err, Ok } from "@app/types";
 
 export const batchDowngradePlugin = createPlugin({
   manifest: {
@@ -50,7 +50,7 @@ export const batchDowngradePlugin = createPlugin({
     }
 
     for (const workspace of workspaces) {
-      await internalSubscribeWorkspaceToFreeNoPlan({
+      await SubscriptionResource.internalSubscribeWorkspaceToFreeNoPlan({
         workspaceId: workspace.sId,
       });
 

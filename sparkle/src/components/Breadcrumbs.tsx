@@ -63,7 +63,10 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
             key={`breadcrumbs-${index}`}
             className="s-flex s-flex-row s-items-center s-gap-1"
           >
-            <Icon visual={item.icon} className="s-text-brand" />
+            <Icon
+              visual={item.icon}
+              className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+            />
             {item.label === ELLIPSIS_STRING ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -89,7 +92,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
                 className={
                   index === itemsShown.length - 1
                     ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
-                    : "s-text-element-700 dark:s-text-element-700-night"
+                    : "s-text-muted-foreground dark:s-text-muted-foreground-night"
                 }
               >
                 {index === itemsShown.length - 1
@@ -104,7 +107,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
                 className={
                   index === itemsShown.length - 1
                     ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
-                    : "s-text-element-700 dark:s-text-element-700-night"
+                    : "s-text-muted-foreground dark:s-text-muted-foreground-night"
                 }
               >
                 {index === itemsShown.length - 1
@@ -116,7 +119,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
               </div>
             )}
             {index === itemsShown.length - 1 ? null : (
-              <ChevronRightIcon className="s-text-element-500 dark:s-text-element-500-night" />
+              <ChevronRightIcon className="s-text-primary-300 dark:s-text-primary-700" />
             )}
           </div>
         );

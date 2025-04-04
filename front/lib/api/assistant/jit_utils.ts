@@ -1,14 +1,26 @@
+import {
+  CONTENT_NODE_MIME_TYPES,
+  isDustMimeType,
+  isIncludableInternalMimeType,
+} from "@dust-tt/client";
+
 import type {
-  ConversationFileType,
+  BaseConversationAttachmentType,
+  ConversationAttachmentType,
+  ConversationContentNodeType,
+} from "@app/lib/actions/conversation/list_files";
+import type {
   ConversationType,
   SupportedContentFragmentType,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   isAgentMessageType,
   isContentFragmentType,
+  isContentNodeAttachment,
+  isFileAttachment,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
-} from "@dust-tt/types";
+} from "@app/types";
 
 function isConversationIncludableFileContentType(
   contentType: SupportedContentFragmentType
@@ -17,17 +29,35 @@ function isConversationIncludableFileContentType(
   if (isSupportedImageContentType(contentType)) {
     return false;
   }
+  if (isDustMimeType(contentType)) {
+    return isIncludableInternalMimeType(contentType);
+  }
   return true;
 }
 
 function isQueryableContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
-  // For now we only allow querying tabular files.
-  if (isSupportedDelimitedTextContentType(contentType)) {
+  // For now we only allow querying tabular files and multi-sheet spreadsheets
+  // from connections.
+  if (
+    isSupportedDelimitedTextContentType(contentType) ||
+    isMultiSheetSpreadsheetContentType(contentType)
+  ) {
     return true;
   }
   return false;
+}
+
+export function isMultiSheetSpreadsheetContentType(
+  contentType: SupportedContentFragmentType
+): contentType is
+  | typeof CONTENT_NODE_MIME_TYPES.MICROSOFT.SPREADSHEET
+  | typeof CONTENT_NODE_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET {
+  return (
+    contentType === CONTENT_NODE_MIME_TYPES.MICROSOFT.SPREADSHEET ||
+    contentType === CONTENT_NODE_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+  );
 }
 
 function isSearchableContentType(
@@ -53,8 +83,8 @@ function isListableContentType(
 // Moved to a separate file to avoid circular dependency issue.
 export function listFiles(
   conversation: ConversationType
-): ConversationFileType[] {
-  const files: ConversationFileType[] = [];
+): ConversationAttachmentType[] {
+  const files: ConversationAttachmentType[] = [];
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
 
@@ -63,31 +93,67 @@ export function listFiles(
       isListableContentType(m.contentType) &&
       m.contentFragmentVersion === "latest"
     ) {
-      if (m.fileId) {
-        const canDoJIT = m.snippet !== null;
-        const isIncludable = isConversationIncludableFileContentType(
-          m.contentType
-        );
-        const isQueryable = canDoJIT && isQueryableContentType(m.contentType);
-        const isSearchable = canDoJIT && isSearchableContentType(m.contentType);
+      if (isFileAttachment(m) || isContentNodeAttachment(m)) {
+        // Here, snippet not null is actually to detect file attachments that are prior to the JIT
+        // actions, and differentiate them from the newer file attachments that do have a snippet.
+        // Former ones cannot be used in JIT. But for content node fragments, with a node id rather
+        // than a file id, we don't care about the snippet.
+        const canDoJIT = m.snippet !== null || isContentNodeAttachment(m);
+        const isQueryable =
+          canDoJIT &&
+          (isQueryableContentType(m.contentType) || m.nodeType === "table");
+        const isContentNodeTable = isContentNodeAttachment(m) && isQueryable;
+        const isIncludable =
+          m.nodeType !== "folder" &&
+          isConversationIncludableFileContentType(m.contentType) &&
+          // Tables from knowledge are not materialized as raw content. As such, they cannot be
+          // included.
+          !isContentNodeTable;
+        const isSearchable =
+          canDoJIT &&
+          isSearchableContentType(m.contentType) &&
+          // Tables from knowledge are not materialized as raw content. As such, they cannot be
+          // searched.
+          !isContentNodeTable;
 
-        files.push({
-          fileId: m.fileId,
+        const baseAttachment: BaseConversationAttachmentType = {
           title: m.title,
           contentType: m.contentType,
           snippet: m.snippet,
-          // Backward compatibility: we fallback to the fileId if no generated tables are mentionned but the file is queryable.
+          contentFragmentVersion: m.contentFragmentVersion,
+          // Backward compatibility: we fallback to the fileId if no generated tables are mentionned
+          // but the file is queryable.
           generatedTables:
             m.generatedTables.length > 0
               ? m.generatedTables
               : isQueryable
-                ? [m.fileId]
+                ? [
+                    m.fileId ||
+                      m.nodeId ||
+                      "unreachable_either_file_id_or_node_id_must_be_present",
+                  ]
                 : [],
-          contentFragmentVersion: m.contentFragmentVersion,
           isIncludable,
           isQueryable,
           isSearchable,
-        });
+        };
+
+        if (isContentNodeAttachment(m)) {
+          files.push({
+            ...baseAttachment,
+            nodeDataSourceViewId: m.nodeDataSourceViewId,
+            contentFragmentId: m.contentFragmentId,
+            nodeId: m.nodeId,
+            nodeType: m.nodeType,
+          });
+        }
+
+        if (isFileAttachment(m)) {
+          files.push({
+            ...baseAttachment,
+            fileId: m.fileId,
+          });
+        }
       }
     } else if (isAgentMessageType(m)) {
       const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
@@ -117,4 +183,23 @@ export function listFiles(
   }
 
   return files;
+}
+
+/**
+ * Searchable Folders are almost always content nodes with type "folder", with 2
+ * exceptions:
+ * - Notion pages and databases, which are not of type "folder" but may contain
+ *   other pages or databases; as such, they are "searchable folders";
+ * - spreadsheets with multiple sheets, which are of type "folder" (since they
+ *   have multiple children) but are not searchable; their children are
+ *   table-queryable only.
+ */
+export function isSearchableFolder(m: ConversationContentNodeType): boolean {
+  return (
+    (m.nodeType === "folder" ||
+      m.contentType === CONTENT_NODE_MIME_TYPES.NOTION.PAGE ||
+      m.contentType === CONTENT_NODE_MIME_TYPES.NOTION.DATABASE) &&
+    m.contentType !== CONTENT_NODE_MIME_TYPES.MICROSOFT.SPREADSHEET &&
+    m.contentType !== CONTENT_NODE_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+  );
 }

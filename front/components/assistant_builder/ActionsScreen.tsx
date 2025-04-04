@@ -31,12 +31,6 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  ModelConfigurationType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -53,10 +47,9 @@ import {
   isActionDustAppRunValid as hasErrorActionDustAppRun,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
-  ActionGithubCreateIssue,
-  ActionGithubGetPullRequest,
-  hasErrorActionGithub,
-} from "@app/components/assistant_builder/actions/GithubAction";
+  ActionMCP,
+  hasErrorActionMCP,
+} from "@app/components/assistant_builder/actions/MCPAction";
 import {
   ActionProcess,
   hasErrorActionProcess,
@@ -93,7 +86,15 @@ import {
   getDefaultActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
-import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type {
+  ModelConfigurationType,
+  SpaceType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -102,17 +103,16 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
-const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
-  AssistantBuilderActionConfiguration["type"]
->;
+const ADVANCED_ACTION_CATEGORIES = [
+  "DUST_APP_RUN",
+  "MCP",
+] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 // Actions in this list are not configurable via the "add tool" menu.
 // Instead, they should be handled in the `Capabilities` component.
 // Note: not all capabilities are actions (eg: visualization)
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
-  "GITHUB_GET_PULL_REQUEST",
-  "GITHUB_CREATE_ISSUE",
   "REASONING",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
@@ -134,6 +134,8 @@ export function hasActionError(
       return hasErrorActionRetrievalSearch(action);
     case "RETRIEVAL_EXHAUSTIVE":
       return hasErrorActionRetrievalExhaustive(action);
+    case "MCP":
+      return hasErrorActionMCP(action);
     case "PROCESS":
       return hasErrorActionProcess(action);
     case "DUST_APP_RUN":
@@ -142,10 +144,6 @@ export function hasActionError(
       return hasErrorActionTablesQuery(action);
     case "WEB_NAVIGATION":
       return hasErrorActionWebNavigation(action);
-    case "GITHUB_GET_PULL_REQUEST":
-      return hasErrorActionGithub(action);
-    case "GITHUB_CREATE_ISSUE":
-      return hasErrorActionGithub(action);
     case "REASONING":
       return null;
     default:
@@ -187,7 +185,10 @@ export default function ActionsScreen({
   enableReasoningTool,
   reasoningModels,
 }: ActionScreenProps) {
-  const { spaces } = useContext(AssistantBuilderContext);
+  const { spaces, mcpServerViews } = useContext(AssistantBuilderContext);
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const configurableActions = builderState.actions.filter(
     (a) => !(CAPABILITIES_ACTION_CATEGORIES as string[]).includes(a.type)
@@ -228,9 +229,24 @@ export default function ActionsScreen({
           addActionToSpace(action.configuration.app?.space.sId);
           break;
 
+        case "MCP":
+          if (action.configuration.dataSourceConfigurations) {
+            Object.values(
+              action.configuration.dataSourceConfigurations
+            ).forEach((config) => {
+              addActionToSpace(config.dataSourceView.spaceId);
+            });
+          }
+          if (action.configuration.mcpServerViewId) {
+            addActionToSpace(
+              mcpServerViews.find(
+                (v) => v.id === action.configuration.mcpServerViewId
+              )?.spaceId
+            );
+          }
+          break;
+
         case "WEB_NAVIGATION":
-        case "GITHUB_GET_PULL_REQUEST":
-        case "GITHUB_CREATE_ISSUE":
         case "REASONING":
           break;
 
@@ -239,7 +255,7 @@ export default function ActionsScreen({
       }
       return acc;
     }, {});
-  }, [configurableActions]);
+  }, [configurableActions, mcpServerViews]);
 
   const nonGlobalSpacessUsedInActions = useMemo(() => {
     const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
@@ -356,12 +372,12 @@ export default function ActionsScreen({
         setEdited={setEdited}
       />
 
-      <div className="flex flex-col gap-8 text-sm text-element-700">
+      <div className="flex flex-col gap-8 text-sm text-muted-foreground dark:text-muted-foreground-night">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Page.Header title="Tools & Data sources" />
             <Page.P>
-              <span className="text-sm text-element-700">
+              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Configure the tools that your agent is able to use, such as{" "}
                 <span className="font-bold">searching</span> in your Data
                 Sources or <span className="font-bold">navigating</span> the
@@ -401,6 +417,7 @@ export default function ActionsScreen({
                       action,
                     });
                   }}
+                  hasFeature={hasFeature}
                 />
               </div>
             )}
@@ -482,6 +499,7 @@ export default function ActionsScreen({
                     action,
                   });
                 }}
+                hasFeature={hasFeature}
               />
             </div>
           )}
@@ -597,7 +615,7 @@ function NewActionModal({
 
   const descriptionValid = (newAction?.description?.trim() ?? "").length > 0;
 
-  const onCloseLocal = () => {
+  const onCloseLocal = useCallback(() => {
     onClose();
     setTimeout(() => {
       setNewAction(null);
@@ -605,32 +623,63 @@ function NewActionModal({
       setShowInvalidActionDescError(null);
       setShowInvalidActionError(null);
     }, 500);
-  };
+  }, [onClose]);
 
-  const onModalSave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    if (
-      newAction &&
-      !titleError &&
-      descriptionValid &&
-      !hasActionError(newAction)
-    ) {
-      newAction.name = newAction.name.trim();
-      newAction.description = newAction.description.trim();
-      onSave(newAction);
-      onCloseLocal();
-    } else {
-      if (titleError) {
-        setShowInvalidActionNameError(titleError);
+  const onModalSave = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      if (
+        newAction &&
+        !titleError &&
+        descriptionValid &&
+        !hasActionError(newAction)
+      ) {
+        newAction.name = newAction.name.trim();
+        newAction.description = newAction.description.trim();
+        onSave(newAction);
+        onCloseLocal();
+      } else {
+        if (titleError) {
+          setShowInvalidActionNameError(titleError);
+        }
+        if (!descriptionValid) {
+          setShowInvalidActionDescError("Description cannot be empty.");
+        }
+        if (newAction) {
+          setShowInvalidActionError(hasActionError(newAction));
+        }
       }
-      if (!descriptionValid) {
-        setShowInvalidActionDescError("Description cannot be empty.");
-      }
-      if (newAction) {
-        setShowInvalidActionError(hasActionError(newAction));
-      }
-    }
-  };
+    },
+    [newAction, onCloseLocal, onSave, titleError, descriptionValid]
+  );
+
+  const updateAction = useCallback(
+    ({
+      actionName,
+      actionDescription,
+      getNewActionConfig,
+    }: {
+      actionName: string;
+      actionDescription: string;
+      getNewActionConfig: (
+        old: AssistantBuilderActionConfiguration["configuration"]
+      ) => AssistantBuilderActionConfiguration["configuration"];
+    }) => {
+      setNewAction((prev) => {
+        if (!prev) {
+          return null;
+        }
+        return {
+          ...prev,
+          configuration: getNewActionConfig(prev.configuration) as any,
+          description: actionDescription,
+          name: actionName,
+        };
+      });
+      setShowInvalidActionError(null);
+    },
+    []
+  );
 
   return (
     <Sheet
@@ -654,21 +703,7 @@ function NewActionModal({
               <ActionEditor
                 action={newAction}
                 spacesUsedInActions={spacesUsedInActions}
-                updateAction={({
-                  actionName,
-                  actionDescription,
-                  getNewActionConfig,
-                }) => {
-                  setNewAction({
-                    ...newAction,
-                    configuration: getNewActionConfig(
-                      newAction.configuration
-                    ) as any,
-                    description: actionDescription,
-                    name: actionName,
-                  });
-                  setShowInvalidActionError(null);
-                }}
+                updateAction={updateAction}
                 owner={owner}
                 setEdited={setEdited}
                 builderState={builderState}
@@ -863,6 +898,17 @@ function ActionConfigEditor({
         />
       );
 
+    case "MCP":
+      return (
+        <ActionMCP
+          owner={owner}
+          action={action}
+          allowedSpaces={allowedSpaces}
+          updateAction={updateAction}
+          setEdited={setEdited}
+        />
+      );
+
     case "PROCESS":
       return (
         <ActionProcess
@@ -904,11 +950,6 @@ function ActionConfigEditor({
 
     case "WEB_NAVIGATION":
       return <ActionWebNavigation />;
-
-    case "GITHUB_GET_PULL_REQUEST":
-      return <ActionGithubGetPullRequest />;
-    case "GITHUB_CREATE_ISSUE":
-      return <ActionGithubCreateIssue />;
 
     case "REASONING":
       return <ActionReasoning />;
@@ -959,7 +1000,7 @@ function ActionEditor({
 
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
-  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS"].includes(
+  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS", "MCP"].includes(
     action.type
   );
 
@@ -978,7 +1019,7 @@ function ActionEditor({
               content={
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col items-end gap-2">
-                    <div className="w-full grow text-sm font-bold text-element-800 dark:text-element-800-night">
+                    <div className="w-full grow text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
                       Name of the tool
                     </div>
                   </div>
@@ -1036,17 +1077,17 @@ function ActionEditor({
         <div className="flex flex-col gap-4 pt-8">
           {isDataSourceAction ? (
             <div className="flex flex-col gap-2">
-              <div className="font-semibold text-element-800 dark:text-element-800-night">
+              <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
                 What's the data?
               </div>
-              <div className="text-sm text-element-600">
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Provide a brief description (maximum 800 characters) of the data
                 content and context to help the agent determine when to utilize
                 it effectively.
               </div>
             </div>
           ) : (
-            <div className="font-semibold text-element-800 dark:text-element-800-night">
+            <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
               What is this tool about?
             </div>
           )}
@@ -1115,10 +1156,10 @@ function AdvancedSettings({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <div className="flex flex-col items-start justify-start">
-              <div className="w-full grow text-sm font-bold text-element-800 dark:text-element-800-night">
+              <div className="w-full grow text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
                 Max steps per run
               </div>
-              <div className="w-full grow text-sm text-element-600 dark:text-element-600-night">
+              <div className="w-full grow text-sm text-muted-foreground dark:text-muted-foreground-night">
                 up to {MAX_STEPS_USE_PER_RUN_LIMIT}
               </div>
             </div>
@@ -1143,7 +1184,7 @@ function AdvancedSettings({
             />
             {(reasoningModels?.length ?? 0) > 1 && setReasoningModel && (
               <div className="flex flex-col gap-2">
-                <div className="font-semibold text-element-800 dark:text-element-800-night">
+                <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
                   Reasoning model
                 </div>
                 <DropdownMenu>
@@ -1174,9 +1215,10 @@ function AdvancedSettings({
 
 interface AddActionProps {
   onAddAction: (action: AssistantBuilderActionConfigurationWithId) => void;
+  hasFeature: (feature: WhitelistableFeature) => boolean;
 }
 
-function AddAction({ onAddAction }: AddActionProps) {
+function AddAction({ onAddAction, hasFeature }: AddActionProps) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -1194,6 +1236,9 @@ function AddAction({ onAddAction }: AddActionProps) {
           <DropdownMenuLabel label="Data Sources" />
           {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
+            if (spec.flag && !hasFeature(spec.flag)) {
+              return null;
+            }
             const defaultAction = getDefaultActionConfiguration(key);
             if (!defaultAction) {
               return null;
@@ -1215,6 +1260,9 @@ function AddAction({ onAddAction }: AddActionProps) {
           <DropdownMenuLabel label="Advanced Actions" />
           {ADVANCED_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
+            if (spec.flag && !hasFeature(spec.flag)) {
+              return null;
+            }
             const defaultAction = getDefaultActionConfiguration(key);
             if (!defaultAction) {
               return null;
@@ -1276,22 +1324,11 @@ function Capabilities({
           <div className="flex text-sm font-semibold text-foreground dark:text-foreground-night">
             {name}
           </div>
-          <div className="text-sm text-element-700">{description}</div>
+          <div className="text-sm text-muted-foreground">{description}</div>
         </div>
       </div>
     );
   };
-
-  const { platformActionsConfigurations } = useContext(AssistantBuilderContext);
-
-  const showGithubActions = useMemo(() => {
-    if (
-      builderState.actions.find((a) => a.type === "GITHUB_GET_PULL_REQUEST")
-    ) {
-      return true;
-    }
-    return platformActionsConfigurations.find((c) => c.provider === "github");
-  }, [platformActionsConfigurations, builderState]);
 
   return (
     <>
@@ -1364,66 +1401,6 @@ function Capabilities({
           />
         )}
       </div>
-
-      {showGithubActions && (
-        <>
-          <Page.H variant="h6">Github Actions</Page.H>
-
-          <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
-            <Capability
-              name="Pull request retrieval"
-              description="Agent can retrieve pull requests by number, including diffs"
-              enabled={
-                !!builderState.actions.find(
-                  (a) => a.type === "GITHUB_GET_PULL_REQUEST"
-                )
-              }
-              onEnable={() => {
-                setEdited(true);
-                const defaultGithubGetPullRequestAction =
-                  getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
-                assert(defaultGithubGetPullRequestAction);
-                setAction({
-                  type: "insert",
-                  action: defaultGithubGetPullRequestAction,
-                });
-              }}
-              onDisable={() => {
-                const defaulGithubGetPullRequestAction =
-                  getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
-                assert(defaulGithubGetPullRequestAction);
-                deleteAction(defaulGithubGetPullRequestAction.name);
-              }}
-            />
-
-            <Capability
-              name="Issue creation"
-              description="Agent can create issues"
-              enabled={
-                !!builderState.actions.find(
-                  (a) => a.type === "GITHUB_CREATE_ISSUE"
-                )
-              }
-              onEnable={() => {
-                setEdited(true);
-                const defaultGithubCreateIssueAction =
-                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
-                assert(defaultGithubCreateIssueAction);
-                setAction({
-                  type: "insert",
-                  action: defaultGithubCreateIssueAction,
-                });
-              }}
-              onDisable={() => {
-                const defaulGithubCreateIssueAction =
-                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
-                assert(defaulGithubCreateIssueAction);
-                deleteAction(defaulGithubCreateIssueAction.name);
-              }}
-            />
-          </div>
-        </>
-      )}
     </>
   );
 }

@@ -1,9 +1,8 @@
-import type { ModelId, SupportedModel } from "@dust-tt/types";
-import { isSupportedModel, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
-
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
+import type { ModelId, SupportedModel } from "@app/types";
+import { isSupportedModel, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 type SupportedModelIds = SupportedModel["modelId"];
 

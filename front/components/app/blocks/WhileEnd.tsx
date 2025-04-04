@@ -1,13 +1,13 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import type { WorkspaceType } from "@dust-tt/types";
-import type { SpecificationBlockType, SpecificationType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { BlockType } from "@dust-tt/types";
-import type { RunType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 
 import { classNames, shallowBlockClone } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
+import type { SpecificationBlockType, SpecificationType } from "@app/types";
+import type { AppType } from "@app/types";
+import type { BlockType } from "@app/types";
+import type { RunType } from "@app/types";
 
 import Block from "./Block";
 
@@ -59,6 +59,8 @@ export function While({
     onBlockUpdate(b);
   };
 
+  const theme = localStorage.getItem("theme");
+
   return (
     <Block
       owner={owner}
@@ -104,12 +106,12 @@ export function While({
             <div className="w-full leading-4">
               <div
                 className={classNames(
-                  "border bg-slate-100",
-                  "border-slate-100"
+                  "border bg-muted-background",
+                  "border-border"
                 )}
               >
                 <CodeEditor
-                  data-color-mode="light"
+                  data-color-mode={theme === "dark" ? "dark" : "light"}
                   readOnly={readOnly}
                   value={block.spec.condition_code}
                   language="js"

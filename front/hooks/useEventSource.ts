@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 
 const RECONNECT_DELAY = 5000; // 5 seconds.
+const MAX_RECONNECT_ATTEMPTS = 10;
 
 /**
  * Stable EventSource Manager
@@ -139,7 +140,7 @@ export function useEventSource(
 
       reconnectAttempts.current++;
 
-      if (reconnectAttempts.current >= 10) {
+      if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
         console.log(
           "Too many errors, not reconnecting. Please refresh the page."
         );

@@ -1,3 +1,4 @@
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   cn,
@@ -6,17 +7,6 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  ContentNodesViewType,
-  DataSourceViewCategory,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React from "react";
 
@@ -30,14 +20,25 @@ import type { SpaceSearchContextType } from "@app/components/spaces/search/Space
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import {
-  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
+import type {
+  APIError,
+  ContentNodesViewType,
+  DataSourceViewCategory,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -161,7 +162,6 @@ function BackendSearch({
   parentId,
 }: FullBackendSearchProps) {
   const { q: searchParam } = useQueryParams(["q"]);
-  const searchTerm = searchParam.value || "";
 
   const [searchResultDataSourceView, setSearchResultDataSourceView] =
     React.useState<DataSourceViewType | null>(null);
@@ -180,16 +180,27 @@ function BackendSearch({
     setEffectiveContentNode(null);
   }, []);
 
-  // For backend search, we need to debounce the search term.
-  const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
   const [searchResults, setSearchResults] = React.useState<
     DataSourceViewContentNode[]
   >([]);
 
-  // Determine whether to show search results or children.
+  const {
+    inputValue: searchTerm,
+    debouncedValue: debouncedSearch,
+    isDebouncing,
+    setValue: setSearchValue,
+  } = useDebounce(searchParam.value || "", {
+    delay: 300,
+    minLength: MIN_SEARCH_QUERY_SIZE,
+  });
+
+  const handleSearchChange = (value: string) => {
+    searchParam.setParam(value);
+    setSearchValue(value);
+  };
+
   const shouldShowSearchResults = debouncedSearch.length > 0;
 
-  // Transition state.
   const [isChanging, setIsChanging] = React.useState(false);
   const [showSearch, setShowSearch] = React.useState(shouldShowSearchResults);
   const [searchHitCount, setSearchHitCount] = React.useState(0);
@@ -201,24 +212,12 @@ function BackendSearch({
     tablePagination,
   } = useCursorPaginationForDataTable(PAGE_SIZE);
 
-  // Debounce search term for backend search.
+  // Reset pagination when debounced search changes
   React.useEffect(() => {
-    const timeout = setTimeout(() => {
-      const newSearchTerm =
-        searchTerm.length >= MIN_SEARCH_QUERY_SIZE ? searchTerm : "";
-      if (newSearchTerm !== debouncedSearch) {
-        // Reset pagination when search term changes
-        resetPagination();
-        setDebouncedSearch(newSearchTerm);
-      }
-    }, 300);
+    resetPagination();
+  }, [debouncedSearch, resetPagination]);
 
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [searchTerm, debouncedSearch, resetPagination]);
-
-  // Use the space search hook for backend search.
+  // Use the space search hook for backend search
   const {
     isSearchLoading,
     isSearchValidating,
@@ -235,6 +234,8 @@ function BackendSearch({
     space,
     viewType,
   });
+
+  const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
 
   React.useEffect(() => {
     if (tablePagination.pageIndex === 0) {
@@ -263,7 +264,7 @@ function BackendSearch({
     tablePagination.pageIndex,
   ]);
 
-  // Handle transition when search state changes.
+  // Handle transition when search state changes
   React.useEffect(() => {
     if (shouldShowSearchResults !== showSearch) {
       setIsChanging(true);
@@ -278,22 +279,17 @@ function BackendSearch({
   }, [shouldShowSearchResults, showSearch]);
 
   React.useEffect(() => {
-    if (
-      totalNodesCount !== undefined &&
-      !isSearchValidating &&
-      !isSearchLoading
-    ) {
+    if (totalNodesCount !== undefined && !isSearchValidating && !isLoading) {
       setSearchHitCount(totalNodesCount);
     }
-  }, [isSearchLoading, isSearchValidating, totalNodesCount]);
-
+  }, [isLoading, isSearchValidating, totalNodesCount]);
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
         placeholder="Search (Name)"
         value={searchTerm}
-        onChange={searchParam.setParam}
+        onChange={handleSearchChange}
         disabled={isSearchDisabled}
       />
 

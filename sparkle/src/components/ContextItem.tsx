@@ -29,7 +29,7 @@ export function ContextItem({
     <div
       className={classNames(
         hasSeparator
-          ? "s-border-b s-border-structure-200 dark:s-border-structure-200-night"
+          ? "s-border-b s-border-border dark:s-border-border-night"
           : "",
         "s-flex s-w-full s-flex-col",
         hasSeparatorIfLast ? "" : "last:s-border-none"
@@ -41,8 +41,8 @@ export function ContextItem({
           onClick
             ? cn(
                 "s-cursor-pointer s-transition s-duration-200",
-                "hover:s-bg-structure-50 dark:hover:s-bg-structure-50-night",
-                "active:s-bg-structure-100 dark:active:s-bg-structure-100-night"
+                "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
+                "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
               )
             : ""
         )}
@@ -50,11 +50,11 @@ export function ContextItem({
       >
         {visual}
         <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-0">
-          <div className="s-flex s-min-w-0 s-grow s-flex-col sm:s-flex-row sm:s-gap-3">
-            <div className="s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-base s-font-semibold">
+          <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-foreground dark:s-text-foreground-night sm:s-flex-row sm:s-gap-3">
+            <div className="s-heading-base s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
               {title}
             </div>
-            <div className="s-flex s-flex-shrink-0 s-items-center s-gap-3 s-overflow-hidden s-pt-0.5 s-text-sm s-text-element-600 dark:s-text-element-600-night">
+            <div className="s-flex s-flex-shrink-0 s-items-center s-gap-3 s-overflow-hidden s-pt-0.5 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
               {subElement}
             </div>
           </div>
@@ -104,7 +104,7 @@ ContextItem.List = function ({
       className={classNames(
         className ? className : "",
         hasBorder
-          ? "s-border-b s-border-t s-border-structure-200 dark:s-border-structure-200-night"
+          ? "s-border-b s-border-t s-border-border dark:s-border-border-night"
           : "",
         "s-flex s-flex-col"
       )}
@@ -126,7 +126,7 @@ ContextItem.Description = function ({
   return (
     <>
       {description && (
-        <div className="s-text-sm s-font-normal s-text-element-700 dark:s-text-element-700-night">
+        <div className="s-text-sm s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
           {description}
         </div>
       )}
@@ -158,16 +158,14 @@ ContextItem.SectionHeader = function ({
     <div
       className={classNames(
         "s-flex s-flex-col s-gap-0 s-pb-3 s-pt-7",
-        hasBorder
-          ? "s-border-b s-border-structure-200 dark:s-border-structure-200-night"
-          : ""
+        hasBorder ? "s-border-b s-border-border dark:s-border-border-night" : ""
       )}
     >
-      <div className="s-text-xl s-font-medium s-text-foreground dark:s-text-foreground-night">
+      <div className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
         {title}
       </div>
       {description && (
-        <div className="s-text-sm s-font-normal s-text-element-700 dark:s-text-element-700-night">
+        <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
           {description}
         </div>
       )}

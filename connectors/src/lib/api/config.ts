@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from "@dust-tt/types";
+import { EnvironmentConfig } from "@connectors/types";
 
 export const apiConfig = {
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {

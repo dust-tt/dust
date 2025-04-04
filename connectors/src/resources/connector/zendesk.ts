@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
@@ -17,6 +16,7 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
 
 export class ZendeskConnectorStrategy
   implements ConnectorProviderStrategy<"zendesk">

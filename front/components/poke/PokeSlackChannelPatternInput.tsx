@@ -8,16 +8,16 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceType,
-  LightWorkspaceType,
-  SlackAutoReadPattern,
-} from "@dust-tt/types";
 import { useCallback, useMemo, useState } from "react";
 
 import { SlackAutoReadPatternsTable } from "@app/components/poke/data_sources/slack/table";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { usePokeSpaces } from "@app/poke/swr/spaces";
+import type {
+  DataSourceType,
+  LightWorkspaceType,
+  SlackAutoReadPattern,
+} from "@app/types";
 
 interface SlackChannelPatternInputProps {
   dataSource: DataSourceType;

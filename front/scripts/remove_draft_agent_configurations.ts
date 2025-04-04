@@ -1,5 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
-import { concurrentExecutor } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -16,6 +14,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
+
 async function deleteRetrievalConfigurationForAgent(agent: AgentConfiguration) {
   const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
     where: {

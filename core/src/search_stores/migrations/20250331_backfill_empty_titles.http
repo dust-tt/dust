@@ -1,0 +1,14 @@
+POST core.data_sources_nodes/_update_by_query
+{
+  "query": {
+    "term": {
+      "title.keyword": {
+        "value": ""
+      }
+    }
+  },
+  "script": {
+    "source": "if (ctx._source.containsKey('title') && ctx._source.title == '') { ctx._source.title = 'Untitled document'; }",
+    "lang": "painless"
+  }
+}

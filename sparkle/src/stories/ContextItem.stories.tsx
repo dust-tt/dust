@@ -37,7 +37,7 @@ export const ListItemExample = () => (
         subElement={
           <>
             Added by: Edouard Wautier
-            <span className="s-h-3 s-w-0.5 s-bg-element-500" />
+            <span className="s-h-3 s-w-0.5 s-bg-primary-500" />
             <div className="s-flex s-items-center s-gap-1">
               Used by: 3
               <Icon visual={RobotIcon} size="xs" />

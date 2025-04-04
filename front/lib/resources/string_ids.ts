@@ -1,10 +1,10 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import Sqids from "sqids";
 import { v4 as uuidv4 } from "uuid";
 
 import logger from "@app/logger/logger";
+import type { ModelId, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const RESOURCE_S_ID_MIN_LENGTH = 10;
 
@@ -29,6 +29,11 @@ const RESOURCES_PREFIX = {
   tracker: "trk",
   template: "tpl",
   extension: "ext",
+  mcp_server_connection: "msc",
+  remote_mcp_server: "rms",
+  internal_mcp_server: "ims",
+  mcp_server_view: "msv",
+  data_source_configuration: "dsc",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
@@ -107,9 +112,12 @@ export function isResourceSId(
   return sId.startsWith(`${RESOURCES_PREFIX[resourceName]}_`);
 }
 
-export function getResourceNameAndIdFromSId(
-  sId: string
-): { resourceName: ResourceNameType; sId: string } | null {
+export function getResourceNameAndIdFromSId(sId: string): {
+  resourceName: ResourceNameType;
+  sId: string;
+  workspaceId: ModelId;
+  resourceId: ModelId;
+} | null {
   const resourceName = (
     Object.keys(RESOURCES_PREFIX) as ResourceNameType[]
   ).find((name) => isResourceSId(name, sId));
@@ -124,7 +132,7 @@ export function getResourceNameAndIdFromSId(
     return null;
   }
 
-  return { resourceName, sId };
+  return { resourceName, sId, ...sIdRes.value };
 }
 
 // Legacy behavior.

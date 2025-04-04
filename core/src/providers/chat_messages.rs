@@ -76,8 +76,6 @@ pub struct AssistantChatMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reasoning_content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub function_call: Option<ChatFunctionCall>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_calls: Option<Vec<ChatFunctionCall>>,

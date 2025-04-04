@@ -9,14 +9,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  BuilderEmojiSuggestionsType,
-  BuilderSuggestionsType,
-  Result,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import React, {
   useCallback,
   useContext,
@@ -37,6 +29,14 @@ import {
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { debounce } from "@app/lib/utils/debounce";
+import type {
+  APIError,
+  BuilderEmojiSuggestionsType,
+  BuilderSuggestionsType,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -339,7 +339,7 @@ export default function NamingScreen({
           <div className="flex flex-grow flex-col gap-4">
             <div>
               <Page.SectionHeader title="Handle" />
-              <div className="text-sm font-normal text-element-700">
+              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                 Handles are used to mention (call) an agent. They must be
                 descriptive and unique.
               </div>
@@ -347,7 +347,7 @@ export default function NamingScreen({
             {nameSuggestions.status === "ok" &&
               nameSuggestions.suggestions?.length && (
                 <div className="flex items-center gap-2">
-                  <div className="text-xs font-semibold text-element-800">
+                  <div className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
                     Suggestions:
                   </div>
                   {nameSuggestions.suggestions
@@ -415,7 +415,7 @@ export default function NamingScreen({
             <div className="flex gap-1">
               <Page.SectionHeader title="Description" />
             </div>
-            <div className="text-sm font-normal text-element-700">
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               Describe for others the agent’s purpose.{" "}
             </div>
           </div>

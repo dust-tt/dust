@@ -79,6 +79,8 @@ pub struct NodesSearchOptions {
     // It will sort by title desc, then by updated_at asc, as per
     // elasticsearch's sort syntax (although it's a small subset of it)
     sort: Option<Vec<SortSpec>>,
+    // Whether to search within source URLs when matching the query.
+    search_source_urls: Option<bool>,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
@@ -161,6 +163,7 @@ impl Default for NodesSearchOptions {
             limit: Some(MAX_PAGE_SIZE),
             cursor: None,
             sort: None,
+            search_source_urls: Some(false),
         }
     }
 }
@@ -291,7 +294,8 @@ impl SearchStore for ElasticsearchSearchStore {
         }
 
         // Build search query with potential truncation.
-        let (bool_query, warning_code) = self.build_search_node_query(query.clone(), filter)?;
+        let (bool_query, indices_to_query, warning_code) =
+            self.build_search_node_query(query.clone(), filter, &options)?;
 
         let sort = match query {
             None => self.build_search_nodes_sort(options.sort)?,
@@ -311,16 +315,33 @@ impl SearchStore for ElasticsearchSearchStore {
             let decoded = URL_SAFE.decode(cursor)?;
             let json_str = String::from_utf8(decoded)?;
             let search_after: Vec<serde_json::Value> = serde_json::from_str(&json_str)?;
-            search = search.search_after(search_after);
+
+            // We replace empty strings with a "high sort" sentinel so that documents with
+            // an originally empty title will appear at the end of ascending sort order.
+            //
+            // Elasticsearch's Rust client (or DSL) has trouble when search_after contains "".
+            // By substituting a high-Unicode character ("\u{10FFFF}"), we ensure those items
+            // sort last without breaking the library's internal validation.
+            //
+            // Will be removed once we don't have empty strings titles anymore.
+            let fixed_sort = search_after
+                .iter()
+                .map(|v| {
+                    if v.as_str() == Some("") {
+                        serde_json::Value::String("\u{10FFFF}".to_string())
+                    } else {
+                        v.clone()
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            search = search.search_after(fixed_sort);
         }
 
         let search_start = utils::now();
         let response = self
             .client
-            .search(SearchParts::Index(&[
-                DATA_SOURCE_NODE_INDEX_NAME,
-                DATA_SOURCE_INDEX_NAME,
-            ]))
+            .search(SearchParts::Index(&indices_to_query))
             .body(search)
             .send()
             .await?;
@@ -635,7 +656,10 @@ impl ElasticsearchSearchStore {
         &self,
         query: Option<String>,
         filter: NodesSearchFilter,
-    ) -> Result<(BoolQuery, Option<SearchWarningCode>)> {
+        options: &NodesSearchOptions,
+    ) -> Result<(BoolQuery, Vec<&str>, Option<SearchWarningCode>)> {
+        let mut indices_to_query = vec![];
+
         // Check there is at least one data source view filter
         // !! do not remove; without data source view filter this endpoint is
         // dangerous as any data from any workspace can be retrieved.
@@ -665,15 +689,17 @@ impl ElasticsearchSearchStore {
                 .must(self.build_data_sources_content_query(&query, &filter, &mut counter)?);
 
             should_queries.push(data_sources_query);
+            indices_to_query.push(DATA_SOURCE_INDEX_NAME);
         }
 
         // Build nodes query only if we have clauses left.
         if !counter.is_full() {
             let nodes_query = Query::bool()
                 .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
-                .filter(self.build_nodes_content_query(&query, &filter, &mut counter)?);
+                .filter(self.build_nodes_content_query(&query, &filter, options, &mut counter)?);
 
             should_queries.push(nodes_query);
+            indices_to_query.push(DATA_SOURCE_NODE_INDEX_NAME);
         }
 
         // If we've used all available clauses or had to skip any queries, set the warning code.
@@ -683,7 +709,7 @@ impl ElasticsearchSearchStore {
 
         let bool_query = Query::bool().should(should_queries).minimum_should_match(1);
 
-        Ok((bool_query, warning_code))
+        Ok((bool_query, indices_to_query, warning_code))
     }
 
     /// On the data source index, we only want to add a clause if the search scope is
@@ -795,6 +821,7 @@ impl ElasticsearchSearchStore {
         &self,
         query: &Option<String>,
         filter: &NodesSearchFilter,
+        options: &NodesSearchOptions,
         counter: &mut QueryClauseCounter,
     ) -> Result<BoolQuery> {
         let mut bool_query = Query::bool().filter(self.build_shared_permission_filter(
@@ -840,8 +867,17 @@ impl ElasticsearchSearchStore {
         // Add search term if present.
         if let Some(query_string) = query.clone() {
             counter.add(1);
-            bool_query =
-                bool_query.must(self.build_match_query("title", &query_string, counter)?);
+            let mut search_bool =
+                Query::bool().should(self.build_match_query("title", &query_string, counter)?);
+
+            // Only add source_url filter if search_source_urls is true
+            // This creates an OR between title and source_url matches.
+            if options.search_source_urls.unwrap_or(false) {
+                counter.add(1);
+                search_bool = search_bool.should(Query::term("source_url", query_string));
+            }
+
+            bool_query = bool_query.must(search_bool.minimum_should_match(1));
         }
 
         Ok(bool_query)

@@ -12,12 +12,13 @@ import {
   TableIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, TablesQueryActionType } from "@dust-tt/types";
-import { getTablesQueryResultsFileTitle } from "@dust-tt/types";
 import { useCallback } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { getTablesQueryResultsFileTitle } from "@app/components/actions/tables_query/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
+import type { LightWorkspaceType } from "@app/types";
 
 export function TablesQueryActionDetails({
   action,

@@ -1,4 +1,4 @@
-import type { WebCrawlerConfigurationType } from "@dust-tt/types";
+import type { WebCrawlerConfigurationType } from "@app/types";
 
 export async function updateWebsite(
   workspaceId: string,

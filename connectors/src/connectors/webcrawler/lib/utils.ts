@@ -1,4 +1,3 @@
-import type { ContentNodeType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import dns from "dns";
 
@@ -6,6 +5,7 @@ import type {
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
+import type { ContentNodeType } from "@connectors/types";
 
 // Generate a stable id for a given url and ressource type
 // That way we don't have to send URL as documentId to the front API.

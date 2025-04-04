@@ -2,11 +2,8 @@ import type {
   DataSourceType,
   LightContentNode,
   TimeframeUnit,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  isGoogleSheetContentNodeInternalId,
-} from "@dust-tt/types";
+} from "@app/types";
+import { assertNever, isGoogleSheetContentNodeInternalId } from "@app/types";
 
 export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
   hour: "hour(s)",
@@ -248,6 +245,7 @@ export function getTableIdForContentNode(
     throw new Error(`ContentNode type ${contentNode.type} is not supported`);
   }
 
+  // We specify whether the connector supports TableQuery as a safeguard in case somehow a non-table node was selected.
   switch (dataSource.connectorProvider) {
     case "google_drive":
       if (!isGoogleSheetContentNodeInternalId(contentNode.internalId)) {
@@ -259,23 +257,20 @@ export function getTableIdForContentNode(
 
     // For static tables, the tableId is the contentNode internalId.
     case null:
-    case "snowflake":
+    case "bigquery":
     case "microsoft":
     case "notion":
-    case "bigquery":
-      return contentNode.internalId;
-
-    // TODO(salesforce): double check this
     case "salesforce":
+    case "snowflake":
       return contentNode.internalId;
 
     case "confluence":
+    case "github":
+    case "gong":
     case "intercom":
     case "slack":
-    case "github":
-    case "zendesk":
     case "webcrawler":
-    case "gong":
+    case "zendesk":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );

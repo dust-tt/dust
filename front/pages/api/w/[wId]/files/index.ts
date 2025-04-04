@@ -1,12 +1,3 @@
-import type {
-  FileTypeWithUploadUrl,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  ensureFileSize,
-  isSupportedFileContentType,
-  rateLimiter,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -16,8 +7,11 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { isUploadSupported } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { FileTypeWithUploadUrl, WithAPIErrorResponse } from "@app/types";
+import { ensureFileSize, isSupportedFileContentType } from "@app/types";
 
 // File upload form validation.
 
@@ -29,6 +23,7 @@ const FileUploadUrlRequestSchema = t.type({
     t.literal("conversation"),
     t.literal("avatar"),
     t.literal("upsert_document"),
+    t.literal("folders_document"),
     t.literal("upsert_table"),
   ]),
   useCaseMetadata: t.union([t.undefined, t.type({ conversationId: t.string })]),

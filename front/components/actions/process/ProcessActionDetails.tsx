@@ -7,12 +7,12 @@ import {
   ScanIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { ProcessActionType } from "@dust-tt/types";
-import { PROCESS_ACTION_TOP_K } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
+import type { ProcessActionType } from "@app/lib/actions/process";
 
 export function ProcessActionDetails({
   action,

@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import assert from "assert";
 import { Op, QueryTypes } from "sequelize";
 
@@ -21,6 +20,7 @@ import type {
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
+import type { ModelId } from "@app/types";
 
 export async function readCoreEntitiesFromSourceRegion({
   destRegion,

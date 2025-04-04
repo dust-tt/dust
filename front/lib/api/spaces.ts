@@ -1,13 +1,3 @@
-import type {
-  ContentNodesViewType,
-  CoreAPIError,
-  CoreAPISearchOptions,
-  DataSourceViewContentNode,
-  DataSourceWithAgentsUsageType,
-  Result,
-  SearchWarningCode,
-} from "@dust-tt/types";
-import { CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { uniq } from "lodash";
 
@@ -28,6 +18,16 @@ import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
+import type {
+  ContentNodesViewType,
+  CoreAPIError,
+  CoreAPISearchOptions,
+  DataSourceViewContentNode,
+  DataSourceWithAgentsUsageType,
+  Result,
+  SearchWarningCode,
+} from "@app/types";
+import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -280,7 +280,7 @@ export async function searchContenNodesInSpace(
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  const searchFilterResult = getSearchFilterFromDataSourceViews(
+  const searchFilter = getSearchFilterFromDataSourceViews(
     auth.getNonNullableWorkspace(),
     dataSourceViews,
     {
@@ -292,7 +292,7 @@ export async function searchContenNodesInSpace(
 
   const searchRes = await coreAPI.searchNodes({
     query,
-    filter: searchFilterResult,
+    filter: searchFilter,
     options,
   });
 

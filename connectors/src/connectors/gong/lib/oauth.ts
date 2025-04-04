@@ -1,12 +1,12 @@
+import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import type { Result } from "@dust-tt/types";
-import { getOAuthConnectionAccessToken } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { Logger } from "pino";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import logger from "@connectors/logger/logger";
+import { getOAuthConnectionAccessToken } from "@connectors/types";
 
 // Define the type codec for the Gong OAuth response
 const GongOAuthResponse = t.type({

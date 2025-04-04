@@ -1,11 +1,3 @@
-import type {
-  ModelId,
-  Result,
-  TrackerConfigurationType,
-  TrackerDataSourceConfigurationType,
-  TrackerIdWorkspaceId,
-} from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { parseExpression } from "cron-parser";
 import _ from "lodash";
@@ -29,6 +21,14 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import type {
+  ModelId,
+  Result,
+  TrackerConfigurationType,
+  TrackerDataSourceConfigurationType,
+  TrackerIdWorkspaceId,
+} from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 export type TrackerMaintainedScopeType = Array<{
   dataSourceViewId: string;
@@ -91,6 +91,11 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
             auth,
             m.dataSourceViewId
           );
+          if (!dataSourceView) {
+            throw new Error(
+              `Data source view not found: ${m.dataSourceViewId}`
+            );
+          }
           return TrackerDataSourceConfigurationModel.create(
             {
               scope: "maintained",
@@ -112,6 +117,11 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
             auth,
             w.dataSourceViewId
           );
+          if (!dataSourceView) {
+            throw new Error(
+              `Data source view not found: ${w.dataSourceViewId}`
+            );
+          }
           return TrackerDataSourceConfigurationModel.create(
             {
               scope: "watched",
@@ -192,6 +202,11 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
           auth,
           m.dataSourceViewId
         );
+        if (!dataSourceView) {
+          return new Err(
+            new Error(`Data source view not found: ${m.dataSourceViewId}`)
+          );
+        }
         await TrackerDataSourceConfigurationModel.create(
           {
             scope: "maintained",
@@ -211,6 +226,11 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
           auth,
           w.dataSourceViewId
         );
+        if (!dataSourceView) {
+          return new Err(
+            new Error(`Data source view not found: ${w.dataSourceViewId}`)
+          );
+        }
         await TrackerDataSourceConfigurationModel.create(
           {
             scope: "watched",

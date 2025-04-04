@@ -1,6 +1,3 @@
-import type { ContentNode, ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-
 import {
   getHelpCenterCollectionInternalId,
   getHelpCenterInternalId,
@@ -14,6 +11,9 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ContentNode } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieve all selected nodes by the admin when setting permissions.
@@ -65,7 +65,7 @@ export async function retrieveSelectedNodes({
       expandable,
       permission: collection.permission,
       lastUpdatedAt: collection.updatedAt.getTime() || null,
-      mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+      mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,
     });
   });
 
@@ -87,7 +87,7 @@ export async function retrieveSelectedNodes({
       expandable: true,
       permission: "read",
       lastUpdatedAt: null,
-      mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
+      mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAMS_FOLDER,
     });
   }
 
@@ -107,7 +107,7 @@ export async function retrieveSelectedNodes({
       expandable: false,
       permission: team.permission,
       lastUpdatedAt: team.updatedAt.getTime() || null,
-      mimeType: MIME_TYPES.INTERCOM.TEAM,
+      mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAM,
     });
   });
 

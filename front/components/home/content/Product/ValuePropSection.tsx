@@ -8,23 +8,21 @@ import { H2 } from "../../ContentComponents";
 export function ValuePropSection() {
   return (
     <div className="w-full">
-      <div className="mb-6">
-        <H2 from="from-amber-200" to="to-amber-400">
-          Amplify your team’s performance
-        </H2>
-        {/* <P size="lg">
+      <div className="mb-8">
+        <H2>Amplify your team's performance</H2>
+        {/* <P size="lg" className="mt-6 text-muted-foreground">
           Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P> */}
       </div>
 
-      <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:gap-24">
+      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:gap-8">
         <ImgBlock
           title={<>Answer any question, instantly</>}
           content={
             <>
-              Dust searches and synthesizes info from all your tools. Enjoy
-              summarization, targeted extractions, and crisp insights from
-              relevant docs.
+              Dust searches and synthesizes info from all your tools.&nbsp;
+              <br></br>Enjoy summarization, targeted extractions, and crisp
+              insights from relevant docs.
             </>
           }
         >

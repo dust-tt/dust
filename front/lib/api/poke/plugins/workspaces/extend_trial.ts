@@ -1,7 +1,6 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { extendStripeSubscriptionTrial } from "@app/lib/plans/stripe";
+import { Err, Ok } from "@app/types";
 
 export const extendTrialPlugin = createPlugin({
   manifest: {

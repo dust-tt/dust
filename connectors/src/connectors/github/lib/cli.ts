@@ -1,8 +1,4 @@
-import type {
-  AdminSuccessResponseType,
-  GithubCommandType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/client";
 
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import {
@@ -18,6 +14,10 @@ import {
 } from "@connectors/lib/models/github";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  AdminSuccessResponseType,
+  GithubCommandType,
+} from "@connectors/types";
 
 export const github = async ({
   command,

@@ -1,5 +1,5 @@
-// import type { LightWorkspaceType } from "@dust-tt/types";
-// import { removeNulls } from "@dust-tt/types";
+// import type { LightWorkspaceType } from "@app/types";
+// import { removeNulls } from "@app/types";
 // import assert from "assert";
 // import { pick, uniqBy } from "lodash";
 // import { Op } from "sequelize";

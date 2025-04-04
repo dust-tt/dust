@@ -1,18 +1,5 @@
-import type {
-  AdminCommandType,
-  AdminSuccessResponseType,
-  BatchAllResponseType,
-  BatchCommandType,
-  ConnectorPermission,
-  ConnectorsCommandType,
-  GetParentsResponseType,
-  Result,
-  TemporalCheckQueueResponseType,
-  TemporalCommandType,
-  TemporalUnprocessedWorkflowsResponseType,
-  WebcrawlerCommandType,
-} from "@dust-tt/types";
-import { assertNever, isConnectorError } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
 import PQueue from "p-queue";
 import readline from "readline";
 
@@ -24,11 +11,26 @@ import { intercom } from "@connectors/connectors/intercom/lib/cli";
 import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
 import { notion } from "@connectors/connectors/notion/lib/cli";
 import { slack } from "@connectors/connectors/slack/lib/cli";
-import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
+import { snowflake } from "@connectors/connectors/snowflake/lib/cli";
+import { launchCrawlWebsiteScheduler } from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type {
+  AdminCommandType,
+  AdminSuccessResponseType,
+  BatchAllResponseType,
+  BatchCommandType,
+  ConnectorPermission,
+  ConnectorsCommandType,
+  GetParentsResponseType,
+  TemporalCheckQueueResponseType,
+  TemporalCommandType,
+  TemporalUnprocessedWorkflowsResponseType,
+  WebcrawlerCommandType,
+} from "@connectors/types";
+import { isConnectorError } from "@connectors/types";
 
 const { INTERACTIVE_CLI } = process.env;
 
@@ -58,6 +60,8 @@ export async function runCommand(adminCommand: AdminCommandType) {
       return microsoft(adminCommand);
     case "zendesk":
       return zendesk(adminCommand);
+    case "snowflake":
+      return snowflake(adminCommand);
     default:
       assertNever(adminCommand);
   }
@@ -377,7 +381,7 @@ export const webcrawler = async ({
 }: WebcrawlerCommandType): Promise<AdminSuccessResponseType> => {
   switch (command) {
     case "start-scheduler": {
-      await throwOnError(launchCrawlWebsiteSchedulerWorkflow());
+      await throwOnError(launchCrawlWebsiteScheduler());
       return { success: true };
     }
   }

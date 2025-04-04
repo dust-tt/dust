@@ -38,9 +38,9 @@ const KillPage = () => {
       title: "Data Source Views",
       description: "Disable saving of data source views",
     },
-    disable_hybrid_events: {
-      title: "Hybrid Events",
-      description: "Disable hybrid events",
+    retrieval_action: {
+      title: "Retrieval Action",
+      description: "Disable retrieval action",
     },
   };
 

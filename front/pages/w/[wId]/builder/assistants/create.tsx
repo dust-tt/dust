@@ -6,13 +6,6 @@ import {
   PencilSquareIcon,
   SearchInput,
 } from "@dust-tt/sparkle";
-import type {
-  SubscriptionType,
-  TemplateTagCodeType,
-  TemplateTagsType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -27,6 +20,13 @@ import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
+import type {
+  SubscriptionType,
+  TemplateTagCodeType,
+  TemplateTagsType,
+  WorkspaceType,
+} from "@app/types";
+import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
@@ -82,43 +82,48 @@ export default function CreateAssistant({
     tags: TemplateTagCodeType[];
   }>({ templates: [], tags: [] });
 
+  const filterTemplates = useCallback(
+    (searchTerm = templateSearchTerm) => {
+      const templatesToDisplay = assistantTemplates.filter((template) => {
+        // Check if template has valid tags
+        if (!isTemplateTagCodeArray(template.tags)) {
+          return false;
+        }
+
+        // Filter by selected tags (show templates that match ANY selected tag)
+        if (
+          selectedTags.length > 0 &&
+          !selectedTags.some((tag) => template.tags.includes(tag))
+        ) {
+          return false;
+        }
+
+        // Filter by search term
+        if (searchTerm) {
+          const searchLower = searchTerm.toLowerCase();
+          return (
+            template.handle.toLowerCase().includes(searchLower) ||
+            template.description?.toLowerCase().includes(searchLower) ||
+            false
+          );
+        }
+
+        return true;
+      });
+
+      setFilteredTemplates({
+        templates: templatesToDisplay,
+        tags: _.uniq(
+          assistantTemplates.map((template) => template.tags).flat()
+        ),
+      });
+    },
+    [assistantTemplates, selectedTags, templateSearchTerm]
+  );
+
   useEffect(() => {
     filterTemplates();
-  }, [assistantTemplates, selectedTags]);
-
-  const filterTemplates = (searchTerm = templateSearchTerm) => {
-    const templatesToDisplay = assistantTemplates.filter((template) => {
-      // Check if template has valid tags
-      if (!isTemplateTagCodeArray(template.tags)) {
-        return false;
-      }
-
-      // Filter by selected tags (show templates that match ANY selected tag)
-      if (
-        selectedTags.length > 0 &&
-        !selectedTags.some((tag) => template.tags.includes(tag))
-      ) {
-        return false;
-      }
-
-      // Filter by search term
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          template.handle.toLowerCase().includes(searchLower) ||
-          template.description?.toLowerCase().includes(searchLower) ||
-          false
-        );
-      }
-
-      return true;
-    });
-
-    setFilteredTemplates({
-      templates: templatesToDisplay,
-      tags: _.uniq(assistantTemplates.map((template) => template.tags).flat()),
-    });
-  };
+  }, [assistantTemplates, filterTemplates, selectedTags]);
 
   const openTemplateModal = useCallback(
     async (templateId: string) => {

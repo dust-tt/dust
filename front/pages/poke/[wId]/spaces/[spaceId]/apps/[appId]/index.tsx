@@ -6,13 +6,6 @@ import {
   DropdownMenuTrigger,
   ScrollArea,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  LightWorkspaceType,
-  SpecificationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -30,6 +23,13 @@ import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  AppType,
+  LightWorkspaceType,
+  SpecificationType,
+  WorkspaceType,
+} from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   app: AppType;
@@ -172,8 +172,8 @@ function AppSpecification({
   };
 
   return (
-    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-slate-100 dark:bg-slate-100-night">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4 dark:bg-slate-300-night">
+    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
+      <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
         <h2 className="text-md font-bold">Specification :</h2>
         <div className="flex flex-row gap-2">
           {specificationHashes ? (

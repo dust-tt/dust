@@ -9,11 +9,11 @@ import {
   Separator,
   UserIcon,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, UserType } from "@dust-tt/types";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import type { LightWorkspaceType, UserType } from "@app/types";
 
 interface SearchMembersPopoverProps {
   owner: LightWorkspaceType;
@@ -108,7 +108,7 @@ export function SearchMembersPopover({
                   <Avatar size="sm" visual={member.image || ""} />
                   <div>
                     <div className="text-sm">{member.fullName}</div>
-                    <div className="text-xs text-element-700">
+                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                       {member.email}
                     </div>
                   </div>
@@ -120,15 +120,13 @@ export function SearchMembersPopover({
           <InfiniteScroll
             nextPage={loadNextPage}
             hasMore={hasMore}
-            isValidating={isLoading}
-            isLoading={isLoading}
-          >
-            {isLoading && (
-              <div className="py-2 text-center text-sm text-element-700">
+            showLoader={isLoading}
+            loader={
+              <div className="py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Loading more members...
               </div>
-            )}
-          </InfiniteScroll>
+            }
+          />
         </ScrollArea>
       </PopoverContent>
     </PopoverRoot>

@@ -16,6 +16,16 @@ import {
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
+
+import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
+import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
+import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
+import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
+import { SalesforceOauthExtraConfig } from "@app/components/data_source/SalesforceOAuthExtractConfig";
+import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
+import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
+import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
 import type {
   ConnectorPermission,
   ConnectorProvider,
@@ -23,15 +33,8 @@ import type {
   PlanType,
   WhitelistableFeature,
   WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import type { ComponentType } from "react";
-
-import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
-import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
-import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
-import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
-import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 interface ConnectorOptionsProps {
   owner: WorkspaceType;
@@ -39,6 +42,16 @@ interface ConnectorOptionsProps {
   isAdmin: boolean;
   dataSource: DataSourceType;
   plan: PlanType;
+}
+
+export interface ConnectorOauthExtraConfigProps {
+  extraConfig: Record<string, string>;
+  setExtraConfig: (
+    value:
+      | Record<string, string>
+      | ((prev: Record<string, string>) => Record<string, string>)
+  ) => void;
+  setIsExtraConfigValid: (valid: boolean) => void;
 }
 
 export type ConnectorProviderConfiguration = {
@@ -54,10 +67,13 @@ export type ConnectorProviderConfiguration = {
   description: string;
   mismatchError: string;
   limitations: string | null;
+  oauthExtraConfigComponent?: (
+    props: ConnectorOauthExtraConfigProps
+  ) => React.JSX.Element;
   guideLink: string | null;
   selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
   isNested: boolean;
-  isSearchEnabled: boolean;
+  isTitleFilterEnabled?: boolean;
   isResourceSelectionDisabled?: boolean; // Whether the user cannot select distinct resources (everything is synced).
   permissions: {
     selected: ConnectorPermission;
@@ -98,7 +114,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return ConfluenceLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -120,7 +135,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return NotionLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -143,7 +157,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return DriveLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -166,7 +179,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: SlackBotEnableView,
     isNested: false,
-    isSearchEnabled: true,
+    isTitleFilterEnabled: true,
     permissions: {
       selected: "read_write",
       unselected: "write",
@@ -181,7 +194,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexing can be controlled on-demand.",
     limitations:
-      "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
+      "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB. Please contact support@dust.tt if you need to sync larger repositories.",
     mismatchError: `You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
     guideLink: "https://docs.dust.tt/docs/github-connection",
     selectLabel: "Authorized content",
@@ -190,7 +203,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: GithubCodeEnableView,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -214,7 +226,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: IntercomConfigView,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -237,7 +248,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return MicrosoftLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
+    oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -257,7 +268,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return GlobeAltIcon;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -276,7 +286,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return SnowflakeLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/snowflake-connection",
     selectLabel: "Select tables",
     permissions: {
@@ -300,8 +309,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return isDark ? ZendeskWhiteLogo : ZendeskLogo;
     },
     optionsComponent: ZendeskConfigView,
+    oauthExtraConfigComponent: ZendeskOAuthExtraConfig,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -320,7 +329,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return BigQueryLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/bigquery",
     selectLabel: "Select tables",
     permissions: {
@@ -342,14 +350,15 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return SalesforceLogo;
     },
+    oauthExtraConfigComponent: SalesforceOauthExtraConfig,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
     },
     isDeletable: true,
-    guideLink: "https://docs.dust.tt/docs/salesforce-connection",
+    guideLink:
+      "https://www.notion.so/dust-tt/Dust-Salesforce-Connection-Admin-Guide-for-beta-testers-1b428599d94180508c17ed762af5ef90",
   },
   gong: {
     name: "Gong",
@@ -364,7 +373,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return GongLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -425,11 +433,12 @@ export const isConnectorProviderAllowedForPlan = (
       return plan.limits.connections.isIntercomAllowed;
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
+    case "salesforce":
+      return plan.limits.connections.isSalesforceAllowed;
     case "microsoft":
     case "snowflake":
     case "zendesk":
     case "bigquery":
-    case "salesforce":
     case "gong":
       return true;
     default:
@@ -442,21 +451,21 @@ export const isConnectorProviderAssistantDefaultSelected = (
 ): boolean => {
   switch (provider) {
     case "confluence":
-    case "slack":
-    case "notion":
     case "github":
+    case "gong":
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "notion":
+    case "slack":
     case "zendesk":
-    case "gong":
       return true;
     // As of today (07/02/2025), the default selected provider are going to be used for semantic search
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
-    case "snowflake":
     case "bigquery":
-    case "webcrawler":
     case "salesforce":
+    case "snowflake":
+    case "webcrawler":
       return false;
     default:
       assertNever(provider);
@@ -466,25 +475,11 @@ export const isConnectorProviderAssistantDefaultSelected = (
 export const isConnectionIdRequiredForProvider = (
   provider: ConnectorProvider
 ): boolean => {
-  switch (provider) {
-    case "confluence":
-    case "slack":
-    case "notion":
-    case "github":
-    case "google_drive":
-    case "intercom":
-    case "microsoft":
-    case "zendesk":
-    case "snowflake":
-    case "bigquery":
-    case "salesforce":
-    case "gong":
-      return true;
-    case "webcrawler":
-      return false;
-    default:
-      assertNever(provider);
+  if (provider === "webcrawler") {
+    return false;
   }
+  // By default, the connection ID will always be required.
+  return true;
 };
 
 export function getDefaultDataSourceName(
@@ -501,4 +496,28 @@ export function getDefaultDataSourceDescription(
   return suffix
     ? `Managed Data Source for ${provider} (${suffix})`
     : `Managed Data Source for ${provider}`;
+}
+
+export function isConnectorTypeTrackable(
+  connectorType: ConnectorProvider
+): boolean {
+  switch (connectorType) {
+    case "google_drive":
+    case "github":
+    case "notion":
+    case "microsoft":
+    case "confluence":
+    case "intercom":
+    case "webcrawler":
+    case "snowflake":
+    case "zendesk":
+    case "bigquery":
+    case "salesforce":
+    case "gong":
+      return true;
+    case "slack":
+      return false;
+    default:
+      assertNever(connectorType);
+  }
 }

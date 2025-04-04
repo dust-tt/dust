@@ -1,15 +1,5 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewCategory,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SearchWarningCode,
-  SpaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
@@ -19,6 +9,7 @@ import {
   fetcher,
   fetcherWithBody,
   getErrorFromResponse,
+  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
@@ -40,6 +31,16 @@ import type {
   PostSpaceSearchRequestBody,
   PostSpaceSearchResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
+import type {
+  ContentNodesViewType,
+  DataSourceViewCategory,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SearchWarningCode,
+  SpaceType,
+} from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 export function useSpaces({
   workspaceId,
@@ -686,23 +687,42 @@ export function useSpaceSearch({
   };
 }
 
+type BaseSearchParams = {
+  disabled?: boolean;
+  includeDataSources: boolean;
+  owner: LightWorkspaceType;
+  spaceIds?: string[];
+  viewType: ContentNodesViewType;
+  pagination?: CursorPaginationParams;
+};
+
+// Text search variant
+type TextSearchParams = BaseSearchParams & {
+  search: string;
+  nodeIds?: undefined;
+  searchSourceUrls?: boolean;
+};
+
+// Node ID search variant
+type NodeIdSearchParams = BaseSearchParams & {
+  search?: undefined;
+  nodeIds: string[];
+  searchSourceUrls?: undefined;
+};
+
+type SpacesSearchParams = TextSearchParams | NodeIdSearchParams;
+
 export function useSpacesSearch({
   disabled = false,
   includeDataSources = false,
+  nodeIds,
   owner,
   search,
   spaceIds,
   viewType,
   pagination,
-}: {
-  disabled?: boolean;
-  includeDataSources: boolean;
-  owner: LightWorkspaceType;
-  search: string;
-  spaceIds?: string[];
-  viewType: ContentNodesViewType;
-  pagination?: CursorPaginationParams;
-}): {
+  searchSourceUrls = false,
+}: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
   isSearchValidating: boolean;
@@ -720,16 +740,18 @@ export function useSpacesSearch({
   }
 
   const body = {
-    query: search,
-    viewType,
-    spaceIds,
     includeDataSources,
     limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
+    nodeIds,
+    query: search,
+    searchSourceUrls,
+    spaceIds,
+    viewType,
   };
 
   // Only perform a query if we have a valid search
   const url =
-    search.length >= MIN_SEARCH_QUERY_SIZE
+    (search && search.length >= MIN_SEARCH_QUERY_SIZE) || nodeIds?.length
       ? `/api/w/${owner.sId}/search?${params}`
       : null;
 
@@ -759,5 +781,84 @@ export function useSpacesSearch({
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
     nextPageCursor: data?.nextPageCursor || null,
+  };
+}
+
+export function useSpacesSearchWithInfiniteScroll({
+  disabled = false,
+  includeDataSources = false,
+  nodeIds,
+  owner,
+  search,
+  spaceIds,
+  viewType,
+  pageSize = 25,
+}: SpacesSearchParams & { pageSize?: number }): {
+  isSearchLoading: boolean;
+  isSearchError: boolean;
+  isSearchValidating: boolean;
+  searchResultNodes: DataSourceContentNode[];
+  nextPage: () => Promise<void>;
+  hasMore: boolean;
+} {
+  const body = {
+    query: search,
+    viewType,
+    nodeIds,
+    spaceIds,
+    includeDataSources,
+    limit: pageSize,
+  };
+
+  // Only perform a query if we have a valid search
+  const url =
+    (search && search.length >= 1) || nodeIds
+      ? `/api/w/${owner.sId}/search`
+      : null;
+
+  const { data, error, setSize, size, isValidating, isLoading } =
+    useSWRInfiniteWithDefaults(
+      (_, previousPageData) => {
+        if (!url || disabled) {
+          return null;
+        }
+
+        const params = new URLSearchParams();
+
+        params.append("limit", pageSize.toString());
+
+        if (previousPageData?.nextPageCursor) {
+          params.append("cursor", previousPageData.nextPageCursor);
+        }
+
+        return JSON.stringify([url + "?" + params.toString(), body]);
+      },
+      async (fetchKey: string) => {
+        if (!fetchKey) {
+          return null;
+        }
+
+        const [urlWithParams, bodyWithCursor] = JSON.parse(fetchKey);
+        return fetcherWithBody([urlWithParams, bodyWithCursor, "POST"]);
+      },
+      {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        revalidateFirstPage: false,
+      }
+    );
+
+  return {
+    searchResultNodes: useMemo(
+      () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
+      [data]
+    ),
+    isSearchLoading: isLoading,
+    isSearchError: error,
+    isSearchValidating: isValidating,
+    hasMore: data?.[size - 1] ? data[size - 1]?.nextPageCursor !== null : false, // check the last page of the array to see if there is a next page or not
+    nextPage: useCallback(async () => {
+      await setSize((size) => size + 1);
+    }, [setSize]),
   };
 }

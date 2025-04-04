@@ -1,13 +1,6 @@
-import type {
-  CoreAPINodesSearchFilter,
-  CoreAPISearchCursorRequest,
-  CoreAPITableBlob,
-  Ok,
-} from "@dust-tt/types";
-import { concurrentExecutor, CoreAPI } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   CoreTableAPIRelocationBlob,
@@ -16,8 +9,16 @@ import type {
 import {
   CORE_API_CONCURRENCY_LIMIT,
   CORE_API_LIST_NODES_BATCH_SIZE,
+  isStringTooLongError,
 } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type {
+  CoreAPINodesSearchFilter,
+  CoreAPISearchCursorRequest,
+  CoreAPITableBlob,
+  Ok,
+} from "@app/types";
+import { CoreAPI, removeNulls } from "@app/types";
 
 export async function getDataSourceTables({
   dataSourceCoreIds,
@@ -43,6 +44,8 @@ export async function getDataSourceTables({
     data_source_views: [
       {
         data_source_id: dataSourceCoreIds.dustAPIDataSourceId,
+        // Only paginate through data source nodes.
+        search_scope: "nodes_titles",
         // Leaving empty to get all tables.
         view_filter: [],
       },
@@ -66,7 +69,7 @@ export async function getDataSourceTables({
 
   if (searchResults.isErr()) {
     localLogger.error(
-      { error: searchResults.error },
+      { cursor: pageCursor, error: searchResults.error },
       "[Core] Failed to search nodes with cursor"
     );
 
@@ -78,19 +81,39 @@ export async function getDataSourceTables({
   // 2) Get the table blobs.
   const res = await concurrentExecutor(
     nodes,
-    async (n) =>
-      coreAPI.getDataSourceTableBlob({
-        projectId: dataSourceCoreIds.dustAPIProjectId,
-        dataSourceId: dataSourceCoreIds.dustAPIDataSourceId,
-        tableId: n.node_id,
-      }),
+    async (n) => {
+      try {
+        return await coreAPI.getDataSourceTableBlob({
+          projectId: dataSourceCoreIds.dustAPIProjectId,
+          dataSourceId: dataSourceCoreIds.dustAPIDataSourceId,
+          tableId: n.node_id,
+        });
+      } catch (err) {
+        // If the table is too large to be processed, log and skip.
+        if (isStringTooLongError(err)) {
+          logger.info(
+            {
+              tableId: n.node_id,
+              error: err,
+            },
+            "[Core] Failed to get data source table blob. Table is too large to be processed."
+          );
+
+          return null;
+        }
+
+        throw err;
+      }
+    },
     { concurrency: CORE_API_CONCURRENCY_LIMIT }
   );
 
-  const tableBlobs = res
+  const nonNullTableResults = removeNulls(res);
+
+  const tableBlobs = nonNullTableResults
     .filter((r): r is Ok<CoreAPITableBlob> => r.isOk())
     .map((r) => r.value);
-  const failed = res.filter((r) => r.isErr());
+  const failed = nonNullTableResults.filter((r) => r.isErr());
   if (failed.length > 0) {
     localLogger.error(
       { failed },

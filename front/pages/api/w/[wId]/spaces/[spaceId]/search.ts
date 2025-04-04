@@ -1,9 +1,3 @@
-import type {
-  DataSourceViewContentNode,
-  SearchWarningCode,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -18,6 +12,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceViewContentNode,
+  SearchWarningCode,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 const SearchRequestBody = t.type({
   // Optional array of data source view IDs to search in.

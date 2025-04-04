@@ -1,21 +1,22 @@
 import type { NotificationType } from "@dust-tt/sparkle";
+import type * as t from "io-ts";
+
+import { getErrorFromResponse } from "@app/lib/swr/swr";
+import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
+  ContentFragmentsType,
   ConversationType,
   ConversationVisibility,
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
   SubmitMessageError,
-  UploadedContentFragment,
+  SupportedContentNodeContentType,
   UserMessageWithRankType,
   UserType,
   WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-import type * as t from "io-ts";
-
-import { getErrorFromResponse } from "@app/lib/swr/swr";
-import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+} from "@app/types";
+import { Err, isSupportedContentNodeFragmentContentType, Ok } from "@app/types";
 
 /**
  * id of the parent div that should be scrolled for autosrcolling to work on
@@ -80,14 +81,18 @@ export async function submitMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragments: UploadedContentFragment[];
+    contentFragments: ContentFragmentsType;
   };
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
+
   // Create a new content fragment.
-  if (contentFragments.length > 0) {
-    const contentFragmentsRes = await Promise.all(
-      contentFragments.map((contentFragment) => {
+  if (
+    contentFragments.uploaded.length > 0 ||
+    contentFragments.contentNodes.length > 0
+  ) {
+    const contentFragmentsRes = await Promise.all([
+      ...contentFragments.uploaded.map((contentFragment) => {
         return fetch(
           `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
           {
@@ -106,8 +111,29 @@ export async function submitMessage({
             }),
           }
         );
-      })
-    );
+      }),
+      ...contentFragments.contentNodes.map((contentFragment) => {
+        return fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: contentFragment.title,
+              nodeId: contentFragment.internalId,
+              nodeDataSourceViewId: contentFragment.dataSourceView.sId,
+              context: {
+                timezone:
+                  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+                profilePictureUrl: user.image,
+              },
+            }),
+          }
+        );
+      }),
+    ]);
 
     for (const mcfRes of contentFragmentsRes) {
       if (!mcfRes.ok) {
@@ -204,7 +230,7 @@ export async function createConversationWithMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragments: UploadedContentFragment[];
+    contentFragments: ContentFragmentsType;
   };
   visibility?: ConversationVisibility;
   title?: string;
@@ -222,13 +248,37 @@ export async function createConversationWithMessage({
       },
       mentions,
     },
-    contentFragments: contentFragments.map((cf) => ({
-      title: cf.title,
-      context: {
-        profilePictureUrl: user.image,
-      },
-      fileId: cf.fileId,
-    })),
+    contentFragments: [
+      ...contentFragments.uploaded.map((cf) => ({
+        title: cf.title,
+
+        context: {
+          profilePictureUrl: user.image,
+        },
+        fileId: cf.fileId,
+      })),
+      ...contentFragments.contentNodes.map((cf) => {
+        const contentType = isSupportedContentNodeFragmentContentType(
+          cf.mimeType
+        )
+          ? (cf.mimeType as SupportedContentNodeContentType)
+          : null;
+        if (!contentType) {
+          throw new Error(
+            `Unsupported content node fragment mime type: ${cf.mimeType}`
+          );
+        }
+
+        return {
+          title: cf.title,
+          context: {
+            profilePictureUrl: user.image,
+          },
+          nodeId: cf.internalId,
+          nodeDataSourceViewId: cf.dataSourceView.sId,
+        };
+      }),
+    ],
   };
 
   // Create new conversation and post the initial message at the same time.

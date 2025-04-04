@@ -1,6 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { isBigQueryWithLocationCredentials, MIME_TYPES } from "@dust-tt/types";
-
 import {
   fetchTree,
   isConnectionReadonly,
@@ -9,6 +6,11 @@ import { sync } from "@connectors/lib/remote_databases/activities";
 import { getConnectorAndCredentials } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import type { ModelId } from "@connectors/types";
+import {
+  INTERNAL_MIME_TYPES,
+  isBigQueryWithLocationCredentials,
+} from "@connectors/types";
 
 export async function syncBigQueryConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes = await getConnectorAndCredentials({
@@ -34,7 +36,11 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
   }
   const tree = treeRes.value;
 
-  await sync({ remoteDBTree: tree, mimeTypes: MIME_TYPES.BIGQUERY, connector });
+  await sync({
+    remoteDBTree: tree,
+    mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
+    connector,
+  });
 
   await syncSucceeded(connectorId);
 }

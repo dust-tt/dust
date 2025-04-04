@@ -1,16 +1,4 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  ConversationType,
-  LightAgentConfigurationType,
-  MentionType,
-  ModelConfigurationType,
-  Result,
-  UploadedContentFragment,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -23,6 +11,18 @@ import { submitAssistantBuilderForm } from "@app/components/assistant_builder/su
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import type { DustError } from "@app/lib/error";
 import { debounce } from "@app/lib/utils/debounce";
+import type {
+  AgentMention,
+  ContentFragmentsType,
+  ConversationType,
+  LightAgentConfigurationType,
+  MentionType,
+  ModelConfigurationType,
+  Result,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export function usePreviewAssistant({
   owner,
@@ -171,7 +171,7 @@ export function useTryAssistantCore({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    contentFragments: ContentFragmentsType
   ): Promise<Result<undefined, DustError>> => {
     if (!user) {
       return new Err({

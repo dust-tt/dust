@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { Logger } from "pino";

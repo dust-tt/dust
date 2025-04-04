@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import { assertNever } from "@temporalio/common/lib/type-helpers";
 import {
   executeChild,
@@ -15,6 +14,7 @@ import type {
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
+import type { ModelId } from "@connectors/types";
 
 const {
   syncZendeskBrandActivity,

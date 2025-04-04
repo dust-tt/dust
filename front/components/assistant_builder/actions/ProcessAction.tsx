@@ -14,13 +14,6 @@ import {
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  ProcessSchemaPropertyType,
-  Result,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import React, { useEffect, useState } from "react";
 
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
@@ -31,7 +24,9 @@ import type {
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import { classNames } from "@app/lib/utils";
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
+import type { Result, SpaceType, WorkspaceType } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export function hasErrorActionProcess(
   action: AssistantBuilderActionConfiguration
@@ -139,17 +134,17 @@ function PropertiesFields({
         <div className="mt-4 grid grid-cols-12 gap-x-2 gap-y-2">
           <React.Fragment>
             <div className="col-span-2">
-              <label className="block text-sm uppercase text-element-700">
+              <label className="block text-sm uppercase text-muted-foreground dark:text-muted-foreground-night">
                 Property
               </label>
             </div>
             <div className="col-span-7">
-              <label className="block text-sm uppercase text-element-700">
+              <label className="block text-sm uppercase text-muted-foreground dark:text-muted-foreground-night">
                 Description
               </label>
             </div>
             <div className="col-span-2">
-              <label className="block text-sm uppercase text-element-700">
+              <label className="block text-sm uppercase text-muted-foreground dark:text-muted-foreground-night">
                 Type
               </label>
             </div>
@@ -386,16 +381,16 @@ export function ActionProcess({
         allowedSpaces={allowedSpaces}
         viewType="document"
       />
-      <div className="text-sm text-element-700">
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         This tool scans selected data sources within the specified time frame,
         extracting information based on a predefined schema. It can process the
         equivalent to a 1,000-page book (500k tokens). Learn more about this
         feature in the{" "}
         <Hoverable
+          variant="highlight"
           onClick={() => {
             window.open("https://docs.dust.tt/docs/extract-data", "_blank");
           }}
-          className="cursor-pointer font-bold text-action-500"
         >
           documentation
         </Hoverable>
@@ -419,11 +414,13 @@ export function ActionProcess({
 
       {onDescriptionChange && (
         <div className="flex flex-col gap-4 pt-8">
-          <div className="font-semibold text-element-800">Tool description</div>
-          <div className="text-sm text-element-600">
+          <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
+            Tool description
+          </div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Clarify what the tool should do and what data it should extract. For
             example:
-            <span className="block text-element-600">
+            <span className="block text-muted-foreground dark:text-muted-foreground-night">
               "Extract from the #reading slack channel a list of books,
               including their title, author, and the reason why they were
               recommended".
@@ -440,16 +437,10 @@ export function ActionProcess({
         <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
           Process data from the last
         </div>
-        <input
+        <Input
           type="text"
-          className={classNames(
-            "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
-            !timeFrameError
-              ? "focus:border-action-500 focus:ring-action-500"
-              : "border-red-500 focus:border-red-500 focus:ring-red-500",
-            "bg-structure-50 stroke-structure-50 dark:bg-structure-50-night dark:stroke-structure-50-night"
-          )}
-          value={actionConfiguration.timeFrame.value || ""}
+          messageStatus={timeFrameError ? "error" : "default"}
+          value={actionConfiguration.timeFrame.value?.toString() || ""}
           onChange={(e) => {
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {

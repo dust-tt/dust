@@ -1,58 +1,36 @@
-import type {
-  AgentActionConfigurationType,
-  AgentConfigurationScope,
-  AgentConfigurationType,
-  AgentModelConfigurationType,
-  AgentReasoningEffort,
-  AgentsGetViewType,
-  AgentStatus,
-  AppType,
-  DataSourceConfiguration,
-  LightAgentConfigurationType,
-  ModelId,
-  ModelIdType,
-  ModelProviderIdType,
-  ProcessSchemaPropertyType,
-  Result,
-  RetrievalQuery,
-  RetrievalTimeframe,
-  TableDataSourceConfiguration,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  compareAgentsForSort,
-  Err,
-  isTimeFrame,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
 import assert from "assert";
 import type { Order, Transaction } from "sequelize";
-import { Op, Sequelize, UniqueConstraintError } from "sequelize";
+import {
+  Op,
+  Sequelize,
+  UniqueConstraintError,
+  ValidationError,
+} from "sequelize";
 
+import { fetchBrowseActionConfigurations } from "@app/lib/actions/configuration/browse";
+import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
+import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
+import { fetchReasoningActionConfigurations } from "@app/lib/actions/configuration/reasoning";
+import { fetchAgentRetrievalActionConfigurations } from "@app/lib/actions/configuration/retrieval";
+import {
+  createTableDataSourceConfiguration,
+  fetchTableQueryActionConfigurations,
+} from "@app/lib/actions/configuration/table_query";
+import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configuration/websearch";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
-import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configuration/browse";
-import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
-import { fetchGithubActionConfigurations } from "@app/lib/api/assistant/configuration/github";
-import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";
-import { fetchReasoningActionConfigurations } from "@app/lib/api/assistant/configuration/reasoning";
-import { fetchAgentRetrievalActionConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
-import {
-  createTableDataSourceConfiguration,
-  fetchTableQueryActionConfigurations,
-} from "@app/lib/api/assistant/configuration/table_query";
-import { fetchWebsearchActionConfigurations } from "@app/lib/api/assistant/configuration/websearch";
+} from "@app/lib/actions/constants";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
+import type {
+  AgentActionConfigurationType,
+  UnsavedAgentActionConfigurationType,
+} from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   getGlobalAgents,
@@ -64,7 +42,7 @@ import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
@@ -76,9 +54,30 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import type {
+  AgentConfigurationScope,
+  AgentConfigurationType,
+  AgentModelConfigurationType,
+  AgentsGetViewType,
+  AgentStatus,
+  LightAgentConfigurationType,
+  ModelId,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  compareAgentsForSort,
+  Err,
+  isTimeFrame,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -108,23 +107,31 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
 
 /**
  * Get an agent configuration
- *
  */
-export async function getAgentConfiguration(
+export async function getAgentConfiguration<V extends "light" | "full">(
   auth: Authenticator,
-  agentId: string
-): Promise<AgentConfigurationType | null> {
+  agentId: string,
+  variant: V
+): Promise<
+  | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
+  | null
+> {
   const res = await getAgentConfigurations({
     auth,
     agentsGetView: { agentIds: [agentId] },
-    variant: "full",
+    variant,
   });
-  return res[0] || null;
+  // `as` is required here because the type collapses to `LightAgentConfigurationType |
+  // AgentConfigurationType` as we access the first element of the array.
+  return (
+    (res[0] as V extends "light"
+      ? LightAgentConfigurationType
+      : AgentConfigurationType) || null
+  );
 }
 
 /**
  * Search agent configurations by name
- *
  */
 export async function searchAgentConfigurationsByName(
   auth: Authenticator,
@@ -470,8 +477,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tableQueryActionsConfigurationsPerAgent,
     websearchActionsConfigurationsPerAgent,
     browseActionsConfigurationsPerAgent,
-    githubActionsConfigurationsPerAgent,
     reasoningActionsConfigurationsPerAgent,
+    mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
@@ -480,8 +487,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchTableQueryActionConfigurations({ configurationIds, variant }),
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
-    fetchGithubActionConfigurations({ configurationIds, variant }),
     fetchReasoningActionConfigurations({ configurationIds, variant }),
+    fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
@@ -522,15 +529,15 @@ async function fetchWorkspaceAgentConfigurationsForView(
         processActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...processActionsConfigurations);
 
-      // Github configurations
-      const githubActionsConfigurations =
-        githubActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...githubActionsConfigurations);
-
       // Reasoning configurations
       const reasoningActionsConfigurations =
         reasoningActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...reasoningActionsConfigurations);
+
+      // MCP server configurations
+      const mcpServerActionsConfigurations =
+        mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...mcpServerActionsConfigurations);
     }
 
     const model: (typeof agentConfigurationType)["model"] = {
@@ -538,6 +545,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
       modelId: agent.modelId,
       temperature: agent.temperature,
     };
+
+    if (agent.responseFormat) {
+      model.responseFormat = agent.responseFormat;
+    }
 
     if (agent.reasoningEffort) {
       model.reasoningEffort = agent.reasoningEffort;
@@ -568,8 +579,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
-      // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-      groupIds: [],
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
@@ -846,6 +855,7 @@ export async function createAgentConfiguration(
             authorId: user.id,
             templateId: template?.id,
             requestedGroupIds,
+            responseFormat: model.responseFormat,
           },
           {
             transaction: t,
@@ -872,6 +882,7 @@ export async function createAgentConfiguration(
         providerId: agent.providerId,
         modelId: agent.modelId,
         temperature: agent.temperature,
+        responseFormat: agent.responseFormat,
       },
       pictureUrl: agent.pictureUrl,
       status: agent.status,
@@ -894,6 +905,12 @@ export async function createAgentConfiguration(
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
       return new Err(new Error("An agent with this name already exists."));
+    }
+    if (error instanceof ValidationError) {
+      return new Err(new Error(error.message));
+    }
+    if (error instanceof SyntaxError) {
+      return new Err(new Error(error.message));
     }
     throw error;
   }
@@ -958,63 +975,14 @@ export async function restoreAgentConfiguration(
 }
 
 /**
- * Create Agent RetrievalConfiguration
+ * Called by Agent Builder to create an action configuration.
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
-  action: (
-    | {
-        type: "retrieval_configuration";
-        query: RetrievalQuery;
-        relativeTimeFrame: RetrievalTimeframe;
-        topK: number | "auto";
-        dataSources: DataSourceConfiguration[];
-      }
-    | {
-        type: "dust_app_run_configuration";
-        appWorkspaceId: string;
-        appId: string;
-        app: AppType;
-      }
-    | {
-        type: "tables_query_configuration";
-        tables: TableDataSourceConfiguration[];
-      }
-    | {
-        type: "process_configuration";
-        relativeTimeFrame: RetrievalTimeframe;
-        dataSources: DataSourceConfiguration[];
-        schema: ProcessSchemaPropertyType[];
-      }
-    | {
-        type: "websearch_configuration";
-      }
-    | {
-        type: "browse_configuration";
-      }
-    | {
-        type: "github_get_pull_request_configuration";
-      }
-    | {
-        type: "github_create_issue_configuration";
-      }
-    | {
-        type: "reasoning_configuration";
-        providerId: ModelProviderIdType;
-        modelId: ModelIdType;
-        temperature: number | null;
-        reasoningEffort: AgentReasoningEffort | null;
-      }
-  ) & {
-    name: string | null;
-    description: string | null;
-  },
+  action: UnsavedAgentActionConfigurationType,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<Result<AgentActionConfigurationType, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   switch (action.type) {
     case "retrieval_configuration": {
@@ -1045,6 +1013,7 @@ export async function createAgentActionConfiguration(
           dataSourceConfigurations: action.dataSources,
           retrievalConfigurationId: retrievalConfig.id,
           processConfigurationId: null,
+          mcpConfigurationId: null,
         });
 
         return new Ok({
@@ -1075,8 +1044,8 @@ export async function createAgentActionConfiguration(
         type: "dust_app_run_configuration",
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
-        name: action.app.name,
-        description: action.app.description,
+        name: action.name,
+        description: action.description,
       });
     }
     case "tables_query_configuration": {
@@ -1135,6 +1104,7 @@ export async function createAgentActionConfiguration(
           dataSourceConfigurations: action.dataSources,
           retrievalConfigurationId: null,
           processConfigurationId: processConfig.id,
+          mcpConfigurationId: null,
         });
 
         return new Ok({
@@ -1183,42 +1153,6 @@ export async function createAgentActionConfiguration(
         description: action.description,
       });
     }
-    case "github_get_pull_request_configuration": {
-      const githubConfig = await AgentGithubConfiguration.create({
-        sId: generateRandomModelSId(),
-        agentConfigurationId: agentConfiguration.id,
-        actionType: "github_get_pull_request_action",
-        name: action.name,
-        description: action.description,
-        workspaceId: owner.id,
-      });
-
-      return new Ok({
-        id: githubConfig.id,
-        sId: githubConfig.sId,
-        type: "github_get_pull_request_configuration",
-        name: action.name || DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
-        description: action.description,
-      });
-    }
-    case "github_create_issue_configuration": {
-      const githubConfig = await AgentGithubConfiguration.create({
-        sId: generateRandomModelSId(),
-        agentConfigurationId: agentConfiguration.id,
-        actionType: "github_create_issue_action",
-        name: action.name,
-        description: action.description,
-        workspaceId: owner.id,
-      });
-
-      return new Ok({
-        id: githubConfig.id,
-        sId: githubConfig.sId,
-        type: "github_create_issue_configuration",
-        name: action.name || DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-        description: action.description,
-      });
-    }
     case "reasoning_configuration": {
       const reasoningConfig = await AgentReasoningConfiguration.create({
         sId: generateRandomModelSId(),
@@ -1244,6 +1178,46 @@ export async function createAgentActionConfiguration(
         description: action.description,
       });
     }
+    case "mcp_server_configuration": {
+      return frontSequelize.transaction(async (t) => {
+        const mcpServerView = await MCPServerViewResource.fetchById(
+          auth,
+          action.mcpServerViewId
+        );
+        if (mcpServerView.isErr()) {
+          return new Err(mcpServerView.error);
+        }
+
+        const mcpConfig = await AgentMCPServerConfiguration.create(
+          {
+            sId: generateRandomModelSId(),
+            agentConfigurationId: agentConfiguration.id,
+            workspaceId: owner.id,
+            mcpServerViewId: mcpServerView.value.id,
+          },
+          { transaction: t }
+        );
+
+        if (action.dataSources) {
+          await _createAgentDataSourcesConfigData(auth, t, {
+            dataSourceConfigurations: action.dataSources,
+            retrievalConfigurationId: null,
+            processConfigurationId: null,
+            mcpConfigurationId: mcpConfig.id,
+          });
+        }
+
+        return new Ok({
+          id: mcpConfig.id,
+          sId: mcpConfig.sId,
+          type: "mcp_server_configuration",
+          name: action.name,
+          description: action.description,
+          mcpServerViewId: action.mcpServerViewId,
+          dataSources: action.dataSources,
+        });
+      });
+    }
     default:
       assertNever(action);
   }
@@ -1254,7 +1228,7 @@ export async function createAgentActionConfiguration(
  *
  * Knowing that a datasource is uniquely identified by its name and its workspaceId
  * We need to fetch the dataSources from the database from that.
- * We obvisously need to do as few queries as possible.
+ * We obviously need to do as few queries as possible.
  */
 async function _createAgentDataSourcesConfigData(
   auth: Authenticator,
@@ -1263,10 +1237,12 @@ async function _createAgentDataSourcesConfigData(
     dataSourceConfigurations,
     retrievalConfigurationId,
     processConfigurationId,
+    mcpConfigurationId,
   }: {
     dataSourceConfigurations: DataSourceConfiguration[];
     retrievalConfigurationId: ModelId | null;
     processConfigurationId: ModelId | null;
+    mcpConfigurationId: ModelId | null;
   }
 ): Promise<AgentDataSourceConfiguration[]> {
   const owner = auth.getNonNullableWorkspace();
@@ -1320,6 +1296,7 @@ async function _createAgentDataSourcesConfigData(
             retrievalConfigurationId: retrievalConfigurationId,
             processConfigurationId: processConfigurationId,
             dataSourceViewId: dataSourceView.id,
+            mcpServerConfigurationId: mcpConfigurationId,
             tagsMode,
             tagsIn,
             tagsNotIn,

@@ -1,5 +1,4 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/client";
 import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 import type { Request, Response } from "express";
 
@@ -30,8 +29,8 @@ import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-
-import { removeNulls } from "../../../../sdks/js";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 type SlackWebhookEventSubtype =
   | "message_changed"
@@ -391,7 +390,7 @@ const _webhookSlackAPIHandler = async (
                       ],
                       parentId: null,
                       title: `#${slackChannelName}`,
-                      mimeType: MIME_TYPES.SLACK.CHANNEL,
+                      mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
                       sourceUrl: getSlackChannelSourceUrl(slackChannelId, c),
                       providerVisibility: "public",
                     });

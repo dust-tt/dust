@@ -1,9 +1,3 @@
-import {
-  assertNever,
-  ConnectorsAPI,
-  removeNulls,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
 import parseArgs from "minimist";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
@@ -15,10 +9,6 @@ import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/dat
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import {
-  internalSubscribeWorkspaceToFreeNoPlan,
-  internalSubscribeWorkspaceToFreePlan,
-} from "@app/lib/plans/subscription";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -26,6 +16,7 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -33,8 +24,14 @@ import logger from "@app/logger/logger";
 import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
-} from "@app/temporal/labs/client";
+} from "@app/temporal/labs/transcripts/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
+import {
+  assertNever,
+  ConnectorsAPI,
+  removeNulls,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -80,7 +77,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      await internalSubscribeWorkspaceToFreePlan({
+      await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
         workspaceId: w.sId,
         planCode: FREE_UPGRADED_PLAN_CODE,
       });
@@ -102,7 +99,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      await internalSubscribeWorkspaceToFreeNoPlan({
+      await SubscriptionResource.internalSubscribeWorkspaceToFreeNoPlan({
         workspaceId: w.sId,
       });
       await workspace("show", args);

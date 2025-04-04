@@ -2,12 +2,12 @@
  * This file contains functions related to sending emails, as well as the
  * content of emails themselves.
  */
-import type { Result } from "@dust-tt/types";
-import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, isDevelopment, Ok } from "@app/types";
 
 let sgMailClient: sgMail.MailService | null = null;
 

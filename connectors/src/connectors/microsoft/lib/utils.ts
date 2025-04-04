@@ -1,9 +1,13 @@
 import type { LoggerInterface } from "@dust-tt/client";
-import { cacheWithRedis } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
-import type { ColumnDefinition } from "@microsoft/microsoft-graph-types";
+import type {
+  ColumnDefinition,
+  FieldValueSet,
+  NullableOption,
+} from "@microsoft/microsoft-graph-types";
 
 import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
+import { cacheWithRedis } from "@connectors/types";
 
 import type { DriveItem, MicrosoftNodeType } from "./types";
 import { isValidNodeType } from "./types";
@@ -120,16 +124,12 @@ export async function _getListColumns({
 // Turn the labels into a string array of formatted string such as column.displayName:value
 export const getColumnsFromListItem = async (
   file: DriveItem,
+  fields: NullableOption<FieldValueSet> | undefined,
   client: Client,
   logger: LoggerInterface
 ) => {
   const listItem = file.listItem;
-  if (
-    !file.sharepointIds?.listId ||
-    !file.sharepointIds?.siteId ||
-    !listItem ||
-    !listItem.fields
-  ) {
+  if (!file.sharepointIds?.listId || !file.sharepointIds?.siteId || !fields) {
     logger.info(
       {
         file,
@@ -149,8 +149,7 @@ export const getColumnsFromListItem = async (
 
     const columnsList: string[] = [];
 
-    const fields = listItem.fields as Record<string, unknown>;
-    for (const [k, v] of Object.entries(fields)) {
+    for (const [k, v] of Object.entries(fields as Record<string, unknown>)) {
       const column = columns.find((column) => column.name === k);
       if (column) {
         columnsList.push(`${column.displayName}:${v}`);

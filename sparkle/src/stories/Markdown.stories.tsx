@@ -10,9 +10,9 @@ const meta: Meta<typeof Markdown> = {
   argTypes: {
     textColor: {
       options: [
-        "s-text-element-800",
-        "s-text-element-600",
-        "s-text-purple-800",
+        "s-text-foreground",
+        "s-text-muted-foreground",
+        "s-text-green-700",
       ],
       control: { type: "radio" },
     },
@@ -171,6 +171,30 @@ function renderHeader(latitude, longitude) {
     </div>
   \`;
 }
+\`\`\`
+
+
+### Some CLI code: 
+
+\`\`\`bash
+# Define variables
+API_URL="https://api.example.com"
+LATEST_TAG="v1.2.3"
+USERNAME="user123"
+ENVIRONMENT="production"
+
+# Basic GET with variables
+curl "\${API_URL}/version/\${LATEST_TAG}"
+
+# POST with JSON payload using variables
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d "{
+    "tag": "\${LATEST_TAG}",
+    "environment": "\${ENVIRONMENT}",
+    "deployedBy": "\${USERNAME}"
+  }" \
+  "\${API_URL}/deployments"
 \`\`\`
 
 ### Some python code:

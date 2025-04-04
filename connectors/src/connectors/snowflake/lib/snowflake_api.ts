@@ -1,6 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import type { SnowflakeCredentials } from "@dust-tt/types";
-import { Err, EXCLUDE_DATABASES, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -19,6 +18,8 @@ import {
   remoteDBTableCodec,
 } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
+import type { SnowflakeCredentials } from "@connectors/types";
+import { EXCLUDE_DATABASES, EXCLUDE_SCHEMAS } from "@connectors/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;
@@ -170,7 +171,8 @@ export const fetchDatabases = async ({
 };
 
 /**
- * Fetch the tables available in the Snowflake account.
+ * Fetch the tables available in the Snowflake account. `fromDatabase` is required because there is
+ * no guarantee to get all schemas otherwise.
  */
 export const fetchSchemas = async ({
   credentials,
@@ -178,12 +180,10 @@ export const fetchSchemas = async ({
   connection,
 }: {
   credentials: SnowflakeCredentials;
-  fromDatabase?: string;
+  fromDatabase: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
-  const query = fromDatabase
-    ? `SHOW SCHEMAS IN DATABASE ${fromDatabase}`
-    : "SHOW SCHEMAS";
+  const query = `SHOW SCHEMAS IN DATABASE ${fromDatabase}`;
   return _fetchRows<RemoteDBSchema>({
     credentials,
     query,
@@ -197,16 +197,22 @@ export const fetchSchemas = async ({
  */
 export const fetchTables = async ({
   credentials,
+  fromDatabase,
   fromSchema,
   connection,
 }: {
   credentials: SnowflakeCredentials;
+  fromDatabase?: string;
   fromSchema?: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
+  // We fetch the tables in the schema provided if defined, otherwise in the database provided if
+  // defined, otherwise globally.
   const query = fromSchema
     ? `SHOW TABLES IN SCHEMA ${fromSchema}`
-    : "SHOW TABLES";
+    : fromDatabase
+      ? `SHOW TABLES IN DATABASE ${fromDatabase}`
+      : "SHOW TABLES";
 
   return _fetchRows<RemoteDBTable>({
     credentials,
@@ -243,13 +249,32 @@ export const fetchTree = async (
     (db) => !EXCLUDE_DATABASES.includes(db.name)
   );
 
-  const schemasRes = await fetchSchemas({ credentials, connection });
-  if (schemasRes.isErr()) {
-    return schemasRes;
+  const allSchemas: RemoteDBSchema[] = [];
+  const allTables: RemoteDBTable[] = [];
+
+  for (const db of databases) {
+    const schemasRes = await fetchSchemas({
+      credentials,
+      fromDatabase: db.name,
+      connection,
+    });
+    if (schemasRes.isErr()) {
+      return schemasRes;
+    }
+    allSchemas.push(...schemasRes.value);
+
+    const tablesRes = await fetchTables({
+      credentials,
+      fromDatabase: db.name,
+      connection,
+    });
+    if (tablesRes.isErr()) {
+      return tablesRes;
+    }
+    allTables.push(...tablesRes.value);
   }
-  const schemas = schemasRes.value.filter(
-    (s) => !EXCLUDE_SCHEMAS.includes(s.name)
-  );
+
+  const schemas = allSchemas.filter((s) => !EXCLUDE_SCHEMAS.includes(s.name));
   localLogger.info(
     {
       schemasCount: schemas.length,
@@ -257,11 +282,7 @@ export const fetchTree = async (
     "Found schemas in Snowflake"
   );
 
-  const tablesRes = await fetchTables({ credentials, connection });
-  if (tablesRes.isErr()) {
-    return tablesRes;
-  }
-  const tables = tablesRes.value;
+  const tables = allTables;
   localLogger.info(
     {
       tablesCount: tables.length,

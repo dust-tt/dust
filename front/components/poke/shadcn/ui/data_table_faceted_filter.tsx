@@ -79,7 +79,7 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
           )}
         </PokeButton>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] bg-structure-100 p-0" align="start">
+      <PopoverContent className="w-[200px] bg-primary-100 p-0" align="start">
         <PokeCommand>
           <PokeCommandList>
             <PokeCommandGroup>
@@ -117,7 +117,7 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
                     )}
                     <span>{option.label}</span>
                     {facets?.get(option.value) && (
-                      <span className="font-mono ml-auto flex h-4 w-4 items-center justify-center text-xs">
+                      <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
                         {facets.get(option.value)}
                       </span>
                     )}

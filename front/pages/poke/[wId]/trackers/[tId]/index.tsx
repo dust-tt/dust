@@ -1,5 +1,4 @@
 import { ContextItem, Page, Spinner, TextArea } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
@@ -9,6 +8,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokeTracker } from "@app/poke/swr/trackers";
+import type { WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
@@ -48,21 +48,21 @@ export default function TrackerDetailPage({
   }
 
   return (
-    <div className="mx-auto max-w-4xl pt-8">
+    <div className="max-w-4xl">
       <Page.Vertical align="stretch">
         <ContextItem.List>
           <ContextItem title={`${data.name} (${data.sId})`} visual={<></>}>
             <ContextItem.Description>
               <div className="flex flex-col gap-2">
-                <div className="ml-4 pt-2 text-sm text-element-700">
+                <div className="ml-4 pt-2 text-sm text-muted-foreground">
                   <div className="font-bold">Created At:</div>
                   <div>{formatTimestampToFriendlyDate(data.createdAt)}</div>
                 </div>
-                <div className="ml-4 text-sm text-element-700">
+                <div className="ml-4 text-sm text-muted-foreground">
                   <div className="font-bold">Prompt:</div>
                   <TextArea value={data.prompt ?? ""} />
                 </div>
-                <div className="ml-4 pt-2 text-sm text-element-700">
+                <div className="ml-4 pt-2 text-sm text-muted-foreground">
                   <div className="font-bold">Raw Data</div>
                   <JsonViewer
                     theme={isDark ? "dark" : "light"}

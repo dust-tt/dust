@@ -3,6 +3,7 @@ import {
   BracesIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
+  CommandIcon,
   CommandLineIcon,
   CompanyIcon,
   DocumentTextIcon,
@@ -11,8 +12,9 @@ import {
   ShapesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import type { AppType, WorkspaceType } from "@dust-tt/types";
-import { isAdmin, isBuilder } from "@dust-tt/types";
+
+import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
@@ -46,7 +48,8 @@ export type SubNavigationAdminId =
   | "members"
   | "providers"
   | "api_keys"
-  | "dev_secrets";
+  | "dev_secrets"
+  | "actions";
 
 export type SubNavigationAppId =
   | "specification"
@@ -72,6 +75,7 @@ export type AppLayoutNavigation = {
   current: boolean;
   subMenuLabel?: string;
   subMenu?: AppLayoutNavigation[];
+  featureFlag?: WhitelistableFeature;
 };
 
 export type TabAppLayoutNavigation = {
@@ -139,6 +143,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
+          "/w/[wId]/actions",
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
@@ -181,6 +186,16 @@ export const subNavigationAdmin = ({
           current: current === "members",
           subMenuLabel: current === "members" ? subMenuLabel : undefined,
           subMenu: current === "members" ? subMenu : undefined,
+        },
+        {
+          id: "actions",
+          label: "Actions",
+          icon: CommandIcon,
+          href: `/w/${owner.sId}/actions`,
+          current: current === "actions",
+          subMenuLabel: current === "actions" ? subMenuLabel : undefined,
+          subMenu: current === "actions" ? subMenu : undefined,
+          featureFlag: "mcp_actions",
         },
         {
           id: "workspace",

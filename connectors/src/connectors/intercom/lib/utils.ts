@@ -1,10 +1,9 @@
-import type { ModelId } from "@dust-tt/types";
-
 import type {
   IntercomArticleType,
   IntercomCollectionType,
 } from "@connectors/connectors/intercom/lib/types";
 import { IntercomCollectionModel } from "@connectors/lib/models/intercom";
+import type { ModelId } from "@connectors/types";
 
 /**
  * From id to internalId

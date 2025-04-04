@@ -1,13 +1,13 @@
+import React, { useEffect, useRef } from "react";
+
+import MessageItem from "@app/components/assistant/conversation/MessageItem";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type {
   FetchConversationMessagesResponse,
   MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
-} from "@dust-tt/types";
-import React, { useEffect, useRef } from "react";
-
-import MessageItem from "@app/components/assistant/conversation/MessageItem";
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+} from "@app/types";
 
 interface MessageGroupProps {
   messages: MessageWithContentFragmentsType[];

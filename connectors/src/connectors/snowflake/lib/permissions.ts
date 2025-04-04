@@ -1,16 +1,5 @@
-import type {
-  ContentNode,
-  ModelId,
-  Result,
-  SnowflakeCredentials,
-} from "@dust-tt/types";
-import {
-  Err,
-  EXCLUDE_DATABASES,
-  EXCLUDE_SCHEMAS,
-  MIME_TYPES,
-  Ok,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import {
   fetchDatabases,
@@ -26,7 +15,17 @@ import {
   getContentNodeFromInternalId,
   getContentNodeTypeFromInternalId,
 } from "@connectors/lib/remote_databases/content_nodes";
-
+import {
+  buildInternalId,
+  parseInternalId,
+} from "@connectors/lib/remote_databases/utils";
+import type { ContentNode, SnowflakeCredentials } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import {
+  EXCLUDE_DATABASES,
+  EXCLUDE_SCHEMAS,
+  INTERNAL_MIME_TYPES,
+} from "@connectors/types";
 /**
  * Retrieves the existing content nodes for a parent in the Snowflake account.
  * If parentInternalId is null, we are at the root level and we fetch databases.
@@ -60,14 +59,16 @@ export const fetchAvailableChildrenInSnowflake = async ({
 
     return new Ok(
       allDatabases.map((row) => {
-        const internalId = `${row.name}`;
+        const internalId = buildInternalId({
+          databaseName: row.name,
+        });
         const permission = syncedDatabasesInternalIds.includes(internalId)
           ? "read"
           : "none";
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SNOWFLAKE
+          INTERNAL_MIME_TYPES.SNOWFLAKE
         );
       })
     );
@@ -76,6 +77,7 @@ export const fetchAvailableChildrenInSnowflake = async ({
   const parentType = getContentNodeTypeFromInternalId(parentInternalId);
 
   if (parentType === "database") {
+    const { databaseName } = parseInternalId(parentInternalId);
     const syncedSchemas = await RemoteSchemaModel.findAll({
       where: { connectorId, permission: "selected" },
     });
@@ -95,20 +97,24 @@ export const fetchAvailableChildrenInSnowflake = async ({
 
     return new Ok(
       allSchemas.map((row) => {
-        const internalId = `${parentInternalId}.${row.name}`;
+        const internalId = buildInternalId({
+          databaseName,
+          schemaName: row.name,
+        });
         const permission = syncedSchemasInternalIds.includes(internalId)
           ? "read"
           : "none";
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SNOWFLAKE
+          INTERNAL_MIME_TYPES.SNOWFLAKE
         );
       })
     );
   }
 
   if (parentType === "schema") {
+    const { databaseName, schemaName } = parseInternalId(parentInternalId);
     const syncedTables = await RemoteTableModel.findAll({
       where: { connectorId },
     });
@@ -123,14 +129,18 @@ export const fetchAvailableChildrenInSnowflake = async ({
     }
     return new Ok(
       allTablesRes.value.map((row) => {
-        const internalId = `${parentInternalId}.${row.name}`;
+        const internalId = buildInternalId({
+          databaseName,
+          schemaName,
+          tableName: row.name,
+        });
         const permission = syncedTablesInternalIds.includes(internalId)
           ? "read"
           : "none";
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SNOWFLAKE
+          INTERNAL_MIME_TYPES.SNOWFLAKE
         );
       })
     );
@@ -140,10 +150,10 @@ export const fetchAvailableChildrenInSnowflake = async ({
 };
 
 /**
- * Retrieves the selected content nodes for a parent in our database.
- * They are the content nodes that we were given access to by the admin.
+ * Retrieves the selected content nodes in our database. They are the content nodes that we were
+ * given access to by the admin.
  */
-export const fetchReadNodes = async ({
+export const fetchSelectedNodes = async ({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -163,20 +173,24 @@ export const fetchReadNodes = async ({
 
   return new Ok([
     ...availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read", MIME_TYPES.SNOWFLAKE)
+      getContentNodeFromInternalId(
+        db.internalId,
+        "read",
+        INTERNAL_MIME_TYPES.SNOWFLAKE
+      )
     ),
     ...availableSchemas.map((schema) =>
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.SNOWFLAKE
+        INTERNAL_MIME_TYPES.SNOWFLAKE
       )
     ),
     ...availableTables.map((table) =>
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.SNOWFLAKE
+        INTERNAL_MIME_TYPES.SNOWFLAKE
       )
     ),
   ]);
@@ -197,9 +211,9 @@ export const fetchSyncedChildren = async ({
 
   // We want to fetch all the schemas for which we have access to at least one table.
   if (parentType === "database") {
-    // If the database is in db with permission: "selected" we have full access to it (it means the user selected this node).
-    // That means we have access to all schemas and tables.
-    // In that case we loop on all schemas.
+    // If the database is in db with permission: "selected" we have full access to it (it means the
+    // user selected this node). That means we have access to all schemas and tables.  In that case
+    // we loop on all schemas.
     const availableDatabase = await RemoteDatabaseModel.findOne({
       where: {
         connectorId,
@@ -219,15 +233,15 @@ export const fetchSyncedChildren = async ({
         getContentNodeFromInternalId(
           schema.internalId,
           "read",
-          MIME_TYPES.SNOWFLAKE
+          INTERNAL_MIME_TYPES.SNOWFLAKE
         )
       );
       return new Ok(schemaContentNodes);
     }
 
-    // Otherwise, we will fetch all the schemas we have full access to,
-    // which are the ones in db with permission: "selected" (the ones with "inherited" are absorbed in the case above).
-    // + the schemas for the tables that were explicitly selected.
+    // Otherwise, we will fetch all the schemas we have full access to, which are the ones in db
+    // with permission: "selected" (the ones with "inherited" are absorbed in the case above) +
+    // the schemas for the tables that were explicitly selected.
     const [availableSchemas, availableTables] = await Promise.all([
       RemoteSchemaModel.findAll({
         where: {
@@ -248,17 +262,20 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.SNOWFLAKE
+        INTERNAL_MIME_TYPES.SNOWFLAKE
       )
     );
     availableTables.forEach((table) => {
-      const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
-      if (!schemas.find((s) => s.internalId === schemaToAdd)) {
+      const schemaToAddInternalId = buildInternalId({
+        databaseName: table.databaseName,
+        schemaName: table.schemaName,
+      });
+      if (!schemas.find((s) => s.internalId === schemaToAddInternalId)) {
         schemas.push(
           getContentNodeFromInternalId(
-            schemaToAdd,
+            schemaToAddInternalId,
             "none",
-            MIME_TYPES.SNOWFLAKE
+            INTERNAL_MIME_TYPES.SNOWFLAKE
           )
         );
       }
@@ -266,9 +283,10 @@ export const fetchSyncedChildren = async ({
     return new Ok(schemas);
   }
 
-  // Since we have all tables in the database, we can just return all the tables we have for this schema.
+  // Since we have all tables in the database, we can just return all the tables we have for this
+  // schema.
   if (parentType === "schema") {
-    const [databaseName, schemaName] = parentInternalId.split(".");
+    const { databaseName, schemaName } = parseInternalId(parentInternalId);
     const availableTables = await RemoteTableModel.findAll({
       where: {
         connectorId,
@@ -280,7 +298,7 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.SNOWFLAKE
+        INTERNAL_MIME_TYPES.SNOWFLAKE
       )
     );
     return new Ok(tables);

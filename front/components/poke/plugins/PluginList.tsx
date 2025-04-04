@@ -1,5 +1,4 @@
 import { ScrollArea, Tooltip } from "@dust-tt/sparkle";
-import type { PluginResourceTarget } from "@dust-tt/types";
 import React, { useState } from "react";
 
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
@@ -11,6 +10,7 @@ import {
 } from "@app/components/poke/shadcn/ui/card";
 import type { PluginListItem } from "@app/lib/api/poke/types";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
+import type { PluginResourceTarget } from "@app/types";
 
 interface PluginCardProps {
   onClick: () => void;
@@ -56,8 +56,8 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
   };
 
   return (
-    <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-slate-100 dark:bg-slate-100-night">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4 dark:bg-slate-300-night">
+    <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
+      <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
         <h2 className="text-md font-bold">Plugins :</h2>
       </div>
 

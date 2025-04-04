@@ -1,15 +1,6 @@
-import type {
-  BillingPeriod,
-  LightWorkspaceType,
-  Result,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -19,6 +10,15 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import type {
+  BillingPeriod,
+  LightWorkspaceType,
+  Result,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, isDevelopment, Ok } from "@app/types";
 
 export function getProPlanStripeProductId(owner: WorkspaceType) {
   const isBusiness = owner.metadata?.isBusiness;
@@ -77,24 +77,17 @@ async function getDefautPriceFromMetadata(
  * to go through the checkout process.
  */
 export const createProPlanCheckoutSession = async ({
-  auth,
+  owner,
+  user,
   billingPeriod,
   planCode,
 }: {
-  auth: Authenticator;
+  owner: WorkspaceType;
+  user: UserType;
   billingPeriod: BillingPeriod;
   planCode: string;
 }): Promise<string | null> => {
   const stripe = getStripeClient();
-
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("No workspace found");
-  }
-  const user = auth.user();
-  if (!user) {
-    throw new Error("No user found");
-  }
 
   const plan = await Plan.findOne({ where: { code: planCode } });
   if (!plan) {
@@ -244,11 +237,18 @@ export const getProduct = async (
  * Calls the Stripe API to retrieve a subscription by its ID.
  */
 export const getStripeSubscription = async (
-  stripeSubscriptionId: string
+  stripeSubscriptionId: string,
+  { expandPriceCurrencyOptions }: { expandPriceCurrencyOptions?: boolean } = {}
 ): Promise<Stripe.Subscription | null> => {
   const stripe = getStripeClient();
   try {
-    return await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    if (expandPriceCurrencyOptions) {
+      return await stripe.subscriptions.retrieve(stripeSubscriptionId, {
+        expand: ["items.data.price.currency_options"],
+      });
+    } else {
+      return await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    }
   } catch (error) {
     return null;
   }

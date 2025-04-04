@@ -3,8 +3,6 @@ import type {
   PostTableCSVResponseType,
 } from "@dust-tt/client";
 import { UpsertTableFromCsvRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -14,6 +12,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -114,9 +114,10 @@ async function handler(
       if (upsertRes.isErr()) {
         switch (upsertRes.error.code) {
           case "invalid_csv_and_file":
-          case "invalid_parents":
           case "invalid_parent_id":
+          case "invalid_parents":
           case "invalid_url":
+          case "title_is_empty":
           case "title_too_long":
           case "missing_csv":
             return apiError(req, res, {

@@ -1,10 +1,10 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { WhitelistableFeature, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 
 import { makeColumnsForFeatureFlags } from "@app/components/poke/features/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeFeatureFlags } from "@app/lib/swr/poke";
+import type { WhitelistableFeature, WorkspaceType } from "@app/types";
 
 interface FeatureFlagsDataTableProps {
   owner: WorkspaceType;

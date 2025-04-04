@@ -1,10 +1,3 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  ModelId,
-} from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -29,6 +22,13 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 // A Help Center contains collections and articles:
 // - Level 1: Collections (parent_id is null)
@@ -374,7 +374,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         expandable: true,
         permission: helpCenter.permission,
         lastUpdatedAt: helpCenter.updatedAt.getTime(),
-        mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
+        mimeType: INTERNAL_MIME_TYPES.INTERCOM.HELP_CENTER,
       }));
     } else {
       const helpCenters = await fetchIntercomHelpCenters({ accessToken });
@@ -388,7 +388,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         preventSelection: true,
         permission: "none",
         lastUpdatedAt: null,
-        mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
+        mimeType: INTERNAL_MIME_TYPES.INTERCOM.HELP_CENTER,
       }));
     }
     nodes.sort((a, b) => {
@@ -435,7 +435,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         expandable: true,
         permission: collection.permission,
         lastUpdatedAt: collection.updatedAt.getTime() || null,
-        mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+        mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,
       }));
     } else {
       const collectionsInIntercom = await fetchIntercomCollections({
@@ -464,7 +464,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           expandable: false, // WE DO NOT LET EXPAND BELOW LEVEL 1 WHEN SELECTING NODES
           permission: matchingCollectionInDb ? "read" : "none",
           lastUpdatedAt: matchingCollectionInDb?.updatedAt.getTime() || null,
-          mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+          mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,
         };
       });
     }
@@ -504,7 +504,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           expandable: true,
           permission: collection.permission,
           lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
-          mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+          mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,
         })
       );
 
@@ -529,7 +529,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         expandable: false,
         permission: article.permission,
         lastUpdatedAt: article.updatedAt.getTime(),
-        mimeType: MIME_TYPES.INTERCOM.ARTICLE,
+        mimeType: INTERNAL_MIME_TYPES.INTERCOM.ARTICLE,
       }));
 
       collectionNodes.sort((a, b) => {

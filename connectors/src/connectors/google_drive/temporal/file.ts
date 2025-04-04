@@ -1,5 +1,4 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { Ok } from "@dust-tt/client";
 import tracer from "dd-trace";
 import type { OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
@@ -24,6 +23,7 @@ import {
   handleTextFile,
 } from "@connectors/connectors/shared/file";
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
@@ -40,8 +40,9 @@ import {
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import type { ModelId } from "@connectors/types";
+import type { GoogleDriveObjectType } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 async function handleGoogleDriveExport(
   oauth2client: OAuth2Client,

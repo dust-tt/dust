@@ -124,9 +124,10 @@ impl Block for Database {
             }),
             Err(e) => match &e {
                 // If the actual query failed, we don't fail the block, instead we return a block result with an error inside.
-                QueryDatabaseError::ExecutionError(s) => Ok(BlockResult {
+                QueryDatabaseError::ExecutionError(s, q) => Ok(BlockResult {
                     value: json!({
                         "error": s,
+                        "query": q,
                     }),
                     meta: None,
                 }),

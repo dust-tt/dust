@@ -1,9 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import {
-  ConfluenceClientError,
-  isConfluenceNotFoundError,
-  MIME_TYPES,
-} from "@dust-tt/types";
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
@@ -50,7 +44,12 @@ import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
+import {
+  ConfluenceClientError,
+  INTERNAL_MIME_TYPES,
+  isConfluenceNotFoundError,
+} from "@connectors/types";
 
 /**
  * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
@@ -121,7 +120,10 @@ export async function getConfluenceClient(
     effectiveConnector.connectionId
   );
 
-  return new ConfluenceClient(accessToken, { cloudId });
+  return new ConfluenceClient(accessToken, {
+    cloudId,
+    useProxy: effectiveConnector.useProxy ?? false,
+  });
 }
 
 export async function getSpaceIdsToSyncActivity(connectorId: ModelId) {
@@ -241,7 +243,7 @@ export async function confluenceUpsertSpaceFolderActivity({
     parents: [makeSpaceInternalId(spaceId)],
     parentId: null,
     title: spaceName,
-    mimeType: MIME_TYPES.CONFLUENCE.SPACE,
+    mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.SPACE,
     sourceUrl: spaceInDb?.urlSuffix && `${baseUrl}/wiki${spaceInDb.urlSuffix}`,
   });
 
@@ -359,7 +361,7 @@ async function upsertConfluencePageToDataSource({
     timestampMs: lastPageVersionCreatedAt.getTime(),
     upsertContext: { sync_type: syncType },
     title: page.title,
-    mimeType: MIME_TYPES.CONFLUENCE.PAGE,
+    mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.PAGE,
     async: true,
   });
 }

@@ -33,7 +33,7 @@ const messageVariantStyles: Record<MessageStatus, string> = {
 
 const stateVariantStyles: Record<InputStateType, string> = {
   default: cn(
-    "s-border-border-dark dark:s-border-border-dark-night",
+    "s-border-border dark:s-border-border-night",
     "s-ring-highlight/0 dark:s-ring-highlight-night/0",
     "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
     "focus-visible:s-outline-none focus-visible:s-ring-2",
@@ -42,7 +42,7 @@ const stateVariantStyles: Record<InputStateType, string> = {
   disabled: cn(
     "disabled:s-cursor-not-allowed",
     "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night",
-    "disabled:s-border-border-dark dark:disabled:s-border-border-dark-night"
+    "disabled:s-border-border dark:disabled:s-border-border-night"
   ),
   error: cn(
     "s-border-border-warning/30 dark:s-border-border-warning-night/60",
@@ -64,7 +64,7 @@ const messageVariant = cva("", {
 
 const inputStyleClasses = cva(
   cn(
-    "dark:s-text-slate-50",
+    "dark:s-text-primary-50",
     "s-text-sm s-rounded-xl s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
     "s-bg-muted-background dark:s-bg-muted-background-night",
     "s-border focus-visible:s-ring",

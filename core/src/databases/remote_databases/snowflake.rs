@@ -1,4 +1,5 @@
 use std::{collections::HashSet, env};
+use tracing::info;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -68,6 +69,7 @@ impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
             name: col.name,
             value_type: col_type,
             possible_values: None,
+            non_filterable: None,
         })
     }
 }
@@ -225,13 +227,16 @@ impl SnowflakeRemoteDatabase {
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let executor = match session.execute(query).await {
             Ok(executor) => Ok(executor),
-            Err(snowflake_connector_rs::Error::TimedOut) => Err(
-                QueryDatabaseError::ExecutionError("Query execution timed out".to_string()),
-            ),
-            Err(e) => Err(QueryDatabaseError::ExecutionError(format!(
-                "Error executing query: {}",
-                e
-            ))),
+            Err(snowflake_connector_rs::Error::TimedOut) => {
+                Err(QueryDatabaseError::ExecutionError(
+                    "Query execution timed out".to_string(),
+                    Some(query.to_string()),
+                ))
+            }
+            Err(e) => Err(QueryDatabaseError::ExecutionError(
+                format!("Error executing query: {}", e),
+                Some(query.to_string()),
+            )),
         }?;
 
         let mut query_result_rows: usize = 0;
@@ -303,17 +308,29 @@ impl SnowflakeRemoteDatabase {
                 None => None,
             })
             .collect();
-        let allowed_tables: HashSet<&str> = tables.iter().map(|table| table.name()).collect();
+        let allowed_tables: HashSet<&str> = tables
+            .iter()
+            .filter_map(|table| table.remote_database_table_id())
+            .collect();
+
         let used_forbidden_tables = used_tables
             .into_iter()
             .filter(|table| !allowed_tables.contains(*table))
             .collect::<Vec<_>>();
 
         if !used_forbidden_tables.is_empty() {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query uses tables that are not allowed: {}",
-                used_forbidden_tables.join(", ")
-            )))?
+            info!(
+                used_forbidden_tables = used_forbidden_tables.join(", "),
+                allowed_tables = allowed_tables.into_iter().collect::<Vec<_>>().join(", "),
+                "Query uses tables that are not allowed",
+            );
+            Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query uses tables that are not allowed: {}",
+                    used_forbidden_tables.join(", ")
+                ),
+                Some(query.to_string()),
+            ))?
         }
 
         let used_forbidden_operations = plan
@@ -331,10 +348,13 @@ impl SnowflakeRemoteDatabase {
             .collect::<Vec<_>>();
 
         if !used_forbidden_operations.is_empty() {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query contains forbidden operations: {}",
-                used_forbidden_operations.join(", ")
-            )))?
+            Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query contains forbidden operations: {}",
+                    used_forbidden_operations.join(", ")
+                ),
+                Some(query.to_string()),
+            ))?
         }
 
         Ok(())

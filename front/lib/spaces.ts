@@ -7,15 +7,16 @@ import {
   PlanetIcon,
   ServerIcon,
 } from "@dust-tt/sparkle";
+import { groupBy } from "lodash";
+import type React from "react";
+
 import type {
   DataSourceViewCategory,
   PlanType,
   SpaceType,
   WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import { groupBy } from "lodash";
-import type React from "react";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 const SPACE_SECTION_GROUP_ORDER = [
   "system",
@@ -118,4 +119,14 @@ export const CATEGORY_DETAILS: {
     label: "Apps",
     icon: CommandLineIcon,
   },
+};
+
+export const getSpaceAccessPriority = (space: SpaceType) => {
+  if (space.kind === "global") {
+    return 2;
+  }
+  if (!space.isRestricted) {
+    return 1;
+  }
+  return 0;
 };

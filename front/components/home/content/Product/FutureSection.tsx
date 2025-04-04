@@ -8,12 +8,14 @@ export function FutureSection() {
   return (
     <>
       <Grid>
-        <div className="col-span-12 mb-6">
-          <div>
-            <H2 from="from-sky-200" to="to-blue-400">
-              Your own AI agents, powered by the best models
+        <div className="col-span-12">
+          <div className="mb-16 lg:mb-0">
+            <H2>
+              Your own AI agents,
+              <br />
+              powered by the best models
             </H2>
-            <P size="lg">
+            <P size="lg" className="text-muted-foreground">
               Integrates with your internal&nbsp;data.
               <br />
               Uses the latest models across all major AI providers.
@@ -22,9 +24,9 @@ export function FutureSection() {
         </div>
         <div
           className={classNames(
-            "col-span-12 pt-8",
-            "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-3 md:gap-y-16"
+            "col-span-12",
+            "grid grid-cols-1 gap-8",
+            "md:grid-cols-2 lg:grid-cols-3"
           )}
         >
           <ImgBlock

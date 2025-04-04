@@ -13,20 +13,6 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  LightContentNode,
-  PlanType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  Err,
-  getSupportedFileExtensions,
-  isBigFileSize,
-  isSlugified,
-  MAX_FILE_SIZES,
-  maxFileSizeToHumanReadable,
-} from "@dust-tt/types";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -35,6 +21,20 @@ import {
   useUpdateDataSourceViewTable,
 } from "@app/lib/swr/data_source_view_tables";
 import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/file";
+import type {
+  DataSourceViewType,
+  LightContentNode,
+  PlanType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  Err,
+  getSupportedFileExtensions,
+  isBigFileSize,
+  isSlugified,
+  MAX_FILE_SIZES,
+  maxFileSizeToHumanReadable,
+} from "@app/types";
 
 interface Table {
   name: string;
@@ -427,7 +427,7 @@ export const TableUploadOrEditModal = ({
                           <ExclamationCircleIcon />
                           Warning: Large file (5MB+)
                         </div>
-                        <div className="text-sm font-normal text-element-700">
+                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                           This file is large and may take a while to upload.
                         </div>
                       </div>

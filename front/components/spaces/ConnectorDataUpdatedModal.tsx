@@ -9,9 +9,9 @@ import {
   SheetTitle,
   SparklesIcon,
 } from "@dust-tt/sparkle";
-import type { ConnectorProvider } from "@dust-tt/types";
 
 import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@app/lib/connector_providers";
+import type { ConnectorProvider } from "@app/types";
 
 type DataSourceViewSelectionModalProps = {
   isOpen: boolean;
@@ -69,7 +69,7 @@ export const ConnectorDataUpdatedModal = ({
           <p>
             See{" "}
             <Hoverable
-              className="cursor-pointer font-bold text-action-500"
+              variant="highlight"
               onClick={() => {
                 window.open("https://docs.dust.tt/docs/data", "_blank");
               }}

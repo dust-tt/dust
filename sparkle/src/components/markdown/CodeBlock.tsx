@@ -1,6 +1,8 @@
 import { cva } from "class-variance-authority";
 import React, { Suspense } from "react";
-import { amber, emerald, pink, sky, slate, violet } from "tailwindcss/colors";
+import { violet } from "tailwindcss/colors";
+
+import { customColors } from "@sparkle/lib/colors";
 
 const SyntaxHighlighter = React.lazy(
   () => import("react-syntax-highlighter/dist/esm/default-highlight")
@@ -9,14 +11,14 @@ const SyntaxHighlighter = React.lazy(
 export const codeBlockVariants = cva(
   [
     "s-mx-0.5 s-cursor-text s-rounded-lg s-border s-px-1.5 s-py-1",
-    "s-border-border-dark dark:s-border-border-dark-night",
+    "s-border-border dark:s-border-border-night",
   ],
   {
     variants: {
       variant: {
         surface: [
           "s-bg-muted dark:s-bg-muted-night",
-          "s-text-amber-600 dark:s-text-amber-600-night",
+          "s-text-golden-600 dark:s-text-golden-600-night",
         ],
       },
     },
@@ -66,47 +68,47 @@ export function CodeBlock({
       color: violet[500],
     },
     "hljs-function": {
-      color: sky[600],
+      color: customColors.blue[600],
     },
     "hljs-title": {
       // Function names
-      color: sky[600],
+      color: customColors.blue[600],
     },
     "hljs-built_in": {
       // document, console, Date
-      color: amber[500],
+      color: customColors.golden[500],
     },
     "hljs-string": {
       // Regular strings
-      color: emerald[500],
+      color: customColors.green[500],
     },
     "hljs-variable": {
       // Regular variables
-      color: slate[900],
+      color: "var(--s-foreground)",
     },
     "hljs-literal": {
       // true, false, null
-      color: amber[500],
+      color: customColors.golden[500],
     },
     "hljs-number": {
       // Numeric values
-      color: amber[500],
+      color: customColors.golden[500],
     },
     "hljs-comment": {
       // Comments
-      color: amber[700],
+      color: customColors.golden[700],
     },
     "hljs-template-variable": {
       // Template literal variables ${...}
-      color: pink[500],
+      color: customColors.rose[500],
     },
     "hljs-property": {
       // Object properties
-      color: slate[900],
+      color: "var(--s-foreground)",
     },
     "hljs-punctuation": {
       // Brackets, dots, etc
-      color: slate[900],
+      color: "var(--s-foreground)",
     },
     "hljs-operator": {
       // =, +, -, etc
@@ -114,19 +116,19 @@ export function CodeBlock({
     },
     "hljs-method": {
       // Method calls
-      color: sky[600],
+      color: customColors.blue[600],
     },
     "hljs-tag": {
       // HTML tags
-      color: pink[500],
+      color: customColors.rose[500],
     },
     "hljs-name": {
       // Tag names
-      color: pink[500],
+      color: customColors.rose[500],
     },
     "hljs-attr": {
       // HTML attributes
-      color: amber[500],
+      color: customColors.golden[500],
     },
     "hljs-params": {
       // Function parameters
@@ -143,7 +145,7 @@ export function CodeBlock({
 
   return !inline && language ? (
     <Suspense fallback={<div />}>
-      <div className="s-text-slate-900 dark:s-text-blue-200">
+      <div className="s-text-foreground dark:s-text-foreground-night">
         <SyntaxHighlighter
           wrapLongLines={wrapLongLines}
           style={codeStyle}

@@ -1,9 +1,3 @@
-import type {
-  LightWorkspaceType,
-  PokeSpaceType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -17,6 +11,12 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { spaceToPokeJSON } from "@app/lib/poke/utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import type {
+  LightWorkspaceType,
+  PokeSpaceType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   members: UserTypeWithWorkspaces[];
@@ -79,7 +79,7 @@ export default function SpacePage({
     <>
       <h3 className="text-xl font-bold">
         Space: {space.name} ({space.kind}) of workspace:{" "}
-        <a href={`/poke/${owner.sId}`} className="text-action-500">
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
       </h3>

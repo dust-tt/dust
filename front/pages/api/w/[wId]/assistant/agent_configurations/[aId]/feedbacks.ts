@@ -1,4 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -9,6 +8,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -32,7 +32,7 @@ async function handler(
   }
 
   // IMPORTANT: make sure the agent configuration is accessible by the user.
-  const agentConfiguration = await getAgentConfiguration(auth, aId);
+  const agentConfiguration = await getAgentConfiguration(auth, aId, "light");
   if (!agentConfiguration) {
     return apiError(req, res, {
       status_code: 404,

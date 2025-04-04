@@ -7,7 +7,6 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { PluginResourceTarget } from "@dust-tt/types";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
 
@@ -19,6 +18,7 @@ import {
 } from "@app/components/poke/shadcn/ui/alert";
 import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
 import { usePokePluginManifest, useRunPokePlugin } from "@app/poke/swr/plugins";
+import type { PluginResourceTarget } from "@app/types";
 
 type ExecutePluginDialogProps = {
   onClose: () => void;
@@ -67,7 +67,7 @@ export function RunPluginDialog({
 
   return (
     <Dialog open={true} onOpenChange={handleClose}>
-      <DialogContent className="w-auto bg-structure-50 sm:min-w-[600px] sm:max-w-[1000px]">
+      <DialogContent className="w-auto bg-muted-background sm:min-w-[600px] sm:max-w-[1000px]">
         <DialogHeader>
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
           <DialogDescription>{plugin.description}</DialogDescription>
@@ -102,8 +102,8 @@ export function RunPluginDialog({
               {result && result.display === "json" && (
                 <div className="mb-4 mt-4">
                   <div className="mb-2 font-medium">Result:</div>
-                  <div className="max-h-[400px] overflow-auto rounded-lg bg-slate-800 p-4">
-                    <pre className="font-mono whitespace-pre-wrap break-words text-sm text-slate-200">
+                  <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
+                    <pre className="copy-sm whitespace-pre-wrap break-words font-mono text-gray-200">
                       {JSON.stringify(result.value, null, 2)}
                     </pre>
                   </div>

@@ -1,14 +1,14 @@
-import type {
-  RoleType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { MEMBERSHIP_ROLE_TYPES } from "@dust-tt/types";
 import { useRouter } from "next/router";
 
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import type {
+  RoleType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
+import { MEMBERSHIP_ROLE_TYPES } from "@app/types";
 
 function prepareMembersForDisplay(
   members: UserTypeWithWorkspaces[]

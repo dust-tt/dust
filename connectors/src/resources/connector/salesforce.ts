@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
@@ -9,6 +8,7 @@ import type {
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
 
 export class SalesforceConnectorStrategy
   implements ConnectorProviderStrategy<"salesforce">

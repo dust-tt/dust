@@ -7,9 +7,9 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
 
 import { getActionSpecification } from "@app/components/actions/types";
+import type { AgentActionType, LightWorkspaceType } from "@app/types";
 
 interface AgentMessageActionsDrawerProps {
   actions: AgentActionType[];
@@ -55,7 +55,7 @@ export function AgentMessageActionsDrawer({
                 className="flex flex-col gap-4 pb-4 duration-1000 animate-in fade-in"
                 key={step}
               >
-                <p className="text-xl font-bold text-foreground dark:text-foreground-night">
+                <p className="heading-xl text-foreground dark:text-foreground-night">
                   Step {step}
                 </p>
                 {actions.map((action, idx) => {

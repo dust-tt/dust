@@ -1,9 +1,8 @@
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   TemplateAgentConfigurationType,
-} from "@dust-tt/types";
-
-import logger from "@app/logger/logger";
+} from "@app/types";
 
 export function deprecatedGetFirstActionConfiguration(
   config: AgentConfigurationType | TemplateAgentConfigurationType

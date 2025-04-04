@@ -1,12 +1,3 @@
-import type {
-  CoreAPILightDocument,
-  DocumentType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  CoreAPI,
-  PostDataSourceDocumentRequestBodySchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -21,6 +12,12 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  CoreAPILightDocument,
+  DocumentType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { CoreAPI, PostDataSourceDocumentRequestBodySchema } from "@app/types";
 
 export const config = {
   api: {

@@ -1,4 +1,3 @@
-import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { v4 as uuidv4 } from "uuid";
 
@@ -9,6 +8,7 @@ import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const DRIVE_CONCURRENCY = 10;
 
@@ -58,7 +58,7 @@ async function upsertFoldersForConnector(
           parents,
           parentId: parents[1] || null,
           title: spreadsheetName,
-          mimeType: MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
+          mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
           sourceUrl: getSourceUrlForGoogleDriveSheet(driveFileId),
         });
         localLogger.info(

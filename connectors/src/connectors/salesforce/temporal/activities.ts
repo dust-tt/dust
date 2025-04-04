@@ -1,10 +1,10 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-
 import { fetchTree } from "@connectors/connectors/salesforce/lib/salesforce_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/salesforce/lib/utils";
 import { sync } from "@connectors/lib/remote_databases/activities";
+import { parseInternalId } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 export async function syncSalesforceConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes =
@@ -25,11 +25,11 @@ export async function syncSalesforceConnection(connectorId: ModelId) {
 
   await sync({
     remoteDBTree: tree,
-    mimeTypes: MIME_TYPES.SALESFORCE,
+    mimeTypes: INTERNAL_MIME_TYPES.SALESFORCE,
     connector,
     // Only keep the table name in the remote table id.
     internalTableIdToRemoteTableId: (internalTableId: string) =>
-      internalTableId.split(".").pop() ?? internalTableId,
+      parseInternalId(internalTableId).tableName ?? internalTableId,
   });
 
   await syncSucceeded(connectorId);

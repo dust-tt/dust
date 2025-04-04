@@ -3,23 +3,12 @@ import type {
   PostConversationsResponseType,
 } from "@dust-tt/client";
 import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
-import type {
-  ContentFragmentType,
-  UserMessageType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  ConversationError,
-  isContentFragmentInputWithContentType,
-  isEmptyString,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import {
   createConversation,
   getConversation,
-  getUserConversations,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -27,7 +16,21 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  ContentFragmentType,
+  UserMessageType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  ConversationError,
+  isContentFragmentInput,
+  isContentFragmentInputWithContentNode,
+  isContentFragmentInputWithFileId,
+  isContentFragmentInputWithInlinedContent,
+  isEmptyString,
+} from "@app/types";
 
 /**
  * @swagger
@@ -160,6 +163,18 @@ async function handler(
         }
       }
 
+      for (const fragment of resolvedFragments) {
+        if (!isContentFragmentInput(fragment)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid content fragment type.",
+            },
+          });
+        }
+      }
+
       let conversation = await createConversation(auth, {
         title: title ?? null,
         visibility,
@@ -172,38 +187,51 @@ async function handler(
         const { context, ...rest } = resolvedFragment;
         let contentFragment = rest;
 
-        if (isContentFragmentInputWithContentType(contentFragment)) {
+        if (isContentFragmentInputWithInlinedContent(contentFragment)) {
           const contentFragmentRes = await toFileContentFragment(auth, {
             contentFragment,
           });
           if (contentFragmentRes.isErr()) {
+            if (contentFragmentRes.error.code === "file_type_not_supported") {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: contentFragmentRes.error.message,
+                },
+              });
+            }
             throw new Error(contentFragmentRes.error.message);
           }
           contentFragment = contentFragmentRes.value;
         }
-
-        const cfRes = await postNewContentFragment(
-          auth,
-          conversation,
-          contentFragment,
-          {
-            username: context?.username ?? null,
-            fullName: context?.fullName ?? null,
-            email: context?.email ?? null,
-            profilePictureUrl: context?.profilePictureUrl ?? null,
+        if (
+          isContentFragmentInputWithFileId(contentFragment) ||
+          isContentFragmentInputWithContentNode(contentFragment)
+        ) {
+          const cfRes = await postNewContentFragment(
+            auth,
+            conversation,
+            contentFragment,
+            {
+              username: context?.username ?? null,
+              fullName: context?.fullName ?? null,
+              email: context?.email ?? null,
+              profilePictureUrl: context?.profilePictureUrl ?? null,
+            }
+          );
+          if (cfRes.isErr()) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: cfRes.error.message,
+              },
+            });
           }
-        );
-        if (cfRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: cfRes.error.message,
-            },
-          });
+          newContentFragment = cfRes.value;
         }
 
-        newContentFragment = cfRes.value;
         const updatedConversationRes = await getConversation(
           auth,
           conversation.sId
@@ -279,7 +307,18 @@ async function handler(
       });
       return;
     case "GET":
-      const conversations = await getUserConversations(auth);
+      if (!auth.user()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "user_not_found",
+            message:
+              "Getting conversations is only available when authenticated as a user.",
+          },
+        });
+      }
+      const conversations =
+        await ConversationResource.listConversationsForUser(auth);
       res.status(200).json({ conversations });
       return;
 

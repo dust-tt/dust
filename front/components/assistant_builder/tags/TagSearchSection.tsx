@@ -1,13 +1,13 @@
 import { Label } from "@dust-tt/sparkle";
-import type {
-  DataSourceTag,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import { TagSearchInput } from "@app/components/assistant_builder/tags/TagSearchInput";
 import { useDataSourceViewSearchTags } from "@app/lib/swr/data_source_views";
+import type {
+  DataSourceTag,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface TagSearchSectionProps {
   dataSourceViews: DataSourceViewType[];

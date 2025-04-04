@@ -1,5 +1,3 @@
-import { MIME_TYPES } from "@dust-tt/types";
-
 import type {
   GongCallTranscript,
   GongTranscriptMetadata,
@@ -16,7 +14,8 @@ import {
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { GongTranscriptResource } from "@connectors/resources/gong_resources";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 function formatDateNicely(date: Date) {
   const yyyy = date.getFullYear();
@@ -72,6 +71,7 @@ export async function syncGongTranscript({
     await GongTranscriptResource.makeNew({
       blob: {
         connectorId: connector.id,
+        callDate: createdAtDate.getTime(),
         callId,
         title,
         url: documentUrl,
@@ -148,7 +148,7 @@ export async function syncGongTranscript({
     loggerArgs: { ...loggerArgs, callId },
     upsertContext: { sync_type: "batch" },
     title,
-    mimeType: MIME_TYPES.GONG.TRANSCRIPT,
+    mimeType: INTERNAL_MIME_TYPES.GONG.TRANSCRIPT,
     async: true,
   });
 }

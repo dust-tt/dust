@@ -6,11 +6,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { AppType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { APIError } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import { APP_NAME_REGEXP } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
@@ -24,6 +19,11 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
+import type { AppType } from "@app/types";
+import type { SubscriptionType } from "@app/types";
+import type { APIError } from "@app/types";
+import type { WorkspaceType } from "@app/types";
+import { APP_NAME_REGEXP } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

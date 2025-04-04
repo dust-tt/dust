@@ -1,8 +1,8 @@
 import { ContextItem, LargeAssistantCard } from "@dust-tt/sparkle";
-import type { TemplateTagCodeType, TemplateTagsType } from "@dust-tt/types";
 import _ from "lodash";
 
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
+import type { TemplateTagCodeType, TemplateTagsType } from "@app/types";
 
 interface TemplateGridProps {
   templates: AssistantTemplateListType[];

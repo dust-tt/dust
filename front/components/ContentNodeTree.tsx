@@ -10,12 +10,12 @@ import {
   Tree,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { APIError, ContentNode } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type { APIError, ContentNode } from "@app/types";
 
 const unselectedChildren = (
   selection: Record<string, ContentNodeTreeItemStatus>,
@@ -55,14 +55,10 @@ export type UseResourcesHook = (parentId: string | null) => {
   resourcesError?: APIError | null;
 };
 
-export type ContentNodeTreeItemStatus = {
+export type ContentNodeTreeItemStatus<T extends ContentNode = ContentNode> = {
   isSelected: boolean;
-  node: ContentNode;
-  // when setting permissions on a connector, nodes that are to be selected /
-  // unselected may not be synced yet so we cannot easily access their parents
-  // In that case parents is null
-  // It is not an issue for this component(see ConnectorPermissionsModal.tsx)
-  parents: string[] | null;
+  node: T;
+  parents: string[];
 };
 
 export type TreeSelectionModelUpdater = (
@@ -110,7 +106,7 @@ const useContentNodeTreeContext = () => {
 interface ContentNodeTreeChildrenProps {
   depth: number;
   isRoundedBackground?: boolean;
-  isSearchEnabled?: boolean;
+  isTitleFilterEnabled?: boolean;
   parentId: string | null;
   parentIds: string[];
   parentIsSelected?: boolean;
@@ -119,7 +115,7 @@ interface ContentNodeTreeChildrenProps {
 function ContentNodeTreeChildren({
   depth,
   isRoundedBackground,
-  isSearchEnabled,
+  isTitleFilterEnabled,
   parentId,
   parentIds,
   parentIsSelected,
@@ -128,7 +124,7 @@ function ContentNodeTreeChildren({
     useContentNodeTreeContext();
 
   const sendNotification = useSendNotification();
-  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("");
   // This is to control when to display the "Select All" vs "unselect All" button.
   // If the user pressed "select all", we want to display "unselect all" and vice versa.
   // But if the user types in the search bar, we want to reset the button to "select all".
@@ -147,7 +143,7 @@ function ContentNodeTreeChildren({
   } = useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
-    (n) => search.trim().length === 0 || n.title.includes(search)
+    (n) => filter.trim().length === 0 || n.title.includes(filter)
   );
   // The count below does not take into account the search, it's: total number of nodes - number of nodes displayed.
   const hiddenNodesCount = totalResourceCount
@@ -325,22 +321,22 @@ function ContentNodeTreeChildren({
 
   return (
     <>
-      {isSearchEnabled && setSelectedNodes && (
+      {isTitleFilterEnabled && setSelectedNodes && (
         <>
           <div className="flex w-full flex-row items-center">
             <div className="flex-grow p-1">
               <SearchInput
                 name="search"
-                placeholder="Search..."
-                value={search}
+                placeholder="Search"
+                value={filter}
                 onChange={(v) => {
-                  setSearch(v);
+                  setFilter(v);
                   setSelectAllClicked(false);
                 }}
               />
             </div>
 
-            {search.trim().length > 0 && (
+            {filter.trim().length > 0 && (
               <Button
                 icon={ListCheckIcon}
                 label={selectAllClicked ? "Unselect All" : "Select All"}
@@ -369,7 +365,7 @@ function ContentNodeTreeChildren({
       )}
       <div className="overflow-y-auto p-1">
         {isRoundedBackground ? (
-          <div className="rounded-xl border bg-structure-50 p-4 dark:bg-structure-50-night">
+          <div className="rounded-xl border bg-muted-background p-4 dark:bg-muted-background-night">
             {tree}
           </div>
         ) : (
@@ -388,7 +384,7 @@ interface ContentNodeTreeProps {
   /**
    * If true, a search bar will be displayed at the top of the tree.
    */
-  isSearchEnabled?: boolean;
+  isTitleFilterEnabled?: boolean;
   /**
    * Whole tree will be considered selected and disabled.
    */
@@ -428,7 +424,7 @@ interface ContentNodeTreeProps {
 
 export function ContentNodeTree({
   isRoundedBackground,
-  isSearchEnabled,
+  isTitleFilterEnabled,
   onDocumentViewClick,
   parentIsSelected,
   selectedNodes,
@@ -453,7 +449,7 @@ export function ContentNodeTree({
       <ContentNodeTreeChildren
         depth={0}
         isRoundedBackground={isRoundedBackground}
-        isSearchEnabled={isSearchEnabled}
+        isTitleFilterEnabled={isTitleFilterEnabled}
         parentId={null}
         parentIds={[]}
         parentIsSelected={parentIsSelected ?? false}

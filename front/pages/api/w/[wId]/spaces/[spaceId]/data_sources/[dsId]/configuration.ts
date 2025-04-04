@@ -1,12 +1,3 @@
-import type {
-  ConnectorConfiguration,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  ioTsParsePayload,
-  UpdateConnectorConfigurationTypeSchema,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -18,6 +9,12 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { ConnectorConfiguration, WithAPIErrorResponse } from "@app/types";
+import {
+  ConnectorsAPI,
+  ioTsParsePayload,
+  UpdateConnectorConfigurationTypeSchema,
+} from "@app/types";
 
 export type GetDataSourceConfigurationResponseBody = {
   configuration: ConnectorConfiguration;

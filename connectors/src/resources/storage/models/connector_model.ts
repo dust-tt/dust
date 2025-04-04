@@ -1,13 +1,13 @@
-import type {
-  ConnectorErrorType,
-  ConnectorProvider,
-  ConnectorSyncStatus,
-} from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/client";
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { BaseModel } from "@connectors/resources/storage/wrappers/base";
+import type {
+  ConnectorErrorType,
+  ConnectorSyncStatus,
+} from "@connectors/types";
 
 export class ConnectorModel extends BaseModel<ConnectorModel> {
   declare createdAt: CreationOptional<Date>;

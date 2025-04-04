@@ -1319,6 +1319,92 @@
         }
       }
     },
+    "/api/v1/w/{wId}/search": {
+      "post": {
+        "summary": "Search for nodes in the workspace",
+        "description": "Search for nodes in the workspace",
+        "tags": [
+          "Search"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "The search query"
+                  },
+                  "includeDataSources": {
+                    "type": "array",
+                    "description": "List of data source IDs to include in search",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "viewType": {
+                    "type": "string",
+                    "description": "Type of view to filter results"
+                  },
+                  "spaceIds": {
+                    "type": "array",
+                    "description": "List of space IDs to search in",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "nodeIds": {
+                    "type": "array",
+                    "description": "List of specific node IDs to search",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results retrieved successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Space not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/spaces/{spaceId}/apps/{aId}/runs/{runId}": {
       "get": {
         "summary": "Get an app run",
@@ -2298,7 +2384,7 @@
                   },
                   "timestamp": {
                     "type": "number",
-                    "description": "Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000)."
+                    "description": "Unix timestamp (in milliseconds) for the document (e.g. 1736365559000)."
                   },
                   "light_document_output": {
                     "type": "boolean",
@@ -3466,7 +3552,7 @@
                   },
                   "timestamp": {
                     "type": "number",
-                    "description": "Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000)."
+                    "description": "Unix timestamp (in milliseconds) for the table (e.g. 1736365559000)."
                   },
                   "tags": {
                     "type": "array",
@@ -3627,7 +3713,7 @@
     "/api/v1/w/{wId}/workspace-usage": {
       "get": {
         "summary": "Get workspace usage data",
-        "description": "Get usage data for the workspace identified by {wId} in CSV format.",
+        "description": "Get usage data for the workspace identified by {wId} in CSV or JSON format.",
         "tags": [
           "Workspace"
         ],
@@ -3668,12 +3754,25 @@
             "in": "query",
             "name": "mode",
             "required": true,
-            "description": "The mode of date range selection ('month' or 'range')",
+            "description": "The mode of date range selection",
             "schema": {
               "type": "string",
               "enum": [
                 "month",
                 "range"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "The output format of the data (defaults to 'csv')",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
               ]
             }
           },
@@ -3697,11 +3796,16 @@
         ],
         "responses": {
           "200": {
-            "description": "The usage data in CSV format or a ZIP of multiple CSVs if table is equal to \"all\"",
+            "description": "The usage data in CSV or JSON format, or a ZIP of multiple CSVs if table is equal to \"all\"",
             "content": {
               "text/csv": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object"
                 }
               },
               "application/zip": {
@@ -4206,6 +4310,16 @@
             "type": "string",
             "description": "The id of the previously uploaded file (optional if `content` and `contentType` are set)",
             "example": "fil_123456"
+          },
+          "nodeId": {
+            "type": "string",
+            "description": "The id of the content node (optional if `content` and `contentType` are set)",
+            "example": "node_123456"
+          },
+          "nodeDataSourceViewId": {
+            "type": "string",
+            "description": "The id of the data source view (optional if `content` and `contentType` are set)",
+            "example": "dsv_123456"
           },
           "context": {
             "$ref": "#/components/schemas/Context"

@@ -16,24 +16,24 @@ export const menuStyleClasses = {
   inset: "s-pl-8",
   container: cn(
     "s-rounded-xl s-border-hovering s-p-1",
-    "s-border s-border-border-dark dark:s-border-border-dark-night",
-    "s-bg-background dark:s-bg-background-night",
-    "s-text-primary-950 dark:s-text-primary-950-night",
+    "s-border s-border-border dark:s-border-border-night",
+    "s-bg-background dark:s-bg-muted-background-night",
+    "s-text-foreground dark:s-text-foreground-night",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
     "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
   ),
   item: cva(
     cn(
-      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-medium s-px-2 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
+      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-semibold s-px-2 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
       "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
     ),
     {
       variants: {
         variant: {
           default: cn(
-            "focus:s-text-primary-950 dark:focus:s-text-primary-950-night",
-            "hover:s-bg-primary-150 dark:hover:s-bg-primary-300-night",
-            "focus:s-bg-primary-150 dark:focus:s-bg-primary-300-night"
+            "focus:s-text-foreground dark:focus:s-text-foreground-night",
+            "hover:s-bg-muted-background dark:hover:s-bg-primary-900",
+            "focus:s-bg-muted-background dark:focus:s-bg-primary-900"
           ),
           warning: cn(
             "s-text-warning-500 dark:s-text-warning-500-night",
@@ -98,6 +98,7 @@ type MutuallyExclusiveProps<BaseProps, ExtraProps> = Simplify<
 interface ItemWithLabelIconAndDescriptionProps {
   label?: string;
   icon?: React.ComponentType;
+  extraIcon?: React.ComponentType;
   description?: string;
   children?: React.ReactNode;
 }
@@ -107,21 +108,27 @@ const ItemWithLabelIconAndDescription = <
 >({
   label,
   icon,
+  extraIcon,
   description,
   children,
 }: T) => {
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr] s-items-center s-gap-x-1.5">
-          {icon && (
+        <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-1.5">
+          {(icon || extraIcon) && (
             <div
               className={cn(
                 "s-flex",
                 description ? "s-items-start s-pt-0.5" : "s-items-center"
               )}
             >
-              <Icon size="xs" visual={icon} />
+              {icon && <Icon size={description ? "sm" : "xs"} visual={icon} />}
+              {extraIcon && (
+                <div className="-s-ml-1.5 s-mt-1.5">
+                  <Icon size="xs" visual={extraIcon} />
+                </div>
+              )}
             </div>
           )}
           <div className="s-flex s-flex-col">
@@ -217,6 +224,7 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
   } & Omit<LinkWrapperProps, "children" | "className">,
   LabelAndIconProps & {
     description?: string;
+    extraIcon?: React.ComponentType;
   }
 >;
 
@@ -232,6 +240,7 @@ const DropdownMenuItem = React.forwardRef<
       className,
       inset,
       icon,
+      extraIcon,
       label,
       href,
       target,
@@ -266,6 +275,7 @@ const DropdownMenuItem = React.forwardRef<
           <ItemWithLabelIconAndDescription
             label={label}
             icon={icon}
+            extraIcon={extraIcon}
             description={description}
           >
             {children}
@@ -440,7 +450,7 @@ const DropdownMenuStaticItem = React.forwardRef<
       className
     )}
   >
-    <span className="s-grow s-font-medium">{label}</span>
+    <span className="s-grow s-font-semibold">{label}</span>
     {value && (
       <span
         className={cn(

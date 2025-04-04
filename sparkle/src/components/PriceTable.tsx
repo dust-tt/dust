@@ -17,21 +17,27 @@ interface PriceTableProps {
 }
 
 const colorTable = {
-  pink: "s-bg-gradient-to-r s-from-pink-400 s-to-red-300 dark:s-bg-pink-500",
-  amber:
-    "s-bg-gradient-to-r s-from-amber-400 s-to-yellow-300 s-bg-amber-400 dark:s-bg-amber-500",
-  sky: "s-bg-gradient-to-r s-from-sky-400 s-to-blue-400 s-bg-sky-400 dark:s-bg-sky-500",
-  blue: "s-bg-gradient-to-r s-from-blue-400 s-to-indigo-300 s-bg-blue-400 dark:s-bg-blue-500",
-  emerald:
-    "s-bg-gradient-to-r s-from-emerald-400 s-to-green-400 s-bg-emerald-400 dark:s-bg-emerald-500",
+  pink: "s-bg-brand-pink-rose",
+  amber: "s-bg-brand-sunshine-golden ",
+  sky: "s-bg-brand-sky-blue",
+  blue: "s-bg-brand-electric-blue",
+  emerald: "s-bg-brand-tea-green",
 };
 
+// const colorTable = {
+//   pink: "s-bg-brand-support-rose",
+//   amber: "s-bg-brand-support-golden ",
+//   sky: "s-bg-brand-support-blue",
+//   blue: "s-bg-brand-support-blue",
+//   emerald: "s-bg-brand-support-green",
+// };
+
 const textColorTable = {
-  pink: "s-text-pink-900 dark:s-text-pink-950",
-  amber: "s-text-amber-900 dark:s-text-amber-950",
-  sky: "s-text-sky-900 dark:s-text-sky-950",
-  blue: "s-text-blue-900 dark:s-text-blue-950",
-  emerald: "s-text-emerald-900 dark:s-text-emerald-950",
+  pink: " s-text-brand-red-rose",
+  amber: "s-text-brand-orange-golden",
+  sky: "s-text-brand-electric-blue",
+  blue: "s-text-brand-sky-blue",
+  emerald: "s-text-brand-hunter-green",
 };
 
 const sizeTable = {
@@ -84,9 +90,9 @@ export function PriceTable({
       >
         <div
           className={classNames(
-            size === "xs" ? "s-text-2xl" : "s-text-3xl",
-            "s-w-full s-text-right s-font-semibold",
-            "s-text-structure-0"
+            size === "xs" ? "s-heading-2xl" : "s-heading-3xl",
+            "s-w-full s-text-right",
+            "s-text-foreground"
           )}
         >
           {title}
@@ -94,17 +100,16 @@ export function PriceTable({
         <div className="-s-mt-2 s-flex s-flex-row s-items-baseline s-gap-2">
           <span
             className={classNames(
-              size === "xs" ? "s-text-3xl" : "s-text-4xl",
-              textColorTable[color],
-              "s-font-bold"
+              size === "xs" ? "s-heading-3xl" : "s-heading-4xl",
+              textColorTable[color]
             )}
           >
             {price}
           </span>
           <span
             className={classNames(
-              "s-font-bold s-text-white/70",
-              size === "xs" ? "s-text-base" : "s-text-lg"
+              "s-text-foreground",
+              size === "xs" ? "s-heading-base" : "s-heading-lg"
             )}
           >
             {priceLabel}
@@ -120,7 +125,7 @@ export function PriceTable({
         }}
         className={classNames(
           "s-flex s-h-full s-flex-col s-overflow-hidden s-shadow-md",
-          "s-bg-white dark:s-bg-structure-50-night"
+          "s-bg-background dark:s-bg-muted-background-night"
         )}
       >
         {childrenWithProps}
@@ -136,9 +141,9 @@ const iconTable = {
 };
 
 const iconColorTable = {
-  check: "s-text-emerald-500",
-  dash: "s-text-amber-500",
-  xmark: "s-text-red-500",
+  check: "s-text-green-500",
+  dash: "s-text-golden-500",
+  xmark: "s-text-rose-500",
 };
 
 interface PriceTableItemProps {
@@ -161,8 +166,8 @@ PriceTable.Item = function ({
           ? "s-gap-2 s-p-2.5 s-text-sm"
           : "s-gap-3 s-p-4 s-text-base",
         "s-flex s-items-start s-border-b",
-        "s-border-structure-100 s-text-element-800",
-        "dark:s-border-structure-200-night/50 dark:s-text-element-800-night",
+        "s-border-border s-text-muted-foreground",
+        "dark:s-border-border-dark-night dark:s-text-muted-foreground-night",
         className
       )}
     >
@@ -176,7 +181,7 @@ PriceTable.Item = function ({
       <div
         className={classNames(
           variant === "xmark"
-            ? "s-text-element-600 dark:s-text-element-600-night"
+            ? "s-text-primery-600 dark:s-text-primery-600-night"
             : "",
           "s-overflow-hidden"
         )}
@@ -206,7 +211,7 @@ PriceTable.ActionContainer = function ({
           "s-flex s-w-full s-justify-center s-px-2",
           size === "xs" ? "s-py-2" : "s-py-4",
           position === "top"
-            ? "s-border-b s-border-structure-100 dark:s-border-structure-200-night/50"
+            ? "s-border-b s-border-border dark:s-border-border-dark-night"
             : ""
         )}
       >

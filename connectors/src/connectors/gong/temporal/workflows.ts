@@ -1,15 +1,21 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
   workflowInfo,
 } from "@temporalio/workflow";
 
-import { makeGongSyncTranscriptsWorkflowIdFromParentId } from "@connectors/connectors/gong/lib/internal_ids";
+import {
+  makeGongGarbageCollectionWorkflowIdFromParentId,
+  makeGongSyncTranscriptsWorkflowIdFromParentId,
+} from "@connectors/connectors/gong/lib/internal_ids";
 import type * as activities from "@connectors/connectors/gong/temporal/activities";
+import type { ModelId } from "@connectors/types";
 
 const {
+  gongCheckGarbageCollectionStateActivity,
+  gongDeleteOutdatedTranscriptsActivity,
   gongListAndSaveUsersActivity,
+  gongSaveGarbageCollectionSuccessActivity,
   gongSaveStartSyncActivity,
   gongSaveSyncSuccessActivity,
   gongSyncTranscriptsActivity,
@@ -61,6 +67,34 @@ export async function gongSyncWorkflow({
     connectorId,
     lastSyncTimestamp: syncStartTs,
   });
+
+  const garbageCollectionStartTs = Date.now();
+
+  const { shouldRunGarbageCollection } =
+    await gongCheckGarbageCollectionStateActivity({
+      connectorId,
+      currentTimestamp: garbageCollectionStartTs,
+    });
+
+  // We start a child workflow for the garbage collection of outdated transcripts.
+  if (shouldRunGarbageCollection) {
+    await executeChild(gongGarbageCollectWorkflow, {
+      workflowId: makeGongGarbageCollectionWorkflowIdFromParentId(workflowId),
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          connectorId,
+          garbageCollectionStartTs,
+        },
+      ],
+      memo,
+    });
+
+    await gongSaveGarbageCollectionSuccessActivity({
+      connectorId,
+      lastGarbageCollectionTimestamp: garbageCollectionStartTs,
+    });
+  }
 }
 
 export async function gongSyncTranscriptsWorkflow({
@@ -82,4 +116,24 @@ export async function gongSyncTranscriptsWorkflow({
 
     pageCursor = nextPageCursor;
   } while (pageCursor !== null);
+}
+
+export async function gongGarbageCollectWorkflow({
+  connectorId,
+  garbageCollectionStartTs,
+}: {
+  connectorId: ModelId;
+  garbageCollectionStartTs: number;
+}) {
+  let hasMoreTranscripts: boolean | null = null;
+
+  // Do an outer loop to garbage collect all outdated transcripts and avoid hitting the activity startToCloseTimeout
+  // Enabling a retention policy can lead to having many transcripts to remove.
+  do {
+    const { hasMore } = await gongDeleteOutdatedTranscriptsActivity({
+      connectorId,
+      garbageCollectionStartTs,
+    });
+    hasMoreTranscripts = hasMore;
+  } while (hasMoreTranscripts);
 }

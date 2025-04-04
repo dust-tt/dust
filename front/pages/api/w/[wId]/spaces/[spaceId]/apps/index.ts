@@ -1,5 +1,3 @@
-import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
-import { APP_NAME_REGEXP, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -11,6 +9,8 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { AppType, WithAPIErrorResponse } from "@app/types";
+import { APP_NAME_REGEXP, CoreAPI } from "@app/types";
 
 export type GetAppsResponseBody = {
   apps: AppType[];

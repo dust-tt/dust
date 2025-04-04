@@ -1,15 +1,15 @@
 import { Breadcrumbs, CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewCategory,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
 import React from "react";
 
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import type {
+  DataSourceViewCategory,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 interface SpaceBreadcrumbProps {
   owner: LightWorkspaceType;

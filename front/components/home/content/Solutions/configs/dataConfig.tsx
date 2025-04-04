@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Data & Analytics",
   title: <>Turn Data Into Business Decisions</>,
-  from: "from-purple-200",
-  to: "to-purple-500",
+  accentColor: "text-brand-red-rose",
   description: (
     <>
       Transform complex data into instant insights, automate queries, and
@@ -115,8 +114,7 @@ export const Metrics: MetricProps = {
       description: <> saved weekly per rep for selling</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -156,13 +154,13 @@ export const Quote: QuoteProps = {
     "Thanks to what we've implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
   name: "Vincent Delagabbe",
   title: "Software Engineer at Alan",
-  logo: "/static/landing/logos/alan.png",
+  logo: "/static/landing/logos/color/alan.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/9u1uft5pg7?web_component=true&seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/9u1uft5pg7",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [

@@ -9,16 +9,16 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { DocumentDeletionKey } from "@dust-tt/types";
 import * as _ from "lodash";
 import { useState } from "react";
 
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import type {
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
+} from "@app/types";
+import { DocumentDeletionKey } from "@app/types";
 
 interface DocumentOrTableDeleteDialogProps {
   dataSourceView: DataSourceViewType | null;

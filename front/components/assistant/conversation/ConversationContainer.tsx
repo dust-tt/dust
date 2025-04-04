@@ -1,15 +1,4 @@
 import { Page, useSendNotification } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  LightAgentConfigurationType,
-  MentionType,
-  Result,
-  SubscriptionType,
-  UploadedContentFragment,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
@@ -32,6 +21,17 @@ import {
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
+import type {
+  AgentMention,
+  ContentFragmentsType,
+  LightAgentConfigurationType,
+  MentionType,
+  Result,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -99,7 +99,7 @@ export function ConversationContainer({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    contentFragments: ContentFragmentsType
   ): Promise<Result<undefined, DustError>> => {
     if (!activeConversationId) {
       return new Err({
@@ -112,10 +112,9 @@ export function ConversationContainer({
     const messageData = { input, mentions, contentFragments };
 
     try {
-      // Update the local state immediately and fire the
-      // request. Since the API will return the updated
-      // data, there is no need to start a new revalidation
-      // and we can directly populate the cache.
+      // Update the local state immediately and fire the request. Since the API will return the
+      // updated data, there is no need to start a new revalidation and we can directly populate the
+      // cache.
       await mutateMessages(
         async (currentMessagePages) => {
           const result = await submitMessage({
@@ -173,8 +172,7 @@ export function ConversationContainer({
       await mutateConversations();
       scrollConversationsToTop();
     } catch (err) {
-      // If the API errors, the original data will be
-      // rolled back by SWR automatically.
+      // If the API errors, the original data will be rolled back by SWR automatically.
       console.error("Failed to post message:", err);
       return new Err({
         code: "internal_error",
@@ -192,7 +190,7 @@ export function ConversationContainer({
     async (
       input: string,
       mentions: MentionType[],
-      contentFragments: UploadedContentFragment[]
+      contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({

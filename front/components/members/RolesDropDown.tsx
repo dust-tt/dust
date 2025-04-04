@@ -1,16 +1,16 @@
 import {
+  Button,
   ChevronDownIcon,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
 } from "@dust-tt/sparkle";
-import type { ActiveRoleType } from "@dust-tt/types";
-import { ACTIVE_ROLES } from "@dust-tt/types";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import type { ActiveRoleType } from "@app/types";
+import { ACTIVE_ROLES } from "@app/types";
 
 interface RoleDropDownProps {
   onChange: (role: ActiveRoleType) => void;
@@ -28,12 +28,7 @@ export function RoleDropDown({ onChange, selectedRole }: RoleDropDownProps) {
           >
             {displayRole(selectedRole)}
           </Chip>
-          <IconButton
-            icon={ChevronDownIcon}
-            size="sm"
-            variant="outline"
-            className="group-hover:text-action-400"
-          />
+          <Button icon={ChevronDownIcon} size="sm" variant="ghost" />
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent>

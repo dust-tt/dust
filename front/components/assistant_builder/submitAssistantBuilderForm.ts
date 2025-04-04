@@ -1,14 +1,3 @@
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-  ModelConfigurationType,
-  PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  RetrievalTimeframe,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import { removeLeadingAt } from "@app/components/assistant_builder/NamingScreen";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
@@ -20,19 +9,50 @@ import type {
 import {
   DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
+} from "@app/lib/actions/constants";
+import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
+import type {
+  AgentConfigurationType,
+  DataSourceViewSelectionConfigurations,
+  LightAgentConfigurationType,
+  ModelConfigurationType,
+  PostOrPatchAgentConfigurationRequestBody,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
 };
+
+function processDataSourceViewSelectionConfigurations({
+  owner,
+  dataSourceConfigurations,
+}: {
+  owner: WorkspaceType;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
+}) {
+  return Object.values(dataSourceConfigurations).map(
+    ({ dataSourceView, selectedResources, isSelectAll, tagsFilter }) => ({
+      dataSourceViewId: dataSourceView.sId,
+      workspaceId: owner.sId,
+      filter: {
+        parents: !isSelectAll
+          ? {
+              in: selectedResources.map((resource) => resource.internalId),
+              not: [],
+            }
+          : null,
+        tags: tagsFilter,
+      },
+    })
+  );
+}
 
 export async function submitAssistantBuilderForm({
   owner,
@@ -102,30 +122,11 @@ export async function submitAssistantBuilderForm({
             query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
             relativeTimeFrame: timeFrame,
             topK: "auto",
-            dataSources: Object.values(
-              a.configuration.dataSourceConfigurations
-            ).map(
-              ({
-                dataSourceView,
-                selectedResources,
-                isSelectAll,
-                tagsFilter,
-              }) => ({
-                dataSourceViewId: dataSourceView.sId,
-                workspaceId: owner.sId,
-                filter: {
-                  parents: !isSelectAll
-                    ? {
-                        in: selectedResources.map(
-                          (resource) => resource.internalId
-                        ),
-                        not: [],
-                      }
-                    : null,
-                  tags: tagsFilter,
-                },
-              })
-            ),
+            dataSources: processDataSourceViewSelectionConfigurations({
+              owner,
+              dataSourceConfigurations:
+                a.configuration.dataSourceConfigurations,
+            }),
           },
         ];
 
@@ -180,6 +181,23 @@ export async function submitAssistantBuilderForm({
           },
         ];
 
+      case "MCP":
+        return [
+          {
+            type: "mcp_server_configuration",
+            name: a.name,
+            description: a.description,
+            mcpServerViewId: a.configuration.mcpServerViewId,
+            dataSources: a.configuration.dataSourceConfigurations
+              ? processDataSourceViewSelectionConfigurations({
+                  owner,
+                  dataSourceConfigurations:
+                    a.configuration.dataSourceConfigurations,
+                })
+              : null,
+          },
+        ];
+
       case "PROCESS":
         return [
           {
@@ -213,24 +231,6 @@ export async function submitAssistantBuilderForm({
             tagsFilter: a.configuration.tagsFilter,
             relativeTimeFrame: timeFrame,
             schema: a.configuration.schema,
-          },
-        ];
-
-      case "GITHUB_GET_PULL_REQUEST":
-        return [
-          {
-            type: "github_get_pull_request_configuration",
-            name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
-            description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-          },
-        ];
-
-      case "GITHUB_CREATE_ISSUE":
-        return [
-          {
-            type: "github_create_issue_configuration",
-            name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-            description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
           },
         ];
 
@@ -291,6 +291,7 @@ export async function submitAssistantBuilderForm({
         temperature: builderState.generationSettings.temperature,
         reasoningEffort:
           builderState.generationSettings.modelSettings.reasoningEffort,
+        responseFormat: builderState.generationSettings.responseFormat,
       },
       maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,

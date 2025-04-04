@@ -1,23 +1,12 @@
 import type {
+  GetDocumentsResponseType,
+  GetFolderResponseType,
+  GetTableResponseType,
+  PostDataSourceDocumentRequestType,
   UpsertDatabaseTableRequestType,
   UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type {
-  CoreAPIDataSourceDocumentSection,
-  CoreAPIDocument,
-  CoreAPIFolder,
-  CoreAPITable,
-  PostDataSourceDocumentRequestBody,
-  ProviderVisibility,
-} from "@dust-tt/types";
-import {
-  isValidDate,
-  MAX_CHUNK_SIZE,
-  safeSubstring,
-  sectionFullText,
-} from "@dust-tt/types";
-import { withRetries } from "@dust-tt/types";
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
@@ -33,7 +22,10 @@ import { apiConfig } from "@connectors/lib/api/config";
 import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ProviderVisibility } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { isValidDate, safeSubstring } from "@connectors/types";
+import { withRetries } from "@connectors/types";
 
 const MAX_CSV_SIZE = 50 * 1024 * 1024;
 
@@ -158,7 +150,7 @@ async function _upsertDataSourceDocument({
         ? (Math.floor(timestampMs) as Branded<number, IntBrand>)
         : null;
 
-      const dustRequestPayload: PostDataSourceDocumentRequestBody = {
+      const dustRequestPayload: PostDataSourceDocumentRequestType = {
         text: null,
         section: documentContent,
         source_url: documentUrl ?? null,
@@ -255,7 +247,7 @@ export async function getDataSourceDocument({
 }: {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
-}): Promise<CoreAPIDocument | undefined> {
+}): Promise<GetDocumentsResponseType["documents"][number] | undefined> {
   const localLogger = logger.child({
     documentId,
   });
@@ -269,7 +261,7 @@ export async function getDataSourceDocument({
     },
   };
 
-  let dustRequestResult: AxiosResponse;
+  let dustRequestResult: AxiosResponse<GetDocumentsResponseType>;
   try {
     dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
   } catch (e) {
@@ -434,6 +426,7 @@ async function _updateDocumentOrTableParentsField({
 
 // allows for 4 full prefixes before hitting half of the max chunk size (approx.
 // 256 chars for 512 token chunks)
+const MAX_CHUNK_SIZE = 512;
 export const MAX_PREFIX_TOKENS = MAX_CHUNK_SIZE / 8;
 // Limit on chars to avoid tokenizing too much text uselessly on documents with
 // large prefixes. The final truncating will rely on MAX_PREFIX_TOKENS so this
@@ -625,6 +618,21 @@ export async function renderDocumentTitleAndContent({
     c.sections.push(content);
   }
   return c;
+}
+
+export type CoreAPIDataSourceDocumentSection = {
+  prefix: string | null;
+  content: string | null;
+  sections: CoreAPIDataSourceDocumentSection[];
+};
+
+export function sectionFullText(
+  section: CoreAPIDataSourceDocumentSection
+): string {
+  return (
+    `${section.prefix || ""}${section.content || ""}` +
+    section.sections.map(sectionFullText).join("")
+  );
 }
 
 /* Compute document length by summing all prefix and content sizes for each section */
@@ -1249,13 +1257,13 @@ export const getDataSourceTable = withRetries(logger, _getDataSourceTable, {
   retries: 3,
 });
 
-export async function _getDataSourceTable({
+async function _getDataSourceTable({
   dataSourceConfig,
   tableId,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
-}): Promise<CoreAPITable | undefined> {
+}): Promise<GetTableResponseType["table"] | undefined> {
   const localLogger = logger.child({
     tableId,
   });
@@ -1269,9 +1277,12 @@ export async function _getDataSourceTable({
     },
   };
 
-  let dustRequestResult: AxiosResponse;
+  let dustRequestResult: AxiosResponse<GetTableResponseType>;
   try {
-    dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
+    dustRequestResult = await axiosWithTimeout.get<GetTableResponseType>(
+      endpoint,
+      dustRequestConfig
+    );
   } catch (e) {
     const axiosError = e as AxiosError;
     if (axiosError?.response?.status === 404) {
@@ -1391,7 +1402,7 @@ export async function _getDataSourceFolder({
 }: {
   dataSourceConfig: DataSourceConfig;
   folderId: string;
-}): Promise<CoreAPIFolder | undefined> {
+}): Promise<GetFolderResponseType["folder"] | undefined> {
   const localLogger = logger.child({
     folderId,
   });
@@ -1405,7 +1416,7 @@ export async function _getDataSourceFolder({
     },
   };
 
-  let dustRequestResult: AxiosResponse;
+  let dustRequestResult: AxiosResponse<GetFolderResponseType>;
   try {
     dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
   } catch (e) {

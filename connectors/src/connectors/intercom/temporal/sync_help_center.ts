@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -33,7 +31,12 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
+import {
+  concurrentExecutor,
+  INTERNAL_MIME_TYPES,
+  safeSubstring,
+} from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -227,10 +230,10 @@ export async function upsertCollectionWithChildren({
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: internalCollectionId,
-    title: collection.name,
+    title: collection.name.trim() || "Untitled Collection",
     parents: collectionParents,
     parentId: collectionParents[1] || null,
-    mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,
     sourceUrl: collection.url || fallbackCollectionUrl,
     timestampMs: currentSyncMs,
   });
@@ -243,17 +246,18 @@ export async function upsertCollectionWithChildren({
     parentId: collection.id,
   });
 
-  await Promise.all(
-    childrenCollectionsOnIntercom.map(async (collectionOnIntercom) => {
-      await upsertCollectionWithChildren({
+  await concurrentExecutor(
+    childrenCollectionsOnIntercom,
+    async (collectionOnIntercom) =>
+      upsertCollectionWithChildren({
         connectorId,
         connectionId,
         helpCenterId,
         collection: collectionOnIntercom,
         region,
         currentSyncMs,
-      });
-    })
+      }),
+    { concurrency: 10 }
   );
 }
 
@@ -309,8 +313,8 @@ export async function upsertArticle({
 
   if (articleOnDb) {
     articleOnDb = await articleOnDb.update({
-      title: article.title,
-      url: articleUrl,
+      title: safeSubstring(article.title, 0, 254),
+      url: safeSubstring(articleUrl, 0, 254),
       authorId: article.author_id,
       parentId: parentCollection.collectionId,
       parentType: article.parent_type === "collection" ? "collection" : null,
@@ -321,8 +325,8 @@ export async function upsertArticle({
     articleOnDb = await IntercomArticleModel.create({
       connectorId: connectorId,
       articleId: article.id,
-      title: article.title,
-      url: articleUrl,
+      title: safeSubstring(article.title, 0, 254),
+      url: safeSubstring(articleUrl, 0, 254),
       intercomWorkspaceId: article.workspace_id,
       authorId: article.author_id,
       parentId: parentCollection.collectionId,
@@ -426,7 +430,7 @@ export async function upsertArticle({
       sync_type: "batch",
     },
     title: article.title,
-    mimeType: MIME_TYPES.INTERCOM.ARTICLE,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.ARTICLE,
     async: true,
   });
   await articleOnDb.update({

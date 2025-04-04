@@ -1,3 +1,6 @@
+import "../src/styles/fonts.css";
+import "../src/styles/global.css";
+
 import { withThemeByClassName } from "@storybook/addon-themes";
 import type { Preview } from "@storybook/react";
 
@@ -37,11 +40,11 @@ const preview: Preview = {
         },
         {
           name: "light",
-          value: "#F5F7FB",
+          value: "#F7F7F7",
         },
         {
           name: "dark",
-          value: "#111729",
+          value: "#090F18",
         },
         {
           name: "black",

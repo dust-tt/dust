@@ -3,15 +3,13 @@ import * as THREE from "three";
 
 let speed = 0.08;
 const postExplodeSpeed = 0.03;
-const particleSize = 0.01; // Size of the particles
+const particleSize = 0.008; // Size of the particles
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
 let particleSystem: THREE.Points;
-const backgroundColor = 0x0f172a;
-const colorsArray = [
-  0x059669, 0x4ade80, 0xf87171, 0xf9a8d4, 0x7dd3fc, 0x3b82f6, 0xfbbf24,
-];
+const backgroundColor = 0xffffff;
+const colorsArray = [0xb2b6bd, 0xd3d5d9, 0xeeeeef, 0x969ca5, 0xffffff];
 
 const originalSpread = 25; // the random position of Particules at start
 let explode = false; // whether to explode the particles

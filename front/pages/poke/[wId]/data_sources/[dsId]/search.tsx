@@ -1,9 +1,4 @@
 import { Input } from "@dust-tt/sparkle";
-import type {
-  DataSourceType,
-  DocumentType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
@@ -13,6 +8,7 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type { DataSourceType, DocumentType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
@@ -129,16 +125,16 @@ export default function DataSourceView({
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mt-8 flex flex-col">
+    <div className="max-w-4xl">
+      <div className="flex flex-col">
         <div className="sm:col-span-6">
-          <div className="mt-1 flex rounded-md shadow-sm">
+          <div className="mt-1 flex rounded-md">
             <Input
               type="text"
               autoComplete="off"
               name="search_query"
               id="search_query"
-              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-action-500 focus:ring-action-500"
+              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-highlight-500 focus:ring-highlight-500"
               onKeyDown={(e) => {
                 if (e.key == "Enter") {
                   setSearchQuery(e.currentTarget.value);
@@ -159,7 +155,7 @@ export default function DataSourceView({
                   <div className="mx-2 py-4">
                     <div className="grid grid-cols-5 items-center justify-between">
                       <div className="col-span-4">
-                        <div className="truncate text-base font-bold text-action-600">
+                        <div className="truncate text-base font-bold text-highlight-600">
                           <div className="flex">
                             <div
                               onClick={() =>
@@ -200,7 +196,7 @@ export default function DataSourceView({
                                     </span>
                                   </div>
                                   <div
-                                    className="ml-2 mr-4 flex-1 cursor-pointer border-l-4 border-slate-400"
+                                    className="ml-2 mr-4 flex-1 cursor-pointer border-l-4 border-border-dark"
                                     onClick={() => {
                                       expandedChunkId == chunkId
                                         ? setExpandedChunkId(null)

@@ -7,17 +7,18 @@ import {
   Input,
   IntercomLogo,
   NotionLogo,
+  SalesforceLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { PlanType } from "@dust-tt/types";
+import { useCallback, useState } from "react";
+
+import { classNames } from "@app/lib/utils";
+import type { PlanType } from "@app/types";
 import {
   assertNever,
   isMaxMessagesTimeframeType,
   MAX_MESSAGE_TIMEFRAMES,
-} from "@dust-tt/types";
-import { useCallback, useState } from "react";
-
-import { classNames } from "@app/lib/utils";
+} from "@app/types";
 
 export type EditingPlanType = {
   name: string;
@@ -30,6 +31,7 @@ export type EditingPlanType = {
   isGithubAllowed: boolean;
   isIntercomAllowed: boolean;
   isWebCrawlerAllowed: boolean;
+  isSalesforceAllowed: boolean;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
   dataSourcesCount: string | number;
@@ -53,6 +55,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isGithubAllowed: plan.limits.connections.isGithubAllowed,
     isIntercomAllowed: plan.limits.connections.isIntercomAllowed,
     isWebCrawlerAllowed: plan.limits.connections.isWebCrawlerAllowed,
+    isSalesforceAllowed: plan.limits.connections.isSalesforceAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     dataSourcesCount: plan.limits.dataSources.count,
@@ -92,6 +95,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isGithubAllowed: editingPlan.isGithubAllowed,
         isIntercomAllowed: editingPlan.isIntercomAllowed,
         isWebCrawlerAllowed: editingPlan.isWebCrawlerAllowed,
+        isSalesforceAllowed: editingPlan.isSalesforceAllowed,
       },
       dataSources: {
         count: parseMaybeNumber(editingPlan.dataSourcesCount),
@@ -123,6 +127,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isGithubAllowed: false,
   isIntercomAllowed: false,
   isWebCrawlerAllowed: false,
+  isSalesforceAllowed: false,
   maxMessages: "",
   maxMessagesTimeframe: "day",
   dataSourcesCount: "",
@@ -218,6 +223,12 @@ export const PLAN_FIELDS = {
     title: "Websites",
     IconComponent: () => <GlobeAltIcon className="h-4 w-4" />,
   },
+  isSalesforceAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Salesforce",
+    IconComponent: () => <SalesforceLogo className="h-4 w-4" />,
+  },
   maxMessages: {
     type: "number",
     width: "small",
@@ -298,7 +309,10 @@ export const Field: React.FC<FieldProps> = ({
     if (typeof x === "string") {
       if (!x) {
         strValue = "NULL";
-        classes = classNames(classes, "italic text-element-600");
+        classes = classNames(
+          classes,
+          "italic text-muted-foreground dark:text-muted-foreground-night"
+        );
       }
     }
     if (typeof x === "number") {

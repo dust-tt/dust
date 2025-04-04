@@ -7,6 +7,7 @@ import {
   IntercomLogo,
   NotionLogo,
   Page,
+  SalesforceLogo,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -15,8 +16,6 @@ import {
   SheetTrigger,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { PlanType, SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { isDevelopment } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
 import Link from "next/link";
@@ -39,6 +38,8 @@ import {
   isProPlan,
 } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
+import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 interface SubscriptionsDataTableProps {
   owner: WorkspaceType;
@@ -140,7 +141,7 @@ export function ActiveSubscriptionTable({
                             : `https://dashboard.stripe.com/subscriptions/${subscription.stripeSubscriptionId}`
                         }
                         target="_blank"
-                        className="text-xs text-action-400"
+                        className="text-xs text-highlight-400"
                       >
                         {subscription.stripeSubscriptionId}
                       </Link>
@@ -204,6 +205,9 @@ export function ActiveSubscriptionTable({
                       ) : null}
                       {activePlan.limits.connections.isWebCrawlerAllowed ? (
                         <GlobeAltIcon />
+                      ) : null}
+                      {activePlan.limits.connections.isSalesforceAllowed ? (
+                        <SalesforceLogo />
                       ) : null}
                     </div>
                   </PokeTableCell>
