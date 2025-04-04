@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import { CommandIcon, Page } from "@dust-tt/sparkle";
-=======
 import { Page } from "@dust-tt/sparkle";
->>>>>>> c2ffdc669e (Wip)
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 

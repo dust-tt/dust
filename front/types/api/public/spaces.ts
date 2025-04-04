@@ -52,13 +52,17 @@ export function isValidDataSourceViewCategory(
 
 export type DataSourceViewCategoryWithoutApps = Exclude<
   DataSourceViewCategory,
-  "apps"
+  "apps" | "actions"
 >;
 
 export function isDataSourceViewCategoryWithoutApps(
   category: unknown
 ): category is DataSourceViewCategoryWithoutApps {
-  return isValidDataSourceViewCategory(category) && category !== "apps";
+  return (
+    isValidDataSourceViewCategory(category) &&
+    category !== "apps" &&
+    category !== "actions"
+  );
 }
 
 export function isWebsiteOrFolderCategory(

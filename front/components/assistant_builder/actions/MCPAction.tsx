@@ -225,7 +225,7 @@ export function ActionMCP({
           </ContentMessage>
         ) : (
           <>
-            <div className="text-sm text-element-700">
+            <div className="text-element-700 text-sm">
               The agent will execute an{" "}
               <a
                 className="font-bold"
@@ -300,7 +300,7 @@ export function ActionMCP({
                                   handleServerSelection(mcpServerView);
                                 }}
                               >
-                                <div className="ml-10 mt-1 text-sm text-element-700 dark:text-element-700-night">
+                                <div className="text-element-700 dark:text-element-700-night ml-10 mt-1 text-sm">
                                   {mcpServerView.server.description}
                                 </div>
                               </RadioGroupCustomItem>

@@ -15,7 +15,6 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
-import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
@@ -40,6 +39,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AppType,
   DataSourceViewCategory,
+  DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
@@ -234,7 +234,7 @@ const SystemSpaceMenu = ({
     <Tree variant="navigator">
       {SYSTEM_SPACE_ITEMS.map((item) => (
         <SystemSpaceItem
-          category={item.category as Exclude<DataSourceViewCategory, "apps">}
+          category={item.category as DataSourceViewCategoryWithoutApps}
           key={item.label}
           label={item.label}
           owner={owner}
@@ -255,7 +255,7 @@ const SystemSpaceItem = ({
   space,
   visual,
 }: {
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
   label: string;
   owner: LightWorkspaceType;
   space: SpaceType;
@@ -543,7 +543,7 @@ const SpaceDataSourceViewSubMenu = ({
 }: {
   owner: LightWorkspaceType;
   space: SpaceType;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();

@@ -3,7 +3,6 @@ import {
   BracesIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
-  CommandIcon,
   CommandLineIcon,
   CompanyIcon,
   DocumentTextIcon,
