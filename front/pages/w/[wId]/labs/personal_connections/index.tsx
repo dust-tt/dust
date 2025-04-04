@@ -216,7 +216,7 @@ export default function SalesforceIndex({
       dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider: "salesforce",
-      useCase: "personal_account",
+      useCase: "connection",
       extraConfig,
     });
 
