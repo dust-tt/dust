@@ -2482,7 +2482,12 @@ const FileTypeStatusSchema = FlexibleEnumSchema<
 >();
 
 const FileTypeUseCaseSchema = FlexibleEnumSchema<
-  "conversation" | "avatar" | "tool_output" | "upsert_document" | "upsert_table"
+  | "conversation"
+  | "avatar"
+  | "tool_output"
+  | "upsert_document"
+  | "upsert_table"
+  | "folders_document"
 >();
 
 export const FileTypeSchema = z.object({
