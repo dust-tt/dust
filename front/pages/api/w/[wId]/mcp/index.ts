@@ -136,6 +136,8 @@ async function handler(
           url: url,
           description: metadata.description,
           cachedTools: metadata.tools,
+          icon: metadata.icon,
+          version: metadata.version,
         });
 
         if (body.includeGlobal) {

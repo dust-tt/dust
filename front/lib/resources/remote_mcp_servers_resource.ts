@@ -7,11 +7,6 @@ import type {
   Transaction,
 } from "sequelize";
 
-import {
-  DEFAULT_MCP_ACTION_DESCRIPTION,
-  DEFAULT_MCP_ACTION_ICON,
-  DEFAULT_MCP_ACTION_VERSION,
-} from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType, MCPToolType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
@@ -212,7 +207,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       lastSyncAt,
     }: {
       name?: string;
-      description?: string | null;
+      description?: string;
       url?: string;
       sharedSecret?: string;
       cachedTools: MCPToolType[];
@@ -238,13 +233,14 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   } {
     return {
       id: this.sId,
+
       name: this.name,
-      description: this.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+      description: this.description,
+      version: this.version,
+      icon: this.icon,
       tools: this.cachedTools,
-      // TODO(mcp) for @adrsimon remove this once we have a real version & icon & authorization cached
-      version: DEFAULT_MCP_ACTION_VERSION,
-      icon: DEFAULT_MCP_ACTION_ICON,
-      authorization: null,
+
+      authorization: this.authorization,
       isDefault: false, // So far we don't have defaults remote MCP servers.
 
       // Remote MCP Server specifics
