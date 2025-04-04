@@ -268,9 +268,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   private static async update(
     auth: Authenticator,
     sId: string,
-    blob: Partial<
-      Omit<InferAttributes<ConversationModel>, "workspace" | "workspaceId">
-    >,
+    blob: Partial<InferAttributes<ConversationModel, { omit: "workspaceId" }>>,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     const conversation = await this.fetchById(auth, sId);
