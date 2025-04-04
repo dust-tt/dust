@@ -2,7 +2,7 @@ import _ from "lodash";
 import { Op } from "sequelize";
 
 import { renderRetrievalTimeframeType } from "@app/lib/actions/configuration/helpers";
-import { extractDataSourceConfiguration } from "@app/lib/actions/configuration/retrieval";
+import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/retrieval";
 import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";

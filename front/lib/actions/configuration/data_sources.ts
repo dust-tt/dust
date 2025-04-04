@@ -6,7 +6,7 @@ import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/act
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 
-export function extractDataSourceConfiguration(
+export function renderDataSourceConfiguration(
   dataSourceConfig: AgentDataSourceConfiguration
 ): DataSourceConfiguration & { sId: string } {
   const { dataSourceView } = dataSourceConfig;
