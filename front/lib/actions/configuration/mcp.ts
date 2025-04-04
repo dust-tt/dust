@@ -1,17 +1,17 @@
 import { Op } from "sequelize";
 
+import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import { Workspace } from "@app/lib/models/workspace";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
-import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { Workspace } from "@app/lib/models/workspace";
-import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
