@@ -328,6 +328,8 @@ export class ConfluenceClient {
       }
     })();
 
+    logRateLimitHeaders(response, { endpoint });
+
     if (!response.ok) {
       // If the token is invalid, the API will return a 403 Forbidden response.
       if (response.status === 403 && response.statusText === "Forbidden") {
@@ -353,7 +355,6 @@ export class ConfluenceClient {
           "provider:confluence",
           "status:rate_limited",
         ]);
-        logRateLimitHeaders(response, { endpoint });
 
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs = getRetryAfterDuration(response);
