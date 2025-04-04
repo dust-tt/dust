@@ -80,9 +80,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         const clientId = connectionRes.value.connection.metadata
           .client_id as string;
         if (!clientId) {
-          throw new Error(
-            "No client_id found for salesforce connection, please disconnect/reconnect"
-          );
+          return null;
         }
 
         return {
