@@ -21,6 +21,9 @@ import type { WorkspaceType } from "@app/types";
 export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
   /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
 
+export const TABLE_CONFIGURATION_URI_PATTERN =
+  /^table_configuration:\/\/dust\/w\/(\w+)\/table_configurations\/(\w+)$/;
+
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  */
@@ -29,6 +32,12 @@ export const ConfigurableToolInputSchemas = {
     z.object({
       uri: z.string().regex(DATA_SOURCE_CONFIGURATION_URI_PATTERN),
       mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE),
+    })
+  ),
+  [INTERNAL_MIME_TYPES.CONFIGURATION.TABLE]: z.array(
+    z.object({
+      uri: z.string().regex(TABLE_CONFIGURATION_URI_PATTERN),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.TABLE),
     })
   ),
   // We use a satisfies here to ensure that all the InternalConfigurationMimeType are covered whilst preserving the type
@@ -52,7 +61,6 @@ const ConfigurableToolInputJSONSchemas = Object.fromEntries(
 
 /**
  * Defines how we fill the actual inputs of the tool for each mime type.
- * TODO(mcp): typing too weak here, testing the inference is hard before we have more INTERNAL_MIME_TYPES.CONFIGURATION.
  */
 function generateConfiguredInput({
   actionConfiguration,
@@ -62,7 +70,7 @@ function generateConfiguredInput({
   owner: WorkspaceType;
   actionConfiguration: MCPToolConfigurationType;
   mimeType: InternalConfigurationMimeType;
-}) {
+}): ConfigurableToolInputType {
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
       return (
@@ -76,6 +84,20 @@ function generateConfiguredInput({
           }
           return {
             uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
+            mimeType,
+          };
+        }) || []
+      );
+    case INTERNAL_MIME_TYPES.CONFIGURATION.TABLE:
+      return (
+        actionConfiguration.tables?.map((config) => {
+          if (!config.sId) {
+            // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
+            // TODO(mcp): improve typing wrt this.
+            throw new Error("Unreachable: table configuration without an sId.");
+          }
+          return {
+            uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
             mimeType,
           };
         }) || []
