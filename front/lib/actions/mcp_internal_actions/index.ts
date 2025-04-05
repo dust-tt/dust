@@ -14,6 +14,28 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
+function getInternalMCPServer(
+  auth: Authenticator,
+  {
+    internalMCPServerName,
+    mcpServerId,
+  }: {
+    internalMCPServerName: InternalMCPServerNameType;
+    mcpServerId: string;
+  }
+): McpServer {
+  switch (internalMCPServerName) {
+    case "helloworld":
+      return helloWorldServer(auth, mcpServerId);
+    case "data-source-utils":
+      return dataSourceUtilsServer();
+    case "table-utils":
+      return tableUtilsServer();
+    default:
+      assertNever(internalMCPServerName);
+  }
+}
+
 export const isEnabledForWorkspace = async (
   auth: Authenticator,
   name: InternalMCPServerNameType
@@ -33,32 +55,16 @@ export const connectToInternalMCPServer = async (
   transport: InMemoryTransport,
   auth: Authenticator
 ): Promise<McpServer> => {
-  let internalMCPServerName: InternalMCPServerNameType;
-
-  const r = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
-  if (r.isOk()) {
-    internalMCPServerName = r.value.name;
-  } else {
+  const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+  if (res.isErr()) {
     throw new MCPServerNotFoundError(
       `Internal MCPServer not found for id ${mcpServerId}`
     );
   }
-
-  let server: McpServer;
-
-  switch (internalMCPServerName) {
-    case "helloworld":
-      server = helloWorldServer(auth, mcpServerId);
-      break;
-    case "data-source-utils":
-      server = dataSourceUtilsServer();
-      break;
-    case "table-utils":
-      server = tableUtilsServer();
-      break;
-    default:
-      assertNever(internalMCPServerName);
-  }
+  const server = getInternalMCPServer(auth, {
+    internalMCPServerName: res.value.name,
+    mcpServerId,
+  });
 
   await server.connect(transport);
 
