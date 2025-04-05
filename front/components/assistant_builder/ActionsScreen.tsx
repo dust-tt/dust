@@ -925,7 +925,7 @@ function ActionConfigEditor({
       return (
         <ActionMCP
           owner={owner}
-          action={action}
+          action={action.configuration}
           allowedSpaces={allowedSpaces}
           updateAction={updateAction}
           setEdited={setEdited}
