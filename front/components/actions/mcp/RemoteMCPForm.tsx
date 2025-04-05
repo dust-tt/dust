@@ -109,7 +109,6 @@ export function RemoteMCPForm({
       </div>
 
       <hr />
-
       <Page.SectionHeader title="Settings" />
       <div>
         <Label htmlFor="name">Name</Label>

@@ -31,7 +31,7 @@ export function VisualizationBlock({
     return (
       customRenderer?.visualization ||
       (() => (
-        <div className="pb-2 pt-4 font-medium text-red-600">
+        <div className="pb-2 pt-4 font-medium text-warning">
           Visualization not available
         </div>
       ))

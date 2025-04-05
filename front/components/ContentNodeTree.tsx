@@ -213,7 +213,7 @@ function ContentNodeTreeChildren({
             label={n.title}
             labelClassName={
               n.providerVisibility === "private"
-                ? "after:content-['(private)'] after:text-red-500 after:ml-1"
+                ? "after:content-['(private)'] after:text-warning after:ml-1"
                 : ""
             }
             visual={getVisualForContentNode(n)}
