@@ -61,7 +61,6 @@ const ConfigurableToolInputJSONSchemas = Object.fromEntries(
 
 /**
  * Defines how we fill the actual inputs of the tool for each mime type.
- * TODO(mcp): typing too weak here, testing the inference is hard before we have more INTERNAL_MIME_TYPES.CONFIGURATION.
  */
 function generateConfiguredInput({
   actionConfiguration,
