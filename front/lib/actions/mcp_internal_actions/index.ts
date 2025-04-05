@@ -9,6 +9,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_actions/data_source_utils";
 import { default as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/helloworld";
+import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/table_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { assertNever } from "@app/types";
@@ -51,6 +52,9 @@ export const connectToInternalMCPServer = async (
       break;
     case "data-source-utils":
       server = dataSourceUtilsServer();
+      break;
+    case "table-utils":
+      server = tableUtilsServer();
       break;
     default:
       assertNever(internalMCPServerName);

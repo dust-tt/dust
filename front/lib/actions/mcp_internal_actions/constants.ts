@@ -3,8 +3,9 @@ import type { ModelId, Result, WhitelistableFeature } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export const AVAILABLE_INTERNAL_MCPSERVER_NAMES = [
-  "helloworld",
   "data-source-utils",
+  "helloworld",
+  "table-utils",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -22,6 +23,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   "data-source-utils": {
     id: 2,
+    isDefault: false,
+    flag: "mcp_actions",
+  },
+  "table-utils": {
+    id: 3,
     isDefault: false,
     flag: "mcp_actions",
   },
