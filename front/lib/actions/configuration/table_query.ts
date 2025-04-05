@@ -18,6 +18,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
+import { makeSId } from "@app/lib/resources/string_ids";
 
 export async function fetchTableQueryActionConfigurations({
   configurationIds,
@@ -157,6 +158,10 @@ export function getTableConfiguration(
   const { dataSourceView } = table;
 
   return {
+    sId: makeSId("table_configuration", {
+      id: table.id,
+      workspaceId: dataSourceView.workspaceId,
+    }),
     dataSourceViewId: DataSourceViewResource.modelIdToSId({
       id: dataSourceView.id,
       workspaceId: dataSourceView.workspaceId,
