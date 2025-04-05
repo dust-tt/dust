@@ -1,9 +1,9 @@
-import { CommandIcon, RocketIcon, TableIcon } from "@dust-tt/sparkle";
+import { CommandIcon, FolderTableIcon, RocketIcon } from "@dust-tt/sparkle";
 
 export const MCP_SERVER_ICONS: Record<AllowedIconType, React.ComponentType> = {
   command: CommandIcon,
   rocket: RocketIcon,
-  table: TableIcon,
+  table: FolderTableIcon,
 } as const;
 
 export const DEFAULT_MCP_SERVER_ICON = "rocket" as const;
