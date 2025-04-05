@@ -117,6 +117,14 @@ export function ActionMCP({
             })
               ? prevConfig.dataSourceConfigurations || {}
               : null,
+          tablesConfigurations:
+            selectedMCPServerView &&
+            serverRequiresInternalConfiguration({
+              serverMetadata: selectedMCPServerView.server,
+              mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
+            })
+              ? prevConfig.tablesConfigurations || {}
+              : null,
         };
       },
     });
