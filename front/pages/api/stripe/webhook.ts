@@ -12,7 +12,6 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import {
   assertStripeSubscriptionIsValid,
@@ -20,7 +19,9 @@ import {
   getStripeClient,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -163,9 +164,7 @@ async function handler(
               // the warnings and create an alert if this log appears in all regions
               return res.status(200).json({ success: true });
             }
-            const plan = await Plan.findOne({
-              where: { code: planCode },
-            });
+            const plan = await PlanResource.fetchByPlanCode(planCode);
             if (!plan) {
               throw new Error(
                 `Cannot subscribe to plan ${planCode}: not found.`
@@ -177,7 +176,7 @@ async function handler(
                 where: { workspaceId: workspace.id, status: "active" },
                 include: [
                   {
-                    model: Plan,
+                    model: PlanResource.model,
                     as: "plan",
                   },
                 ],

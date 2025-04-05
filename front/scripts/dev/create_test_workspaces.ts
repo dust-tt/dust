@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
-import { Plan } from "@app/lib/models/plan";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -18,9 +18,9 @@ async function createTestWorkspaces(
     throw new Error("This script can only be run in development.");
   }
 
-  const plans = await Plan.findAll();
+  const firstPlan = await PlanResource.fetchFirst();
 
-  if (plans.length === 0) {
+  if (firstPlan === null) {
     throw new Error(
       "No plans found in the database. Please create some plans first."
     );

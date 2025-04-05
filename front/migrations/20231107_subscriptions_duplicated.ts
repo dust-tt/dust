@@ -1,4 +1,4 @@
-import { Subscription } from "@app/lib/models/plan";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 
 const { LIVE = false, WORKSPACE_IDS = "" } = process.env;
 

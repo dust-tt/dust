@@ -10,15 +10,13 @@ import type Stripe from "stripe";
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { Subscription } from "@app/lib/models/plan";
-import { Plan } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isEntreprisePlan, isProPlan } from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_39_CODE } from "@app/lib/plans/plan_codes";
-import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { renderPlanFromAttributes } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
@@ -29,7 +27,9 @@ import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
@@ -108,7 +108,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         },
         include: [
           {
-            model: Plan,
+            model: PlanResource.model,
             as: "plan",
             required: true,
           },
@@ -148,7 +148,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         Subscription,
         activeSubscription?.get() ||
           this.createFreeNoPlanSubscription(workspace),
-        renderPlanFromModel({ plan })
+        renderPlanFromAttributes({ plan })
       );
     }
 
@@ -162,7 +162,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     const subscriptions = await Subscription.findAll({
       where: { workspaceId: owner.id },
-      include: [Plan],
+      include: [PlanResource.model],
     });
 
     return subscriptions.map(
@@ -170,7 +170,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         new SubscriptionResource(
           Subscription,
           s.get(),
-          renderPlanFromModel({ plan: s.plan })
+          renderPlanFromAttributes({ plan: s.plan })
         )
     );
   }
@@ -180,7 +180,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   ): Promise<SubscriptionResource | null> {
     const res = await Subscription.findOne({
       where: { stripeSubscriptionId },
-      include: [Plan],
+      include: [PlanResource.model],
     });
 
     if (!res) {
@@ -190,7 +190,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       res.get(),
-      renderPlanFromModel({ plan: res.plan })
+      renderPlanFromAttributes({ plan: res.plan })
     );
   }
 
@@ -213,7 +213,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       this.createFreeNoPlanSubscription(workspace),
-      renderPlanFromModel({ plan: FREE_NO_PLAN_DATA })
+      renderPlanFromAttributes({ plan: FREE_NO_PLAN_DATA })
     );
   }
 
@@ -306,7 +306,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       newSubscription.get(),
-      renderPlanFromModel({ plan: newPlan })
+      renderPlanFromAttributes({ plan: newPlan })
     );
   }
 
@@ -498,7 +498,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     return {
       checkoutUrl,
-      plan: renderPlanFromModel({ plan: proPlan }),
+      plan: renderPlanFromAttributes({ plan: proPlan }),
     };
   }
 
@@ -631,14 +631,13 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return workspace;
   }
 
-  private static async findPlanOrThrow(planCode: string): Promise<Plan> {
-    const newPlan = await Plan.findOne({
-      where: { code: planCode },
-    });
+  private static async findPlanOrThrow(
+    planCode: string
+  ): Promise<PlanResource> {
+    const newPlan = await PlanResource.fetchByPlanCode(planCode);
     if (!newPlan) {
       throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
     }
-
     return newPlan;
   }
 
