@@ -17,8 +17,8 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import type { ModelId } from "@app/types";
 import { makeSId } from "@app/lib/resources/string_ids";
+import type { ModelId } from "@app/types";
 
 export async function fetchTableQueryActionConfigurations({
   configurationIds,
