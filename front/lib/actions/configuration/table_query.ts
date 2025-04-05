@@ -10,8 +10,8 @@ import {
 } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import type { ModelId } from "@app/types";
 import { makeSId } from "@app/lib/resources/string_ids";
+import type { ModelId } from "@app/types";
 
 export async function fetchTableQueryActionConfigurations({
   configurationIds,
