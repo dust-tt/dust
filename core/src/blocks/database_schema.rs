@@ -68,8 +68,16 @@ impl Block for DatabaseSchema {
                             Some(Value::String(s)) => s,
                             _ => Err(anyhow!(err_msg.clone()))?,
                         };
-
-                        Ok((workspace_id, data_source_id, table_id))
+                        let remote_database_secret_id = match v.get("remote_database_secret_id") {
+                            Some(Value::String(s)) => Some(s),
+                            _ => None,
+                        };
+                        Ok((
+                            workspace_id,
+                            data_source_id,
+                            table_id,
+                            remote_database_secret_id,
+                        ))
                     })
                     .collect::<Result<Vec<_>>>()?,
                 _ => Err(anyhow!(err_msg.clone()))?,
@@ -107,13 +115,15 @@ impl Block for DatabaseSchema {
 }
 
 pub async fn load_tables_from_identifiers(
-    table_identifiers: &Vec<(&String, &String, &String)>,
+    table_identifiers: &Vec<(&String, &String, &String, Option<&String>)>,
     env: &Env,
 ) -> Result<Vec<Table>> {
     // Get a vec of unique (workspace_id, data_source_id) pairs.
     let data_source_identifiers = table_identifiers
         .iter()
-        .map(|(workspace_id, data_source_or_view_id, _)| (*workspace_id, *data_source_or_view_id))
+        .map(|(workspace_id, data_source_or_view_id, _, _)| {
+            (*workspace_id, *data_source_or_view_id)
+        })
         .unique()
         .collect::<Vec<_>>();
 
@@ -159,11 +169,19 @@ pub async fn load_tables_from_identifiers(
 
     // Concurrently load all tables.
     (try_join_all(table_identifiers.iter().map(
-        |(workspace_id, data_source_or_view_id, table_id)| {
+        |(workspace_id, data_source_or_view_id, table_id, remote_database_secret_id)| async {
+            let table_id = *table_id;
+            let remote_database_secret_id = *remote_database_secret_id;
             let (project, data_source_name) = project_and_data_source_by_data_source_view
                 .get(&(*workspace_id, *data_source_or_view_id))
                 .expect("Unreachable: missing project.");
-            store.load_data_source_table(&project, &data_source_name, &table_id)
+            let mut table = store
+                .load_data_source_table(&project, &data_source_name, &table_id)
+                .await?;
+            if let (Some(table), Some(secret_id)) = (table.as_mut(), remote_database_secret_id) {
+                table.set_remote_database_secret_id(secret_id.to_string());
+            }
+            Ok(table)
         },
     ))
     .await?)

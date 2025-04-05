@@ -484,12 +484,27 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const config = cloneBaseConfig(
       getDustProdAction("assistant-v2-query-tables").config
     );
+
+    const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+      ...new Set(actionConfiguration.tables.map((t) => t.dataSourceViewId)),
+    ]);
+    const connectionIds: Record<string, string> = {};
+    for (const dataSourceView of dataSourceViews) {
+      const connectionId = await auth
+        .getNonNullableUser()
+        .getMetadata(`connection_id_${dataSourceView.dataSource.sId}`);
+      if (connectionId && connectionId.value.length > 0) {
+        connectionIds[dataSourceView.sId] = connectionId.value;
+      }
+    }
+
     const tables = actionConfiguration.tables.map((t) => ({
       workspace_id: t.workspaceId,
       table_id: t.tableId,
       // Note: This value is passed to the registry for lookup. The registry will return the
       // associated data source's dustAPIDataSourceId.
       data_source_id: t.dataSourceViewId,
+      remote_database_secret_id: connectionIds[t.dataSourceViewId],
     }));
     if (tables.length === 0) {
       yield {

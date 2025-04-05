@@ -197,6 +197,10 @@ impl Table {
         self.remote_database_table_id.as_deref()
     }
     pub fn remote_database_secret_id(&self) -> Option<&str> {
+        println!(
+            "-----------remote_database_secret_id: {:?}",
+            self.remote_database_secret_id
+        );
         self.remote_database_secret_id.as_deref()
     }
     pub fn table_id_for_dbml(&self) -> &str {
@@ -219,6 +223,9 @@ impl Table {
     }
     pub fn set_schema(&mut self, schema: TableSchema) {
         self.schema = Some(schema);
+    }
+    pub fn set_remote_database_secret_id(&mut self, remote_database_secret_id: String) {
+        self.remote_database_secret_id = Some(remote_database_secret_id);
     }
 
     // if search_store is provided, delete the table node from the search index
