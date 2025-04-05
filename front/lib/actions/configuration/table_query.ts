@@ -11,6 +11,7 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
+import { makeSId } from "@app/lib/resources/string_ids";
 
 export async function fetchTableQueryActionConfigurations({
   configurationIds,
@@ -88,4 +89,77 @@ export async function fetchTableQueryActionConfigurations({
   }
 
   return actionsByConfigurationId;
+}
+
+export async function createTableDataSourceConfiguration(
+  auth: Authenticator,
+  t: Transaction,
+  {
+    tableConfigurations,
+    tablesQueryConfig,
+    mcpConfig,
+  }: {
+    tableConfigurations: TableDataSourceConfiguration[];
+    tablesQueryConfig: AgentTablesQueryConfiguration | null;
+    mcpConfig: AgentMCPServerConfiguration | null;
+  }
+) {
+  const owner = auth.getNonNullableWorkspace();
+  // Although we have the capability to support multiple workspaces,
+  // currently, we only support one workspace, which is the one the user is in.
+  // This allows us to use the current authenticator to fetch resources.
+  assert(tableConfigurations.every((tc) => tc.workspaceId === owner.sId));
+
+  // DataSourceViewResource.listByWorkspace() applies the permissions check.
+  const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
+  const dataSourceViewsMap = dataSourceViews.reduce(
+    (acc, dsv) => {
+      acc[dsv.sId] = dsv;
+      return acc;
+    },
+    {} as Record<string, DataSourceViewResource>
+  );
+
+  return Promise.all(
+    tableConfigurations.map(async (tc) => {
+      const dataSourceView = dataSourceViewsMap[tc.dataSourceViewId];
+      assert(
+        dataSourceView,
+        "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
+      );
+
+      const { dataSource } = dataSourceView;
+
+      await AgentTablesQueryConfigurationTable.create(
+        {
+          dataSourceId: dataSource.id,
+          dataSourceViewId: dataSourceView.id,
+          tableId: tc.tableId,
+          tablesQueryConfigurationId: tablesQueryConfig?.id || null,
+          mcpServerConfigurationId: mcpConfig?.id || null,
+          workspaceId: owner.id,
+        },
+        { transaction: t }
+      );
+    })
+  );
+}
+
+export function getTableConfiguration(
+  table: AgentTablesQueryConfigurationTable
+): TableDataSourceConfiguration {
+  const { dataSourceView } = table;
+
+  return {
+    sId: makeSId("table_configuration", {
+      id: table.id,
+      workspaceId: dataSourceView.workspaceId,
+    }),
+    dataSourceViewId: DataSourceViewResource.modelIdToSId({
+      id: dataSourceView.id,
+      workspaceId: dataSourceView.workspaceId,
+    }),
+    workspaceId: dataSourceView.workspace.sId,
+    tableId: table.tableId,
+  };
 }
