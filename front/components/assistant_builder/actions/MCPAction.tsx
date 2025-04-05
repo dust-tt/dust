@@ -41,7 +41,7 @@ import { assertNever, slugify } from "@app/types";
 interface ActionMCPProps {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
-  actionConfiguration: AssistantBuilderMCPServerConfiguration;
+  action: AssistantBuilderActionConfiguration;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
@@ -55,10 +55,13 @@ interface ActionMCPProps {
 export function ActionMCP({
   owner,
   allowedSpaces,
-  actionConfiguration,
+  action,
   updateAction,
   setEdited,
 }: ActionMCPProps) {
+  const actionConfiguration =
+    action.configuration as AssistantBuilderMCPServerConfiguration;
+
   const { mcpServerViews } = useContext(AssistantBuilderContext);
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const filteredSpaces = useMemo(
@@ -166,6 +169,10 @@ export function ActionMCP({
     },
     [selectedMCPServerView, setEdited, updateAction]
   );
+
+  if (action.type !== "MCP") {
+    return null;
+  }
 
   return (
     <>
