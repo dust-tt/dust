@@ -97,7 +97,7 @@ function generateConfiguredInput({
             throw new Error("Unreachable: table configuration without an sId.");
           }
           return {
-            uri: `table_configuration://dust/w/${owner.sId}/table_configuration/${config.sId}`,
+            uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
             mimeType,
           };
         }) || []
