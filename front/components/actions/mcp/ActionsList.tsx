@@ -293,7 +293,7 @@ export const AdminActionsList = ({
                 if (mcpServerToDelete) {
                   setMCPServerToDelete(undefined);
                   setIsLoading(true);
-                  void deleteServer(mcpServerToDelete.id);
+                  await deleteServer(mcpServerToDelete.id);
                   setIsLoading(false);
                 }
               },

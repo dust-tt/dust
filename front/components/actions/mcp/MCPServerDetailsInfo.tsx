@@ -1,4 +1,4 @@
-import { Button, useSendNotification } from "@dust-tt/sparkle";
+import { Button, Separator, useSendNotification } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { AuthorizationInfo } from "@app/components/actions/mcp/AuthorizationInfo";
@@ -12,7 +12,6 @@ import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import {
   useMCPServers,
-  useRemoteMCPServer,
   useSyncRemoteMCPServer,
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
@@ -45,12 +44,6 @@ export function MCPServerDetailsInfo({
   const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer.id);
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.id);
 
-  //   // Only fetch the server data if we don't already have it from the mcpServer prop
-  const { mutateMCPServer } = useRemoteMCPServer({
-    owner,
-    serverId: mcpServer?.id || "",
-    disabled: !mcpServer,
-  });
   const handleSubmit = async () => {
     dispatch({ type: "VALIDATE" });
     const validation = validateFormState(formState);
@@ -68,7 +61,6 @@ export function MCPServerDetailsInfo({
         tools: formState.tools,
       });
 
-      void mutateMCPServer();
       void mutateMCPServers();
 
       sendNotification({
@@ -93,6 +85,8 @@ export function MCPServerDetailsInfo({
       const result = await syncServer();
 
       if (result.success) {
+        void mutateMCPServers();
+
         sendNotification({
           title: "Success",
           type: "success",
@@ -109,7 +103,6 @@ export function MCPServerDetailsInfo({
           error instanceof Error ? error.message : "An error occurred",
       });
     } finally {
-      void mutateMCPServers();
       setServerState("idle");
     }
   };
@@ -135,7 +128,7 @@ export function MCPServerDetailsInfo({
               }}
             />
           </div>
-          <hr />
+          <Separator className="my-4" />
         </>
       )}
       <ToolsList tools={mcpServer.tools} />

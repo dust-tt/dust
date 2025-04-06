@@ -5,6 +5,7 @@ import {
   Input,
   Label,
   Page,
+  Separator,
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -108,7 +109,7 @@ export function RemoteMCPForm({
         </div>
       </div>
 
-      <hr />
+      <Separator className="my-4" />
 
       <Page.SectionHeader title="Settings" />
       <div>
