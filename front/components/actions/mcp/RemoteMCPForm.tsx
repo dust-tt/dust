@@ -36,6 +36,9 @@ const MCPFormSchema = z.object({
 export type MCPFormType = z.infer<typeof MCPFormSchema>;
 
 export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
+  const sendNotification = useSendNotification();
+
+  const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isSecretVisible, setIsSecretVisible] = useState(false);
 
@@ -49,11 +52,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
   const { url, sharedSecret } = mcpServer;
 
-  const sendNotification = useSendNotification();
-  const [serverState, setServerState] = useState<
-    "idle" | "saving" | "synchronizing"
-  >("idle");
-
   const { mutateMCPServers } = useMCPServers({
     owner,
     disabled: true,
@@ -64,7 +62,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.id);
 
   const onSubmit = async (values: MCPFormType) => {
-    setServerState("saving");
     try {
       const result = await updateServer({
         name: values.name,
@@ -80,6 +77,8 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           type: "success",
           description: "The MCP server has been successfully updated.",
         });
+
+        form.reset(values);
       } else {
         throw new Error("Failed to update MCP server");
       }
@@ -89,8 +88,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         type: "error",
         description: err instanceof Error ? err.message : "An error occurred",
       });
-    } finally {
-      setServerState("idle");
     }
   };
 
@@ -101,8 +98,8 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     }
 
     setSyncError(null);
+    setIsSynchronizing(true);
 
-    setServerState("synchronizing");
     try {
       const result = await syncServer();
 
@@ -131,7 +128,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           : "Failed to synchronize with MCP server"
       );
     } finally {
-      setServerState("idle");
+      setIsSynchronizing(false);
     }
   };
 
@@ -170,14 +167,10 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             />
           </div>
           <Button
-            label={
-              serverState === "synchronizing"
-                ? "Synchronizing..."
-                : "Synchronize"
-            }
+            label={isSynchronizing ? "Synchronizing..." : "Synchronize"}
             variant="outline"
             onClick={handleSynchronize}
-            disabled={serverState === "synchronizing"}
+            disabled={isSynchronizing}
           />
         </div>
       </div>
@@ -223,7 +216,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
       <div className="flex flex-col items-end gap-2">
         <Button
-          label="Save"
+          label={form.formState.isSubmitting ? "Saving..." : "Save"}
           disabled={!form.formState.isDirty || form.formState.isSubmitting}
           onClick={async (event: Event) => {
             event.preventDefault();
