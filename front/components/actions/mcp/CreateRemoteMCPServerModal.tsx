@@ -15,10 +15,7 @@ import {
 import { useState } from "react";
 
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import {
-  useCreateRemoteMCPServer,
-  useMCPServers,
-} from "@app/lib/swr/mcp_servers";
+import { useCreateRemoteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
 import { validateUrl } from "@app/types";
 

@@ -1,20 +1,8 @@
-import { Button, Separator, useSendNotification } from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { AuthorizationInfo } from "@app/components/actions/mcp/AuthorizationInfo";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
-import {
-  useRemoteMCPForm,
-  validateFormState,
-} from "@app/hooks/useRemoteMCPForm";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import {
-  useMCPServers,
-  useSyncRemoteMCPServer,
-  useUpdateRemoteMCPServer,
-} from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 
 type MCPServerDetailsInfoProps = {
@@ -28,108 +16,11 @@ export function MCPServerDetailsInfo({
 }: MCPServerDetailsInfoProps) {
   const serverType = getServerTypeAndIdFromSId(mcpServer.id).serverType;
 
-  const { formState, dispatch, sharedSecret } = useRemoteMCPForm(mcpServer);
-
-  const sendNotification = useSendNotification();
-  const [serverState, setServerState] = useState<
-    "idle" | "saving" | "synchronizing"
-  >("idle");
-
-  const { mutateMCPServers } = useMCPServers({
-    owner,
-    disabled: true,
-  });
-
-  // Use the serverId from state for the hooks
-  const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer.id);
-  const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.id);
-
-  const handleSubmit = async () => {
-    dispatch({ type: "VALIDATE" });
-    const validation = validateFormState(formState);
-
-    if (!validation.isValid) {
-      return;
-    }
-
-    setServerState("saving");
-    try {
-      await updateServer({
-        name: formState.name,
-        url: formState.url,
-        description: formState.description,
-        tools: formState.tools,
-      });
-
-      void mutateMCPServers();
-
-      sendNotification({
-        title: "MCP server updated",
-        type: "success",
-        description: "The MCP server has been successfully updated.",
-      });
-    } catch (err) {
-      sendNotification({
-        title: "Error updating MCP server",
-        type: "error",
-        description: err instanceof Error ? err.message : "An error occurred",
-      });
-    } finally {
-      setServerState("idle");
-    }
-  };
-
-  const handleSynchronize = async () => {
-    setServerState("synchronizing");
-    try {
-      const result = await syncServer();
-
-      if (result.success) {
-        void mutateMCPServers();
-
-        sendNotification({
-          title: "Success",
-          type: "success",
-          description: "MCP server synchronized successfully.",
-        });
-      } else {
-        throw new Error("Failed to synchronize MCP server");
-      }
-    } catch (error) {
-      sendNotification({
-        title: "Error synchronizing MCP server",
-        type: "error",
-        description:
-          error instanceof Error ? error.message : "An error occurred",
-      });
-    } finally {
-      setServerState("idle");
-    }
-  };
-
   return (
     <div className="flex flex-col gap-2">
       <AuthorizationInfo mcpServer={mcpServer} owner={owner} />
       {serverType === "remote" && (
-        <>
-          <RemoteMCPForm
-            state={formState}
-            dispatch={dispatch}
-            onSynchronize={handleSynchronize}
-            sharedSecret={sharedSecret}
-            isSynchronizing={serverState === "synchronizing"}
-          />
-          <div className="flex flex-col items-end gap-2">
-            <Button
-              label="Save"
-              onClick={async (event: Event) => {
-                event.preventDefault();
-                await handleSubmit();
-              }}
-            />
-          </div>
-          <Separator className="my-4" />
-        </>
+        <RemoteMCPForm mcpServer={mcpServer} owner={owner} />
       )}
       <ToolsList tools={mcpServer.tools} />
     </div>
