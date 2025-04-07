@@ -49,7 +49,6 @@ export function ConfigureLabsConnectionModal({
   dataSourcesViews,
   spaces,
   isSpacesLoading,
-  configuration: initialConfiguration,
 }: ConfigureLabsConnectionModal) {
   const sendNotification = useSendNotification();
   const updateConnectionConfiguration = useUpdateLabsConnectionConfiguration({
@@ -72,30 +71,13 @@ export function ConfigureLabsConnectionModal({
   const [selectionConfigurations, setSelectionConfigurations] =
     useState<DataSourceViewSelectionConfigurations>({});
   const [apiKey, setApiKey] = useState("");
+  const [pendingDataSourceView, setPendingDataSourceView] =
+    useState<DataSourceViewType | null>(null);
 
   const handleSetConnectionStorageDataSourceView = async (
     dataSourceView: DataSourceViewType | null
   ) => {
-    const success = await updateConnectionConfiguration({
-      dataSourceViewId: dataSourceView ? dataSourceView.id : null,
-    });
-
-    if (success) {
-      await mutateConfiguration();
-      sendNotification({
-        type: "success",
-        title: "Success!",
-        description: dataSourceView
-          ? "We will now store your connection data."
-          : "We will no longer store your connection data.",
-      });
-    } else {
-      sendNotification({
-        type: "error",
-        title: "Failed to update",
-        description: "Could not update the configuration. Please try again.",
-      });
-    }
+    setPendingDataSourceView(dataSourceView);
   };
 
   const handleSetSelectionConfigurations = async (
@@ -136,10 +118,13 @@ export function ConfigureLabsConnectionModal({
 
   const onSaveApiKey = async () => {
     if (connection.authType === "apiKey") {
-      if (initialConfiguration) {
+      if (configuration) {
         // Update existing configuration
         const success = await updateConnectionConfiguration({
           credentialId: apiKey,
+          dataSourceViewId: pendingDataSourceView
+            ? pendingDataSourceView.id
+            : null,
         });
 
         if (success) {
@@ -147,34 +132,59 @@ export function ConfigureLabsConnectionModal({
           sendNotification({
             type: "success",
             title: "Success!",
-            description: "Your API key has been saved successfully.",
+            description: `Your ${connection.label} configuration has been saved successfully.`,
           });
         } else {
           sendNotification({
             type: "error",
             title: "Failed to save",
-            description: "Could not save your API key. Please try again.",
+            description: "Could not save your settings. Please try again.",
           });
         }
       } else {
         // Create new configuration
+        if (!apiKey) {
+          sendNotification({
+            type: "error",
+            title: "Failed to save",
+            description: "Please enter an API key before saving.",
+          });
+          return;
+        }
+
         const success = await createConnectionConfiguration({
           provider: connection.id,
           credentialId: apiKey,
         });
 
         if (success) {
+          // After creating the configuration, update the data source view if needed
+          if (pendingDataSourceView) {
+            const updateSuccess = await updateConnectionConfiguration({
+              dataSourceViewId: pendingDataSourceView.id,
+            });
+            if (!updateSuccess) {
+              sendNotification({
+                type: "error",
+                title: "Failed to save storage settings",
+                description:
+                  "Could not save your storage settings. Please try again.",
+              });
+              return;
+            }
+          }
           await mutateConfiguration();
           sendNotification({
             type: "success",
             title: "Success!",
-            description: "Your API key has been saved successfully.",
+            description:
+              "Your API key and storage settings have been saved successfully.",
           });
         } else {
           sendNotification({
             type: "error",
             title: "Failed to save",
-            description: "Could not save your API key. Please try again.",
+            description: "Could not save your settings. Please try again.",
           });
         }
       }

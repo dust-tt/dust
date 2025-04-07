@@ -1,3 +1,6 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -6,6 +9,12 @@ import { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_co
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { LabsConnectionType } from "@app/types";
+
+const PatchLabsConnectionsConfigurationBodySchema = t.partial({
+  dataSourceViewId: t.number,
+  credentialId: t.string,
+  connectionId: t.string,
+});
 
 async function handler(
   req: NextApiRequest,
@@ -17,7 +26,7 @@ async function handler(
       status_code: 401,
       api_error: {
         type: "data_source_auth_error",
-        message: "You are not authorized to delete connection configurations.",
+        message: "You are not authorized to manage connection configurations.",
       },
     });
   }
@@ -25,7 +34,37 @@ async function handler(
   const connectionId = req.query.connectionId as LabsConnectionType;
 
   switch (req.method) {
-    case "DELETE":
+    case "PATCH":
+      let bodyToParse = req.body;
+
+      if (typeof req.body === "string") {
+        try {
+          bodyToParse = JSON.parse(req.body);
+        } catch (e) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid JSON in request body",
+            },
+          });
+        }
+      }
+
+      const bodyValidation =
+        PatchLabsConnectionsConfigurationBodySchema.decode(bodyToParse);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
       const configuration =
         await LabsConnectionsConfigurationResource.findByWorkspaceAndProvider({
           auth,
@@ -42,8 +81,56 @@ async function handler(
         });
       }
 
-      const result = await configuration.delete(auth);
-      if (result.isErr()) {
+      const validatedBody = bodyValidation.right;
+      try {
+        if (validatedBody.credentialId !== undefined) {
+          await configuration.setCredentialId(validatedBody.credentialId);
+        }
+        if (validatedBody.connectionId !== undefined) {
+          await configuration.setConnectionId(validatedBody.connectionId);
+        }
+        if (validatedBody.dataSourceViewId !== undefined) {
+          await configuration.setDataSourceViewId(
+            validatedBody.dataSourceViewId
+          );
+        }
+
+        res.status(200).json({
+          error: {
+            type: "internal_server_error",
+            message: "",
+          },
+        });
+        return;
+      } catch (err) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to update connection configuration.",
+          },
+        });
+      }
+
+    case "DELETE":
+      const deleteConfiguration =
+        await LabsConnectionsConfigurationResource.findByWorkspaceAndProvider({
+          auth,
+          provider: connectionId,
+        });
+
+      if (!deleteConfiguration) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "The connection configuration was not found.",
+          },
+        });
+      }
+
+      const deleteResult = await deleteConfiguration.delete(auth);
+      if (deleteResult.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
@@ -66,7 +153,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, DELETE is expected.",
+          message:
+            "The method passed is not supported, PATCH or DELETE is expected.",
         },
       });
   }
