@@ -357,6 +357,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
     onRowSelectionChange,
+    enableRowSelection,
     state: {
       rowSelection,
     },
