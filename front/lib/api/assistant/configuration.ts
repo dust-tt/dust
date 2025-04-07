@@ -1348,29 +1348,28 @@ async function createTableDataSourceConfiguration(
     {} as Record<string, DataSourceViewResource>
   );
 
-  return Promise.all(
-    tableConfigurations.map(async (tc) => {
-      const dataSourceView = dataSourceViewsMap[tc.dataSourceViewId];
-      assert(
-        dataSourceView,
-        "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
-      );
+  const tableConfigData = tableConfigurations.map((tc) => {
+    const dataSourceView = dataSourceViewsMap[tc.dataSourceViewId];
+    assert(
+      dataSourceView,
+      "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
+    );
 
-      const { dataSource } = dataSourceView;
+    const { dataSource } = dataSourceView;
 
-      await AgentTablesQueryConfigurationTable.create(
-        {
-          dataSourceId: dataSource.id,
-          dataSourceViewId: dataSourceView.id,
-          tableId: tc.tableId,
-          tablesQueryConfigurationId: tablesQueryConfig?.id || null,
-          mcpServerConfigurationId: mcpConfig?.id || null,
-          workspaceId: owner.id,
-        },
-        { transaction: t }
-      );
-    })
-  );
+    return {
+      dataSourceId: dataSource.id,
+      dataSourceViewId: dataSourceView.id,
+      tableId: tc.tableId,
+      tablesQueryConfigurationId: tablesQueryConfig?.id || null,
+      mcpServerConfigurationId: mcpConfig?.id || null,
+      workspaceId: owner.id,
+    };
+  });
+
+  return AgentTablesQueryConfigurationTable.bulkCreate(tableConfigData, {
+    transaction: t,
+  });
 }
 
 export async function getAgentSIdFromName(
