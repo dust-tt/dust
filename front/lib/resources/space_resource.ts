@@ -330,12 +330,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     ids: ModelId[],
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<SpaceResource[]> {
-    return (
-      this.baseFetch(auth, {
-        where: { id: ids },
-        includeDeleted,
-      }) ?? []
-    );
+    const spaces = await this.baseFetch(auth, {
+      where: { id: ids },
+      includeDeleted,
+    });
+    return spaces ?? [];
   }
 
   static async isNameAvailable(
