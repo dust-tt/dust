@@ -1,6 +1,7 @@
 import {
   Button,
   Cog6ToothIcon,
+  ContextItem,
   Page,
   Sheet,
   SheetContainer,
@@ -9,6 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
@@ -17,6 +19,8 @@ import { useState } from "react";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import {
   useCreateLabsConnectionConfiguration,
+  useDeleteLabsConnectionConfiguration,
+  useLabsConnectionConfiguration,
   useUpdateLabsConnectionConfiguration,
 } from "@app/lib/swr/labs";
 import type {
@@ -45,7 +49,7 @@ export function ConfigureLabsConnectionModal({
   dataSourcesViews,
   spaces,
   isSpacesLoading,
-  configuration,
+  configuration: initialConfiguration,
 }: ConfigureLabsConnectionModal) {
   const sendNotification = useSendNotification();
   const updateConnectionConfiguration = useUpdateLabsConnectionConfiguration({
@@ -55,6 +59,15 @@ export function ConfigureLabsConnectionModal({
   const createConnectionConfiguration = useCreateLabsConnectionConfiguration({
     workspaceId: owner.sId,
   });
+  const deleteConnectionConfiguration = useDeleteLabsConnectionConfiguration({
+    workspaceId: owner.sId,
+    connectionId: connection.id,
+  });
+  const { configuration, mutateConfiguration } = useLabsConnectionConfiguration(
+    {
+      workspaceId: owner.sId,
+    }
+  );
 
   const [selectionConfigurations, setSelectionConfigurations] =
     useState<DataSourceViewSelectionConfigurations>({});
@@ -68,6 +81,7 @@ export function ConfigureLabsConnectionModal({
     });
 
     if (success) {
+      await mutateConfiguration();
       sendNotification({
         type: "success",
         title: "Success!",
@@ -122,13 +136,14 @@ export function ConfigureLabsConnectionModal({
 
   const onSaveApiKey = async () => {
     if (connection.authType === "apiKey") {
-      if (configuration) {
+      if (initialConfiguration) {
         // Update existing configuration
         const success = await updateConnectionConfiguration({
           credentialId: apiKey,
         });
 
         if (success) {
+          await mutateConfiguration();
           sendNotification({
             type: "success",
             title: "Success!",
@@ -149,6 +164,7 @@ export function ConfigureLabsConnectionModal({
         });
 
         if (success) {
+          await mutateConfiguration();
           sendNotification({
             type: "success",
             title: "Success!",
@@ -165,6 +181,14 @@ export function ConfigureLabsConnectionModal({
     }
   };
 
+  const onDisconnect = async () => {
+    const success = await deleteConnectionConfiguration();
+    if (success) {
+      await mutateConfiguration();
+      setApiKey("");
+    }
+  };
+
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -172,33 +196,57 @@ export function ConfigureLabsConnectionModal({
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle>Beta connection: {connection.label}</SheetTitle>
+          <SheetTitle>[Beta] Connection configuration</SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-4 p-4">
             <div className="flex flex-col gap-2">
+              <Page.Layout direction="horizontal">
+                <div className="flex flex-col gap-2">
+                  <ContextItem.Visual visual={connection.logo} />
+                  <Page.SectionHeader
+                    title={connection.label}
+                    description={connection.description}
+                  />
+                </div>
+                {configuration && (
+                  <div className="flex flex-1 justify-end">
+                    <Button
+                      label="Disconnect"
+                      variant="warning"
+                      icon={TrashIcon}
+                      onClick={onDisconnect}
+                    />
+                  </div>
+                )}
+              </Page.Layout>
+
               <p className="text-element-700 mb-2 text-sm">
                 {`This feature is currently in beta. We would love to hear from you once you test it out!`}
               </p>
 
-              {connection.authType === "apiKey" && (
-                <div className="flex flex-col gap-2">
-                  <label className="text-element-900 text-sm font-medium">
-                    {connection.label} API Key
-                  </label>
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="border-structure-200 text-element-900 rounded-md border bg-white px-3 py-2 text-sm"
-                    placeholder="Enter your API key"
-                  />
-                  <Button
-                    label="Connect"
-                    onClick={onSaveApiKey}
-                    disabled={!apiKey}
-                  />
-                </div>
+              {!configuration && (
+                <>
+                  {connection.authType === "apiKey" && (
+                    <div className="flex flex-col gap-2">
+                      <label className="text-element-900 text-sm font-medium">
+                        {connection.label} API Key
+                      </label>
+                      <input
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        className="border-structure-200 text-element-900 rounded-md border bg-white px-3 py-2 text-sm"
+                        placeholder="Enter your API key"
+                      />
+                      <Button
+                        label="Connect"
+                        onClick={onSaveApiKey}
+                        disabled={!apiKey}
+                      />
+                    </div>
+                  )}
+                </>
               )}
 
               {configuration && (
