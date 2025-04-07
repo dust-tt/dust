@@ -182,7 +182,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
       </div>
 
       <Separator className="my-4" />
-      
+
       <Page.SectionHeader title="Settings" />
       <div className="flex space-x-2">
         <div className="flex-grow">
