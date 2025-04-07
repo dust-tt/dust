@@ -169,15 +169,6 @@ export async function updateConversation(
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
-  logger.info(
-    {
-      conversationId,
-      workspaceId: auth.workspace()?.sId,
-      visibility,
-      title,
-    },
-    "[CONVO_VISIBILITY] Updating conversation visibility or title."
-  );
   await conversation.updateVisiblity(visibility, title);
 
   return getConversation(auth, conversationId);
@@ -211,22 +202,8 @@ export async function deleteConversation(
   }
 
   if (destroy) {
-    logger.info(
-      {
-        conversationId,
-        workspaceId: auth.workspace()?.sId,
-      },
-      "[CONVO_VISIBILITY] Destroying conversation."
-    );
     await conversation.delete(auth);
   } else {
-    logger.info(
-      {
-        conversationId,
-        workspaceId: auth.workspace()?.sId,
-      },
-      "[CONVO_VISIBILITY] Updating conversation visibility to deleted."
-    );
     await conversation.updateVisiblity("deleted");
   }
   return new Ok({ success: true });
