@@ -406,7 +406,7 @@ export function ProviderSetup({
             {renderFields()}
             <div className="text-sm">
               {testError ? (
-                <span className="text-red-500">
+                <span className="text-warning">
                   Error: {JSON.stringify(testError)}
                 </span>
               ) : testSuccessful ? (

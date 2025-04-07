@@ -906,8 +906,8 @@ function NotionUrlCheckOrFind({
               className={classNames(
                 "font-bold",
                 urlDetails.page || urlDetails.db
-                  ? "text-emerald-800"
-                  : "text-red-800"
+                  ? "text-success-800"
+                  : "text-warning-800"
               )}
             >
               {(() => {
@@ -935,7 +935,7 @@ function NotionUrlCheckOrFind({
                         <div>
                           {urlDetails.page.parentType === "page" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success-800">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -947,7 +947,7 @@ function NotionUrlCheckOrFind({
                           )}
                           {urlDetails.page.parentType === "database" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success-800">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -971,7 +971,7 @@ function NotionUrlCheckOrFind({
                         <div>
                           {urlDetails.db?.parentType === "page" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success-800">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -983,7 +983,7 @@ function NotionUrlCheckOrFind({
                           )}
                           {urlDetails.db?.parentType === "database" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success-800">
                                 Parent URL:
                               </span>
                               <span className="pl-2">

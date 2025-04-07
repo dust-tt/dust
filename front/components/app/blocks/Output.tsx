@@ -248,13 +248,13 @@ export function Execution({
           <div key={i} className="flex-auto flex-col">
             {t.error != null ? (
               <div className="flex flex-auto flex-row">
-                <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-red-400" />
+                <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-warning-400" />
                 <Error error={t.error} />
               </div>
             ) : (
               <div className="flex flex-row">
                 <div className="flex flex-initial">
-                  <CheckCircleIcon className="mt-0.5 h-4 w-4 text-emerald-300" />
+                  <CheckCircleIcon className="mt-0.5 h-4 w-4 text-success-300" />
                 </div>
                 <div className="flex flex-1">
                   <ValueViewer
@@ -489,7 +489,7 @@ export default function Output({
                   ) {
                     return (
                       <div key={i} className="ml-1 flex flex-auto flex-row">
-                        <div className="mr-2 flex font-mono text-sm text-gray-300">
+                        <div className="mr-2 flex font-mono text-sm text-primary-300">
                           {i}:
                         </div>
                         <Logs trace={trace} />
@@ -516,13 +516,13 @@ export default function Output({
                   )}
                   <span className="text-sm text-primary-500 dark:text-primary-500-night">
                     [{" "}
-                    <span className="font-bold text-emerald-400">
+                    <span className="font-bold text-success">
                       {successes} {successes === 1 ? "success" : "successes"}
                     </span>
                     {errors > 0 ? (
                       <>
                         {", "}
-                        <span className="font-bold text-red-400">
+                        <span className="font-bold text-warning">
                           {errors} {errors === 1 ? "error" : "errors"}
                         </span>
                       </>
@@ -540,7 +540,7 @@ export default function Output({
               {traces.map((trace, i) => {
                 return (
                   <div key={i} className="ml-1 flex flex-auto flex-row">
-                    <div className="mr-2 flex font-mono text-sm text-gray-300">
+                    <div className="mr-2 flex font-mono text-sm text-primary-300">
                       {i}:
                     </div>
                     <Execution trace={trace} block={block} />

@@ -38,7 +38,7 @@ export default function SsoEnforced({
               <Logo className="h-[48px] w-[192px] px-1" />
             </div>
             <p className="mt-16 text-4xl font-semibold tracking-tighter text-primary-50 md:text-6xl">
-              <span className="text-red-400">Secure AI agent</span> <br />
+              <span className="text-warning">Secure AI agent</span> <br />
               with your company’s knowledge
               <br />
             </p>

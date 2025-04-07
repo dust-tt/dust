@@ -24,7 +24,7 @@ export function ColorPicker<T extends string>({
   onColorSelect,
 }: ColorPickerProps<T>) {
   return (
-    <div className="s-grid-rows-20 w-auto s-grid s-grid-cols-8 s-gap-1.5 s-rounded s-p-2 s-shadow-lg">
+    <div className="s-grid-rows-20 w-auto s-grid s-grid-cols-8 s-gap-1.5 s-rounded s-p-2">
       {colors.map((color) => {
         return (
           <ColorSwatch

@@ -107,7 +107,7 @@ function InputField({
             </PokeFormControl>
           ) : (
             <div>
-              <p className="text-red-500">
+              <p className="text-warning">
                 Invalid input type: {typeof field.value}. Expected a string.
               </p>
             </div>
@@ -171,7 +171,7 @@ function PickerInputField({
             </PokeFormControl>
           ) : (
             <div>
-              <p className="text-red-500">
+              <p className="text-warning">
                 Invalid input type: {typeof field.value}. Expected a string.
               </p>
             </div>
@@ -234,7 +234,7 @@ function TextareaField({
             )
           ) : (
             <div>
-              <p className="text-red-500">
+              <p className="text-warning">
                 Invalid input type: {typeof field.value}. Expected a string.
               </p>
             </div>

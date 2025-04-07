@@ -24,14 +24,6 @@ const colorTable = {
   emerald: "s-bg-brand-tea-green",
 };
 
-// const colorTable = {
-//   pink: "s-bg-brand-support-rose",
-//   amber: "s-bg-brand-support-golden ",
-//   sky: "s-bg-brand-support-blue",
-//   blue: "s-bg-brand-support-blue",
-//   emerald: "s-bg-brand-support-green",
-// };
-
 const textColorTable = {
   pink: " s-text-brand-red-rose",
   amber: "s-text-brand-orange-golden",

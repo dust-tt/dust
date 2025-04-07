@@ -107,7 +107,7 @@ export default function EnterpriseUpgradeDialog({
             the customer.
           </DialogDescription>
         </DialogHeader>
-        {error && <div className="text-red-500">{error}</div>}
+        {error && <div className="text-warning">{error}</div>}
         {isSubmitting && <Spinner />}
         {!isSubmitting && (
           <PokeForm {...form}>
