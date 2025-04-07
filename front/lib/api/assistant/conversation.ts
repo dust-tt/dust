@@ -211,6 +211,13 @@ export async function deleteConversation(
   }
 
   if (destroy) {
+    logger.info(
+      {
+        conversationId,
+        workspaceId: auth.workspace()?.sId,
+      },
+      "[CONVO_VISIBILITY] Destroying conversation."
+    );
     await conversation.delete(auth);
   } else {
     logger.info(
