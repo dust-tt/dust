@@ -1,7 +1,9 @@
 import { Op } from "sequelize";
 
-import { getDataSource } from "@app/lib/actions/configuration/retrieval";
-import { getTableConfiguration } from "@app/lib/actions/configuration/table_query";
+import {
+  renderDataSourceConfiguration,
+  renderTableConfiguration,
+} from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -120,8 +122,10 @@ export async function fetchMCPServerActionConfigurations(
         name,
         description,
         mcpServerViewId: mcpServerView.sId,
-        dataSources: dataSourceConfigurations.map(getDataSource),
-        tables: tablesConfigurations.map(getTableConfiguration),
+        dataSources: dataSourceConfigurations.map(
+          renderDataSourceConfiguration
+        ),
+        tables: tablesConfigurations.map(renderTableConfiguration),
       });
     }
   }
