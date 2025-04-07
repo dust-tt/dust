@@ -1,10 +1,11 @@
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { ConversationType, Result } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 // When we send the attachments at the conversation creation, we are missing the useCaseMetadata
 // Therefore, we couldn't upsert them to the conversation datasource.
@@ -23,7 +24,7 @@ export async function maybeUpsertFileAttachment(
     )[];
     conversation: ConversationType;
   }
-) {
+): Promise<Result<undefined, DustError>> {
   const filesIds = removeNulls(
     contentFragments.map((cf) => {
       if ("fileId" in cf) {
@@ -47,29 +48,41 @@ export async function maybeUpsertFileAttachment(
             auth,
             fileResource
           );
-          if (!jitDataSource.isErr()) {
-            const r = await processAndUpsertToDataSource(
-              auth,
-              jitDataSource.value,
-              {
-                file: fileResource,
-              }
-            );
-            if (r.isErr()) {
-              // For now, silently log the error
-              logger.warn({
-                fileModelId: fileResource.id,
-                workspaceId: conversation.owner.sId,
-                contentType: fileResource.contentType,
-                useCase: fileResource.useCase,
-                useCaseMetadata: fileResource.useCaseMetadata,
-                message: "Failed to upsert the file.",
-                error: r.error,
-              });
+          if (jitDataSource.isErr()) {
+            return new Err({
+              name: "dust_error",
+              code: "internal_server_error",
+              message: "Failed to get or create JIT data source.",
+              error: jitDataSource.error,
+            });
+          }
+          const r = await processAndUpsertToDataSource(
+            auth,
+            jitDataSource.value,
+            {
+              file: fileResource,
             }
+          );
+          if (r.isErr()) {
+            logger.error({
+              fileModelId: fileResource.id,
+              workspaceId: conversation.owner.sId,
+              contentType: fileResource.contentType,
+              useCase: fileResource.useCase,
+              useCaseMetadata: fileResource.useCaseMetadata,
+              message: "Failed to upsert the file.",
+              error: r.error,
+            });
+            return new Err({
+              name: "dust_error",
+              code: "internal_server_error",
+              message: "Failed to upsert the file.",
+              error: r.error,
+            });
           }
         }
       }),
     ]);
   }
+  return new Ok(undefined);
 }
