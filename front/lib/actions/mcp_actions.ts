@@ -262,15 +262,13 @@ export async function tryListMCPTools(
 function isPlatformMCPServerConfiguration(
   action: AgentActionConfigurationType
 ): action is PlatformMCPServerConfigurationType {
-  return (
-    action.type === "mcp_server_configuration" && "mcpServerViewId" in action
-  );
+  return "mcpServerViewId" in action;
 }
 
 function isPlatformMCPToolConfiguration(
   action: MCPToolConfigurationType
 ): action is PlatformMCPToolConfigurationType {
-  return action.type === "mcp_configuration" && "mcpServerViewId" in action;
+  return "mcpServerViewId" in action;
 }
 
 async function listMCPServerTools(
