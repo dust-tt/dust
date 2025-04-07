@@ -17,6 +17,7 @@ import type { SetStateAction } from "react";
 import { useState } from "react";
 
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
+import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import {
   useCreateLabsConnectionConfiguration,
   useDeleteLabsConnectionConfiguration,
@@ -37,10 +38,7 @@ interface ConfigureLabsConnectionModal {
   dataSourcesViews: DataSourceViewType[];
   spaces: SpaceType[];
   isSpacesLoading: boolean;
-  configuration?: {
-    id: string;
-    credentialId: string | null;
-  };
+  existingConfiguration?: LabsConnectionsConfigurationResource;
 }
 
 export function ConfigureLabsConnectionModal({
@@ -49,6 +47,7 @@ export function ConfigureLabsConnectionModal({
   dataSourcesViews,
   spaces,
   isSpacesLoading,
+  existingConfiguration,
 }: ConfigureLabsConnectionModal) {
   const sendNotification = useSendNotification();
   const updateConnectionConfiguration = useUpdateLabsConnectionConfiguration({
@@ -117,77 +116,54 @@ export function ConfigureLabsConnectionModal({
   };
 
   const onSaveApiKey = async () => {
-    if (connection.authType === "apiKey") {
-      if (configuration) {
-        // Update existing configuration
-        const success = await updateConnectionConfiguration({
-          credentialId: apiKey,
-          dataSourceViewId: pendingDataSourceView
-            ? pendingDataSourceView.id
-            : null,
+    if (connection.authType !== "apiKey") {
+      return;
+    }
+
+    if (!configuration && !apiKey) {
+      sendNotification({
+        type: "error",
+        title: "Failed to save",
+        description: "Please enter an API key before saving.",
+      });
+      return;
+    }
+
+    let success = false;
+
+    if (configuration) {
+      success = await updateConnectionConfiguration({
+        credentialId: apiKey,
+        dataSourceViewId: pendingDataSourceView?.id ?? null,
+      });
+    } else {
+      success = await createConnectionConfiguration({
+        provider: connection.id,
+        credentialId: apiKey,
+      });
+
+      if (success && pendingDataSourceView) {
+        success = await updateConnectionConfiguration({
+          dataSourceViewId: pendingDataSourceView.id,
         });
-
-        if (success) {
-          await mutateConfiguration();
-          sendNotification({
-            type: "success",
-            title: "Success!",
-            description: `Your ${connection.label} configuration has been saved successfully.`,
-          });
-        } else {
-          sendNotification({
-            type: "error",
-            title: "Failed to save",
-            description: "Could not save your settings. Please try again.",
-          });
-        }
-      } else {
-        // Create new configuration
-        if (!apiKey) {
-          sendNotification({
-            type: "error",
-            title: "Failed to save",
-            description: "Please enter an API key before saving.",
-          });
-          return;
-        }
-
-        const success = await createConnectionConfiguration({
-          provider: connection.id,
-          credentialId: apiKey,
-        });
-
-        if (success) {
-          // After creating the configuration, update the data source view if needed
-          if (pendingDataSourceView) {
-            const updateSuccess = await updateConnectionConfiguration({
-              dataSourceViewId: pendingDataSourceView.id,
-            });
-            if (!updateSuccess) {
-              sendNotification({
-                type: "error",
-                title: "Failed to save storage settings",
-                description:
-                  "Could not save your storage settings. Please try again.",
-              });
-              return;
-            }
-          }
-          await mutateConfiguration();
-          sendNotification({
-            type: "success",
-            title: "Success!",
-            description:
-              "Your API key and storage settings have been saved successfully.",
-          });
-        } else {
-          sendNotification({
-            type: "error",
-            title: "Failed to save",
-            description: "Could not save your settings. Please try again.",
-          });
-        }
       }
+    }
+
+    if (success) {
+      await mutateConfiguration();
+      sendNotification({
+        type: "success",
+        title: "Success!",
+        description: configuration
+          ? `${connection.label} configuration saved successfully.`
+          : "Your settings have been saved successfully.",
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Failed to save",
+        description: "Could not save your settings. Please try again.",
+      });
     }
   };
 
@@ -202,7 +178,11 @@ export function ConfigureLabsConnectionModal({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button label="Connect" icon={Cog6ToothIcon} variant="outline" />
+        <Button
+          label={existingConfiguration ? "Edit" : "Connect"}
+          icon={Cog6ToothIcon}
+          variant="outline"
+        />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>

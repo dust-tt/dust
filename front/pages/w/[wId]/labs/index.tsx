@@ -16,6 +16,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
+import { useLabsConnectionConfigurations } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   LabsConnectionItemType,
@@ -110,15 +111,17 @@ export default function LabsTranscriptsIndex({
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
   });
-  const { dataSourceViews, isDataSourceViewsLoading } =
-    useDataSourceViews(owner);
+  const { dataSourceViews } = useDataSourceViews(owner);
+  const { configurations } = useLabsConnectionConfigurations({
+    workspaceId: owner.sId,
+  });
 
   return (
     <ConversationsNavigationProvider>
       <AppLayout
         subscription={subscription}
         owner={owner}
-        pageTitle="Dust - Transcripts processing"
+        pageTitle="Dust - Exploratory features"
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         <Page>
@@ -173,9 +176,8 @@ export default function LabsTranscriptsIndex({
                           connection={item}
                           dataSourcesViews={dataSourceViews}
                           spaces={spaces}
-                          isSpacesLoading={
-                            isSpacesLoading || isDataSourceViewsLoading
-                          }
+                          isSpacesLoading={isSpacesLoading}
+                          existingConfigurations={configurations}
                         />
                       }
                       visual={<ContextItem.Visual visual={item.logo} />}

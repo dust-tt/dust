@@ -4,6 +4,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type { Fetcher } from "swr";
 
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetLabsConnectionsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/connections";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
@@ -239,4 +240,25 @@ export function useDeleteLabsConnectionConfiguration({
   };
 
   return deleteConnectionConfiguration;
+}
+
+export function useLabsConnectionConfigurations({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const configurationsFetcher: Fetcher<LabsConnectionsConfigurationResource[]> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/labs/connections/all`,
+    configurationsFetcher
+  );
+
+  return {
+    configurations: data || [],
+    isConfigurationsLoading: !error && !data,
+    isConfigurationsError: error,
+    mutateConfigurations: mutate,
+  };
 }
