@@ -90,8 +90,10 @@ export abstract class ResourceWithSpace<
       blobs
         .map((b) => {
           const space = spaces.find((space) => space.id === b.vaultId);
+          // Skip entries where space is not found, which can happen when using the @help agent.
+          // @help can use retrieval, which relies on a data source view that is on another workspace.
           if (!space) {
-            throw new Error("Unreachable: space not found");
+            return null;
           }
 
           const includedResults = (includes || []).reduce<IncludeType>(
@@ -117,8 +119,8 @@ export abstract class ResourceWithSpace<
 
           return new this(this.model, b.get(), space, includedResults);
         })
-        // Filter out resources that the user cannot fetch.
-        .filter((cls) => cls.canFetch(auth))
+        // Filter out null entries (where space was not found) and resources that the user cannot fetch.
+        .filter((cls): cls is T => cls !== null && cls.canFetch(auth))
     );
   }
 
