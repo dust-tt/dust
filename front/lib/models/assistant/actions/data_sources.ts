@@ -10,7 +10,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 /**
- * Configuration of Datasources used for Retrieval Action.
+ * Configuration of Data Sources used for Retrieval, Process and MCP server actions.
  */
 export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataSourceConfiguration> {
   declare createdAt: CreationOptional<Date>;
