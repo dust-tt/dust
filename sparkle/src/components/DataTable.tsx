@@ -8,6 +8,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   PaginationState,
+  RowSelectionState,
   type SortingState,
   Updater,
   useReactTable,
@@ -18,6 +19,7 @@ import React, { ReactNode, useEffect, useRef, useState } from "react";
 import {
   Avatar,
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -37,13 +39,7 @@ import {
   Tooltip,
 } from "@sparkle/components";
 import { useCopyToClipboard } from "@sparkle/hooks";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  MoreIcon,
-} from "@sparkle/icons";
+import { ArrowDownIcon, ArrowUpIcon, ClipboardCheckIcon, ClipboardIcon, MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 import { breakpoints, useWindowSize } from "./WindowUtility";
@@ -95,6 +91,9 @@ interface DataTableProps<TData extends TBaseData> {
   setSorting?: (sorting: SortingState) => void;
   isServerSideSorting?: boolean;
   disablePaginationNumbers?: boolean;
+  rowSelection?: RowSelectionState;
+  setRowSelection?: (rowSelection: RowSelectionState) => void;
+  enableRowSelection?: boolean | ((row: TData) => boolean);
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -113,6 +112,9 @@ export function DataTable<TData extends TBaseData>({
   setSorting,
   isServerSideSorting = false,
   disablePaginationNumbers = false,
+  rowSelection,
+  setRowSelection,
+  enableRowSelection = false,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -140,6 +142,15 @@ export function DataTable<TData extends TBaseData>({
         }
       : undefined;
 
+  const onRowSelectionChange =
+    rowSelection && setRowSelection
+      ? (updater: Updater<RowSelectionState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(rowSelection) : updater;
+          setRowSelection(newValue);
+        }
+      : undefined;
+
   const table = useReactTable({
     data,
     columns,
@@ -157,17 +168,20 @@ export function DataTable<TData extends TBaseData>({
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
     onColumnFiltersChange: setColumnFilters,
+    onRowSelectionChange,
     state: {
       columnFilters,
       ...(isServerSideSorting && {
         sorting,
       }),
       pagination,
+      rowSelection,
     },
     initialState: {
       sorting,
     },
     onPaginationChange,
+    enableRowSelection,
   });
 
   useEffect(() => {
@@ -1013,3 +1027,36 @@ DataTable.Caption = function Caption({
     </caption>
   );
 };
+
+export function createSelectionColumn<TData>(): ColumnDef<TData, unknown> {
+  return {
+    id: "select",
+    enableSorting: false,
+    enableHiding: false,
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllRowsSelected()
+            ? true
+            : table.getIsSomeRowsSelected()
+              ? "partial"
+              : false
+        }
+        onCheckedChange={table.getToggleAllRowsSelectedHandler()}
+        size="xs"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        disabled={!row.getCanSelect()}
+        onCheckedChange={row.getToggleSelectedHandler()}
+        size="xs"
+      />
+    ),
+    meta: {
+      className: "s-w-10 s-text-start",
+      sizeRatio: 5,
+    },
+  };
+}
