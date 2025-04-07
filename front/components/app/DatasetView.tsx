@@ -604,7 +604,7 @@ export default function DatasetView({
                               <Button
                                 size="mini"
                                 icon={XCircleIcon}
-                                variant="ghost"
+                                variant="outline"
                                 tooltip="Delete block"
                                 onClick={() => {
                                   handleDeleteKey(j);
@@ -614,7 +614,7 @@ export default function DatasetView({
                             <Button
                               size="mini"
                               icon={PlusCircleIcon}
-                              variant="outline"
+                              variant="primary"
                               tooltip="New block"
                               onClick={() => {
                                 handleNewKey(j);
@@ -779,7 +779,7 @@ export default function DatasetView({
                           <Button
                             size="mini"
                             icon={XCircleIcon}
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => {
                               handleDeleteEntry(i);
                             }}
@@ -788,7 +788,7 @@ export default function DatasetView({
                         <Button
                           size="mini"
                           icon={PlusCircleIcon}
-                          variant="outline"
+                          variant="primary"
                           onClick={() => {
                             handleNewEntry(i);
                           }}

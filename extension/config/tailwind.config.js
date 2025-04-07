@@ -187,7 +187,6 @@ module.exports = {
     fontFamily: {
       sans: ["Geist", "sans-serif"],
       mono: ["Geist Mono", "monospace"],
-      objektiv: ["Geist", "sans-serif"],
     },
     fontSize: {
       xs: [
@@ -509,7 +508,7 @@ module.exports = {
           "red-rose": colors.red[500],
           "pink-rose": colors.red[200],
           "support-rose": colors.red[50],
-          "orange-golden": customColors.golden[500],
+          "orange-golden": customColors.golden[600],
           "sunshine-golden": customColors.golden[200],
           "support-golden": customColors.golden[50],
           "dark-gray": colors.gray[700],
