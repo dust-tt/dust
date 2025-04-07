@@ -21,7 +21,10 @@ import {
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { PlanResource } from "@app/lib/resources/plan_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { Subscription } from "@app/lib/resources/storage/models/plans";
+import {
+  PlanModel,
+  Subscription,
+} from "@app/lib/resources/storage/models/plans";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -176,7 +179,7 @@ async function handler(
                 where: { workspaceId: workspace.id, status: "active" },
                 include: [
                   {
-                    model: PlanResource.model,
+                    model: PlanModel,
                     as: "plan",
                   },
                 ],
