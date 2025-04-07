@@ -344,7 +344,7 @@ const maybeApplyProcessing: ProcessingFunction = async (
   }
 };
 
-type processAndStoreFileContent =
+type ProcessAndStoreFileContent =
   | {
       type: "incoming_message";
       value: IncomingMessage;
@@ -373,7 +373,7 @@ export async function processAndStoreFile(
     content,
   }: {
     file: FileResource;
-    content: processAndStoreFileContent;
+    content: ProcessAndStoreFileContent;
   }
 ): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   if (file.isReady || file.isFailed) {
