@@ -22,6 +22,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
 import { Ok, removeNulls } from "@app/types";
+import { DEFAULT_MCP_ACTION_DESCRIPTION, DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -42,7 +43,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     auth: Authenticator,
     blob: Omit<
       CreationAttributes<RemoteMCPServer>,
-      "spaceId" | "sId" | "sharedSecret" | "lastSyncAt"
+      "name" | "description" | "spaceId" | "sId" | "sharedSecret" | "lastSyncAt"
     >,
     transaction?: Transaction
   ) {
@@ -56,7 +57,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     const sharedSecret = randomBytes(32).toString("hex");
 
     const server = await RemoteMCPServer.create(
-      { ...blob, sharedSecret, lastSyncAt: new Date() },
+      { ...blob, name: blob.cachedName || DEFAULT_MCP_ACTION_NAME, description: blob.cachedDescription || DEFAULT_MCP_ACTION_DESCRIPTION, sharedSecret, lastSyncAt: new Date() },
       { transaction }
     );
 
@@ -204,6 +205,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       description,
       icon,
       sharedSecret,
+      cachedName,
+      cachedDescription,
       cachedTools,
       lastSyncAt,
     }: {
@@ -211,15 +214,28 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       description?: string;
       icon?: AllowedIconType;
       sharedSecret?: string;
+      cachedName?: string;
+      cachedDescription?: string;
       cachedTools?: MCPToolType[];
       lastSyncAt: Date;
     }
   ) {
+    // If we update the cachedName or cachedDescription, and the name is currently the default one,
+    // we need to update the name and description as well.
+    if (cachedName && this.name === this.cachedName) {
+      name = cachedName;
+    }
+    if (cachedDescription && this.description === this.cachedDescription) {
+      description = cachedDescription;
+    }
+
     await this.update({
       name,
       description,
       icon,
       sharedSecret,
+      cachedName,
+      cachedDescription,
       cachedTools,
       lastSyncAt,
     });
@@ -228,6 +244,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   // Serialization.
   toJSON(): MCPServerType & {
     // Remote MCP Server specifics
+    cachedName: string;
+    cachedDescription: string;
     url: string;
     lastSyncAt: number | null;
     sharedSecret: string;
@@ -241,6 +259,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       icon: this.icon,
       tools: this.cachedTools,
 
+      cachedName: this.cachedName,
+      cachedDescription: this.cachedDescription,
       authorization: this.authorization,
       isDefault: false, // So far we don't have defaults remote MCP servers.
 
