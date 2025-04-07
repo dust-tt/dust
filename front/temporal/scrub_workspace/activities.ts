@@ -4,6 +4,7 @@ import {
   archiveAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
+import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
 import {
@@ -131,7 +132,7 @@ export async function deleteAllConversations(auth: Authenticator) {
   for (const conversationChunk of conversationChunks) {
     await Promise.all(
       conversationChunk.map(async (c) => {
-        await c.delete(auth);
+        await destroyConversation(auth, { conversationId: c.sId });
       })
     );
   }
