@@ -177,10 +177,16 @@ async function tryCallPlatformMCPTool(
       type: "mcpServerId",
       mcpServerId: mcpServerView.mcpServerId,
     });
-    const r = await mcpClient.callTool({
-      name: actionConfiguration.name,
-      arguments: rawInputs,
-    });
+    const r = await mcpClient.callTool(
+      {
+        name: actionConfiguration.name,
+        arguments: rawInputs,
+      },
+      undefined,
+      {
+        timeout: 10000,
+      }
+    );
 
     await mcpClient.close();
 

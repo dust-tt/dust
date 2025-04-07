@@ -1,27 +1,24 @@
 import { getMCPServerChannelId } from "@app/lib/api/actions/mcp_local";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import type { Authenticator } from "@app/lib/auth";
 import { createCallbackPromise } from "@app/lib/utils";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
-interface GetConversationMCPEventsForServerOptions {
-  conversationId: string;
+interface GetMCPEventsForServerOptions {
   mcpServerId: string;
   lastEventId?: string;
 }
 
 const MCP_EVENTS_TIMEOUT = 1 * 60 * 1000; // 1 minute.
 
-export async function* getConversationMCPEventsForServer(
-  {
-    conversationId,
-    lastEventId,
-    mcpServerId,
-  }: GetConversationMCPEventsForServerOptions,
+export async function* getMCPEventsForServer(
+  auth: Authenticator,
+  { mcpServerId, lastEventId }: GetMCPEventsForServerOptions,
   signal: AbortSignal
 ) {
-  const channelId = getMCPServerChannelId({ conversationId, mcpServerId });
+  const channelId = getMCPServerChannelId(auth, { mcpServerId });
 
   const callbackPromise = createCallbackPromise<EventPayload | "close">();
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(

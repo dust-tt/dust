@@ -6,6 +6,7 @@ import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
 import {
   createConversation,
   getConversation,
@@ -17,6 +18,7 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
   ContentFragmentType,
@@ -137,6 +139,40 @@ async function handler(
                 "The message.context.username must be a non-empty string.",
             },
           });
+        }
+
+        // Local MCP servers are only available to authenticated users (not API keys).
+        if (message.context.localMCPServerIds) {
+          if (!auth.user()) {
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Local MCP servers are only available to authenticated users.",
+              },
+            });
+          }
+
+          const hasServerAccess = await concurrentExecutor(
+            message.context.localMCPServerIds,
+            async (serverId) =>
+              validateMCPServerAccess(auth, {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                serverId,
+              }),
+            { concurrency: 10 }
+          );
+
+          if (hasServerAccess.some((r) => r === false)) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "invalid_request_error",
+                message: "User does not have access to the local MCP servers.",
+              },
+            });
+          }
         }
       }
 
@@ -274,6 +310,7 @@ async function handler(
               email: message.context.email ?? null,
               profilePictureUrl: message.context.profilePictureUrl ?? null,
               origin: message.context.origin ?? "api",
+              localMCPServerIds: message.context.localMCPServerIds ?? [],
             },
           },
           { resolveAfterFullGeneration: blocking === true }

@@ -35,7 +35,6 @@ const RESOURCES_PREFIX = {
   // Virtual resources.
   remote_mcp_server: "rms",
   internal_mcp_server: "ims",
-  local_mcp_server: "lms",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

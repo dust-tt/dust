@@ -4,20 +4,6 @@ import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import type { LocalMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { makeSId } from "@app/lib/resources/string_ids";
-
-/**
- * Create a string ID for a local MCP server
- */
-export function makeLocalMCPServerStringId(
-  auth: Authenticator,
-  { serverId }: { serverId: number }
-): string {
-  return makeSId("local_mcp_server", {
-    id: serverId,
-    workspaceId: auth.getNonNullableWorkspace().id,
-  });
-}
 
 // ------------------------------
 // Request ID Utilities
@@ -64,30 +50,23 @@ export function parseLocalMCPRequestId(
 // ------------------------------
 
 /**
- * Generate a Redis channel ID for an MCP server conversation
+ * Generate a Redis channel ID for an MCP server
  */
-export function getMCPServerChannelId({
-  conversationId,
-  mcpServerId,
-}: {
-  conversationId: string;
-  mcpServerId: string;
-}): string {
-  return `conversation:${conversationId}:mcp:${mcpServerId}`;
+export function getMCPServerChannelId(
+  auth: Authenticator,
+  { mcpServerId }: { mcpServerId: string }
+): string {
+  return `w:${auth.getNonNullableWorkspace().sId}:mcp:${mcpServerId}`;
 }
 
 /**
  * Generate a Redis channel ID for MCP server results
  */
-export function getMCPServerResultsChannelId({
-  conversationId,
-  mcpServerId,
-}: {
-  conversationId: string;
-  mcpServerId: string;
-}): string {
-  return `${getMCPServerChannelId({
-    conversationId,
+export function getMCPServerResultsChannelId(
+  auth: Authenticator,
+  { mcpServerId }: { mcpServerId: string }
+): string {
+  return `${getMCPServerChannelId(auth, {
     mcpServerId,
   })}:results`;
 }
@@ -113,7 +92,8 @@ export function createLocalMCPServerConfigurations(
   }
 
   return localMCPServerIds.map((sId) => ({
-    id: 1, // Default ID for local MCP servers.
+    // TODO:
+    id: -2, // Default ID for local MCP servers.
     sId,
     name: `MCP Server ${sId}`,
     description: `Use the MCP Server ${sId} to interact with the local MCP server.`,
@@ -142,15 +122,18 @@ export class RedisMCPTransport implements Transport {
   onerror?: ((error: Error) => void) | undefined;
   onmessage: ((message: JSONRPCMessage) => void) | undefined;
 
-  constructor({
-    conversationId,
-    messageId,
-    mcpServerId,
-  }: {
-    conversationId: string;
-    messageId: string;
-    mcpServerId: string;
-  }) {
+  constructor(
+    private readonly auth: Authenticator,
+    {
+      conversationId,
+      messageId,
+      mcpServerId,
+    }: {
+      conversationId: string;
+      messageId: string;
+      mcpServerId: string;
+    }
+  ) {
     this.conversationId = conversationId;
     this.messageId = messageId;
     this.mcpServerId = mcpServerId;
@@ -161,8 +144,7 @@ export class RedisMCPTransport implements Transport {
    * This method is required by the Transport interface.
    */
   async start(): Promise<void> {
-    const resultsChannelId = getMCPServerResultsChannelId({
-      conversationId: this.conversationId,
+    const resultsChannelId = getMCPServerResultsChannelId(this.auth, {
       mcpServerId: this.mcpServerId,
     });
 
@@ -197,8 +179,7 @@ export class RedisMCPTransport implements Transport {
    * This method is required by the Transport interface.
    */
   async send(message: JSONRPCMessage): Promise<void> {
-    const channelId = getMCPServerChannelId({
-      conversationId: this.conversationId,
+    const channelId = getMCPServerChannelId(this.auth, {
       mcpServerId: this.mcpServerId,
     });
 

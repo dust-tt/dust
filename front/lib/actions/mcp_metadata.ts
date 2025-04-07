@@ -145,11 +145,6 @@ export const connectToMCPServer = async (
           await mcpClient.connect(sseTransport);
           break;
 
-        case "local":
-          throw new Error(
-            "Local MCP servers should use connectionType 'localMCPServerId' instead of 'mcpServerId'"
-          );
-
         default:
           assertNever(serverType);
       }
@@ -163,7 +158,7 @@ export const connectToMCPServer = async (
     }
 
     case "localMCPServerId": {
-      const transport = new RedisMCPTransport({
+      const transport = new RedisMCPTransport(auth, {
         conversationId: params.conversationId,
         mcpServerId: params.mcpServerId,
         messageId: params.messageId,

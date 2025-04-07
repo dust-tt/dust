@@ -1866,7 +1866,7 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       })
     ),
     context: UserMessageContextSchema.extend({
-      localMCPServerIds: z.array(z.number()).optional().nullable(),
+      localMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
   }),
   z

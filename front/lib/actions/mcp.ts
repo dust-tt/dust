@@ -1,6 +1,5 @@
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
-import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   BaseActionRunParams,
@@ -14,13 +13,11 @@ import type {
   AgentActionSpecification,
   InputSchemaType,
 } from "@app/lib/actions/types/agent";
-import { hashMCPInputParams } from "@app/lib/actions/utils";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
-import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -29,28 +26,50 @@ import type {
 } from "@app/types";
 import { Ok } from "@app/types";
 
-export type MCPServerConfigurationType = {
+export type BaseMCPServerConfigurationType = {
   id: ModelId;
-  sId: string;
 
-  mcpServerViewId: string; // Hold the sId of the MCP server view.
+  sId: string;
 
   type: "mcp_server_configuration";
 
   name: string;
   description: string | null;
-
-  dataSources: DataSourceConfiguration[] | null;
   // TODO(mcp): add other kind of configurations here such as table query.
 };
 
-export type MCPToolConfigurationType = Omit<
-  MCPServerConfigurationType,
+export type PlatformMCPServerConfigurationType =
+  BaseMCPServerConfigurationType & {
+    dataSources: DataSourceConfiguration[] | null;
+    mcpServerViewId: string; // Hold the sId of the MCP server view.
+  };
+
+export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType;
+
+export type MCPServerConfigurationType =
+  | PlatformMCPServerConfigurationType
+  | LocalMCPServerConfigurationType;
+
+export type PlatformMCPToolConfigurationType = Omit<
+  PlatformMCPServerConfigurationType,
   "type"
 > & {
   type: "mcp_configuration";
   inputSchema: InputSchemaType;
 };
+
+export type LocalMCPToolConfigurationType = Omit<
+  LocalMCPServerConfigurationType,
+  "type"
+> & {
+  type: "mcp_configuration";
+  inputSchema: InputSchemaType;
+  mcpServerId: string;
+};
+
+export type MCPToolConfigurationType =
+  | PlatformMCPToolConfigurationType
+  | LocalMCPToolConfigurationType;
 
 type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
@@ -415,7 +434,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     // TODO(mcp): listen to sse events to provide live feedback to the user
     const r = await tryCallMCPTool(auth, {
       owner,
+      messageId: agentMessage.sId,
       actionConfiguration,
+      conversationId: conversation.sId,
       rawInputs,
     });
 

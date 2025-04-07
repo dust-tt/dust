@@ -1,3 +1,5 @@
+import { validate as uuidValidate, version as uuidVersion } from "uuid";
+
 import type { Result } from "../result";
 import { Err, Ok } from "../result";
 
@@ -101,4 +103,10 @@ export function safeParseJSON(str: string): Result<object | null, Error> {
 
 export function stripNullBytes(text: string): string {
   return text.replace(/\0/g, "");
+}
+
+// UUID utils.
+
+export function isValidUUIDv4(uuid: string): boolean {
+  return uuidValidate(uuid) && uuidVersion(uuid) === 4;
 }

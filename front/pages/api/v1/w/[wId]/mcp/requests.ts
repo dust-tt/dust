@@ -1,26 +1,23 @@
-import type { GetConversationResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { makeLocalMCPServerStringId } from "@app/lib/api/actions/mcp_local";
-import { getConversation } from "@app/lib/api/assistant/conversation";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { getConversationMCPEventsForServer } from "@app/lib/api/assistant/mcp_events";
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
+import { getMCPEventsForServer } from "@app/lib/api/assistant/mcp_events";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isValidUUIDv4 } from "@app/types";
 
 /**
  * @ignoreswagger
- * /api/v1/w/{wId}/assistant/conversations/{cId}/mcp/requests:
+ * /api/v1/w/{wId}/mcp/requests:
  *   get:
- *     summary: Stream MCP tool requests for a conversation
+ *     summary: Stream MCP tool requests for a workspace
  *     description: |
- *       Server-Sent Events (SSE) endpoint that streams MCP tool requests for a conversation.
+ *       Server-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.
  *       This endpoint is used by local MCP servers to listen for tool requests in real-time.
  *       The connection will remain open and events will be sent as new tool requests are made.
  *     tags:
- *       - Conversations
  *       - MCP
  *     security:
  *       - BearerAuth: []
@@ -31,16 +28,16 @@ import type { WithAPIErrorResponse } from "@app/types";
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *       - in: path
- *         name: cId
- *         required: true
- *         description: ID of the conversation
- *         schema:
- *           type: string
  *       - in: query
  *         name: serverId
  *         required: true
- *         description: ID of the MCP server to filter events for
+ *         description: UUID of the MCP server to filter events for
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: lastEventId
+ *         required: false
+ *         description: ID of the last event to filter events for
  *         schema:
  *           type: string
  *     responses:
@@ -63,35 +60,39 @@ import type { WithAPIErrorResponse } from "@app/types";
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
- *       404:
- *         description: Conversation not found.
+ *       403:
+ *         description: Forbidden. You don't have access to this workspace or MCP server.
  *       500:
  *         description: Internal Server Error.
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetConversationResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
-  const { cId, serverId: rawServerId, lastEventId } = req.query;
-  if (typeof cId !== "string") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
-  }
+  const { serverId, lastEventId } = req.query;
 
-  const parsedServerId =
-    typeof rawServerId === "string" ? parseInt(rawServerId, 10) : null;
-  if (parsedServerId === null || Number.isNaN(parsedServerId)) {
+  // Extract the client-provided server ID.
+  if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid serverId parameter.",
+        message: "Invalid server ID format. Must be a valid UUID.",
+      },
+    });
+  }
+
+  const isValidAccess = await validateMCPServerAccess(auth, {
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    serverId,
+  });
+  if (!isValidAccess) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "mcp_auth_error",
+        message: "You don't have access to this MCP server or it has expired.",
       },
     });
   }
@@ -116,11 +117,6 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversation(auth, cId);
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
@@ -137,20 +133,16 @@ async function handler(
     controller.abort();
   });
 
-  const serverId = makeLocalMCPServerStringId(auth, {
-    serverId: parsedServerId,
-  });
-
-  const conversationMcpEvents = getConversationMCPEventsForServer(
+  const mcpEvents = getMCPEventsForServer(
+    auth,
     {
-      conversationId: cId,
+      mcpServerId: serverId,
       lastEventId,
-      serverId,
     },
     signal
   );
 
-  for await (const event of conversationMcpEvents) {
+  for await (const event of mcpEvents) {
     res.write(`data: ${JSON.stringify(event)}\n\n`);
 
     // @ts-expect-error - We need it for streaming but it does not exists in the types.
@@ -168,6 +160,4 @@ async function handler(
   return;
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:conversation" },
-});
+export default withPublicAPIAuthentication(handler);

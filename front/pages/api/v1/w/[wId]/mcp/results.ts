@@ -2,9 +2,9 @@ import { PublicPostMCPResultsRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
 import {
   getMCPServerResultsChannelId,
-  makeLocalMCPServerStringId,
   parseLocalMCPRequestId,
 } from "@app/lib/api/actions/mcp_local";
 import { getConversation } from "@app/lib/api/assistant/conversation";
@@ -15,17 +15,17 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isValidUUIDv4 } from "@app/types";
 
 /**
  * @ignoreswagger
- * /api/v1/w/{wId}/assistant/conversations/{cId}/mcp/results:
+ * /api/v1/w/{wId}/mcp/results:
  *   post:
  *     summary: Submit MCP tool execution results
  *     description: |
  *       Endpoint for local MCP servers to submit the results of tool executions.
  *       This endpoint accepts the output from tools that were executed locally.
  *     tags:
- *       - Conversations
  *       - MCP
  *     security:
  *       - BearerAuth: []
@@ -36,16 +36,10 @@ import type { WithAPIErrorResponse } from "@app/types";
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *       - in: path
- *         name: cId
- *         required: true
- *         description: ID of the conversation
- *         schema:
- *           type: string
  *       - in: query
  *         name: serverId
  *         required: true
- *         description: ID of the MCP server submitting the results
+ *         description: UUID of the MCP server submitting the results
  *         schema:
  *           type: string
  *     requestBody:
@@ -71,8 +65,10 @@ import type { WithAPIErrorResponse } from "@app/types";
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
+ *       403:
+ *         description: Forbidden. You don't have access to this workspace or MCP server.
  *       404:
- *         description: Conversation not found.
+ *         description: Conversation or message not found.
  *       500:
  *         description: Internal Server Error.
  */
@@ -81,36 +77,28 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<{ success: true }>>,
   auth: Authenticator
 ): Promise<void> {
-  const { cId } = req.query;
-  if (typeof cId !== "string") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
-  }
-
-  const { serverId: rawServerId } = req.query;
-  const parsedServerId =
-    typeof rawServerId === "string" ? parseInt(rawServerId, 10) : null;
-  if (parsedServerId === null || Number.isNaN(parsedServerId)) {
+  // Extract the client-provided server ID.
+  const { serverId } = req.query;
+  if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid serverId parameter.",
+        message: "Invalid server ID format. Must be a valid UUID.",
       },
     });
   }
 
-  if (req.method !== "POST") {
+  const isValidAccess = await validateMCPServerAccess(auth, {
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    serverId,
+  });
+  if (!isValidAccess) {
     return apiError(req, res, {
-      status_code: 405,
+      status_code: 403,
       api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, POST is expected.",
+        type: "mcp_auth_error",
+        message: "You don't have access to this MCP server or it has expired.",
       },
     });
   }
@@ -126,11 +114,6 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversation(auth, cId);
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
   const parsed = parseLocalMCPRequestId(r.data.requestId);
   if (!parsed) {
     return apiError(req, res, {
@@ -143,20 +126,16 @@ async function handler(
   }
 
   const { conversationId, messageId } = parsed;
-  if (conversationId !== cId) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid requestId",
-      },
-    });
+
+  // Verify the conversation exists and user has access.
+  const conversationRes = await getConversation(auth, conversationId);
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
   }
 
+  // Verify the message exists.
   const message = await fetchMessageInConversation(
     auth,
-    conversationRes.value,
-    messageId
   );
   if (!message || !message.agentMessage) {
     return apiError(req, res, {
@@ -168,15 +147,10 @@ async function handler(
     });
   }
 
-  const serverId = makeLocalMCPServerStringId(auth, {
-    serverId: parsedServerId,
-  });
-
   // Publish MCP action results.
   await publishEvent({
     origin: "mcp_local_results",
-    channel: getMCPServerResultsChannelId({
-      conversationId: cId,
+    channel: getMCPServerResultsChannelId(auth, {
       mcpServerId: serverId,
     }),
     event: JSON.stringify({
@@ -193,6 +167,4 @@ async function handler(
   return;
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { POST: "update:conversation" },
-});
+export default withPublicAPIAuthentication(handler);
