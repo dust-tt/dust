@@ -195,6 +195,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 {...field}
                 isError={!!form.formState.errors.name}
                 message={form.formState.errors.name?.message}
+                placeholder={mcpServer.cachedName}
               />
             )}
           />
@@ -247,6 +248,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             <>
               <TextArea
                 error={form.formState.errors.description?.message}
+                placeholder={mcpServer.cachedDescription}
                 {...field}
               />
               {form.formState.errors.description && (
