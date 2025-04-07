@@ -34,10 +34,6 @@ import type { ResourceFindOptions } from "./types";
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
-  /**
-   * before updatedAt. Less Than
-   */
-  updatedBefore?: Date;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -190,6 +186,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return mentions;
+  }
+
+  static async listAllBeforeDate(date: Date): Promise<ConversationResource[]> {
+    const conversations = await this.model.findAll({
+      where: {
+        updatedAt: {
+          [Op.lt]: date,
+        },
+      },
+    });
+
+    return conversations.map((c) => new this(this.model, c.get()));
   }
 
   static canAccessConversation(

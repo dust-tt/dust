@@ -62,9 +62,8 @@ export async function purgeConversationsBatchActivity({
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const conversations = await ConversationResource.listAll(auth, {
-      updatedBefore: cutoffDate,
-    });
+    const conversations =
+      await ConversationResource.listAllBeforeDate(cutoffDate);
 
     logger.info(
       {
