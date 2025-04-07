@@ -256,6 +256,7 @@ export function DataTable<TData extends TBaseData>({
               widthClassName={widthClassName}
               key={row.id}
               onClick={row.original.onClick}
+              data-selected={row.getIsSelected()}
             >
               {row.getVisibleCells().map((cell) => {
                 const breakpoint = columnsBreakpoints[cell.column.id];
@@ -637,6 +638,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
   widthClassName: string;
+  "data-selected"?: boolean;
 }
 
 DataTable.Row = function Row({
@@ -654,6 +656,8 @@ DataTable.Row = function Row({
         onClick
           ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"
           : "",
+        props["data-selected"] &&
+          "s-bg-highlight-50 dark:s-bg-highlight-900/10",
         widthClassName,
         className
       )}
@@ -1059,20 +1063,22 @@ export function createSelectionColumn<TData>(): ColumnDef<TData> {
       />
     ),
     cell: ({ row }) => (
-      <Checkbox
-        size="xs"
-        checked={row.getIsSelected()}
-        disabled={!row.getCanSelect()}
-        onCheckedChange={(state) => {
-          if (state === "indeterminate") {
-            return;
-          }
-          row.toggleSelected(state);
-        }}
-      />
+      <div className="s-flex s-h-full s-w-full s-items-center">
+        <Checkbox
+          size="xs"
+          checked={row.getIsSelected()}
+          disabled={!row.getCanSelect()}
+          onCheckedChange={(state) => {
+            if (state === "indeterminate") {
+              return;
+            }
+            row.toggleSelected(state);
+          }}
+        />
+      </div>
     ),
     meta: {
-      className: "s-w-10 s-text-start",
+      className: "s-w-10",
     },
   };
 }
