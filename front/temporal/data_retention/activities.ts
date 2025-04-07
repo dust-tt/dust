@@ -13,15 +13,16 @@ import logger from "@app/logger/logger";
 export async function getWorkspacesWithConversationsRetentionActivity(): Promise<
   number[]
 > {
-  const workspaces = await Workspace.findAll({
-    attributes: ["id"],
-    where: {
-      conversationsRetentionDays: {
-        [Op.not]: null,
-      },
-    },
-  });
-  return workspaces.map((w) => w.id);
+  return [];
+  // const workspaces = await Workspace.findAll({
+  //   attributes: ["id"],
+  //   where: {
+  //     conversationsRetentionDays: {
+  //       [Op.not]: null,
+  //     },
+  //   },
+  // });
+  // return workspaces.map((w) => w.id);
 }
 
 /**
