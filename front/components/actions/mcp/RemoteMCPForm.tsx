@@ -19,7 +19,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import { ALLOWED_ICONS, MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
 import type { RemoteMCPServerType } from "@app/lib/actions/mcp_metadata";
 import {
   useMCPServers,
@@ -36,7 +36,7 @@ interface RemoteMCPFormProps {
 const MCPFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
   description: z.string().min(1, "Description is required."),
-  icon: z.enum(["rocket", "command"], { required_error: "Icon is required." }),
+  icon: z.enum(ALLOWED_ICONS, { required_error: "Icon is required." }),
 });
 
 export type MCPFormType = z.infer<typeof MCPFormSchema>;
@@ -72,10 +72,8 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     try {
       const result = await updateServer({
         name: values.name,
-        url: mcpServer.url || "",
         description: values.description,
         icon: values.icon,
-        tools: mcpServer.tools,
       });
       if (result.success) {
         void mutateMCPServers();

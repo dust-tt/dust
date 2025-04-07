@@ -124,9 +124,9 @@ async function handler(
         });
       }
 
-      const { name, url, icon, description, tools } = req.body;
+      const { name, icon, description } = req.body;
 
-      if (!name && !url && !icon && !description && !tools) {
+      if (!name && !icon && !description) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -138,10 +138,8 @@ async function handler(
 
       await server.updateMetadata(auth, {
         name,
-        url,
         icon,
         description,
-        cachedTools: tools,
         lastSyncAt: new Date(),
       });
 

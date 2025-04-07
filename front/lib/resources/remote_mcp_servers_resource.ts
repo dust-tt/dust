@@ -202,7 +202,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     {
       name,
       description,
-      url,
       icon,
       sharedSecret,
       cachedTools,
@@ -210,17 +209,15 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     }: {
       name?: string;
       description?: string;
-      url?: string;
       icon?: AllowedIconType;
       sharedSecret?: string;
-      cachedTools: MCPToolType[];
+      cachedTools?: MCPToolType[];
       lastSyncAt: Date;
     }
   ) {
     await this.update({
       name,
       description,
-      url,
       icon,
       sharedSecret,
       cachedTools,
