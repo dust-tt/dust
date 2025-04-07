@@ -148,19 +148,23 @@ async function handler(
             jitDataSource.value,
             { file }
           );
-          // For now, silently log the error
           if (rUpsert.isErr()) {
-            {
-              logger.warn({
-                fileModelId: file.id,
-                workspaceId: auth.workspace()?.sId,
-                contentType: file.contentType,
-                useCase: file.useCase,
-                useCaseMetadata: file.useCaseMetadata,
+            logger.error({
+              fileModelId: file.id,
+              workspaceId: auth.workspace()?.sId,
+              contentType: file.contentType,
+              useCase: file.useCase,
+              useCaseMetadata: file.useCaseMetadata,
+              message: "Failed to upsert the file.",
+              error: rUpsert.error,
+            });
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
                 message: "Failed to upsert the file.",
-                error: rUpsert.error,
-              });
-            }
+              },
+            });
           }
         }
       }
