@@ -70,10 +70,14 @@ export function renderDataSourceConfiguration(
 
 export function renderTableConfiguration(
   table: AgentTablesQueryConfigurationTable
-): TableDataSourceConfiguration {
+): TableDataSourceConfiguration & { sId: string } {
   const { dataSourceView } = table;
 
   return {
+    sId: makeSId("table_configuration", {
+      id: table.id,
+      workspaceId: dataSourceView.workspaceId,
+    }),
     dataSourceViewId: DataSourceViewResource.modelIdToSId({
       id: dataSourceView.id,
       workspaceId: dataSourceView.workspaceId,
