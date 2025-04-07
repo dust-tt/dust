@@ -31,6 +31,8 @@ export type LabsTranscriptsConfigurationType = {
   useConnectorConnection: boolean;
 };
 
+export type LabsConnectionAuthType = "apiKey" | "oauth" | "email_password";
+
 export type LabsConnectionItemType = {
   id: LabsConnectionType;
   featureFlag: WhitelistableFeature;
@@ -38,6 +40,7 @@ export type LabsConnectionItemType = {
   logo: React.ComponentType;
   label: string;
   description: string;
+  authType: LabsConnectionAuthType;
 };
 
 export type LabsFeatureItemType = {

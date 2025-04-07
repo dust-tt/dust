@@ -51,6 +51,7 @@ const LABS_CONNECTIONS: LabsConnectionItemType[] = [
     visibleWithoutAccess: false,
     logo: HubspotLogo,
     description: "Import your Hubspot data into Dust.",
+    authType: "apiKey",
   },
 ];
 
@@ -104,6 +105,7 @@ export default function LabsTranscriptsIndex({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const visibleConnections = getVisibleConnections(featureFlags);
   const visibleFeatures = getVisibleFeatures(featureFlags);
+
   return (
     <ConversationsNavigationProvider>
       <AppLayout
@@ -159,9 +161,9 @@ export default function LabsTranscriptsIndex({
                         <FeatureAccessButton
                           accessible={featureFlags.includes(item.featureFlag)}
                           featureName={`${item.label} connection`}
-                          managePath={`/w/${owner.sId}/labs/connections/${item.id}`}
                           owner={owner}
                           canRequestAccess={isAdmin}
+                          connection={item}
                         />
                       }
                       visual={<ContextItem.Visual visual={item.logo} />}

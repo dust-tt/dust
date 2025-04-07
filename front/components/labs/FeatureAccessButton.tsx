@@ -1,13 +1,17 @@
 import { Button, Cog6ToothIcon } from "@dust-tt/sparkle";
 
-import { RequestFeatureAccessModal } from "@app/components/labs/RequestFeatureAccessModal";
-import type { LightWorkspaceType } from "@app/types";
+import { ConfigureLabsConnectionModal } from "@app/components/labs/modals/ConfigureLabsConnectionModal";
+import type { LabsConnectionItemType, LightWorkspaceType } from "@app/types";
+
+import { RequestFeatureAccessModal } from "./modals/RequestFeatureAccessModal";
+
 interface FeatureAccessButtonProps {
   accessible: boolean;
   featureName: string;
-  managePath: string;
+  managePath?: string;
   owner: LightWorkspaceType;
   canRequestAccess: boolean;
+  connection?: LabsConnectionItemType;
 }
 
 export function FeatureAccessButton({
@@ -16,17 +20,28 @@ export function FeatureAccessButton({
   managePath,
   owner,
   canRequestAccess,
+  connection,
 }: FeatureAccessButtonProps) {
   return (
     <>
       {accessible ? (
-        <Button
-          variant="outline"
-          label="Manage"
-          size="sm"
-          icon={Cog6ToothIcon}
-          href={managePath}
-        />
+        <>
+          {managePath && (
+            <Button
+              variant="outline"
+              label="Manage"
+              size="sm"
+              icon={Cog6ToothIcon}
+              href={managePath}
+            />
+          )}
+          {connection && (
+            <ConfigureLabsConnectionModal
+              owner={owner}
+              connection={connection}
+            />
+          )}
+        </>
       ) : (
         <RequestFeatureAccessModal
           owner={owner}
