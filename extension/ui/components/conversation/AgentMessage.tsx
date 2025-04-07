@@ -522,7 +522,7 @@ export function AgentMessage({
   );
 
   const buttons =
-    message.status === "failed"
+    message.status === "failed" || lastAgentStateClassification === "thinking"
       ? []
       : [
           <Button
@@ -574,11 +574,10 @@ export function AgentMessage({
       avatarBusy={agentMessageToRender.status === "created"}
       renderName={() => {
         return (
-          <div className="flex flex-row items-center gap-2">
-            <div className="font-semibold">
-              {/* TODO(Ext) Any CTA here ? */}@{agentConfiguration.name}
-            </div>
-          </div>
+          <span>
+            {/* TODO(Ext) Any CTA here ? */}
+            {agentConfiguration.name}
+          </span>
         );
       }}
       type="agent"

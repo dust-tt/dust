@@ -20,8 +20,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Customer Support",
   title: <>Instant knowledge, exceptional support</>,
-  from: "from-blue-200",
-  to: "to-blue-200",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>
       Equip your team with AI agents to accelerate issue resolution and increase
@@ -111,8 +110,7 @@ export const Metrics: MetricProps = {
       description: <>saved weekly per agent</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -150,7 +148,7 @@ export const UseCases: UseCaseProps = {
 export const ROI: ROIProps = {
   number: "50%",
   subtitle: "reduction in ticket resolution time",
-  logo: "/static/landing/logos/malt.png",
+  logo: "/static/landing/logos/gray/malt.png",
 };
 
 export const Quote: QuoteProps = {
@@ -158,13 +156,13 @@ export const Quote: QuoteProps = {
     "We're managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
   name: "Anaïs Ghelfi",
   title: "Head of Data Platform at Malt",
-  logo: "/static/landing/logos/malt.png",
+  logo: "/static/landing/logos/color/malt.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/r0dwaexoez",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [

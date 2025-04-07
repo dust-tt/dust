@@ -8,7 +8,7 @@ import { FunctionCard } from "./FunctionCard";
 
 interface FunctionCardData {
   title: string;
-  color: "green" | "blue" | "purple";
+  color: "green" | "blue" | "rose" | "golden";
   features: string[];
   visualSrc: string;
   href: string;
@@ -42,7 +42,7 @@ function FunctionsSection() {
     },
     {
       title: "Marketing",
-      color: "purple",
+      color: "rose",
       features: [
         "Localize content in multiple languages with brand consistency",
         "Draft high-quality customer stories following company templates",
@@ -78,7 +78,7 @@ function FunctionsSection() {
     },
     {
       title: "Knowledge Management",
-      color: "purple",
+      color: "golden",
       features: [
         "Access company-wide knowledge instantly",
         "Find product information across knowledge bases",
@@ -114,7 +114,7 @@ function FunctionsSection() {
     },
     {
       title: "People",
-      color: "purple",
+      color: "rose",
       features: [
         "Answer recurring HR questions with information from your policies",
         "Onboard new hires through company processes and documentation",
@@ -138,14 +138,12 @@ function FunctionsSection() {
   ];
 
   return (
-    <div className="w-full">
+    <div className="w-full rounded-2xl">
       <CardCarousel
         title={
-          <div className="flex flex-col gap-4">
-            <H2 className="text-golden-200">
-              Custom AI agents for every function
-            </H2>
-            <P size="lg">
+          <div className="flex flex-col rounded-xl">
+            <H2>Custom AI agents for every function</H2>
+            <P size="lg" className="text-muted-foreground">
               Whether you're a developer, marketer, or data scientist, Dust
               helps you perform sophisticated tasks, automate processes and
               extract powerful insights faster than ever before.

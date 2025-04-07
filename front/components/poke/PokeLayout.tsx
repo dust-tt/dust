@@ -35,7 +35,7 @@ const PokeLayoutContent = ({ children }: PokeLayoutContentProps) => {
   const { region } = usePokeRegion();
 
   return (
-    <div className="min-h-screen bg-structure-50 dark:bg-structure-50-night dark:text-white">
+    <div className="min-h-screen bg-muted-background dark:bg-muted-background-night dark:text-white">
       <PokeNavbar currentRegion={region} />
       <div className="flex flex-col p-6">{children}</div>
     </div>

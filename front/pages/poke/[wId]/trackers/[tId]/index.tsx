@@ -54,15 +54,15 @@ export default function TrackerDetailPage({
           <ContextItem title={`${data.name} (${data.sId})`} visual={<></>}>
             <ContextItem.Description>
               <div className="flex flex-col gap-2">
-                <div className="ml-4 pt-2 text-sm text-element-700">
+                <div className="ml-4 pt-2 text-sm text-muted-foreground">
                   <div className="font-bold">Created At:</div>
                   <div>{formatTimestampToFriendlyDate(data.createdAt)}</div>
                 </div>
-                <div className="ml-4 text-sm text-element-700">
+                <div className="ml-4 text-sm text-muted-foreground">
                   <div className="font-bold">Prompt:</div>
                   <TextArea value={data.prompt ?? ""} />
                 </div>
-                <div className="ml-4 pt-2 text-sm text-element-700">
+                <div className="ml-4 pt-2 text-sm text-muted-foreground">
                   <div className="font-bold">Raw Data</div>
                   <JsonViewer
                     theme={isDark ? "dark" : "light"}

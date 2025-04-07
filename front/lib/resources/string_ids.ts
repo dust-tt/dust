@@ -31,6 +31,8 @@ const RESOURCES_PREFIX = {
   extension: "ext",
   mcp_server_connection: "msc",
   mcp_server_view: "msv",
+  data_source_configuration: "dsc",
+  table_configuration: "tbc",
 
   // Virtual resources.
   remote_mcp_server: "rms",

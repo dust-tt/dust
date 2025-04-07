@@ -10,7 +10,6 @@ import {
   TimeIcon,
 } from "@dust-tt/sparkle";
 import assert from "assert";
-import { createHash } from "crypto";
 
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
@@ -28,8 +27,8 @@ export const ACTION_SPECIFICATIONS: Record<
   {
     label: string;
     description: string;
-    dropDownIcon: React.ComponentProps<typeof Icon>["visual"];
-    cardIcon: React.ComponentProps<typeof Icon>["visual"];
+    dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+    cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
     flag: WhitelistableFeature | null;
   }
 > = {
@@ -84,8 +83,8 @@ export const ACTION_SPECIFICATIONS: Record<
     flag: null,
   },
   MCP: {
-    label: "Calling a MCP Server",
-    description: "Call a tool to answer a question.",
+    label: "Run an Action",
+    description: "Run an action, then reply",
     cardIcon: CommandIcon,
     dropDownIcon: CommandIcon,
     flag: "mcp_actions",
@@ -262,38 +261,14 @@ export function actionRefsOffset({
   return refsOffset;
 }
 
-export function hashMCPInputParams(params: Record<string, unknown>): string {
-  if (!params || Object.keys(params).length === 0) {
-    params = { query: "" };
-  }
-
-  // Sort keys to ensure consistent hashing.
-  const sortedParams = Object.keys(params)
-    .sort()
-    .reduce(
-      (acc, key) => {
-        acc[key] = params[key];
-        return acc;
-      },
-      {} as typeof params
-    );
-
-  return createHash("sha256")
-    .update(JSON.stringify(sortedParams.query))
-    .digest("hex")
-    .substring(0, 16);
-}
-
 export function getMCPApprovalKey({
   conversationId,
   messageId,
   actionId,
-  paramsHash,
 }: {
   conversationId: string;
   messageId: string;
   actionId: number;
-  paramsHash: string;
 }): string {
-  return `assistant:action:validation:${conversationId}:${messageId}:${actionId}:${paramsHash}`;
+  return `conversation:${conversationId}:message:${messageId}:action:${actionId}`;
 }

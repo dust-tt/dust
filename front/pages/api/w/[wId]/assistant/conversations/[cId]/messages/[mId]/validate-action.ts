@@ -3,20 +3,19 @@ import { z } from "zod";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { publishEvent } from "@app/lib/api/assistant/pubsub";
+import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-const ValidateActionSchema = z.object({
+export const ValidateActionSchema = z.object({
   actionId: z.number(),
   approved: z.boolean(),
-  paramsHash: z.any(),
 });
 
-type ValidateActionResponse = {
+export type ValidateActionResponse = {
   success: boolean;
 };
 
@@ -28,12 +27,10 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>,
   auth: Authenticator
 ): Promise<void> {
-  const { cId, mId, wId } = req.query;
-  if (
-    typeof cId !== "string" ||
-    typeof mId !== "string" ||
-    typeof wId !== "string"
-  ) {
+  const owner = auth.getNonNullableWorkspace();
+
+  const { cId, mId } = req.query;
+  if (typeof cId !== "string" || typeof mId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -70,51 +67,22 @@ async function handler(
     return apiErrorForConversation(req, res, conversationRes.error);
   }
 
-  const { actionId, approved, paramsHash } = parseResult.data;
+  const { actionId, approved } = parseResult.data;
 
   try {
-    const actionChannel = `action-${actionId}`;
-    const eventType = approved ? "action_approved" : "action_rejected";
-
-    logger.info(
-      {
-        workspaceId: wId,
-        conversationId: cId,
-        messageId: mId,
-        actionId,
-        approved,
-      },
-      "Action validation request"
-    );
-
-    // Publish validation event to the action channel
-    await publishEvent({
-      origin: "action_validation",
-      channel: actionChannel,
-      event: JSON.stringify({
-        type: eventType,
-        created: Date.now(),
-        actionId: actionId,
-        messageId: mId,
-        paramsHash,
-      }),
+    const result = await validateAction({
+      workspaceId: owner.sId,
+      conversationId: cId,
+      messageId: mId,
+      actionId,
+      approved,
     });
 
-    logger.info(
-      {
-        workspaceId: wId,
-        conversationId: cId,
-        messageId: mId,
-        actionId,
-      },
-      `Action ${approved ? "approved" : "rejected"} by user`
-    );
-
-    res.status(200).json({ success: true });
+    res.status(200).json(result);
   } catch (error) {
     logger.error(
       {
-        workspaceId: wId,
+        workspaceId: owner.sId,
         conversationId: cId,
         messageId: mId,
         actionId,

@@ -94,8 +94,8 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare isError: boolean;
   declare executionState:
     | "pending"
-    | "allowed_explicitely"
-    | "allowed_implicitely"
+    | "allowed_explicitly"
+    | "allowed_implicitly"
     | "denied";
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
@@ -138,7 +138,7 @@ AgentMCPAction.init(
       allowNull: false,
       validate: {
         isIn: [
-          ["pending", "allowed_explicitely", "allowed_implicitely", "denied"],
+          ["pending", "allowed_explicitly", "allowed_implicitly", "denied"],
         ],
       },
     },

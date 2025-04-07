@@ -430,7 +430,7 @@ export interface LoggerInterface {
 }
 
 const DataSourceViewCategoriesSchema = FlexibleEnumSchema<
-  "managed" | "folder" | "website" | "apps"
+  "managed" | "folder" | "website" | "apps" | "actions"
 >();
 
 const BlockTypeSchema = FlexibleEnumSchema<
@@ -790,7 +790,9 @@ type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
+  | "labs_features"
   | "labs_transcripts"
+  | "labs_connection_hubspot"
   | "labs_trackers"
   | "document_tracker"
   | "openai_o1_feature"
@@ -804,12 +806,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "index_private_slack_channel"
   | "disable_run_logs"
   | "show_debug_tools"
-  | "labs_github_actions"
   | "deepseek_r1_global_agent_feature"
   | "salesforce_feature"
   | "advanced_notion_management"
   | "search_knowledge_builder"
-  | "attach_from_datasources"
   | "force_gdrive_labels_scope"
   | "claude_3_7_reasoning"
   | "mcp_actions"
@@ -977,6 +977,28 @@ const ContentFragmentContextSchema = z.object({
   profilePictureUrl: z.string().optional().nullable(),
 });
 
+export const ContentNodeTypeSchema = z.union([
+  z.literal("document"),
+  z.literal("table"),
+  z.literal("folder"),
+]);
+
+export const ContentNodesViewTypeSchema = z.union([
+  z.literal("table"),
+  z.literal("document"),
+  z.literal("all"),
+]);
+
+export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
+
+const ContentFragmentNodeData = z.object({
+  nodeId: z.string(),
+  nodeDataSourceViewId: z.string(),
+  nodeType: ContentNodeTypeSchema,
+  provider: ConnectorProvidersSchema.nullable(),
+  spaceName: z.string(),
+});
+
 const ContentFragmentSchema = z.object({
   id: ModelIdSchema,
   sId: z.string(),
@@ -996,6 +1018,7 @@ const ContentFragmentSchema = z.object({
     z.literal("latest"),
     z.literal("superseded"),
   ]),
+  contentNodeData: ContentFragmentNodeData.nullable(),
 });
 export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
@@ -1289,7 +1312,6 @@ const MCPApproveExecutionEventSchema = z.object({
   messageId: z.string(),
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
-  hash: z.string(),
 });
 
 const AgentErrorEventSchema = z.object({
@@ -2472,7 +2494,13 @@ const FileTypeStatusSchema = FlexibleEnumSchema<
 >();
 
 const FileTypeUseCaseSchema = FlexibleEnumSchema<
-  "conversation" | "avatar" | "tool_output" | "upsert_document" | "upsert_table"
+  | "conversation"
+  | "avatar"
+  | "tool_output"
+  | "upsert_document"
+  | "upsert_table"
+  // See also front/types/files.ts.
+  | "folders_document"
 >();
 
 export const FileTypeSchema = z.object({
@@ -2666,19 +2694,18 @@ export const GetSpacesResponseSchema = z.object({
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
-export const ContentNodeTypeSchema = z.union([
-  z.literal("document"),
-  z.literal("table"),
-  z.literal("folder"),
-]);
+const ValidateActionResponseSchema = z.object({
+  success: z.boolean(),
+});
 
-export const ContentNodesViewTypeSchema = z.union([
-  z.literal("table"),
-  z.literal("document"),
-  z.literal("all"),
-]);
+export type ValidateActionResponseType = z.infer<
+  typeof ValidateActionResponseSchema
+>;
 
-export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
+export const ValidateActionRequestBodySchema = z.object({
+  actionId: z.number(),
+  approved: z.boolean(),
+});
 
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,

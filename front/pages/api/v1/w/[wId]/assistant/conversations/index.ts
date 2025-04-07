@@ -10,7 +10,6 @@ import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry
 import {
   createConversation,
   getConversation,
-  getUserConversations,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -18,6 +17,7 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -354,7 +354,8 @@ async function handler(
           },
         });
       }
-      const conversations = await getUserConversations(auth);
+      const conversations =
+        await ConversationResource.listConversationsForUser(auth);
       res.status(200).json({ conversations });
       return;
 

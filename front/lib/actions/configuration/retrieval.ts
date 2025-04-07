@@ -1,17 +1,15 @@
 import _ from "lodash";
 import { Op } from "sequelize";
 
-import { renderRetrievalTimeframeType } from "@app/lib/actions/configuration/helpers";
+import {
+  renderDataSourceConfiguration,
+  renderRetrievalTimeframeType,
+} from "@app/lib/actions/configuration/helpers";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
-import type {
-  DataSourceConfiguration,
-  DataSourceFilter,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
 
@@ -96,7 +94,7 @@ export async function fetchAgentRetrievalActionConfigurations({
         query: retrievalConfig.query,
         relativeTimeFrame: renderRetrievalTimeframeType(retrievalConfig),
         topK,
-        dataSources: dataSourceConfig.map(getDataSource),
+        dataSources: dataSourceConfig.map(renderDataSourceConfiguration),
         name: retrievalConfig.name || DEFAULT_RETRIEVAL_ACTION_NAME,
         description: retrievalConfig.description,
       });
@@ -106,38 +104,4 @@ export async function fetchAgentRetrievalActionConfigurations({
   }
 
   return actionsByConfigurationId;
-}
-
-export function getDataSource(
-  dataSourceConfig: AgentDataSourceConfiguration
-): DataSourceConfiguration {
-  const { dataSourceView } = dataSourceConfig;
-
-  let tags: DataSourceFilter["tags"] = null;
-
-  if (dataSourceConfig.tagsMode) {
-    tags = {
-      in: dataSourceConfig.tagsIn ?? [],
-      not: dataSourceConfig.tagsNotIn ?? [],
-      mode: dataSourceConfig.tagsMode,
-    };
-  }
-
-  return {
-    workspaceId: dataSourceView.workspace.sId,
-    dataSourceViewId: DataSourceViewResource.modelIdToSId({
-      id: dataSourceView.id,
-      workspaceId: dataSourceView.workspaceId,
-    }),
-    filter: {
-      parents:
-        dataSourceConfig.parentsIn && dataSourceConfig.parentsNotIn
-          ? {
-              in: dataSourceConfig.parentsIn,
-              not: dataSourceConfig.parentsNotIn,
-            }
-          : null,
-      tags,
-    },
-  };
 }

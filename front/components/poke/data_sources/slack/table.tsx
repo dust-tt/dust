@@ -76,8 +76,8 @@ export function SlackAutoReadPatternsTable({
   spaces,
 }: SlackAutoReadPatternsTableProps) {
   return (
-    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-slate-100">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4">
+    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-muted-background">
+      <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4">
         <h2 className="text-md font-bold">Slack Auto Read Patterns :</h2>
       </div>
       <div className="flex flex-grow flex-col justify-center p-4">

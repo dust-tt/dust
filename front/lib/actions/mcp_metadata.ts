@@ -1,10 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import type {
-  Implementation,
-  ListToolsResult,
-} from "@modelcontextprotocol/sdk/types.js";
+import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { Ajv } from "ajv";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -19,15 +16,16 @@ import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { RedisMCPTransport } from "@app/lib/api/actions/mcp_local";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { OAuthProvider, OAuthUseCase } from "@app/types";
-import { assertNever } from "@app/types";
-import { getOAuthConnectionAccessToken } from "@app/types";
+import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
 export type MCPToolType = {
   name: string;
@@ -41,8 +39,33 @@ export type MCPServerType = {
   version: string;
   description: string;
   icon: AllowedIconType;
-  authorization?: AuthorizationInfo;
+  authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
+  isDefault: boolean;
+};
+
+export type RemoteMCPServerType = MCPServerType & {
+  url?: string;
+  sharedSecret?: string;
+  lastSyncAt?: Date | null;
+};
+
+type MCPServerDefinitionType = Omit<
+  MCPServerType,
+  "tools" | "id" | "isDefault"
+>;
+
+type InternalMCPServerType = MCPServerType & {
+  name: InternalMCPServerNameType;
+};
+
+export type InternalMCPServerDefinitionType = Omit<
+  InternalMCPServerType,
+  "tools" | "id" | "isDefault"
+>;
+
+export type MCPServerTypeWithViews = MCPServerType & {
+  views: MCPServerViewType[];
 };
 
 export type AuthorizationInfo = {
@@ -179,7 +202,7 @@ export const connectToMCPServer = async (
 
 export function extractMetadataFromServerVersion(
   r: Implementation | undefined
-): Omit<MCPServerType, "tools" | "id"> {
+): MCPServerDefinitionType {
   if (r) {
     return {
       name: r.name ?? DEFAULT_MCP_ACTION_NAME,
@@ -187,7 +210,7 @@ export function extractMetadataFromServerVersion(
       authorization:
         "authorization" in r && typeof r.authorization === "object"
           ? (r.authorization as AuthorizationInfo)
-          : undefined,
+          : null,
       description:
         "description" in r && typeof r.description === "string" && r.description
           ? r.description
@@ -204,13 +227,12 @@ export function extractMetadataFromServerVersion(
     version: DEFAULT_MCP_ACTION_VERSION,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
     icon: DEFAULT_MCP_ACTION_ICON,
+    authorization: null,
   };
 }
 
-export function extractMetadataFromTools(
-  tools: ListToolsResult
-): MCPToolType[] {
-  return tools.tools.map((tool) => {
+export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
+  return tools.map((tool) => {
     let inputSchema: JSONSchema | undefined;
     const ajv = new Ajv();
 
@@ -241,11 +263,12 @@ export async function fetchRemoteServerMetaDataByURL(
     const metadata = extractMetadataFromServerVersion(serverVersion);
 
     const toolsResult = await mcpClient.listTools();
-    const serverTools = extractMetadataFromTools(toolsResult);
+    const serverTools = extractMetadataFromTools(toolsResult.tools);
 
     return {
       ...metadata,
       tools: serverTools,
+      isDefault: false,
     };
   } finally {
     await mcpClient.close();

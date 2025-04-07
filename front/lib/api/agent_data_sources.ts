@@ -5,6 +5,7 @@ import { Op, Sequelize } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { isManagedConnectorProvider } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
@@ -71,6 +72,9 @@ export async function getDataSourceViewsUsageByCategory({
       break;
     case "apps":
       return {};
+    case "actions":
+      connectorProvider = null;
+      break;
     default:
       assertNever(category);
   }
@@ -165,6 +169,59 @@ export async function getDataSourceViewsUsageByCategory({
         {
           model: AgentProcessConfiguration,
           as: "agent_process_configuration",
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: AgentConfiguration,
+              as: "agent_configuration",
+              attributes: [],
+              required: true,
+              where: {
+                status: "active",
+                workspaceId: owner.id,
+              },
+            },
+          ],
+        },
+      ],
+    }),
+    AgentDataSourceConfiguration.findAll({
+      raw: true,
+      group: ["dataSourceView.id"],
+      attributes: [
+        [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_mcp_server_configuration->agent_configuration.name"
+            )
+          ),
+          "names",
+        ],
+      ],
+      include: [
+        {
+          model: DataSourceViewModel,
+          as: "dataSourceView",
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: DataSourceModel,
+              as: "dataSourceForView",
+              attributes: [],
+              required: true,
+              where: {
+                connectorProvider: connectorProvider,
+              },
+            },
+          ],
+        },
+        {
+          model: AgentMCPServerConfiguration,
+          as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
@@ -385,6 +442,51 @@ export async function getDataSourcesUsageByCategory({
         },
       ],
     }),
+    AgentDataSourceConfiguration.findAll({
+      raw: true,
+      group: ["dataSource.id"],
+      attributes: [
+        [Sequelize.col("dataSource.id"), "dataSourceId"],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_mcp_server_configuration->agent_configuration.name"
+            )
+          ),
+          "names",
+        ],
+      ],
+      include: [
+        {
+          model: DataSourceModel,
+          as: "dataSource",
+          attributes: [],
+          required: true,
+          where: {
+            connectorProvider: connectorProvider,
+          },
+        },
+        {
+          model: AgentMCPServerConfiguration,
+          as: "agent_mcp_server_configuration",
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: AgentConfiguration,
+              as: "agent_configuration",
+              attributes: [],
+              required: true,
+              where: {
+                status: "active",
+                workspaceId: owner.id,
+              },
+            },
+          ],
+        },
+      ],
+    }),
     AgentTablesQueryConfigurationTable.findAll({
       raw: true,
       group: ["dataSource.id"],
@@ -550,6 +652,43 @@ export async function getDataSourceUsage({
         },
       ],
     }),
+    AgentDataSourceConfiguration.findOne({
+      raw: true,
+      attributes: [
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_mcp_server_configuration->agent_configuration.name"
+            )
+          ),
+          "names",
+        ],
+      ],
+      where: {
+        dataSourceId: dataSource.id,
+      },
+      include: [
+        {
+          model: AgentMCPServerConfiguration,
+          as: "agent_mcp_server_configuration",
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: AgentConfiguration,
+              as: "agent_configuration",
+              attributes: [],
+              required: true,
+              where: {
+                status: "active",
+                workspaceId: owner.id,
+              },
+            },
+          ],
+        },
+      ],
+    }),
     AgentTablesQueryConfigurationTable.findOne({
       raw: true,
       attributes: [
@@ -682,6 +821,43 @@ export async function getDataSourceViewUsage({
         {
           model: AgentProcessConfiguration,
           as: "agent_process_configuration",
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: AgentConfiguration,
+              as: "agent_configuration",
+              attributes: [],
+              required: true,
+              where: {
+                status: "active",
+                workspaceId: owner.id,
+              },
+            },
+          ],
+        },
+      ],
+    }),
+    AgentDataSourceConfiguration.findOne({
+      raw: true,
+      attributes: [
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_mcp_server_configuration->agent_configuration.name"
+            )
+          ),
+          "names",
+        ],
+      ],
+      where: {
+        dataSourceViewId: dataSourceView.id,
+      },
+      include: [
+        {
+          model: AgentMCPServerConfiguration,
+          as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [

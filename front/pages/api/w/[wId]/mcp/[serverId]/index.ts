@@ -14,6 +14,14 @@ export type GetMCPServerResponseBody = {
   server: MCPServerType;
 };
 
+export type GetRemoteMCPServerResponseBody = {
+  server: MCPServerType & {
+    url: string;
+    lastSyncAt: Date | null;
+    sharedSecret: string;
+  };
+};
+
 export type PatchMCPServerResponseBody = {
   success: boolean;
   server: MCPServerType;
@@ -77,7 +85,7 @@ async function handler(
             });
           }
 
-          return res.status(200).json({ server: await server.toJSON(auth) });
+          return res.status(200).json({ server: server.toJSON() });
         }
         case "remote": {
           const server = await RemoteMCPServerResource.fetchById(
@@ -116,9 +124,9 @@ async function handler(
         });
       }
 
-      const { name, url, description, tools } = req.body;
+      const { name, icon, description } = req.body;
 
-      if (!name && !url && !description && !tools) {
+      if (!name && !icon && !description) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -130,9 +138,8 @@ async function handler(
 
       await server.updateMetadata(auth, {
         name,
-        url,
+        icon,
         description,
-        cachedTools: tools,
         lastSyncAt: new Date(),
       });
 
@@ -145,23 +152,22 @@ async function handler(
     case "DELETE": {
       const { serverType } = getServerTypeAndIdFromSId(serverId);
 
-      if (serverType == "internal") {
-        // TODO(mcp) delete the internal MCP server
-      } else {
-        const server = await RemoteMCPServerResource.fetchById(auth, serverId);
+      const server =
+        serverType == "remote"
+          ? await RemoteMCPServerResource.fetchById(auth, serverId)
+          : await InternalMCPServerInMemoryResource.fetchById(auth, serverId);
 
-        if (!server) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "data_source_not_found",
-              message: "Remote MCP Server not found",
-            },
-          });
-        }
-
-        await server.delete(auth);
+      if (!server) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "Remote MCP Server not found",
+          },
+        });
       }
+
+      await server.delete(auth);
 
       return res.status(200).json({
         deleted: true,

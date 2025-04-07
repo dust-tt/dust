@@ -427,7 +427,7 @@ export const TableUploadOrEditModal = ({
                           <ExclamationCircleIcon />
                           Warning: Large file (5MB+)
                         </div>
-                        <div className="text-sm font-normal text-element-700">
+                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                           This file is large and may take a while to upload.
                         </div>
                       </div>

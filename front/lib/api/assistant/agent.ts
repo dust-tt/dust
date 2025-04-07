@@ -531,6 +531,11 @@ async function* runMultiActionsAgent(
   if (agentConfiguration.model.reasoningEffort) {
     runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
   }
+  if (agentConfiguration.model.responseFormat) {
+    runConfig.MODEL.response_format = JSON.parse(
+      agentConfiguration.model.responseFormat
+    );
+  }
   const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
   if (anthropicBetaFlags) {
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
@@ -890,6 +895,7 @@ async function* runAction(
       auth,
       {
         agentConfiguration: configuration,
+        actionConfiguration,
         conversation,
         agentMessage,
         rawInputs: inputs,
@@ -967,6 +973,7 @@ async function* runAction(
       auth,
       {
         agentConfiguration: configuration,
+        actionConfiguration,
         conversation,
         agentMessage,
         rawInputs: inputs,
@@ -1021,6 +1028,7 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
+      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1068,6 +1076,7 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
+      actionConfiguration,
       conversation,
       userMessage,
       agentMessage,
@@ -1118,6 +1127,7 @@ async function* runAction(
       auth,
       {
         agentConfiguration: configuration,
+        actionConfiguration,
         conversation,
         agentMessage,
         rawInputs: inputs,
@@ -1171,6 +1181,7 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
+      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1218,6 +1229,7 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
+      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1265,6 +1277,7 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
+      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1307,6 +1320,7 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
+      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1356,6 +1370,7 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
+      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,

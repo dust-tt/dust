@@ -55,19 +55,29 @@ async function handler(
         });
       }
 
-      const allowedSpaceKinds: SpaceKind[] = ["system", "global"];
-      if (allowedSpaceKinds.includes(space.kind)) {
+      if (r.value.space.id !== space.id) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "MCP Server View not found",
+          },
+        });
+      }
+
+      const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
+      if (!allowedSpaceKinds.includes(space.kind)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "Can only delete MCP Server Views from system or global spaces.",
+              "Can only delete MCP Server Views from regular or global spaces.",
           },
         });
       }
 
-      await r.value.delete(auth, { hardDelete: false });
+      await r.value.delete(auth, { hardDelete: true });
 
       return res.status(200).json({
         deleted: true,

@@ -23,8 +23,10 @@ import React from "react";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   DataSourceWithAgentsUsageType,
   SpaceType,
@@ -107,12 +109,16 @@ export const SpaceCategoriesList = ({
     spaceId: space.sId,
   });
 
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
         DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
-          spaceInfo.categories[category]
+          spaceInfo.categories[category] &&
+          hasFeature(CATEGORY_DETAILS[category].flag)
             ? {
                 category,
                 ...spaceInfo.categories[category],
@@ -183,6 +189,12 @@ export const SpaceCategoriesList = ({
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
             icon={CommandLineIcon}
             label="Create a Dust App"
+          />
+          <DropdownMenuItem
+            disabled={!isAdmin}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/actions`}
+            icon={ACTION_SPECIFICATIONS["MCP"].cardIcon}
+            label="Actions"
           />
         </DropdownMenuContent>
       </DropdownMenu>

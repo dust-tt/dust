@@ -339,7 +339,7 @@ export default function NamingScreen({
           <div className="flex flex-grow flex-col gap-4">
             <div>
               <Page.SectionHeader title="Handle" />
-              <div className="text-sm font-normal text-element-700">
+              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                 Handles are used to mention (call) an agent. They must be
                 descriptive and unique.
               </div>
@@ -347,7 +347,7 @@ export default function NamingScreen({
             {nameSuggestions.status === "ok" &&
               nameSuggestions.suggestions?.length && (
                 <div className="flex items-center gap-2">
-                  <div className="text-xs font-semibold text-element-800">
+                  <div className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
                     Suggestions:
                   </div>
                   {nameSuggestions.suggestions
@@ -415,7 +415,7 @@ export default function NamingScreen({
             <div className="flex gap-1">
               <Page.SectionHeader title="Description" />
             </div>
-            <div className="text-sm font-normal text-element-700">
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               Describe for others the agent’s purpose.{" "}
             </div>
           </div>

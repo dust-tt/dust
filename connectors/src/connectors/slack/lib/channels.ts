@@ -34,10 +34,15 @@ export async function updateSlackChannelInConnectorsDb({
   slackChannelId,
   slackChannelName,
   connectorId,
+  createIfNotExistsWithParams,
 }: {
   slackChannelId: string;
   slackChannelName: string;
   connectorId: number;
+  createIfNotExistsWithParams?: {
+    permission: ConnectorPermission;
+    private: boolean;
+  };
 }): Promise<SlackChannelType> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -52,9 +57,19 @@ export async function updateSlackChannelInConnectorsDb({
   });
 
   if (!channel) {
-    throw new Error(
-      `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
-    );
+    if (createIfNotExistsWithParams) {
+      channel = await SlackChannel.create({
+        connectorId,
+        slackChannelId,
+        slackChannelName,
+        permission: createIfNotExistsWithParams.permission,
+        private: createIfNotExistsWithParams.private,
+      });
+    } else {
+      throw new Error(
+        `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
+      );
+    }
   } else {
     if (channel.slackChannelName !== slackChannelName) {
       channel = await channel.update({

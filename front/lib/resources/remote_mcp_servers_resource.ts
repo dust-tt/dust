@@ -7,16 +7,20 @@ import type {
   Transaction,
 } from "sequelize";
 
+import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPToolType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ModelId, Result } from "@app/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Result } from "@app/types";
 import { Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -142,22 +146,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
 
   // sId
   get sId(): string {
-    return RemoteMCPServerResource.modelIdToSId({
-      id: this.id,
+    return remoteMCPServerNameToSId({
+      remoteMCPServerId: this.id,
       workspaceId: this.workspaceId,
-    });
-  }
-
-  static modelIdToSId({
-    id,
-    workspaceId,
-  }: {
-    id: ModelId;
-    workspaceId: ModelId;
-  }): string {
-    return makeSId("remote_mcp_server", {
-      id,
-      workspaceId,
     });
   }
 
@@ -166,7 +157,24 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   async delete(
     auth: Authenticator
   ): Promise<Result<undefined | number, Error>> {
-    // Directly delete the DataSourceViewModel here to avoid a circular dependency.
+    const mcpServerViews = await MCPServerView.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        remoteMCPServerId: this.id,
+      },
+    });
+
+    await concurrentExecutor(
+      mcpServerViews,
+      async (mcpServerView) => {
+        await destroyMCPServerViewDependencies(auth, {
+          mcpServerViewId: mcpServerView.id,
+        });
+      },
+      { concurrency: 10 }
+    );
+
+    // Directly delete the MCPServerView here to avoid a circular dependency.
     await MCPServerView.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -194,23 +202,23 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     {
       name,
       description,
-      url,
+      icon,
       sharedSecret,
       cachedTools,
       lastSyncAt,
     }: {
       name?: string;
-      description?: string | null;
-      url?: string;
+      description?: string;
+      icon?: AllowedIconType;
       sharedSecret?: string;
-      cachedTools: MCPToolType[];
+      cachedTools?: MCPToolType[];
       lastSyncAt: Date;
     }
   ) {
     await this.update({
       name,
       description,
-      url,
+      icon,
       sharedSecret,
       cachedTools,
       lastSyncAt,
@@ -221,21 +229,24 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   toJSON(): MCPServerType & {
     // Remote MCP Server specifics
     url: string;
-    lastSyncAt: Date | null;
+    lastSyncAt: number | null;
     sharedSecret: string;
   } {
     return {
       id: this.sId,
+
       name: this.name,
-      description: this.description || "",
+      description: this.description,
+      version: this.version,
+      icon: this.icon,
       tools: this.cachedTools,
-      // TODO(mcp) remove this once we have a real version & icon
-      version: "0.0.1",
-      icon: "rocket",
+
+      authorization: this.authorization,
+      isDefault: false, // So far we don't have defaults remote MCP servers.
 
       // Remote MCP Server specifics
       url: this.url,
-      lastSyncAt: this.lastSyncAt,
+      lastSyncAt: this.lastSyncAt?.getTime() ?? null,
       sharedSecret: this.sharedSecret,
     };
   }

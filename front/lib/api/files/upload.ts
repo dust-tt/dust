@@ -8,17 +8,19 @@ import config from "@app/lib/api/config";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { FileUseCase, Result, SupportedFileContentType } from "@app/types";
 import {
   assertNever,
   Err,
   isSupportedDelimitedTextContentType,
+  isSupportedFileContentType,
   isSupportedImageContentType,
   isTextExtractionSupportedContentType,
   Ok,
   TextExtraction,
+  validateUrl,
 } from "@app/types";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
@@ -224,6 +226,7 @@ const getProcessingFunction = ({
       [
         "conversation",
         "upsert_document",
+        "folders_document",
         "upsert_table",
         "tool_output",
       ].includes(useCase)
@@ -241,7 +244,11 @@ const getProcessingFunction = ({
     case "application/vnd.google-apps.document":
     case "application/vnd.google-apps.presentation":
     case "application/pdf":
-      if (["conversation", "upsert_document"].includes(useCase)) {
+      if (
+        ["conversation", "upsert_document", "folders_document"].includes(
+          useCase
+        )
+      ) {
         return extractTextFromFileAndUpload;
       }
       break;
@@ -277,7 +284,12 @@ const getProcessingFunction = ({
     case "text/x-perl":
     case "text/x-perl-script":
       if (
-        ["conversation", "upsert_document", "tool_output"].includes(useCase)
+        [
+          "conversation",
+          "upsert_document",
+          "tool_output",
+          "folders_document",
+        ].includes(useCase)
       ) {
         return storeRawText;
       }
@@ -332,6 +344,20 @@ const maybeApplyProcessing: ProcessingFunction = async (
   }
 };
 
+type ProcessAndStoreFileContent =
+  | {
+      type: "incoming_message";
+      value: IncomingMessage;
+    }
+  | {
+      type: "string";
+      value: string;
+    }
+  | {
+      type: "readable";
+      value: Readable;
+    };
+
 export type ProcessAndStoreFileError = Omit<DustError, "code"> & {
   code:
     | "internal_server_error"
@@ -344,8 +370,11 @@ export async function processAndStoreFile(
   auth: Authenticator,
   {
     file,
-    reqOrString,
-  }: { file: FileResource; reqOrString: IncomingMessage | string }
+    content,
+  }: {
+    file: FileResource;
+    content: ProcessAndStoreFileContent;
+  }
 ): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   if (file.isReady || file.isFailed) {
     return new Err({
@@ -364,15 +393,20 @@ export async function processAndStoreFile(
     });
   }
 
-  if (typeof reqOrString === "string") {
+  if (content.type === "string") {
     await pipeline(
-      Readable.from(reqOrString),
+      Readable.from(content.value),
+      file.getWriteStream({ auth, version: "original" })
+    );
+  } else if (content.type === "readable") {
+    await pipeline(
+      content.value,
       file.getWriteStream({ auth, version: "original" })
     );
   } else {
     const r = await parseUploadRequest(
       file,
-      reqOrString,
+      content.value,
       file.getWriteStream({ auth, version: "original" })
     );
     if (r.isErr()) {
@@ -400,4 +434,84 @@ export async function processAndStoreFile(
 
   await file.markAsReady();
   return new Ok(file);
+}
+
+export async function processAndStoreFromUrl(
+  auth: Authenticator,
+  {
+    url,
+    useCase,
+    fileName,
+    contentType,
+  }: {
+    url: string;
+    useCase: FileUseCase;
+    fileName?: string;
+    contentType?: string;
+  }
+): ReturnType<typeof processAndStoreFile> {
+  const validUrl = validateUrl(url);
+  if (!validUrl.valid) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Invalid URL",
+    });
+  }
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: `Failed to fetch URL: ${response.statusText}`,
+      });
+    }
+
+    if (!response.body) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: "Response body is null",
+      });
+    }
+
+    const contentLength = response.headers.get("content-length");
+    const finalContentType =
+      contentType ||
+      response.headers.get("content-type") ||
+      "application/octet-stream";
+
+    if (!isSupportedFileContentType(finalContentType)) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: "Unsupported content type",
+      });
+    }
+
+    const file = await FileResource.makeNew({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: auth.user()?.id ?? null,
+      contentType: finalContentType,
+      fileName: fileName || new URL(url).pathname.split("/").pop() || "file",
+      fileSize: contentLength ? parseInt(contentLength) : 1024 * 1024 * 10, // Default 10MB if no content-length
+      useCase,
+    });
+
+    return await processAndStoreFile(auth, {
+      file,
+      content: {
+        type: "readable",
+        value: Readable.fromWeb(response.body as any),
+      },
+    });
+  } catch (error) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed to create file from URL: ${error}`,
+    });
+  }
 }

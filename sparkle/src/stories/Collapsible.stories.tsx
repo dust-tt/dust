@@ -21,7 +21,7 @@ export const CollapsibleExample = () => (
     <Collapsible>
       <CollapsibleTrigger label="Click me" />
       <CollapsibleContent>
-        <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
+        <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
           Hello
         </div>
       </CollapsibleContent>
@@ -30,7 +30,7 @@ export const CollapsibleExample = () => (
     <Collapsible>
       <CollapsibleTrigger label="Click me" />
       <CollapsibleContent>
-        <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
+        <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
           Hello
         </div>
       </CollapsibleContent>
@@ -38,7 +38,7 @@ export const CollapsibleExample = () => (
     <Collapsible>
       <CollapsibleTrigger label="Click me" />
       <CollapsibleContent>
-        <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
+        <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
           Hello
         </div>
       </CollapsibleContent>
@@ -48,7 +48,7 @@ export const CollapsibleExample = () => (
         <Chip>Click me custom</Chip>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-1 s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
+        <div className="mt-1 s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
           Anything goes for the Collapsible button
         </div>
       </CollapsibleContent>
@@ -59,7 +59,7 @@ export const CollapsibleExample = () => (
         rootProps={{ defaultOpen: true }}
         triggerProps={{ label: "Open by default" }}
         contentChildren={
-          <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
+          <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
             This collapsible is open by default
           </div>
         }

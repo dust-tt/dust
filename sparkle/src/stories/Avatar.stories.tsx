@@ -47,11 +47,11 @@ export const AvatarExample = () => (
     <div>With emoji</div>
     <div className="s-flex s-gap-4">
       <Avatar size="xs" emoji="❤️" backgroundColor="s-bg-red-100" />
-      <Avatar size="sm" emoji="💀" backgroundColor="s-bg-slate-800" />
-      <Avatar size="md" emoji="😂" backgroundColor="s-bg-amber-200" />
-      <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-slate-200" />
-      <Avatar size="xl" emoji="👕" backgroundColor="s-bg-sky-200" />
-      <Avatar size="xxl" emoji="👕" backgroundColor="s-bg-sky-200" />
+      <Avatar size="sm" emoji="💀" backgroundColor="s-bg-gray-800" />
+      <Avatar size="md" emoji="😂" backgroundColor="s-bg-info-200" />
+      <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-gray-200" />
+      <Avatar size="xl" emoji="👕" backgroundColor="s-bg-blue-200" />
+      <Avatar size="xxl" emoji="👕" backgroundColor="s-bg-blue-200" />
     </div>
     <div className="s-flex s-gap-4">
       <Avatar size="sm" name="Eleanor Wright" />

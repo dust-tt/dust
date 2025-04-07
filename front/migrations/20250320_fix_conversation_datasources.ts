@@ -3,7 +3,7 @@ import { QueryTypes } from "sequelize";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import { Authenticator } from "@app/lib/auth";
-import { Conversation } from "@app/lib/models/assistant/conversation";
+import { ConversationModel } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -75,7 +75,7 @@ HAVING
     }
 
     // Get conversation
-    const conversation = await Conversation.findByPk(conversationId);
+    const conversation = await ConversationModel.findByPk(conversationId);
 
     if (!conversation) {
       logger.error({ conversationId }, "Could not find conversation");

@@ -5,7 +5,6 @@ import type {
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
@@ -59,6 +58,8 @@ import {
   sectionFullText,
   validateUrl,
 } from "@app/types";
+
+import { ConversationResource } from "../resources/conversation_resource";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -1051,7 +1052,7 @@ export async function getOrCreateConversationDataSourceFromFile(
     });
   }
 
-  const cRes = await getConversationWithoutContent(
+  const cRes = await ConversationResource.fetchConversationWithoutContent(
     auth,
     file.useCaseMetadata.conversationId
   );

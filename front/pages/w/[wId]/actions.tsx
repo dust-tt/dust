@@ -1,14 +1,16 @@
-import { CommandLineIcon, Page } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
-import { InternalMCPServerDetails } from "@app/components/actions/mcp/ActionDetails";
 import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
+import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
@@ -30,6 +32,8 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     };
   }
 
+  await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
+
   return {
     props: {
       owner,
@@ -43,9 +47,8 @@ export default function AdminActions({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [showDetails, setShowDetails] = useState<MCPServerType | null>(null);
-  const serverType =
-    showDetails && showDetails.id.startsWith("ims_") ? "internal" : "remote";
+  const [mcpServer, setMcpServer] = useState<MCPServerType | null>(null);
+  const [isDetailsPanelOpened, setIsDetailsPanelOpened] = useState(false);
 
   return (
     <AppLayout
@@ -53,20 +56,31 @@ export default function AdminActions({
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "actions" })}
     >
-      <InternalMCPServerDetails
-        owner={owner}
-        mcpServer={serverType === "internal" ? showDetails : null}
-        onClose={() => setShowDetails(null)}
-      />
+      {mcpServer && (
+        <MCPServerDetails
+          owner={owner}
+          mcpServer={mcpServer}
+          onClose={() => {
+            setIsDetailsPanelOpened(false);
+          }}
+          isOpen={isDetailsPanelOpened}
+        />
+      )}
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Actions"
-          icon={CommandLineIcon}
+          icon={ACTION_SPECIFICATIONS["MCP"].cardIcon}
           description="Actions let you connect tools and automate tasks. Find all available actions here and set up new ones."
         />
         <Page.Vertical align="stretch" gap="md">
-          <AdminActionsList owner={owner} setShowDetails={setShowDetails} />
+          <AdminActionsList
+            owner={owner}
+            setMcpServer={(mcpServer) => {
+              setMcpServer(mcpServer);
+              setIsDetailsPanelOpened(true);
+            }}
+          />
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />

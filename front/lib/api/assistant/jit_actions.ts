@@ -13,6 +13,7 @@ import type {
   ConversationContentNodeType,
 } from "@app/lib/actions/conversation/list_files";
 import {
+  isContentFragmentDataSourceNode,
   isConversationContentNodeType,
   isConversationFileType,
   makeConversationListFilesAction,
@@ -31,18 +32,22 @@ import {
   isRetrievalConfiguration,
 } from "@app/lib/actions/types/guards";
 import {
+  isMultiSheetSpreadsheetContentType,
   isSearchableFolder,
   listFiles,
 } from "@app/lib/api/assistant/jit_utils";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type {
   AgentActionType,
   AgentMessageType,
   ConversationType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, CoreAPI } from "@app/types";
 
 /**
  * Returns a list of supporting actions that should be made available to the model alongside this
@@ -127,6 +132,23 @@ async function getJITActions(
     const conversationDataSourceView =
       await DataSourceViewResource.fetchByConversation(auth, conversation);
 
+    // Assign tables to multi-sheet spreadsheets.
+    await concurrentExecutor(
+      filesUsableAsTableQuery.filter((f) =>
+        isMultiSheetSpreadsheetContentType(f.contentType)
+      ),
+      async (f) => {
+        assert(
+          isConversationContentNodeType(f),
+          "Unreachable: file should be a content node"
+        );
+        f.generatedTables = await getTablesFromMultiSheetSpreadsheet(auth, f);
+      },
+      {
+        concurrency: 10,
+      }
+    );
+
     if (filesUsableAsTableQuery.length > 0) {
       const action: TablesQueryConfigurationType = {
         // The description here is the description of the data, a meta description of the action
@@ -172,7 +194,7 @@ async function getJITActions(
             .nodeDataSourceViewId,
           filter: {
             parents: {
-              in: [(f as ConversationContentNodeType).contentNodeId],
+              in: [(f as ConversationContentNodeType).nodeId],
               not: [],
             },
             tags: null,
@@ -199,19 +221,23 @@ async function getJITActions(
       actions.push(action);
     }
 
-    for (const [i, folder] of files
+    for (const [i, f] of files
       .filter((f) => isConversationContentNodeType(f) && isSearchableFolder(f))
       .entries()) {
+      // This is valid because of the filter above.
+      const folder = f as ConversationContentNodeType;
       const dataSources: DataSourceConfiguration[] = [
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          dataSourceViewId: (folder as ConversationContentNodeType)
-            .nodeDataSourceViewId,
+          dataSourceViewId: folder.nodeDataSourceViewId,
           filter: {
-            parents: {
-              in: [(folder as ConversationContentNodeType).contentNodeId],
-              not: [],
-            },
+            // Do not filter on parent if the folder is a data source node.
+            parents: isContentFragmentDataSourceNode(folder)
+              ? null
+              : {
+                  in: [folder.nodeId],
+                  not: [],
+                },
             tags: null,
           },
         },
@@ -275,4 +301,46 @@ export async function getEmulatedAndJITActions(
   );
 
   return { emulatedActions, jitActions };
+}
+
+async function getTablesFromMultiSheetSpreadsheet(
+  auth: Authenticator,
+  f: ConversationContentNodeType
+): Promise<string[]> {
+  assert(
+    isMultiSheetSpreadsheetContentType(f.contentType),
+    `Unexpected: ${f.title} is not a multi-sheet spreadsheet`
+  );
+
+  const dataSourceView = await DataSourceViewResource.fetchById(
+    auth,
+    f.nodeDataSourceViewId
+  );
+
+  assert(
+    dataSourceView,
+    `Unexpected: No datasource view found for datasource view id ${f.nodeDataSourceViewId}`
+  );
+
+  const coreApi = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const searchResult = await coreApi.searchNodes({
+    filter: {
+      parent_id: f.nodeId,
+      data_source_views: [
+        {
+          data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+          view_filter: [f.nodeId],
+        },
+      ],
+    },
+  });
+
+  if (searchResult.isErr()) {
+    throw new Error(
+      `Unexpected: Failed to get tables from multi-sheet spreadsheet: ${searchResult.error}`
+    );
+  }
+
+  // Children of multi-sheet spreadsheets are exclusively tables.
+  return searchResult.value.nodes.map((n) => n.node_id);
 }
