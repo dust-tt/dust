@@ -92,6 +92,7 @@ export function ActionMCP({
       ) ?? null
     );
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const [showTablesModal, setShowTablesModal] = useState(false);
 
   useEffect(() => {
     if (!selectedMCPServerView) {
@@ -117,6 +118,14 @@ export function ActionMCP({
             })
               ? prevConfig.dataSourceConfigurations || {}
               : null,
+          tablesConfigurations:
+            selectedMCPServerView &&
+            serverRequiresInternalConfiguration({
+              serverMetadata: selectedMCPServerView.server,
+              mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
+            })
+              ? prevConfig.tablesConfigurations || {}
+              : null,
         };
       },
     });
@@ -133,14 +142,10 @@ export function ActionMCP({
       updateAction({
         actionName: slugify(selectedMCPServerView.server.name ?? ""),
         actionDescription: selectedMCPServerView.server.description ?? "",
-        getNewActionConfig: (prev) => {
-          const prevConfig = prev as AssistantBuilderMCPServerConfiguration;
-
-          return {
-            ...prevConfig,
-            mcpServerViewId: serverView.id,
-          };
-        },
+        getNewActionConfig: (prev) => ({
+          ...(prev as AssistantBuilderMCPServerConfiguration),
+          mcpServerViewId: serverView.id,
+        }),
       });
     },
     [selectedMCPServerView, setEdited, updateAction]
@@ -151,20 +156,34 @@ export function ActionMCP({
       if (!selectedMCPServerView) {
         return;
       }
-
       setEdited(true);
       updateAction({
         actionName: slugify(selectedMCPServerView?.server.name ?? ""),
         actionDescription: selectedMCPServerView?.server.description ?? "",
-        getNewActionConfig: (prev) => {
-          const prevConfig = prev as AssistantBuilderMCPServerConfiguration;
+        getNewActionConfig: (prev) => ({
+          ...(prev as AssistantBuilderMCPServerConfiguration),
+          mcpServerViewId: selectedMCPServerView.id,
+          dataSourceConfigurations: dsConfigs,
+        }),
+      });
+    },
+    [selectedMCPServerView, setEdited, updateAction]
+  );
 
-          return {
-            ...prevConfig,
-            mcpServerViewId: selectedMCPServerView.id,
-            dataSourceConfigurations: dsConfigs,
-          };
-        },
+  const handleTableConfigUpdate = useCallback(
+    (tableConfigs: DataSourceViewSelectionConfigurations) => {
+      if (!selectedMCPServerView) {
+        return;
+      }
+      setEdited(true);
+      updateAction({
+        actionName: slugify(selectedMCPServerView?.server.name ?? ""),
+        actionDescription: selectedMCPServerView?.server.description ?? "",
+        getNewActionConfig: (prev) => ({
+          ...(prev as AssistantBuilderMCPServerConfiguration),
+          mcpServerViewId: selectedMCPServerView.id,
+          tablesConfigurations: tableConfigs,
+        }),
       });
     },
     [selectedMCPServerView, setEdited, updateAction]
@@ -187,6 +206,21 @@ export function ActionMCP({
           }
           allowedSpaces={allowedSpaces}
           viewType="document"
+        />
+      )}
+      {actionConfiguration.tablesConfigurations && (
+        <AssistantBuilderDataSourceModal
+          isOpen={showTablesModal}
+          setOpen={(isOpen) => {
+            setShowTablesModal(isOpen);
+          }}
+          owner={owner}
+          onSave={handleTableConfigUpdate}
+          initialDataSourceConfigurations={
+            actionConfiguration.tablesConfigurations
+          }
+          allowedSpaces={allowedSpaces}
+          viewType="table"
         />
       )}
       <>
@@ -326,6 +360,15 @@ export function ActionMCP({
           openDataSourceModal={() => setShowDataSourcesModal(true)}
           onSave={handleDataSourceConfigUpdate}
           viewType="document"
+        />
+      )}
+      {actionConfiguration.tablesConfigurations && (
+        <DataSourceSelectionSection
+          owner={owner}
+          dataSourceConfigurations={actionConfiguration.tablesConfigurations}
+          openDataSourceModal={() => setShowTablesModal(true)}
+          onSave={handleTableConfigUpdate}
+          viewType="table"
         />
       )}
     </>

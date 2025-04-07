@@ -31,6 +31,17 @@ import type {
 } from "@app/types";
 import { DocumentViewRawContentKey } from "@app/types";
 
+function viewTypeToLabel(viewType: ContentNodesViewType) {
+  switch (viewType) {
+    case "all":
+      return "Data Sources";
+    case "table":
+      return "Tables";
+    case "document":
+      return "Data Sources";
+  }
+}
+
 interface DataSourceSelectionSectionProps {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   openDataSourceModal: () => void;
@@ -64,7 +75,7 @@ export default function DataSourceSelectionSection({
       <div className="overflow-hidden pt-4">
         <div className="flex flex-row items-start">
           <div className="flex-grow pb-2 text-sm font-semibold text-foreground dark:text-foreground-night">
-            Selected Data Sources
+            Selected {viewTypeToLabel(viewType)}
           </div>
           <div>
             {Object.keys(dataSourceConfigurations).length > 0 && (
@@ -80,7 +91,7 @@ export default function DataSourceSelectionSection({
         </div>
         {!Object.keys(dataSourceConfigurations).length ? (
           <EmptyCallToAction
-            label="Select Data Sources"
+            label={`Select ${viewTypeToLabel(viewType)}`}
             onClick={openDataSourceModal}
             disabled={!canAddDataSource}
           />
