@@ -360,7 +360,6 @@ export function ActionMCP({
           openDataSourceModal={() => setShowDataSourcesModal(true)}
           onSave={handleDataSourceConfigUpdate}
           viewType="document"
-          entityName="Data Sources"
         />
       )}
       {actionConfiguration.tablesConfigurations && (
@@ -370,7 +369,6 @@ export function ActionMCP({
           openDataSourceModal={() => setShowTablesModal(true)}
           onSave={handleTableConfigUpdate}
           viewType="table"
-          entityName="Tables"
         />
       )}
     </>
