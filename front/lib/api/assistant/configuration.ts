@@ -1273,44 +1273,46 @@ async function createAgentDataSourcesConfiguration(
     {} as Record<string, DataSourceViewResource>
   );
 
-  const agentDataSourceConfigData = dataSourceConfigurations.map((dsConfig) => {
-    const dataSourceView = dataSourceViewsMap[dsConfig.dataSourceViewId];
-    assert(
-      dataSourceView,
-      "Can't create AgentDataSourceConfiguration for retrieval: DataSourceView not found."
-    );
+  const agentDataSourceConfigBlobs = dataSourceConfigurations.map(
+    (dsConfig) => {
+      const dataSourceView = dataSourceViewsMap[dsConfig.dataSourceViewId];
+      assert(
+        dataSourceView,
+        "Can't create AgentDataSourceConfiguration for retrieval: DataSourceView not found."
+      );
 
-    const tagsFilter = dsConfig.filter.tags;
-    let tagsMode: "auto" | "custom" | null = null;
-    let tagsIn: string[] | null = null;
-    let tagsNotIn: string[] | null = null;
+      const tagsFilter = dsConfig.filter.tags;
+      let tagsMode: "auto" | "custom" | null = null;
+      let tagsIn: string[] | null = null;
+      let tagsNotIn: string[] | null = null;
 
-    if (tagsFilter?.mode === "auto") {
-      tagsMode = "auto";
-      tagsIn = tagsFilter.in ?? [];
-      tagsNotIn = tagsFilter.not ?? [];
-    } else if (tagsFilter?.mode === "custom") {
-      tagsMode = "custom";
-      tagsIn = tagsFilter.in ?? [];
-      tagsNotIn = tagsFilter.not ?? [];
+      if (tagsFilter?.mode === "auto") {
+        tagsMode = "auto";
+        tagsIn = tagsFilter.in ?? [];
+        tagsNotIn = tagsFilter.not ?? [];
+      } else if (tagsFilter?.mode === "custom") {
+        tagsMode = "custom";
+        tagsIn = tagsFilter.in ?? [];
+        tagsNotIn = tagsFilter.not ?? [];
+      }
+
+      return {
+        dataSourceId: dataSourceView.dataSource.id,
+        parentsIn: dsConfig.filter.parents?.in,
+        parentsNotIn: dsConfig.filter.parents?.not,
+        retrievalConfigurationId: retrievalConfiguration?.id || null,
+        processConfigurationId: processConfiguration?.id || null,
+        dataSourceViewId: dataSourceView.id,
+        mcpServerConfigurationId: mcpServerConfiguration?.id || null,
+        tagsMode,
+        tagsIn,
+        tagsNotIn,
+        workspaceId: owner.id,
+      };
     }
+  );
 
-    return {
-      dataSourceId: dataSourceView.dataSource.id,
-      parentsIn: dsConfig.filter.parents?.in,
-      parentsNotIn: dsConfig.filter.parents?.not,
-      retrievalConfigurationId: retrievalConfiguration?.id || null,
-      processConfigurationId: processConfiguration?.id || null,
-      dataSourceViewId: dataSourceView.id,
-      mcpServerConfigurationId: mcpServerConfiguration?.id || null,
-      tagsMode,
-      tagsIn,
-      tagsNotIn,
-      workspaceId: owner.id,
-    };
-  });
-
-  return AgentDataSourceConfiguration.bulkCreate(agentDataSourceConfigData, {
+  return AgentDataSourceConfiguration.bulkCreate(agentDataSourceConfigBlobs, {
     transaction: t,
   });
 }
@@ -1344,7 +1346,7 @@ async function createTableDataSourceConfiguration(
     {} as Record<string, DataSourceViewResource>
   );
 
-  const tableConfigData = tableConfigurations.map((tc) => {
+  const tableConfigBlobs = tableConfigurations.map((tc) => {
     const dataSourceView = dataSourceViewsMap[tc.dataSourceViewId];
     assert(
       dataSourceView,
@@ -1363,7 +1365,7 @@ async function createTableDataSourceConfiguration(
     };
   });
 
-  return AgentTablesQueryConfigurationTable.bulkCreate(tableConfigData, {
+  return AgentTablesQueryConfigurationTable.bulkCreate(tableConfigBlobs, {
     transaction: t,
   });
 }
