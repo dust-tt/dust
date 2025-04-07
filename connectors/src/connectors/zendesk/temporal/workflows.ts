@@ -320,7 +320,7 @@ export async function zendeskBrandHelpCenterSyncWorkflow({
 }
 
 /**
- * Sync Workflow for the Tickets associated to a Brand.
+ * Sync Workflow for the Tickets associated with a Brand.
  */
 export async function zendeskBrandTicketsSyncWorkflow({
   connectorId,

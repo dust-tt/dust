@@ -16,7 +16,7 @@ const GongOAuthResponse = t.type({
 type GongOAuthResponseType = t.TypeOf<typeof GongOAuthResponse>;
 
 /**
- * Validates a Gong OAuth response to ensure it contains a api_base_url_for_customer
+ * Validates a Gong OAuth response to ensure it contains an api_base_url_for_customer
  *
  * @param rawJson The raw JSON response from the OAuth service
  * @param logger Logger instance for error reporting

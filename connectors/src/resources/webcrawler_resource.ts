@@ -276,7 +276,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
   toJSON(): WebCrawlerConfigurationType {
     const redactedHeaders: Record<string, string> = {};
     for (const key in this.headers) {
-      // redacting headers values when rendering them because we don't want to expose sensitive information.
+      // redacting header values when rendering them because we don't want to expose sensitive information.
       redactedHeaders[key] = WebCrawlerHeaderRedactedValue;
     }
     return {

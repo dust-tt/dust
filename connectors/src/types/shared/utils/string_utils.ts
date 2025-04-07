@@ -2,7 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 /**
- * Substring that ensures we don't cut a string in the middle of a unicode
+ * Substring that ensures we don't cut a string in the middle of a Unicode
  * character.
  *
  * The split characters are removed from the result. As such the

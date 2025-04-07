@@ -74,7 +74,7 @@ export async function testSalesforceConnection(
  * Credentials are scoped to a project, so we can't fetch the databases of another project.
  */
 export const fetchDatabases = (): RemoteDBDatabase[] => {
-  // Salesforce do not have a concept of databases per say, the most similar concept is a project.
+  // Salesforce do not have a concept of databases per se, the most similar concept is a project.
   // Since credentials are always scoped to a project, we directly return a single database with the project name.
   return [{ name: INTERNAL_ID_DATABASE }];
 };

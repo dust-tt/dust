@@ -291,7 +291,7 @@ export async function intercomTeamFullSyncWorkflow({
 }
 
 /**
- * Sync Workflow for a All Conversations.
+ * Sync Workflow for an All Conversations.
  * Launched by the IntercomSyncWorkflow if a signal is received (meaning the admin updated the permissions and ticked or unticked the "All Conversations" checkbox).
  */
 export async function intercomAllConversationsSyncWorkflow({

@@ -80,7 +80,7 @@ export class ActivityInboundLogInterceptor
       );
     }, this.context.info.startToCloseTimeoutMs);
 
-    // We already trigger a monitor after 20 failures, but when the pod crashes (eg: OOM or segfault), the attempt never gets logged.
+    // We already trigger a monitor after 20 failures, but when the pod crashes (e.g.: OOM or segfault), the attempt never gets logged.
     // By looking at the attempt count before the activity starts, we can detect activities that are repeatedly crashing the pod.
     if (this.context.info.attempt > 25) {
       this.logger.error(

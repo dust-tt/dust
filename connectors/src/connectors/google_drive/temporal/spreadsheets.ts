@@ -136,7 +136,7 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
 
   try {
     const validRows: string[][] = filteredRows.map((row) => {
-      // If a row has less cells than headers, we fill the gap with empty strings.
+      // If a row has fewer cells than headers, we fill the gap with empty strings.
       if (row.length < maxCols) {
         const shortfall = maxCols - row.length;
         return [...row, ...Array(shortfall).fill("")];
@@ -326,7 +326,7 @@ async function getAllSheetsFromSpreadSheet(
 
     const { sheetId, sheetType, title } = properties;
     // We only support "GRID" sheet.
-    // For spreadsheet with one unique sheet, sheetId will be zero.
+    // For spreadsheets with one unique sheet, sheetId will be zero.
     if (
       sheetType !== "GRID" ||
       !title ||
@@ -446,7 +446,7 @@ export async function syncSpreadSheet(
         sheetsAPI.spreadsheets.get({ spreadsheetId: id });
       let spreadsheet: Awaited<ReturnType<typeof getSpreadsheet>>;
       // We do 3 local retries for 500 Internal Server Error.
-      // If we still get 500 Internal Server Error after 3 retries and the activity already
+      // If we still get a 500 Internal Server Error after 3 retries and the activity already
       // has been retried 20 times, we mark the file as skipped.
       let internalErrorsCount = 0;
       const maxInternalErrors = 3;

@@ -480,7 +480,7 @@ async function syncCode(
         // We signal the workflow to start the sync of the repo.
         await launchGithubCodeSyncWorkflow(c.id, orgLogin, repoName, repoId);
 
-        // And finally update the lastSeenAt. Multiple PR merge can race through that logic but
+        // And finally update the lastSeenAt. Multiple PR merges can race through that logic but
         // since we debounce the code sync workflow 10s this will result in only one actual workflow
         // running safely.
         await githubCodeRepository.update({

@@ -13,7 +13,7 @@ import type { ModelId } from "@connectors/types";
 // timeout for crawling a single url = timeout for upserting (5 minutes) + 2mn
 // leeway to crawl on slow websites
 export const REQUEST_HANDLING_TIMEOUT = 420;
-// For each page crawl we have an heartbeat but some crawls seem to stall for longer periods. Giving
+// For each page crawl we have a heartbeat but some crawls seem to stall for longer periods. Giving
 // them 20mn to hearbeat.
 export const HEARTBEAT_TIMEOUT = 1200;
 

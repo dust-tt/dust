@@ -112,7 +112,7 @@ export async function notionSyncWorkflow({
 
   const promises: Promise<void>[] = [];
 
-  // We only want to fetch pages that were updated since the last sync unless it's a a force resync.
+  // We only want to fetch pages that were updated since the last sync unless it's a force resync.
   const skipUpToDatePages = !forceResync;
 
   async function runSearch(cursorType: "pages" | "databases") {
@@ -133,7 +133,7 @@ export async function notionSyncWorkflow({
           filter: cursorType === "pages" ? "page" : "database",
         });
 
-      // Update the cursors object to keep both the previous and last cursors.
+      // Update the cursor objects to keep both the previous and last cursors.
       const newPreviousCursor = cursors[cursorType].last;
       const newLastCursor = nextCursor;
       cursors[cursorType] = {
@@ -272,8 +272,8 @@ export async function notionGarbageCollectionWorkflow({
   const res = await isFullSyncPendingOrOngoing({ connectorId });
 
   if (res) {
-    // If we cannot garbage collect (eg, we have never completed a full sync, or there is a full resync in progress)
-    // We wait until we can garbage collect (and check every 5 minute).
+    // If we cannot garbage collect (e.g., we have never completed a full sync, or there is a full resync in progress)
+    // We wait until we can garbage collect (and check every 5 minutes).
 
     await sleep(60_000 * 5); // 5 minutes
     await continueAsNew<typeof notionGarbageCollectionWorkflow>({
@@ -323,7 +323,7 @@ export async function notionGarbageCollectionWorkflow({
           filter: cursorType === "pages" ? "page" : "database",
         });
 
-      // Update the cursors object to keep both the previous and last cursors.
+      // Update the cursor objects to keep both the previous and last cursors.
       const newPreviousCursor = cursors[cursorType].last;
       const newLastCursor = nextCursor;
       cursors[cursorType] = {

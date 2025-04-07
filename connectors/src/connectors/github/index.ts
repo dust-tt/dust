@@ -123,7 +123,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       await c.update({ connectionId });
 
-      // If connector was previously paused, unpause it.
+      // If the connector was previously paused, unpause it.
       if (c.isPaused()) {
         await this.unpause();
       }

@@ -195,7 +195,7 @@ export async function googleDriveIncrementalSync(
         id: drive.id,
         isShared: drive.isSharedDrive,
       }))
-      // Run incremental sync for "userspace" (aka non shared drives, non "my drive").
+      // Run incremental sync for "userspace" (aka non-shared drives, non "my drive").
       .concat({
         id: GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
         isShared: false,

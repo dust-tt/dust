@@ -77,7 +77,7 @@ export function isTopFolder(url: string) {
   return new URL(url).pathname === "/";
 }
 
-// Normalizes a url path by removing trailing slashes and empty path parts (eg: //)
+// Normalizes an url path by removing trailing slashes and empty path parts (e.g.: //)
 export function normalizeFolderUrl(url: string) {
   const parsed = new URL(url);
   let result =

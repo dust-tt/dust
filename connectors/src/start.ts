@@ -35,7 +35,7 @@ runSlackWorker().catch((err) =>
 runNotionWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running notion worker")
 );
-// Disabled on purpose to avoid heavy load on Notion API in dev
+// Disabled on purpose to avoid a heavy load on Notion API in dev
 // runNotionGarbageCollectWorker().catch((err) =>
 //   logger.error(errorFromAny(err), "Error running notion gc worker")
 // );

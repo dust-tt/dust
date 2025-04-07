@@ -1,7 +1,6 @@
 import type { Result, WorkspaceDomainType } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
-import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
 
 import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
@@ -298,7 +297,7 @@ async function isSlackUserAllowed(
     return false;
   }
 
-  // Otherwise, ensure that the slack user is an active member in the workspace.
+  // Otherwise, ensure that the Slack user is an active member in the workspace.
   return isUserAllowed(connector, slackUserInfo);
 }
 

@@ -135,7 +135,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         const configurations =
           await SlackConfigurationResource.listForTeamId(newTeamId);
 
-        // Revoke the token if no other slack connector is active on the same slackTeamId.
+        // Revoke the token if no other Slack connector is active on the same slackTeamId.
         if (configurations.length == 0) {
           logger.info(
             {
@@ -181,7 +181,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     await c.update(updateParams);
 
-    // If connector was previously paused, unpause it.
+    // If the connector was previously paused, unpause it.
     if (c.isPaused()) {
       await this.unpause();
     }
@@ -216,7 +216,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       configuration.slackTeamId
     );
 
-    // We deactivate our connections only if we are the only live slack connection for this team.
+    // We deactivate our connections only if we are the only live Slack connection for this team.
     if (configurations.length == 1) {
       logger.info(
         {

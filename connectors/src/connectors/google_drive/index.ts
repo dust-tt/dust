@@ -127,7 +127,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       googleDriveConfigurationBlob
     );
 
-    // We mark it artificially as sync succeeded as google drive is created empty.
+    // We mark it artificially as sync succeeded as Google Drive is created empty.
     await syncSucceeded(connector.id);
 
     // We nonetheless launch the incremental sync.
@@ -151,7 +151,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
 
     // Ideally we want to check that the Google Project ID is the same as the one from the connector
-    // I couln't find an easy way to access it from the googleapis library
+    // I couldn't find an easy way to access it from the googleapis library
     // Workaround is checking the domain of the user who is updating the connector
     if (connectionId) {
       try {
@@ -196,7 +196,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
 
       await connector.update({ connectionId });
 
-      // If connector was previously paused, unpause it.
+      // If the connector was previously paused, unpause it.
       if (connector.isPaused()) {
         await this.unpause();
       }
@@ -214,7 +214,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
 
     // Google revocation requires refresh tokens so would have to happen in `oauth`. But Google
-    // Drive does not rely on webhooks anymore so we can just delete the connector.
+    // Drive does not rely on webhooks anymore, so we can just delete the connector.
 
     const res = await connector.delete();
     if (res.isErr()) {
@@ -437,7 +437,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           let nextPageToken: string | undefined = undefined;
           let remoteFolders: drive_v3.Schema$File[] = [];
           // Depending on the view the user is requesting, the way of querying changes.
-          // The "Shared with me" view requires to look for folders
+          // The "Shared with me" view requires looking for folders
           // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
           let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
           if (
@@ -583,7 +583,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       }
     } else if (removedFolderIds.length > 0) {
       // If we have added folders, the garbage collector will be automatically at the end of the full sync,
-      // but if we only removed folders, we need launch it manually.
+      // but if we only removed folders, we need to launch it manually.
       const res = await launchGoogleGarbageCollector(this.connectorId);
       if (res.isErr()) {
         return res;

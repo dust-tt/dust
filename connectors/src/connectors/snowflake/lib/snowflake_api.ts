@@ -317,7 +317,7 @@ export async function isConnectionReadonly({
   credentials: SnowflakeCredentials;
   connection: Connection;
 }): Promise<Result<void, TestConnectionError>> {
-  // Check current role and all inherited roles
+  // Check the current role and all inherited roles
   return _checkRoleGrants(credentials, connection, credentials.role, false);
 }
 

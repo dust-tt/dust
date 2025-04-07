@@ -7,7 +7,7 @@ import fs from "fs-extra";
 import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 
-// Assuming one cached workflows takes 2MB on average,
+// Assuming one cached workflow takes 2MB on average,
 // we can cache 292 workflows in 4096MB, which is the max heap size
 // we give to our temporal workers.
 // Add some margin to it, so we don't hit the limit, and we get to 200.
@@ -166,7 +166,7 @@ export async function terminateAllWorkflowsForConnectorId(
 }
 
 // This function allows to heartbeat back to the temporal workflow, but also
-// awaits a temporal sleep(0), which allows to throw an exception if the activity should be cancelled.
+// awaits a temporal sleep(0), which allows to throw an exception if the activity should be canceled.
 export async function heartbeat() {
   Context.current().heartbeat();
   await Context.current().sleep(0);

@@ -27,7 +27,7 @@ export function getWeekEnd(date: Date): Date {
 }
 
 export const timeAgoFrom = (millisSinceEpoch: number) => {
-  // return the duration elapsed from the given time to now in human readable format (using seconds, minutes, days)
+  // return the duration elapsed from the given time to now in human-readable format (using seconds, minutes, days)
   const now = new Date().getTime();
   const diff = now - millisSinceEpoch;
   const seconds = Math.floor(diff / 1000);

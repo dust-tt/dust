@@ -220,7 +220,7 @@ export async function syncConversation({
     });
   }
 
-  // Building the markdown content for the conversation
+  // Building the Markdown content for the conversation
   let markdown = "";
   let convoTitle = conversation.title;
 

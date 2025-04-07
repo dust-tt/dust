@@ -104,7 +104,7 @@ export function transformStream(
               );
             }
 
-            // Reset for next page.
+            // Reset for the next page.
             state.pageNumber++;
             state.currentPageBuffer = "";
           }

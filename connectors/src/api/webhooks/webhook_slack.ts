@@ -42,7 +42,7 @@ export interface SlackWebhookEvent<T = string> {
   channel?: T;
   subtype?: SlackWebhookEventSubtype;
   hidden?: boolean; // added for message_deleted
-  deleted_ts?: string; // added for message_deleted - timestamp of deleted message
+  deleted_ts?: string; // added for message_deleted - timestamp of the deleted message
   user?: string;
   ts?: string; // slack message id
   thread_ts?: string; // slack thread id
@@ -437,7 +437,7 @@ const _webhookSlackAPIHandler = async (
 
               const eventThreadTimestamp = event.thread_ts;
               if (eventThreadTimestamp) {
-                // If message was in a thread, re-sync the whole thread
+                // If the message was in a thread, re-sync the whole thread
                 const results = await Promise.all(
                   activeConfigurations.map((c) =>
                     launchSlackSyncOneThreadWorkflow(
@@ -472,7 +472,7 @@ const _webhookSlackAPIHandler = async (
                 }
               }
             }
-            // Handle normal message
+            // Handle normal messages
             else if (event.thread_ts) {
               const thread_ts = event.thread_ts;
               const results = await Promise.all(
@@ -681,7 +681,7 @@ const _webhookSlackAPIHandler = async (
       throw e;
     }
 
-    // returns 200 on all non supported messages types because slack will retry
+    // returns 200 on all non-supported message types because Slack will retry
     // indefinitely otherwise.
     return res.status(200).end();
   }

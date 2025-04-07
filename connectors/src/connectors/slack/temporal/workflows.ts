@@ -48,7 +48,7 @@ const { syncNonThreaded } = proxyActivities<typeof activities>({
  *   We trigger 2 sync activities per batch of 100:
  *    One for all threaded messages
  *     Inside, we have one promise per thread
- *    One for all non threaded messages
+ *    One for all non-threaded messages
  *     Inside, we have one promise per week
  *    Promises are sent and awaited by batch of activities.MAX_CONCURRENCY_LEVEL
  */
@@ -97,7 +97,7 @@ export async function workspaceFullSync(
 
 /**
  * This workflow is in charge of synchronizing all the content of a Slack channel.
- * A thread with more than one message is indexed as one document, and a the non threaded message of a channel are indexed
+ * A thread with more than one message is indexed as one document, and the non-threaded messages of a channel are indexed
  * as a document per week.
  */
 export async function syncOneChannel(

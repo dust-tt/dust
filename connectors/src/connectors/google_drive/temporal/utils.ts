@@ -91,7 +91,7 @@ const getLabelsNamesFromLabels = async (
           case "integer":
             return (f.integer ?? []).map((i) => `${title}:${i}`);
           case "selection":
-            // In case of selection, we get ID's of the selection choice, to find out the values, we need to lookup in the field definition
+            // In case of selection, we get ID's of the selection choice, to find out the values, we need to look up in the field definition
             return removeNulls(
               (f.selection ?? []).map((s) => {
                 const choice = fieldDef.selectionOptions?.choices?.find(
@@ -271,7 +271,7 @@ export async function _getLabels(
   connectorId: ModelId,
   authCredentials: OAuth2Client
 ) {
-  // For now, return empty array until we have the new scope approved.
+  // For now, return an empty array until we have the new scope approved.
   return [];
   try {
     const driveLabels = google.drivelabels({
@@ -286,7 +286,7 @@ export async function _getLabels(
 
     return removeNulls(r.data.labels?.map((l) => (l.id ? l : null)) ?? []);
   } catch (e) {
-    // Warning for now as getting labels requires re-auth the google drive app with a new scope.
+    // Warning for now as getting labels requires re-auth the Google Drive app with a new scope.
     logger.warn(
       {
         error: e,

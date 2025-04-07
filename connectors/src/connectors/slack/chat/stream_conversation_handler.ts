@@ -44,7 +44,7 @@ interface StreamConversationToSlackParams {
   agentConfigurations: LightAgentConfigurationType[];
 }
 
-// Adding linear backoff mechanism.
+// Adding a linear backoff mechanism.
 const maxBackoffTime = 10_000; // Maximum backoff time.
 const initialBackoffTime = 1_000;
 

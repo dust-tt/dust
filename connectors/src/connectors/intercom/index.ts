@@ -156,7 +156,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
 
       await connector.update({ connectionId: newConnectionId });
 
-      // If connector was previously paused, unpause it.
+      // If the connector was previously paused, unpause it.
       if (connector.isPaused()) {
         await this.unpause();
       }
@@ -203,7 +203,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         logger.info({ connectorId: this.connectorId }, "Uninstalled Intercom.");
       }
     } catch (e) {
-      // If we error we still continue the process, as it's likely the fact that the connection
+      // If we error, we still continue the process, as it's likely the fact that the connection
       // was already deleted or the intercom app was already uninstalled.
       logger.error(
         { connectorId: this.connectorId, error: e },
