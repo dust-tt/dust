@@ -429,7 +429,7 @@ describe("sync remote databases", async () => {
         mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
       });
 
-      // Check database model
+      // Check the database model
       const remoteDatabase = await RemoteDatabaseModel.findOne({
         where: {
           internalId: "test__DUST_DOT__db",
@@ -438,7 +438,7 @@ describe("sync remote databases", async () => {
       expect(remoteDatabase).not.toBeNull();
       expect(remoteDatabase?.name).toBe("test.db");
 
-      // Check schema model
+      // Check the schema model
       const remoteSchema = await RemoteSchemaModel.findOne({
         where: {
           internalId: "test__DUST_DOT__db.test__DUST_DOT__schema",
@@ -448,7 +448,7 @@ describe("sync remote databases", async () => {
       expect(remoteSchema?.name).toBe("test.schema");
       expect(remoteSchema?.databaseName).toBe("test.db");
 
-      // Check table model
+      // Check the table model
       const remoteTable = await RemoteTableModel.findOne({
         where: {
           internalId:

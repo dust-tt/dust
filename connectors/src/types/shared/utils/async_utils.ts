@@ -9,7 +9,7 @@
  * @param items - Array of items to be processed
  * @param iterator - Async function that processes each item. Receives the item and its index
  * @param options.concurrency - Maximum number of parallel executions (default: 8)
- * @returns Promise resolving to array of results in the same order as input items.
+ * @returns Promise resolving to an array of results in the same order as input items.
  */
 export async function concurrentExecutor<T, V>(
   items: T[],
@@ -18,7 +18,7 @@ export async function concurrentExecutor<T, V>(
 ) {
   const results: V[] = new Array(items.length);
 
-  // Initialize queue with work items, preserving original index.
+  // Initialize queue with work items, preserving the original index.
   // This queue is shared between all workers.
   const queue = items.map((item, index) => ({ item, index }));
 

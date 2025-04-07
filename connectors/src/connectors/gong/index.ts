@@ -141,7 +141,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         connectionId,
       });
 
-      // If connector was previously paused, unpause it.
+      // If the connector was previously paused, unpause it.
       if (connector.isPaused()) {
         await this.unpause();
 

@@ -15,8 +15,10 @@ import type {
   WorkbookWorksheet,
 } from "@microsoft/microsoft-graph-types";
 
-import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
-import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
+import type {
+  DriveItem,
+  MicrosoftNode,
+} from "@connectors/connectors/microsoft/lib/types";
 import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
 import {
   internalIdFromTypeAndPath,
@@ -183,7 +185,7 @@ export async function getFilesAndFolders(
 }
 
 /**
- *  Get list of items that have changed Calling without nextLink nor token will
+ *  Get the list of items that have changed Calling without nextLink nor token will
  * result in initial delta call
  */
 export async function getDeltaResults({

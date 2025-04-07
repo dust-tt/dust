@@ -35,8 +35,11 @@ import {
 } from "@connectors/lib/models/confluence";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorPermission, ContentNode } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  DataSourceConfig,
+} from "@connectors/types";
 import { ConfluenceClientError } from "@connectors/types";
 
 const logger = mainLogger.child({
@@ -139,7 +142,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       ) {
         await connector.update({ connectionId });
 
-        // If connector was previously paused, unpause it.
+        // If the connector was previously paused, unpause it.
         if (connector.isPaused()) {
           await this.unpause();
         }

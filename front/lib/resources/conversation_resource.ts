@@ -24,8 +24,7 @@ import type {
   LightAgentConfigurationType,
   Result,
 } from "@app/types";
-import { ConversationError, removeNulls } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 
 import { GroupResource } from "./group_resource";
 import { frontSequelize } from "./storage";
@@ -416,7 +415,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  async updateVisiblity(
+  async updateVisibility(
     visibility: ConversationVisibility,
     title?: string | null
   ) {

@@ -290,7 +290,7 @@ async function answerMessage(
     });
   }
 
-  // We start by retrieving the slack user info.
+  // We start by retrieving the Slack user info.
   const slackClient = await getSlackClient(connector.id);
 
   let slackUserInfo: SlackUserInfo | null = null;
@@ -347,7 +347,7 @@ async function answerMessage(
     slackUserId: slackUserIdOrBotId,
     slackEmail: slackUserInfo?.email || "unknown",
     slackUserName:
-      // A slack bot has no display name but just a real name so we use it if we could not find the
+      // A Slack bot has no display name but just a real name so we use it if we could not find the
       // display name.
       displayName || realName || "unknown",
     slackFullName: slackUserInfo.real_name || "unknown",
@@ -420,7 +420,7 @@ async function answerMessage(
   // Here we remove the bot id from the message and we replace user ids by their display names.
   // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc
   // <@U91J1JEQZ1A>) ?
-  // becomes: What is the command to upgrade a workspace in production (cc @julien) ?
+  // becomes: What is the command to upgrade a workspace in production (cc @julien)?
   const matches = message.match(/<@[A-Z-0-9]+>/g);
   if (matches) {
     const mySlackUser = await getBotUserIdMemoized(connector.id);
@@ -652,7 +652,7 @@ async function answerMessage(
       conversationId: lastSlackChatBotMessage.conversationId,
     });
 
-    // If it doesn't exists, we will create a new one later.
+    // If it doesn't exist, we will create a new one later.
     if (existsRes.isOk()) {
       if (buildContentFragmentRes.value) {
         for (const cf of buildContentFragmentRes.value) {
@@ -805,7 +805,7 @@ async function makeContentFragments(
         },
       });
 
-      // Ensure we got a successful response and that it's not an html file (redirection from slack)
+      // Ensure we got a successful response and that it's not a HTML file (redirection from Slack)
       if (
         !response.ok ||
         response.headers.get("content-type")?.includes("html")
@@ -837,7 +837,7 @@ async function makeContentFragments(
 
       if (fileRes.isErr()) {
         // We log an error, but we continue the loop to try to upload the other files.
-        // The only stopping error is if the thread content can not be uploaded. (see below)
+        // The only stopping error is if the thread content cannot be uploaded. (see below)
         logger.error(
           {
             file: f,
@@ -888,7 +888,7 @@ async function makeContentFragments(
       channelName = channel.channel.name;
     }
   } catch (e) {
-    // We were missing the "im:read" scope, so we fallback to the "Unknown" channel name
+    // We were missing the "im:read" scope, so we fall back to the "Unknown" channel name
     // because we would trigger an oauth error otherwise.
     // We now ask for the "im:read" scope since 17/02/2025
     // We can remove this fallback in a few months.

@@ -3,7 +3,7 @@ import * as child_process from "child_process";
 
 const { SLACK_USER_OPERATION_BOT_TOKEN, NODE_ENV } = process.env;
 
-// We might want to delete this, once we make progress out of Sequelize synchronisation.
+// We might want to delete this, once we make progress out of Sequelize synchronization.
 export async function sendInitDbMessage({
   service,
   logger,

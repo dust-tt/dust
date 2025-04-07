@@ -53,8 +53,7 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
@@ -179,13 +178,13 @@ export async function getRootNodesToSyncFromResources(
     [] as MicrosoftNode[]
   );
 
-  // for all folders, check if a parent folder or drive is already in the list,
+  // For all folders, check if a parent folder or drive is already in the list,
   // in which case remove it. This can happen because when a user selects a
   // folder to sync, then a parent folder, both are stored in Microsoft Roots
   // table
 
   // Keeping them both in the sync list can result in various kinds of issues,
-  // e.g. if a child folder is synced before the parent, then the child folder's
+  // e.g., if a child folder is synced before the parent, then the child folder's
   // files' parents array will be incomplete, thus the need to prune the list
   const nodesToSync = [];
   for (const node of allNodes) {
@@ -354,7 +353,7 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
     throw new Error(`Node ${internalId} not found`);
   }
 
-  // if node was updated more recently than this sync, we don't need to mark it
+  // if the node was updated more recently than this sync, we don't need to mark it
   if (node.lastSeenTs && node.lastSeenTs < new Date()) {
     await node.update({ lastSeenTs: new Date() });
   }
@@ -589,7 +588,7 @@ export async function syncDeltaForRootNodesInDrive({
   // ignore all but the last one.
   //
 
-  // although the list might be long, this should not be an issue since in case
+  // Although the list might be long, this should not be an issue since in case
   // of activity retry, files already synced won't be synced again thanks to the
   // lastSeenTs check VS startSyncTs
   //
@@ -773,8 +772,8 @@ function removeAllButLastOccurences(deltaList: DriveItem[]) {
 
 /**
  * Order items as follows:
- * - first the node in the changedList matching rootid, or the drive root folder if no rootId is specified
- * - then those whose parentInternalId is in in the list above;
+ * - first the node in the changedList matching rootId, or the drive root folder if no rootId is specified
+ * - then those whose parentInternalId is in the list above;
  * - then those whose parentInternalId is in the updated list above, and so on
  *
  * This ensures we sync parents before their children; the converse would cause

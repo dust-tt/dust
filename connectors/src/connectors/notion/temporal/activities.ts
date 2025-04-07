@@ -71,11 +71,11 @@ import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
+  DataSourceConfig,
+  ModelId,
   PageObjectProperties,
   ParsedNotionBlock,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
 import {
   getNotionDatabaseTableId,
   INTERNAL_MIME_TYPES,
@@ -217,7 +217,7 @@ export async function fetchDatabaseChildPages({
 
   if (
     returnUpToDatePageIdsForExistingDatabase ||
-    // If the database is new (either we never seen it before, or the first time we saw it was
+    // If the database is new (either we have never seen it before, or the first time we saw it was
     // during this run), we return all the pages.
     !notionDbModel ||
     !notionDbModel.firstSeenTs ||
@@ -494,7 +494,7 @@ export async function upsertDatabaseInConnectorsDb(
   let parentId = parsedDb?.parentId;
 
   if (parsedDb) {
-    // Checks if the parent is accessible. If that fails, returns "unknown" parent (i.e, orphaned
+    // Checks if the parent is accessible. If that fails, returns "unknown" parent (i.e., orphaned
     // node).
     const resolvedParent = await resolveResourceParent({
       parentId: parsedDb.parentId,
@@ -1996,7 +1996,7 @@ export async function renderAndUpsertPageFromCache({
     );
   }
 
-  // checks if the parent is accessible. If that fails, returns "unknown" parent (i.e, orphaned
+  // checks if the parent is accessible. If that fails, returns "unknown" parent (i.e., orphaned
   // node).
   const resolvedParent = await resolveResourceParent({
     parentId,
@@ -2326,7 +2326,7 @@ export async function getDiscoveredResourcesFromCache({
  * - H1, H2 & H3 blocks add a level of nesting in addition to the "natural"
  *   nesting,
  * - only the 2 first levels of nesting are used to create prefixes, similarly
- *   to github, to avoid too many prefixes (H3 is still useful since some people
+ *   to GitHub, to avoid too many prefixes (H3 is still useful since some people
  *   don't use H1 but only H2/H3, or start their doc with H3, etc.)
  */
 async function renderPageSection({

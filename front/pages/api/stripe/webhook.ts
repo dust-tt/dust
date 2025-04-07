@@ -133,7 +133,7 @@ async function handler(
                 planCode,
                 stripeError: true,
               },
-              `[Stripe Webhook] Received checkout.session.completed with unkown status "${session.status}". Ignoring event.`
+              `[Stripe Webhook] Received checkout.session.completed with unknown status "${session.status}". Ignoring event.`
             );
             return res.status(200).json({ success: true });
           }

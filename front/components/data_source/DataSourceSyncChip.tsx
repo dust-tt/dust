@@ -37,7 +37,7 @@ export default function ConnectorSyncingChip({
         </Chip>
       );
     } else {
-      // This should never happen, but is a typescript possible case
+      // This should never happen, but is a TypeScript possible case
       return <Chip color="warning">Connector not found</Chip>;
     }
   }

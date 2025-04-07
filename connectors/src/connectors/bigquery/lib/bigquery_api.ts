@@ -71,7 +71,7 @@ export const fetchDatabases = ({
 }: {
   credentials: BigQueryCredentialsWithLocation;
 }): RemoteDBDatabase[] => {
-  // BigQuery do not have a concept of databases per say, the most similar concept is a project.
+  // BigQuery do not have a concept of databases per se, the most similar concept is a project.
   // Since credentials are always scoped to a project, we directly return a single database with the project name.
   return [{ name: credentials.project_id }];
 };
@@ -96,7 +96,7 @@ export const fetchDatasets = async ({
       removeNulls(
         datasets.map((dataset) => {
           // We want to filter out datasets that are in a different location than the credentials.
-          // But, for example, we want to keep dataset in "us" (multi-region) when selected location is "us-central1" (regional)
+          // But, for example, we want to keep dataset in "us" (multi-region) when the location selected is "us-central1" (regional)
           if (
             !credentials.location
               .toLowerCase()

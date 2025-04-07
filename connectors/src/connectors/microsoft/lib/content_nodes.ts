@@ -171,7 +171,7 @@ export function getMicrosoftNodeAsContentNode(
   node: MicrosoftNodeResource,
   expandWorksheet: boolean
 ): ContentNode {
-  // When table picking we want spreadsheets to expand to select the different
+  // When picking tables we want spreadsheets to expand to select the different
   // sheets. While extracting data we want to treat them as regular files.
   const isExpandable =
     !node.mimeType ||

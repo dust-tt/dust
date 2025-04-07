@@ -48,10 +48,10 @@ import type { ModelId } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
   stripNullBytes,
+  validateUrl,
   WEBCRAWLER_MAX_DEPTH,
   WEBCRAWLER_MAX_PAGES,
 } from "@connectors/types";
-import { validateUrl } from "@connectors/types";
 
 const CONCURRENCY = 1;
 
@@ -165,7 +165,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       ],
       maxRequestsPerCrawl,
       maxConcurrency: CONCURRENCY,
-      maxRequestsPerMinute: 20, // 1 request every 3 seconds average, to avoid overloading the target website
+      maxRequestsPerMinute: 20, // 1 request every 3-second average, to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
       async requestHandler({ $, request, enqueueLinks }) {
         Context.current().heartbeat({
@@ -206,7 +206,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             await crawler.autoscaledPool?.abort();
             await crawler.teardown();
             // leave without rethrowing, to avoid retries by the crawler
-            // (the cancellation already throws at the activity & workflow level)
+            // (the cancellation already throws at the activity and workflow level)
             return;
           }
           throw e;
@@ -266,7 +266,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         const pageTitle = $("title").text();
 
         // note that parentFolderUrls.length === parentFolderIds.length -1
-        // since parentFolderIds includes the page as first element
+        // since parentFolderIds includes the page as its first element
         // and parentFolderUrls does not
         const parentFolderUrls = getAllFoldersForUrl(request.url);
         const parentFolderIds = getParentsForPage(request.url, false);

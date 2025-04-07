@@ -4,8 +4,7 @@ import { Op } from "sequelize";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
 import mainLogger from "@connectors/logger/logger";
-import type { ModelId } from "@connectors/types";
-import type { GoogleDriveObjectType } from "@connectors/types";
+import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
 
 // TODO(nodes-core): monitor and follow-up with either normalizing
@@ -86,9 +85,9 @@ async function getFileParents(
 /**
  * This returns the list of parentIds in expected format for upsert,
  * starting with the id of the "driveFile" itself up to the root drive id.
- * [ driveFileId, directParentId, .... , rootDriveId ]
+ * [ driveFileId, directParentId, ... , rootDriveId ]
  *
- * Result is cached in redis for the current sync workflow, for one hour.
+ * The result is cached in redis for the current sync workflow, for one hour.
  */
 export const getFileParentsMemoized = cacheWithRedis(
   getFileParents,

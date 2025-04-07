@@ -6,7 +6,7 @@ import * as t from "io-ts";
 // - The "document" view allows picking documents in the Search tool,
 // which is useful for all connectors except Snowflake and BigQuery.
 // - The "all" view shows all nodes, which is used in the Knowledge tab for displaying content node trees.
-// More precisely, the "table" (resp. "document") view hides leaves that are document (resp. table).
+// More precisely, the "table" (resp. "document") view hides leaves that are documents (resp. tables).
 
 // Define a codec for ContentNodesViewType using io-ts.
 // WARNING: when changing this codec, search and map for comments on ContentNodesViewTypeCodec

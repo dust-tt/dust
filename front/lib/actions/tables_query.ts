@@ -91,7 +91,7 @@ function getTablesQueryResultsFileAttachments({
 }
 
 /**
- * TablesQuey Events
+ * TablesQuery Events
  */
 
 type TablesQueryErrorEvent = {
@@ -222,7 +222,7 @@ export class TablesQueryActionType extends BaseAction {
 
     if (!hasResultsFile && !this.output.results) {
       // We don't have any results -- this is unexpected, we should always
-      // have either an eror or some results (either a file or a `results` prop).
+      // have either an error or some results (either a file or a `results` prop).
       content += "No results were returned.\n";
       return {
         ...partialOutput,
@@ -665,7 +665,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     };
 
     let generatedResultFile: ActionGeneratedFileType | null = null;
-    let generatedsectionFile: ActionGeneratedFileType | null = null;
+    let generatedSectionFile: ActionGeneratedFileType | null = null;
 
     const rawResults =
       "results" in sanitizedOutput ? sanitizedOutput.results : [];
@@ -705,7 +705,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       };
 
       // Check if we should generate a section JSON file.
-      const shouldGeneratesectionFile = results.some((result) => {
+      const shouldGenerateSectionFile = results.some((result) => {
         for (const value of Object.values(result)) {
           if (
             typeof value === "string" &&
@@ -718,7 +718,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       });
 
       let sectionFile: FileResource | null = null;
-      if (shouldGeneratesectionFile) {
+      if (shouldGenerateSectionFile) {
         // First we fetch the connector provider for the data source, cause the chunking
         // strategy of the section file depends on it: Since all tables are from the same
         // data source, we can just take the first table's data source view id.
@@ -745,7 +745,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         });
 
         // Save ref to the generated section file to be yielded later.
-        generatedsectionFile = {
+        generatedSectionFile = {
           fileId: sectionFile.sId,
           title: `${queryTitle} (Rich Text)`,
           contentType: sectionFile.contentType,
@@ -781,10 +781,10 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         step: action.step,
         resultsFileId: generatedResultFile?.fileId ?? null,
         resultsFileSnippet: updateParams.resultsFileSnippet,
-        sectionFileId: generatedsectionFile?.fileId ?? null,
+        sectionFileId: generatedSectionFile?.fileId ?? null,
         generatedFiles: removeNulls([
           generatedResultFile,
-          generatedsectionFile,
+          generatedSectionFile,
         ]),
         type: "tables_query_action",
       }),

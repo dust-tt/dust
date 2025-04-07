@@ -257,7 +257,7 @@ export const DocumentUploadOrEditModal = ({
       }
 
       try {
-        // Create a file -> Allows to get processed text content via the file API.
+        // Create a file -> Allow to get processed text content via the file API.
         const selectedFile = files?.[0];
         if (!selectedFile) {
           return;

@@ -524,8 +524,8 @@ export function isAlreadySeenItem({
 }) {
   return (
     driveItemResource.lastSeenTs &&
-    // if lastSeenTs is greater than workflow start time, document was seen already
-    // e.g. because of an incremental sync or because an activity was retried
+    // if lastSeenTs is greater than workflow start time, the document was already seen
+    // e.g., because of an incremental sync or because an activity was retried
     driveItemResource.lastSeenTs > new Date(startSyncTs)
   );
 }

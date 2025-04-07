@@ -42,7 +42,7 @@ const axiosWithTimeout = axios.create({
 export const MAX_DOCUMENT_TXT_LEN = 750000;
 // For some data sources we allow small documents only to be processed.
 export const MAX_SMALL_DOCUMENT_TXT_LEN = 500000;
-// For some data sources we allow large documents (5mb) to be processed (behind flag).
+// For some data sources we allow large documents (5 mb) to be processed (behind flag).
 export const MAX_LARGE_DOCUMENT_TXT_LEN = 5000000;
 export const MAX_FILE_SIZE_TO_DOWNLOAD = 128 * 1024 * 1024;
 
@@ -434,7 +434,7 @@ export const MAX_PREFIX_TOKENS = MAX_CHUNK_SIZE / 8;
 export const MAX_PREFIX_CHARS = MAX_PREFIX_TOKENS * 8;
 
 // The role of this function is to create a prefix from an arbitrary long string. The prefix
-// provided will not be augmented with `\n`, so it should include appropriate carriage return. If
+// provided will not be augmented with `\n`, so it should include the appropriate carriage return. If
 // the prefix is too long (> MAX_PREFIX_TOKENS), it will be truncated. The remained will be returned as
 // content of the resulting section.
 export async function renderPrefixSection({
@@ -494,7 +494,7 @@ async function tokenize(text: string, ds: DataSourceConfig) {
   return tokensRes.value;
 }
 
-/// This function is used to render markdown from (alternatively GFM format) to our Section format.
+/// This function is used to render Markdown from (alternatively GFM format) to our Section format.
 /// The top-level node is always with prefix and content null and can be edited to add a prefix or
 /// content.
 export async function renderMarkdownSection(

@@ -39,7 +39,7 @@ export async function dpdf2text(
       // pdftotext is derived), it seems that \f is considered to separate pages.
       // To mititage any major risk, we filter out empty pages which may be caused by extraneous \f.
       // From various tests on different PDFs this seems to work well. If we have a really problematic
-      // PDF we can expect that upsert will fail because some chunks sections will have less content
+      // PDF we can expect that upsert will fail because some chunk sections will have less content
       // than their prefix.
       const pages = content
         .split("\f")

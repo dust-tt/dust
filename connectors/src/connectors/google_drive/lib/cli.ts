@@ -42,7 +42,7 @@ const getConnector = async (args: GoogleDriveCommandType["args"]) => {
     throw new Error("Missing --dsId or --connectorId argument");
   }
 
-  // We retrieve by data source name as we can have multiple data source with the same provider for
+  // We retrieve by data source name as we can have multiple data sources with the same provider for
   // a given workspace.
   const connector = await ConnectorModel.findOne({
     where: {

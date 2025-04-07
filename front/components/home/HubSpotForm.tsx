@@ -37,7 +37,7 @@ export default function HubSpotForm() {
       script.onload = createForm;
       document.body.appendChild(script);
     } else {
-      // If the script is already present, just recreate the form
+      // If the script is already present, only recreate the form
       createForm();
     }
   }, []);

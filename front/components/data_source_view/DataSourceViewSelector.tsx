@@ -304,7 +304,7 @@ export function DataSourceViewsSelector({
       return newState;
     });
 
-    // Scroll to last item if there are results. Not perfect but no perfect solution here.
+    // Scroll to the last item if there are results. Not perfect but no perfect solution here.
     if (searchResultNodes.length > 0) {
       setSearchResult(searchResultNodes[searchResultNodes.length - 1]);
     }

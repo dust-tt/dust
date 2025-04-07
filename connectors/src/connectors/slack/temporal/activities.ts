@@ -51,8 +51,7 @@ import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import {
   cacheWithRedis,
   INTERNAL_MIME_TYPES,
@@ -65,7 +64,7 @@ const logger = mainLogger.child({ provider: "slack" });
 const MAX_CONCURRENCY_LEVEL = 2;
 // Maximum number of messages we process in a single syncNonThreaded call (1 week of unthreaded
 // messages). Some channels have integrations that post a lot of messages. Beyond this number (more
-// that 500 messages per week), the information is very likely useless.
+// than 500 messages per week), the information is very likely useless.
 const MAX_SYNC_NON_THREAD_MESSAGES = 4000;
 
 /**
@@ -118,7 +117,7 @@ async function _getTypedChannelsUncached(
   do {
     const c: ConversationsListResponse = await client.conversations.list({
       types,
-      // despite the limit being 1000, slack may return fewer channels
+      // despite the limit being 1000, Slack may return fewer channels
       // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
       limit: 999,
       cursor: nextCursor,
@@ -564,7 +563,7 @@ export async function syncNonThreaded(
   } while (hasMore);
 
   if (messages.length === 0) {
-    // no non threaded messages, so we're done
+    // no non-threaded messages, so we're done
     return;
   }
   messages.reverse();
@@ -1112,7 +1111,7 @@ function getTagsForPage(
     const dateForTitle = formatDateForThreadTitle(threadDate);
     tags.push(`title:${channelName}-thread-${dateForTitle}`);
   } else {
-    // replace `slack-${channelId}` by `${channelName}` in documentId (to have a human readable
+    // replace `slack-${channelId}` by `${channelName}` in documentId (to have a human-readable
     // title with non-threaded time boundaries present in the documentId, but the channelName
     // instead of the channelId).
     const parts = documentId.split("-").slice(1);

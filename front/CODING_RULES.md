@@ -24,8 +24,8 @@ We do not use typescript enums, we use types instead, eg: `type Color = "red" | 
 
 ### [GEN4] Non type-safe use of `as` is prohibited
 
-The non type-safe uses of `as` are prohibited in the codebase. Use typeguards or other type-safe
-methods instead. There are few exceptions where `as` is type-safe to use (eg, `as const`) and
+The non-type-safe uses of `as` are prohibited in the codebase. Use typeguards or other type-safe
+methods instead. There are few exceptions where `as` is type-safe to use (e.g., `as const`) and
 therefore acceptable.
 
 ### [GEN5] No mutation of function parameters
@@ -54,7 +54,7 @@ function addItem(items: string[], newItem: string) {
 ### [GEN6] Comments must be sentences wrapped at 100 characters
 
 Comments must be full sentences (starting with a capital letter and ending with a period) and must
-be wrapped at 100 characters. Wrapping at a lower characer count should be avoided.
+be wrapped at 100 characters. Wrapping at a lower character count should be avoided.
 
 Example:
 
@@ -85,15 +85,15 @@ headers only are acceptable for sensitive data.
 
 Never catch your own errors. `catch` is authorized around external libraries (whose error handling
 we don't control), but otherwise errors that may alter the execution upstream should be returned
-using our `Result<>` pattern. It is OK to throw errors, since we can't catch them these are
-guaranteed to trigger a internal error (and return a 500).
+using our `Result<>` pattern. It is OK to throw errors, since we can't catch them, these are
+guaranteed to trigger an internal error (and return a 500).
 
 ## BACKEND
 
 ### [BACK1] No sequelize models in API routes
 
 API routes should not interact with sequelize models directly. Use `lib/api/*` interfaces (creating
-them if missing). Direct Resource interaction are acceptable.
+them if missing). Direct Resource interactions are acceptable.
 
 ### [BACK2] No sequelize models or ModelId in `lib/api/*` interfaces
 
@@ -223,9 +223,9 @@ setup and assertions.
 
 ## REACT
 
-### [REACT1] Always create `interface` for components Props
+### [REACT1] Always create `interface` for component Props
 
-Components props should always be typed using an `interface`.
+Component props should always be typed using an `interface`.
 
 Example:
 
@@ -277,5 +277,5 @@ export function useCreateFolder({
 
 ### [REACT3] Any async network operation should have a visual loading state
 
-Any load/async has a visible visual state (spinner, busy state, disabled button, etc), even if the
+Any load/async has a visible visual state (spinner, busy state, disabled button, etc.), even if the
 load time is expected to be small.

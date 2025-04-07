@@ -79,7 +79,7 @@ OUTPUT_FILE="./migrations/db/migration_${next_version}.sql"
 # Save the latest changes to a new migration file.
 mv diff_output.txt "$OUTPUT_FILE"
 
-# Ask for user Y/n input wether this migration is dependant on a backfill
+# Ask for user Y/n input whether this migration is dependant on a backfill
 read -p "Does this migration depends on a backfill script ? (y/n): " backfill_dependant
 if [ "$backfill_dependant" == "y" ]; then
   # Ask for user input for backfill script name

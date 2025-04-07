@@ -1,3 +1,5 @@
+import type { ModelId } from "@connectors/types";
+
 export type GoogleDriveObjectType = {
   capabilities: {
     canDownload: boolean;
@@ -36,9 +38,6 @@ export const FILE_ATTRIBUTES_TO_FETCH = [
 ] as const;
 
 // Get the Table ID for a sheet within a Google Spreadsheet from the
-
-import type { ModelId } from "@connectors/types";
-
 // Google-provided file ID and the ID of the sheet within the spreadsheet.
 export function getGoogleSheetTableId(
   googleFileId: string,

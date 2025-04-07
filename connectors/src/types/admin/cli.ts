@@ -448,7 +448,7 @@ export const CheckFileGenericResponseSchema = t.type({
     t.literal("symbol"),
     t.literal("bigint"),
   ]),
-  content: t.unknown, // google drive type, can't be iots'd
+  content: t.unknown, // Google Drive type, can't be iots'd
 });
 
 export type CheckFileGenericResponseType = t.TypeOf<

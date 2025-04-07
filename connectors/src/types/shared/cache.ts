@@ -33,7 +33,7 @@ type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
 // const cachedFn = cacheWithRedis(fn, (fnArg1, fnArg2, ...) => `${fnArg1}-${fnArg2}`, 60 * 10 * 1000);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
-// if caching big objects, there is a possible race condition (mulitple calls to
+// if caching big objects, there is a possible race condition (multiple calls to
 // caching), therefore, we use a lock
 export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,

@@ -6,10 +6,10 @@ import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  AVAILABLE_INTERNAL_MCPSERVER_NAMES,
   isDefaultInternalMCPServer,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
@@ -176,7 +176,7 @@ export class InternalMCPServerInMemoryResource {
   }
 
   static async listByWorkspace(auth: Authenticator) {
-    // In case of internal MCP servers, we list the ones that have a view in the system space.
+    // In the case of internal MCP servers, we list the ones that have a view in the system space.
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     const servers = await MCPServerView.findAll({

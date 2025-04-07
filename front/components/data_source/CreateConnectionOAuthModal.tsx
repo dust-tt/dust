@@ -36,7 +36,7 @@ export function CreateConnectionOAuthModal({
   useEffect(() => {
     if (isOpen) {
       setIsLoading(false);
-      // Clean-up extraConfig at mount since the component is reused across providers.
+      // Clean up extraConfig at mount since the component is reused across providers.
       setExtraConfig({});
     }
   }, [isOpen, setIsLoading]);

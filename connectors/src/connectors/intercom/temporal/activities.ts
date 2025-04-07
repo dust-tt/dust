@@ -213,7 +213,7 @@ export async function syncHelpCenterOnlyActivity({
 
 /**
  * This activity is responsible for retrieving the list of level 1 Collections,
- * i.e. the ones that have no parent.
+ * i.e., the ones that have no parent.
  */
 export async function getLevel1CollectionsIdsActivity({
   connectorId,

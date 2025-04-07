@@ -413,7 +413,7 @@ export class ConfluenceClient {
           }
         }
 
-        // Otherwise throw regular error to let downstream handle retries (e.g: Temporal).
+        // Otherwise throw regular error to let downstream handle retries (e.g.: Temporal).
         throw new ConfluenceClientError("Confluence API rate limit exceeded", {
           type: "http_response_error",
           status: response.status,
@@ -614,7 +614,7 @@ export class ConfluenceClient {
       };
     } catch (err) {
       if (err instanceof ConfluenceClientError && err.status === 404) {
-        // If the child page is not found, return empty array.
+        // If the child page is not found, return an empty array.
         return {
           pages: [],
           nextPageCursor: null,

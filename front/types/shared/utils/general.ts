@@ -1,5 +1,5 @@
 /**
- *  Filters out nulls & undefineds from an array by correclty narrowing the type
+ *  Filters out null and undefined values from an array by correctly narrowing the type.
  */
 export function removeNulls<T>(arr: (T | null | undefined)[]): T[] {
   return arr.filter((v): v is T => v !== null && v !== undefined);

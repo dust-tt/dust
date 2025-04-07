@@ -180,7 +180,7 @@ export async function launchConfluencePersonalDataReportingSchedule() {
       scheduleId: makeConfluencePersonalDataWorkflowId(),
       policies: {
         // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
-        // Backfill scheduled action up to 1 previous day.
+        // Backfill scheduled action up to the previous day.
         catchupWindow: "1 day",
         // Only one workflow at a time.
         overlap: ScheduleOverlapPolicy.SKIP,

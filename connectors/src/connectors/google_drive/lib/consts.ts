@@ -1,7 +1,7 @@
 // This is a virtual Google Drive Id used in our code base to represent the "user space".
 // This is different from the "My Drive" space, which is an actual Drive.
 // For example, "Shared with me" items live in this space, for the currently authenticated user.
-// We use this ID locally in place of a real google drive ID.
+// We use this ID locally in place of a real Google Drive ID.
 // This id is stored in the GoogleDriveSyncToken table in the "driveId" column.
 // Please note that a file "shared with me" could live in an actual drive (e.g. "My Drive") of the user who shared it.
 export const GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID = "userspace";

@@ -244,10 +244,10 @@ async function upsertParent({
 
   const { parentId, parentType } = parentResult;
 
-  // In case of infinite parents loop, the workflow execution will fail at
+  // In the case of infinite parents loop, the workflow execution will fail at
   // first loop since they will have the same workflowId ("workflow execution
-  // already started"). It's acceptable behaviour: it's very rare, it may not
-  // even happen since contrarily to getParents, here we query notion directly
+  // already started"). It's acceptable behavior: it's very rare, it may not
+  // even happen since contrarily to getParents, here we query Notion directly
   // VS our connectors DB.
   switch (parentType) {
     case "page":

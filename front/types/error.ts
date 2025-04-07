@@ -140,7 +140,7 @@ export function isAPIError(obj: unknown): obj is APIError {
 }
 
 /**
- * Type to transport a HTTP error with its http status code (eg: 404)
+ * Type to transport an HTTP error with its http status code (e.g.: 404)
  * and the error object returned by our public API endpoints (api/v1/*)
  */
 export type APIErrorWithStatusCode = {

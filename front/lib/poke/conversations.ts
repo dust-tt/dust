@@ -27,7 +27,7 @@ export async function getPokeConversation(
     includeDeleted
   );
 
-  // Enrich the returned conversation with the apps runs linked to the agent messages
+  // Enrich the returned conversation with the app runs linked to the agent messages
   // Decided to do it as a separate step because I didn't want to modify the getConversation to make it more complex based on the use case
   // and I still wanted to use the existing getConversation code for rendering.
   if (conversation.isOk()) {
