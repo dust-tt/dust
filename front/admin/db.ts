@@ -154,6 +154,7 @@ async function main() {
   await MCPServerView.sync({ alter: true });
   await MCPServerConnection.sync({ alter: true });
 
+  await AgentMCPServerConfiguration.sync({ alter: true });
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentTablesQueryConfiguration.sync({ alter: true });
@@ -162,7 +163,6 @@ async function main() {
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
   await AgentReasoningConfiguration.sync({ alter: true });
-  await AgentMCPServerConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 

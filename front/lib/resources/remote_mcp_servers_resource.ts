@@ -8,6 +8,7 @@ import type {
 } from "sequelize";
 
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPToolType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
@@ -201,23 +202,23 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     {
       name,
       description,
-      url,
+      icon,
       sharedSecret,
       cachedTools,
       lastSyncAt,
     }: {
       name?: string;
       description?: string;
-      url?: string;
+      icon?: AllowedIconType;
       sharedSecret?: string;
-      cachedTools: MCPToolType[];
+      cachedTools?: MCPToolType[];
       lastSyncAt: Date;
     }
   ) {
     await this.update({
       name,
       description,
-      url,
+      icon,
       sharedSecret,
       cachedTools,
       lastSyncAt,

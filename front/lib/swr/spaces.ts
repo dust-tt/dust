@@ -33,7 +33,7 @@ import type {
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
 import type {
   ContentNodesViewType,
-  DataSourceViewCategory,
+  DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
@@ -151,7 +151,7 @@ export function useSpaceDataSourceViews({
   spaceId,
   workspaceId,
 }: {
-  category?: Exclude<DataSourceViewCategory, "apps">;
+  category?: DataSourceViewCategoryWithoutApps;
   disabled?: boolean;
   spaceId: string;
   workspaceId: string;
@@ -192,7 +192,7 @@ export function useSpaceDataSourceViewsWithDetails({
   spaceId,
   workspaceId,
 }: {
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
   disabled?: boolean;
   spaceId: string;
   workspaceId: string;
@@ -343,7 +343,7 @@ export function useDeleteFolderOrWebsite({
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
 }) {
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =

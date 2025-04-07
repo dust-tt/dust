@@ -161,7 +161,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
       throw new Error(error.api_error?.message || "Failed to delete server");
     }
 
-    void mutateMCPServers();
+    await mutateMCPServers();
     return response.json();
   };
 
@@ -193,7 +193,7 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
       throw new Error(error.api_error?.message || "Failed to create server");
     }
 
-    void mutateMCPServers();
+    await mutateMCPServers();
     return response.json();
   };
 
@@ -226,7 +226,7 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       );
     }
 
-    void mutateMCPServers();
+    await mutateMCPServers();
     return response.json();
   };
 
@@ -258,7 +258,7 @@ export function useSyncRemoteMCPServer(
       );
     }
 
-    void mutateMCPServer();
+    await mutateMCPServer();
     return response.json();
   };
 
@@ -280,9 +280,8 @@ export function useUpdateRemoteMCPServer(
 
   const updateServer = async (data: {
     name: string;
-    url: string;
+    icon: string;
     description: string;
-    tools: { name: string; description: string }[];
   }): Promise<PatchMCPServerResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
       method: "PATCH",
@@ -295,7 +294,7 @@ export function useUpdateRemoteMCPServer(
       throw new Error(error.api_error?.message || "Failed to update server");
     }
 
-    void mutateMCPServer();
+    await mutateMCPServer();
     return response.json();
   };
 

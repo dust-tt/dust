@@ -86,7 +86,9 @@ import {
   getDefaultActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
+import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,
@@ -151,7 +153,26 @@ export function hasActionError(
   }
 }
 
+function actionIcon(
+  action: AssistantBuilderActionConfiguration,
+  mcpServerViews: MCPServerViewType[]
+) {
+  if (action.type === "MCP") {
+    const serverIcon = mcpServerViews.find(
+      (v) => v.id === action.configuration.mcpServerViewId
+    )?.server.icon;
+
+    if (serverIcon) {
+      return MCP_SERVER_ICONS[serverIcon];
+    }
+  }
+  return ACTION_SPECIFICATIONS[action.type].cardIcon;
+}
+
 function actionDisplayName(action: AssistantBuilderActionConfiguration) {
+  if (action.type === "MCP") {
+    return action.name;
+  }
   return `${ACTION_SPECIFICATIONS[action.type].label}${
     !isDefaultActionName(action) ? " - " + action.name : ""
   }`;
@@ -747,11 +768,13 @@ function ActionCard({
   deleteAction: () => void;
   isLegacyConfig: boolean;
 }) {
+  const { mcpServerViews } = useContext(AssistantBuilderContext);
   const spec = ACTION_SPECIFICATIONS[action.type];
   if (!spec) {
     // Unreachable
     return null;
   }
+
   const actionError = hasActionError(action);
   return (
     <Card
@@ -771,7 +794,7 @@ function ActionCard({
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full gap-1 font-medium text-foreground dark:text-foreground-night">
           <Icon
-            visual={spec.cardIcon}
+            visual={actionIcon(action, mcpServerViews)}
             size="sm"
             className="text-foreground dark:text-foreground-night"
           />
@@ -1215,7 +1238,7 @@ function AdvancedSettings({
 
 interface AddActionProps {
   onAddAction: (action: AssistantBuilderActionConfigurationWithId) => void;
-  hasFeature: (feature: WhitelistableFeature) => boolean;
+  hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
 }
 
 function AddAction({ onAddAction, hasFeature }: AddActionProps) {
@@ -1233,10 +1256,10 @@ function AddAction({ onAddAction, hasFeature }: AddActionProps) {
 
       <DropdownMenuContent>
         <DropdownMenuGroup>
-          <DropdownMenuLabel label="Data Sources" />
+          <DropdownMenuLabel label="Default" />
           {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
-            if (spec.flag && !hasFeature(spec.flag)) {
+            if (!hasFeature(spec.flag)) {
               return null;
             }
             const defaultAction = getDefaultActionConfiguration(key);
@@ -1257,10 +1280,10 @@ function AddAction({ onAddAction, hasFeature }: AddActionProps) {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuLabel label="Advanced Actions" />
+          <DropdownMenuLabel label="Advanced" />
           {ADVANCED_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
-            if (spec.flag && !hasFeature(spec.flag)) {
+            if (!hasFeature(spec.flag)) {
               return null;
             }
             const defaultAction = getDefaultActionConfiguration(key);

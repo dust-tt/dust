@@ -24,10 +24,10 @@ export function IntroSection() {
   return (
     <div className="w-full pt-[6vh] sm:pt-[8vh] xl:pt-[12vh] 2xl:pt-[18vh]">
       <div className="flex flex-col gap-16">
-        <div className="flex flex-col items-center gap-16 md:flex-row">
-          <div className="flex flex-col gap-8">
+        <div className="flex flex-col items-center gap-16 rounded-2xl md:flex-row">
+          <div className="flex flex-col gap-8 rounded-xl">
             <H1>Transform how work gets done</H1>
-            <div className="w-full md:hidden">
+            <div className="w-full overflow-hidden rounded-xl md:hidden">
               <MainVisual />
             </div>
             <P size="lg" className="text-muted-foreground">
@@ -48,7 +48,7 @@ export function IntroSection() {
               </Link>
             </div>
           </div>
-          <div className="hidden w-full max-w-2xl md:block">
+          <div className="hidden w-full max-w-2xl overflow-hidden rounded-xl md:block">
             <MainVisual />
           </div>
         </div>
