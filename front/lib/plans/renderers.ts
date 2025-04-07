@@ -1,4 +1,5 @@
-import type { PlanAttributes } from "@app/lib/plans/free_plans";
+import type { PlanAttributes } from "@app/lib/resources/plan_resource";
+import type { PlanResource } from "@app/lib/resources/plan_resource";
 import type { Subscription } from "@app/lib/resources/storage/models/plans";
 import type { PlanType, SubscriptionType } from "@app/types";
 
@@ -52,7 +53,7 @@ export function renderSubscriptionFromModels({
   plan,
   activeSubscription,
 }: {
-  plan: PlanAttributes;
+  plan: PlanResource;
   activeSubscription: Subscription | null;
 }): SubscriptionType {
   return {
@@ -64,7 +65,7 @@ export function renderSubscriptionFromModels({
     endDate: activeSubscription?.endDate?.getTime() || null,
     paymentFailingSince:
       activeSubscription?.paymentFailingSince?.getTime() || null,
-    plan: renderPlanFromAttributes({ plan }),
+    plan: plan.toJSON(),
     requestCancelAt: activeSubscription?.requestCancelAt?.getTime() ?? null,
   };
 }

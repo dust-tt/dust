@@ -5,7 +5,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 const updateProMaxMessagesLimit = async (execute: boolean) => {
   if (execute) {
-    const res = await PlanResource.setMessageLimitsForPlanCode(
+    const res = await PlanResource.setMessageLimitsForPlan(
       {
         maxMessages: 100,
         maxMessagesTimeframe: "day",

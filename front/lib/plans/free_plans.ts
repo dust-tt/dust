@@ -1,17 +1,10 @@
-import type { Attributes } from "sequelize";
-
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import type { PlanAttributes } from "@app/lib/resources/plan_resource";
 import { PlanResource } from "@app/lib/resources/plan_resource";
-import type { PlanModel } from "@app/lib/resources/storage/models/plans";
-
-export type PlanAttributes = Omit<
-  Attributes<PlanModel>,
-  "id" | "createdAt" | "updatedAt"
->;
 
 /**
  * We have 3 categories of plans:
@@ -112,7 +105,7 @@ export const upsertFreePlans = async () => {
       await PlanResource.makeNew(planData);
       console.log(`Free plan ${planData.code} created.`);
     } else {
-      await plan.internalResetWithData(planData);
+      await plan.updateByPlanCode(planData.code, planData);
       console.log(`Free plan ${planData.code} updated.`);
     }
   }
