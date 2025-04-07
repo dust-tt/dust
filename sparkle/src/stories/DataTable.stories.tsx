@@ -545,6 +545,7 @@ const createData = (start: number, count: number) => {
 
 export const ScrollableDataTableExample = () => {
   const [filter, setFilter] = useState("");
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [data, setData] = useState(() => createData(0, 50));
   const [isLoading, setIsLoading] = useState(false);
 
@@ -562,6 +563,11 @@ export const ScrollableDataTableExample = () => {
   const columnsWithSize = columns.map((column, index) => {
     return { ...column, meta: { sizeRatio: index % 2 === 0 ? 15 : 10 } };
   });
+
+  const columnsWithSelection: ColumnDef<Data>[] = useMemo(
+    () => [createSelectionColumn<Data>(), ...columnsWithSize],
+    []
+  );
   return (
     <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
       <h3 className="s-text-lg s-font-medium">
@@ -580,10 +586,13 @@ export const ScrollableDataTableExample = () => {
           data={data}
           filter={filter}
           filterColumn="name"
-          columns={columnsWithSize}
+          columns={columnsWithSelection}
           onLoadMore={loadMore}
           isLoading={isLoading}
           maxHeight="s-max-h-[500px]"
+          rowSelection={rowSelection}
+          setRowSelection={setRowSelection}
+          enableRowSelection={true}
         />
 
         <div className="s-text-sm s-text-muted-foreground">

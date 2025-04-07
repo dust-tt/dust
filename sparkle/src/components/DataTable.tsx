@@ -313,6 +313,9 @@ export function ScrollableDataTable<TData extends TBaseData>({
   maxHeight = "s-h-100",
   onLoadMore,
   isLoading = false,
+  rowSelection,
+  setRowSelection,
+  enableRowSelection,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -338,12 +341,25 @@ export function ScrollableDataTable<TData extends TBaseData>({
     };
   }, []);
 
+  const onRowSelectionChange =
+    rowSelection && setRowSelection
+      ? (updater: Updater<RowSelectionState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(rowSelection) : updater;
+          setRowSelection(newValue);
+        }
+      : undefined;
+
   const table = useReactTable({
     data,
     columns,
     rowCount: totalRowCount,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
+    onRowSelectionChange,
+    state: {
+      rowSelection,
+    },
   });
 
   useEffect(() => {
@@ -488,6 +504,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     widthClassName={widthClassName}
                     onClick={row.original.onClick}
                     className="s-absolute s-w-full"
+                    data-selected={row.getIsSelected()}
                     style={{
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
