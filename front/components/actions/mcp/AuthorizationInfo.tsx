@@ -1,4 +1,11 @@
-import { Button, Label, LockIcon, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  Label,
+  LockIcon,
+  Page,
+  Separator,
+  Spinner,
+} from "@dust-tt/sparkle";
 
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
@@ -86,6 +93,7 @@ export const AuthorizationInfo = ({
           />
         </div>
       )}
+      <Separator className="my-4" />
     </div>
   );
 };
