@@ -522,7 +522,7 @@ export function AgentMessage({
   );
 
   const buttons =
-    message.status === "failed"
+    message.status === "failed" || lastAgentStateClassification === "thinking"
       ? []
       : [
           <Button
