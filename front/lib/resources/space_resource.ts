@@ -325,16 +325,26 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return space;
   }
 
-  static async fetchByModelIds(
-    auth: Authenticator,
+  // Runs a findAll directly on the provided IDs, without any check on auth.
+  static async fetchByModelIdsUnsafe(
     ids: ModelId[],
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<SpaceResource[]> {
-    const spaces = await this.baseFetch(auth, {
-      where: { id: ids },
+    const includeClauses: Includeable[] = [
+      {
+        model: GroupResource.model,
+      },
+    ];
+
+    const spacesModels = await this.model.findAll({
+      where: {
+        id: ids,
+      },
+      include: includeClauses,
       includeDeleted,
     });
-    return spaces ?? [];
+
+    return spacesModels.map(this.fromModel);
   }
 
   static async isNameAvailable(

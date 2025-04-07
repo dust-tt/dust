@@ -82,7 +82,7 @@ export abstract class ResourceWithSpace<
     }
 
     const spaceIds = blobs.map((b) => b.vaultId);
-    const spaces = await SpaceResource.fetchByModelIds(auth, spaceIds, {
+    const spaces = await SpaceResource.fetchByModelIdsUnsafe(spaceIds, {
       includeDeleted,
     });
 
