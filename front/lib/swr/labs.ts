@@ -1,5 +1,6 @@
 // LABS - CAN BE REMOVED ANYTIME
 
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { Fetcher } from "swr";
 
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -129,4 +130,53 @@ export function useUpdateLabsConnectionConfiguration({
 
     return response.ok;
   };
+}
+
+export function useCreateLabsConnectionConfiguration({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const createConnectionConfiguration = async ({
+    provider,
+    credentialId,
+    connectionId,
+  }: {
+    provider: string;
+    credentialId?: string;
+    connectionId?: string;
+  }) => {
+    const res = await fetch(`/api/w/${workspaceId}/labs/connections`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        provider,
+        ...(credentialId ? { credentialId } : {}),
+        ...(connectionId ? { connectionId } : {}),
+      }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Failed to create connection",
+        description: error.error.message,
+      });
+      return false;
+    }
+
+    sendNotification({
+      type: "success",
+      title: "Success!",
+      description: "Connection created successfully.",
+    });
+    return true;
+  };
+
+  return createConnectionConfiguration;
 }

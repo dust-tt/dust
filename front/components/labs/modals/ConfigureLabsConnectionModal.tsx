@@ -9,14 +9,16 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
 import { useState } from "react";
 
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
-import { useUpdateLabsConnectionConfiguration } from "@app/lib/swr/labs";
+import {
+  useCreateLabsConnectionConfiguration,
+  useUpdateLabsConnectionConfiguration,
+} from "@app/lib/swr/labs";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
@@ -31,6 +33,10 @@ interface ConfigureLabsConnectionModal {
   dataSourcesViews: DataSourceViewType[];
   spaces: SpaceType[];
   isSpacesLoading: boolean;
+  configuration?: {
+    id: string;
+    credentialId: string | null;
+  };
 }
 
 export function ConfigureLabsConnectionModal({
@@ -39,11 +45,15 @@ export function ConfigureLabsConnectionModal({
   dataSourcesViews,
   spaces,
   isSpacesLoading,
+  configuration,
 }: ConfigureLabsConnectionModal) {
   const sendNotification = useSendNotification();
   const updateConnectionConfiguration = useUpdateLabsConnectionConfiguration({
     workspaceId: owner.sId,
     connectionId: connection.id,
+  });
+  const createConnectionConfiguration = useCreateLabsConnectionConfiguration({
+    workspaceId: owner.sId,
   });
 
   const [selectionConfigurations, setSelectionConfigurations] =
@@ -110,24 +120,47 @@ export function ConfigureLabsConnectionModal({
     }
   };
 
-  const onSave = async () => {
+  const onSaveApiKey = async () => {
     if (connection.authType === "apiKey") {
-      const success = await updateConnectionConfiguration({
-        credentialId: apiKey,
-      });
+      if (configuration) {
+        // Update existing configuration
+        const success = await updateConnectionConfiguration({
+          credentialId: apiKey,
+        });
 
-      if (success) {
-        sendNotification({
-          type: "success",
-          title: "Success!",
-          description: "Your API key has been saved successfully.",
-        });
+        if (success) {
+          sendNotification({
+            type: "success",
+            title: "Success!",
+            description: "Your API key has been saved successfully.",
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Failed to save",
+            description: "Could not save your API key. Please try again.",
+          });
+        }
       } else {
-        sendNotification({
-          type: "error",
-          title: "Failed to save",
-          description: "Could not save your API key. Please try again.",
+        // Create new configuration
+        const success = await createConnectionConfiguration({
+          provider: connection.id,
+          credentialId: apiKey,
         });
+
+        if (success) {
+          sendNotification({
+            type: "success",
+            title: "Success!",
+            description: "Your API key has been saved successfully.",
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Failed to save",
+            description: "Could not save your API key. Please try again.",
+          });
+        }
       }
     }
   };
@@ -160,36 +193,43 @@ export function ConfigureLabsConnectionModal({
                     className="border-structure-200 text-element-900 rounded-md border bg-white px-3 py-2 text-sm"
                     placeholder="Enter your API key"
                   />
+                  <Button
+                    label="Connect"
+                    onClick={onSaveApiKey}
+                    disabled={!apiKey}
+                  />
                 </div>
               )}
 
-              <Page.Layout direction="vertical">
-                <Page.SectionHeader
-                  title="Store data"
-                  description="Pick the location where we should store the data for this beta connection."
-                />
+              {configuration && (
+                <Page.Layout direction="vertical">
+                  <Page.SectionHeader
+                    title="Store data"
+                    description={`Pick the location where we should store ${connection.label} data`}
+                  />
 
-                <Page.Layout direction="horizontal">
-                  <div className="w-full">
-                    <div className="overflow-x-auto">
-                      {!isSpacesLoading && selectionConfigurations && (
-                        <DataSourceViewsSpaceSelector
-                          useCase="transcriptsProcessing"
-                          dataSourceViews={dataSourcesViews}
-                          allowedSpaces={spaces}
-                          owner={owner}
-                          selectionConfigurations={selectionConfigurations}
-                          setSelectionConfigurations={
-                            handleSetSelectionConfigurations
-                          }
-                          viewType="document"
-                          isRootSelectable={true}
-                        />
-                      )}
+                  <Page.Layout direction="horizontal">
+                    <div className="w-full">
+                      <div className="overflow-x-auto">
+                        {!isSpacesLoading && selectionConfigurations && (
+                          <DataSourceViewsSpaceSelector
+                            useCase="transcriptsProcessing"
+                            dataSourceViews={dataSourcesViews}
+                            allowedSpaces={spaces}
+                            owner={owner}
+                            selectionConfigurations={selectionConfigurations}
+                            setSelectionConfigurations={
+                              handleSetSelectionConfigurations
+                            }
+                            viewType="document"
+                            isRootSelectable={true}
+                          />
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </Page.Layout>
                 </Page.Layout>
-              </Page.Layout>
+              )}
             </div>
           </div>
         </SheetContainer>
@@ -200,7 +240,7 @@ export function ConfigureLabsConnectionModal({
           }}
           rightButtonProps={{
             label: "Save",
-            onClick: onSave,
+            onClick: onSaveApiKey,
           }}
         />
       </SheetContent>
