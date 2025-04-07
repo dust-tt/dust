@@ -26,6 +26,7 @@ import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   DataSourceWithAgentsUsageType,
   SpaceType,
@@ -108,12 +109,16 @@ export const SpaceCategoriesList = ({
     spaceId: space.sId,
   });
 
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
         DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
-          spaceInfo.categories[category]
+          spaceInfo.categories[category] &&
+          hasFeature(CATEGORY_DETAILS[category].flag)
             ? {
                 category,
                 ...spaceInfo.categories[category],
