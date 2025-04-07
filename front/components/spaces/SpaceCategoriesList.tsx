@@ -32,6 +32,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type RowData = {
   category: string;
@@ -108,12 +109,16 @@ export const SpaceCategoriesList = ({
     spaceId: space.sId,
   });
 
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
         DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
-          spaceInfo.categories[category]
+          spaceInfo.categories[category] &&
+          hasFeature(CATEGORY_DETAILS[category].flag)
             ? {
                 category,
                 ...spaceInfo.categories[category],
