@@ -171,8 +171,10 @@ export async function updateConversation(
 
   logger.info(
     {
-      conversationId: conversation.id,
+      conversationId,
       workspaceId: auth.workspace()?.sId,
+      visibility,
+      title,
     },
     "[CONVO_VISIBILITY] Updating conversation visibility or title."
   );
@@ -213,7 +215,7 @@ export async function deleteConversation(
   } else {
     logger.info(
       {
-        conversationId: conversation.id,
+        conversationId,
         workspaceId: auth.workspace()?.sId,
       },
       "[CONVO_VISIBILITY] Updating conversation visibility to deleted."
