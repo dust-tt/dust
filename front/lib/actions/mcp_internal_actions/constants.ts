@@ -6,6 +6,7 @@ export const AVAILABLE_INTERNAL_MCPSERVER_NAMES = [
   "data-source-utils",
   "helloworld",
   "table-utils",
+  "github",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -28,6 +29,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   "table-utils": {
     id: 3,
+    isDefault: false,
+    flag: "mcp_actions",
+  },
+  github: {
+    id: 4,
     isDefault: false,
     flag: "mcp_actions",
   },
