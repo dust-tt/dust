@@ -78,7 +78,7 @@ const DataSourceFilterCodec = t.intersection([
   OptionalDataSourceFilterTagsCodec,
 ]);
 
-const DataSourcesConfigurationCodec = t.array(
+const DataSourcesConfigurationsCodec = t.array(
   t.type({
     dataSourceViewId: t.string,
     workspaceId: t.string,
@@ -88,7 +88,7 @@ const DataSourcesConfigurationCodec = t.array(
 
 // Tables
 
-const TablesConfigurationCodec = t.array(
+const TablesConfigurationsCodec = t.array(
   t.type({
     dataSourceViewId: t.string,
     tableId: t.string,
@@ -110,7 +110,7 @@ const RetrievalActionConfigurationSchema = t.type({
     }),
   ]),
   topK: t.union([t.number, t.literal("auto")]),
-  dataSources: DataSourcesConfigurationCodec,
+  dataSources: DataSourcesConfigurationsCodec,
 });
 
 const DustAppRunActionConfigurationSchema = t.type({
@@ -121,7 +121,7 @@ const DustAppRunActionConfigurationSchema = t.type({
 
 const TablesQueryActionConfigurationSchema = t.type({
   type: t.literal("tables_query_configuration"),
-  tables: TablesConfigurationCodec,
+  tables: TablesConfigurationsCodec,
 });
 
 const WebsearchActionConfigurationSchema = t.type({
@@ -144,13 +144,13 @@ const MCPServerActionConfigurationSchema = t.type({
   type: t.literal("mcp_server_configuration"),
   mcpServerViewId: t.string,
 
-  dataSources: t.union([t.null, DataSourcesConfigurationCodec]),
-  tables: t.union([t.null, TablesConfigurationCodec]),
+  dataSources: t.union([t.null, DataSourcesConfigurationsCodec]),
+  tables: t.union([t.null, TablesConfigurationsCodec]),
 });
 
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
-  dataSources: DataSourcesConfigurationCodec,
+  dataSources: DataSourcesConfigurationsCodec,
   relativeTimeFrame: t.union([
     t.literal("auto"),
     t.literal("none"),
