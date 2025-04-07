@@ -48,3 +48,10 @@ export type LabsFeatureItemType = {
   label: string;
   description: string;
 };
+
+export enum SyncStatus {
+  IDLE = "idle",
+  IN_PROGRESS = "running",
+  COMPLETED = "completed",
+  FAILED = "failed",
+}
