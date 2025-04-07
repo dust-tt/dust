@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import type { InternalMCPServerDefinitionType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
+import { normalizeError } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "github",
@@ -64,7 +65,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           content: [
             {
               type: "text",
-              text: `Error creating GitHub issue: ${e instanceof Error ? e.message : `{e}`}`,
+              text: `Error creating GitHub issue: ${normalizeError(e).message}`,
             },
           ],
         };
