@@ -310,19 +310,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     });
   }
 
-  static async fetchAssistantDefaultSelectedByModelIds(
-    auth: Authenticator,
-    ids: ModelId[],
-    options?: FetchDataSourceOptions
-  ) {
-    return this.baseFetch(auth, options, {
-      where: {
-        id: ids,
-        assistantDefaultSelected: true,
-      },
-    });
-  }
-
   static async fetchByIds(
     auth: Authenticator,
     ids: string[],
