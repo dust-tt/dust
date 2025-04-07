@@ -1,7 +1,6 @@
 import type {
   Attributes,
   ForeignKey,
-  Includeable,
   NonAttribute,
   Transaction,
   WhereOptions,
@@ -12,9 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { Workspace } from "@app/lib/models/workspace";
 import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type {
   ModelStaticSoftDeletable,
@@ -71,34 +68,29 @@ export abstract class ResourceWithSpace<
       includeDeleted,
     }: ResourceFindOptions<M> = {}
   ): Promise<T[]> {
-    const includeClauses: Includeable[] = [
-      {
-        model: SpaceResource.model,
-        as: "space",
-        include: [{ model: GroupResource.model }],
-      },
-      ...(includes || []),
-    ];
-
     const blobs = await this.model.findAll({
       attributes,
       where: where as WhereOptions<M>,
-      include: includeClauses,
+      include: includes,
       limit,
       order,
       includeDeleted,
     });
 
+    if (blobs.length === 0) {
+      return [];
+    }
+
+    const spaceIds = blobs.map((b) => b.vaultId);
+    const spaces = await SpaceResource.fetchByModelIds(auth, spaceIds);
+
     return (
       blobs
         .map((b) => {
-          const space = new SpaceResource(
-            SpaceResource.model,
-            b.space.get(),
-            b.space.groups.map(
-              (group) => new GroupResource(GroupModel, group.get())
-            )
-          );
+          const space = spaces.find((space) => space.id === b.vaultId);
+          if (!space) {
+            throw new Error("Unreachable: space not found");
+          }
 
           const includedResults = (includes || []).reduce<IncludeType>(
             (acc, current) => {
