@@ -1,17 +1,15 @@
-import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
-
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@sparkle/lib/utils";
-
 import { Icon, IconProps } from "./Icon";
 
-const positionVariants = cva("s-flex", {
+const positionVariants = cva("s-flex s-absolute", {
   variants: {
     position: {
-      "bottom-right": "-s-ml-1.5 s-mt-1.5",
-      "top-right": "-s-ml-1.5 -s-mt-1.5",
-      "bottom-left": "s-ml-1.5 s-mt-1.5",
-      "top-left": "s-ml-1.5 -s-mt-1.5",
+      "bottom-right": "s-bottom-[-0.375rem] s-right-[-0.375rem]",
+      "top-right": "s-top-[-0.375rem] s-right-[-0.375rem]",
+      "bottom-left": "s-bottom-[-0.375rem] s-left-[-0.375rem]",
+      "top-left": "s-top-[-0.375rem] s-left-[-0.375rem]",
     },
   },
   defaultVariants: {

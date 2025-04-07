@@ -46,6 +46,7 @@ export {
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export { DataTable, ScrollableDataTable } from "./DataTable";
+export { DoubleIcon } from "./DoubleIcon";
 export {
   Dialog,
   DialogClose,
