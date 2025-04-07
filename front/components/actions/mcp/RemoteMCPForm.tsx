@@ -1,5 +1,9 @@
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EyeIcon,
   EyeSlashIcon,
   Input,
@@ -11,10 +15,11 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
 import type { RemoteMCPServerType } from "@app/lib/actions/mcp_metadata";
 import {
   useMCPServers,
@@ -31,6 +36,7 @@ interface RemoteMCPFormProps {
 const MCPFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
   description: z.string().min(1, "Description is required."),
+  icon: z.enum(["rocket", "command"], { required_error: "Icon is required." }),
 });
 
 export type MCPFormType = z.infer<typeof MCPFormSchema>;
@@ -47,6 +53,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     defaultValues: {
       name: mcpServer.name,
       description: mcpServer.description,
+      icon: mcpServer.icon,
     },
   });
 
@@ -67,6 +74,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         name: values.name,
         url: mcpServer.url || "",
         description: values.description,
+        icon: values.icon,
         tools: mcpServer.tools,
       });
       if (result.success) {
@@ -178,19 +186,58 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
       <Separator className="my-4" />
 
       <Page.SectionHeader title="Settings" />
-      <div>
-        <Label htmlFor="name">Name</Label>
-        <Controller
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <Input
-              {...field}
-              isError={!!form.formState.errors.name}
-              message={form.formState.errors.name?.message}
-            />
-          )}
-        />
+      <div className="flex space-x-2">
+        <div className="flex-grow">
+          <Label htmlFor="name">Name</Label>
+          <Controller
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <Input
+                {...field}
+                isError={!!form.formState.errors.name}
+                message={form.formState.errors.name?.message}
+              />
+            )}
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="icon">Icon</Label>
+          <br />
+          <Controller
+            control={form.control}
+            name="icon"
+            render={({ field }) => {
+              const currentIcon = field.value;
+              const Icon = MCP_SERVER_ICONS[currentIcon];
+              return (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      className="capitalize"
+                      variant="outline"
+                      label={currentIcon}
+                      icon={Icon}
+                      isSelect
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {Object.entries(MCP_SERVER_ICONS).map(([value, Icon]) => (
+                      <DropdownMenuItem
+                        key={value}
+                        className="capitalize"
+                        label={value}
+                        icon={Icon}
+                        onClick={() => field.onChange(value)}
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              );
+            }}
+          />
+        </div>
       </div>
 
       <div className="space-y-2">

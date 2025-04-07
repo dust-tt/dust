@@ -281,6 +281,7 @@ export function useUpdateRemoteMCPServer(
   const updateServer = async (data: {
     name: string;
     url: string;
+    icon: string;
     description: string;
     tools: { name: string; description: string }[];
   }): Promise<PatchMCPServerResponseBody> => {
