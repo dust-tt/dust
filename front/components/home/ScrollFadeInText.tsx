@@ -1,118 +1,81 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
-type ScrollFadeInTextProps = {
+import { classNames as cn } from "@app/lib/utils";
+
+interface ScrollFadeInTextProps {
   text: string;
   className?: string;
-  startColor?: string; // TailwindCSS color class for the starting color
-  endColor?: string; // TailwindCSS color class for the ending color
-  threshold?: number; // Value between 0 and 1
+  startColor?: string;
+  endColor?: string;
+  threshold?: number;
   rootMargin?: string;
-  mode?: "word" | "character"; // Animation mode: word-by-word or character-by-character
-  staggerDelay?: number; // Delay between each element's animation in milliseconds
-};
+  mode?: "word" | "character";
+  staggerDelay?: number;
+}
 
-export const ScrollFadeInText: React.FC<ScrollFadeInTextProps> = ({
+type TransitionProps = Omit<ScrollFadeInTextProps, "mode">;
+
+const WordByWordTransition = ({
   text,
   className = "",
   startColor = "text-gray-300",
   endColor = "text-gray-900",
   threshold = 0.1,
   rootMargin = "-100px 0px",
-  mode = "word",
   staggerDelay = 50,
-}) => {
-  if (mode === "word") {
-    return (
-      <WordByWordTransition
-        text={text}
-        className={className}
-        startColor={startColor}
-        endColor={endColor}
-        threshold={threshold}
-        rootMargin={rootMargin}
-        staggerDelay={staggerDelay}
-      />
-    );
-  } else {
-    return (
-      <CharByCharTransition
-        text={text}
-        className={className}
-        startColor={startColor}
-        endColor={endColor}
-        threshold={threshold}
-        rootMargin={rootMargin}
-        staggerDelay={staggerDelay}
-      />
-    );
-  }
-};
-
-// Word-by-word transition component
-const WordByWordTransition: React.FC<Omit<ScrollFadeInTextProps, "mode">> = ({
-  text,
-  className,
-  startColor,
-  endColor,
-  threshold = 0.1,
-  rootMargin,
-  staggerDelay,
-}) => {
-  // Split the text into words
+}: TransitionProps) => {
   const words = text.split(" ");
+  const [visibleIndices, setVisibleIndices] = useState<Set<number>>(new Set());
+  const timersRef = useRef<NodeJS.Timeout[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Create a single IntersectionObserver for the container
-  const { ref, inView } = useInView({
+  const { ref: inViewRef, inView } = useInView({
     threshold,
     rootMargin,
     triggerOnce: false,
   });
 
-  // Track visible words with local state
-  const [visibleIndices, setVisibleIndices] = useState<number[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const resetAnimation = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    setVisibleIndices(new Set());
+  }, []);
 
-  // Effect to handle word visibility based on scroll position
   useEffect(() => {
-    if (!inView || !containerRef.current) {
+    if (!inView) {
+      resetAnimation();
       return;
     }
 
-    // Add words to visible array in sequence with delays
-    const wordElements = containerRef.current.querySelectorAll(".word-element");
-
-    // Clear existing timers if any
-    const timers: NodeJS.Timeout[] = [];
-
-    wordElements.forEach((_, index) => {
+    const newTimers: NodeJS.Timeout[] = [];
+    words.forEach((_, index) => {
       const timer = setTimeout(() => {
-        setVisibleIndices((prev) => [...prev, index]);
+        setVisibleIndices((prev) => new Set([...prev, index]));
       }, index * staggerDelay);
-      timers.push(timer);
+      newTimers.push(timer);
     });
 
-    // Clear timers on cleanup
+    timersRef.current = newTimers;
+
     return () => {
-      timers.forEach((t) => clearTimeout(t));
-      if (!inView) {
-        setVisibleIndices([]);
-      }
+      newTimers.forEach(clearTimeout);
     };
-  }, [inView, staggerDelay]);
+  }, [inView, staggerDelay, resetAnimation, words]);
 
   return (
     <div ref={containerRef} className={className}>
       <div
-        ref={ref}
+        ref={inViewRef}
         className="pointer-events-none absolute left-0 top-0 h-12 w-full -translate-y-24"
       />
       {words.map((word, index) => (
         <span
           key={`${word}-${index}`}
-          className={`word-element transition-colors duration-700 ${
-            inView && visibleIndices.includes(index) ? endColor : startColor
-          }`}
+          className={cn(
+            "transition-colors duration-700",
+            visibleIndices.has(index) ? endColor : startColor
+          )}
         >
           {word}
           {index < words.length - 1 ? " " : ""}
@@ -122,33 +85,37 @@ const WordByWordTransition: React.FC<Omit<ScrollFadeInTextProps, "mode">> = ({
   );
 };
 
-// Character-by-character transition component
-const CharByCharTransition: React.FC<Omit<ScrollFadeInTextProps, "mode">> = ({
+const CharByCharTransition = ({
   text,
-  className,
-  startColor,
-  endColor,
+  className = "",
+  startColor = "text-gray-300",
+  endColor = "text-gray-900",
   threshold = 0.1,
-  rootMargin,
-  staggerDelay,
-}) => {
+  rootMargin = "-100px 0px",
+  staggerDelay = 50,
+}: TransitionProps) => {
   const chars = text.split("");
-  const { ref, inView } = useInView({
+  const { ref: inViewRef, inView } = useInView({
     threshold,
     rootMargin,
     triggerOnce: false,
   });
 
   return (
-    <div ref={ref} className={className}>
+    <div className={className}>
+      <div
+        ref={inViewRef}
+        className="pointer-events-none absolute left-0 top-0 h-12 w-full -translate-y-24"
+      />
       {chars.map((char, index) => (
         <span
           key={`${char}-${index}`}
-          className={`inline-block transition-colors duration-700 ${
+          className={cn(
+            "inline-block transition-colors duration-700",
             inView ? endColor : startColor
-          }`}
+          )}
           style={{
-            transitionDelay: `${Math.min(index * (staggerDelay || 0), 3000)}ms`,
+            transitionDelay: `${Math.min(index * staggerDelay, 3000)}ms`,
           }}
         >
           {char === " " ? "\u00A0" : char}
@@ -157,3 +124,14 @@ const CharByCharTransition: React.FC<Omit<ScrollFadeInTextProps, "mode">> = ({
     </div>
   );
 };
+
+export const ScrollFadeInText = ({
+  mode = "word",
+  ...props
+}: ScrollFadeInTextProps) => {
+  const Component =
+    mode === "word" ? WordByWordTransition : CharByCharTransition;
+  return <Component {...props} />;
+};
+
+ScrollFadeInText.displayName = "ScrollFadeInText";

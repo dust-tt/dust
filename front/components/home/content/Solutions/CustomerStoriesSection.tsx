@@ -8,7 +8,7 @@ import {
   CarouselPrevious,
 } from "@app/components/home/Carousel";
 import { BlogBlock } from "@app/components/home/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/ContentComponents";
+import { Grid, H2, P } from "@app/components/home/ContentComponents";
 
 export interface CustomerStory {
   title: string;
@@ -26,6 +26,7 @@ export interface QuoteProps {
 
 interface CustomerStoriesSectionProps {
   title?: string;
+  subtitle?: string;
   stories: CustomerStory[];
 }
 
@@ -55,14 +56,18 @@ export const defaultCustomerStories: CustomerStory[] = [
 
 export const CustomerStoriesSection: FC<CustomerStoriesSectionProps> = ({
   title = "Customer stories",
+  subtitle = "Leading enterprises are already transforming their operations with Dust.",
   stories = defaultCustomerStories,
 }) => (
   <Grid gap="gap-8">
     <div className="col-span-11 mt-16 sm:col-span-12">
       <Carousel className="w-full">
-        <div className="mb-2 flex items-center justify-between">
-          <div>
+        <div className="mb-8 flex flex-col items-start justify-between space-y-4 md:flex-row md:items-end md:space-y-0">
+          <div className="rounded-xl">
             <H2>{title}</H2>
+            <P size="lg" className="text-muted-foreground">
+              {subtitle}
+            </P>
           </div>
           <div className="flex gap-4">
             <CarouselPrevious />
@@ -70,19 +75,24 @@ export const CustomerStoriesSection: FC<CustomerStoriesSectionProps> = ({
           </div>
         </div>
 
-        <CarouselContent className="-ml-8">
+        <CarouselContent className="-ml-4 rounded-xl">
           {stories.map((story, index) => (
             <CarouselItem
               key={index}
-              className="basis-full pl-8 md:basis-1/2 lg:basis-1/3"
+              className="basis-full rounded-xl pl-8 sm:basis-1/2 lg:basis-1/3"
             >
               <BlogBlock
                 title={story.title}
                 content={story.content}
                 href={story.href}
-                className="h-full"
+                className="overflow-hidden"
               >
-                <img src={story.src} alt={story.title} />
+                <img
+                  src={story.src}
+                  alt={`${story.title} thumbnail`}
+                  className="aspect-video w-full object-cover"
+                  style={{ borderRadius: 0 }}
+                />
               </BlogBlock>
             </CarouselItem>
           ))}

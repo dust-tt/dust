@@ -5,6 +5,13 @@ import type { ReactNode } from "react";
 import React from "react";
 
 import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@app/components/home/Carousel";
+import {
   Grid,
   H1,
   H2,
@@ -71,6 +78,7 @@ interface BlogBlockProps {
   content: React.ReactNode;
   href: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export const BlogBlock: React.FC<BlogBlockProps> = ({
@@ -79,6 +87,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
   content,
   href,
   className = "",
+  style,
 }) => {
   return (
     <a
@@ -86,13 +95,14 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-[#2a3441]",
+        "flex h-full w-full flex-col overflow-hidden rounded-xl bg-muted-background",
         "group transition duration-300 ease-out",
-        "hover:bg-[#344054]"
+        "hover:bg-primary-100"
       )}
+      style={style}
     >
       {children ? (
-        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
+        <div className="relative aspect-[16/9] w-full overflow-hidden">
           {React.Children.map(children, (child) => {
             if (
               React.isValidElement<React.ImgHTMLAttributes<HTMLImageElement>>(
@@ -103,20 +113,22 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
               return React.cloneElement(child, {
                 className: classNames(
                   "absolute h-full w-full object-cover",
-                  "transition duration-300 ease-out",
-                  "group-hover:brightness-110",
-                  "rounded-t-2xl"
+                  "brightness-100 transition duration-300 ease-out",
+                  "group-hover:brightness-110"
                 ),
+                style: { borderRadius: 0 },
               });
             }
             return child;
           })}
         </div>
       ) : null}
-      <div className="flex flex-col p-6">
+      <div className="flex flex-col p-8">
         <div className="flex flex-col gap-2">
-          <H5 className="line-clamp-2 text-white">{title}</H5>
-          <P size="xs" className="line-clamp-3 text-gray-300">
+          <H5 className="line-clamp-2 text-foreground" mono>
+            {title}
+          </H5>
+          <P size="sm" className="line-clamp-3 text-muted-foreground">
             {content}
           </P>
         </div>
@@ -271,32 +283,139 @@ interface QuoteProps {
   logo: string;
 }
 
-export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="mx-auto max-w-3xl">
-    <div className="flex flex-col rounded-4xl bg-gray-50 p-8">
-      <div className="font-objektiv mb-6 flex flex-col items-start text-left text-lg font-normal text-slate-900 lg:text-xl">
-        {quote}
+// Collection of all quotes from across the site
+export const AllQuotes: QuoteProps[] = [
+  {
+    quote:
+      "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
+    name: "Everett Berry",
+    title: "Head of GTM Engineering at Clay",
+    logo: "/static/landing/logos/color/clay.png",
+  },
+  {
+    quote:
+      "Thanks to what we've implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
+    name: "Vincent Delagabbe",
+    title: "Software Engineer at Alan",
+    logo: "/static/landing/logos/color/alan.png",
+  },
+  {
+    quote:
+      "Dust transformed our privacy reviews. It handles compliance checks, suggests improvements, and drafts communications. It both cuts our review time and helps pressure-test our legal interpretations.",
+    name: "Thomas Adhumeau",
+    title: "Chief Privacy Officer at Didomi",
+    logo: "/static/landing/logos/color/didomi.png",
+  },
+  {
+    quote:
+      "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
+    name: "Boris Lipiainen",
+    title: "Chief Product and Technology Officer at Kyriba",
+    logo: "/static/landing/logos/color/kyriba.png",
+  },
+  {
+    quote:
+      "Dust is not just a tool - it's like having an extra team member who knows your brand voice, can handle recurring tasks, and helps you tackle new challenges. I couldn't do half of my job without it, especially with tight deadlines and a small team.",
+    name: "Valentine Chelius",
+    title: "Head of Marketing at Fleet",
+    logo: "/static/landing/logos/color/fleet.png",
+  },
+  {
+    quote:
+      "The Dust platform is more than just a tool for post-ideation; it's a catalyst for innovation, stimulating idea generation as employees engage with it.",
+    name: "Boris Lipiainen",
+    title: "Chief Product and Technology Officer at Kyriba",
+    logo: "/static/landing/logos/color/kyriba.png",
+  },
+  {
+    quote:
+      "It's really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
+    name: "Vincent Delagabbe",
+    title: "Software Engineer at Alan",
+    logo: "/static/landing/logos/color/alan.png",
+  },
+  {
+    quote:
+      "We're managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
+    name: "Anaïs Ghelfi",
+    title: "Head of Data Platform at Malt",
+    logo: "/static/landing/logos/color/malt.png",
+  },
+  {
+    quote:
+      "We asked ourselves for years: what if your team had 20% more time? Dust has made it possible, empowering our employees to work smarter, innovate, and push boundaries.",
+    name: "Matthieu Birach",
+    title: "Chief People Officer at Doctolib",
+    logo: "/static/landing/logos/color/doctolib.png",
+  },
+];
+
+// Single quote card component
+const QuoteCard = ({ quote, logo, name, title }: QuoteProps) => (
+  <div className="flex h-full w-full flex-col rounded-lg bg-gray-50 p-4 sm:rounded-xl sm:p-5 md:p-6">
+    <div className="font-objektiv sm:line-clamp-7 mb-4 line-clamp-5 flex flex-col items-start text-left text-base font-normal text-gray-900 sm:text-base md:text-lg">
+      "{quote}"
+    </div>
+    <div className="mt-auto flex items-center justify-between">
+      <div className="mr-2 flex flex-col">
+        <P size="sm" className="line-clamp-1 font-semibold text-slate-900">
+          {name}
+        </P>
+        <P size="xs" className="line-clamp-1 text-slate-600">
+          {title}
+        </P>
       </div>
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col">
-          <P size="md" className="font-semibold text-slate-900">
-            {name}
-          </P>
-          <P size="sm" className="text-slate-600">
-            {title}
-          </P>
-        </div>
-        <Image
-          src={logo}
-          width={120}
-          height={48}
-          alt="Company Logo"
-          className="h-14 w-auto"
-        />
-      </div>
+      <Image
+        src={logo}
+        width={120}
+        height={48}
+        alt="Company Logo"
+        className="ml-2 h-12 w-auto sm:ml-3 sm:h-12"
+      />
     </div>
   </div>
 );
+
+export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => {
+  // Create array of quotes with the provided quote first
+  const currentQuote = { quote, logo, name, title };
+  const otherQuotes = AllQuotes.filter(
+    (q) => q.quote !== quote || q.name !== name || q.title !== title
+  );
+  const quotes = [currentQuote, ...otherQuotes];
+
+  return (
+    <div className="w-full">
+      <Carousel className="w-full" opts={{ align: "start" }} isLooping={true}>
+        <div className="mb-2 flex items-center justify-between sm:mb-4">
+          <H2>Testimonials</H2>
+          <div className="flex gap-1.5 sm:gap-4">
+            <CarouselPrevious
+              size="sm"
+              className="h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10"
+            />
+            <CarouselNext
+              size="sm"
+              className="h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10"
+            />
+          </div>
+        </div>
+        <CarouselContent className="h-[250px] sm:h-[280px]">
+          {quotes.map((q, index) => (
+            <CarouselItem
+              key={index}
+              className="h-full basis-full pl-1 sm:basis-1/2 sm:pl-2 md:pl-4 lg:basis-1/3"
+            >
+              <div className="h-full w-full pr-1 sm:pr-2 md:pr-4">
+                <QuoteCard {...q} />
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+    </div>
+  );
+};
 
 interface CarousselContentBlockProps {
   title: ReactNode;

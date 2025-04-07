@@ -205,20 +205,20 @@ export const Strong = ({ children, className = "" }: ContentProps) => (
 
 export function CloudConnectorsSection() {
   return (
-    <div className="rounded-2xl bg-gray-50 px-6 py-12 md:px-12">
-      <div className="flex flex-col items-center md:flex-row md:space-x-16">
-        <div className="mb-8 text-center md:mb-0 md:w-1/2 md:text-left">
+    <div className="rounded-2xl bg-gray-50 px-6 py-8 sm:py-10 md:px-12 md:py-12">
+      <div className="flex flex-col items-center gap-6 sm:gap-8 md:flex-row md:space-x-16">
+        <div className="mb-4 text-left sm:mb-6 md:mb-0 md:w-1/2">
           <H3>It's not ChatGPT. It's Dust</H3>
           <P size="md" className="mt-4 text-muted-foreground">
             Dust is your future-proof AI platform: we are model-agnostic and let
             you connect all your existing systems
           </P>
         </div>
-        <div className="flex justify-end md:w-1/2">
+        <div className="flex justify-center md:w-1/2 md:justify-end">
           <img
             src="/static/landing/connectors/cloud_Connectors.png"
             alt="Cloud Connectors"
-            className="h-80"
+            className="h-60 w-auto object-contain sm:h-72 md:h-80"
           />
         </div>
       </div>
@@ -228,15 +228,15 @@ export function CloudConnectorsSection() {
 
 export function SecurityComplianceSection() {
   return (
-    <div className="mt-12">
-      <H2 className="mb-4 text-left">Security & compliance</H2>
-      <div className="flex w-full flex-col justify-between md:flex-row">
+    <div>
+      <H2 className="mb-6 text-left">Security & compliance</H2>
+      <div className="flex w-full flex-col justify-between gap-8 sm:gap-10 md:flex-row md:gap-6">
         <div className="flex flex-col text-left md:w-1/4">
           <div className="flex items-center">
             <Icon visual={LockIcon} className="mr-2 h-6" />
             <h4 className="text-lg font-semibold">Data-privacy</h4>
           </div>
-          <P size="sm" className="mt-2 text-muted-foreground">
+          <P size="sm" className="mt-3 text-muted-foreground">
             Your data is your data. Never used for model training.
           </P>
         </div>
@@ -245,7 +245,7 @@ export function SecurityComplianceSection() {
             <Icon visual={EyeIcon} className="mr-2 h-6" />
             <h4 className="text-lg font-semibold">Access-control</h4>
           </div>
-          <P size="sm" className="mt-2 text-muted-foreground">
+          <P size="sm" className="mt-3 text-muted-foreground">
             Fine-grained permissions with Spaces for sensitive information.
           </P>
         </div>
@@ -254,7 +254,7 @@ export function SecurityComplianceSection() {
             <Icon visual={CheckCircleIcon} className="mr-2 h-6" />
             <h4 className="text-lg font-semibold">Compliance</h4>
           </div>
-          <P size="sm" className="mt-2 text-muted-foreground">
+          <P size="sm" className="mt-3 text-muted-foreground">
             SOC2 Type II certified, HIPAA and GDPR compliant.
           </P>
         </div>
@@ -265,14 +265,14 @@ export function SecurityComplianceSection() {
 
 export function TeamFeatureSection() {
   return (
-    <div className="mt-12">
-      <div className="flex w-full flex-col justify-between md:flex-row">
+    <div>
+      <div className="flex w-full flex-col justify-between gap-8 sm:gap-10 md:flex-row md:gap-6">
         <div className="flex flex-col text-left md:w-1/4">
           <div className="flex items-center">
             <Icon visual={RobotIcon} className="mr-2 h-6" />
             <h4 className="text-lg font-semibold">Team orchestration</h4>
           </div>
-          <P size="sm" className="mt-2 text-muted-foreground">
+          <P size="sm" className="mt-3 text-muted-foreground">
             Build and manage teams of specialized agents that collaborate with
             humans
           </P>
@@ -284,7 +284,7 @@ export function TeamFeatureSection() {
               Context-aware infrastructure
             </h4>
           </div>
-          <P size="sm" className="mt-2 text-muted-foreground">
+          <P size="sm" className="mt-3 text-muted-foreground">
             Connect agents to your company data and break down silos
           </P>
         </div>
@@ -293,7 +293,7 @@ export function TeamFeatureSection() {
             <Icon visual={PlanetIcon} className="mr-2 h-6" />
             <h4 className="text-lg font-semibold">Universal access layer</h4>
           </div>
-          <P size="sm" className="mt-2 text-muted-foreground">
+          <P size="sm" className="mt-3 text-muted-foreground">
             Seamlessly integrate with your existing tools and systems
           </P>
         </div>
