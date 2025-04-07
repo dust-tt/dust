@@ -38,6 +38,7 @@ export type BaseMCPServerConfigurationType = {
   // TODO(mcp): add other kind of configurations here such as table query.
 };
 
+// Platform = Remote MCP Server OR our own MCP server.
 export type PlatformMCPServerConfigurationType =
   BaseMCPServerConfigurationType & {
     dataSources: DataSourceConfiguration[] | null;

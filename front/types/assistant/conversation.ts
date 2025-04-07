@@ -87,7 +87,7 @@ export type UserMessageContext = {
   email: string | null;
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
-  localMCPServerIds: string[];
+  localMCPServerIds?: string[];
 };
 
 export type UserMessageType = {

@@ -814,7 +814,7 @@ export async function* postUserMessage(
               await UserMessage.create(
                 {
                   content,
-                  localMCPServerIds: context.localMCPServerIds,
+                  localMCPServerIds: context.localMCPServerIds ?? [],
                   userContextUsername: context.username,
                   userContextTimezone: context.timezone,
                   userContextFullName: context.fullName,

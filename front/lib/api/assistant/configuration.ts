@@ -26,6 +26,7 @@ import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
+import { isPlatformMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   getGlobalAgents,
@@ -1167,6 +1168,8 @@ export async function createAgentActionConfiguration(
       });
     }
     case "mcp_server_configuration": {
+      assert(isPlatformMCPServerConfiguration(action));
+
       return frontSequelize.transaction(async (t) => {
         const mcpServerView = await MCPServerViewResource.fetchById(
           auth,

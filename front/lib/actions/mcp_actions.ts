@@ -14,6 +14,8 @@ import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent"
 import {
   isMCPActionConfiguration,
   isMCPServerConfiguration,
+  isPlatformMCPServerConfiguration,
+  isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -188,9 +190,8 @@ async function getConnectionOptions(
   }
 ): Promise<Result<MCPConnectionOptions, Error>> {
   if (
-    (isMCPServerConfiguration(config) &&
-      isPlatformMCPServerConfiguration(config)) ||
-    (isMCPActionConfiguration(config) && isPlatformMCPToolConfiguration(config))
+    isPlatformMCPServerConfiguration(config) ||
+    isPlatformMCPToolConfiguration(config)
   ) {
     const res = await MCPServerViewResource.fetchById(
       auth,
@@ -202,7 +203,7 @@ async function getConnectionOptions(
 
     return new Ok({
       type: "mcpServerId",
-      mcpServerId: config.mcpServerViewId,
+      mcpServerId: res.value.mcpServerId,
     });
   }
 
@@ -257,18 +258,6 @@ export async function tryListMCPTools(
   );
 
   return configurations.flat();
-}
-
-function isPlatformMCPServerConfiguration(
-  action: AgentActionConfigurationType
-): action is PlatformMCPServerConfigurationType {
-  return "mcpServerViewId" in action;
-}
-
-function isPlatformMCPToolConfiguration(
-  action: MCPToolConfigurationType
-): action is PlatformMCPToolConfigurationType {
-  return "mcpServerViewId" in action;
 }
 
 async function listMCPServerTools(
