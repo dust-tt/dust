@@ -4,7 +4,6 @@ import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import type { LocalMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 
 // ------------------------------
 // Request ID Utilities
