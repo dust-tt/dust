@@ -22,6 +22,7 @@ import type {
   ResourceFindOptions,
 } from "@app/lib/resources/types";
 import type { Result } from "@app/types";
+import logger from "@app/logger/logger";
 
 // Interface to enforce workspaceId and vaultId.
 interface ModelWithSpace extends ResourceWithId {
@@ -82,7 +83,10 @@ export abstract class ResourceWithSpace<
     }
 
     const spaceIds = blobs.map((b) => b.vaultId);
-    const spaces = await SpaceResource.fetchByModelIds(auth, spaceIds);
+    const spaces = await SpaceResource.fetchByModelIds(auth, spaceIds, {
+      includeDeleted,
+    });
+    logger.info({ spaces }, "SPACES in baseFetchWithAuthorization");
 
     return (
       blobs
