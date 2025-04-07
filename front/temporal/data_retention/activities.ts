@@ -3,8 +3,8 @@ import { Op } from "sequelize";
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 
 /**
  * Get workspace ids with conversations retention policy.
@@ -12,15 +12,16 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 export async function getWorkspacesWithConversationsRetentionActivity(): Promise<
   number[]
 > {
-  const workspaces = await Workspace.findAll({
-    attributes: ["id"],
-    where: {
-      conversationsRetentionDays: {
-        [Op.not]: null,
-      },
-    },
-  });
-  return workspaces.map((w) => w.id);
+  return [];
+  // const workspaces = await Workspace.findAll({
+  //   attributes: ["id"],
+  //   where: {
+  //     conversationsRetentionDays: {
+  //       [Op.not]: null,
+  //     },
+  //   },
+  // });
+  // return workspaces.map((w) => w.id);
 }
 
 /**
