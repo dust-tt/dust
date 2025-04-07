@@ -22,8 +22,9 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -299,31 +300,22 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
     const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
 
-    const dataSourceViews = await this.baseFetch(auth, undefined, {
+    return this.baseFetch(auth, undefined, {
+      includes: [
+        {
+          model: DataSourceModel,
+          as: "dataSourceForView",
+          required: true,
+          where: {
+            assistantDefaultSelected: true,
+          },
+        },
+      ],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: spaces.map((s) => s.id),
       },
     });
-
-    if (dataSourceViews.length === 0) {
-      return [];
-    }
-
-    const selectedDataSources =
-      await DataSourceResource.fetchAssistantDefaultSelectedByModelIds(
-        auth,
-        dataSourceViews.map((dsv) => dsv.dataSourceId)
-      );
-
-    const dataSourceMap = new Map(selectedDataSources.map((ds) => [ds.id, ds]));
-
-    return dataSourceViews
-      .filter((dsv) => dataSourceMap.has(dsv.dataSourceId))
-      .map((dsv) => {
-        dsv.ds = dataSourceMap.get(dsv.dataSourceId);
-        return dsv;
-      });
   }
 
   static async listForDataSourcesInSpace(
@@ -488,6 +480,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       {
         where: whereClause,
         order: [["updatedAt", "DESC"]],
+        includes: [
+          {
+            model: SpaceModel,
+            as: "space",
+          },
+        ],
       }
     );
   }
