@@ -45,7 +45,9 @@ export type PlatformMCPServerConfigurationType =
     mcpServerViewId: string; // Hold the sId of the MCP server view.
   };
 
-export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType;
+export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType & {
+  mcpServerId: string;
+};
 
 export type MCPServerConfigurationType =
   | PlatformMCPServerConfigurationType

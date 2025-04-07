@@ -2,6 +2,7 @@ import type { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import type {
+  LocalMCPServerConfigurationType,
   LocalMCPToolConfigurationType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
@@ -12,7 +13,6 @@ import type { MCPConnectionOptions } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isMCPActionConfiguration,
   isMCPServerConfiguration,
   isPlatformMCPServerConfiguration,
   isPlatformMCPToolConfiguration,
@@ -68,6 +68,37 @@ export type ToolType = ListToolsResult["tools"][number];
 
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
+function makePlatformMCPConfigurations(
+  config: PlatformMCPServerConfigurationType,
+  listToolsResult: ToolType[]
+) {
+  return listToolsResult.map((tool) => ({
+    sId: generateRandomModelSId(),
+    type: "mcp_configuration",
+    name: tool.name,
+    description: tool.description ?? null,
+    inputSchema: tool.inputSchema,
+    id: config.id,
+    mcpServerViewId: config.mcpServerViewId,
+    dataSources: config.dataSources || [], // Ensure dataSources is always an array
+  }));
+}
+
+function makeLocalMCPConfigurations(
+  config: LocalMCPServerConfigurationType,
+  listToolsResult: ToolType[]
+): LocalMCPToolConfigurationType[] {
+  return listToolsResult.map((tool) => ({
+    sId: generateRandomModelSId(),
+    type: "mcp_configuration",
+    name: tool.name,
+    description: tool.description ?? null,
+    inputSchema: tool.inputSchema,
+    id: config.id,
+    mcpServerId: config.mcpServerId,
+  }));
+}
+
 function makeMCPConfigurations<T extends MCPServerConfigurationType>({
   config,
   listToolsResult,
@@ -77,33 +108,19 @@ function makeMCPConfigurations<T extends MCPServerConfigurationType>({
 }): T extends PlatformMCPServerConfigurationType
   ? PlatformMCPToolConfigurationType[]
   : LocalMCPToolConfigurationType[] {
-  return listToolsResult.map((tool) => {
-    // Create a base configuration.
-    const baseConfig: LocalMCPToolConfigurationType = {
-      // Local MCP Tool configuration uses the serverId as the id.
-      sId: generateRandomModelSId(),
-      type: "mcp_configuration",
-      name: tool.name,
-      description: tool.description ?? null,
-      inputSchema: tool.inputSchema,
-      id: config.id,
-      mcpServerId: config.sId,
-    };
+  if (isPlatformMCPServerConfiguration(config)) {
+    return makePlatformMCPConfigurations(
+      config,
+      listToolsResult
+    ) as T extends PlatformMCPServerConfigurationType
+      ? PlatformMCPToolConfigurationType[]
+      : LocalMCPToolConfigurationType[];
+  }
 
-    // Add platform-specific properties if platform config.
-    if (isPlatformMCPServerConfiguration(config)) {
-      const platformConfig: PlatformMCPToolConfigurationType = {
-        ...baseConfig,
-        sId: generateRandomModelSId(),
-        mcpServerViewId: config.mcpServerViewId,
-        dataSources: config.dataSources,
-      };
-
-      return platformConfig;
-    }
-
-    return baseConfig;
-  }) as T extends PlatformMCPServerConfigurationType
+  return makeLocalMCPConfigurations(
+    config,
+    listToolsResult
+  ) as T extends PlatformMCPServerConfigurationType
     ? PlatformMCPToolConfigurationType[]
     : LocalMCPToolConfigurationType[];
 }
@@ -209,9 +226,7 @@ async function getConnectionOptions(
 
   return new Ok({
     type: "localMCPServerId",
-    mcpServerId: isMCPActionConfiguration(config)
-      ? config.mcpServerId
-      : config.sId,
+    mcpServerId: config.mcpServerId,
     conversationId,
     messageId,
   });

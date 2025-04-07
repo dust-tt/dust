@@ -93,11 +93,11 @@ export function createLocalMCPServerConfigurations(
   }
 
   return localMCPServerIds.map((serverId) => ({
-    // TODO:
-    id: -2, // Default ID for local MCP servers.
-    sId: serverId,
-    name: `MCP Server ${serverId}`,
     description: `Use the MCP Server ${serverId} to interact with the local MCP server.`,
+    id: -1, // Default ID for local MCP servers.
+    mcpServerId: serverId,
+    name: `MCP Server ${serverId}`,
+    sId: serverId,
     type: "mcp_server_configuration",
   }));
 }
