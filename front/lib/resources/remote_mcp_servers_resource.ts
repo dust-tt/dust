@@ -7,6 +7,10 @@ import type {
   Transaction,
 } from "sequelize";
 
+import {
+  DEFAULT_MCP_ACTION_DESCRIPTION,
+  DEFAULT_MCP_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPToolType } from "@app/lib/actions/mcp_metadata";
@@ -22,7 +26,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
 import { Ok, removeNulls } from "@app/types";
-import { DEFAULT_MCP_ACTION_DESCRIPTION, DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -57,7 +60,13 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     const sharedSecret = randomBytes(32).toString("hex");
 
     const server = await RemoteMCPServer.create(
-      { ...blob, name: blob.cachedName || DEFAULT_MCP_ACTION_NAME, description: blob.cachedDescription || DEFAULT_MCP_ACTION_DESCRIPTION, sharedSecret, lastSyncAt: new Date() },
+      {
+        ...blob,
+        name: blob.cachedName || DEFAULT_MCP_ACTION_NAME,
+        description: blob.cachedDescription || DEFAULT_MCP_ACTION_DESCRIPTION,
+        sharedSecret,
+        lastSyncAt: new Date(),
+      },
       { transaction }
     );
 
