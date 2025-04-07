@@ -10,7 +10,6 @@ import {
   Label,
   Page,
   Separator,
-  TextArea,
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -31,6 +30,7 @@ import type { LightWorkspaceType } from "@app/types";
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
   mcpServer: RemoteMCPServerType;
+  onSave: () => void;
 }
 
 const MCPFormSchema = z.object({
@@ -41,7 +41,11 @@ const MCPFormSchema = z.object({
 
 export type MCPFormType = z.infer<typeof MCPFormSchema>;
 
-export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
+export function RemoteMCPForm({
+  owner,
+  mcpServer,
+  onSave,
+}: RemoteMCPFormProps) {
   const sendNotification = useSendNotification();
 
   const [isSynchronizing, setIsSynchronizing] = useState(false);
@@ -195,6 +199,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 {...field}
                 isError={!!form.formState.errors.name}
                 message={form.formState.errors.name?.message}
+                placeholder={mcpServer.cachedName}
               />
             )}
           />
@@ -245,15 +250,16 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           name="description"
           render={({ field }) => (
             <>
-              <TextArea
-                error={form.formState.errors.description?.message}
+              <Input
                 {...field}
+                isError={!!form.formState.errors.description?.message}
+                message={form.formState.errors.description?.message}
+                placeholder={mcpServer.cachedDescription}
               />
-              {form.formState.errors.description && (
-                <div className="ml-3.5 flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  {form.formState.errors.description?.message}
-                </div>
-              )}
+              <p className="text-xs text-gray-500">
+                This is only for internal reference and is not shown to the
+                model.
+              </p>
             </>
           )}
         />
@@ -266,6 +272,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           onClick={async (event: Event) => {
             event.preventDefault();
             void form.handleSubmit(onSubmit)();
+            onSave();
           }}
         />
       </div>
