@@ -15,6 +15,8 @@ import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useDataSourceViews } from "@app/lib/swr/data_source_views";
+import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   LabsConnectionItemType,
   LabsFeatureItemType,
@@ -105,6 +107,11 @@ export default function LabsTranscriptsIndex({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const visibleConnections = getVisibleConnections(featureFlags);
   const visibleFeatures = getVisibleFeatures(featureFlags);
+  const { spaces, isSpacesLoading } = useSpaces({
+    workspaceId: owner.sId,
+  });
+  const { dataSourceViews, isDataSourceViewsLoading } =
+    useDataSourceViews(owner);
 
   return (
     <ConversationsNavigationProvider>
@@ -164,6 +171,11 @@ export default function LabsTranscriptsIndex({
                           owner={owner}
                           canRequestAccess={isAdmin}
                           connection={item}
+                          dataSourcesViews={dataSourceViews}
+                          spaces={spaces}
+                          isSpacesLoading={
+                            isSpacesLoading || isDataSourceViewsLoading
+                          }
                         />
                       }
                       visual={<ContextItem.Visual visual={item.logo} />}

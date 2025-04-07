@@ -12,6 +12,9 @@ interface FeatureAccessButtonProps {
   owner: LightWorkspaceType;
   canRequestAccess: boolean;
   connection?: LabsConnectionItemType;
+  dataSourcesViews?: any[];
+  spaces?: any[];
+  isSpacesLoading?: boolean;
 }
 
 export function FeatureAccessButton({
@@ -21,34 +24,38 @@ export function FeatureAccessButton({
   owner,
   canRequestAccess,
   connection,
+  dataSourcesViews = [],
+  spaces = [],
+  isSpacesLoading = false,
 }: FeatureAccessButtonProps) {
+  if (!accessible) {
+    return (
+      <RequestFeatureAccessModal
+        featureName={featureName}
+        owner={owner}
+        canRequestAccess={canRequestAccess}
+      />
+    );
+  }
+
+  if (connection) {
+    return (
+      <ConfigureLabsConnectionModal
+        owner={owner}
+        connection={connection}
+        dataSourcesViews={dataSourcesViews}
+        spaces={spaces}
+        isSpacesLoading={isSpacesLoading}
+      />
+    );
+  }
+
   return (
-    <>
-      {accessible ? (
-        <>
-          {managePath && (
-            <Button
-              variant="outline"
-              label="Manage"
-              size="sm"
-              icon={Cog6ToothIcon}
-              href={managePath}
-            />
-          )}
-          {connection && (
-            <ConfigureLabsConnectionModal
-              owner={owner}
-              connection={connection}
-            />
-          )}
-        </>
-      ) : (
-        <RequestFeatureAccessModal
-          owner={owner}
-          featureName={featureName}
-          canRequestAccess={canRequestAccess}
-        />
-      )}
-    </>
+    <Button
+      label="Manage"
+      icon={Cog6ToothIcon}
+      variant="outline"
+      href={managePath}
+    />
   );
 }

@@ -6,7 +6,7 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, ModelId } from "@app/types";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
@@ -89,6 +89,35 @@ export function useUpdateTranscriptsConfiguration({
   return async (data: Partial<PatchTranscriptsConfiguration>) => {
     const response = await fetch(
       `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
+
+    return response.ok;
+  };
+}
+
+export function useUpdateLabsConnectionConfiguration({
+  workspaceId,
+  connectionId,
+}: {
+  workspaceId: string;
+  connectionId: string;
+}) {
+  return async (
+    data: Partial<{
+      dataSourceViewId: ModelId | null;
+      credentialId: string | null;
+      connectionId: string | null;
+    }>
+  ) => {
+    const response = await fetch(
+      `/api/w/${workspaceId}/labs/connections/${connectionId}`,
       {
         method: "PATCH",
         headers: {
