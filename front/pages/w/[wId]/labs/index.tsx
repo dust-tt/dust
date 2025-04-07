@@ -5,6 +5,7 @@ import {
   HubspotLogo,
   Icon,
   Page,
+  Spinner,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
@@ -112,9 +113,10 @@ export default function LabsTranscriptsIndex({
     workspaceId: owner.sId,
   });
   const { dataSourceViews } = useDataSourceViews(owner);
-  const { configurations } = useLabsConnectionConfigurations({
-    workspaceId: owner.sId,
-  });
+  const { configurations, isConfigurationsLoading } =
+    useLabsConnectionConfigurations({
+      workspaceId: owner.sId,
+    });
 
   return (
     <ConversationsNavigationProvider>
@@ -168,17 +170,21 @@ export default function LabsTranscriptsIndex({
                       key={item.id}
                       title={item.label}
                       action={
-                        <FeatureAccessButton
-                          accessible={featureFlags.includes(item.featureFlag)}
-                          featureName={`${item.label} connection`}
-                          owner={owner}
-                          canRequestAccess={isAdmin}
-                          connection={item}
-                          dataSourcesViews={dataSourceViews}
-                          spaces={spaces}
-                          isSpacesLoading={isSpacesLoading}
-                          existingConfigurations={configurations}
-                        />
+                        isConfigurationsLoading ? (
+                          <Spinner />
+                        ) : (
+                          <FeatureAccessButton
+                            accessible={featureFlags.includes(item.featureFlag)}
+                            featureName={`${item.label} connection`}
+                            owner={owner}
+                            canRequestAccess={isAdmin}
+                            connection={item}
+                            dataSourcesViews={dataSourceViews}
+                            spaces={spaces}
+                            isSpacesLoading={isSpacesLoading}
+                            existingConfigurations={configurations}
+                          />
+                        )
                       }
                       visual={<ContextItem.Visual visual={item.logo} />}
                     >
