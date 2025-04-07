@@ -36,7 +36,7 @@ export class LabsConnectionsConfigurationResource extends BaseResource<LabsConne
   ): Promise<LabsConnectionsConfigurationResource> {
     const configuration = await LabsConnectionsConfigurationModel.create({
       ...blob,
-      isEnabled: true,
+      isEnabled: false,
     });
 
     return new LabsConnectionsConfigurationResource(
