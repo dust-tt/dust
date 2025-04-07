@@ -316,14 +316,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         dataSourceViews.map((dsv) => dsv.dataSourceId)
       );
 
-    const selectedDataSourceIds = new Set(
-      selectedDataSources.map((ds) => ds.id)
-    );
+    const dataSourceMap = new Map(selectedDataSources.map((ds) => [ds.id, ds]));
 
     return dataSourceViews
-      .filter((dsv) => selectedDataSourceIds.has(dsv.dataSourceId))
+      .filter((dsv) => dataSourceMap.has(dsv.dataSourceId))
       .map((dsv) => {
-        dsv.ds = selectedDataSources.find((ds) => ds.id === dsv.dataSourceId);
+        dsv.ds = dataSourceMap.get(dsv.dataSourceId);
         return dsv;
       });
   }
