@@ -1,6 +1,5 @@
 import { ImgBlock, ImgContent } from "@app/components/home/ContentBlocks";
 import { H2, P } from "@app/components/home/ContentComponents";
-import { classNames } from "@app/lib/utils";
 
 export function UbiquitySection() {
   return (

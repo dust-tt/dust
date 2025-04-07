@@ -1,4 +1,4 @@
-import { H2, H3, P } from "../../ContentComponents";
+import { H3, P } from "../../ContentComponents";
 
 export function ValuePropSection() {
   return (

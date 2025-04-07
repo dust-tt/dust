@@ -358,10 +358,10 @@ const QuoteCard = ({ quote, logo, name, title }: QuoteProps) => (
     </div>
     <div className="mt-auto flex items-center justify-between">
       <div className="mr-2 flex flex-col">
-        <P size="sm" className="line-clamp-1 font-semibold text-slate-900">
+        <P size="sm" className="line-clamp-1 font-semibold text-gray-900">
           {name}
         </P>
-        <P size="xs" className="line-clamp-1 text-slate-600">
+        <P size="xs" className="line-clamp-1 text-gray-600">
           {title}
         </P>
       </div>
@@ -452,19 +452,16 @@ export const CarousselContentBlock = ({
       <div className="flex flex-col gap-8 px-4 sm:px-6 md:px-8 lg:h-full lg:flex-row lg:gap-12">
         <div className="flex flex-col lg:h-full lg:w-1/2">
           <div className="mb-2 lg:mb-4">
-            <H2 className="mb-4 text-slate-900">{title}</H2>
+            <H2 className="mb-4 text-gray-900">{title}</H2>
 
             {bulletPoints && (
               <ul className="flex list-none flex-col gap-3">
                 {bulletPoints.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <div className="flex-shrink-0 pt-1">
-                      <ArrowRightSIcon className="h-4 w-4 flex-shrink-0 text-slate-900" />
+                      <ArrowRightSIcon className="h-4 w-4 flex-shrink-0 text-gray-900" />
                     </div>
-                    <P
-                      size="md"
-                      className="text-sm text-slate-800 md:text-base"
-                    >
+                    <P size="md" className="text-sm text-gray-800 md:text-base">
                       {feature}
                     </P>
                   </li>
@@ -495,13 +492,13 @@ export const CarousselContentBlock = ({
                 <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
                   <P
                     size="sm"
-                    className="w-full text-xs italic text-slate-800 md:text-sm"
+                    className="w-full text-xs italic text-gray-800 md:text-sm"
                   >
                     "{quote?.quote}"
                   </P>
                   <div className="flex items-center gap-3">
                     {quote.logo ? (
-                      <div className="flex h-10 w-20 overflow-hidden rounded-full bg-slate-950 shadow-md">
+                      <div className="flex h-10 w-20 overflow-hidden rounded-full bg-gray-950 shadow-md">
                         <Image
                           src={quote.logo}
                           height={40}
@@ -520,11 +517,11 @@ export const CarousselContentBlock = ({
                     <div>
                       <P
                         size="sm"
-                        className="text-xs font-bold text-slate-800 md:text-sm"
+                        className="text-xs font-bold text-gray-800 md:text-sm"
                       >
                         {quote.name}
                       </P>
-                      <P size="xs" className="text-xs text-slate-700">
+                      <P size="xs" className="text-xs text-gray-700">
                         {quote.title}
                       </P>
                     </div>
@@ -535,7 +532,7 @@ export const CarousselContentBlock = ({
             {roi && (
               <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-24 overflow-hidden rounded-full bg-slate-950 shadow-md">
+                  <div className="flex h-12 w-24 overflow-hidden rounded-full bg-gray-950 shadow-md">
                     <Image
                       src={roi.logo}
                       height={48}
@@ -545,12 +542,12 @@ export const CarousselContentBlock = ({
                     />
                   </div>
                   <div className="flex flex-col">
-                    <H2 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-4xl font-bold text-slate-900 text-transparent">
+                    <H2 className="bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-4xl font-bold text-gray-900 text-transparent">
                       {roi.number}
                     </H2>
                     <P
                       size="md"
-                      className="text-sm font-medium text-slate-800 md:text-base"
+                      className="text-sm font-medium text-gray-800 md:text-base"
                     >
                       {roi.subtitle}
                     </P>

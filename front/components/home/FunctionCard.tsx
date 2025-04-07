@@ -15,30 +15,30 @@ interface FunctionCardProps {
 
 const colorVariants = {
   green: {
-    card: "bg-green-50",
-    visual: "bg-green-100",
+    card: "bg-support-success/10",
+    visual: "bg-support-success/20",
   },
   blue: {
-    card: "bg-blue-50",
-    visual: "bg-blue-100",
+    card: "bg-support-info/10",
+    visual: "bg-support-info/20",
   },
   golden: {
-    card: "bg-golden-50",
-    visual: "bg-golden-100",
+    card: "bg-support-warning/10",
+    visual: "bg-support-warning/20",
   },
   rose: {
-    card: "bg-rose-50",
-    visual: "bg-rose-100",
+    card: "bg-support-error/10",
+    visual: "bg-support-error/20",
   },
 };
 
 const cardVariants = cva("", {
   variants: {
     color: {
-      green: "bg-green-50",
-      blue: "bg-blue-50",
-      golden: "bg-golden-50",
-      rose: "bg-rose-50",
+      green: "bg-support-success/10",
+      blue: "bg-support-info/10",
+      golden: "bg-support-warning/10",
+      rose: "bg-support-error/10",
     },
   },
 });
