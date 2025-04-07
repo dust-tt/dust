@@ -204,16 +204,14 @@ export default function WorkspaceAdmin({
           />
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Analytics</Page.H>
-            <Page.Horizontal gap="lg">
-              <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
-                <QuickInsights owner={owner} />
-                <ActivityReport
-                  isDownloading={isDownloadingData}
-                  monthOptions={monthOptions}
-                  handleDownload={handleDownload}
-                />
-              </div>
-            </Page.Horizontal>
+            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
+              <QuickInsights owner={owner} />
+              <ActivityReport
+                isDownloading={isDownloadingData}
+                monthOptions={monthOptions}
+                handleDownload={handleDownload}
+              />
+            </div>
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Settings</Page.H>
