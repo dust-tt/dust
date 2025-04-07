@@ -70,7 +70,10 @@ export async function toFileContentFragment(
 
   const processRes = await processAndStoreFile(auth, {
     file,
-    reqOrString: contentFragment.content,
+    content: {
+      type: "string",
+      value: contentFragment.content,
+    },
   });
 
   if (processRes.isErr()) {
