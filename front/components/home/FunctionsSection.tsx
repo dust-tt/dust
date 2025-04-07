@@ -1,7 +1,6 @@
 import React from "react";
 
 import { H2 } from "@app/components/home/ContentComponents";
-import { P } from "@app/components/home/ContentComponents";
 
 import { CardCarousel } from "./CardCarousel";
 import { FunctionCard } from "./FunctionCard";
@@ -139,18 +138,12 @@ function FunctionsSection() {
 
   return (
     <div className="w-full rounded-2xl">
-      <CardCarousel
-        title={
-          <div className="flex flex-col rounded-xl">
-            <H2>Custom AI agents for every function</H2>
-            <P size="lg" className="text-muted-foreground">
-              Whether you're a developer, marketer, or data scientist, Dust
-              helps you perform sophisticated tasks, automate processes and
-              extract powerful insights faster than ever before.
-            </P>
-          </div>
-        }
-      >
+      <div className="flex w-full justify-center">
+        <H2 className="text-center">
+          What agent will you use or create today?
+        </H2>
+      </div>
+      <CardCarousel title={<div></div>}>
         {cards.map((card, index) => (
           <FunctionCard
             key={index}

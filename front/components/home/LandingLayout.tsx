@@ -101,9 +101,9 @@ export default function LandingLayout({
         <div
           className={classNames(
             "container flex w-full flex-col",
-            "gap-16 px-6 py-24 pb-12",
-            "xl:gap-28",
-            "2xl:gap-36"
+            "gap-24 px-6 py-24 pb-12",
+            "xl:gap-36",
+            "2xl:gap-48"
           )}
         >
           {children}

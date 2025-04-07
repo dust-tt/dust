@@ -4,7 +4,7 @@ export function ValuePropSection() {
   return (
     <div className="w-full">
       <div className="mb-8">
-        <H2>Amplify your team's performance</H2>
+        {/* <H2>Amplify your team's performance</H2>*/}
         {/* <P size="lg" className="mt-6 text-muted-foreground">
           Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P> */}

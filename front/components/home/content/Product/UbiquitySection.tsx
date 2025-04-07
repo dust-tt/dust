@@ -1,6 +1,4 @@
-import { Div3D, Hover3D } from "@dust-tt/sparkle";
-
-import { ImgBlock } from "@app/components/home/ContentBlocks";
+import { ImgBlock, ImgContent } from "@app/components/home/ContentBlocks";
 import { H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
@@ -26,30 +24,22 @@ export function UbiquitySection() {
             </>
           }
         >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
-          >
-            <Div3D depth={-20}>
-              <img
-                src="/static/landing/extension/extension1.png"
-                alt="Extension visual 1"
-              />
-            </Div3D>
-            <Div3D depth={0} className="absolute top-0">
-              <img
-                src="/static/landing/extension/extension2.png"
-                alt="Extension visual 2"
-              />
-            </Div3D>
-            <Div3D depth={15} className="absolute top-0">
-              <img
-                src="/static/landing/extension/extension3.png"
-                alt="Extension visual 3"
-              />
-            </Div3D>
-          </Hover3D>
+          <ImgContent
+            images={[
+              {
+                src: "/static/landing/extension/extension1.png",
+                alt: "Extension visual 1",
+              },
+              {
+                src: "/static/landing/extension/extension2.png",
+                alt: "Extension visual 2",
+              },
+              {
+                src: "/static/landing/extension/extension3.png",
+                alt: "Extension visual 3",
+              },
+            ]}
+          />
         </ImgBlock>
         <ImgBlock
           title={<>Access from your tools</>}
@@ -60,36 +50,26 @@ export function UbiquitySection() {
             </>
           }
         >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
-          >
-            <Div3D depth={-20}>
-              <img
-                src="/static/landing/slack/slack1.png"
-                alt="Slack visual 1"
-              />
-            </Div3D>
-            <Div3D depth={20} className="absolute top-0">
-              <img
-                src="/static/landing/slack/slack2.png"
-                alt="Slack visual 2"
-              />
-            </Div3D>
-            <Div3D depth={40} className="absolute top-0">
-              <img
-                src="/static/landing/slack/slack3.png"
-                alt="Slack visual 3"
-              />
-            </Div3D>
-            <Div3D depth={70} className="absolute top-0">
-              <img
-                src="/static/landing/slack/slack4.png"
-                alt="Slack visual 4"
-              />
-            </Div3D>
-          </Hover3D>
+          <ImgContent
+            images={[
+              {
+                src: "/static/landing/slack/slack1.png",
+                alt: "Slack visual 1",
+              },
+              {
+                src: "/static/landing/slack/slack2.png",
+                alt: "Slack visual 2",
+              },
+              {
+                src: "/static/landing/slack/slack3.png",
+                alt: "Slack visual 3",
+              },
+              {
+                src: "/static/landing/slack/slack4.png",
+                alt: "Slack visual 4",
+              },
+            ]}
+          />
         </ImgBlock>
         <ImgBlock
           title={<>Add to workflows</>}
@@ -100,18 +80,14 @@ export function UbiquitySection() {
             </>
           }
         >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
-          >
-            <Div3D depth={-40}>
-              <img
-                src="/static/landing/zapier/zapier.png"
-                alt="Zapier integration"
-              />
-            </Div3D>
-          </Hover3D>
+          <ImgContent
+            images={[
+              {
+                src: "/static/landing/zapier/zapier.png",
+                alt: "Zapier integration",
+              },
+            ]}
+          />
         </ImgBlock>
       </div>
     </div>

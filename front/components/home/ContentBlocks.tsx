@@ -1,5 +1,6 @@
-import { Button, cn, RocketIcon } from "@dust-tt/sparkle";
+import { ArrowRightSIcon, Button, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
 
@@ -10,9 +11,10 @@ import {
   H3,
   H5,
   P,
-  Strong,
 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
+
+import type { ROIProps } from "./content/Solutions/configs/utils";
 
 interface ImgBlockProps {
   children?: React.ReactNode;
@@ -69,7 +71,6 @@ interface BlogBlockProps {
   content: React.ReactNode;
   href: string;
   className?: string;
-  style?: React.CSSProperties;
 }
 
 export const BlogBlock: React.FC<BlogBlockProps> = ({
@@ -78,7 +79,6 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
   content,
   href,
   className = "",
-  style,
 }) => {
   return (
     <a
@@ -86,14 +86,13 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex h-full w-full flex-col overflow-hidden rounded-xl bg-muted-background",
+        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-[#2a3441]",
         "group transition duration-300 ease-out",
-        "hover:bg-primary-100"
+        "hover:bg-[#344054]"
       )}
-      style={style}
     >
       {children ? (
-        <div className="relative aspect-[16/9] w-full overflow-hidden">
+        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
           {React.Children.map(children, (child) => {
             if (
               React.isValidElement<React.ImgHTMLAttributes<HTMLImageElement>>(
@@ -104,22 +103,20 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
               return React.cloneElement(child, {
                 className: classNames(
                   "absolute h-full w-full object-cover",
-                  "brightness-100 transition duration-300 ease-out",
-                  "group-hover:brightness-110"
+                  "transition duration-300 ease-out",
+                  "group-hover:brightness-110",
+                  "rounded-t-2xl"
                 ),
-                style: { borderRadius: 0 },
               });
             }
             return child;
           })}
         </div>
       ) : null}
-      <div className="flex flex-col p-8">
+      <div className="flex flex-col p-6">
         <div className="flex flex-col gap-2">
-          <H5 className="line-clamp-2 text-foreground" mono>
-            {title}
-          </H5>
-          <P size="sm" className="line-clamp-3 text-muted-foreground">
+          <H5 className="line-clamp-2 text-white">{title}</H5>
+          <P size="xs" className="line-clamp-3 text-gray-300">
             {content}
           </P>
         </div>
@@ -153,13 +150,16 @@ export const HeaderContentBlock = ({
       )}
     >
       {uptitle && (
-        <P size="lg" className="text-brand-hunter-green">
+        <P
+          size="lg"
+          className="text-muted-foreground dark:text-muted-foreground-night"
+        >
           {uptitle}
         </P>
       )}
       <H1>{title}</H1>
       {subtitle && (
-        <P size="lg" className="text-foreground">
+        <P size="lg" className="text-white dark:text-black">
           {subtitle}
         </P>
       )}
@@ -272,71 +272,233 @@ interface QuoteProps {
 }
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 my-16 flex flex-col items-center justify-center rounded-2xl md:my-12 lg:col-span-10 lg:col-start-2 lg:my-8">
-    <div
-      className={cn(
-        "flex max-w-[500px] flex-col items-center rounded-xl p-4 text-center font-sans italic text-foreground",
-        "copy-base xs:copy-lg sm:copy-xl md:copy-xl lg:copy-2xl"
-      )}
-    >
-      &ldquo; {quote} &rdquo;
-    </div>
-    <div className="align-center flex justify-center">
-      <div className="flex items-center justify-center gap-4">
-        <Image
-          src={logo}
-          width={160}
-          height={40}
-          alt="Company Logo"
-          className="h-auto w-[120px] object-contain xs:w-[140px] sm:w-[160px]"
-        />
+  <div className="mx-auto max-w-3xl">
+    <div className="flex flex-col rounded-4xl bg-gray-50 p-8">
+      <div className="font-objektiv mb-6 flex flex-col items-start text-left text-lg font-normal text-slate-900 lg:text-xl">
+        {quote}
+      </div>
+      <div className="flex items-center justify-between">
         <div className="flex flex-col">
-          <P
-            size="md"
-            className={cn(
-              "text-foreground",
-              "xs:copy-left copy-base sm:copy-lg md:copy-xl"
-            )}
-          >
-            <Strong>{name}</Strong>
+          <P size="md" className="font-semibold text-slate-900">
+            {name}
           </P>
-          <P
-            size="sm"
-            className={cn(
-              "-mt-1 italic text-muted-foreground",
-              "xs:copy-left copy-sm xs:copy-base sm:copy-lg md:copy-lg"
-            )}
-          >
+          <P size="sm" className="text-slate-600">
             {title}
           </P>
         </div>
+        <Image
+          src={logo}
+          width={120}
+          height={48}
+          alt="Company Logo"
+          className="h-14 w-auto"
+        />
       </div>
     </div>
   </div>
 );
 
-export function ContentBlock({
-  title,
-  description,
-  image,
-  imageAlt,
-}: {
-  title: string;
-  description: string;
+interface CarousselContentBlockProps {
+  title: ReactNode;
+  from: string;
+  to: string;
+  border: string;
+  href: string;
+  bulletPoints: string[];
   image: string;
-  imageAlt: string;
-}) {
+  quote?: QuoteProps;
+  roi?: ROIProps;
+}
+
+export const CarousselContentBlock = ({
+  title,
+  from,
+  to,
+  border,
+  href,
+  bulletPoints,
+  image,
+  quote,
+  roi,
+}: CarousselContentBlockProps) => {
   return (
-    <div className="flex flex-col gap-4 overflow-hidden rounded-2xl">
-      <Image
-        src={image}
-        alt={imageAlt}
-        width={1200}
-        height={630}
-        className="w-full"
-      />
-      <H2>{title}</H2>
-      <P>{description}</P>
+    <div
+      className={classNames(
+        "flex flex-col rounded-3xl border bg-gradient-to-br py-6 md:h-full lg:py-7",
+        from,
+        to,
+        border
+      )}
+    >
+      <div className="flex flex-col gap-8 px-4 sm:px-6 md:px-8 lg:h-full lg:flex-row lg:gap-12">
+        <div className="flex flex-col lg:h-full lg:w-1/2">
+          <div className="mb-2 lg:mb-4">
+            <H2 className="mb-4 text-slate-900">{title}</H2>
+
+            {bulletPoints && (
+              <ul className="flex list-none flex-col gap-3">
+                {bulletPoints.map((feature, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <div className="flex-shrink-0 pt-1">
+                      <ArrowRightSIcon className="h-4 w-4 flex-shrink-0 text-slate-900" />
+                    </div>
+                    <P
+                      size="md"
+                      className="text-sm text-slate-800 md:text-base"
+                    >
+                      {feature}
+                    </P>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {/* Mobile-only image - between bullet points and quote */}
+          <div className="my-6 lg:hidden">
+            <div className="flex items-center justify-center">
+              <div className="w-full max-w-md">
+                <Image
+                  src={image}
+                  alt={title as string}
+                  width={1200}
+                  height={630}
+                  className="h-auto w-full"
+                />
+              </div>
+            </div>
+          </div>
+          {/* Quote and ROI section */}
+          <div className="mt-2 flex w-full flex-col gap-4 lg:mt-6 lg:flex-grow">
+            {" "}
+            {/* flex-grow only on lg */}
+            {quote && (
+              <>
+                <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
+                  <P
+                    size="sm"
+                    className="w-full text-xs italic text-slate-800 md:text-sm"
+                  >
+                    "{quote?.quote}"
+                  </P>
+                  <div className="flex items-center gap-3">
+                    {quote.logo ? (
+                      <div className="flex h-10 w-20 overflow-hidden rounded-full bg-slate-950 shadow-md">
+                        <Image
+                          src={quote.logo}
+                          height={40}
+                          width={120}
+                          alt={`${quote.name} logo`}
+                          className="h-10 w-auto rounded-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-10 w-10 overflow-hidden rounded-full bg-blue-500 shadow-md">
+                        <div className="flex h-full w-full items-center justify-center text-white">
+                          {quote.name.charAt(0)}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <P
+                        size="sm"
+                        className="text-xs font-bold text-slate-800 md:text-sm"
+                      >
+                        {quote.name}
+                      </P>
+                      <P size="xs" className="text-xs text-slate-700">
+                        {quote.title}
+                      </P>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            {roi && (
+              <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-24 overflow-hidden rounded-full bg-slate-950 shadow-md">
+                    <Image
+                      src={roi.logo}
+                      height={48}
+                      width={120}
+                      alt={`${roi.subtitle} logo`}
+                      className="h-12 w-auto object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <H2 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-4xl font-bold text-slate-900 text-transparent">
+                      {roi.number}
+                    </H2>
+                    <P
+                      size="md"
+                      className="text-sm font-medium text-slate-800 md:text-base"
+                    >
+                      {roi.subtitle}
+                    </P>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Button */}
+          <div className="mt-4">
+            {" "}
+            {/* mt-auto only on lg */}
+            <Link href={href} shallow={true}>
+              <Button
+                label={`Learn more →`}
+                variant="outline"
+                size="md"
+                className="bg-white/80 hover:bg-white"
+              />
+            </Link>
+          </div>
+        </div>
+        {/* Desktop-only image - right column */}
+        <div className="hidden items-center justify-center lg:flex lg:w-3/5">
+          <div className="w-full max-w-md lg:max-w-2xl">
+            <Image
+              src={image}
+              alt={title as string}
+              width={1200}
+              height={630}
+              className="h-auto w-full"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
+};
+
+interface ImgContentProps {
+  images: {
+    src: string;
+    alt?: string;
+  }[];
 }
+
+export const ImgContent: React.FC<ImgContentProps> = ({ images }) => {
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <div className="relative flex h-full w-full max-w-[240px] items-center justify-center">
+        {images.map((image, index) => (
+          <img
+            key={index}
+            src={image.src}
+            alt={image.alt || `Image ${index + 1}`}
+            className={classNames(
+              "max-h-[120px] max-w-[160px] object-contain",
+              index === 0
+                ? ""
+                : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform"
+            )}
+            style={{
+              zIndex: images.length - index,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
