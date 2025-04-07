@@ -220,9 +220,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     auth: Authenticator,
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
     options?: ResourceFindOptions<DataSourceViewModel>,
-    {
-      filterAssistantDefaultSelected = false,
-    }: { filterAssistantDefaultSelected?: boolean } = {}
+    { assistantDefaultSelected }: { assistantDefaultSelected?: boolean } = {}
   ) {
     const { includeDeleted } = fetchDataSourceViewOptions ?? {};
 
@@ -237,21 +235,11 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     );
 
     const includeEditedBy = fetchDataSourceViewOptions?.includeEditedBy;
-    let dataSources;
-    if (filterAssistantDefaultSelected) {
-      dataSources =
-        await DataSourceResource.fetchAssistantDefaultSelectedByModelIds(
-          auth,
-          dataSourceIds,
-          { includeEditedBy }
-        );
-    } else {
-      dataSources = await DataSourceResource.fetchByModelIds(
-        auth,
-        dataSourceIds,
-        { includeEditedBy }
-      );
-    }
+    const dataSources = await DataSourceResource.fetchByModelIds(
+      auth,
+      dataSourceIds,
+      { includeEditedBy, assistantDefaultSelected }
+    );
 
     for (const dsv of dataSourceViews) {
       dsv.ds = dataSources.find((ds) => ds.id === dsv.dataSourceId);
@@ -320,13 +308,14 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
           vaultId: spaces.map((s) => s.id),
         },
       },
-      { filterAssistantDefaultSelected: true }
+      { assistantDefaultSelected: true }
     );
 
     if (dataSourceViews.length === 0) {
       return [];
     }
 
+    logger.info({ dataSourceViews }, "listAssistantDefaultSelected");
     return dataSourceViews.filter(
       (dsv) => dsv.dataSource.assistantDefaultSelected
     );

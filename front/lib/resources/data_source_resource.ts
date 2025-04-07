@@ -55,6 +55,7 @@ export type FetchDataSourceOptions = {
   limit?: number;
   order?: [string, "ASC" | "DESC"][];
   origin?: FetchDataSourceOrigin;
+  assistantDefaultSelected?: boolean;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -306,19 +307,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return this.baseFetch(auth, options, {
       where: {
         id: ids,
-      },
-    });
-  }
-
-  static async fetchAssistantDefaultSelectedByModelIds(
-    auth: Authenticator,
-    ids: ModelId[],
-    options?: FetchDataSourceOptions
-  ) {
-    return this.baseFetch(auth, options, {
-      where: {
-        id: ids,
-        assistantDefaultSelected: true,
+        assistantDefaultSelected: options?.assistantDefaultSelected,
       },
     });
   }
