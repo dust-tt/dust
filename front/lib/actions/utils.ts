@@ -27,8 +27,8 @@ export const ACTION_SPECIFICATIONS: Record<
   {
     label: string;
     description: string;
-    dropDownIcon: React.ComponentProps<typeof Icon>["visual"];
-    cardIcon: React.ComponentProps<typeof Icon>["visual"];
+    dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+    cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
     flag: WhitelistableFeature | null;
   }
 > = {
@@ -83,8 +83,8 @@ export const ACTION_SPECIFICATIONS: Record<
     flag: null,
   },
   MCP: {
-    label: "Calling a MCP Server",
-    description: "Call a tool to answer a question.",
+    label: "Run an Action",
+    description: "Run an action, then reply",
     cardIcon: CommandIcon,
     dropDownIcon: CommandIcon,
     flag: "mcp_actions",
@@ -259,4 +259,16 @@ export function actionRefsOffset({
   }
 
   return refsOffset;
+}
+
+export function getMCPApprovalKey({
+  conversationId,
+  messageId,
+  actionId,
+}: {
+  conversationId: string;
+  messageId: string;
+  actionId: number;
+}): string {
+  return `conversation:${conversationId}:message:${messageId}:action:${actionId}`;
 }

@@ -6,6 +6,7 @@ import {
   ScrollArea,
   ScrollBar,
   SearchInput,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import React, { useEffect, useState } from "react";
@@ -130,12 +131,14 @@ export default function TablePicker({
     }
   }, [isTableError, isTableLoading, table]);
 
+  const showTableLoaders = isTablesLoading || isDebouncing;
+
   return (
     <div className="flex items-center">
       <div className="flex items-center">
         {readOnly ? (
           currentTable ? (
-            <div className="max-w-20 mr-1 truncate text-sm font-bold text-action-500">
+            <div className="max-w-20 copy-sm mr-1 truncate font-semibold text-highlight-500 dark:text-highlight-500-night">
               {currentTable.title}
             </div>
           ) : (
@@ -147,15 +150,17 @@ export default function TablePicker({
               {currentTable ? (
                 <div
                   className={classNames(
-                    "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                    readOnly ? "text-gray-300" : "text-gray-700",
+                    "copy-sm inline-flex items-center rounded-md py-1 font-normal",
+                    readOnly
+                      ? "text-gray-400 dark:text-gray-600"
+                      : "text-muted-foreground dark:text-muted-foreground-night",
                     "focus:outline-none focus:ring-0"
                   )}
                 >
-                  <div className="mr-1 max-w-xs truncate text-sm font-bold text-action-500">
+                  <div className="copy-sm mr-1 max-w-xs truncate font-semibold text-highlight-500 dark:text-highlight-500-night">
                     {currentTable.title}
                   </div>
-                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-muted-foreground dark:hover:text-muted-foreground-night" />
                 </div>
               ) : allTablesMap.size > 0 ? (
                 <Button
@@ -167,8 +172,10 @@ export default function TablePicker({
               ) : (
                 <span
                   className={classNames(
-                    "text-sm",
-                    readOnly ? "text-gray-300" : "text-gray-700"
+                    "copy-sm",
+                    readOnly
+                      ? "text-gray-400 dark:text-gray-600"
+                      : "text-muted-foreground dark:text-muted-foreground-night"
                   )}
                 >
                   No Tables
@@ -183,7 +190,7 @@ export default function TablePicker({
                 value={searchFilter}
                 onChange={setSearchFilter}
               />
-              <ScrollArea hideScrollBar className="flex max-h-[300px] flex-col">
+              <ScrollArea hideScrollBar className="mt-2 flex max-h-72 flex-col">
                 <div className="w-full space-y-1">
                   {Array.from(allTablesMap.values())
                     .filter(
@@ -197,7 +204,7 @@ export default function TablePicker({
                     .map((t) => (
                       <div
                         key={t.internalId}
-                        className="flex cursor-pointer flex-col items-start px-1 hover:opacity-80"
+                        className="flex cursor-pointer flex-col items-start px-2 hover:opacity-80"
                         onClick={() => {
                           onTableUpdate(t);
                           setSearchFilter("");
@@ -205,32 +212,33 @@ export default function TablePicker({
                         }}
                       >
                         <div className="my-1">
-                          <div className="text-sm">{t.title}</div>
+                          <div className="copy-sm text-foreground dark:text-foreground-night">
+                            {t.title}
+                          </div>
                         </div>
                       </div>
                     ))}
-                  {allTablesMap.size === 0 && (
-                    <span className="block px-4 pt-2 text-sm text-gray-700">
-                      No tables found
-                    </span>
-                  )}
+                  {debouncedSearch &&
+                    allTablesMap.size === 0 &&
+                    !showTableLoaders && (
+                      <span className="copy-sm mt-2 block px-2 text-muted-foreground dark:text-muted-foreground-night">
+                        No tables found
+                      </span>
+                    )}
                 </div>
                 <InfiniteScroll
                   nextPage={() => {
                     handleLoadNext(nextPageCursor);
                   }}
                   hasMore={!!nextPageCursor}
-                  isValidating={isTablesLoading || isDebouncing}
-                  isLoading={isTablesLoading || isDebouncing}
-                >
-                  {(isTablesLoading || isDebouncing) && !allTablesMap.size && (
-                    <div className="py-2 text-center text-sm text-element-700">
-                      Loading tables...
+                  showLoader={showTableLoaders}
+                  loader={
+                    <div className="copy-sm mt-2 flex items-center gap-2 px-2 text-center text-muted-foreground dark:text-muted-foreground-night">
+                      <Spinner size="xs" />
+                      <span>Loading more data...</span>
                     </div>
-                  )}
-                </InfiniteScroll>
-                {/*sentinel div to trigger the infinite scroll*/}
-                <div className="min-h-0.5 text-xs text-gray-400"></div>
+                  }
+                />
                 <ScrollBar className="py-0" />
               </ScrollArea>
             </PopoverContent>

@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Productivity",
   title: <>Get Things Done Faster, Better</>,
-  from: "from-purple-300",
-  to: "to-purple-300",
+  accentColor: "text-brand-hunter-green",
   description: (
     <>
       Automate routine tasks, enhance your communications, and get expert
@@ -115,8 +114,7 @@ export const Metrics: MetricProps = {
       description: <>weekly active users at Alan</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -156,13 +154,13 @@ export const Quote: QuoteProps = {
     "The Dust platform is more than just a tool for post-ideation; it's a catalyst for innovation, stimulating idea generation as employees engage with it.",
   name: "Boris Lipiainen",
   title: "Chief Product and Technology Officer at Kyriba",
-  logo: "/static/landing/logos/kyriba.png",
+  logo: "/static/landing/logos/color/kyriba.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/rnyvpdxfrk?web_component=true&seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/rnyvpdxfrk",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [

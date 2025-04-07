@@ -3,10 +3,14 @@ import _ from "lodash";
 
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
-import type { ExtractActionBlob } from "@app/lib/actions/types";
-import type { BaseActionRunParams } from "@app/lib/actions/types";
-import { BaseAction } from "@app/lib/actions/types";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
+import type {
+  BaseActionRunParams,
+  ExtractActionBlob,
+} from "@app/lib/actions/types";
+import {
+  BaseAction,
+  BaseActionConfigurationServerRunner,
+} from "@app/lib/actions/types";
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
@@ -19,7 +23,6 @@ import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import logger from "@app/logger/logger";
@@ -39,7 +42,9 @@ export type DataSourceFilter = {
   tags?: TagsFilter;
 };
 
+// TODO(mcp): move function and types relative to data sources to a dedicated file instead of retrieval.ts.
 export type DataSourceConfiguration = {
+  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
   workspaceId: string;
   dataSourceViewId: string;
   filter: DataSourceFilter;
@@ -369,20 +374,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
     void
   > {
-    const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
-    if (killSwitches?.includes("retrieval_action")) {
-      yield {
-        type: "retrieval_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "retrieval_action_disabled",
-          message: "Retrieval action is temporarily disabled",
-        },
-      };
-      return;
-    }
     const owner = auth.workspace();
     if (!owner) {
       throw new Error("Unexpected unauthenticated call to `runRetrieval`");

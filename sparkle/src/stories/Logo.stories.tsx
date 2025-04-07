@@ -47,7 +47,7 @@ export const DustLogos = () => (
           DustLogoGray
         </div>
       </div>
-      <div className="s-bg-slate-800 s-p-6">
+      <div className="s-bg-primary-800 s-p-6">
         <DustLogoWhite className="s-h-8 s-w-32" />
         <div
           style={itemStyle as React.CSSProperties}
@@ -71,7 +71,7 @@ export const DustLogos = () => (
           DustLogoSquareGray
         </div>
       </div>
-      <div className="s-bg-slate-800 s-p-6">
+      <div className="s-bg-primary-800 s-p-6">
         <DustLogoSquareWhite className="s-h-16 s-w-16" />
         <div
           style={itemStyle as React.CSSProperties}

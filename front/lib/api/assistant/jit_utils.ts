@@ -1,6 +1,13 @@
+import {
+  CONTENT_NODE_MIME_TYPES,
+  isDustMimeType,
+  isIncludableInternalMimeType,
+} from "@dust-tt/client";
+
 import type {
   BaseConversationAttachmentType,
   ConversationAttachmentType,
+  ConversationContentNodeType,
 } from "@app/lib/actions/conversation/list_files";
 import type {
   ConversationType,
@@ -22,18 +29,35 @@ function isConversationIncludableFileContentType(
   if (isSupportedImageContentType(contentType)) {
     return false;
   }
-  // TODO(attach-ds): Filter out content Types that are folders
+  if (isDustMimeType(contentType)) {
+    return isIncludableInternalMimeType(contentType);
+  }
   return true;
 }
 
 function isQueryableContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
-  // For now we only allow querying tabular files.
-  if (isSupportedDelimitedTextContentType(contentType)) {
+  // For now we only allow querying tabular files and multi-sheet spreadsheets
+  // from connections.
+  if (
+    isSupportedDelimitedTextContentType(contentType) ||
+    isMultiSheetSpreadsheetContentType(contentType)
+  ) {
     return true;
   }
   return false;
+}
+
+export function isMultiSheetSpreadsheetContentType(
+  contentType: SupportedContentFragmentType
+): contentType is
+  | typeof CONTENT_NODE_MIME_TYPES.MICROSOFT.SPREADSHEET
+  | typeof CONTENT_NODE_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET {
+  return (
+    contentType === CONTENT_NODE_MIME_TYPES.MICROSOFT.SPREADSHEET ||
+    contentType === CONTENT_NODE_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+  );
 }
 
 function isSearchableContentType(
@@ -75,9 +99,12 @@ export function listFiles(
         // Former ones cannot be used in JIT. But for content node fragments, with a node id rather
         // than a file id, we don't care about the snippet.
         const canDoJIT = m.snippet !== null || isContentNodeAttachment(m);
-        const isQueryable = canDoJIT && isQueryableContentType(m.contentType);
+        const isQueryable =
+          canDoJIT &&
+          (isQueryableContentType(m.contentType) || m.nodeType === "table");
         const isContentNodeTable = isContentNodeAttachment(m) && isQueryable;
         const isIncludable =
+          m.nodeType !== "folder" &&
           isConversationIncludableFileContentType(m.contentType) &&
           // Tables from knowledge are not materialized as raw content. As such, they cannot be
           // included.
@@ -116,7 +143,8 @@ export function listFiles(
             ...baseAttachment,
             nodeDataSourceViewId: m.nodeDataSourceViewId,
             contentFragmentId: m.contentFragmentId,
-            contentNodeId: m.nodeId,
+            nodeId: m.nodeId,
+            nodeType: m.nodeType,
           });
         }
 
@@ -155,4 +183,23 @@ export function listFiles(
   }
 
   return files;
+}
+
+/**
+ * Searchable Folders are almost always content nodes with type "folder", with 2
+ * exceptions:
+ * - Notion pages and databases, which are not of type "folder" but may contain
+ *   other pages or databases; as such, they are "searchable folders";
+ * - spreadsheets with multiple sheets, which are of type "folder" (since they
+ *   have multiple children) but are not searchable; their children are
+ *   table-queryable only.
+ */
+export function isSearchableFolder(m: ConversationContentNodeType): boolean {
+  return (
+    (m.nodeType === "folder" ||
+      m.contentType === CONTENT_NODE_MIME_TYPES.NOTION.PAGE ||
+      m.contentType === CONTENT_NODE_MIME_TYPES.NOTION.DATABASE) &&
+    m.contentType !== CONTENT_NODE_MIME_TYPES.MICROSOFT.SPREADSHEET &&
+    m.contentType !== CONTENT_NODE_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+  );
 }

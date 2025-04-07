@@ -435,10 +435,12 @@ export async function deleteFolder({
   connectorId,
   dataSourceConfig,
   internalId,
+  deleteRootNode,
 }: {
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   internalId: string;
+  deleteRootNode?: boolean;
 }) {
   const folder = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
@@ -462,7 +464,11 @@ export async function deleteFolder({
     // Roots represent the user selection for synchronization As such, they
     // should be deleted first, explicitly by users, before deleting the
     // underlying folder
-    throw new Error("Unexpected: attempt to delete folder with root node");
+    if (deleteRootNode) {
+      await root.delete();
+    } else {
+      throw new Error("Unexpected: attempt to delete folder with root node");
+    }
   }
 
   await deleteDataSourceFolder({ dataSourceConfig, folderId: internalId });

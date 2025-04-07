@@ -5,7 +5,6 @@ import type {
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
@@ -45,7 +44,6 @@ import type {
   WithConnector,
   WorkspaceType,
 } from "@app/types";
-import { validateUrl } from "@app/types";
 import {
   assertNever,
   ConnectorsAPI,
@@ -58,7 +56,10 @@ import {
   isDataSourceNameValid,
   Ok,
   sectionFullText,
+  validateUrl,
 } from "@app/types";
+
+import { ConversationResource } from "../resources/conversation_resource";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -634,7 +635,6 @@ export async function upsertTable({
     });
   }
 
-  const titleEmpty = params.title.trim().length === 0;
   // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
   if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
     return new Err({
@@ -683,7 +683,7 @@ export async function upsertTable({
     standardizedSourceUrl = standardized;
   }
 
-  const title = titleEmpty ? UNTITLED_TITLE : params.title;
+  const title = params.title.trim() || name.trim() || UNTITLED_TITLE;
 
   if (async) {
     if (fileId) {
@@ -1052,7 +1052,7 @@ export async function getOrCreateConversationDataSourceFromFile(
     });
   }
 
-  const cRes = await getConversationWithoutContent(
+  const cRes = await ConversationResource.fetchConversationWithoutContent(
     auth,
     file.useCaseMetadata.conversationId
   );

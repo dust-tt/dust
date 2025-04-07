@@ -3,44 +3,20 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/shared/lib/content_nodes";
+import type {
+  Attachment,
+  FileAttachment,
+  NodeAttachment,
+} from "@app/ui/components/conversation/AttachmentCitation";
+import {
+  AttachmentCitation,
+  attachmentToAttachmentCitation,
+} from "@app/ui/components/conversation/AttachmentCitation";
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import type { DataSourceViewContentNodeType } from "@dust-tt/client";
 import { isFolder, isWebsite } from "@dust-tt/client";
-import {
-  Citation,
-  CitationClose,
-  CitationDescription,
-  CitationIcons,
-  CitationImage,
-  CitationTitle,
-  DocumentIcon,
-  Icon,
-  ImageIcon,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Icon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-
-type FileAttachment = {
-  type: "file";
-  id: string;
-  title: string;
-  preview?: string;
-  isUploading: boolean;
-  onRemove: () => void;
-};
-
-type NodeAttachment = {
-  type: "node";
-  id: string;
-  title: string;
-  spaceName: string;
-  spaceIcon: React.ComponentType;
-  visual: React.ReactNode;
-  path: string;
-  onRemove: () => void;
-};
-
-type Attachment = FileAttachment | NodeAttachment;
 
 interface FileAttachmentsProps {
   service: FileUploaderService;
@@ -85,28 +61,31 @@ export function InputBarAttachments({
           provider: node.dataSourceView.dataSource.connectorProvider,
         });
 
-        const nodeId = node.internalId ?? `node-${node.internalId}`;
         const spaceName =
           nodes.spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
         const { dataSource } = node.dataSourceView;
+
+        const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
+        const visual = isWebsiteOrFolder ? (
+          <Icon visual={logo} size="sm" />
+        ) : (
+          <>
+            <Icon visual={logo} size="sm" />
+            {getVisualForDataSourceViewContentNode(node)({
+              className: "h-5 w-5",
+            })}
+          </>
+        );
+
         return {
           type: "node",
-          id: nodeId,
+          id: `${node.dataSourceView.dataSource.sId}-${node.internalId}`,
           title: node.title,
+          url: node.sourceUrl ?? null,
           spaceName,
           spaceIcon: nodes.spacesMap[node.dataSourceView.spaceId].icon,
           path: getLocationForDataSourceViewContentNode(node),
-          visual:
-            isWebsite(dataSource) || isFolder(dataSource) ? (
-              <Icon visual={logo} size="sm" />
-            ) : (
-              <>
-                {getVisualForDataSourceViewContentNode(node)({
-                  className: "h-5 w-5",
-                })}
-                <Icon visual={logo} size="sm" />
-              </>
-            ),
+          visual,
           onRemove: () => nodes.onRemove(node),
         };
       }) || []
@@ -122,68 +101,12 @@ export function InputBarAttachments({
   return (
     <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
       {allAttachments.map((attachment) => {
-        const isFile = attachment.type === "file";
-
+        const attachmentCitation = attachmentToAttachmentCitation(attachment);
         return (
-          <Tooltip
-            key={`${attachment.type}-${attachment.id}`}
-            tooltipTriggerAsChild
-            trigger={
-              <Citation
-                className="w-40"
-                isLoading={attachment.type === "file" && attachment.isUploading}
-                action={
-                  <CitationClose
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      attachment.onRemove();
-                    }}
-                  />
-                }
-              >
-                {isFile && attachment.preview && (
-                  <CitationImage imgSrc={attachment.preview} />
-                )}
-
-                <CitationIcons>
-                  {isFile ? (
-                    <Icon
-                      visual={attachment.preview ? ImageIcon : DocumentIcon}
-                    />
-                  ) : (
-                    attachment.visual
-                  )}
-                </CitationIcons>
-
-                <CitationTitle className="truncate text-ellipsis">
-                  {attachment.title}
-                </CitationTitle>
-
-                {!isFile && (
-                  <CitationDescription className="truncate text-ellipsis">
-                    <div className="flex items-center gap-1">
-                      <span>{attachment.spaceName}</span>
-                    </div>
-                  </CitationDescription>
-                )}
-              </Citation>
-            }
-            label={
-              attachment.type === "file" ? (
-                attachment.title
-              ) : (
-                <div className="flex flex-col gap-1">
-                  <div className="font-bold">{attachment.title}</div>
-                  <div className="flex gap-1 pt-1 text-sm">
-                    <Icon visual={attachment.spaceIcon} />
-                    <p>{attachment.spaceName}</p>
-                  </div>
-                  <div className="text-sm text-element-600">
-                    {attachment.path}
-                  </div>
-                </div>
-              )
-            }
+          <AttachmentCitation
+            key={attachmentCitation.id}
+            attachmentCitation={attachmentCitation}
+            onRemove={attachment.onRemove}
           />
         );
       })}

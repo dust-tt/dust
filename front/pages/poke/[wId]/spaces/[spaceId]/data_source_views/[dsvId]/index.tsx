@@ -59,12 +59,12 @@ export default function DataSourceViewPage({
         {dataSourceView.name} in space:{" "}
         <a
           href={`/poke/${owner.sId}/spaces/${dataSourceView.space.sId}`}
-          className="text-action-500"
+          className="text-highlight-500"
         >
           {dataSourceView.space.name}
         </a>{" "}
         of workspace:{" "}
-        <a href={`/poke/${owner.sId}`} className="text-action-500">
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
       </h3>

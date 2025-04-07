@@ -1,4 +1,4 @@
-import { Chip } from "@dust-tt/sparkle";
+import { AttachmentChip } from "@dust-tt/sparkle";
 import { NodeViewWrapper } from "@tiptap/react";
 import React from "react";
 
@@ -7,7 +7,7 @@ export const DataSourceLinkComponent = ({ node }: { node: { attrs: any } }) => {
 
   return (
     <NodeViewWrapper className="inline-flex align-middle">
-      <Chip label={title} size="xs" color="sky" href={url} target="_blank" />
+      <AttachmentChip label={title} href={url} target="_blank" />
     </NodeViewWrapper>
   );
 };

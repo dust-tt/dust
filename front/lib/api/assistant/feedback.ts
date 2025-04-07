@@ -1,9 +1,9 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { canAccessConversation } from "@app/lib/api/assistant/conversation/auth";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
   ConversationType,
   ConversationWithoutContentType,
@@ -47,7 +47,7 @@ export async function getConversationFeedbacksForUser(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
 ) {
-  if (!canAccessConversation(auth, conversation)) {
+  if (!ConversationResource.canAccessConversation(auth, conversation)) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
@@ -147,7 +147,7 @@ export async function deleteMessageFeedback(
     user: UserType;
   }
 ) {
-  if (!canAccessConversation(auth, conversation)) {
+  if (!ConversationResource.canAccessConversation(auth, conversation)) {
     return new Err({
       type: "conversation_access_restricted",
       message: "You don't have access to this conversation.",

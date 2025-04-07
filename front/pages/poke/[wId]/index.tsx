@@ -266,7 +266,7 @@ export function DustAppLogsModal({
                   <div className="flex flex-row items-center space-x-2">
                     <div className="flex-1">
                       <h3
-                        className="cursor-pointer text-lg font-semibold text-action-600"
+                        className="cursor-pointer text-lg font-semibold text-highlight-600"
                         onClick={() => {
                           window.open(url, "_blank", "noopener,noreferrer");
                         }}

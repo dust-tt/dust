@@ -2,6 +2,7 @@ import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,
   Button,
+  Chip,
   Icon,
   Input,
   Page,
@@ -238,10 +239,10 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
               {connectorProviderConfiguration.limitations && (
                 <div className="flex flex-col gap-y-2">
-                  <div className="grow text-sm font-medium text-element-800">
+                  <div className="grow text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                     Limitations
                   </div>
-                  <div className="text-sm font-normal text-element-700">
+                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                     {connectorProviderConfiguration.limitations}
                   </div>
                 </div>
@@ -250,11 +251,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
             <Page.SectionHeader title="Snowflake Credentials" />
 
-            {error && (
-              <div className="w-full rounded-md bg-red-100 p-4 text-red-800">
-                {error}
-              </div>
-            )}
+            {error && <Chip color="red" label={error} />}
 
             <div className="w-full space-y-4">
               <Input

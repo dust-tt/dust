@@ -16,7 +16,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DustIcon,
-  IconButton,
   LockIcon,
   Page,
   PopoverContent,
@@ -391,12 +390,7 @@ export function SharingDropdown({
           <div className="group flex cursor-pointer items-center gap-2">
             <SharingChip scope={newScope} />
             {allowedToChange && (
-              <IconButton
-                icon={ChevronDownIcon}
-                size="sm"
-                variant="outline"
-                className="group-hover:text-action-400"
-              />
+              <Button icon={ChevronDownIcon} size="xs" variant="ghost" />
             )}
           </div>
         </DropdownMenuTrigger>

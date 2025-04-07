@@ -40,7 +40,13 @@ export const LoginPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div
+        className={cn(
+          "flex h-screen items-center justify-center",
+          "bg-background text-foreground",
+          "dark:bg-background-night dark:text-foreground-night"
+        )}
+      >
         <Spinner />
       </div>
     );
@@ -101,7 +107,7 @@ export const LoginPage = () => {
             />
           </div>
         </div>
-        <p className="text-center text-element-700 dark:text-element-700-night max-w-[300px] mx-auto">
+        <p className="text-center text-muted-foreground dark:text-muted-foreground-night max-w-[300px] mx-auto">
           By signing in, you agree to Dust's{" "}
           <Link to={TERMS_OF_USE_URL} target="_blank" className="underline">
             Terms of Use
@@ -155,7 +161,7 @@ export const LoginPage = () => {
   // Should never happen.
   return (
     <div className="flex h-screen items-center justify-center text-center">
-      <Page.SectionHeader title="Something unexpected occured, please contact us at team@dust.tt!" />
+      <Page.SectionHeader title="Something unexpected occured, please contact us at support@dust.tt!" />
     </div>
   );
 };

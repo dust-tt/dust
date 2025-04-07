@@ -19,11 +19,11 @@ import {
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -122,9 +122,7 @@ export async function pauseAllConnectors({
 
 export async function deleteAllConversations(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
-  const conversations = await Conversation.findAll({
-    where: { workspaceId: workspace.id },
-  });
+  const conversations = await ConversationResource.listAll(auth);
   logger.info(
     { workspaceId: workspace.sId, conversationsCount: conversations.length },
     "Deleting all conversations for workspace."

@@ -35,6 +35,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -212,116 +213,133 @@ export function AgentMessage({
     [conversationId, message.sId, owner.sId]
   );
 
-  const onEventCallback = useCallback((eventStr: string) => {
-    const eventPayload: {
-      eventId: string;
-      data:
-        | AgentErrorEvent
-        | AgentActionSpecificEvent
-        | AgentActionSuccessEvent
-        | GenerationTokensEvent
-        | AgentGenerationCancelledEvent
-        | AgentMessageSuccessEvent;
-    } = JSON.parse(eventStr);
+  const { showValidationDialog } = useContext(ActionValidationContext);
 
-    const updateMessageWithAction = (
-      m: AgentMessageType,
-      action: AgentActionType
-    ): AgentMessageType => {
-      return {
-        ...m,
-        actions: m.actions
-          ? [...m.actions.filter((a) => a.id !== action.id), action]
-          : [action],
+  const onEventCallback = useCallback(
+    (eventStr: string) => {
+      const eventPayload: {
+        eventId: string;
+        data:
+          | AgentErrorEvent
+          | AgentActionSpecificEvent
+          | AgentActionSuccessEvent
+          | GenerationTokensEvent
+          | AgentGenerationCancelledEvent
+          | AgentMessageSuccessEvent;
+      } = JSON.parse(eventStr);
+
+      const updateMessageWithAction = (
+        m: AgentMessageType,
+        action: AgentActionType
+      ): AgentMessageType => {
+        return {
+          ...m,
+          actions: m.actions
+            ? [...m.actions.filter((a) => a.id !== action.id), action]
+            : [action],
+        };
       };
-    };
 
-    const event = eventPayload.data;
-    switch (event.type) {
-      case "agent_action_success":
-        setStreamedAgentMessage((m) => {
-          return { ...updateMessageWithAction(m, event.action) };
-        });
-        setLastAgentStateClassification("thinking");
-        break;
-      case "browse_params":
-      case "conversation_include_file_params":
-      case "dust_app_run_block":
-      case "dust_app_run_params":
-      case "process_params":
-      case "reasoning_started":
-      case "reasoning_thinking":
-      case "reasoning_tokens":
-      case "retrieval_params":
-      case "search_labels_params":
-      case "tables_query_model_output":
-      case "tables_query_output":
-      case "tables_query_started":
-      case "websearch_params":
-      case "tool_params":
-        setStreamedAgentMessage((m) => {
-          return updateMessageWithAction(m, event.action);
-        });
-        setLastAgentStateClassification("acting");
-        break;
-      case "agent_error":
-        setStreamedAgentMessage((m) => {
-          return { ...m, status: "failed", error: event.error };
-        });
-        setLastAgentStateClassification("done");
-        break;
+      const event = eventPayload.data;
+      switch (event.type) {
+        case "agent_action_success":
+          setStreamedAgentMessage((m) => {
+            return { ...updateMessageWithAction(m, event.action) };
+          });
+          setLastAgentStateClassification("thinking");
+          break;
 
-      case "agent_generation_cancelled":
-        setStreamedAgentMessage((m) => {
-          return { ...m, status: "cancelled" };
-        });
-        setLastAgentStateClassification("done");
-        break;
-      case "agent_message_success": {
-        setStreamedAgentMessage((m) => {
-          return {
-            ...m,
-            ...event.message,
-          };
-        });
-        setLastAgentStateClassification("done");
-        break;
-      }
+        case "tool_approve_execution":
+          // Show the validation dialog when this event is received
+          showValidationDialog({
+            workspaceId: owner.sId,
+            messageId: message.sId,
+            conversationId: conversationId,
+            action: event.action,
+            inputs: event.inputs,
+          });
+          break;
 
-      case "generation_tokens": {
-        switch (event.classification) {
-          case "closing_delimiter":
-            break;
-          case "opening_delimiter":
-            break;
-          case "tokens":
-            setLastTokenClassification("tokens");
-            setStreamedAgentMessage((m) => {
-              const previousContent = m.content || "";
-              return { ...m, content: previousContent + event.text };
-            });
-            break;
-          case "chain_of_thought":
-            setLastTokenClassification("chain_of_thought");
-            setStreamedAgentMessage((m) => {
-              const currentChainOfThought = m.chainOfThought ?? "";
-              return {
-                ...m,
-                chainOfThought: currentChainOfThought + event.text,
-              };
-            });
-            break;
-          default:
-            assertNever(event);
+        case "browse_params":
+        case "conversation_include_file_params":
+        case "dust_app_run_block":
+        case "dust_app_run_params":
+        case "process_params":
+        case "reasoning_started":
+        case "reasoning_thinking":
+        case "reasoning_tokens":
+        case "retrieval_params":
+        case "search_labels_params":
+        case "tables_query_model_output":
+        case "tables_query_output":
+        case "tables_query_started":
+        case "websearch_params":
+        case "tool_params":
+          setStreamedAgentMessage((m) => {
+            return updateMessageWithAction(m, event.action);
+          });
+          setLastAgentStateClassification("acting");
+          break;
+        case "agent_error":
+          setStreamedAgentMessage((m) => {
+            return { ...m, status: "failed", error: event.error };
+          });
+          setLastAgentStateClassification("done");
+          break;
+
+        case "agent_generation_cancelled":
+          setStreamedAgentMessage((m) => {
+            return { ...m, status: "cancelled" };
+          });
+          setLastAgentStateClassification("done");
+          break;
+        case "agent_message_success": {
+          setStreamedAgentMessage((m) => {
+            return {
+              ...m,
+              ...event.message,
+            };
+          });
+          setLastAgentStateClassification("done");
+          break;
         }
-        setLastAgentStateClassification("thinking");
-        break;
-      }
 
-      default:
-        assertNever(event);
-    }
-  }, []);
+        case "generation_tokens": {
+          switch (event.classification) {
+            case "closing_delimiter":
+              break;
+            case "opening_delimiter":
+              break;
+            case "tokens":
+              setLastTokenClassification("tokens");
+              setStreamedAgentMessage((m) => {
+                const previousContent = m.content || "";
+                return { ...m, content: previousContent + event.text };
+              });
+              break;
+            case "chain_of_thought":
+              setLastTokenClassification("chain_of_thought");
+              setStreamedAgentMessage((m) => {
+                const currentChainOfThought = m.chainOfThought ?? "";
+                return {
+                  ...m,
+                  chainOfThought: currentChainOfThought + event.text,
+                };
+              });
+              break;
+            default:
+              assertNever(event);
+          }
+          setLastAgentStateClassification("thinking");
+          break;
+        }
+
+        default:
+          assertNever(event);
+      }
+    },
+    [conversationId, message.sId, owner.sId, showValidationDialog]
+  );
 
   useEventSource(
     buildEventSourceURL,
@@ -418,7 +436,7 @@ export function AgentMessage({
   );
 
   const buttons =
-    message.status === "failed"
+    message.status === "failed" || lastAgentStateClassification === "thinking"
       ? []
       : [
           <Button

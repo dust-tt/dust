@@ -52,6 +52,8 @@ export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
   ]),
 });
 
+// Data sources
+
 const DataSourceFilterParentsCodec = t.union([
   t.type({
     in: t.array(t.string),
@@ -76,6 +78,26 @@ const DataSourceFilterCodec = t.intersection([
   OptionalDataSourceFilterTagsCodec,
 ]);
 
+const DataSourcesConfigurationsCodec = t.array(
+  t.type({
+    dataSourceViewId: t.string,
+    workspaceId: t.string,
+    filter: DataSourceFilterCodec,
+  })
+);
+
+// Tables
+
+const TablesConfigurationsCodec = t.array(
+  t.type({
+    dataSourceViewId: t.string,
+    tableId: t.string,
+    workspaceId: t.string,
+  })
+);
+
+// Actions
+
 const RetrievalActionConfigurationSchema = t.type({
   type: t.literal("retrieval_configuration"),
   query: t.union([t.literal("auto"), t.literal("none")]),
@@ -88,13 +110,7 @@ const RetrievalActionConfigurationSchema = t.type({
     }),
   ]),
   topK: t.union([t.number, t.literal("auto")]),
-  dataSources: t.array(
-    t.type({
-      dataSourceViewId: t.string,
-      workspaceId: t.string,
-      filter: DataSourceFilterCodec,
-    })
-  ),
+  dataSources: DataSourcesConfigurationsCodec,
 });
 
 const DustAppRunActionConfigurationSchema = t.type({
@@ -105,13 +121,7 @@ const DustAppRunActionConfigurationSchema = t.type({
 
 const TablesQueryActionConfigurationSchema = t.type({
   type: t.literal("tables_query_configuration"),
-  tables: t.array(
-    t.type({
-      dataSourceViewId: t.string,
-      tableId: t.string,
-      workspaceId: t.string,
-    })
-  ),
+  tables: TablesConfigurationsCodec,
 });
 
 const WebsearchActionConfigurationSchema = t.type({
@@ -132,29 +142,15 @@ const ReasoningActionConfigurationSchema = t.type({
 
 const MCPServerActionConfigurationSchema = t.type({
   type: t.literal("mcp_server_configuration"),
-  mcpServerId: t.string,
+  mcpServerViewId: t.string,
 
-  dataSources: t.union([
-    t.null,
-    t.array(
-      t.type({
-        dataSourceViewId: t.string,
-        workspaceId: t.string,
-        filter: DataSourceFilterCodec,
-      })
-    ),
-  ]),
+  dataSources: t.union([t.null, DataSourcesConfigurationsCodec]),
+  tables: t.union([t.null, TablesConfigurationsCodec]),
 });
 
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
-  dataSources: t.array(
-    t.type({
-      dataSourceViewId: t.string,
-      workspaceId: t.string,
-      filter: DataSourceFilterCodec,
-    })
-  ),
+  dataSources: DataSourcesConfigurationsCodec,
   relativeTimeFrame: t.union([
     t.literal("auto"),
     t.literal("none"),
@@ -211,6 +207,7 @@ const ModelConfigurationSchema = t.intersection([
   t.partial({
     reasoningEffort: ReasoningEffortCodec,
   }),
+  t.partial({ responseFormat: t.string }),
 ]);
 const IsSupportedModelSchema = new t.Type<SupportedModel>(
   "SupportedModel",

@@ -23,7 +23,6 @@ import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
 import type {
   AppType,
-  ConnectorType,
   LightWorkspaceType,
   SpaceType,
   WorkspaceType,
@@ -31,11 +30,9 @@ import type {
 
 type RowData = {
   app: AppType;
-  category: string;
   name: string;
+  description: string;
   icon: ComponentType;
-  connector?: ConnectorType;
-  fetchConnectorError?: string;
   workspaceId: string;
   onClick?: () => void;
 };
@@ -50,6 +47,16 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
         </DataTable.CellContent>
       ),
       accessorFn: (row: RowData) => row.name,
+      meta: {
+        className: "w-80",
+      },
+    },
+    {
+      id: "description",
+      cell: (info: CellContext<RowData, string>) => (
+        <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
+      ),
+      accessorFn: (row: RowData) => row.description,
       meta: {
         className: "w-full",
       },
@@ -172,6 +179,7 @@ export const SpaceAppsList = ({
         sId: app.sId,
         category: "apps",
         name: app.name,
+        description: app.description ?? "",
         icon: CommandLineIcon,
         workspaceId: owner.sId,
         onClick: () => onSelect(app.sId),
@@ -229,7 +237,7 @@ export const SpaceAppsList = ({
     <>
       {!isEmpty && portalToHeader(actionButtons)}
       {isEmpty ? (
-        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-structure-50 dark:bg-structure-50-night">
+        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-muted-background dark:bg-muted-background-night">
           <Button
             label="Create App"
             disabled={!canWriteInSpace}

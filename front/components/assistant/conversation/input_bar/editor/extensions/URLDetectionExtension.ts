@@ -2,10 +2,10 @@ import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
-import { isUrlCandidate, nodeIdFromUrl } from "@app/lib/connectors";
+import { isUrlCandidate, nodeCandidateFromUrl } from "@app/lib/connectors";
 
 type URLFormatOptions = {
-  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate) => void;
+  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 };
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/gi;
@@ -44,11 +44,13 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
             if (urls) {
               // For each URL found, check if it has a node ID
               urls.forEach((url) => {
-                const node = nodeIdFromUrl(url);
-                const isUrlNode = isUrlCandidate(node);
-                if (node) {
+                const nodeCandidate = nodeCandidateFromUrl(url);
+                const isUrlNodeCandidate = isUrlCandidate(nodeCandidate);
+                if (nodeCandidate) {
                   const { from } = view.state.selection;
-                  const nodeId = isUrlNode ? node.url : node.node;
+                  const nodeId = isUrlNodeCandidate
+                    ? nodeCandidate.url
+                    : nodeCandidate.node;
                   // Store URL position for later replacement
                   storage.pendingUrls.set(nodeId, {
                     url,
@@ -57,7 +59,7 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
                     to: from + url.length,
                   });
                 }
-                onUrlDetected(node);
+                onUrlDetected(nodeCandidate);
               });
             }
 

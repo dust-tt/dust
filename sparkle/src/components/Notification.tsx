@@ -1,8 +1,13 @@
+import { cva } from "class-variance-authority";
 import React from "react";
 import { toast, Toaster } from "sonner";
 
-import { CheckCircleIcon, XCircleIcon } from "@sparkle/icons";
-import { cn } from "@sparkle/lib/utils";
+import {
+  CheckCircleIcon,
+  InformationCircleIcon,
+  XCircleIcon,
+} from "@sparkle/icons";
+import { assertNever, cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
@@ -11,7 +16,7 @@ const NOTIFICATION_DELAY = 5000;
 export type NotificationType = {
   title?: string;
   description?: string;
-  type: "success" | "error";
+  type: "success" | "error" | "info";
 };
 
 const NotificationsContext = React.createContext<(n: NotificationType) => void>(
@@ -21,11 +26,34 @@ export interface NotificationProps {
   className?: string;
   description?: string;
   title?: string;
-  variant: "success" | "error";
+  variant: "success" | "error" | "info";
   onClick?: () => void;
 }
 
 function NotificationContent({ type, title, description }: NotificationType) {
+  const icon = (() => {
+    switch (type) {
+      case "success":
+        return CheckCircleIcon;
+      case "error":
+        return XCircleIcon;
+      case "info":
+        return InformationCircleIcon;
+      default:
+        assertNever(type);
+    }
+  })();
+
+  const variantClassName = cva("s-pt-0.5", {
+    variants: {
+      type: {
+        success: "s-text-success-600 dark:s-text-success-400-night",
+        error: "s-text-warning-500 dark:s-text-warning-500-night",
+        info: "s-text-info-600 dark:s-text-info-400-night",
+      },
+    },
+  });
+
   return (
     <div
       className={cn(
@@ -35,28 +63,17 @@ function NotificationContent({ type, title, description }: NotificationType) {
         "s-p-4 s-shadow-xl"
       )}
     >
-      {type === "success" ? (
-        <Icon
-          size="lg"
-          visual={CheckCircleIcon}
-          className="s-pt-0.5 s-text-success-600 dark:s-text-success-400-night"
-          aria-hidden="true"
-        />
-      ) : (
-        <Icon
-          size="lg"
-          visual={XCircleIcon}
-          className="s-pt-0.5 s-text-warning-500 dark:s-text-warning-500-night"
-          aria-hidden="true"
-        />
-      )}
+      <Icon
+        size="lg"
+        visual={icon}
+        className={variantClassName({ type })}
+        aria-hidden="true"
+      />
       <div className="s-flex s-flex-col">
         <div
           className={cn(
             "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
-            type === "success"
-              ? "s-text-success-600 dark:s-text-success-400-night"
-              : "s-text-warning-500 dark:s-text-warning-500-night"
+            variantClassName({ type })
           )}
         >
           {title || type}

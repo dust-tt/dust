@@ -53,6 +53,8 @@ export function withLogging<T>(
     const commitHash = req.headers["x-commit-hash"] ?? req.query.commitHash;
     const extensionVersion =
       req.headers["x-dust-extension-version"] ?? req.query.extensionVersion;
+    const cliVersion =
+      req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
     try {
       await handler(req, res);
@@ -62,6 +64,7 @@ export function withLogging<T>(
         {
           commitHash,
           extensionVersion,
+          cliVersion,
           durationMs: elapsed,
           error: err,
           method: req.method,

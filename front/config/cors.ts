@@ -2,7 +2,10 @@ const STATIC_ALLOWED_ORIGINS = [
   // Front extension.
   "https://front-ext.dust.tt",
   // Chrome extension.
+  "chrome-extension://okjldflokifdjecnhbmkdanjjbnmlihg",
   "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
+  // Documentation website.
+  "https://docs.dust.tt",
 ] as const;
 
 const ALLOWED_ORIGIN_PATTERNS = [

@@ -27,7 +27,7 @@ export const Hover3DExample = () => (
       </div>
       <div>
         <Hover3D
-          className="s-rounded-2xl s-bg-slate-200 s-p-3 s-shadow-xl"
+          className="s-rounded-2xl s-bg-muted-background s-p-3 s-shadow-xl"
           depth={-20}
         >
           <Div3D depth={50}>
@@ -36,7 +36,7 @@ export const Hover3DExample = () => (
         </Hover3D>
       </div>
       <div>
-        <Hover3D className="s-rounded-[24px] s-bg-slate-800 s-p-8">
+        <Hover3D className="s-rounded-[24px] s-bg-primary-800 s-p-8">
           <Div3D depth={60}>
             <Icon visual={DustLogoSquare} size="2xl" />
           </Div3D>
@@ -71,7 +71,7 @@ export const Hover3DExample = () => (
       </div>
       <div>
         <Hover3D
-          className="s-rounded-2xl s-bg-slate-200 s-p-3 s-shadow-xl"
+          className="s-rounded-2xl s-bg-muted-background s-p-3 s-shadow-xl"
           depth={-20}
           perspective={1000}
           fullscreenSensible
@@ -83,7 +83,7 @@ export const Hover3DExample = () => (
       </div>
       <div>
         <Hover3D
-          className="s-rounded-[24px] s-bg-slate-800 s-p-8"
+          className="s-rounded-[24px] s-bg-primary-800 s-p-8"
           perspective={1000}
           fullscreenSensible
         >

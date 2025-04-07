@@ -1,25 +1,40 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { MCPToolMetadata } from "@app/lib/actions/mcp_actions";
+import {
+  DEFAULT_MCP_ACTION_DESCRIPTION,
+  DEFAULT_MCP_ACTION_NAME,
+  DEFAULT_MCP_ACTION_VERSION,
+} from "@app/lib/actions/constants";
+import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
+import {
+  DEFAULT_MCP_SERVER_ICON,
+  isAllowedIconType,
+} from "@app/lib/actions/mcp_icons";
+import type {
+  AuthorizationInfo,
+  MCPToolType,
+} from "@app/lib/actions/mcp_metadata";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class RemoteMCPServer extends SoftDeletableWorkspaceAwareModel<RemoteMCPServer> {
+export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare vaultId: ForeignKey<SpaceModel["id"]>;
-  declare space: NonAttribute<SpaceModel>;
-
   declare url: string;
   declare name: string;
-  declare description: string | null;
-  declare cachedTools: MCPToolMetadata[];
+  declare description: string;
+  declare icon: AllowedIconType;
+  declare version: string;
+
+  declare cachedName: string;
+  declare cachedDescription: string;
+  declare cachedTools: MCPToolType[];
 
   declare lastSyncAt: Date | null;
   declare sharedSecret: string;
+  declare authorization: AuthorizationInfo | null;
 }
 
 RemoteMCPServer.init(
@@ -34,12 +49,10 @@ RemoteMCPServer.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    deletedAt: {
-      type: DataTypes.DATE,
-    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: DEFAULT_MCP_ACTION_NAME,
     },
     url: {
       type: DataTypes.STRING,
@@ -47,7 +60,28 @@ RemoteMCPServer.init(
     },
     description: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: false,
+      defaultValue: DEFAULT_MCP_ACTION_DESCRIPTION,
+    },
+    icon: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: DEFAULT_MCP_SERVER_ICON,
+    },
+    version: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: DEFAULT_MCP_ACTION_VERSION,
+    },
+    cachedName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: DEFAULT_MCP_ACTION_NAME,
+    },
+    cachedDescription: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: DEFAULT_MCP_ACTION_DESCRIPTION,
     },
     cachedTools: {
       type: DataTypes.JSONB,
@@ -62,17 +96,21 @@ RemoteMCPServer.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    authorization: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     sequelize: frontSequelize,
     modelName: "remote_mcp_server",
+    hooks: {
+      beforeValidate: (server: RemoteMCPServer) => {
+        if (server.icon && !isAllowedIconType(server.icon)) {
+          throw new Error(`Invalid icon type: ${server.icon}`);
+        }
+      },
+    },
   }
 );
-
-SpaceModel.hasMany(RemoteMCPServer, {
-  foreignKey: { allowNull: false, name: "vaultId" },
-  onDelete: "RESTRICT",
-});
-RemoteMCPServer.belongsTo(SpaceModel, {
-  foreignKey: { allowNull: false, name: "vaultId" },
-});

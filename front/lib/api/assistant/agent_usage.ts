@@ -1,23 +1,15 @@
 import _ from "lodash";
 import type { RedisClientType } from "redis";
-import { literal, Op, QueryTypes, Sequelize } from "sequelize";
+import { QueryTypes } from "sequelize";
 
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  Conversation,
-  Mention,
-  Message,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types";
 
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;
@@ -294,54 +286,17 @@ type UsersUsageCount = {
 };
 
 export async function getAgentUsers(
-  owner: LightWorkspaceType,
+  auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
   rankingUsageDays: number = RANKING_USAGE_DAYS
 ): Promise<UsersUsageCount[]> {
-  const mentions = await Conversation.findAll({
-    attributes: [
-      [Sequelize.literal('"messages->userMessage"."userId"'), "userId"],
-      [
-        Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
-        "count",
-      ],
-    ],
-    where: {
-      workspaceId: owner.id,
-    },
-    include: [
-      {
-        model: Message,
-        required: true,
-        attributes: [],
-        include: [
-          {
-            model: Mention,
-            as: "mentions",
-            required: true,
-            attributes: [],
-            where: {
-              ...(agentConfiguration
-                ? { agentConfigurationId: agentConfiguration.sId }
-                : {}),
-              createdAt: {
-                [Op.gt]: literal(`NOW() - INTERVAL '${rankingUsageDays} days'`),
-              },
-            },
-          },
-          {
-            model: UserMessage,
-            as: "userMessage",
-            required: true,
-            attributes: [],
-          },
-        ],
-      },
-    ],
-    order: [["count", "DESC"]],
-    group: ['"messages->userMessage"."userId"'],
-    raw: true,
-  });
+  const mentions = await ConversationResource.listMentionsByConfiguration(
+    auth,
+    {
+      agentConfiguration,
+      rankingUsageDays,
+    }
+  );
 
   return mentions.map((mention) => {
     const castMention = mention as unknown as {

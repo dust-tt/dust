@@ -1,22 +1,17 @@
-import assert from "assert";
 import _ from "lodash";
-import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+import { renderTableConfiguration } from "@app/lib/actions/configuration/helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
-import type {
-  TableDataSourceConfiguration,
-  TablesQueryConfigurationType,
-} from "@app/lib/actions/tables_query";
-import type { Authenticator } from "@app/lib/auth";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
+
 export async function fetchTableQueryActionConfigurations({
   configurationIds,
   variant,
@@ -79,25 +74,11 @@ export async function fetchTableQueryActionConfigurations({
       const tablesQueryConfigTables =
         groupedAgentTablesQueryConfigurationTables[c.id] ?? [];
 
-      const tables: TableDataSourceConfiguration[] =
-        tablesQueryConfigTables.map((table) => {
-          const { dataSourceView } = table;
-
-          return {
-            dataSourceViewId: DataSourceViewResource.modelIdToSId({
-              id: dataSourceView.id,
-              workspaceId: dataSourceView.workspaceId,
-            }),
-            workspaceId: dataSourceView.workspace.sId,
-            tableId: table.tableId,
-          };
-        });
-
       actions.push({
         id: c.id,
         sId: c.sId,
         type: "tables_query_configuration",
-        tables,
+        tables: tablesQueryConfigTables.map(renderTableConfiguration),
         name: c.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
         description: c.description,
       });
@@ -107,50 +88,4 @@ export async function fetchTableQueryActionConfigurations({
   }
 
   return actionsByConfigurationId;
-}
-
-export async function createTableDataSourceConfiguration(
-  auth: Authenticator,
-  tableConfigurations: TableDataSourceConfiguration[],
-  tablesQueryConfig: AgentTablesQueryConfiguration,
-  t: Transaction
-) {
-  const owner = auth.getNonNullableWorkspace();
-  // Although we have the capability to support multiple workspaces,
-  // currently, we only support one workspace, which is the one the user is in.
-  // This allows us to use the current authenticator to fetch resources.
-  assert(tableConfigurations.every((tc) => tc.workspaceId === owner.sId));
-
-  // DataSourceViewResource.listByWorkspace() applies the permissions check.
-  const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
-  const dataSourceViewsMap = dataSourceViews.reduce(
-    (acc, dsv) => {
-      acc[dsv.sId] = dsv;
-      return acc;
-    },
-    {} as Record<string, DataSourceViewResource>
-  );
-
-  return Promise.all(
-    tableConfigurations.map(async (tc) => {
-      const dataSourceView = dataSourceViewsMap[tc.dataSourceViewId];
-      assert(
-        dataSourceView,
-        "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
-      );
-
-      const { dataSource } = dataSourceView;
-
-      await AgentTablesQueryConfigurationTable.create(
-        {
-          dataSourceId: dataSource.id,
-          dataSourceViewId: dataSourceView.id,
-          tableId: tc.tableId,
-          tablesQueryConfigurationId: tablesQueryConfig.id,
-          workspaceId: owner.id,
-        },
-        { transaction: t }
-      );
-    })
-  );
 }

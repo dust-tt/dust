@@ -3,9 +3,7 @@ import React from "react";
 
 import { cn } from "@sparkle/lib";
 
-export const ulBlockVariants = cva([
-  "s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0",
-]);
+export const ulBlockVariants = cva(["s-list-disc s-pb-2 s-pl-6"]);
 
 interface UlBlockProps {
   children: React.ReactNode;
@@ -19,9 +17,7 @@ export function UlBlock({ children, textColor, textSize }: UlBlockProps) {
   );
 }
 
-export const olBlockVariants = cva([
-  "s-list-decimal s-py-3 s-pl-8 first:s-pt-0 last:s-pb-0",
-]);
+export const olBlockVariants = cva(["s-list-decimal s-pb-2 s-pl-6"]);
 
 interface OlBlockProps {
   children: React.ReactNode;
@@ -43,7 +39,7 @@ export function OlBlock({
   );
 }
 
-export const liBlockVariants = cva(["s-break-words first:s-pt-0 last:s-pb-0"]);
+export const liBlockVariants = cva(["s-break-words"]);
 
 interface LiBlockProps {
   children: React.ReactNode;

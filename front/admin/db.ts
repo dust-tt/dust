@@ -14,6 +14,7 @@ import {
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
+import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
 import {
   AgentProcessAction,
   AgentProcessConfiguration,
@@ -48,8 +49,8 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import {
   AgentMessage,
   AgentMessageFeedback,
-  Conversation,
-  ConversationParticipant,
+  ConversationModel,
+  ConversationParticipantModel,
   Mention,
   Message,
   MessageReaction,
@@ -129,8 +130,8 @@ async function main() {
   await DustAppSecret.sync({ alter: true });
   await GroupSpaceModel.sync({ alter: true });
 
-  await Conversation.sync({ alter: true });
-  await ConversationParticipant.sync({ alter: true });
+  await ConversationModel.sync({ alter: true });
+  await ConversationParticipantModel.sync({ alter: true });
 
   await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });
@@ -153,8 +154,10 @@ async function main() {
   await GlobalAgentSettings.sync({ alter: true });
 
   await RemoteMCPServer.sync({ alter: true });
+  await MCPServerView.sync({ alter: true });
   await MCPServerConnection.sync({ alter: true });
 
+  await AgentMCPServerConfiguration.sync({ alter: true });
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentTablesQueryConfiguration.sync({ alter: true });
@@ -163,7 +166,6 @@ async function main() {
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
   await AgentReasoningConfiguration.sync({ alter: true });
-  await AgentMCPServerConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 

@@ -1,37 +1,44 @@
-import { Button, ChevronRightIcon } from "@dust-tt/sparkle";
+import { Button, ChevronRightIcon, Icon } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Link from "next/link";
 import React from "react";
 
+import { H3 } from "@app/components/home/ContentComponents";
+
 interface FunctionCardProps {
   title: string;
   features: string[];
-  color: "green" | "blue" | "purple";
+  color: "green" | "blue" | "golden" | "rose";
   visualSrc: string;
   href: string;
 }
 
 const colorVariants = {
   green: {
-    card: "bg-green-600",
-    visual: "bg-green-100",
+    card: "bg-brand-hunter-green",
+    visual: "bg-brand-tea-green",
   },
   blue: {
-    card: "bg-blue-600",
-    visual: "bg-blue-100",
+    card: "bg-brand-electric-blue",
+    visual: "bg-brand-sky-blue",
   },
-  purple: {
-    card: "bg-purple-600",
-    visual: "bg-purple-100",
+  golden: {
+    card: "bg-brand-orange-golden",
+    visual: "bg-brand-sunshine-golden",
+  },
+  rose: {
+    card: "bg-brand-red-rose",
+    visual: "bg-brand-pink-rose",
   },
 };
 
 const cardVariants = cva("", {
   variants: {
     color: {
-      green: "bg-green-600",
-      blue: "bg-blue-600",
-      purple: "bg-purple-600",
+      green: "bg-brand-hunter-green",
+      blue: "bg-brand-electric-blue",
+      golden: "bg-brand-orange-golden",
+      rose: "bg-brand-red-rose",
     },
   },
 });
@@ -44,8 +51,10 @@ export function FunctionCard({
   href,
 }: FunctionCardProps) {
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-3xl">
-      <div className={`h-60 w-full px-4 py-4 ${colorVariants[color].visual}`}>
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl">
+      <div
+        className={`h-60 w-full px-4 ${colorVariants[color].visual} rounded-t-2xl`}
+      >
         <div className="flex h-full w-full items-center justify-center">
           <img
             src={visualSrc}
@@ -55,20 +64,25 @@ export function FunctionCard({
         </div>
       </div>
 
-      <div className={`flex flex-grow flex-col p-5 ${cardVariants({ color })}`}>
-        <h3 className="font-objektiv text-2xl font-semibold text-white">
+      <div
+        className={`flex flex-grow flex-col gap-2 rounded-b-2xl p-8 ${cardVariants({ color })}`}
+      >
+        <H3 className="text-white" mono>
           {title}
-        </h3>
-
-        <ul className="mt-4 flex-grow space-y-3 font-objektiv">
+        </H3>
+        <ul className="copy-base flex-grow font-medium text-white/80">
           {features.map((feature, i) => (
-            <li key={i} className="flex min-h-6 items-start gap-3 text-white">
-              <ChevronRightIcon className="mt-1 h-4 w-4 flex-shrink-0" />
-              <span className="text-base leading-tight">{feature}</span>
+            <li
+              key={i}
+              className="flex min-h-6 items-start gap-1 py-1.5 text-white/80"
+            >
+              <div className="pt-0.5">
+                <Icon visual={ChevronRightIcon} size="sm" />
+              </div>
+              {feature}
             </li>
           ))}
         </ul>
-
         <div className="mt-4">
           <Link href={href} shallow>
             <Button variant="outline" label="Learn more" size="sm" />

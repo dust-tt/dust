@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Knowledge",
   title: <>Make Company Knowledge Instantly Accessible.</>,
-  from: "from-green-200",
-  to: "to-green-200",
+  accentColor: "text-brand-hunter-green",
   description: (
     <>
       Transform organizational knowledge into structured insights and empower
@@ -115,8 +114,7 @@ export const Metrics: MetricProps = {
       description: <>of Kyriba employees save more than 3 hours weekly</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -154,15 +152,15 @@ export const UseCases: UseCaseProps = {
 export const Quote: QuoteProps = {
   quote:
     "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
-  name: "Boris Lipiainen ",
+  name: "Boris Lipiainen",
   title: "Chief Product and Technology Officer at Kyriba",
-  logo: "/static/landing/logos/kyriba.png",
+  logo: "/static/landing/logos/color/kyriba.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/qtnvwgyt0o?web_component=true&seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/qtnvwgyt0o",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [

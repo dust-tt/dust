@@ -206,7 +206,7 @@ export const TrackerBuilder = ({
       return;
     }
     setIsSubmitting(false);
-    await router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+    await router.push(`/w/${owner.sId}/labs/trackers`);
     sendNotification({
       title: initialTrackerId ? "Tracker updated" : "Tracker Created",
       description: initialTrackerId
@@ -243,7 +243,7 @@ export const TrackerBuilder = ({
       );
       if (res.ok) {
         setIsDeleting(false);
-        void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+        void router.push(`/w/${owner.sId}/labs/trackers`);
         sendNotification({
           title: "Tracker deleted",
           description: "Tracker successfully deleted.",
@@ -288,14 +288,14 @@ export const TrackerBuilder = ({
           <AppLayoutSimpleCloseTitle
             title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
             onClose={() => {
-              void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+              void router.push(`/w/${owner.sId}/labs/trackers`);
             }}
           />
         ) : (
           <AppLayoutSimpleSaveCancelTitle
             title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
             onCancel={() => {
-              void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+              void router.push(`/w/${owner.sId}/labs/trackers`);
             }}
             onSave={onSubmit}
             isSaving={isSubmitting}
@@ -381,7 +381,7 @@ export const TrackerBuilder = ({
         <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Naming" />
-            <div className="text-sm font-normal text-element-700">
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               Give your tracker a clear, memorable name and description that
               will help you and your team identify its purpose.
             </div>
@@ -435,7 +435,7 @@ export const TrackerBuilder = ({
         <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Notification Settings" />
-            <div className="text-sm font-normal text-element-700">
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               Choose when and who receives update notifications. We'll bundle
               all tracked changes into organized email summaries delivered on
               your preferred schedule.
@@ -518,7 +518,7 @@ export const TrackerBuilder = ({
                     }
                   }}
                 />
-                <div className="text-sm text-element-700">
+                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Don't send emails when there are no updates.
                 </div>
               </div>
@@ -531,7 +531,7 @@ export const TrackerBuilder = ({
         <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Tracker Settings" />
-            <div className="text-sm font-normal text-element-700">
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               Set up what you want to track and monitor. Tell us what to look
               for, specify which documents to maintain current versions of, and
               select which documents to watch for changes.
@@ -586,7 +586,7 @@ export const TrackerBuilder = ({
               <div className="flex flex-col space-y-2">
                 <Label className="mb-1">Maintained Documents</Label>
                 {Object.keys(tracker.maintainedDataSources).length === 0 ? (
-                  <div className="text-sm font-normal text-element-700">
+                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                     No documents selected.
                   </div>
                 ) : (
@@ -626,7 +626,7 @@ export const TrackerBuilder = ({
               <div className="flex flex-col space-y-2">
                 <Label className="mb-1">Watched Documents</Label>
                 {Object.keys(tracker.watchedDataSources).length === 0 ? (
-                  <div className="text-sm font-normal text-element-700">
+                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                     No documents selected.
                   </div>
                 ) : (

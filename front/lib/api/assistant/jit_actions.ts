@@ -13,6 +13,7 @@ import type {
   ConversationContentNodeType,
 } from "@app/lib/actions/conversation/list_files";
 import {
+  isContentFragmentDataSourceNode,
   isConversationContentNodeType,
   isConversationFileType,
   makeConversationListFilesAction,
@@ -30,16 +31,23 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
 } from "@app/lib/actions/types/guards";
-import { listFiles } from "@app/lib/api/assistant/jit_utils";
+import {
+  isMultiSheetSpreadsheetContentType,
+  isSearchableFolder,
+  listFiles,
+} from "@app/lib/api/assistant/jit_utils";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type {
   AgentActionType,
   AgentMessageType,
   ConversationType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, CoreAPI } from "@app/types";
 
 /**
  * Returns a list of supporting actions that should be made available to the model alongside this
@@ -103,97 +111,150 @@ async function getJITActions(
   // Add supporting actions first.
   actions.push(...supportingActions);
 
-  if (files.length > 0) {
-    // conversation_include_file_action
-    actions.push(makeConversationIncludeFileConfiguration());
+  if (files.length === 0) {
+    return actions;
+  }
 
-    // Check tables for the table query action.
-    const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
+  // conversation_include_file_action
+  actions.push(makeConversationIncludeFileConfiguration());
 
-    // Check files for the retrieval query action.
-    const filesUsableAsRetrievalQuery = files.filter((f) => f.isSearchable);
+  // Check tables for the table query action.
+  const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
 
-    if (
-      filesUsableAsTableQuery.length > 0 ||
-      filesUsableAsRetrievalQuery.length > 0
-    ) {
-      // Get the datasource view for the conversation.
-      const conversationDataSourceView =
-        await DataSourceViewResource.fetchByConversation(auth, conversation);
+  // Check files for the retrieval query action.
+  const filesUsableAsRetrievalQuery = files.filter((f) => f.isSearchable);
 
-      if (filesUsableAsTableQuery.length > 0) {
-        const action: TablesQueryConfigurationType = {
-          // The description here is the description of the data, a meta description of the action
-          // is prepended automatically.
-          description:
-            DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
-          type: "tables_query_configuration",
-          id: -1,
-          name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-          sId: generateRandomModelSId(),
-          tables: filesUsableAsTableQuery.flatMap((f) => {
-            if (isConversationFileType(f)) {
-              assert(
-                conversationDataSourceView,
-                "No conversation datasource view found for table when trying to get JIT actions"
-              );
-              return f.generatedTables.map((tableId) => ({
-                workspaceId: auth.getNonNullableWorkspace().sId,
-                dataSourceViewId: conversationDataSourceView.sId,
-                tableId,
-              }));
-            } else if (isConversationContentNodeType(f)) {
-              return f.generatedTables.map((tableId) => ({
-                workspaceId: auth.getNonNullableWorkspace().sId,
-                dataSourceViewId: f.nodeDataSourceViewId,
-                tableId,
-              }));
-            }
-            assertNever(f);
-          }),
-        };
-        actions.push(action);
+  if (
+    filesUsableAsTableQuery.length > 0 ||
+    filesUsableAsRetrievalQuery.length > 0
+  ) {
+    // Get the datasource view for the conversation.
+    const conversationDataSourceView =
+      await DataSourceViewResource.fetchByConversation(auth, conversation);
+
+    // Assign tables to multi-sheet spreadsheets.
+    await concurrentExecutor(
+      filesUsableAsTableQuery.filter((f) =>
+        isMultiSheetSpreadsheetContentType(f.contentType)
+      ),
+      async (f) => {
+        assert(
+          isConversationContentNodeType(f),
+          "Unreachable: file should be a content node"
+        );
+        f.generatedTables = await getTablesFromMultiSheetSpreadsheet(auth, f);
+      },
+      {
+        concurrency: 10,
       }
+    );
 
-      if (filesUsableAsRetrievalQuery.length > 0) {
-        const dataSources: DataSourceConfiguration[] =
-          filesUsableAsRetrievalQuery
-            // For each searchable content node, we add its datasourceview with itself as parent
-            // filter.
-            .filter((f) => isConversationContentNodeType(f))
-            .map((f) => ({
+    if (filesUsableAsTableQuery.length > 0) {
+      const action: TablesQueryConfigurationType = {
+        // The description here is the description of the data, a meta description of the action
+        // is prepended automatically.
+        description: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
+        type: "tables_query_configuration",
+        id: -1,
+        name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+        sId: generateRandomModelSId(),
+        tables: filesUsableAsTableQuery.flatMap((f) => {
+          if (isConversationFileType(f)) {
+            assert(
+              conversationDataSourceView,
+              "No conversation datasource view found for table when trying to get JIT actions"
+            );
+            return f.generatedTables.map((tableId) => ({
               workspaceId: auth.getNonNullableWorkspace().sId,
-              // Cast ok here because of the filter above.
-              dataSourceViewId: (f as ConversationContentNodeType)
-                .nodeDataSourceViewId,
-              filter: {
-                parents: {
-                  in: [(f as ConversationContentNodeType).contentNodeId],
+              dataSourceViewId: conversationDataSourceView.sId,
+              tableId,
+            }));
+          } else if (isConversationContentNodeType(f)) {
+            return f.generatedTables.map((tableId) => ({
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              dataSourceViewId: f.nodeDataSourceViewId,
+              tableId,
+            }));
+          }
+          assertNever(f);
+        }),
+      };
+      actions.push(action);
+    }
+
+    if (filesUsableAsRetrievalQuery.length > 0) {
+      const dataSources: DataSourceConfiguration[] = filesUsableAsRetrievalQuery
+        // For each searchable content node, we add its datasourceview with itself as parent
+        // filter.
+        .filter((f) => isConversationContentNodeType(f))
+        .map((f) => ({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          // Cast ok here because of the filter above.
+          dataSourceViewId: (f as ConversationContentNodeType)
+            .nodeDataSourceViewId,
+          filter: {
+            parents: {
+              in: [(f as ConversationContentNodeType).nodeId],
+              not: [],
+            },
+            tags: null,
+          },
+        }));
+      if (conversationDataSourceView) {
+        dataSources.push({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          dataSourceViewId: conversationDataSourceView.sId,
+          filter: { parents: null, tags: null },
+        });
+      }
+      const action: RetrievalConfigurationType = {
+        description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
+        type: "retrieval_configuration",
+        id: -1,
+        name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+        sId: generateRandomModelSId(),
+        topK: "auto",
+        query: "auto",
+        relativeTimeFrame: "auto",
+        dataSources,
+      };
+      actions.push(action);
+    }
+
+    for (const [i, f] of files
+      .filter((f) => isConversationContentNodeType(f) && isSearchableFolder(f))
+      .entries()) {
+      // This is valid because of the filter above.
+      const folder = f as ConversationContentNodeType;
+      const dataSources: DataSourceConfiguration[] = [
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          dataSourceViewId: folder.nodeDataSourceViewId,
+          filter: {
+            // Do not filter on parent if the folder is a data source node.
+            parents: isContentFragmentDataSourceNode(folder)
+              ? null
+              : {
+                  in: [folder.nodeId],
                   not: [],
                 },
-                tags: null,
-              },
-            }));
-        if (conversationDataSourceView) {
-          dataSources.push({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            dataSourceViewId: conversationDataSourceView.sId,
-            filter: { parents: null, tags: null },
-          });
-        }
-        const action: RetrievalConfigurationType = {
-          description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
-          type: "retrieval_configuration",
-          id: -1,
-          name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-          sId: generateRandomModelSId(),
-          topK: "auto",
-          query: "auto",
-          relativeTimeFrame: "auto",
-          dataSources,
-        };
-        actions.push(action);
-      }
+            tags: null,
+          },
+        },
+      ];
+      // add retrieval action for the folder
+      const action: RetrievalConfigurationType = {
+        description: `Search content within the documents inside "${folder.title}"`,
+        type: "retrieval_configuration",
+        id: -1,
+        name: `search_folder_${i}`,
+        sId: generateRandomModelSId(),
+        topK: "auto",
+        query: "auto",
+        relativeTimeFrame: "auto",
+        dataSources,
+      };
+      actions.push(action);
     }
   }
 
@@ -219,7 +280,6 @@ export async function getEmulatedAndJITActions(
   let jitActions: ActionConfigurationType[] = [];
 
   const files = listFiles(conversation);
-
   const a = makeConversationListFilesAction({
     agentMessage,
     files,
@@ -241,4 +301,46 @@ export async function getEmulatedAndJITActions(
   );
 
   return { emulatedActions, jitActions };
+}
+
+async function getTablesFromMultiSheetSpreadsheet(
+  auth: Authenticator,
+  f: ConversationContentNodeType
+): Promise<string[]> {
+  assert(
+    isMultiSheetSpreadsheetContentType(f.contentType),
+    `Unexpected: ${f.title} is not a multi-sheet spreadsheet`
+  );
+
+  const dataSourceView = await DataSourceViewResource.fetchById(
+    auth,
+    f.nodeDataSourceViewId
+  );
+
+  assert(
+    dataSourceView,
+    `Unexpected: No datasource view found for datasource view id ${f.nodeDataSourceViewId}`
+  );
+
+  const coreApi = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const searchResult = await coreApi.searchNodes({
+    filter: {
+      parent_id: f.nodeId,
+      data_source_views: [
+        {
+          data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+          view_filter: [f.nodeId],
+        },
+      ],
+    },
+  });
+
+  if (searchResult.isErr()) {
+    throw new Error(
+      `Unexpected: Failed to get tables from multi-sheet spreadsheet: ${searchResult.error}`
+    );
+  }
+
+  // Children of multi-sheet spreadsheets are exclusively tables.
+  return searchResult.value.nodes.map((n) => n.node_id);
 }

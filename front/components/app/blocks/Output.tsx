@@ -1,4 +1,4 @@
-import { Button, ClipboardIcon } from "@dust-tt/sparkle";
+import { Button, ClipboardIcon, Hoverable } from "@dust-tt/sparkle";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -113,7 +113,7 @@ function ValueViewer({
       {isExpandable(value) ? (
         <>
           <div className="flex flex-row items-center text-sm">
-            <div className="flex-initial cursor-pointer text-gray-400">
+            <div className="flex-initial cursor-pointer text-primary-500 dark:text-primary-500-night">
               {expanded ? (
                 <div onClick={() => setExpanded(false)}>
                   <span className="flex flex-row items-center">
@@ -189,12 +189,9 @@ export function StringViewer({ value }: { value: any }) {
     return (
       <span>
         {value.slice(0, STRING_SHOW_MORE_LINK_LENGTH)}...{" "}
-        <span
-          className="cursor-pointer font-bold text-action-600 hover:text-action-500"
-          onClick={() => setExpanded(!expanded)}
-        >
+        <Hoverable variant="highlight" onClick={() => setExpanded(!expanded)}>
           show all
-        </span>
+        </Hoverable>
       </span>
     );
   }
@@ -206,26 +203,30 @@ function Error({ error }: { error: string }) {
   return (
     <div>
       <div className="flex flex-row items-center text-sm">
-        <div className="flex-initial cursor-pointer text-gray-400">
+        <div className="flex-initial cursor-pointer text-primary-500 dark:text-primary-500-night">
           {expanded ? (
             <div onClick={() => setExpanded(false)}>
               <span className="flex flex-row items-center">
                 <ChevronDownIcon className="mt-0.5 h-4 w-4" />
-                <span className="text-sm italic text-gray-400">error</span>
+                <span className="copy-sm italic text-primary-500 dark:text-primary-500-night">
+                  error
+                </span>
               </span>
             </div>
           ) : (
             <div onClick={() => setExpanded(true)}>
               <span className="flex flex-row items-center">
                 <ChevronRightIcon className="mt-0.5 h-4 w-4" />
-                <span className="text-sm italic text-gray-400">error</span>
+                <span className="copy-sm italic text-primary-500 dark:text-primary-500-night">
+                  error
+                </span>
               </span>
             </div>
           )}
         </div>
       </div>
       {expanded ? (
-        <div className="ml-4 flex text-sm text-red-400">
+        <div className="dark:text-warning-night ml-4 flex text-sm text-warning">
           <div className="flex-auto">{error.split(" (sandboxed.js")[0]}</div>
         </div>
       ) : null}
@@ -247,13 +248,13 @@ export function Execution({
           <div key={i} className="flex-auto flex-col">
             {t.error != null ? (
               <div className="flex flex-auto flex-row">
-                <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-red-400" />
+                <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-warning-400" />
                 <Error error={t.error} />
               </div>
             ) : (
               <div className="flex flex-row">
                 <div className="flex flex-initial">
-                  <CheckCircleIcon className="mt-0.5 h-4 w-4 text-emerald-300" />
+                  <CheckCircleIcon className="mt-0.5 h-4 w-4 text-success-300" />
                 </div>
                 <div className="flex flex-1">
                   <ValueViewer
@@ -296,7 +297,7 @@ export function InnerLogs({ trace }: { trace: TraceType }) {
   return (
     <div className="flex flex-row">
       <div className="flex flex-initial">
-        <InformationCircleIcon className="mt-0.5 h-4 w-4 text-gray-400" />
+        <InformationCircleIcon className="mt-0.5 h-4 w-4 text-primary-500 dark:text-primary-500-night" />
       </div>
       <div className="flex flex-1 font-mono">
         <ValueViewer value={logs} topLevel={true} k={null} block={null} />
@@ -340,7 +341,9 @@ const JsonCopyLink = ({ value }: { value: string }) => {
   return (
     <div className="items-top mr-3 flex">
       {copied ? (
-        <div className="text-sm text-gray-400">Copied!</div>
+        <div className="text-sm text-primary-500 dark:text-primary-500-night">
+          Copied!
+        </div>
       ) : (
         <Button
           onClick={handleClick}
@@ -443,7 +446,7 @@ export default function Output({
         {logs ? (
           <div className="flex flex-auto flex-col">
             <div className="flex flex-row items-center text-sm">
-              <div className="flex-initial cursor-pointer text-gray-400">
+              <div className="flex-initial cursor-pointer text-primary-500 dark:text-primary-500-night">
                 <div onClick={() => setExpandedLog(!expandedLog)}>
                   <span className="flex flex-row items-center">
                     {expandedLog ? (
@@ -451,7 +454,7 @@ export default function Output({
                     ) : (
                       <ChevronRightIcon className="mt-0.5 h-4 w-4" />
                     )}
-                    <span className="text-sm text-gray-400">
+                    <span className="text-sm text-primary-500 dark:text-primary-500-night">
                       [{" "}
                       <span className="text font-bold">
                         {logs} {logs === 1 ? "log" : "logs"}
@@ -486,7 +489,7 @@ export default function Output({
                   ) {
                     return (
                       <div key={i} className="ml-1 flex flex-auto flex-row">
-                        <div className="mr-2 flex font-mono text-sm text-gray-300">
+                        <div className="mr-2 flex font-mono text-sm text-primary-300">
                           {i}:
                         </div>
                         <Logs trace={trace} />
@@ -500,7 +503,7 @@ export default function Output({
         ) : null}
         <div className="flex flex-auto flex-col">
           <div className="flex flex-row items-center text-sm">
-            <div className="w-full flex-initial cursor-pointer text-gray-400">
+            <div className="w-full flex-initial cursor-pointer text-primary-500 dark:text-primary-500-night">
               <div className="flex w-full flex-row items-center justify-between">
                 <div
                   className="flex flex-row items-center"
@@ -511,15 +514,15 @@ export default function Output({
                   ) : (
                     <ChevronRightIcon className="mt-0.5 h-4 w-4" />
                   )}
-                  <span className="text-sm text-gray-400">
+                  <span className="text-sm text-primary-500 dark:text-primary-500-night">
                     [{" "}
-                    <span className="font-bold text-emerald-400">
+                    <span className="font-bold text-success">
                       {successes} {successes === 1 ? "success" : "successes"}
                     </span>
                     {errors > 0 ? (
                       <>
                         {", "}
-                        <span className="font-bold text-red-400">
+                        <span className="font-bold text-warning">
                           {errors} {errors === 1 ? "error" : "errors"}
                         </span>
                       </>
@@ -537,7 +540,7 @@ export default function Output({
               {traces.map((trace, i) => {
                 return (
                   <div key={i} className="ml-1 flex flex-auto flex-row">
-                    <div className="mr-2 flex font-mono text-sm text-gray-300">
+                    <div className="mr-2 flex font-mono text-sm text-primary-300">
                       {i}:
                     </div>
                     <Execution trace={trace} block={block} />

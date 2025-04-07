@@ -485,10 +485,11 @@ export async function createOrUpgradeAgentConfiguration({
         auth,
         {
           type: "mcp_server_configuration",
-          mcpServerId: action.mcpServerId,
+          mcpServerViewId: action.mcpServerViewId,
           name: action.name,
           description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
           dataSources: action.dataSources,
+          tables: action.tables,
         },
         agentConfigurationRes.value
       );

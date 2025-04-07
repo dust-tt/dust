@@ -1,4 +1,6 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
+import type { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
+import { isNodeCandidate } from "@app/shared/lib/connectors";
 import { getSpaceAccessPriority } from "@app/shared/lib/spaces";
 import { classNames } from "@app/shared/lib/utils";
 import { AssistantPicker } from "@app/ui/components/assistants/AssistantPicker";
@@ -19,7 +21,7 @@ import type {
   ExtensionWorkspaceType,
   LightAgentConfigurationType,
 } from "@dust-tt/client";
-import { SplitButton } from "@dust-tt/sparkle";
+import { SplitButton, useSendNotification } from "@dust-tt/sparkle";
 import { EditorContent } from "@tiptap/react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -56,16 +58,20 @@ export const InputBarContainer = ({
 }: InputBarContainerProps) => {
   const platform = usePlatform();
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
-
-  const [nodeCandidate, setNodeCandidate] = useState<string | null>(null);
+  const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
+    UrlCandidate | NodeCandidate | null
+  >(null);
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNodeType | null>(null);
 
-  const handleUrlDetected = useCallback((nodeId: string | null) => {
-    if (nodeId) {
-      setNodeCandidate(nodeId);
-    }
-  }, []);
+  const handleUrlDetected = useCallback(
+    (candidate: UrlCandidate | NodeCandidate | null) => {
+      if (candidate) {
+        setNodeOrUrlCandidate(candidate);
+      }
+    },
+    []
+  );
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
@@ -73,6 +79,8 @@ export const InputBarContainer = ({
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
   });
+
+  const sendNotification = useSendNotification();
 
   useUrlHandler(editor, selectedNode);
 
@@ -82,16 +90,29 @@ export const InputBarContainer = ({
     [spaces]
   );
 
-  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
-    includeDataSources: true,
-    viewType: "all",
-    nodeIds: nodeCandidate ? [nodeCandidate] : [],
-    disabled: isSpacesLoading || !nodeCandidate,
-    spaceIds: spaces.map((s) => s.sId),
-  });
+  const { searchResultNodes, isSearchLoading } = useSpacesSearch(
+    isNodeCandidate(nodeOrUrlCandidate)
+      ? {
+          // NodeIdSearchParams
+          nodeIds: nodeOrUrlCandidate?.node ? [nodeOrUrlCandidate.node] : [],
+          includeDataSources: true,
+          viewType: "all",
+          disabled: isSpacesLoading || !nodeOrUrlCandidate,
+          spaceIds: spaces.map((s) => s.sId),
+        }
+      : {
+          // TextSearchParams
+          search: nodeOrUrlCandidate?.url || "",
+          searchSourceUrls: true,
+          includeDataSources: true,
+          viewType: "all",
+          disabled: isSpacesLoading || !nodeOrUrlCandidate,
+          spaceIds: spaces.map((s) => s.sId),
+        }
+  );
 
   useEffect(() => {
-    if (!nodeCandidate || !onNodeSelect || isSearchLoading) {
+    if (!nodeOrUrlCandidate || !onNodeSelect || isSearchLoading) {
       return;
     }
 
@@ -114,18 +135,24 @@ export const InputBarContainer = ({
         setSelectedNode(node);
       }
 
-      // Reset node candidate after processing
-      setNodeCandidate(null);
+      // Reset node candidate after processing.
+      // FIXME: This causes reset to early and it requires pasting the url twice.
+      setNodeOrUrlCandidate(null);
     } else {
-      setNodeCandidate(null);
+      sendNotification({
+        title: "No match for URL",
+        description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
+        type: "info",
+      });
+      setNodeOrUrlCandidate(null);
     }
   }, [
     searchResultNodes,
-    nodeCandidate,
     onNodeSelect,
     isSearchLoading,
     editorService,
     spacesMap,
+    nodeOrUrlCandidate,
   ]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from

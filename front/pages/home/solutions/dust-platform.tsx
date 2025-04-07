@@ -101,16 +101,12 @@ export default function DustPlatform() {
         </div>
       </Grid>
       <ExtensibilitySection page="platform" />
-      <DemoVideoSection
-        demoVideo={DemoVideo}
-        fromColor="from-sky-200"
-        toColor="to-sky-500"
-      />
+      <DemoVideoSection demoVideo={DemoVideo} />
       <QuoteSection
         quote="Dust functions as a 'meta-platform.' Its aggregation approach offers flexibility, allowing us to leverage multiple data sources across tools and avoid being locked into specific tools or vertical ecosystems."
         name="Charles Gorintin"
         title="CTO at Alan"
-        logo="/static/landing/logos/alan.png"
+        logo="/static/landing/logos/color/alan.png"
       />
       <div
         className={classNames(
