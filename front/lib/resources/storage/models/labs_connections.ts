@@ -6,7 +6,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { LabsConnectionType } from "@app/types";
-import { labsConnections, SyncStatus } from "@app/types";
+import { SyncStatus } from "@app/types";
 
 export class LabsConnectionsConfigurationModel extends WorkspaceAwareModel<LabsConnectionsConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -45,7 +45,7 @@ LabsConnectionsConfigurationModel.init(
       allowNull: false,
     },
     provider: {
-      type: DataTypes.ENUM(...labsConnections),
+      type: DataTypes.STRING,
       allowNull: false,
     },
     isEnabled: {
@@ -70,7 +70,7 @@ LabsConnectionsConfigurationModel.init(
       allowNull: true,
     },
     syncStatus: {
-      type: DataTypes.ENUM(...Object.values(SyncStatus)),
+      type: DataTypes.STRING,
       allowNull: false,
       defaultValue: SyncStatus.IDLE,
     },
