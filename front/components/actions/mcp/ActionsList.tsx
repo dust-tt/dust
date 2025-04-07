@@ -5,6 +5,12 @@ import {
   classNames,
   Cog6ToothIcon,
   DataTable,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   IconButton,
   SearchInput,
   SliderToggle,
@@ -43,9 +49,10 @@ type RowData = {
 type CellProps = {
   owner: LightWorkspaceType;
   row: RowData;
+  setMCPServerToDelete: (mcpServer: MCPServerType) => void;
 };
 
-const Cell = ({ owner, row }: CellProps) => {
+const Cell = ({ owner, row, setMCPServerToDelete }: CellProps) => {
   const { mcpServer, mcpServerView, isConnected, spaces } = row;
   const { deleteServer } = useDeleteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
@@ -54,6 +61,7 @@ const Cell = ({ owner, row }: CellProps) => {
   const { serverType } = getServerTypeAndIdFromSId(mcpServer.id);
 
   const enabled = mcpServerView !== undefined;
+
   return (
     <DataTable.CellContent grow>
       <div
@@ -129,10 +137,9 @@ const Cell = ({ owner, row }: CellProps) => {
               <IconButton
                 variant="outline"
                 icon={TrashIcon}
-                onClick={async (e) => {
+                onClick={(e) => {
                   e.stopPropagation();
-
-                  await deleteServer(mcpServer.id);
+                  setMCPServerToDelete(mcpServer);
                 }}
                 size="sm"
               />
@@ -171,11 +178,15 @@ export const AdminActionsList = ({
     owner,
   });
 
-  const [isCreating, setIsCreating] = useState(false);
+  const [mcpServerToDelete, setMCPServerToDelete] = useState<
+    MCPServerType | undefined
+  >();
+  const [isLoading, setIsLoading] = useState(false);
 
   const { connections } = useMCPServerConnections({
     owner,
   });
+  const { deleteServer } = useDeleteMCPServer(owner);
 
   const getTableColumns = (): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -185,7 +196,11 @@ export const AdminActionsList = ({
       accessorKey: "name",
       header: "Name",
       cell: (info: CellContext<RowData, string>) => (
-        <Cell row={info.row.original} owner={owner} />
+        <Cell
+          row={info.row.original}
+          owner={owner}
+          setMCPServerToDelete={setMCPServerToDelete}
+        />
       ),
       filterFn: (row, id, filterValue) => {
         return (
@@ -246,6 +261,47 @@ export const AdminActionsList = ({
 
   return (
     <>
+      <Dialog
+        open={mcpServerToDelete !== undefined}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMCPServerToDelete(undefined);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete action</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            Are you sure you want to delete the action "
+            {mcpServerToDelete?.name}"?
+            <div className="mt-2">
+              <b>This action cannot be undone.</b>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setMCPServerToDelete(undefined),
+            }}
+            rightButtonProps={{
+              label: "Delete",
+              variant: "warning",
+              onClick: async () => {
+                if (mcpServerToDelete) {
+                  setMCPServerToDelete(undefined);
+                  setIsLoading(true);
+                  await deleteServer(mcpServerToDelete.id);
+                  setIsLoading(false);
+                }
+              },
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-row gap-2">
         <SearchInput
           name="filter"
@@ -256,11 +312,11 @@ export const AdminActionsList = ({
         <CreateRemoteMCPServerModal
           owner={owner}
           setMCPServer={setMcpServer}
-          setIsCreating={setIsCreating}
+          setIsCreating={setIsLoading}
         />
       </div>
 
-      {isAvailableMCPServersLoading || isMCPServersLoading || isCreating ? (
+      {isAvailableMCPServersLoading || isMCPServersLoading || isLoading ? (
         <div className="mt-16 flex justify-center">
           <Spinner />
         </div>

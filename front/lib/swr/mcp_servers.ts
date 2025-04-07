@@ -161,7 +161,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
       throw new Error(error.api_error?.message || "Failed to delete server");
     }
 
-    void mutateMCPServers();
+    await mutateMCPServers();
     return response.json();
   };
 
@@ -193,7 +193,7 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
       throw new Error(error.api_error?.message || "Failed to create server");
     }
 
-    void mutateMCPServers();
+    await mutateMCPServers();
     return response.json();
   };
 
@@ -226,7 +226,7 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       );
     }
 
-    void mutateMCPServers();
+    await mutateMCPServers();
     return response.json();
   };
 
@@ -258,7 +258,7 @@ export function useSyncRemoteMCPServer(
       );
     }
 
-    void mutateMCPServer();
+    await mutateMCPServer();
     return response.json();
   };
 
@@ -295,7 +295,7 @@ export function useUpdateRemoteMCPServer(
       throw new Error(error.api_error?.message || "Failed to update server");
     }
 
-    void mutateMCPServer();
+    await mutateMCPServer();
     return response.json();
   };
 
