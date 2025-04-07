@@ -9,8 +9,7 @@ import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types";
-import type { SubscriptionType } from "@app/types";
+import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -206,12 +205,14 @@ export default function WorkspaceAdmin({
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Analytics</Page.H>
             <Page.Horizontal gap="lg">
-              <QuickInsights owner={owner} />
-              <ActivityReport
-                isDownloading={isDownloadingData}
-                monthOptions={monthOptions}
-                handleDownload={handleDownload}
-              />
+              <div className="grid w-full grid-cols-2 gap-4">
+                <QuickInsights owner={owner} />
+                <ActivityReport
+                  isDownloading={isDownloadingData}
+                  monthOptions={monthOptions}
+                  handleDownload={handleDownload}
+                />
+              </div>
             </Page.Horizontal>
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
