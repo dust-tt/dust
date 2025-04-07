@@ -6,7 +6,7 @@ import {
   ConfigurableToolInputSchemas,
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPServerDefinitionType } from "@app/lib/actions/mcp_metadata";
+import type { InternalMCPServerDefinitionType } from "@app/lib/actions/mcp_metadata";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
@@ -14,7 +14,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-const serverInfo: MCPServerDefinitionType = {
+const serverInfo: InternalMCPServerDefinitionType = {
   name: "data-source-utils",
   version: "1.0.0",
   description:
