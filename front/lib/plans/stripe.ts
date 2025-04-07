@@ -10,7 +10,10 @@ import {
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
 import { PlanResource } from "@app/lib/resources/plan_resource";
-import { Subscription } from "@app/lib/resources/storage/models/plans";
+import {
+  PlanModel,
+  Subscription,
+} from "@app/lib/resources/storage/models/plans";
 import type {
   BillingPeriod,
   LightWorkspaceType,
@@ -124,7 +127,7 @@ export const createProPlanCheckoutSession = async ({
   let trialAllowed = true;
   const existingSubscription = await Subscription.findOne({
     where: { workspaceId: owner.id },
-    include: [PlanResource.model],
+    include: [PlanModel],
   });
   if (existingSubscription && !isOldFreePlan(existingSubscription.plan.code)) {
     trialAllowed = false;
