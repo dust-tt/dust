@@ -22,7 +22,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import type { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -299,22 +299,33 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
     const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
 
-    return this.baseFetch(auth, undefined, {
-      includes: [
-        {
-          model: DataSourceModel,
-          as: "dataSourceForView",
-          required: true,
-          where: {
-            assistantDefaultSelected: true,
-          },
-        },
-      ],
+    const dataSourceViews = await this.baseFetch(auth, undefined, {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: spaces.map((s) => s.id),
       },
     });
+
+    if (dataSourceViews.length === 0) {
+      return [];
+    }
+
+    const selectedDataSources =
+      await DataSourceResource.fetchAssistantDefaultSelectedByModelIds(
+        auth,
+        dataSourceViews.map((dsv) => dsv.dataSourceId)
+      );
+
+    const selectedDataSourceIds = new Set(
+      selectedDataSources.map((ds) => ds.id)
+    );
+
+    return dataSourceViews
+      .filter((dsv) => selectedDataSourceIds.has(dsv.dataSourceId))
+      .map((dsv) => {
+        dsv.ds = selectedDataSources.find((ds) => ds.id === dsv.dataSourceId);
+        return dsv;
+      });
   }
 
   static async listForDataSourcesInSpace(
