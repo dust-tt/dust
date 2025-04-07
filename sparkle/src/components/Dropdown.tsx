@@ -7,6 +7,7 @@ import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
+import { DoubleIcon } from "@sparkle/components/DoubleIcon";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
@@ -123,12 +124,23 @@ const ItemWithLabelIconAndDescription = <
                 description ? "s-items-start s-pt-0.5" : "s-items-center"
               )}
             >
-              {icon && <Icon size={description ? "sm" : "xs"} visual={icon} />}
-              {extraIcon && (
-                <div className="-s-ml-1.5 s-mt-1.5">
-                  <Icon size="xs" visual={extraIcon} />
-                </div>
-              )}
+              {icon && extraIcon ? (
+                <DoubleIcon
+                  mainIconProps={{
+                    visual: icon,
+                    size: description ? "sm" : "xs",
+                  }}
+                  secondaryIconProps={{
+                    visual: extraIcon,
+                    size: "xs",
+                  }}
+                  position="bottom-right"
+                />
+              ) : icon ? (
+                <Icon size={description ? "sm" : "xs"} visual={icon} />
+              ) : extraIcon ? (
+                <Icon size="xs" visual={extraIcon} />
+              ) : null}
             </div>
           )}
           <div className="s-flex s-flex-col">
