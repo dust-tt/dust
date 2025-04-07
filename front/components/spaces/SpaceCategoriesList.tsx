@@ -26,13 +26,13 @@ import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   DataSourceWithAgentsUsageType,
   SpaceType,
   WorkspaceType,
 } from "@app/types";
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@app/types";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type RowData = {
   category: string;
