@@ -8,6 +8,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   PaginationState,
+  Row,
   RowSelectionState,
   type SortingState,
   Updater,
@@ -39,7 +40,13 @@ import {
   Tooltip,
 } from "@sparkle/components";
 import { useCopyToClipboard } from "@sparkle/hooks";
-import { ArrowDownIcon, ArrowUpIcon, ClipboardCheckIcon, ClipboardIcon, MoreIcon } from "@sparkle/icons";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  MoreIcon,
+} from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 import { breakpoints, useWindowSize } from "./WindowUtility";
@@ -93,7 +100,7 @@ interface DataTableProps<TData extends TBaseData> {
   disablePaginationNumbers?: boolean;
   rowSelection?: RowSelectionState;
   setRowSelection?: (rowSelection: RowSelectionState) => void;
-  enableRowSelection?: boolean | ((row: TData) => boolean);
+  enableRowSelection?: boolean | ((row: Row<TData>) => boolean);
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -1028,13 +1035,14 @@ DataTable.Caption = function Caption({
   );
 };
 
-export function createSelectionColumn<TData>(): ColumnDef<TData, unknown> {
+export function createSelectionColumn<TData>(): ColumnDef<TData> {
   return {
     id: "select",
     enableSorting: false,
     enableHiding: false,
     header: ({ table }) => (
       <Checkbox
+        size="xs"
         checked={
           table.getIsAllRowsSelected()
             ? true
@@ -1042,21 +1050,29 @@ export function createSelectionColumn<TData>(): ColumnDef<TData, unknown> {
               ? "partial"
               : false
         }
-        onCheckedChange={table.getToggleAllRowsSelectedHandler()}
-        size="xs"
+        onCheckedChange={(state) => {
+          if (state === "indeterminate") {
+            return;
+          }
+          table.toggleAllRowsSelected(state);
+        }}
       />
     ),
     cell: ({ row }) => (
       <Checkbox
+        size="xs"
         checked={row.getIsSelected()}
         disabled={!row.getCanSelect()}
-        onCheckedChange={row.getToggleSelectedHandler()}
-        size="xs"
+        onCheckedChange={(state) => {
+          if (state === "indeterminate") {
+            return;
+          }
+          row.toggleSelected(state);
+        }}
       />
     ),
     meta: {
       className: "s-w-10 s-text-start",
-      sizeRatio: 5,
     },
   };
 }

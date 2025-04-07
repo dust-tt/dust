@@ -1,5 +1,10 @@
 import type { Meta } from "@storybook/react";
-import { ColumnDef, PaginationState, RowSelectionState, SortingState } from "@tanstack/react-table";
+import {
+  ColumnDef,
+  PaginationState,
+  RowSelectionState,
+  SortingState,
+} from "@tanstack/react-table";
 import React, { useCallback, useMemo, useState } from "react";
 
 import {
@@ -595,10 +600,7 @@ export const DataTableWithRowSelectionExample = () => {
   const [filter, setFilter] = useState("");
 
   const columnsWithSelection: ColumnDef<Data>[] = useMemo(
-    () => [
-      createSelectionColumn<Data>(),
-      ...columns,
-    ],
+    () => [createSelectionColumn<Data>(), ...columns],
     []
   );
 
@@ -621,7 +623,7 @@ export const DataTableWithRowSelectionExample = () => {
           columns={columnsWithSelection}
           rowSelection={rowSelection}
           setRowSelection={setRowSelection}
-          enableRowSelection={(row) => (row.id ? row.id % 2 === 0 : false)}
+          enableRowSelection={true}
         />
 
         <div className="s-rounded-md s-border s-bg-muted/50 s-p-2">
