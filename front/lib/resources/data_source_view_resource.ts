@@ -318,7 +318,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     }
 
     return dataSourceViews.filter(
-      (dsv) => dsv.dataSource.assistantDefaultSelected
+      (dsv) => dsv.dataSource && dsv.dataSource.assistantDefaultSelected
     );
   }
 
