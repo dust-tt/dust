@@ -266,7 +266,10 @@ const upsertExcelToDatasource: ProcessingFunction = async (
 
     await processAndStoreFile(auth, {
       file: worksheetFile,
-      reqOrString: worksheetContent,
+      content: {
+        type: "string",
+        value: worksheetContent,
+      },
     });
 
     tableIds.push(tableId);
