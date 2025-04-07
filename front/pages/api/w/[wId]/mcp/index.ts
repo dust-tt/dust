@@ -132,9 +132,9 @@ async function handler(
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
-          name: metadata.name,
           url: url,
-          description: metadata.description,
+          cachedName: metadata.name,
+          cachedDescription: metadata.description,
           cachedTools: metadata.tools,
           icon: metadata.icon,
           version: metadata.version,

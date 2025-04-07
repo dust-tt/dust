@@ -68,8 +68,8 @@ async function handler(
   const metadata = await fetchRemoteServerMetaDataByURL(auth, server.url);
 
   await server.updateMetadata(auth, {
-    name: metadata.name,
-    description: metadata.description,
+    cachedName: metadata.name,
+    cachedDescription: metadata.description,
     cachedTools: metadata.tools,
     lastSyncAt: new Date(),
   });

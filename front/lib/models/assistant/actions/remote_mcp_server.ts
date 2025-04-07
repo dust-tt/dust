@@ -28,6 +28,8 @@ export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
   declare icon: AllowedIconType;
   declare version: string;
 
+  declare cachedName: string;
+  declare cachedDescription: string;
   declare cachedTools: MCPToolType[];
 
   declare lastSyncAt: Date | null;
@@ -70,6 +72,16 @@ RemoteMCPServer.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: DEFAULT_MCP_ACTION_VERSION,
+    },
+    cachedName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: DEFAULT_MCP_ACTION_NAME,
+    },
+    cachedDescription: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: DEFAULT_MCP_ACTION_DESCRIPTION,
     },
     cachedTools: {
       type: DataTypes.JSONB,
