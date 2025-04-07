@@ -1,9 +1,5 @@
 import type { Meta } from "@storybook/react";
-import {
-  ColumnDef,
-  PaginationState,
-  SortingState,
-} from "@tanstack/react-table";
+import { ColumnDef, PaginationState, RowSelectionState, SortingState } from "@tanstack/react-table";
 import React, { useCallback, useMemo, useState } from "react";
 
 import {
@@ -19,7 +15,7 @@ import {
   Input,
   ScrollableDataTable,
 } from "@sparkle/components/";
-import { MenuItem } from "@sparkle/components/DataTable";
+import { createSelectionColumn, MenuItem } from "@sparkle/components/DataTable";
 import { FolderIcon } from "@sparkle/icons";
 
 const meta = {
@@ -45,6 +41,7 @@ type Data = {
     React.ComponentPropsWithoutRef<typeof DropdownMenu>,
     "modal"
   >;
+  id?: number;
   roundedAvatar?: boolean;
 };
 
@@ -529,6 +526,7 @@ const createData = (start: number, count: number) => {
   return Array(count)
     .fill(0)
     .map((_, i) => ({
+      id: i,
       name: `Item ${start + i + 1}`,
       usedBy: Math.floor(Math.random() * 100),
       addedBy: `UserUserUserUserUserUserUserUserUserUserUser ${Math.floor(Math.random() * 10) + 1}`,
@@ -585,6 +583,55 @@ export const ScrollableDataTableExample = () => {
 
         <div className="s-text-sm s-text-muted-foreground">
           Loaded {data.length} rows. Scroll to the bottom to load more.
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const DataTableWithRowSelectionExample = () => {
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [data] = useState<Data[]>(() => createData(0, 10));
+  const [filter, setFilter] = useState("");
+
+  const columnsWithSelection: ColumnDef<Data>[] = useMemo(
+    () => [
+      createSelectionColumn<Data>(),
+      ...columns,
+    ],
+    []
+  );
+
+  return (
+    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
+      <h3 className="s-text-lg s-font-medium">DataTable with Row Selection</h3>
+
+      <div className="s-flex s-flex-col s-gap-4">
+        <Input
+          name="filter"
+          placeholder="Filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+
+        <DataTable
+          data={data}
+          filter={filter}
+          filterColumn="name"
+          columns={columnsWithSelection}
+          rowSelection={rowSelection}
+          setRowSelection={setRowSelection}
+          enableRowSelection={(row) => (row.id ? row.id % 2 === 0 : false)}
+        />
+
+        <div className="s-rounded-md s-border s-bg-muted/50 s-p-2">
+          <h4 className="s-mb-2 s-font-medium">Selection State:</h4>
+          <pre className="s-overflow-auto s-text-xs">
+            {JSON.stringify(rowSelection, null, 2)}
+          </pre>
+          <p className="s-mt-2 s-text-sm">
+            Selected {Object.keys(rowSelection).length} of {data.length} rows
+          </p>
         </div>
       </div>
     </div>
