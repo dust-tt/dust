@@ -199,6 +199,7 @@ export function RemoteMCPForm({
                 {...field}
                 isError={!!form.formState.errors.name}
                 message={form.formState.errors.name?.message}
+                placeholder={mcpServer.cachedName}
               />
             )}
           />
@@ -250,9 +251,10 @@ export function RemoteMCPForm({
           render={({ field }) => (
             <>
               <Input
+                {...field}
                 isError={!!form.formState.errors.description?.message}
                 message={form.formState.errors.description?.message}
-                {...field}
+                placeholder={mcpServer.cachedDescription}
               />
               <p className="text-xs text-gray-500">
                 This is only for internal reference and is not shown to the
