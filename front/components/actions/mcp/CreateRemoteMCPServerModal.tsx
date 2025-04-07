@@ -96,6 +96,7 @@ export function CreateRemoteMCPServerModal({
                   onChange={(e) => setUrl(e.target.value)}
                   isError={!!error}
                   message={error}
+                  autoFocus
                 />
               </div>
             </div>
