@@ -4,6 +4,7 @@ import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import type { LocalMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 
 // ------------------------------
 // Request ID Utilities
@@ -91,12 +92,12 @@ export function createLocalMCPServerConfigurations(
     return [];
   }
 
-  return localMCPServerIds.map((sId) => ({
+  return localMCPServerIds.map((serverId) => ({
     // TODO:
     id: -2, // Default ID for local MCP servers.
-    sId,
-    name: `MCP Server ${sId}`,
-    description: `Use the MCP Server ${sId} to interact with the local MCP server.`,
+    sId: serverId,
+    name: `MCP Server ${serverId}`,
+    description: `Use the MCP Server ${serverId} to interact with the local MCP server.`,
     type: "mcp_server_configuration",
   }));
 }

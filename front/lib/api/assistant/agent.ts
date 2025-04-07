@@ -1,4 +1,4 @@
-import { tryGetMCPTools } from "@app/lib/actions/mcp_actions";
+import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -379,7 +379,7 @@ async function* runMultiActionsAgent(
     userMessage.context.localMCPServerIds
   );
 
-  const mcpActions = await tryGetMCPTools(auth, {
+  const mcpActions = await tryListMCPTools(auth, {
     agentActions: [...agentActions, ...localMCPActions],
     conversationId: conversation.sId,
     messageId: agentMessage.sId,

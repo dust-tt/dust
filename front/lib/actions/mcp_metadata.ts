@@ -90,12 +90,14 @@ interface ConnectViaLocalMCPServer {
   mcpServerId: string;
 }
 
+export type MCPConnectionOptions =
+  | ConnectViaMCPServerId
+  | ConnectViaRemoteMCPServerUrl
+  | ConnectViaLocalMCPServer;
+
 export const connectToMCPServer = async (
   auth: Authenticator,
-  params:
-    | ConnectViaMCPServerId
-    | ConnectViaRemoteMCPServerUrl
-    | ConnectViaLocalMCPServer
+  params: MCPConnectionOptions
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.

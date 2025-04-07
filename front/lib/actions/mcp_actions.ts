@@ -9,6 +9,7 @@ import type {
   PlatformMCPServerConfigurationType,
   PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { MCPConnectionOptions } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -270,12 +271,37 @@ async function tryCallLocalMCPTool(
   }
 }
 
+async function getConnectionOptions(
+  auth: Authenticator,
+  config: MCPServerConfigurationType,
+  {
+    conversationId,
+    messageId,
+  }: {
+    conversationId: string;
+    messageId: string;
+  }
+): Promise<MCPConnectionOptions> {
+  if (isPlatformMCPServerConfiguration(config)) {
+    return {
+      type: "mcpServerId",
+      mcpServerId: config.mcpServerViewId,
+    };
+  }
+
+  return {
+    type: "localMCPServerId",
+    mcpServerId: config.sId,
+    conversationId,
+    messageId,
+  };
+}
+
 /**
- * Get the MCP tools for the given agent actions.
- *
- * This function will return the MCP tools for the given agent actions by connecting to the MCP server(s).
+ * List the MCP tools for the given agent actions.
+ * Returns MCP tools by connecting to the specified MCP servers.
  */
-export async function tryGetMCPTools(
+export async function tryListMCPTools(
   auth: Authenticator,
   {
     agentActions,
@@ -296,245 +322,57 @@ export async function tryGetMCPTools(
   // Filter for MCP server configurations.
   const mcpServerActions = agentActions.filter(isMCPServerConfiguration);
 
-  // Split between platform and local MCP servers.
-  const [platformMCPServers, localMCPServers] = mcpServerActions.reduce(
-    (acc, action) => {
-      // TODO: Create type guards for platform and local MCP server configurations.
-      const isPlatform = "mcpServerViewId" in action;
-
-      return [
-        isPlatform ? [...acc[0], action] : acc[0],
-        isPlatform ? acc[1] : [...acc[1], action],
-      ];
-    },
-    [[], []] as [
-      PlatformMCPServerConfigurationType[],
-      LocalMCPServerConfigurationType[],
-    ]
-  );
-
-  // Get tools from platform MCP servers.
-  const platformTools = await tryGetPlatformMCPTools(auth, platformMCPServers);
-
-  // Get tools from local MCP servers.
-  const localTools = await tryGetLocalMCPTools(auth, localMCPServers, {
-    conversationId,
-    messageId,
-  });
-
-  const totalTools = [...platformTools, ...localTools];
-
-  return totalTools;
-}
-
-/**
- * Get MCP tools from platform MCP servers.
- * These are MCP servers that require a mcpServerViewId.
- */
-async function tryGetPlatformMCPTools(
-  auth: Authenticator,
-  platformMCPServers: PlatformMCPServerConfigurationType[]
-): Promise<PlatformMCPToolConfigurationType[]> {
-  const owner = auth.getNonNullableWorkspace();
-
-  // Process all platform MCP servers that have mcpServerViewId.
+  // Discover all the tools exposed by all the mcp servers available.
   const configurations = await Promise.all(
-    platformMCPServers.map(async (action) => {
-      // We know mcpServerViewId exists due to filtering in the parent function.
-      const mcpServerViewId =
-        "mcpServerViewId" in action ? action.mcpServerViewId : "";
+    mcpServerActions.map(async (action) => {
+      const tools = await listMCPServerTools(auth, action, {
+        conversationId,
+        messageId,
+      });
 
-      try {
-        const res = await MCPServerViewResource.fetchById(
-          auth,
-          mcpServerViewId
-        );
-        if (res.isErr()) {
-          throw new Error(
-            `MCP server view with id ${mcpServerViewId} not found.`
-          );
-        }
-        const mcpServerView = res.value;
-        const r: ToolType[] = await listPlatformMCPServerTools(
-          auth,
-          mcpServerView.mcpServerId
-        );
-
-        return makeMCPConfigurations({
-          config: action,
-          listToolsResult: r,
-        });
-      } catch (error) {
-        logger.error(
-          {
-            workspaceId: owner.id,
-            action,
-            error,
-          },
-          `Error listing tools for platform MCP server, returning empty list.`
-        );
-        return [];
-      }
+      return makeMCPConfigurations({
+        config: action,
+        listToolsResult: tools,
+      });
     })
   );
 
   return configurations.flat();
 }
 
-async function listPlatformMCPServerTools(
-  auth: Authenticator,
-  mcpServerId: string
-): Promise<ToolType[]> {
-  const mcpClient = await connectToMCPServer(auth, {
-    type: "mcpServerId",
-    mcpServerId,
-  });
-
-  let allTools: ToolType[] = [];
-  let nextPageCursor;
-  do {
-    const { tools, nextCursor } = await mcpClient.listTools();
-    nextPageCursor = nextCursor;
-    allTools = [...allTools, ...tools];
-  } while (nextPageCursor);
-
-  await mcpClient.close();
-
-  return allTools;
+function isPlatformMCPServerConfiguration(
+  action: AgentActionConfigurationType
+): action is PlatformMCPServerConfigurationType {
+  return "mcpServerViewId" in action;
 }
 
-/**
- * Get MCP tools from local MCP servers.
- * These are MCP servers that don't require a mcpServerViewId.
- *
- * Local MCP servers are typically initialized from user message context
- * and allow the agent to interact with local tools provided by the client.
- */
-async function tryGetLocalMCPTools(
+async function listMCPServerTools(
   auth: Authenticator,
-  localMCPServers: LocalMCPServerConfigurationType[],
+  config: MCPServerConfigurationType,
   {
     conversationId,
     messageId,
   }: {
     conversationId: string;
     messageId: string;
-  }
-): Promise<LocalMCPToolConfigurationType[]> {
-  if (!localMCPServers.length) {
-    return [];
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-  logger.info(
-    {
-      workspaceId: owner.id,
-      conversationId,
-      messageId,
-      localMCPServerCount: localMCPServers.length,
-    },
-    `Fetching tools from ${localMCPServers.length} local MCP servers`
-  );
-
-  try {
-    const r = await concurrentExecutor(
-      localMCPServers,
-      async (s) => {
-        try {
-          const tools: ToolType[] = await listLocalMCPServerTools(auth, {
-            conversationId,
-            messageId,
-            mcpServerId: s.sId,
-          });
-
-          logger.info(
-            {
-              workspaceId: owner.id,
-              conversationId,
-              messageId,
-              mcpServerId: s.sId,
-              toolCount: tools.length,
-            },
-            `Found ${tools.length} tools from local MCP server ${s.sId}`
-          );
-
-          return makeMCPConfigurations({
-            config: s,
-            listToolsResult: tools,
-          });
-        } catch (error) {
-          logger.error(
-            {
-              workspaceId: owner.id,
-              conversationId,
-              messageId,
-              mcpServerId: s.sId,
-              error,
-            },
-            `Error getting tools from local MCP server ${s.sId}`
-          );
-          return [];
-        }
-      },
-      { concurrency: 10 }
-    );
-
-    return r.flat();
-  } catch (error) {
-    logger.error(
-      {
-        workspaceId: owner.id,
-        conversationId,
-        messageId,
-        error,
-      },
-      "Error fetching tools from local MCP servers"
-    );
-    return [];
-  }
-}
-
-/**
- * List tools available from a local MCP server.
- *
- * Local MCP servers are connected to via Redis transport to communicate
- * with client-side MCP implementations. This function connects to a
- * specified server and retrieves the available tools.
- *
- * @param auth - Authenticator for workspace context
- * @param conversationId - ID of the conversation
- * @param messageId - ID of the message
- * @param mcpServerId - String ID of the MCP server to connect to
- * @returns Array of available tools from the MCP server
- */
-async function listLocalMCPServerTools(
-  auth: Authenticator,
-  {
-    conversationId,
-    messageId,
-    mcpServerId,
-  }: {
-    conversationId: string;
-    messageId: string;
-    mcpServerId: string;
   }
 ): Promise<ToolType[]> {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
   try {
-    // Connect to the local MCP server
-    mcpClient = await connectToMCPServer(auth, {
-      type: "localMCPServerId",
-      mcpServerId,
+    const connectionOptions = await getConnectionOptions(auth, config, {
       conversationId,
       messageId,
     });
 
+    // Connect to the MCP server.
+    mcpClient = await connectToMCPServer(auth, connectionOptions);
+
     let allTools: ToolType[] = [];
     let nextPageCursor;
 
-    // Fetch all tools, handling pagination if supported by the MCP server
+    // Fetch all tools, handling pagination if supported by the MCP server.
     do {
       const { tools, nextCursor } = await mcpClient.listTools();
       nextPageCursor = nextCursor;
@@ -546,10 +384,9 @@ async function listLocalMCPServerTools(
         workspaceId: owner.id,
         conversationId,
         messageId,
-        mcpServerId,
         toolCount: allTools.length,
       },
-      `Retrieved ${allTools.length} tools from local MCP server`
+      `Retrieved ${allTools.length} tools from MCP server`
     );
 
     return allTools;
@@ -559,10 +396,9 @@ async function listLocalMCPServerTools(
         workspaceId: owner.id,
         conversationId,
         messageId,
-        mcpServerId,
         error,
       },
-      `Error listing tools from local MCP server: ${error}`
+      `Error listing tools from MCP server: ${error}`
     );
     throw error;
   } finally {
@@ -576,7 +412,6 @@ async function listLocalMCPServerTools(
             workspaceId: owner.id,
             conversationId,
             messageId,
-            mcpServerId,
             error: closeError,
           },
           "Error closing MCP client connection"

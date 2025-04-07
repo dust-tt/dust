@@ -136,6 +136,8 @@ async function handler(
   // Verify the message exists.
   const message = await fetchMessageInConversation(
     auth,
+    conversationRes.value,
+    messageId
   );
   if (!message || !message.agentMessage) {
     return apiError(req, res, {
