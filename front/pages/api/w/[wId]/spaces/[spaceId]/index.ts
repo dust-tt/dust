@@ -11,6 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -55,6 +56,10 @@ async function handler(
         space
       );
       const apps = await AppResource.listBySpace(auth, space);
+      const actionsCount = await MCPServerViewResource.countBySpace(
+        auth,
+        space
+      );
 
       const categories: { [key: string]: SpaceCategoryInfo } = {};
       for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
@@ -96,6 +101,7 @@ async function handler(
       }
 
       categories["apps"].count = apps.length;
+      categories["actions"].count = actionsCount;
 
       const currentMembers = (
         await Promise.all(

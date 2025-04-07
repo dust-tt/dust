@@ -138,10 +138,10 @@ function FunctionsSection() {
   ];
 
   return (
-    <div className="w-full">
+    <div className="w-full rounded-2xl">
       <CardCarousel
         title={
-          <div className="flex flex-col">
+          <div className="flex flex-col rounded-xl">
             <H2>Custom AI agents for every function</H2>
             <P size="lg" className="text-muted-foreground">
               Whether you're a developer, marketer, or data scientist, Dust

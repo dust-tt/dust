@@ -9,6 +9,7 @@ import type {
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
@@ -17,6 +18,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
+
 export async function fetchTableQueryActionConfigurations({
   configurationIds,
   variant,
@@ -79,25 +81,11 @@ export async function fetchTableQueryActionConfigurations({
       const tablesQueryConfigTables =
         groupedAgentTablesQueryConfigurationTables[c.id] ?? [];
 
-      const tables: TableDataSourceConfiguration[] =
-        tablesQueryConfigTables.map((table) => {
-          const { dataSourceView } = table;
-
-          return {
-            dataSourceViewId: DataSourceViewResource.modelIdToSId({
-              id: dataSourceView.id,
-              workspaceId: dataSourceView.workspaceId,
-            }),
-            workspaceId: dataSourceView.workspace.sId,
-            tableId: table.tableId,
-          };
-        });
-
       actions.push({
         id: c.id,
         sId: c.sId,
         type: "tables_query_configuration",
-        tables,
+        tables: tablesQueryConfigTables.map(getTableConfiguration),
         name: c.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
         description: c.description,
       });
@@ -111,9 +99,16 @@ export async function fetchTableQueryActionConfigurations({
 
 export async function createTableDataSourceConfiguration(
   auth: Authenticator,
-  tableConfigurations: TableDataSourceConfiguration[],
-  tablesQueryConfig: AgentTablesQueryConfiguration,
-  t: Transaction
+  t: Transaction,
+  {
+    tableConfigurations,
+    tablesQueryConfig,
+    mcpConfig,
+  }: {
+    tableConfigurations: TableDataSourceConfiguration[];
+    tablesQueryConfig: AgentTablesQueryConfiguration | null;
+    mcpConfig: AgentMCPServerConfiguration | null;
+  }
 ) {
   const owner = auth.getNonNullableWorkspace();
   // Although we have the capability to support multiple workspaces,
@@ -146,11 +141,27 @@ export async function createTableDataSourceConfiguration(
           dataSourceId: dataSource.id,
           dataSourceViewId: dataSourceView.id,
           tableId: tc.tableId,
-          tablesQueryConfigurationId: tablesQueryConfig.id,
+          tablesQueryConfigurationId: tablesQueryConfig?.id || null,
+          mcpServerConfigurationId: mcpConfig?.id || null,
           workspaceId: owner.id,
         },
         { transaction: t }
       );
     })
   );
+}
+
+export function getTableConfiguration(
+  table: AgentTablesQueryConfigurationTable
+): TableDataSourceConfiguration {
+  const { dataSourceView } = table;
+
+  return {
+    dataSourceViewId: DataSourceViewResource.modelIdToSId({
+      id: dataSourceView.id,
+      workspaceId: dataSourceView.workspaceId,
+    }),
+    workspaceId: dataSourceView.workspace.sId,
+    tableId: table.tableId,
+  };
 }

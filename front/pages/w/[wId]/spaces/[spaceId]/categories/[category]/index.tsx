@@ -18,7 +18,7 @@ import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   ConnectorProvider,
-  DataSourceViewCategory,
+  DataSourceViewCategoryWithoutApps,
   DataSourceWithConnectorDetailsType,
   SpaceType,
 } from "@app/types";
@@ -28,11 +28,6 @@ import {
   isDataSourceViewCategoryWithoutApps,
   removeNulls,
 } from "@app/types";
-
-type DataSourceViewCategoryWithoutApps = Exclude<
-  DataSourceViewCategory,
-  "apps"
->;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
