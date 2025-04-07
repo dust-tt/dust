@@ -138,16 +138,12 @@ export class PlanResource extends BaseResource<PlanModel> {
     planCode: string,
     planData: Omit<Attributes<PlanModel>, "id" | "createdAt" | "updatedAt">
   ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.update(planData, {
-        where: {
-          code: planCode,
-        },
-      });
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    await this.model.update(planData, {
+      where: {
+        code: planCode,
+      },
+    });
+    return new Ok(undefined);
   }
 
   // Serialization.

@@ -292,9 +292,8 @@ async function handler(
             const subscription: SubscriptionType = renderSubscriptionFromModels(
               {
                 plan: activeSubscription
-                  ? await PlanResource.makeNew(activeSubscription.plan.get())
-                  : // If there is no active subscription, we use the free plan data.
-                    await PlanResource.makeNew({
+                  ? await PlanResource.makeNew(activeSubscription.plan)
+                  : await PlanResource.makeNew({
                       ...FREE_NO_PLAN_DATA,
                       id: -1,
                       createdAt: new Date(),
