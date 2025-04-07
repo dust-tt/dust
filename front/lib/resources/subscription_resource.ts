@@ -11,6 +11,7 @@ import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
+import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isEntreprisePlan, isProPlan } from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_39_CODE } from "@app/lib/plans/plan_codes";
@@ -27,7 +28,6 @@ import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { PlanAttributes } from "@app/lib/resources/plan_resource";
 import { getTrialVersionForPlan } from "@app/lib/resources/plan_resource";
-import { FREE_NO_PLAN_DATA } from "@app/lib/resources/plan_resource";
 import { PlanResource } from "@app/lib/resources/plan_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
