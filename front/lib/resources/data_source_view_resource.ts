@@ -219,7 +219,10 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   private static async baseFetch(
     auth: Authenticator,
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
-    options?: ResourceFindOptions<DataSourceViewModel>
+    options?: ResourceFindOptions<DataSourceViewModel>,
+    {
+      filterAssistantDefaultSelected = false,
+    }: { filterAssistantDefaultSelected?: boolean } = {}
   ) {
     const { includeDeleted } = fetchDataSourceViewOptions ?? {};
 
@@ -233,13 +236,22 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       dataSourceViews.map((ds) => ds.dataSourceId)
     );
 
-    const dataSources = await DataSourceResource.fetchByModelIds(
-      auth,
-      dataSourceIds,
-      {
-        includeEditedBy: fetchDataSourceViewOptions?.includeEditedBy,
-      }
-    );
+    const includeEditedBy = fetchDataSourceViewOptions?.includeEditedBy;
+    let dataSources;
+    if (filterAssistantDefaultSelected) {
+      dataSources =
+        await DataSourceResource.fetchAssistantDefaultSelectedByModelIds(
+          auth,
+          dataSourceIds,
+          { includeEditedBy }
+        );
+    } else {
+      dataSources = await DataSourceResource.fetchByModelIds(
+        auth,
+        dataSourceIds,
+        { includeEditedBy }
+      );
+    }
 
     for (const dsv of dataSourceViews) {
       dsv.ds = dataSources.find((ds) => ds.id === dsv.dataSourceId);
@@ -299,31 +311,25 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
     const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
 
-    const dataSourceViews = await this.baseFetch(auth, undefined, {
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: spaces.map((s) => s.id),
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      undefined,
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          vaultId: spaces.map((s) => s.id),
+        },
       },
-    });
+      { filterAssistantDefaultSelected: true }
+    );
 
     if (dataSourceViews.length === 0) {
       return [];
     }
 
-    const selectedDataSources =
-      await DataSourceResource.fetchAssistantDefaultSelectedByModelIds(
-        auth,
-        dataSourceViews.map((dsv) => dsv.dataSourceId)
-      );
-
-    const dataSourceMap = new Map(selectedDataSources.map((ds) => [ds.id, ds]));
-
-    return dataSourceViews
-      .filter((dsv) => dataSourceMap.has(dsv.dataSourceId))
-      .map((dsv) => {
-        dsv.ds = dataSourceMap.get(dsv.dataSourceId);
-        return dsv;
-      });
+    return dataSourceViews.filter(
+      (dsv) => dsv.dataSource.assistantDefaultSelected
+    );
   }
 
   static async listForDataSourcesInSpace(
