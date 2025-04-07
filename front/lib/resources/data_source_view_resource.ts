@@ -24,7 +24,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -480,12 +479,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       {
         where: whereClause,
         order: [["updatedAt", "DESC"]],
-        includes: [
-          {
-            model: SpaceModel,
-            as: "space",
-          },
-        ],
       }
     );
   }
