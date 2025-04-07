@@ -2,7 +2,6 @@ import type { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import type {
-  LocalMCPServerConfigurationType,
   LocalMCPToolConfigurationType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
@@ -12,15 +11,19 @@ import type {
 import type { MCPConnectionOptions } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import {
+  isMCPActionConfiguration,
+  isMCPServerConfiguration,
+} from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+
+const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
 // See https://github.com/colinhacks/zod/issues/2938
@@ -86,7 +89,7 @@ function makeMCPConfigurations<T extends MCPServerConfigurationType>({
     };
 
     // Add platform-specific properties if platform config.
-    if ("mcpServerViewId" in config) {
+    if (isPlatformMCPServerConfiguration(config)) {
       const platformConfig: PlatformMCPToolConfigurationType = {
         ...baseConfig,
         sId: generateRandomModelSId(),
@@ -106,87 +109,47 @@ function makeMCPConfigurations<T extends MCPServerConfigurationType>({
 /**
  * Try to call an MCP tool.
  *
- * This function will handle both platform and local MCP tools and call the appropriate
- * specialized function based on the tool type.
+ * This function will handle both platform and local MCP tools.
  */
 export async function tryCallMCPTool(
   auth: Authenticator,
   {
     owner,
-    messageId,
     conversationId,
+    messageId,
     actionConfiguration,
     rawInputs,
   }: {
     owner: LightWorkspaceType;
-    messageId: string;
     conversationId: string;
+    messageId: string;
     actionConfiguration: MCPToolConfigurationType;
     rawInputs: Record<string, unknown> | undefined;
   }
 ): Promise<Result<MCPToolResultContent[], Error>> {
-  // Check if it's a platform MCP tool configuration.
-  // TODO: Create type guards for platform and local MCP server configurations.
-  if ("mcpServerViewId" in actionConfiguration) {
-    return tryCallPlatformMCPTool(auth, {
-      owner,
-      actionConfiguration,
-      rawInputs,
-    });
-  } else {
-    // It's a local MCP tool configuration.
-    return tryCallLocalMCPTool(auth, {
-      owner,
+  const connectionOptions = await getConnectionOptions(
+    auth,
+    actionConfiguration,
+    {
       conversationId,
       messageId,
-      actionConfiguration,
-      rawInputs,
-    });
-  }
-}
-
-/**
- * Try to call a platform MCP tool.
- *
- * This function will potentially fail if the server is remote as it will try to connect to it.
- */
-async function tryCallPlatformMCPTool(
-  auth: Authenticator,
-  {
-    owner,
-    actionConfiguration,
-    rawInputs,
-  }: {
-    owner: LightWorkspaceType;
-    actionConfiguration: PlatformMCPToolConfigurationType;
-    rawInputs: Record<string, unknown> | undefined;
-  }
-): Promise<Result<MCPToolResultContent[], Error>> {
-  try {
-    const res = await MCPServerViewResource.fetchById(
-      auth,
-      actionConfiguration.mcpServerViewId
-    );
-    if (res.isErr()) {
-      throw new Error(
-        `MCP server view with id ${actionConfiguration.mcpServerViewId} not found.`
-      );
     }
-    const mcpServerView = res.value;
+  );
 
-    const mcpClient = await connectToMCPServer(auth, {
-      type: "mcpServerId",
-      mcpServerId: mcpServerView.mcpServerId,
-    });
+  if (connectionOptions.isErr()) {
+    return connectionOptions;
+  }
+
+  try {
+    const mcpClient = await connectToMCPServer(auth, connectionOptions.value);
+
     const r = await mcpClient.callTool(
       {
         name: actionConfiguration.name,
         arguments: rawInputs,
       },
       undefined,
-      {
-        timeout: 10000,
-      }
+      { timeout: DEFAULT_MCP_REQUEST_TIMEOUT_MS }
     );
 
     await mcpClient.close();
@@ -207,65 +170,7 @@ async function tryCallPlatformMCPTool(
         actionConfiguration,
         error,
       },
-      `Error calling platform MCP tool, returning error.`
-    );
-    return new Err(normalizeError(error));
-  }
-}
-
-/**
- * Try to call a local MCP tool.
- *
- * This function handles local MCP tools that don't require a mcpServerViewId.
- */
-async function tryCallLocalMCPTool(
-  auth: Authenticator,
-  {
-    owner,
-    conversationId,
-    actionConfiguration,
-    messageId,
-    rawInputs,
-  }: {
-    owner: LightWorkspaceType;
-    conversationId: string;
-    actionConfiguration: LocalMCPToolConfigurationType;
-    messageId: string;
-    rawInputs: Record<string, unknown> | undefined;
-  }
-): Promise<Result<MCPToolResultContent[], Error>> {
-  try {
-    const mcpClient = await connectToMCPServer(auth, {
-      type: "localMCPServerId",
-      mcpServerId: actionConfiguration.mcpServerId,
-      conversationId,
-      messageId,
-    });
-
-    const r = await mcpClient.callTool({
-      name: actionConfiguration.name,
-      arguments: rawInputs,
-    });
-
-    await mcpClient.close();
-
-    if (r.isError) {
-      return new Err(new Error(r.content as string));
-    }
-
-    // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: MCPToolResultContent[] = (r.content ??
-      []) as MCPToolResultContent[];
-
-    return new Ok(content);
-  } catch (error) {
-    logger.error(
-      {
-        workspaceId: owner.id,
-        actionConfiguration,
-        error,
-      },
-      `Error calling local MCP tool, returning error.`
+      `Error calling MCP tool, returning error.`
     );
     return new Err(normalizeError(error));
   }
@@ -273,7 +178,7 @@ async function tryCallLocalMCPTool(
 
 async function getConnectionOptions(
   auth: Authenticator,
-  config: MCPServerConfigurationType,
+  config: MCPServerConfigurationType | MCPToolConfigurationType,
   {
     conversationId,
     messageId,
@@ -281,20 +186,34 @@ async function getConnectionOptions(
     conversationId: string;
     messageId: string;
   }
-): Promise<MCPConnectionOptions> {
-  if (isPlatformMCPServerConfiguration(config)) {
-    return {
+): Promise<Result<MCPConnectionOptions, Error>> {
+  if (
+    (isMCPServerConfiguration(config) &&
+      isPlatformMCPServerConfiguration(config)) ||
+    (isMCPActionConfiguration(config) && isPlatformMCPToolConfiguration(config))
+  ) {
+    const res = await MCPServerViewResource.fetchById(
+      auth,
+      config.mcpServerViewId
+    );
+    if (res.isErr()) {
+      return res;
+    }
+
+    return new Ok({
       type: "mcpServerId",
       mcpServerId: config.mcpServerViewId,
-    };
+    });
   }
 
-  return {
+  return new Ok({
     type: "localMCPServerId",
-    mcpServerId: config.sId,
+    mcpServerId: isMCPActionConfiguration(config)
+      ? config.mcpServerId
+      : config.sId,
     conversationId,
     messageId,
-  };
+  });
 }
 
 /**
@@ -343,7 +262,15 @@ export async function tryListMCPTools(
 function isPlatformMCPServerConfiguration(
   action: AgentActionConfigurationType
 ): action is PlatformMCPServerConfigurationType {
-  return "mcpServerViewId" in action;
+  return (
+    action.type === "mcp_server_configuration" && "mcpServerViewId" in action
+  );
+}
+
+function isPlatformMCPToolConfiguration(
+  action: MCPToolConfigurationType
+): action is PlatformMCPToolConfigurationType {
+  return action.type === "mcp_configuration" && "mcpServerViewId" in action;
 }
 
 async function listMCPServerTools(
@@ -366,8 +293,12 @@ async function listMCPServerTools(
       messageId,
     });
 
+    if (connectionOptions.isErr()) {
+      throw connectionOptions.error;
+    }
+
     // Connect to the MCP server.
-    mcpClient = await connectToMCPServer(auth, connectionOptions);
+    mcpClient = await connectToMCPServer(auth, connectionOptions.value);
 
     let allTools: ToolType[] = [];
     let nextPageCursor;
