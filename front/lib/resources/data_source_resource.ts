@@ -304,11 +304,15 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     ids: ModelId[],
     options?: FetchDataSourceOptions
   ) {
+    const where: WhereOptions<DataSourceModel> = {
+      id: ids,
+    };
+    if (options?.assistantDefaultSelected) {
+      where["assistantDefaultSelected"] = options?.assistantDefaultSelected;
+    }
+
     return this.baseFetch(auth, options, {
-      where: {
-        id: ids,
-        assistantDefaultSelected: options?.assistantDefaultSelected,
-      },
+      where,
     });
   }
 

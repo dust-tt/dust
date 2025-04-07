@@ -234,11 +234,13 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       dataSourceViews.map((ds) => ds.dataSourceId)
     );
 
-    const includeEditedBy = fetchDataSourceViewOptions?.includeEditedBy;
     const dataSources = await DataSourceResource.fetchByModelIds(
       auth,
       dataSourceIds,
-      { includeEditedBy, assistantDefaultSelected }
+      {
+        includeEditedBy: fetchDataSourceViewOptions?.includeEditedBy,
+        assistantDefaultSelected,
+      }
     );
 
     for (const dsv of dataSourceViews) {
@@ -315,7 +317,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       return [];
     }
 
-    logger.info({ dataSourceViews }, "listAssistantDefaultSelected");
     return dataSourceViews.filter(
       (dsv) => dsv.dataSource.assistantDefaultSelected
     );
