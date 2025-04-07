@@ -14,7 +14,11 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
+import type {
+  DataSourceConfiguration,
+  RetrievalTimeframe,
+} from "@app/lib/actions/retrieval";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentConfigurationType,
   DataSourceViewSelectionConfigurations,
@@ -36,7 +40,7 @@ function processDataSourcesSelection({
 }: {
   owner: WorkspaceType;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-}) {
+}): DataSourceConfiguration[] {
   return Object.values(dataSourceConfigurations).map(
     ({ dataSourceView, selectedResources, isSelectAll, tagsFilter }) => ({
       dataSourceViewId: dataSourceView.sId,
@@ -60,7 +64,7 @@ function processTableSelection({
 }: {
   owner: WorkspaceType;
   tablesConfigurations: DataSourceViewSelectionConfigurations;
-}) {
+}): TableDataSourceConfiguration[] {
   return Object.values(tablesConfigurations).flatMap(
     ({ dataSourceView, selectedResources }) => {
       return selectedResources.map((resource) => ({
