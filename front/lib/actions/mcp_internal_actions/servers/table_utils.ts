@@ -3,9 +3,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPServerDefinitionType } from "@app/lib/actions/mcp_metadata";
+import type { InternalMCPServerDefinitionType } from "@app/lib/actions/mcp_metadata";
 
-const serverInfo: MCPServerDefinitionType = {
+const serverInfo: InternalMCPServerDefinitionType = {
   name: "table-utils",
   version: "1.0.0",
   description:
