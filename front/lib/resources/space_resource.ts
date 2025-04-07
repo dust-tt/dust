@@ -30,7 +30,8 @@ import type {
   SpaceKind,
   SpaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err } from "@app/types";
+import { Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -323,19 +324,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
 
     return space;
-  }
-
-  static async fetchByModelIds(
-    auth: Authenticator,
-    ids: ModelId[],
-    { includeDeleted }: { includeDeleted?: boolean } = {}
-  ): Promise<SpaceResource[]> {
-    return (
-      this.baseFetch(auth, {
-        where: { id: ids },
-        includeDeleted,
-      }) ?? []
-    );
   }
 
   static async isNameAvailable(
