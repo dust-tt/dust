@@ -175,7 +175,7 @@ export function SlackAssistantDefaultManager({
             {!isAdmin(owner) && (
               <ContentMessage
                 size="md"
-                variant="pink"
+                variant="warning"
                 title="Admin Access Required"
                 icon={InformationCircleIcon}
               >

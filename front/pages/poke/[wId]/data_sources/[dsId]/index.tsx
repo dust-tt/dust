@@ -1113,7 +1113,7 @@ function ZendeskTicketCheck({
                 trigger={
                   <Chip
                     label={ticketDetails.isTicketOnDb ? "Synced" : "Not synced"}
-                    color={ticketDetails.isTicketOnDb ? "purple" : "pink"}
+                    color={ticketDetails.isTicketOnDb ? "success" : "info"}
                   />
                 }
               />
@@ -1129,7 +1129,7 @@ function ZendeskTicketCheck({
                 trigger={
                   <Chip
                     label={ticketDetails.ticket ? "Found" : "Not Found"}
-                    color={ticketDetails.ticket ? "emerald" : "warning"}
+                    color={ticketDetails.ticket ? "success" : "warning"}
                   />
                 }
               />

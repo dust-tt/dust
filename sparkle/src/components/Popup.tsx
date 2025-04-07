@@ -1,7 +1,6 @@
 import { Transition } from "@headlessui/react";
 import React from "react";
 
-import { IconButton } from "@sparkle/components/IconButton";
 import { XMarkIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -47,13 +46,13 @@ export function Popup({
         )}
       >
         <div className="s-flex">
-          <Chip color="pink">{chipLabel}</Chip>
+          <Chip color="warning">{chipLabel}</Chip>
           {onClose && (
             <div className="-s-mr-1 -s-mt-1 s-flex s-grow s-items-start s-justify-end">
-              <IconButton
+              <Button
                 icon={XMarkIcon}
                 onClick={onClose}
-                variant="outline"
+                variant="ghost"
                 size="sm"
               />
             </div>
