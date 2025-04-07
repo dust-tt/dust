@@ -96,7 +96,7 @@ export function SearchInputWithPopoverScrollableExample() {
       onSelectAll={() => console.log("select all")}
       contentMessage={{
         title: "You can add a custom message here",
-        variant: "pink",
+        variant: "green",
         icon: InformationCircleIcon,
         className: "s-w-full",
         size: "lg",
