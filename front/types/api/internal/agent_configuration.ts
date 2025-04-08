@@ -146,6 +146,7 @@ const MCPServerActionConfigurationSchema = t.type({
 
   dataSources: t.union([t.null, DataSourcesConfigurationsCodec]),
   tables: t.union([t.null, TablesConfigurationsCodec]),
+  childAgent: t.union([t.null, t.type({ sId: t.string })]),
 });
 
 const ProcessActionConfigurationSchema = t.type({
