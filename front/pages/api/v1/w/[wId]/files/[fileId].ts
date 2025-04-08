@@ -4,7 +4,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import {
+  isFileTypeUpsertableForUseCase,
+  processAndUpsertToDataSource,
+} from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -132,8 +135,11 @@ async function handler(
         });
       }
 
-      // Only upsert immediately in case of conversation
-      if (file.useCase === "conversation") {
+      // For files with useCase "conversation" that support upsert, directly add them to the data source.
+      if (
+        file.useCase === "conversation" &&
+        isFileTypeUpsertableForUseCase(file)
+      ) {
         const jitDataSource = await getOrCreateConversationDataSourceFromFile(
           auth,
           file
