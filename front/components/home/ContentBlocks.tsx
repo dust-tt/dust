@@ -388,7 +388,7 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => {
     <div className="w-full">
       <Carousel className="w-full" opts={{ align: "start" }} isLooping={true}>
         <div className="mb-2 flex items-center justify-between sm:mb-4">
-          <H2>Testimonials</H2>
+          <H2>Driving AI ROI together</H2>
           <div className="flex gap-1.5 sm:gap-4">
             <CarouselPrevious
               size="sm"

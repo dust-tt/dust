@@ -37,7 +37,7 @@ const HeroContent = () => {
           />
         </Link>
         <Link href="/home/contact" shallow={true}>
-          <Button variant="outline" size="md" label="Contact sales" />
+          <Button variant="outline" size="md" label="Book a demo" />
         </Link>
       </div>
     </div>
