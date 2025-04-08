@@ -1,5 +1,9 @@
-import { Avatar, Button, ContentMessage } from "@dust-tt/sparkle";
-import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import {
+  Avatar,
+  Button,
+  ContentMessage,
+  InformationCircleIcon,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
@@ -30,7 +34,7 @@ export function ChildAgentSelector({
     return (
       <ContentMessage
         title="Error loading agents"
-        icon={ExclamationTriangleIcon}
+        icon={InformationCircleIcon}
         variant="warning"
         size="sm"
       >
@@ -52,7 +56,7 @@ export function ChildAgentSelector({
     return (
       <ContentMessage
         title="No agents available"
-        icon={ExclamationTriangleIcon}
+        icon={InformationCircleIcon}
         variant="warning"
         size="sm"
       >
