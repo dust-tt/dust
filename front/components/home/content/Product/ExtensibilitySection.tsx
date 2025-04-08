@@ -1,15 +1,34 @@
-import { ImgBlock, ImgContent } from "@app/components/home/ContentBlocks";
-import { H2, P } from "@app/components/home/ContentComponents";
+import { Div3D, Hover3D } from "@dust-tt/sparkle";
+import Link from "next/link";
+
+import { ImgBlock } from "@app/components/home/ContentBlocks";
+import { A, H2, P } from "@app/components/home/ContentComponents";
+import { classNames } from "@app/lib/utils";
 
 export function ExtensibilitySection({ page = "default" }) {
   return (
     <div className="w-full">
       <div className="mb-8">
-        <H2>Connect to your systems with APIs</H2>
-        <P size="lg" className="text-muted-foreground">
-          {page === "default"
-            ? "The Dust Developer Platform lets you build custom use cases, integrations, and workflow automations."
-            : "Build custom use cases, integrations, and workflow automations with our developer platform."}
+        <H2>Push further with custom code</H2>
+        <P size="lg" className="max-w-[700px] text-muted-foreground">
+          Developer friendly&nbsp;platform designed to&nbsp;build custom actions
+          and&nbsp;application orchestration to&nbsp;fit your
+          team's&nbsp;exact&nbsp;needs.
+          <br />{" "}
+          {page == "default" && (
+            <Link href="/home/solutions/dust-platform" shallow={true}>
+              <A variant="primary">More about Dust's&nbsp;Developer Platform</A>
+            </Link>
+          )}
+          {page != "default" && (
+            <Link
+              href="https://docs.dust.tt/reference/developer-platform-overview"
+              shallow={true}
+              target="_blank"
+            >
+              <A variant="primary">See our documentation</A>
+            </Link>
+          )}
         </P>
       </div>
 
@@ -23,14 +42,18 @@ export function ExtensibilitySection({ page = "default" }) {
             </>
           }
         >
-          <ImgContent
-            images={[
-              {
-                src: "/static/landing/apps/ticketgeneration.png",
-                alt: "Custom agentic tools",
-              },
-            ]}
-          />
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-40}>
+              <img
+                src="/static/landing/apps/ticketgeneration.png"
+                alt="Custom agentic tools"
+              />
+            </Div3D>
+          </Hover3D>
         </ImgBlock>
         <ImgBlock
           title={<>Build custom connections</>}
@@ -42,14 +65,18 @@ export function ExtensibilitySection({ page = "default" }) {
             </>
           }
         >
-          <ImgContent
-            images={[
-              {
-                src: "/static/landing/api/connections.png",
-                alt: "Custom connections",
-              },
-            ]}
-          />
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-40}>
+              <img
+                src="/static/landing/api/connections.png"
+                alt="Custom connections"
+              />
+            </Div3D>
+          </Hover3D>
         </ImgBlock>
         <ImgBlock
           title={<>Build custom integrations</>}
@@ -60,14 +87,18 @@ export function ExtensibilitySection({ page = "default" }) {
             </>
           }
         >
-          <ImgContent
-            images={[
-              {
-                src: "/static/landing/api/integration.png",
-                alt: "Custom integrations",
-              },
-            ]}
-          />
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-40}>
+              <img
+                src="/static/landing/api/integration.png"
+                alt="Custom integrations"
+              />
+            </Div3D>
+          </Hover3D>
         </ImgBlock>
       </div>
     </div>

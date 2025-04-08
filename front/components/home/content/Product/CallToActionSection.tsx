@@ -12,8 +12,8 @@ export function CallToActionSection() {
         "rounded-2xl bg-blue-50"
       )}
     >
-      <H3 className="mb-8 text-gray-900">Just use Dust.</H3>
-      <div className="flex gap-4">
+      <H3 className="mb-8 text-center text-gray-900">Just use Dust.</H3>
+      <div className="flex flex-col items-center gap-4 sm:flex-row">
         <Link href="home/pricing" shallow={true}>
           <Button
             variant="highlight"

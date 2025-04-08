@@ -1,15 +1,24 @@
-import { ImgBlock, ImgContent } from "@app/components/home/ContentBlocks";
-import { H2, P } from "@app/components/home/ContentComponents";
+import { Div3D, Hover3D } from "@dust-tt/sparkle";
+import Link from "next/link";
+
+import { ImgBlock } from "@app/components/home/ContentBlocks";
+import { A, H2, P } from "@app/components/home/ContentComponents";
+import { classNames } from "@app/lib/utils";
 
 export function SecuritySection() {
   return (
     <div className="w-full">
       <div className="mb-8">
-        <H2>Enterprise-grade security</H2>
+        <H2>Built with enterprise-grade security</H2>
         <P size="lg" className="text-muted-foreground">
-          Dust's platform upholds the highest standards of data privacy and
-          security, ensuring complete control over how and where your data is
-          used.
+          We've made security our core focus from day&nbsp;one to safeguard
+          your&nbsp;company&nbsp;data and workspace&nbsp;privacy. Avoid shadow
+          IT and benefit from Enterprise-level privacy from model providers.
+          SOC2, HIPAA & GDPR compliant.
+          <br />
+          <Link href="/home/security" shallow={true}>
+            <A variant="primary">More about Security</A>
+          </Link>
         </P>
       </div>
 
@@ -23,14 +32,24 @@ export function SecuritySection() {
             </>
           }
         >
-          <ImgContent
-            images={[
-              { src: "/static/landing/selection/selection1.png" },
-              { src: "/static/landing/selection/selection2.png" },
-              { src: "/static/landing/selection/selection3.png" },
-              { src: "/static/landing/selection/selection4.png" },
-            ]}
-          />
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-20}>
+              <img src="/static/landing/selection/selection1.png" />
+            </Div3D>
+            <Div3D depth={0} className="absolute top-0">
+              <img src="/static/landing/selection/selection2.png" />
+            </Div3D>
+            <Div3D depth={15} className="absolute top-0">
+              <img src="/static/landing/selection/selection3.png" />
+            </Div3D>
+            <Div3D depth={60} className="absolute top-0">
+              <img src="/static/landing/selection/selection4.png" />
+            </Div3D>
+          </Hover3D>
         </ImgBlock>
         <ImgBlock
           title={<>Select trusted models only</>}
@@ -41,14 +60,24 @@ export function SecuritySection() {
             </>
           }
         >
-          <ImgContent
-            images={[
-              { src: "/static/landing/provider/provider1.png" },
-              { src: "/static/landing/provider/provider2.png" },
-              { src: "/static/landing/provider/provider3.png" },
-              { src: "/static/landing/provider/provider4.png" },
-            ]}
-          />
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-20}>
+              <img src="/static/landing/provider/provider1.png" />
+            </Div3D>
+            <Div3D depth={20} className="absolute top-0">
+              <img src="/static/landing/provider/provider2.png" />
+            </Div3D>
+            <Div3D depth={40} className="absolute top-0">
+              <img src="/static/landing/provider/provider3.png" />
+            </Div3D>
+            <Div3D depth={70} className="absolute top-0">
+              <img src="/static/landing/provider/provider4.png" />
+            </Div3D>
+          </Hover3D>
         </ImgBlock>
         <ImgBlock
           title={<>Maintain rigorous access control</>}
@@ -59,14 +88,24 @@ export function SecuritySection() {
             </>
           }
         >
-          <ImgContent
-            images={[
-              { src: "/static/landing/member/member1.png" },
-              { src: "/static/landing/member/member2.png" },
-              { src: "/static/landing/member/member3.png" },
-              { src: "/static/landing/member/member4.png" },
-            ]}
-          />
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-20}>
+              <img src="/static/landing/member/member1.png" />
+            </Div3D>
+            <Div3D depth={0} className="absolute top-0">
+              <img src="/static/landing/member/member2.png" />
+            </Div3D>
+            <Div3D depth={15} className="absolute top-0">
+              <img src="/static/landing/member/member3.png" />
+            </Div3D>
+            <Div3D depth={60} className="absolute top-0">
+              <img src="/static/landing/member/member4.png" />
+            </Div3D>
+          </Hover3D>
         </ImgBlock>
       </div>
     </div>

@@ -138,12 +138,13 @@ function FunctionsSection() {
 
   return (
     <div className="w-full rounded-2xl">
-      <div className="flex w-full justify-center">
-        <H2 className="text-center">
-          What agent will you use or create today?
-        </H2>
-      </div>
-      <CardCarousel title={<div></div>}>
+      <CardCarousel
+        title={
+          <div className="flex w-full items-center justify-between">
+            <H2>What agent will you use or create today?</H2>
+          </div>
+        }
+      >
         {cards.map((card, index) => (
           <FunctionCard
             key={index}

@@ -39,8 +39,8 @@ export function Landing() {
         title="Head of GTM Engineering at Clay"
         logo="/static/landing/logos/color/clay.png"
       />
-      <FutureSection />
-      <DemoVideoSection demoVideo={DemoVideo} />
+      {/* <FutureSection /> */}
+      <DemoVideoSection demoVideo={DemoVideo} id="demo-video" />
       <BlogSection />
       <CallToActionSection />
     </>

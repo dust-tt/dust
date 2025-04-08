@@ -17,8 +17,8 @@ function CardCarousel({ title, children }: CardCarouselProps) {
   return (
     <div className="w-full rounded-xl">
       <Carousel className="w-full rounded-xl" opts={{ align: "start" }}>
-        <div className="mb-6 flex items-end justify-between">
-          <div className="w-full max-w-5xl">{title}</div>
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex-1">{title}</div>
           <div className="flex gap-4">
             <CarouselPrevious />
             <CarouselNext />
