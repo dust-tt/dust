@@ -122,15 +122,20 @@ function generateConfiguredInput({
       );
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT: {
-      const { childAgentId } = actionConfiguration;
-      if (!childAgentId) {
+      const { childAgent } = actionConfiguration;
+      if (!childAgent) {
+        // TODO(mcp): improve typing wrt this.
+        throw new Error("Unreachable: child agent configuration not found.");
+      }
+      const { sId } = childAgent;
+      if (!sId) {
         // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
         throw new Error(
           "Unreachable: child agent configuration without an sId."
         );
       }
       return {
-        uri: `child_agent://dust/w/${owner.sId}/child_agents/${childAgentId}`,
+        uri: `child_agent_configuration://dust/w/${owner.sId}/child_agent_configurations/${sId}`,
         mimeType,
       };
     }
