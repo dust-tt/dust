@@ -33,7 +33,6 @@ export const acceptableTranscriptProvidersCodec = t.union([
 export const acceptableTranscriptsWithConnectorProvidersCodec =
   t.literal("gong");
 
-// Simplify the schema definitions to avoid duplications
 const OAuthConfigSchema = t.type({
   provider: acceptableTranscriptProvidersCodec,
   connectionId: t.string,

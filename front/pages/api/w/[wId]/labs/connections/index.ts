@@ -20,13 +20,11 @@ export type GetLabsConnectionsConfigurationResponseBody = {
   } | null;
 };
 
-// Define provider type separately for better reuse
 export const acceptableConnectionProvidersCodec = t.union([
   t.literal("hubspot"),
   t.literal("hubspot"), // Duplicate to satisfy union type requirement
 ]);
 
-// Simplify the schema definitions to avoid duplications
 const OAuthConfigSchema = t.type({
   provider: acceptableConnectionProvidersCodec,
   connectionId: t.string,
@@ -46,21 +44,6 @@ export function isApiKeyConfig(
   config: t.TypeOf<typeof PostLabsConnectionsConfigurationBodySchema>
 ): config is t.TypeOf<typeof ApiKeyConfigSchema> {
   return "apiKey" in config;
-}
-
-function getConnectionDetails(
-  validatedBody: t.TypeOf<typeof PostLabsConnectionsConfigurationBodySchema>
-) {
-  if (isApiKeyConfig(validatedBody)) {
-    return {
-      credentialId: validatedBody.apiKey,
-      connectionId: null,
-    };
-  }
-  return {
-    credentialId: null,
-    connectionId: validatedBody.connectionId,
-  };
 }
 
 async function handler(
