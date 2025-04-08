@@ -622,7 +622,7 @@ export function AgentMessage({
           />
 
           {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Agent thoughts" variant="info">
+            <ContentMessage title="Agent thoughts" variant="primary">
               <Markdown
                 content={agentMessage.chainOfThought}
                 isStreaming={false}
