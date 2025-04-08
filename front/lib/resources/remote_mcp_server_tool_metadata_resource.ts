@@ -31,7 +31,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     auth: Authenticator,
     blob: CreationAttributes<RemoteMCPServerToolMetadata>,
     transaction?: Transaction
-  ): Promise<Result<RemoteMCPServerToolMetadata, Error>> {
+  ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
     assert(
       systemSpace.canWrite(auth),
@@ -40,7 +40,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
     const toolMetadata = await this.model.create(blob, { transaction });
 
-    return new Ok(toolMetadata);
+    return new this(RemoteMCPServerToolMetadata, toolMetadata.get());
   }
 
   // Fetch
@@ -49,12 +49,6 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     auth: Authenticator,
     options: ResourceFindOptions<RemoteMCPServerToolMetadata>
   ) {
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-    assert(
-      systemSpace.canRead(auth),
-      "The user is not authorized to fetch a tool metadata"
-    );
-
     const toolMetadata = await RemoteMCPServerToolMetadata.findAll({
       ...options,
     });
@@ -79,8 +73,13 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
   static async fetchByServerIdAndToolName(
     auth: Authenticator,
-    serverId: string,
-    toolName: string,
+    {
+      serverId,
+      toolName,
+    }: {
+      serverId: string;
+      toolName: string;
+    },
     options?: ResourceFindOptions<RemoteMCPServerToolMetadata>
   ): Promise<RemoteMCPServerToolMetadataResource | null> {
     const toolMetadata = await this.baseFetch(auth, {
