@@ -186,7 +186,7 @@ export function ActionMCP({
   );
 
   const handleChildAgentConfigUpdate = useCallback(
-    (childAgentSId: string) => {
+    (newChildAgentId: string) => {
       if (!selectedMCPServerView) {
         return;
       }
@@ -197,7 +197,7 @@ export function ActionMCP({
         getNewActionConfig: (prev) => ({
           ...(prev as AssistantBuilderMCPServerConfiguration),
           mcpServerViewId: selectedMCPServerView.id,
-          childAgentConfiguration: { sId: childAgentSId },
+          childAgentId: newChildAgentId,
         }),
       });
     },
