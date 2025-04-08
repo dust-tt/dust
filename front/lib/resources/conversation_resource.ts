@@ -87,8 +87,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const conversations = await this.model.findAll({
       where: {
-        ...options.where,
         ...where,
+        ...options.where,
         workspaceId: workspace.id,
       },
       limit: options.limit,
@@ -188,16 +188,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return mentions;
   }
 
-  static async listAllBeforeDate(date: Date): Promise<ConversationResource[]> {
-    const conversations = await this.model.findAll({
-      where: {
-        updatedAt: {
-          [Op.lt]: date,
+  static async listAllBeforeDate(
+    auth: Authenticator,
+    date: Date
+  ): Promise<ConversationResource[]> {
+    const conversations = await this.baseFetch(
+      auth,
+      { includeDeleted: true, includeTest: true },
+      {
+        where: {
+          updatedAt: {
+            [Op.lt]: date,
+          },
         },
-      },
-    });
-
-    return conversations.map((c) => new this(this.model, c.get()));
+      }
+    );
+    return conversations;
   }
 
   static canAccessConversation(
