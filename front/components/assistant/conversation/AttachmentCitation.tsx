@@ -141,24 +141,25 @@ export function contentFragmentToAttachmentCitation(
     const { provider, nodeType } = contentFragment.contentNodeData;
     const logo = getConnectorProviderLogoWithFallback({ provider });
 
-    const visual = !provider ? (
-      <Icon visual={logo} size="md" />
-    ) : (
-      <DoubleIcon
-        mainIconProps={{
-          visual: logo,
-          size: "md",
-        }}
-        secondaryIconProps={{
-          visual:
-            nodeType === "table"
-              ? TableIcon
-              : nodeType === "folder"
-                ? FolderIcon
-                : DocumentIcon,
-        }}
-      />
-    );
+    const visual =
+      !provider || provider === "webcrawler" ? (
+        <Icon visual={logo} size="md" />
+      ) : (
+        <DoubleIcon
+          mainIconProps={{
+            visual: logo,
+            size: "md",
+          }}
+          secondaryIconProps={{
+            visual:
+              nodeType === "table"
+                ? TableIcon
+                : nodeType === "folder"
+                  ? FolderIcon
+                  : DocumentIcon,
+          }}
+        />
+      );
 
     return {
       type: "node",
