@@ -35,7 +35,7 @@ async function handler(
       status_code: 401,
       api_error: {
         type: "mcp_auth_error",
-        message: "You are not authorized to submit connections requests.",
+        message: "You are not authorized to submit actions requests.",
       },
     });
   }

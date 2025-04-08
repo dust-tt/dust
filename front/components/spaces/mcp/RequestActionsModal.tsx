@@ -105,7 +105,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                 {!isLoading && serverViews.length === 0 && (
                   <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                     <p>
-                      You have no connection set up. Ask an admin to set one up.
+                      You have no actions set up. Ask an admin to set one up.
                     </p>
                   </label>
                 )}
@@ -113,7 +113,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                 {serverViews.length >= 1 && (
                   <>
                     <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
-                      <p>Which server you want to get access to?</p>
+                      <p>Which actions you want to get access to?</p>
                     </label>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -156,7 +156,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                       selectedMcpServer.editedByUser?.fullName ?? ""
                     )}{" "}
                     is the administrator for the {selectedMcpServer.server.name}{" "}
-                    server within Dust. Send an email to{" "}
+                    action within Dust. Send an email to{" "}
                     {_.capitalize(
                       selectedMcpServer.editedByUser?.fullName ?? ""
                     )}
