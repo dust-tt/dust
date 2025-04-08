@@ -16,6 +16,7 @@ import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import {
   AVAILABLE_INTERNAL_MCPSERVER_NAMES,
   isDefaultInternalMCPServer,
+  isDefaultInternalMCPServerByName,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
@@ -454,7 +455,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     const defaultInternalMCPServerIds: string[] = [];
     for (const name of names) {
       const isEnabled = await isEnabledForWorkspace(auth, name);
-      const isDefault = isDefaultInternalMCPServer(name);
+      const isDefault = isDefaultInternalMCPServerByName(name);
 
       if (isEnabled && isDefault) {
         defaultInternalMCPServerIds.push(
