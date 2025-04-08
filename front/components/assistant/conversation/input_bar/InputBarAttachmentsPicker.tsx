@@ -24,13 +24,13 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
 import {
   useSpaces,
   useSpacesSearchWithInfiniteScroll,
 } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
 
 interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
