@@ -1,7 +1,7 @@
 import React from "react";
 
 import { Button, FlexSplitButton } from "@sparkle/components";
-import { ArrowUpIcon, ChevronDownIcon } from "@sparkle/icons";
+import { ArrowUpIcon, ChevronDownIcon } from "@sparkle/icons/app";
 
 export default {
   title: "Playground/Demo",

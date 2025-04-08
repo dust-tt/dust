@@ -12,7 +12,7 @@ import {
   SparklesIcon,
   StarIcon,
   UserIcon,
-} from "@sparkle/icons";
+} from "@sparkle/icons/app";
 import { SlackLogo } from "@sparkle/logo";
 
 const meta = {

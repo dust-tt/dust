@@ -12,7 +12,7 @@ import {
 import { Icon } from "@sparkle/components/Icon";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { SparkleContext, SparkleContextLinkType } from "@sparkle/context";
-import { ChevronRightIcon } from "@sparkle/icons";
+import { ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
 
 const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;

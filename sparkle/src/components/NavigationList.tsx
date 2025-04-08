@@ -10,7 +10,7 @@ import {
   ScrollBar,
 } from "@sparkle/components/";
 import { Button } from "@sparkle/components/Button";
-import { MoreIcon } from "@sparkle/icons";
+import { MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 const NavigationListItemStyles = cva(

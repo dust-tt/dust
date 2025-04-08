@@ -15,7 +15,7 @@ import {
   ButtonVariantType,
 } from "@sparkle/components/Button";
 import { Separator } from "@sparkle/components/Separator";
-import { ChevronDownIcon } from "@sparkle/icons";
+import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
 
 const separatorSizeVariants: Record<Exclude<ButtonSizeType, "mini">, string> = {

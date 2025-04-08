@@ -7,7 +7,7 @@ import {
   Spinner,
   Tooltip,
 } from "@sparkle/components/";
-import { XMarkIcon } from "@sparkle/icons";
+import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 type CitationProps = CardProps & {

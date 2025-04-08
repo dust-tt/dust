@@ -6,7 +6,7 @@ import {
   LinkWrapper,
   LinkWrapperProps,
 } from "@sparkle/components/";
-import { XMarkIcon } from "@sparkle/icons";
+import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";

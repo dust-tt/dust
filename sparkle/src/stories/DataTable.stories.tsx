@@ -21,7 +21,7 @@ import {
   ScrollableDataTable,
 } from "@sparkle/components/";
 import { createSelectionColumn, MenuItem } from "@sparkle/components/DataTable";
-import { FolderIcon } from "@sparkle/icons";
+import { FolderIcon } from "@sparkle/icons/app";
 
 const meta = {
   title: "Components/DataTable",

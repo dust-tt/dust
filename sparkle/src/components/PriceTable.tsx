@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 
-import { CheckIcon, DashIcon, XMarkIcon } from "@sparkle/icons/solid";
+import { CheckIcon, DashIcon, XMarkIcon } from "@sparkle/icons/app";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
