@@ -490,11 +490,10 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     ]);
     const connectionIds: Record<string, string> = {};
     for (const dataSourceView of dataSourceViews) {
-      const connectionId = await auth
-        .getNonNullableUser()
-        .getMetadata(`connection_id_${dataSourceView.dataSource.sId}`);
-      if (connectionId && connectionId.value.length > 0) {
-        connectionIds[dataSourceView.sId] = connectionId.value;
+      const connection =
+        await dataSourceView.dataSource.getPersonalConnection(auth);
+      if (connection) {
+        connectionIds[dataSourceView.sId] = connection.connectionId;
       }
     }
 

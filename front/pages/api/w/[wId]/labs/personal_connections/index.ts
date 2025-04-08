@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -13,7 +14,7 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
 };
 
-export const PostSalesforceBodySchema = t.type({
+export const PostPersonalConnectionBodySchema = t.type({
   connectionId: t.string,
   dataSourceId: t.string,
 });
@@ -27,7 +28,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostSalesforceBodySchema.decode(req.body);
+      const bodyValidation = PostPersonalConnectionBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
 
@@ -42,6 +43,20 @@ async function handler(
 
       const validatedBody = bodyValidation.right;
       const { connectionId, dataSourceId } = validatedBody;
+
+      const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+      if (!dataSource) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
+      }
+      await dataSource.createPersonalConnection(auth, {
+        connectionId,
+      });
 
       await user.setMetadata(`connection_id_${dataSourceId}`, connectionId);
 

@@ -51,8 +51,6 @@ struct ConnectionCreatePayload {
     migrated_credentials: Option<MigratedCredentials>,
     // Optionally present related credential for creating a new credential.
     related_credential: Option<RelatedCredentialPayload>,
-    // Optionally present related credential id for creating a new connection.
-    copy_related_credential_from_connection_id: Option<String>,
 }
 
 async fn connections_create(
@@ -83,18 +81,6 @@ async fn connections_create(
                     Some(e),
                 );
             }
-        }
-    } else if let Some(copy_related_credential_from_connection_id) =
-        payload.copy_related_credential_from_connection_id
-    {
-        // Get the credential from the connection
-        match state
-            .store
-            .retrieve_connection(&copy_related_credential_from_connection_id)
-            .await
-        {
-            Ok(connection) => connection.related_credential_id(),
-            Err(_) => None,
         }
     } else {
         None

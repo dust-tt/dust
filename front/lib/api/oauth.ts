@@ -2,8 +2,11 @@ import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
 import config from "@app/lib/api/config";
+import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { isManaged } from "@app/lib/data_sources";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import type { OAuthAPIError, OAuthConnectionType, Result } from "@app/types";
 import type { OAuthProvider, OAuthUseCase } from "@app/types";
@@ -59,18 +62,23 @@ const PROVIDER_STRATEGIES: Record<
     }) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
-    isExtraConfigValid: (extraConfig: Record<string, string>) => boolean;
+    isExtraConfigValid: (
+      extraConfig: Record<string, string>,
+      useCase: OAuthUseCase
+    ) => boolean;
     getRelatedCredential?: (
+      auth: Authenticator,
       extraConfig: Record<string, string>,
       workspaceId: string,
-      userId: string
-    ) => {
+      userId: string,
+      useCase: OAuthUseCase
+    ) => Promise<{
       credential: {
         content: Record<string, unknown>;
         metadata: { workspace_id: string; user_id: string };
       };
       cleanedConfig: Record<string, string>;
-    } | null;
+    } | null>;
   }
 > = {
   github: {
@@ -323,7 +331,7 @@ const PROVIDER_STRATEGIES: Record<
         )
       );
     },
-    getRelatedCredential: (extraConfig, workspaceId, userId) => {
+    getRelatedCredential: async (auth, extraConfig, workspaceId, userId) => {
       const { client_id, client_secret, ...restConfig } = extraConfig;
       if (!client_id || !client_secret) {
         return null;
@@ -384,7 +392,6 @@ const PROVIDER_STRATEGIES: Record<
       if (!clientId) {
         throw new Error("Missing Salesforce client ID");
       }
-
       return (
         `${connection.metadata.instance_url}/services/oauth2/authorize` +
         `?response_type=code` +
@@ -401,30 +408,81 @@ const PROVIDER_STRATEGIES: Record<
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
     },
-    isExtraConfigValid: (extraConfig) => {
-      if (
-        !extraConfig.instance_url ||
-        !extraConfig.client_id ||
-        (!extraConfig.copy_related_credential_from_connection_id &&
-          !extraConfig.client_secret)
-      ) {
+    isExtraConfigValid: (extraConfig, useCase) => {
+      if (useCase === "personal_connection") {
+        return true;
+      }
+
+      if (!extraConfig.instance_url || !extraConfig.client_id) {
         return false;
       }
       return isValidSalesforceDomain(extraConfig.instance_url);
     },
-    getRelatedCredential: (extraConfig, workspaceId, userId) => {
-      const { client_secret, ...restConfig } = extraConfig;
-      // Keep client_id in metadata in clear text.
-      return {
-        credential: {
-          content: {
-            client_secret,
-            client_id: extraConfig.client_id,
+    getRelatedCredential: async (
+      auth,
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase
+    ) => {
+      if (useCase === "personal_connection") {
+        // For personal connection, we reuse the existing connection credential id
+        // from the existing data source, if it exists.
+        const dataSources = await DataSourceResource.listByConnectorProvider(
+          auth,
+          "salesforce"
+        );
+        if (dataSources.length !== 1) {
+          return null;
+        }
+        const dataSource = dataSources[0].toJSON();
+        if (!isManaged(dataSource)) {
+          return null;
+        }
+        const augmentedDataSource =
+          await augmentDataSourceWithConnectorDetails(dataSource);
+        if (!augmentedDataSource.connector) {
+          return null;
+        }
+
+        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+        const connectionRes = await oauthApi.getAccessToken({
+          provider: "salesforce",
+          connectionId: augmentedDataSource.connector.connectionId,
+        });
+        if (connectionRes.isErr()) {
+          return null;
+        }
+        const connection = connectionRes.value.connection;
+        const connectionId = connection.connection_id;
+
+        return {
+          credential: {
+            content: {
+              from_connection_id: connectionId,
+            },
+            metadata: { workspace_id: workspaceId, user_id: userId },
           },
-          metadata: { workspace_id: workspaceId, user_id: userId },
-        },
-        cleanedConfig: restConfig,
-      };
+          cleanedConfig: {
+            client_id: connection.metadata.client_id as string,
+            instance_url: connection.metadata.instance_url as string,
+            ...extraConfig,
+          },
+        };
+      } else {
+        const { client_secret, ...restConfig } = extraConfig;
+        // Keep client_id in metadata in clear text.
+        return {
+          credential: {
+            content: {
+              client_secret,
+              client_id: extraConfig.client_id,
+            },
+            metadata: { workspace_id: workspaceId, user_id: userId },
+          },
+          cleanedConfig: restConfig,
+        };
+      }
     },
   },
 };
@@ -437,7 +495,7 @@ export async function createConnectionAndGetSetupUrl(
 ): Promise<Result<string, OAuthError>> {
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
-  if (!PROVIDER_STRATEGIES[provider].isExtraConfigValid(extraConfig)) {
+  if (!PROVIDER_STRATEGIES[provider].isExtraConfigValid(extraConfig, useCase)) {
     logger.error(
       { provider, useCase, extraConfig },
       "OAuth: Invalid extraConfig"
@@ -458,23 +516,23 @@ export async function createConnectionAndGetSetupUrl(
   let copyRelatedCredentialFromConnectionId: string | undefined;
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const userId = auth.getNonNullableUser().sId;
-  const clientId: string | undefined = extraConfig.client_id;
 
-  if (extraConfig.copy_related_credential_from_connection_id) {
-    copyRelatedCredentialFromConnectionId =
-      extraConfig.copy_related_credential_from_connection_id;
-    delete extraConfig.copy_related_credential_from_connection_id;
-  } else if (PROVIDER_STRATEGIES[provider].getRelatedCredential) {
-    const result = PROVIDER_STRATEGIES[provider].getRelatedCredential!(
+  if (PROVIDER_STRATEGIES[provider].getRelatedCredential) {
+    const result = await PROVIDER_STRATEGIES[provider].getRelatedCredential!(
+      auth,
       extraConfig,
       workspaceId,
-      userId
+      userId,
+      useCase
     );
+
     if (result) {
       relatedCredential = result.credential;
       extraConfig = result.cleanedConfig;
     }
   }
+
+  const clientId: string | undefined = extraConfig.client_id;
 
   const metadata: Record<string, string> = {
     use_case: useCase,

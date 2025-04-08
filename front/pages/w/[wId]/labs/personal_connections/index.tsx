@@ -1,42 +1,49 @@
 import {
   Button,
   CloudArrowLeftRightIcon,
+  CommandIcon,
+  DataTable,
   Page,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import type { CellContext } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { default as config } from "@app/lib/api/config";
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
+import { getPKCEConfig } from "@app/lib/utils/pkce";
 import type {
   DataSourceType,
   DataSourceWithConnectorDetailsType,
   SubscriptionType,
-  WithConnector,
   WorkspaceType,
 } from "@app/types";
-import { OAuthAPI, removeNulls, setupOAuthConnection } from "@app/types";
+import {
+  Err,
+  isOAuthProvider,
+  removeNulls,
+  setupOAuthConnection,
+} from "@app/types";
+
+type DataSourceWithPersonalConnection = DataSourceWithConnectorDetailsType & {
+  personalConnection: string | null;
+};
+
+type RowData = {
+  dataSource: DataSourceWithPersonalConnection;
+  onClick: () => void;
+};
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  dataSources: (DataSourceWithConnectorDetailsType & {
-    personalConnection: string | undefined;
-    oauthExtraConfig: {
-      copy_related_credential_from_connection_id: string;
-      client_id: string;
-      instance_url: string;
-    };
-  })[];
+  dataSources: DataSourceWithPersonalConnection[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -48,52 +55,34 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const dataSources = await DataSourceResource.listByConnectorProvider(
-    auth,
-    "salesforce"
-  );
+  const dataSources = await DataSourceResource.listByWorkspace(auth);
 
-  const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+  // const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   const augmentedDataSources = removeNulls(
     await concurrentExecutor(
       dataSources,
       async (dataSource: DataSourceResource) => {
-        const ds = dataSource.toJSON() as DataSourceType &
-          WithConnector & { connectorProvider: "salesforce" };
+        const ds = dataSource.toJSON();
+
+        if (!isManaged(ds)) {
+          return null;
+        }
+
+        // Only show salesforce for now
+        if (ds.connectorProvider !== "salesforce") {
+          return null;
+        }
+
         const augmentedDataSource =
           await augmentDataSourceWithConnectorDetails(ds);
         if (!augmentedDataSource.connector) {
           return null;
         }
-        const personalConnection = await user.getMetadata(
-          `connection_id_${ds.sId}`
-        );
-        const connectionRes = await oauthApi.getAccessToken({
-          provider: ds.connectorProvider,
-          connectionId: augmentedDataSource.connector.connectionId,
-        });
-        if (connectionRes.isErr()) {
-          return null;
-        }
-
-        const clientId = connectionRes.value.connection.metadata
-          .client_id as string;
-        if (!clientId) {
-          return null;
-        }
-
+        const personalConnection = await dataSource.getPersonalConnection(auth);
         return {
           ...augmentedDataSource,
-          personalConnection: personalConnection?.value ?? "",
-          oauthExtraConfig: {
-            copy_related_credential_from_connection_id:
-              connectionRes.value.connection.connection_id,
-            client_id: connectionRes.value.connection.metadata
-              .client_id as string,
-            instance_url: connectionRes.value.connection.metadata
-              .instance_url as string,
-          },
+          personalConnection: personalConnection?.connectionId ?? null,
         };
       },
       { concurrency: 10 }
@@ -115,59 +104,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
-export default function SalesforceIndex({
+export default function PersonalConnections({
   owner,
   subscription,
   dataSources,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
-  const dataSource = dataSources[0];
-  console.log(dataSource);
-  const isConnected =
-    dataSource.personalConnection && dataSource.personalConnection.length > 0;
-  const [extraConfig, setExtraConfig] = useState<Record<string, string>>(
-    dataSource.oauthExtraConfig
-  );
-  const router = useRouter();
-  const [pkceLoadingStatus, setPkceLoadingStatus] = useState<
-    "idle" | "loading" | "error"
-  >("idle");
 
-  useEffect(() => {
-    async function generatePKCE() {
-      if (!extraConfig.code_verifier && pkceLoadingStatus === "idle") {
-        setPkceLoadingStatus("loading");
-        try {
-          const response = await fetch(
-            `/api/oauth/pkce?domain=${extraConfig.instance_url}`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          if (!response.ok) {
-            throw new Error("Failed to generate PKCE challenge");
-          }
-          const { code_verifier, code_challenge } = await response.json();
-          setExtraConfig((extraConfig) => ({
-            ...extraConfig,
-            code_verifier,
-            code_challenge,
-          }));
-          setPkceLoadingStatus("idle");
-        } catch (error) {
-          console.error("Error generating PKCE challenge:", error);
-          setPkceLoadingStatus("error");
-        }
-      }
-    }
-
-    void generatePKCE();
-  }, [extraConfig.instance_url, extraConfig.code_verifier, pkceLoadingStatus]);
-
-  const saveOAuthConnection = async (connectionId: string) => {
+  const saveOAuthConnection = async (
+    dataSource: DataSourceType,
+    connectionId: string
+  ) => {
     try {
       const response = await fetch(
         `/api/w/${owner.sId}/labs/personal_connections`,
@@ -209,63 +156,147 @@ export default function SalesforceIndex({
     }
   };
 
-  const handleConnectionCreate = async () => {
-    const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
-      owner,
-      provider: "salesforce",
-      useCase: "connection",
-      extraConfig,
-    });
-
-    if (cRes.isErr()) {
+  const deleteOAuthConnection = async (dataSource: DataSourceType) => {
+    try {
+      const response = await fetch(
+        `/api/w/${owner.sId}/labs/personal_connections/${dataSource.sId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect provider",
+          description:
+            "Could not connect to your salesforce account. Please try again.",
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: "Provider connected",
+          description:
+            "Your salesforce account has been connected successfully.",
+        });
+      }
+      return response;
+    } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to connect Salesforce",
-        description: cRes.error.message,
+        title: "Failed to connect provider",
+        description:
+          "Unexpected error trying to connect to your transcripts provider. Please try again. Error: " +
+          error,
       });
-      return;
     }
-
-    await saveOAuthConnection(cRes.value.connection_id);
   };
+
+  const handleConnectionCreate = async (dataSource: DataSourceType) => {
+    const provider = dataSource.connectorProvider;
+    const { code_verifier, code_challenge } = await getPKCEConfig();
+    if (isOAuthProvider(provider)) {
+      const cRes = await setupOAuthConnection({
+        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+        owner,
+        provider,
+        useCase: "personal_connection",
+        extraConfig: {
+          code_verifier,
+          code_challenge,
+        },
+      });
+
+      if (cRes.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect Salesforce",
+          description: cRes.error.message,
+        });
+        return;
+      }
+
+      await saveOAuthConnection(dataSource, cRes.value.connection_id);
+    } else {
+      return new Err(new Error(`Unknown provider ${provider}`));
+    }
+  };
+
+  const columns = [
+    {
+      id: "name",
+      header: "Name",
+      accessorFn: (row: RowData) =>
+        CONNECTOR_CONFIGURATIONS[row.dataSource.connectorProvider].name,
+    },
+    {
+      id: "actions",
+      accessorKey: "dataSource",
+      header: "",
+      cell: (info: CellContext<RowData, DataSourceWithPersonalConnection>) => {
+        const dataSource = info.getValue();
+        const isConnected = dataSource.personalConnection !== null;
+
+        return (
+          <DataTable.CellContent>
+            <div key={dataSource.sId}>
+              {!isConnected && (
+                <Button
+                  label={`Connect ${dataSource.connectorProvider}`}
+                  variant="outline"
+                  className="flex-grow"
+                  size="sm"
+                  icon={CloudArrowLeftRightIcon}
+                  onClick={async () => {
+                    await handleConnectionCreate(dataSource);
+                  }}
+                />
+              )}
+              {isConnected && (
+                <Button
+                  label="Disconnect"
+                  variant="outline"
+                  size="sm"
+                  icon={CloudArrowLeftRightIcon}
+                  onClick={async () => {
+                    await deleteOAuthConnection(dataSource);
+                  }}
+                />
+              )}
+            </div>
+          </DataTable.CellContent>
+        );
+      },
+      meta: {
+        className: "w-56",
+      },
+    },
+  ];
+
+  const rows: RowData[] = dataSources.map((dataSource) => {
+    return {
+      dataSource,
+      onClick: () => {},
+    };
+  });
 
   return (
     <ConversationsNavigationProvider>
       <AppLayout
         subscription={subscription}
         owner={owner}
-        pageTitle="Dust - Salesforce personal account"
-        navChildren={<AssistantSidebarMenu owner={owner} />}
+        pageTitle="Dust - Personal connections"
       >
-        <Page>
-          <Page.P>Connect to your Salesforce account</Page.P>
-          <div>
-            {!isConnected && (
-              <Button
-                label={isConnected ? "Connected" : "Connect Salesforce"}
-                disabled={pkceLoadingStatus !== "idle"}
-                size="sm"
-                icon={CloudArrowLeftRightIcon}
-                onClick={async () => {
-                  await handleConnectionCreate();
-                  router.reload();
-                }}
-              />
-            )}
-            {isConnected && (
-              <Button
-                label="Disconnect Salesforce"
-                size="sm"
-                icon={CloudArrowLeftRightIcon}
-                onClick={async () => {
-                  await saveOAuthConnection("");
-                  router.reload();
-                }}
-              />
-            )}
-          </div>
-        </Page>
+        <Page.Vertical gap="xl" align="stretch">
+          <Page.Header
+            title="Personal connecttion"
+            icon={CommandIcon}
+            description="Connect your personal accounts on data sources."
+          />
+          <DataTable data={rows} columns={columns} className="pb-4" />
+        </Page.Vertical>
       </AppLayout>
     </ConversationsNavigationProvider>
   );
