@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
+import { fetchRemoteMCPServerByURL } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -65,7 +65,7 @@ async function handler(
     });
   }
 
-  const metadata = await fetchRemoteServerMetaDataByURL(auth, server.url);
+  const metadata = await fetchRemoteMCPServerByURL(auth, server.url);
 
   await server.updateMetadata(auth, {
     cachedName: metadata.name,
