@@ -7,7 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType, Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Ok, removeNulls } from "@app/types";
 
 // When we send the attachments at the conversation creation, we are missing the useCaseMetadata
 // Therefore, we couldn't upsert them to the conversation datasource.
