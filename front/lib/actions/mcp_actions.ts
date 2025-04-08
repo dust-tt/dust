@@ -92,6 +92,7 @@ function makePlatformMCPToolConfigurations(
     dataSources: config.dataSources || [], // Ensure dataSources is always an array
     tables: config.tables,
     isDefault: tool.isDefault,
+    childAgentId: config.childAgentId,
   }));
 }
 
