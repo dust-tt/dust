@@ -6,7 +6,7 @@ import {
   CheckCircleIcon,
   InformationCircleIcon,
   XCircleIcon,
-} from "@sparkle/icons";
+} from "@sparkle/icons/app";
 import { assertNever, cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";

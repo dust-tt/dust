@@ -32,6 +32,10 @@ export type MCPToolType = {
   inputSchema: JSONSchema | undefined;
 };
 
+export type MCPToolWithIsDefaultType = MCPToolType & {
+  isDefault: boolean;
+};
+
 export type MCPServerType = {
   id: string;
   name: string;
@@ -46,7 +50,7 @@ export type MCPServerType = {
 export type RemoteMCPServerType = MCPServerType & {
   url?: string;
   cachedName?: string;
-  cachedDescription?: string;
+  cachedDescription?: string | null;
   sharedSecret?: string;
   lastSyncAt?: Date | null;
 };
@@ -110,6 +114,12 @@ interface ConnectViaMCPServerId {
   type: "mcpServerId";
   mcpServerId: string;
 }
+
+export const isConnectViaMCPServerId = (
+  params: MCPConnectionParams
+): params is ConnectViaMCPServerId => {
+  return params.type === "mcpServerId";
+};
 
 interface ConnectViaRemoteMCPServerUrl {
   type: "remoteMCPServerUrl";

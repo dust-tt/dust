@@ -9,13 +9,16 @@ import type {
   PlatformMCPServerConfigurationType,
   PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import { isDefaultInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPConnectionParams,
   MCPToolType,
+  MCPToolWithIsDefaultType,
 } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
   extractMetadataFromTools,
+  isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
@@ -74,10 +77,10 @@ const Schema = z.union([
 
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
-function makePlatformMCPConfigurations(
+function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
-  tools: MCPToolType[]
-) {
+  tools: (MCPToolType & { isDefault: boolean })[]
+): PlatformMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -88,10 +91,11 @@ function makePlatformMCPConfigurations(
     mcpServerViewId: config.mcpServerViewId,
     dataSources: config.dataSources || [], // Ensure dataSources is always an array
     tables: config.tables,
+    isDefault: tool.isDefault,
   }));
 }
 
-function makeLocalMCPConfigurations(
+function makeLocalMCPToolConfigurations(
   config: LocalMCPServerConfigurationType,
   tools: MCPToolType[]
 ): LocalMCPToolConfigurationType[] {
@@ -103,28 +107,33 @@ function makeLocalMCPConfigurations(
     inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
     id: config.id,
     localMcpServerId: config.localMcpServerId,
+    isDefault: false, // can't be default for local MCP servers.
   }));
 }
 
-type MCPConfigurationResult<T> = T extends PlatformMCPServerConfigurationType
-  ? PlatformMCPToolConfigurationType[]
-  : LocalMCPToolConfigurationType[];
+type MCPToolConfigurationResult<T> =
+  T extends PlatformMCPServerConfigurationType
+    ? PlatformMCPToolConfigurationType[]
+    : LocalMCPToolConfigurationType[];
 
-function makeMCPConfigurations<T extends MCPServerConfigurationType>({
+function makeMCPToolConfigurations<T extends MCPServerConfigurationType>({
   config,
   tools,
 }: {
   config: T;
-  tools: MCPToolType[];
-}): MCPConfigurationResult<T> {
+  tools: MCPToolWithIsDefaultType[];
+}): MCPToolConfigurationResult<T> {
   if (isPlatformMCPServerConfiguration(config)) {
-    return makePlatformMCPConfigurations(
+    return makePlatformMCPToolConfigurations(
       config,
       tools
-    ) as MCPConfigurationResult<T>;
+    ) as MCPToolConfigurationResult<T>;
   }
 
-  return makeLocalMCPConfigurations(config, tools) as MCPConfigurationResult<T>;
+  return makeLocalMCPToolConfigurations(
+    config,
+    tools
+  ) as MCPToolConfigurationResult<T>;
 }
 
 /**
@@ -257,7 +266,7 @@ export async function tryListMCPTools(
         messageId,
       });
 
-      return makeMCPConfigurations({
+      return makeMCPToolConfigurations({
         config: action,
         tools,
       });
@@ -277,7 +286,7 @@ async function listMCPServerTools(
     conversationId: string;
     messageId: string;
   }
-): Promise<MCPToolType[]> {
+): Promise<MCPToolWithIsDefaultType[]> {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
@@ -292,16 +301,26 @@ async function listMCPServerTools(
 
   try {
     // Connect to the MCP server.
-    mcpClient = await connectToMCPServer(auth, connectionParamsRes.value);
+    const config = connectionParamsRes.value;
+    mcpClient = await connectToMCPServer(auth, config);
+    const isDefault =
+      isConnectViaMCPServerId(config) &&
+      isDefaultInternalMCPServer(config.mcpServerId);
 
-    let allTools: MCPToolType[] = [];
+    let allTools: MCPToolWithIsDefaultType[] = [];
     let nextPageCursor;
 
     // Fetch all tools, handling pagination if supported by the MCP server.
     do {
       const { tools, nextCursor } = await mcpClient.listTools();
       nextPageCursor = nextCursor;
-      allTools = [...allTools, ...extractMetadataFromTools(tools)];
+      allTools = [
+        ...allTools,
+        ...extractMetadataFromTools(tools).map((tool) => ({
+          ...tool,
+          isDefault,
+        })),
+      ];
     } while (nextPageCursor);
 
     logger.debug(

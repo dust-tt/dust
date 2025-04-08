@@ -1,7 +1,7 @@
 import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
-import { UserIcon } from "@sparkle/icons/solid";
+import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 
@@ -151,6 +151,7 @@ interface AvatarProps {
   backgroundColor?: string;
   className?: string;
   disabled?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
 export function Avatar({
@@ -165,6 +166,7 @@ export function Avatar({
   backgroundColor,
   disabled = false,
   className,
+  icon,
 }: AvatarProps) {
   const emojiInfos =
     typeof visual === "string" && getEmojiAndBackgroundFromUrl(visual);
@@ -209,6 +211,11 @@ export function Avatar({
         />
       ) : visualToUse ? (
         visualToUse
+      ) : icon ? (
+        React.createElement(icon, {
+          className:
+            "s-h-1/2 s-w-1/2 s-text-foreground dark:s-text-foreground-night",
+        })
       ) : emojiToUse ? (
         <span className={textVariants({ size })}>{emojiToUse}</span>
       ) : name ? (

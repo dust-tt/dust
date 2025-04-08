@@ -46,7 +46,7 @@ import {
   ClipboardCheckIcon,
   ClipboardIcon,
   MoreIcon,
-} from "@sparkle/icons";
+} from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 import { breakpoints, useWindowSize } from "./WindowUtility";

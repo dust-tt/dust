@@ -13,7 +13,11 @@ import {
   Spinner,
 } from "@sparkle/components";
 import { ContentMessageProps } from "@sparkle/components/ContentMessage";
-import { ListCheckIcon, MagnifyingGlassIcon, XMarkIcon } from "@sparkle/icons";
+import {
+  ListCheckIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+} from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 export interface SearchInputProps {

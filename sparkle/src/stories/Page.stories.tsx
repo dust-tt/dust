@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { ChatBubbleLeftRightIcon } from "@sparkle/icons/solid";
+import { ChatBubbleLeftRightIcon } from "@sparkle/icons/app";
 
 import {
   Avatar,
