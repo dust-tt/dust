@@ -15,7 +15,7 @@ import {
   TooltipTrigger,
 } from "@sparkle/components/";
 import { SpinnerProps } from "@sparkle/components/Spinner";
-import { ChevronDownIcon } from "@sparkle/icons";
+import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 export const BUTTON_VARIANTS = [

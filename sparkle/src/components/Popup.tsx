@@ -1,7 +1,7 @@
 import { Transition } from "@headlessui/react";
 import React from "react";
 
-import { XMarkIcon } from "@sparkle/icons/solid";
+import { XMarkIcon } from "@sparkle/icons/app";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";

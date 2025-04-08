@@ -1,6 +1,6 @@
 import React from "react";
 
-import * as SolidIcons from "@sparkle/icons";
+import * as SolidIcons from "@sparkle/icons/app";
 
 import { Icon } from "../index_with_tw_base";
 

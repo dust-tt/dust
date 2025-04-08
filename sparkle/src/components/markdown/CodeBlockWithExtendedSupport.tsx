@@ -21,7 +21,7 @@ import {
 } from "@sparkle/components";
 import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
-import { CommandLineIcon, SparklesIcon } from "@sparkle/icons";
+import { CommandLineIcon, SparklesIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 // Helper function to ensure we get hex values

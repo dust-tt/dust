@@ -2,7 +2,7 @@ import * as React from "react";
 import * as ResizablePrimitive from "react-resizable-panels";
 
 import { Icon } from "@sparkle/components/";
-import { GrabIcon } from "@sparkle/icons";
+import { GrabIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 const ResizablePanelGroup = ({

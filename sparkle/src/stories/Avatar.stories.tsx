@@ -6,7 +6,7 @@ import {
   HomeIcon,
   PlanetIcon,
   StarStrokeIcon,
-} from "@sparkle/icons";
+} from "@sparkle/icons/app";
 
 import { Avatar } from "../index_with_tw_base";
 

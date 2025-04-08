@@ -1,7 +1,7 @@
 import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
-import { UserIcon } from "@sparkle/icons/solid";
+import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 

@@ -8,7 +8,7 @@ import {
   SparkleContext,
   SparkleContextLinkType,
 } from "@sparkle/context";
-import { XMarkIcon } from "@sparkle/icons";
+import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
