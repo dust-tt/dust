@@ -1606,10 +1606,14 @@ export async function postNewContentFragment(
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
-  await maybeUpsertFileAttachment(auth, {
+  const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {
     contentFragments: [cf],
     conversation,
   });
+
+  if (upsertAttachmentRes.isErr()) {
+    return upsertAttachmentRes;
+  }
 
   const messageId = generateRandomModelSId();
 
