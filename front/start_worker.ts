@@ -5,6 +5,7 @@ import logger from "@app/logger/logger";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
+import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import {
   runTrackerNotificationWorker,
@@ -24,7 +25,7 @@ type WorkerName =
   | "mentions_count"
   // | "permissions_queue"
   // | "poke"
-  // | "production_checks"
+  | "production_checks"
   | "relocation"
   // | "scrub_workspace_queue"
   | "tracker_notification"
@@ -40,7 +41,7 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   mentions_count: runMentionsCountWorker,
   // permissions_queue: runPermissionsWorker,
   // poke: runPokeWorker,
-  // production_checks: runProductionChecksWorker,
+  production_checks: runProductionChecksWorker,
   relocation: runRelocationWorker,
   // scrub_workspace_queue: runScrubWorkspaceQueueWorker,
   tracker_notification: runTrackerNotificationWorker,
