@@ -23,13 +23,14 @@ import type {
 } from "@app/types";
 import { Err, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
-function getPrompt(agentConfiguration: AgentConfigurationType) {
+function getPrompt(query: string, agentConfiguration: AgentConfigurationType) {
   return `You are @${agentConfiguration.name}.\n\n
     Here is a description of what you are: ${agentConfiguration.description}\n\n
     Here are your instructions: ${agentConfiguration.instructions}\n\n
     Another AI assistant that is less specialized, is asking you for help to answer a tricky question from a user.\n\n
     The end user will not see your reply, only the other assistant will see it. You are provided with the full conversation history between the user and the other assistant.\n\n
-    The other assistant will also provide his own instructions. These instructions DO NOT apply to you (especially when it comes to formatting, answer length or tone of voice). They are only provided as context for you to understand the other assistants purpose.`;
+    The other assistant will also provide his own instructions. These instructions DO NOT apply to you (especially when it comes to formatting, answer length or tone of voice). They are only provided as context for you to understand the other assistants purpose.\n\n
+    Here is the other assistant's query: ${query}`;
 }
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -112,7 +113,7 @@ function createServer(
       const renderedConversationRes = await renderConversationForModel(auth, {
         conversation,
         model,
-        prompt: getPrompt(agentConfiguration),
+        prompt: agentConfiguration.instructions || "",
         allowedTokenCount: model.contextSize - model.generationTokensCount,
       });
       if (renderedConversationRes.isErr()) {
@@ -151,8 +152,9 @@ function createServer(
         [
           {
             conversation: renderedConversation.modelConversation,
+            // TODO(mcp): pass the agent's tools here.
             specifications: [],
-            prompt: query,
+            prompt: getPrompt(query, agentConfiguration),
           },
         ]
       );
