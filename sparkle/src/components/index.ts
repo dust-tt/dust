@@ -59,6 +59,7 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./Dialog";
+export { DoubleIcon } from "./DoubleIcon";
 export type { DropdownMenuItemProps } from "./Dropdown";
 export {
   DropdownMenu,
