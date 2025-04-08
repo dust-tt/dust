@@ -52,7 +52,8 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
                   if (!urlPositions) {
                     throw new Error("Unreachable: urlPositions is not defined");
                   }
-                  const from = urlPositions[index] + 1;
+                  const { from: selectionFrom } = view.state.selection;
+                  const from = selectionFrom + urlPositions[index];
                   const nodeId = isUrlNodeCandidate
                     ? nodeCandidate.url
                     : nodeCandidate.node;
