@@ -254,7 +254,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   toJSON(): MCPServerType & {
     // Remote MCP Server specifics
     cachedName: string;
-    cachedDescription: string;
+    cachedDescription: string | null;
     url: string;
     lastSyncAt: number | null;
     sharedSecret: string;
@@ -269,7 +269,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       tools: this.cachedTools,
 
       cachedName: this.cachedName,
-      cachedDescription: this.cachedDescription,
+      cachedDescription:
+        this.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION,
       authorization: this.authorization,
       isDefault: false, // So far we don't have defaults remote MCP servers.
 

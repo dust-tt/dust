@@ -1,16 +1,9 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import {
-  DEFAULT_MCP_ACTION_DESCRIPTION,
-  DEFAULT_MCP_ACTION_NAME,
-  DEFAULT_MCP_ACTION_VERSION,
-} from "@app/lib/actions/constants";
+import { DEFAULT_MCP_ACTION_VERSION } from "@app/lib/actions/constants";
 import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  isAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
+import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
 import type {
   AuthorizationInfo,
   MCPToolType,
@@ -29,7 +22,7 @@ export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
   declare version: string;
 
   declare cachedName: string;
-  declare cachedDescription: string;
+  declare cachedDescription: string | null;
   declare cachedTools: MCPToolType[];
 
   declare lastSyncAt: Date | null;
@@ -52,7 +45,6 @@ RemoteMCPServer.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: DEFAULT_MCP_ACTION_NAME,
     },
     url: {
       type: DataTypes.STRING,
@@ -61,12 +53,10 @@ RemoteMCPServer.init(
     description: {
       type: DataTypes.TEXT,
       allowNull: false,
-      defaultValue: DEFAULT_MCP_ACTION_DESCRIPTION,
     },
     icon: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: DEFAULT_MCP_SERVER_ICON,
     },
     version: {
       type: DataTypes.STRING,
@@ -76,12 +66,10 @@ RemoteMCPServer.init(
     cachedName: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: DEFAULT_MCP_ACTION_NAME,
     },
     cachedDescription: {
       type: DataTypes.TEXT,
-      allowNull: false,
-      defaultValue: DEFAULT_MCP_ACTION_DESCRIPTION,
+      allowNull: true,
     },
     cachedTools: {
       type: DataTypes.JSONB,
