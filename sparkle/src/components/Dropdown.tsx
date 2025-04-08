@@ -102,6 +102,7 @@ interface ItemWithLabelIconAndDescriptionProps {
   extraIcon?: React.ComponentType;
   description?: string;
   children?: React.ReactNode;
+  truncate?: boolean;
 }
 
 const ItemWithLabelIconAndDescription = <
@@ -111,12 +112,13 @@ const ItemWithLabelIconAndDescription = <
   icon,
   extraIcon,
   description,
+  truncate,
   children,
 }: T) => {
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-1.5">
+        <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
           {(icon || extraIcon) && (
             <div
               className={cn(
@@ -137,16 +139,21 @@ const ItemWithLabelIconAndDescription = <
                   position="bottom-right"
                 />
               ) : icon ? (
-                <Icon size={description ? "sm" : "xs"} visual={icon} />
-              ) : extraIcon ? (
-                <Icon size="xs" visual={extraIcon} />
+                <Icon size="sm" visual={icon} />
               ) : null}
             </div>
           )}
           <div className="s-flex s-flex-col">
-            <span>{label}</span>
+            <span className={truncate ? "s-line-clamp-1" : undefined}>
+              {label}
+            </span>
             {description && (
-              <span className={menuStyleClasses.description}>
+              <span
+                className={cn(
+                  menuStyleClasses.description,
+                  truncate && "s-line-clamp-1"
+                )}
+              >
                 {description}
               </span>
             )}
@@ -237,6 +244,7 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
   LabelAndIconProps & {
     description?: string;
     extraIcon?: React.ComponentType;
+    truncateText?: boolean;
   }
 >;
 
@@ -253,6 +261,7 @@ const DropdownMenuItem = React.forwardRef<
       inset,
       icon,
       extraIcon,
+      truncateText,
       label,
       href,
       target,
@@ -289,6 +298,7 @@ const DropdownMenuItem = React.forwardRef<
             icon={icon}
             extraIcon={extraIcon}
             description={description}
+            truncate={truncateText}
           >
             {children}
           </ItemWithLabelIconAndDescription>
