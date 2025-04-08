@@ -215,7 +215,9 @@ export async function submitAssistantBuilderForm({
             tables: tablesConfigurations
               ? processTableSelection({ owner, tablesConfigurations })
               : null,
-            childAgent: childAgentConfiguration || null,
+            childAgent: childAgentConfiguration?.sId
+              ? { sId: childAgentConfiguration.sId }
+              : null,
           },
         ];
 
