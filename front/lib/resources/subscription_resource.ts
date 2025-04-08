@@ -188,7 +188,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   ): Promise<SubscriptionResource | null> {
     const res = await Subscription.findOne({
       where: { stripeSubscriptionId },
-      include: [PlanResource.model],
+      include: [PlanModel],
     });
 
     if (!res) {
