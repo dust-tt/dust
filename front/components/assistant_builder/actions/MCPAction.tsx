@@ -1,4 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   classNames,
   ContentMessage,
@@ -29,7 +28,6 @@ import type {
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
-import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/actions/mcp_metadata";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
@@ -38,6 +36,7 @@ import type {
   SpaceType,
 } from "@app/types";
 import { assertNever, slugify } from "@app/types";
+import { useMCPServerRequiredConfiguration } from "@app/hooks/useMCPServerRequiredConfiguration";
 
 interface ActionMCPProps {
   owner: LightWorkspaceType;
@@ -92,6 +91,14 @@ export function ActionMCP({
           mcpServerView.id === actionConfiguration.mcpServerViewId
       ) ?? null
     );
+  const {
+    requiresChildAgentConfiguration,
+    requiresTableConfiguration,
+    requiresDataSourceConfiguration,
+  } = useMCPServerRequiredConfiguration({
+    mcpServerView: selectedMCPServerView,
+  });
+
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showTablesModal, setShowTablesModal] = useState(false);
 
@@ -111,30 +118,9 @@ export function ActionMCP({
           mcpServerViewId: selectedMCPServerView.id,
           // We control here the relationship between the field in AssistantBuilderMCPServerConfiguration
           // and the mimeType to look for in the server metadata.
-          dataSourceConfigurations:
-            selectedMCPServerView &&
-            serverRequiresInternalConfiguration({
-              serverMetadata: selectedMCPServerView.server,
-              mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
-            })
-              ? prevConfig.dataSourceConfigurations || {}
-              : null,
-          tablesConfigurations:
-            selectedMCPServerView &&
-            serverRequiresInternalConfiguration({
-              serverMetadata: selectedMCPServerView.server,
-              mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
-            })
-              ? prevConfig.tablesConfigurations || {}
-              : null,
-          childAgentId:
-            selectedMCPServerView &&
-            serverRequiresInternalConfiguration({
-              serverMetadata: selectedMCPServerView.server,
-              mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
-            })
-              ? prevConfig.childAgentId || null
-              : null,
+          dataSourceConfigurations: prevConfig.dataSourceConfigurations,
+          tablesConfigurations: prevConfig.tablesConfigurations,
+          childAgentId: prevConfig.childAgentId,
         };
       },
     });
@@ -379,27 +365,29 @@ export function ActionMCP({
           </>
         )}
       </>
-      {actionConfiguration.dataSourceConfigurations && (
+      {requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
           owner={owner}
           dataSourceConfigurations={
-            actionConfiguration.dataSourceConfigurations
+            actionConfiguration.dataSourceConfigurations ?? {}
           }
           openDataSourceModal={() => setShowDataSourcesModal(true)}
           onSave={handleDataSourceConfigUpdate}
           viewType="document"
         />
       )}
-      {actionConfiguration.tablesConfigurations && (
+      {requiresTableConfiguration && (
         <DataSourceSelectionSection
           owner={owner}
-          dataSourceConfigurations={actionConfiguration.tablesConfigurations}
+          dataSourceConfigurations={
+            actionConfiguration.tablesConfigurations ?? {}
+          }
           openDataSourceModal={() => setShowTablesModal(true)}
           onSave={handleTableConfigUpdate}
           viewType="table"
         />
       )}
-      {actionConfiguration.childAgentId && (
+      {requiresChildAgentConfiguration && (
         <ChildAgentSelector
           onAgentSelect={handleChildAgentConfigUpdate}
           selectedAgentId={actionConfiguration.childAgentId}
