@@ -39,7 +39,7 @@ function extractTimestampFromTitle(
 
 async function backfillConnector(
   connectorId: number,
-  { execute, logger }: { execute: boolean; logger: Logger }
+  { execute, logger }: { execute: boolean; logger: typeof Logger }
 ) {
   let nextId: number | undefined = 0;
   let transcripts;
