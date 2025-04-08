@@ -1221,9 +1221,9 @@ export async function createAgentActionConfiguration(
           });
         }
         // Creating the ChildAgentConfiguration if configured
-        if (action.childAgent) {
+        if (action.childAgentId) {
           await createChildAgentConfiguration(auth, t, {
-            childAgentConfig: action.childAgent,
+            childAgentId: action.childAgentId,
             mcpConfig,
           });
         }
@@ -1237,7 +1237,7 @@ export async function createAgentActionConfiguration(
           mcpServerViewId: action.mcpServerViewId,
           dataSources: action.dataSources,
           tables: action.tables,
-          childAgent: action.childAgent,
+          childAgentId: action.childAgentId,
         });
       });
     }
@@ -1388,16 +1388,16 @@ async function createChildAgentConfiguration(
   auth: Authenticator,
   t: Transaction,
   {
-    childAgentConfig,
+    childAgentId,
     mcpConfig,
   }: {
-    childAgentConfig: { sId: string };
+    childAgentId: string;
     mcpConfig: AgentMCPServerConfiguration;
   }
 ) {
   return ChildAgentConfiguration.create(
     {
-      agentConfigurationId: childAgentConfig.sId,
+      agentConfigurationId: childAgentId,
       mcpServerConfigurationId: mcpConfig.id,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
