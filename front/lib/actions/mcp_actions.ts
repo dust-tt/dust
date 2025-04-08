@@ -1,3 +1,4 @@
+import type { JSONSchema7 } from "json-schema";
 import { z } from "zod";
 
 import type {
@@ -31,6 +32,8 @@ import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
+
+const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
 // See https://github.com/colinhacks/zod/issues/2938
@@ -73,14 +76,14 @@ export type MCPToolResultContent = z.infer<typeof Schema>;
 
 function makePlatformMCPConfigurations(
   config: PlatformMCPServerConfigurationType,
-  listToolsResult: MCPToolType[]
+  tools: MCPToolType[]
 ) {
-  return listToolsResult.map((tool) => ({
+  return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
     name: tool.name,
     description: tool.description ?? null,
-    inputSchema: tool.inputSchema || { type: "object", properties: {} },
+    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
     id: config.id,
     mcpServerViewId: config.mcpServerViewId,
     dataSources: config.dataSources || [], // Ensure dataSources is always an array
@@ -90,43 +93,38 @@ function makePlatformMCPConfigurations(
 
 function makeLocalMCPConfigurations(
   config: LocalMCPServerConfigurationType,
-  listToolsResult: MCPToolType[]
+  tools: MCPToolType[]
 ): LocalMCPToolConfigurationType[] {
-  return listToolsResult.map((tool) => ({
+  return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
     name: tool.name,
     description: tool.description ?? null,
-    inputSchema: tool.inputSchema || { type: "object", properties: {} },
+    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
     id: config.id,
     mcpServerId: config.mcpServerId,
   }));
 }
 
+type MCPConfigurationResult<T> = T extends PlatformMCPServerConfigurationType
+  ? PlatformMCPToolConfigurationType[]
+  : LocalMCPToolConfigurationType[];
+
 function makeMCPConfigurations<T extends MCPServerConfigurationType>({
   config,
-  listToolsResult,
+  tools,
 }: {
   config: T;
-  listToolsResult: MCPToolType[];
-}): T extends PlatformMCPServerConfigurationType
-  ? PlatformMCPToolConfigurationType[]
-  : LocalMCPToolConfigurationType[] {
+  tools: MCPToolType[];
+}): MCPConfigurationResult<T> {
   if (isPlatformMCPServerConfiguration(config)) {
     return makePlatformMCPConfigurations(
       config,
-      listToolsResult
-    ) as T extends PlatformMCPServerConfigurationType
-      ? PlatformMCPToolConfigurationType[]
-      : LocalMCPToolConfigurationType[];
+      tools
+    ) as MCPConfigurationResult<T>;
   }
 
-  return makeLocalMCPConfigurations(
-    config,
-    listToolsResult
-  ) as T extends PlatformMCPServerConfigurationType
-    ? PlatformMCPToolConfigurationType[]
-    : LocalMCPToolConfigurationType[];
+  return makeLocalMCPConfigurations(config, tools) as MCPConfigurationResult<T>;
 }
 
 /**
@@ -261,7 +259,7 @@ export async function tryListMCPTools(
 
       return makeMCPConfigurations({
         config: action,
-        listToolsResult: tools,
+        tools,
       });
     })
   );
@@ -283,16 +281,16 @@ async function listMCPServerTools(
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
+  const connectionOptions = await getConnectionOptions(auth, config, {
+    conversationId,
+    messageId,
+  });
+
+  if (connectionOptions.isErr()) {
+    throw connectionOptions.error;
+  }
+
   try {
-    const connectionOptions = await getConnectionOptions(auth, config, {
-      conversationId,
-      messageId,
-    });
-
-    if (connectionOptions.isErr()) {
-      throw connectionOptions.error;
-    }
-
     // Connect to the MCP server.
     mcpClient = await connectToMCPServer(auth, connectionOptions.value);
 
@@ -325,7 +323,7 @@ async function listMCPServerTools(
         messageId,
         error,
       },
-      `Error listing tools from MCP server: ${error}`
+      `Error listing tools from MCP server: ${normalizeError(error)}`
     );
     throw error;
   } finally {

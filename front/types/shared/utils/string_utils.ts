@@ -1,4 +1,4 @@
-import { validate as uuidValidate, version as uuidVersion } from "uuid";
+import { validate as validateUuid, version as uuidVersion } from "uuid";
 
 import type { Result } from "../result";
 import { Err, Ok } from "../result";
@@ -108,5 +108,5 @@ export function stripNullBytes(text: string): string {
 // UUID utils.
 
 export function isValidUUIDv4(uuid: string): boolean {
-  return uuidValidate(uuid) && uuidVersion(uuid) === 4;
+  return validateUuid(uuid) && uuidVersion(uuid) === 4;
 }
