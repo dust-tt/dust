@@ -185,15 +185,6 @@ function createServer(
         );
       }
 
-      logger.info(
-        {
-          conversationId: conversation.sId,
-          childAgentId,
-          content: lastBlock,
-        },
-        "Child agent response."
-      );
-
       return {
         isError: false,
         content: [
