@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Octokit } from "octokit";
+import { Octokit } from "@octokit/core";
 import { z } from "zod";
 
 import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
@@ -43,12 +43,15 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       const octokit = new Octokit({ auth: accessToken });
 
       try {
-        const { data: issue } = await octokit.rest.issues.create({
-          owner,
-          repo,
-          title,
-          body,
-        });
+        const { data: issue } = await octokit.request(
+          "POST /repos/{owner}/{repo}/issues",
+          {
+            owner,
+            repo,
+            title,
+            body,
+          }
+        );
 
         return {
           isError: false,
