@@ -9,22 +9,22 @@ import {
 
 export const MCP_SERVER_ICONS: Record<AllowedIconType, React.ComponentType> = {
   command: CommandIcon,
-  rocket: RocketIcon,
-  table: FolderTableIcon,
   github: GithubIcon,
   image: ImageIcon,
   robot: RobotIcon,
+  rocket: RocketIcon,
+  table: FolderTableIcon,
 } as const;
 
 export const DEFAULT_MCP_SERVER_ICON = "rocket" as const;
 
 export const ALLOWED_ICONS = [
   "command",
-  "rocket",
-  "table",
   "github",
   "image",
   "robot",
+  "rocket",
+  "table",
 ] as const;
 export type AllowedIconType = (typeof ALLOWED_ICONS)[number];
 
