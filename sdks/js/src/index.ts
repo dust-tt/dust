@@ -31,14 +31,20 @@ import type {
   FileUploadedRequestResponseType,
   FileUploadUrlRequestType,
   GenerationTokensEvent,
+  HeartbeatMCPResponseType,
   LoggerInterface,
   PatchDataSourceViewRequestType,
+  PostMCPResultsResponseType,
   PublicPostContentFragmentRequestBody,
   PublicPostConversationsRequestBody,
+  PublicPostMCPResultsRequestBody,
   PublicPostMessageFeedbackRequestBody,
   PublicPostMessagesRequestBody,
+  RegisterMCPResponseType,
   SearchRequestBodyType,
   UserMessageErrorEvent,
+  ValidateActionRequestBodyType,
+  ValidateActionResponseType,
 } from "./types";
 import {
   APIErrorSchema,
@@ -59,17 +65,21 @@ import {
   GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
+  HeartbeatMCPResponseSchema,
   MeResponseSchema,
   Ok,
   PostContentFragmentResponseSchema,
+  PostMCPResultsResponseSchema,
   PostMessageFeedbackResponseSchema,
   PostUserMessageResponseSchema,
   PostWorkspaceSearchResponseBodySchema,
+  RegisterMCPResponseSchema,
   Result,
   RunAppResponseSchema,
   SearchDataSourceViewsResponseSchema,
   TokenizeResponseSchema,
   UpsertFolderResponseSchema,
+  ValidateActionResponseSchema,
 } from "./types";
 
 export * from "./internal_mime_types";
@@ -1208,6 +1218,106 @@ export class DustAPI {
       );
       return new Err(err);
     }
+  }
+
+  // MCP Related.
+
+  async validateAction({
+    conversationId,
+    messageId,
+    actionId,
+    approved,
+  }: ValidateActionRequestBodyType & {
+    conversationId: string;
+    messageId: string;
+  }): Promise<Result<ValidateActionResponseType, APIError>> {
+    const res = await this.request({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/messages/${messageId}/validate-action`,
+      body: {
+        actionId,
+        approved,
+      },
+    });
+
+    return this._resultFromResponse(ValidateActionResponseSchema, res);
+  }
+
+  async registerMcpServer({
+    serverId,
+  }: {
+    serverId: string;
+  }): Promise<Result<RegisterMCPResponseType, APIError>> {
+    const res = await this.request({
+      method: "POST",
+      path: "mcp/register",
+      body: {
+        serverId,
+      },
+    });
+
+    return this._resultFromResponse(RegisterMCPResponseSchema, res);
+  }
+
+  async heartbeatMcpServer({
+    serverId,
+  }: {
+    serverId: string;
+  }): Promise<Result<HeartbeatMCPResponseType, APIError>> {
+    const res = await this.request({
+      method: "POST",
+      path: "mcp/heartbeat",
+      body: {
+        serverId,
+      },
+    });
+
+    return this._resultFromResponse(HeartbeatMCPResponseSchema, res);
+  }
+
+  async postMCPResults({
+    requestId,
+    result,
+    serverId,
+  }: PublicPostMCPResultsRequestBody & { serverId: string }): Promise<
+    Result<PostMCPResultsResponseType, APIError>
+  > {
+    const params = new URLSearchParams();
+    params.set("serverId", serverId);
+
+    const res = await this.request({
+      method: "POST",
+      path: `mcp/results?${params.toString()}`,
+      body: {
+        requestId,
+        result,
+      },
+    });
+
+    return this._resultFromResponse(PostMCPResultsResponseSchema, res);
+  }
+
+  async getMcpRequestsConnectionDetails({
+    serverId,
+    lastEventId,
+  }: {
+    serverId: string;
+    lastEventId?: string | null;
+  }): Promise<
+    Result<{ url: string; headers: Record<string, string> }, APIError>
+  > {
+    const url = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/mcp/requests`;
+    const params = new URLSearchParams({
+      serverId,
+      ...(lastEventId ? { lastEventId } : {}),
+    });
+
+    const headers = await this.baseHeaders();
+
+    return new Ok({
+      url: `${url}?${params.toString()}`,
+      headers,
+    });
   }
 
   private async _resultFromResponse<T extends z.ZodTypeAny>(
