@@ -6,6 +6,7 @@ import {
   CitationImage,
   CitationTitle,
   DocumentIcon,
+  DoubleIcon,
   FolderIcon,
   Icon,
   ImageIcon,
@@ -141,21 +142,23 @@ export function contentFragmentToAttachmentCitation(
     const logo = getConnectorProviderLogoWithFallback({ provider });
 
     const visual =
-      provider && ["webcrawler", "folder"].includes(provider) ? (
-        <Icon visual={logo} />
+      !provider || provider === "webcrawler" ? (
+        <Icon visual={logo} size="md" />
       ) : (
-        <>
-          <Icon visual={logo} />
-          <Icon
-            visual={
+        <DoubleIcon
+          mainIconProps={{
+            visual:
               nodeType === "table"
                 ? TableIcon
                 : nodeType === "folder"
                   ? FolderIcon
-                  : DocumentIcon
-            }
-          />
-        </>
+                  : DocumentIcon,
+            size: "md",
+          }}
+          secondaryIconProps={{
+            visual: logo,
+          }}
+        />
       );
 
     return {
@@ -174,7 +177,7 @@ export function contentFragmentToAttachmentCitation(
     id: contentFragment.sId,
     title: contentFragment.title,
     sourceUrl: contentFragment.sourceUrl,
-    visual: <Icon visual={isImageType ? ImageIcon : DocumentIcon} />,
+    visual: <Icon visual={isImageType ? ImageIcon : DocumentIcon} size="md" />,
   };
 }
 
@@ -188,7 +191,12 @@ export function attachmentToAttachmentCitation(
       title: attachment.title,
       preview: attachment.preview,
       isUploading: attachment.isUploading,
-      visual: <Icon visual={attachment.preview ? ImageIcon : DocumentIcon} />,
+      visual: (
+        <Icon
+          visual={attachment.preview ? ImageIcon : DocumentIcon}
+          size="md"
+        />
+      ),
       sourceUrl: null,
     };
   } else {

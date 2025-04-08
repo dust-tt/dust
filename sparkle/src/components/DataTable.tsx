@@ -361,10 +361,13 @@ export function ScrollableDataTable<TData extends TBaseData>({
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
     onRowSelectionChange,
-    enableRowSelection,
+    ...(enableRowSelection && {
+      onRowSelectionChange,
+    }),
     state: {
-      rowSelection,
+      ...(enableRowSelection && { rowSelection }),
     },
+    enableRowSelection,
   });
 
   useEffect(() => {
@@ -509,7 +512,9 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     widthClassName={widthClassName}
                     onClick={row.original.onClick}
                     className="s-absolute s-w-full"
-                    data-selected={row.getIsSelected()}
+                    {...(enableRowSelection && {
+                      "data-selected": row.getIsSelected(),
+                    })}
                     style={{
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
