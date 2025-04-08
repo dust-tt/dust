@@ -128,7 +128,7 @@ const ItemWithLabelIconAndDescription = <
                 <DoubleIcon
                   mainIconProps={{
                     visual: icon,
-                    size: description ? "sm" : "xs",
+                    size: "sm",
                   }}
                   secondaryIconProps={{
                     visual: extraIcon,
