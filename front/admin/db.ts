@@ -9,6 +9,7 @@ import {
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
+  AgentChildAgentConfiguration,
   AgentMCPAction,
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
@@ -186,6 +187,7 @@ async function main() {
   await AgentWebsearchAction.sync({ alter: true });
   await AgentMCPAction.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
+  await AgentChildAgentConfiguration.sync({ alter: true });
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
 

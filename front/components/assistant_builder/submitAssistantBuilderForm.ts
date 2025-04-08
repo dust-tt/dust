@@ -197,7 +197,11 @@ export async function submitAssistantBuilderForm({
 
       case "MCP":
         const {
-          configuration: { tablesConfigurations, dataSourceConfigurations },
+          configuration: {
+            tablesConfigurations,
+            dataSourceConfigurations,
+            childAgentId,
+          },
         } = a;
         return [
           {
@@ -211,6 +215,7 @@ export async function submitAssistantBuilderForm({
             tables: tablesConfigurations
               ? processTableSelection({ owner, tablesConfigurations })
               : null,
+            childAgentId,
           },
         ];
 

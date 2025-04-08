@@ -41,7 +41,10 @@ import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import {
+  AgentChildAgentConfiguration,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
@@ -1217,6 +1220,13 @@ export async function createAgentActionConfiguration(
             mcpConfig,
           });
         }
+        // Creating the ChildAgentConfiguration if configured
+        if (action.childAgentId) {
+          await createChildAgentConfiguration(auth, t, {
+            childAgentId: action.childAgentId,
+            mcpConfig,
+          });
+        }
 
         return new Ok({
           id: mcpConfig.id,
@@ -1227,6 +1237,7 @@ export async function createAgentActionConfiguration(
           mcpServerViewId: action.mcpServerViewId,
           dataSources: action.dataSources,
           tables: action.tables,
+          childAgentId: action.childAgentId,
         });
       });
     }
@@ -1371,6 +1382,27 @@ async function createTableDataSourceConfiguration(
   return AgentTablesQueryConfigurationTable.bulkCreate(tableConfigBlobs, {
     transaction: t,
   });
+}
+
+async function createChildAgentConfiguration(
+  auth: Authenticator,
+  t: Transaction,
+  {
+    childAgentId,
+    mcpConfig,
+  }: {
+    childAgentId: string;
+    mcpConfig: AgentMCPServerConfiguration;
+  }
+) {
+  return AgentChildAgentConfiguration.create(
+    {
+      agentConfigurationId: childAgentId,
+      mcpServerConfigurationId: mcpConfig.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    { transaction: t }
+  );
 }
 
 export async function getAgentSIdFromName(

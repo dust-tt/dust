@@ -202,7 +202,7 @@ function generateConfigurableResourcesMimeTypes<T extends Uppercase<string>[]>({
 
 const TOOL_INPUT_MIME_TYPES = {
   CONFIGURATION: generateConfigurableResourcesMimeTypes({
-    resourceTypes: ["DATA_SOURCE", "TABLE"],
+    resourceTypes: ["DATA_SOURCE", "TABLE", "CHILD_AGENT"],
   }),
 };
 
