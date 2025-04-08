@@ -6,7 +6,7 @@ import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  isDefaultInternalMCPServer,
+  isDefaultInternalMCPServerByName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -53,7 +53,7 @@ export class InternalMCPServerInMemoryResource {
         (await mcpClient.listTools()).tools
       ) as any,
       isDefault: isInternalMCPServerName(md.name)
-        ? isDefaultInternalMCPServer(server.id)
+        ? isDefaultInternalMCPServerByName(md.name)
         : false,
     };
 
