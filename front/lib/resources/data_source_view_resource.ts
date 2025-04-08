@@ -301,7 +301,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
     const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
 
-    const dataSourceViews = await this.baseFetch(
+    return this.baseFetch(
       auth,
       undefined,
       {
@@ -311,14 +311,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         },
       },
       { assistantDefaultSelected: true }
-    );
-
-    if (dataSourceViews.length === 0) {
-      return [];
-    }
-
-    return dataSourceViews.filter(
-      (dsv) => dsv.dataSource && dsv.dataSource.assistantDefaultSelected
     );
   }
 
