@@ -1,11 +1,20 @@
+import { Dialog, DialogContainer, DialogContent } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { RefObject } from "react";
-import { createContext, useCallback, useContext, useMemo, useRef } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 interface ConversationsNavigationContextType {
   conversationsNavigationRef: RefObject<HTMLDivElement>;
   scrollConversationsToTop: () => void;
   activeConversationId: string | null;
+  setIsImageUrl: (imageUrl: string | null) => void;
 }
 
 const ConversationsNavigationContext =
@@ -20,6 +29,7 @@ export function ConversationsNavigationProvider({
 }) {
   const router = useRouter();
   const conversationsNavigationRef = useRef<HTMLDivElement>(null);
+  const [isImageUrl, setIsImageUrl] = useState<string | null>(null);
 
   const scrollConversationsToTop = useCallback(() => {
     if (conversationsNavigationRef.current) {
@@ -52,10 +62,44 @@ export function ConversationsNavigationProvider({
         conversationsNavigationRef,
         scrollConversationsToTop,
         activeConversationId,
+        setIsImageUrl,
       }}
     >
+      <ImageModal imageUrl={isImageUrl} onClose={() => setIsImageUrl(null)} />
       {children}
     </ConversationsNavigationContext.Provider>
+  );
+}
+
+interface ImageModalProps {
+  imageUrl: string | null;
+  onClose: () => void;
+}
+
+export function ImageModal({ imageUrl, onClose }: ImageModalProps) {
+  return (
+    <Dialog
+      open={!!imageUrl}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent size="xl">
+        <DialogContainer>
+          <div className="flex items-center justify-center">
+            {imageUrl && (
+              <img
+                src={imageUrl}
+                alt="Full size view"
+                className="max-h-[80vh] w-auto object-contain"
+              />
+            )}
+          </div>
+        </DialogContainer>
+      </DialogContent>
+    </Dialog>
   );
 }
 
