@@ -36,7 +36,7 @@ FROM node:20.13.0-alpine
 WORKDIR /app
 
 COPY --from=build /app/.next .next
-COPY --from=build /app/package*.jon ./
-RUN npm ci --production
+COPY --from=build /app/package*.json ./
+RUN npm ci --omit=dev
 
 CMD ["npm", "--silent", "run", "start"]
