@@ -38,8 +38,7 @@ export function ChildAgentSelector({
         variant="warning"
         size="sm"
       >
-        {isAgentConfigurationsError.message ||
-          "Failed to load available agents. Please try again later."}
+        Failed to load available agents. Please try again later.
       </ContentMessage>
     );
   }
