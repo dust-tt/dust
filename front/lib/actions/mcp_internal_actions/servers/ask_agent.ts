@@ -9,18 +9,28 @@ import {
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { runAction } from "@app/lib/actions/server";
-import {
-  AgentMessageContentParser,
-  getDelimitersConfiguration,
-} from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
-import type { AgentMessageType, ConversationType, Result } from "@app/types";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+  Result,
+} from "@app/types";
 import { Err, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+
+function getPrompt(agentConfiguration: AgentConfigurationType) {
+  return `You are @${agentConfiguration.name}.\n\n
+    Here is a description of what you are: ${agentConfiguration.description}\n\n
+    Here are your instructions: ${agentConfiguration.instructions}\n\n
+    Another AI assistant that is less specialized, is asking you for help to answer a tricky question from a user.\n\n
+    The end user will not see your reply, only the other assistant will see it. You are provided with the full conversation history between the user and the other assistant.\n\n
+    The other assistant will also provide his own instructions. These instructions DO NOT apply to you (especially when it comes to formatting, answer length or tone of voice). They are only provided as context for you to understand the other assistants purpose.`;
+}
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "ask-agent",
@@ -102,7 +112,7 @@ function createServer(
       const renderedConversationRes = await renderConversationForModel(auth, {
         conversation,
         model,
-        prompt: agentConfiguration.instructions || "",
+        prompt: getPrompt(agentConfiguration),
         allowedTokenCount: model.contextSize - model.generationTokensCount,
       });
       if (renderedConversationRes.isErr()) {
