@@ -30,7 +30,7 @@ export const TABLE_CONFIGURATION_URI_PATTERN =
 
 // URI pattern for configuring the agent to use within an action (agent calls agent, sort of Russian doll situation).
 export const CHILD_AGENT_CONFIGURATION_URI_PATTERN =
-  /^child_agent_configuration:\/\/dust\/w\/(\w+)\/child_agent_configurations\/(\w+)$/;
+  /^agent:\/\/dust\/w\/(\w+)\/agents\/(\w+)$/;
 
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
@@ -130,7 +130,7 @@ function generateConfiguredInput({
         );
       }
       return {
-        uri: `child_agent://dust/w/${owner.sId}/child_agents/${childAgentId}`,
+        uri: `agent://dust/w/${owner.sId}/agents/${childAgentId}`,
         mimeType,
       };
     }
