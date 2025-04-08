@@ -34,52 +34,52 @@ const GRID_SECTION_CLASSES = classNames(
 );
 
 const MainVisualModels = () => (
-  <Hover3D depth={-15} perspective={1000} className={classNames("relative")}>
-    <Div3D depth={-15}>
-      <img src="/static/landing/provider/provider1.png" alt="Provider1" />
+  <Hover3D depth={-20} perspective={1000} className={classNames("relative")}>
+    <Div3D depth={-20}>
+      <img src="/static/landing/provider/provider1.png" />
     </Div3D>
-    <Div3D depth={15} className="absolute top-0">
-      <img src="/static/landing/provider/provider2.png" alt="Provider2" />
+    <Div3D depth={20} className="absolute top-0">
+      <img src="/static/landing/provider/provider2.png" />
     </Div3D>
-    <Div3D depth={30} className="absolute top-0">
-      <img src="/static/landing/provider/provider3.png" alt="Provider3" />
+    <Div3D depth={40} className="absolute top-0">
+      <img src="/static/landing/provider/provider3.png" />
     </Div3D>
-    <Div3D depth={45} className="absolute top-0">
-      <img src="/static/landing/provider/provider4.png" alt="Provider4" />
+    <Div3D depth={70} className="absolute top-0">
+      <img src="/static/landing/provider/provider4.png" />
     </Div3D>
   </Hover3D>
 );
 
 const MainVisualData = () => (
-  <Hover3D depth={-15} perspective={1000} className={classNames("relative")}>
-    <Div3D depth={-15}>
-      <img src="/static/landing/selection/selection1.png" alt="Selection1" />
+  <Hover3D depth={-20} perspective={1000} className={classNames("relative")}>
+    <Div3D depth={-20}>
+      <img src="/static/landing/selection/selection1.png" />
     </Div3D>
-    <Div3D depth={15} className="absolute top-0">
-      <img src="/static/landing/selection/selection2.png" alt="Selection2" />
+    <Div3D depth={20} className="absolute top-0">
+      <img src="/static/landing/selection/selection2.png" />
     </Div3D>
-    <Div3D depth={30} className="absolute top-0">
-      <img src="/static/landing/selection/selection3.png" alt="Selection3" />
+    <Div3D depth={40} className="absolute top-0">
+      <img src="/static/landing/selection/selection3.png" />
     </Div3D>
-    <Div3D depth={45} className="absolute top-0">
-      <img src="/static/landing/selection/selection4.png" alt="Selection4" />
+    <Div3D depth={70} className="absolute top-0">
+      <img src="/static/landing/selection/selection4.png" />
     </Div3D>
   </Hover3D>
 );
 
 const MainVisualUsers = () => (
-  <Hover3D depth={-15} perspective={1000} className={classNames("relative")}>
-    <Div3D depth={-15}>
-      <img src="/static/landing/member/member1.png" alt="Member1" />
+  <Hover3D depth={-20} perspective={1000} className={classNames("relative")}>
+    <Div3D depth={-20}>
+      <img src="/static/landing/member/member1.png" />
     </Div3D>
-    <Div3D depth={15} className="absolute top-0">
-      <img src="/static/landing/member/member2.png" alt="Member2" />
+    <Div3D depth={20} className="absolute top-0">
+      <img src="/static/landing/member/member2.png" />
     </Div3D>
-    <Div3D depth={30} className="absolute top-0">
-      <img src="/static/landing/member/member3.png" alt="Member3" />
+    <Div3D depth={40} className="absolute top-0">
+      <img src="/static/landing/member/member3.png" />
     </Div3D>
-    <Div3D depth={45} className="absolute top-0">
-      <img src="/static/landing/member/member4.png" alt="Member4" />
+    <Div3D depth={70} className="absolute top-0">
+      <img src="/static/landing/member/member4.png" />
     </Div3D>
   </Hover3D>
 );
