@@ -237,7 +237,7 @@ export default function Subscription({
   const isProcessing = isSubscribingPlan || isGoingToStripePortal;
 
   const plan = subscription.plan;
-  const chipColor = !isUpgraded(plan) ? "emerald" : "sky";
+  const chipColor = !isUpgraded(plan) ? "green" : "blue";
 
   const onClickProPlan = async () => handleSubscribePlan();
 

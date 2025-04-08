@@ -144,7 +144,7 @@ function getTableColumns(
       return (
         <DataTable.CellContent className="pr-2">
           {!ds.connector && !ds.fetchConnectorError && (
-            <Chip color="amber">Never</Chip>
+            <Chip color="info">Never</Chip>
           )}
           {ds.fetchConnectorError && (
             <Chip color="warning">Retry in a few minutes</Chip>

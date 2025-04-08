@@ -631,7 +631,7 @@ export function AgentMessage({
           />
 
           {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Agent thoughts" variant="slate">
+            <ContentMessage title="Agent thoughts" variant="primary">
               {agentMessage.chainOfThought}
             </ContentMessage>
           ) : null}
