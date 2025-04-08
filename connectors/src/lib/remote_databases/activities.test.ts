@@ -487,7 +487,8 @@ describe("sync remote databases", async () => {
         dataSourceConfig: dataSourceConfig,
         tableId:
           "test__DUST_DOT__db.test__DUST_DOT__schema.test__DUST_DOT__table",
-        tableName: "test__DUST_DOT__db.test__DUST_DOT__schema.test__DUST_DOT__table",
+        tableName:
+          "test__DUST_DOT__db.test__DUST_DOT__schema.test__DUST_DOT__table",
         remoteDatabaseTableId:
           "test__DUST_DOT__db.test__DUST_DOT__schema.test__DUST_DOT__table",
         remoteDatabaseSecretId: connector.connectionId,
