@@ -2,8 +2,10 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
+import type {
+  MCPServerType,
+  MCPServerViewType,
+} from "@app/lib/actions/mcp_metadata";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { DeleteMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]";

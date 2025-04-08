@@ -18,7 +18,10 @@ import {
   isDefaultInternalMCPServer,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import type {
+  MCPServerType,
+  MCPServerViewType,
+} from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
@@ -33,7 +36,13 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { ModelId, Result } from "@app/types";
-import { assertNever, Err, Ok, removeNulls } from "@app/types";
+import {
+  assertNever,
+  Err,
+  formatUserFullName,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -526,6 +535,30 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     });
   }
 
+  async setEditedBy(auth: Authenticator) {
+    await this.update({
+      editedByUserId: auth.user()?.id ?? null,
+      editedAt: new Date(),
+    });
+  }
+
+  private makeEditedBy(
+    editedByUser: Attributes<UserModel> | undefined,
+    editedAt: Date | undefined
+  ) {
+    if (!editedByUser || !editedAt) {
+      return null;
+    }
+
+    return {
+      editedAt: editedAt.getTime(),
+      fullName: formatUserFullName(editedByUser),
+      imageUrl: editedByUser.imageUrl,
+      email: editedByUser.email,
+      userId: editedByUser.sId,
+    };
+  }
+
   // Serialization.
   toJSON(): MCPServerViewType {
     return {
@@ -537,14 +570,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
         this.serverType === "remote"
           ? this.getRemoteMCPServer().toJSON()
           : this.getInternalMCPServer().toJSON(),
+      editedByUser: this.makeEditedBy(this.editedByUser, this.updatedAt),
     };
   }
-}
-
-export interface MCPServerViewType {
-  id: string;
-  createdAt: number;
-  updatedAt: number;
-  spaceId: string;
-  server: MCPServerType;
 }

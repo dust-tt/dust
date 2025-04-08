@@ -86,6 +86,14 @@ export type UserMetadataType = {
   value: string;
 };
 
+export type EditedByUser = {
+  editedAt: number | null;
+  fullName: string | null;
+  imageUrl: string | null;
+  email: string | null;
+  userId: string | null;
+};
+
 export function formatUserFullName(user?: {
   firstName?: string;
   lastName?: string | null;
