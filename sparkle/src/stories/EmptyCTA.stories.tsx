@@ -2,7 +2,7 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { EmptyCTA, EmptyCTAButton } from "@sparkle/components";
-import { CloudArrowDownIcon } from "@sparkle/icons";
+import { CloudArrowDownIcon } from "@sparkle/icons/app";
 
 const meta = {
   title: "Components/EmptyCTA",

@@ -31,7 +31,7 @@ import {
   RocketIcon,
   StarIcon,
   TrashIcon,
-} from "@sparkle/icons";
+} from "@sparkle/icons/app";
 
 const meta = {
   title: "Layouts/Sheet",

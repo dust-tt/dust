@@ -6,7 +6,7 @@ import {
   ChevronLeftIcon,
   TrashIcon,
   XMarkIcon,
-} from "@sparkle/icons/solid";
+} from "@sparkle/icons/app";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
