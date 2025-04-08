@@ -26,6 +26,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
 import { Ok, removeNulls } from "@app/types";
+import { RemoteMCPServerToolMetadata } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -174,12 +175,26 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       },
     });
 
+    const serverToolMetadatas = await RemoteMCPServerToolMetadata.findAll({
+      where: {
+        serverId: this.id,
+      },
+    });
+
     await concurrentExecutor(
       mcpServerViews,
       async (mcpServerView) => {
         await destroyMCPServerViewDependencies(auth, {
           mcpServerViewId: mcpServerView.id,
         });
+      },
+      { concurrency: 10 }
+    );
+
+    await concurrentExecutor(
+      serverToolMetadatas,
+      async (serverToolMetadata) => {
+        await serverToolMetadata.destroy();
       },
       { concurrency: 10 }
     );
