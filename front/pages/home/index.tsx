@@ -2,7 +2,6 @@ import type { ReactElement } from "react";
 
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import { CallToActionSection } from "@app/components/home/content/Product/CallToActionSection";
-import { FutureSection } from "@app/components/home/content/Product/FutureSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
