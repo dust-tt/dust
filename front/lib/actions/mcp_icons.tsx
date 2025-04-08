@@ -2,8 +2,8 @@ import {
   CommandIcon,
   FolderTableIcon,
   GithubIcon,
-  RobotIcon,
   ImageIcon,
+  RobotIcon,
   RocketIcon,
 } from "@dust-tt/sparkle";
 
@@ -24,7 +24,7 @@ export const ALLOWED_ICONS = [
   "table",
   "github",
   "image",
-  "robot"
+  "robot",
 ] as const;
 export type AllowedIconType = (typeof ALLOWED_ICONS)[number];
 
