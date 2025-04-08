@@ -175,14 +175,16 @@ export function DataTable<TData extends TBaseData>({
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
     onColumnFiltersChange: setColumnFilters,
-    onRowSelectionChange,
+    ...(enableRowSelection && {
+      onRowSelectionChange,
+    }),
     state: {
       columnFilters,
       ...(isServerSideSorting && {
         sorting,
       }),
       pagination,
-      rowSelection,
+      ...(enableRowSelection && { rowSelection }),
     },
     initialState: {
       sorting,
@@ -256,7 +258,9 @@ export function DataTable<TData extends TBaseData>({
               widthClassName={widthClassName}
               key={row.id}
               onClick={row.original.onClick}
-              data-selected={row.getIsSelected()}
+              {...(enableRowSelection && {
+                "data-selected": row.getIsSelected(),
+              })}
             >
               {row.getVisibleCells().map((cell) => {
                 const breakpoint = columnsBreakpoints[cell.column.id];
