@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
@@ -25,6 +27,7 @@ import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
+  isPlatformMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -231,6 +234,8 @@ async function getMCPServerActionConfiguration(
   action: MCPServerConfigurationType,
   dataSourceViews: DataSourceViewResource[]
 ): Promise<AssistantBuilderActionConfiguration> {
+  assert(isPlatformMCPServerConfiguration(action));
+
   const builderAction = getDefaultMCPServerActionConfiguration();
   if (builderAction.type !== "MCP") {
     throw new Error("MCP action configuration is not valid");
