@@ -50,11 +50,10 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
                 const isUrlNodeCandidate = isUrlCandidate(nodeCandidate);
                 if (nodeCandidate) {
                   // typescript pleasing
-                  assert(
-                    urlPositions,
-                    "Unreachable: urlPositions is not undefined"
-                  );
-                  const from = urlPositions![index] + 1;
+                  if (!urlPositions) {
+                    throw new Error("Unreachable: urlPositions is not defined");
+                  }
+                  const from = urlPositions[index] + 1;
                   const nodeId = isUrlNodeCandidate
                     ? nodeCandidate.url
                     : nodeCandidate.node;
