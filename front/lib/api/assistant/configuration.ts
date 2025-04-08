@@ -41,7 +41,10 @@ import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import {
+  AgentMCPServerConfiguration,
+  ChildAgentConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
@@ -1217,6 +1220,13 @@ export async function createAgentActionConfiguration(
             mcpConfig,
           });
         }
+        // Creating the ChildAgentConfiguration if configured
+        if (action.childAgent) {
+          await createChildAgentConfiguration(auth, t, {
+            childAgentConfig: action.childAgent,
+            mcpConfig,
+          });
+        }
 
         return new Ok({
           id: mcpConfig.id,
@@ -1227,6 +1237,7 @@ export async function createAgentActionConfiguration(
           mcpServerViewId: action.mcpServerViewId,
           dataSources: action.dataSources,
           tables: action.tables,
+          childAgent: action.childAgent,
         });
       });
     }
@@ -1371,6 +1382,35 @@ async function createTableDataSourceConfiguration(
   return AgentTablesQueryConfigurationTable.bulkCreate(tableConfigBlobs, {
     transaction: t,
   });
+}
+
+async function createChildAgentConfiguration(
+  auth: Authenticator,
+  t: Transaction,
+  {
+    childAgentConfig,
+    mcpConfig,
+  }: {
+    childAgentConfig: { sId: string };
+    mcpConfig: AgentMCPServerConfiguration;
+  }
+) {
+  const owner = auth.getNonNullableWorkspace();
+  const childAgent = await AgentConfiguration.findOne({
+    where: {
+      sId: childAgentConfig.sId,
+      workspaceId: owner.id,
+    },
+  });
+  assert(childAgent, "Child agent not found");
+  return ChildAgentConfiguration.create(
+    {
+      agentConfigurationId: childAgent.id,
+      mcpServerConfigurationId: mcpConfig.id,
+      workspaceId: owner.id,
+    },
+    { transaction: t }
+  );
 }
 
 export async function getAgentSIdFromName(

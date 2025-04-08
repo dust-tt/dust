@@ -141,7 +141,7 @@ export async function fetchMCPServerActionConfigurations(
           renderDataSourceConfiguration
         ),
         tables: tablesConfigurations.map(renderTableConfiguration),
-        childAgentId: childAgentConfigurations[0]
+        childAgent: childAgentConfigurations[0]
           ? renderChildAgentConfiguration(childAgentConfigurations[0])
           : null,
       });

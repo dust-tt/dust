@@ -129,6 +129,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   mcpServerViewId: string;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
+  childAgentConfiguration: { sId: string | null } | null;
 };
 
 // Builder State
@@ -367,6 +368,7 @@ export function getDefaultMCPServerActionConfiguration(): AssistantBuilderAction
       mcpServerViewId: "not-a-valid-sId",
       dataSourceConfigurations: null,
       tablesConfigurations: null,
+      childAgentConfiguration: null,
     },
     name: DEFAULT_MCP_ACTION_NAME,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
