@@ -8,6 +8,7 @@ import { default as helloWorldServer } from "@app/lib/actions/mcp_internal_actio
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation_dalle";
 import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/table_utils";
 import type { Authenticator } from "@app/lib/auth";
+import type { ConversationType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export function getInternalMCPServer(
@@ -15,9 +16,11 @@ export function getInternalMCPServer(
   {
     internalMCPServerName,
     mcpServerId,
+    conversation,
   }: {
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
+    conversation?: ConversationType;
   }
 ): McpServer {
   switch (internalMCPServerName) {
@@ -32,7 +35,7 @@ export function getInternalMCPServer(
     case "image-generation-dalle":
       return imageGenerationDallEServer(auth);
     case "ask-agent":
-      return askAgentServer();
+      return askAgentServer(conversation);
     default:
       assertNever(internalMCPServerName);
   }

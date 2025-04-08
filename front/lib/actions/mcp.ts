@@ -419,7 +419,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     const r = await tryCallMCPTool(auth, {
       messageId: agentMessage.sId,
       actionConfiguration,
-      conversationId: conversation.sId,
+      conversation,
       inputs,
     });
 

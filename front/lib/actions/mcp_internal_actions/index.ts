@@ -10,6 +10,7 @@ import {
 import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import type { ConversationType } from "@app/types";
 
 export const isEnabledForWorkspace = async (
   auth: Authenticator,
@@ -28,7 +29,8 @@ export const isEnabledForWorkspace = async (
 export const connectToInternalMCPServer = async (
   mcpServerId: string,
   transport: InMemoryTransport,
-  auth: Authenticator
+  auth: Authenticator,
+  conversation?: ConversationType
 ): Promise<McpServer> => {
   const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
   if (res.isErr()) {
@@ -39,6 +41,7 @@ export const connectToInternalMCPServer = async (
   const server = getInternalMCPServer(auth, {
     internalMCPServerName: res.value.name,
     mcpServerId,
+    conversation,
   });
 
   await server.connect(transport);

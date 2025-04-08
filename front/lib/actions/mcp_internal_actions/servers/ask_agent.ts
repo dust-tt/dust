@@ -7,7 +7,7 @@ import {
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import type { Result } from "@app/types";
+import type { ConversationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -29,7 +29,7 @@ function parseAgentConfigurationUri(uri: string): Result<string | null, Error> {
   return new Ok(match[2]);
 }
 
-function createServer(): McpServer {
+function createServer(conversation?: ConversationType): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -43,6 +43,11 @@ function createServer(): McpServer {
         ],
     },
     async ({ childAgent: { uri } }) => {
+      if (!conversation) {
+        throw new Error(
+          "Unreachable: calling ask-agent tool without a conversation."
+        );
+      }
       const childAgentIdRes = parseAgentConfigurationUri(uri);
       if (childAgentIdRes.isErr()) {
         return {
@@ -60,7 +65,7 @@ function createServer(): McpServer {
         content: [
           {
             type: "text",
-            text: `Found the child agent configuration ${childAgentIdRes.value}.`,
+            text: `Found the child agent configuration ${childAgentIdRes.value}, got the conversation ${conversation.sId}.`,
           },
         ],
       };
