@@ -93,7 +93,7 @@ export abstract class ResourceWithSpace<
           // Skip entries where space is not found, which can happen when using the @help agent.
           // @help can use retrieval, which relies on a data source view that is on another workspace.
           if (!space) {
-            return null;
+            throw new Error("Unreachable: space not found.");
           }
 
           const includedResults = (includes || []).reduce<IncludeType>(
