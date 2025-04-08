@@ -578,6 +578,7 @@ export default function DatasetView({
                   Set the properties and types to ensure your dataset is valid
                   when you update it. The properties descriptions are used to
                   generate the inputs to your app when run from an Agent.
+                  <span className="text-warning-500 font-medium"> (JSON inputs are not supported when using dust apps as agent actions)</span>
                 </p>
               ) : null}
             </div>
