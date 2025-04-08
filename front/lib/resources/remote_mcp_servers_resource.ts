@@ -269,7 +269,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       tools: this.cachedTools,
 
       cachedName: this.cachedName,
-      cachedDescription: this.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+      cachedDescription:
+        this.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION,
       authorization: this.authorization,
       isDefault: false, // So far we don't have defaults remote MCP servers.
 

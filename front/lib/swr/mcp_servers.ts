@@ -10,7 +10,6 @@ import type {
 import type {
   DeleteMCPServerResponseBody,
   GetMCPServerResponseBody,
-  GetRemoteMCPServerResponseBody,
   PatchMCPServerResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
@@ -49,10 +48,8 @@ export function useMCPServer({
     };
   }
 
-  const server = useMemo(() => (data ? data.server : null), [data]);
-
   return {
-    server,
+    server: data?.server || null,
     isMCPServerLoading: !error && !data && !disabled,
     isMCPServerError: !!error,
     mutateMCPServer: mutate,
@@ -76,40 +73,6 @@ export function useAvailableMCPServers({
     availableMCPServers,
     isAvailableMCPServersLoading: !error && !data,
     isAvailableMCPServersError: error,
-  };
-}
-
-export function useRemoteMCPServer({
-  disabled,
-  owner,
-  serverId,
-}: {
-  disabled?: boolean;
-  owner: LightWorkspaceType;
-  serverId: string;
-}) {
-  const serverFetcher: Fetcher<GetRemoteMCPServerResponseBody> = fetcher;
-
-  const url = serverId ? `/api/w/${owner.sId}/mcp/${serverId}` : null;
-
-  const { data, error, mutate } = useSWRWithDefaults(url, serverFetcher, {
-    disabled,
-  });
-
-  if (!serverId) {
-    return {
-      server: null,
-      isServerLoading: false,
-      isServerError: true,
-      mutateMCPServer: () => {},
-    };
-  }
-
-  return {
-    server: data?.server || null,
-    isServerLoading: !error && !data,
-    isServerError: !!error,
-    mutateMCPServer: mutate,
   };
 }
 

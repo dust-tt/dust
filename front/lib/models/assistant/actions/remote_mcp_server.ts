@@ -1,16 +1,9 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import {
-  DEFAULT_MCP_ACTION_DESCRIPTION,
-  DEFAULT_MCP_ACTION_NAME,
-  DEFAULT_MCP_ACTION_VERSION,
-} from "@app/lib/actions/constants";
+import { DEFAULT_MCP_ACTION_VERSION } from "@app/lib/actions/constants";
 import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  isAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
+import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
 import type {
   AuthorizationInfo,
   MCPToolType,
