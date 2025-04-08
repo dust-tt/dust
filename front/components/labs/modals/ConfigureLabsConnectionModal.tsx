@@ -133,13 +133,13 @@ export function ConfigureLabsConnectionModal({
 
     if (configuration) {
       success = await updateConnectionConfiguration({
-        credentialId: apiKey,
+        apiKey,
         dataSourceViewId: pendingDataSourceView?.id ?? null,
       });
     } else {
       success = await createConnectionConfiguration({
         provider: connection.id,
-        credentialId: apiKey,
+        apiKey,
       });
 
       if (success && pendingDataSourceView) {

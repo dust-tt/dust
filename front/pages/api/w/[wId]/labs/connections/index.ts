@@ -4,11 +4,13 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { SyncStatus } from "@app/types";
+import { isCredentialProvider, OAuthAPI, SyncStatus } from "@app/types";
 
 export type GetLabsConnectionsConfigurationResponseBody = {
   configuration: {
@@ -32,7 +34,7 @@ const OAuthConfigSchema = t.type({
 
 const ApiKeyConfigSchema = t.type({
   provider: acceptableConnectionProvidersCodec,
-  credentialId: t.string,
+  apiKey: t.string,
 });
 
 export const PostLabsConnectionsConfigurationBodySchema = t.union([
@@ -43,7 +45,7 @@ export const PostLabsConnectionsConfigurationBodySchema = t.union([
 export function isApiKeyConfig(
   config: t.TypeOf<typeof PostLabsConnectionsConfigurationBodySchema>
 ): config is t.TypeOf<typeof ApiKeyConfigSchema> {
-  return "credentialId" in config;
+  return "apiKey" in config;
 }
 
 function getConnectionDetails(
@@ -51,7 +53,7 @@ function getConnectionDetails(
 ) {
   if (isApiKeyConfig(validatedBody)) {
     return {
-      credentialId: validatedBody.credentialId,
+      credentialId: validatedBody.apiKey,
       connectionId: null,
     };
   }
@@ -70,6 +72,7 @@ async function handler(
 ): Promise<void> {
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
+  const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   if (!auth.isUser()) {
     return apiError(req, res, {
@@ -133,9 +136,6 @@ async function handler(
       const validatedBody = bodyValidation.right;
       const { provider } = validatedBody;
 
-      const { credentialId, connectionId } =
-        getConnectionDetails(validatedBody);
-
       // Check if configuration already exists
       const existingConfiguration =
         await LabsConnectionsConfigurationResource.findByWorkspaceAndProvider({
@@ -151,6 +151,31 @@ async function handler(
             message: "A configuration for this provider already exists.",
           },
         });
+      }
+
+      let credentialId: string | null = null;
+      const connectionId: string | null = null;
+
+      if (isApiKeyConfig(validatedBody) && isCredentialProvider(provider)) {
+        const oAuthRes = await oauthApi.postCredentials({
+          provider,
+          userId: user.sId,
+          workspaceId: owner.sId,
+          credentials: {
+            api_key: validatedBody.apiKey,
+          },
+        });
+
+        if (oAuthRes.isErr()) {
+          return res.status(500).json({
+            error: {
+              type: "invalid_request_error",
+              message: "Failed to post API key credentials",
+            },
+          });
+        }
+
+        credentialId = oAuthRes.value.credential.credential_id;
       }
 
       try {

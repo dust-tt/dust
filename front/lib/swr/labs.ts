@@ -115,7 +115,7 @@ export function useUpdateLabsConnectionConfiguration({
   return async (
     data: Partial<{
       dataSourceViewId: ModelId | null;
-      credentialId: string | null;
+      apiKey: string | null;
       connectionId: string | null;
     }>
   ) => {
@@ -143,11 +143,11 @@ export function useCreateLabsConnectionConfiguration({
 
   const createConnectionConfiguration = async ({
     provider,
-    credentialId,
+    apiKey,
     connectionId,
   }: {
     provider: string;
-    credentialId?: string;
+    apiKey?: string;
     connectionId?: string;
   }) => {
     const res = await fetch(`/api/w/${workspaceId}/labs/connections`, {
@@ -157,7 +157,7 @@ export function useCreateLabsConnectionConfiguration({
       },
       body: JSON.stringify({
         provider,
-        ...(credentialId ? { credentialId } : {}),
+        ...(apiKey ? { apiKey } : {}),
         ...(connectionId ? { connectionId } : {}),
       }),
     });
