@@ -1,3 +1,4 @@
+import { removeNulls } from "@dust-tt/client";
 import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -51,7 +52,16 @@ async function handler(
 
   return res.status(200).json({
     success: true,
-    serverViews: serverViews.map((s) => s.toJSON()),
+    serverViews: removeNulls(
+      serverViews.map((s) => {
+        // TODO: update
+        try {
+          return s.toJSON();
+        } catch (err) {
+          return null;
+        }
+      })
+    ),
   });
 }
 
