@@ -18,6 +18,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerToolMetadata } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -26,7 +27,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
 import { Ok, removeNulls } from "@app/types";
-import { RemoteMCPServerToolMetadata } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -296,3 +296,13 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     };
   }
 }
+
+RemoteMCPServerToolMetadata.belongsTo(RemoteMCPServer, {
+  foreignKey: { allowNull: false, name: "serverId" },
+  onDelete: "RESTRICT",
+});
+
+RemoteMCPServer.hasMany(RemoteMCPServerToolMetadata, {
+  foreignKey: "serverId",
+  onDelete: "RESTRICT",
+});

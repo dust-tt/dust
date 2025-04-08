@@ -1,8 +1,10 @@
-import { MCPToolPermissionType } from "@app/lib/actions/mcp_metadata";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
+
+import type { MCPToolPermissionType } from "@app/lib/actions/mcp_metadata";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
-import { CreationOptional, DataTypes, ForeignKey } from "sequelize";
 
 export class RemoteMCPServerToolMetadata extends BaseModel<RemoteMCPServerToolMetadata> {
   declare createdAt: CreationOptional<Date>;
@@ -52,14 +54,4 @@ RemoteMCPServerToolMetadata.init(
       },
     ],
   }
-)
-
-RemoteMCPServerToolMetadata.belongsTo(RemoteMCPServer, {
-  foreignKey: { allowNull: false, name: "serverId" },
-  onDelete: "RESTRICT",
-})
-
-RemoteMCPServer.hasMany(RemoteMCPServerToolMetadata, {
-  foreignKey: "serverId",
-  onDelete: "RESTRICT",
-})
+);
