@@ -119,14 +119,20 @@ async function processConversation(
   for (const userId in lastMessageByUserId) {
     if (execute) {
       try {
-        await ConversationParticipantModel.create({
-          conversationId: conversation.id,
-          workspaceId,
-          userId: parseInt(userId),
-          createdAt: lastMessageByUserId[userId],
-          updatedAt: lastMessageByUserId[userId],
-          action: "posted",
-        });
+        await ConversationParticipantModel.create(
+          {
+            conversationId: conversation.id,
+            workspaceId,
+            userId: parseInt(userId),
+            createdAt: lastMessageByUserId[userId],
+            updatedAt: lastMessageByUserId[userId],
+            action: "posted",
+          },
+          {
+            silent: true,
+            timestamps: false,
+          }
+        );
         logger.info(
           `Created participant for user ${userId} in conversation ${conversation.sId}.`
         );
