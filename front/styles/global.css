@@ -128,3 +128,24 @@ main {
 .s-blinking-cursor > :not(pre):last-child::after {
   /* ... existing code ... */
 }
+
+/* These are the correct CSS selectors for the highlight extension */
+.ProseMirror [data-highlight-color="#dcfce7"] {
+  background-color: #dcfce7;
+  background-color: rgba(220, 252, 231, 0.4);
+}
+
+.dark .ProseMirror [data-highlight-color="#dcfce7"] {
+  background-color: rgba(22, 163, 74, 0.4);
+}
+
+.ProseMirror [data-highlight-color="#fee2e2"] {
+  background-color: #fee2e2;
+  background-color: rgba(254, 226, 226, 0.4);
+  text-decoration: line-through;
+}
+
+.dark .ProseMirror [data-highlight-color="#fee2e2"] {
+  background-color: rgba(220, 38, 38, 0.4);
+  text-decoration: line-through;
+}

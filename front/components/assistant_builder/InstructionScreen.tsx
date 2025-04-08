@@ -5,7 +5,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  HistoryIcon,
   Page,
+  PencilSquareIcon,
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -42,6 +44,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, isSupportingResponseFormat, md5, Ok } from "@app/types";
+import { Highlight } from "@tiptap/extension-highlight";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -56,6 +59,50 @@ const useInstructionEditorService = (editor: Editor | null) => {
 
   return editorService;
 };
+
+// Replace the simpleDiff function with this character-level implementation
+function characterDiff(
+  oldText: string,
+  newText: string
+): { type: "insert" | "delete" | "equal"; value: string }[] {
+  // Start with detecting common prefix
+  let commonPrefixLength = 0;
+  const minLength = Math.min(oldText.length, newText.length);
+
+  while (
+    commonPrefixLength < minLength &&
+    oldText[commonPrefixLength] === newText[commonPrefixLength]
+  ) {
+    commonPrefixLength++;
+  }
+
+  // If we have a common prefix, add it as equal
+  const result: { type: "insert" | "delete" | "equal"; value: string }[] = [];
+
+  if (commonPrefixLength > 0) {
+    result.push({
+      type: "equal",
+      value: oldText.substring(0, commonPrefixLength),
+    });
+  }
+
+  // Add the remaining parts as deletions/insertions
+  if (commonPrefixLength < oldText.length) {
+    result.push({
+      type: "delete",
+      value: oldText.substring(commonPrefixLength),
+    });
+  }
+
+  if (commonPrefixLength < newText.length) {
+    result.push({
+      type: "insert",
+      value: newText.substring(commonPrefixLength),
+    });
+  }
+
+  return result;
+}
 
 export function InstructionScreen({
   owner,
@@ -84,12 +131,19 @@ export function InstructionScreen({
   agentConfigurationId: string | null;
   models: ModelConfigurationType[];
 }) {
+  const [diffMode, setDiffMode] = useState(false);
+  const [compareVersion, setCompareVersion] =
+    useState<LightAgentConfigurationType | null>(null);
+
   const editor = useEditor({
     extensions: [
       Document,
       Text,
       ParagraphExtension,
       History,
+      Highlight.configure({
+        multicolor: true,
+      }),
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),
@@ -231,6 +285,66 @@ export function InstructionScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetAt]);
 
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    if (diffMode && compareVersion && currentConfig) {
+      const currentText =
+        overridenConfigInstructions[currentConfig.version] ||
+        currentConfig.instructions ||
+        "";
+      const compareText = compareVersion.instructions || "";
+
+      // Use our character-level diff
+      const diffs = characterDiff(compareText, currentText);
+
+      // Convert to TipTap content with proper paragraph handling
+      const content = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: diffs.map((diff) => ({
+              type: "text",
+              text: diff.value,
+              marks:
+                diff.type === "insert"
+                  ? [{ type: "highlight", attrs: { color: "#dcfce7" } }]
+                  : diff.type === "delete"
+                    ? [{ type: "highlight", attrs: { color: "#fee2e2" } }]
+                    : [],
+            })),
+          },
+        ],
+      };
+
+      console.log("Generated diff content:", diffs);
+
+      // Make editor read-only in diff mode
+      editor.setEditable(false);
+      editor.commands.setContent(content);
+    } else if (!diffMode && editor && currentConfig) {
+      editor.setEditable(true);
+
+      // Restore original content
+      editor.commands.setContent(
+        tipTapContentFromPlainText(
+          overridenConfigInstructions[currentConfig.version] ||
+            currentConfig.instructions ||
+            ""
+        )
+      );
+    }
+  }, [
+    diffMode,
+    compareVersion,
+    currentConfig,
+    editor,
+    overridenConfigInstructions,
+  ]);
+
   return (
     <div className="flex grow flex-col gap-4">
       <div className="flex flex-col sm:flex-row">
@@ -244,64 +358,63 @@ export function InstructionScreen({
           </Page.P>
         </div>
         <div className="flex-grow" />
-        {configsWithUniqueInstructions &&
-          configsWithUniqueInstructions.length > 1 &&
-          currentConfig && (
-            <div className="mr-2 mt-2 self-end">
-              <PromptHistory
-                history={configsWithUniqueInstructions}
-                onConfigChange={(config) => {
-                  // Remember the instructions of the version we're leaving, if overriden
-                  if (
-                    currentConfig &&
-                    currentConfig.instructions !== builderState.instructions
-                  ) {
-                    setOverridenConfigInstructions((prev) => ({
-                      ...prev,
-                      [currentConfig.version]: builderState.instructions,
-                    }));
-                  }
-
-                  // Bring new version's instructions to the editor, fetch overriden instructions if any
-                  setCurrentConfig(config);
-                  editorService.resetContent(
-                    tipTapContentFromPlainText(
-                      overridenConfigInstructions[config.version] ||
-                        config.instructions ||
-                        ""
+        <div className="mt-2 flex items-center gap-2 self-end">
+          {!diffMode && (
+            <AdvancedSettings
+              generationSettings={builderState.generationSettings}
+              setGenerationSettings={(generationSettings) => {
+                setEdited(true);
+                setBuilderState((state) => ({
+                  ...state,
+                  generationSettings: {
+                    ...generationSettings,
+                    responseFormat: isSupportingResponseFormat(
+                      generationSettings.modelSettings.modelId
                     )
-                  );
-                  setBuilderState((state) => ({
-                    ...state,
-                    instructions:
-                      overridenConfigInstructions[config.version] ||
-                      config.instructions ||
-                      "",
-                  }));
-                }}
-                currentConfig={currentConfig}
-              />
-            </div>
+                      ? generationSettings.responseFormat
+                      : undefined,
+                  },
+                }));
+              }}
+              models={models}
+            />
           )}
-        <div className="mt-2 self-end">
-          <AdvancedSettings
-            generationSettings={builderState.generationSettings}
-            setGenerationSettings={(generationSettings) => {
-              setEdited(true);
-              setBuilderState((state) => ({
-                ...state,
-                generationSettings: {
-                  ...generationSettings,
-                  responseFormat: isSupportingResponseFormat(
-                    generationSettings.modelSettings.modelId
-                  )
-                    ? generationSettings.responseFormat
-                    : undefined,
-                },
-              }));
-            }}
-            models={models}
-          />
+          {configsWithUniqueInstructions &&
+            configsWithUniqueInstructions.length > 1 &&
+            currentConfig && (
+              <div>
+                {!diffMode ? (
+                  <Button
+                    variant="outline"
+                    icon={HistoryIcon}
+                    size="sm"
+                    onClick={() => {
+                      setDiffMode(true);
+                      // Default to comparing with the first previous version
+                      setCompareVersion(configsWithUniqueInstructions[1]);
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Comparing current with:
+                    </span>
+                    <PromptHistory
+                      // Only show previous versions (exclude current)
+                      history={configsWithUniqueInstructions.slice(1)}
+                      onConfigChange={setCompareVersion}
+                      currentConfig={compareVersion}
+                    />
+                    <Button
+                      icon={PencilSquareIcon}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDiffMode(false)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
         </div>
       </div>
       <div className="flex h-full flex-col gap-1">
