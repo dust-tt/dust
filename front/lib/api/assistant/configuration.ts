@@ -1395,19 +1395,11 @@ async function createChildAgentConfiguration(
     mcpConfig: AgentMCPServerConfiguration;
   }
 ) {
-  const owner = auth.getNonNullableWorkspace();
-  const childAgent = await AgentConfiguration.findOne({
-    where: {
-      sId: childAgentConfig.sId,
-      workspaceId: owner.id,
-    },
-  });
-  assert(childAgent, "Child agent not found");
   return ChildAgentConfiguration.create(
     {
-      agentConfigurationId: childAgent.id,
+      agentConfigurationId: childAgentConfig.sId,
       mcpServerConfigurationId: mcpConfig.id,
-      workspaceId: owner.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
     { transaction: t }
   );
