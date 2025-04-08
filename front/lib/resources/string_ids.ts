@@ -33,9 +33,9 @@ const RESOURCES_PREFIX = {
   mcp_server_view: "msv",
   data_source_configuration: "dsc",
   table_configuration: "tbc",
-
-  // Virtual resources.
   remote_mcp_server: "rms",
+
+  // Virtual resources (no database modelsassociated).
   internal_mcp_server: "ims",
 };
 

@@ -4,7 +4,10 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { isPlatformMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import {
+  isMCPServerConfiguration,
+  isPlatformMCPServerConfiguration,
+} from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -89,7 +92,7 @@ async function handler(
         }
       }
 
-      // Cast the assistant to ensure TypeScript understands the correct types
+      // Cast the assistant to ensure TypeScript understands the correct types.
       const typedAssistant = {
         ...assistant,
         scope: bodyValidation.right.scope,
@@ -97,10 +100,13 @@ async function handler(
         templateId: assistant.templateId,
         // Ensure actions are correctly typed.
         actions: assistant.actions.map((action) => {
-          assert(
-            isPlatformMCPServerConfiguration(action),
-            "MCP actions must be platform MCP actions."
-          );
+          // If MCP actions are present, they must be platform MCP actions.
+          if (isMCPServerConfiguration(action)) {
+            assert(
+              isPlatformMCPServerConfiguration(action),
+              "MCP actions must be platform MCP actions."
+            );
+          }
 
           return action;
         }),

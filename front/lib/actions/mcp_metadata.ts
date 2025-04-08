@@ -17,7 +17,7 @@ import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { RedisMCPTransport } from "@app/lib/api/actions/mcp_local";
+import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_local";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -115,14 +115,14 @@ interface ConnectViaLocalMCPServer {
   mcpServerId: string;
 }
 
-export type MCPConnectionOptions =
+export type MCPConnectionParams =
   | ConnectViaMCPServerId
   | ConnectViaRemoteMCPServerUrl
   | ConnectViaLocalMCPServer;
 
 export const connectToMCPServer = async (
   auth: Authenticator,
-  params: MCPConnectionOptions
+  params: MCPConnectionParams
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -185,7 +185,7 @@ export const connectToMCPServer = async (
     }
 
     case "localMCPServerId": {
-      const transport = new RedisMCPTransport(auth, {
+      const transport = new ClientSideRedisMCPTransport(auth, {
         conversationId: params.conversationId,
         mcpServerId: params.mcpServerId,
         messageId: params.messageId,
