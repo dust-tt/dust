@@ -486,7 +486,7 @@ function LimitedSearchContentMessage({
     case "truncated-query-clauses":
       return {
         title: "Search results are partial due to the large amount of data.",
-        variant: "amber",
+        variant: "golden",
         icon: InformationCircleIcon,
         className: "w-full",
         size: "lg",
