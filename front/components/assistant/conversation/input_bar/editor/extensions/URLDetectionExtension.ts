@@ -3,6 +3,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isUrlCandidate, nodeCandidateFromUrl } from "@app/lib/connectors";
+import { assert } from "console";
 
 type URLFormatOptions = {
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
@@ -48,7 +49,11 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
                 const nodeCandidate = nodeCandidateFromUrl(url);
                 const isUrlNodeCandidate = isUrlCandidate(nodeCandidate);
                 if (nodeCandidate) {
-                  // @ts-ignore urlPositions is not undefined, see above
+                  // typescript pleasing
+                  assert(
+                    urlPositions,
+                    "Unreachable: urlPositions is not undefined"
+                  );
                   const from = urlPositions![index] + 1;
                   const nodeId = isUrlNodeCandidate
                     ? nodeCandidate.url
