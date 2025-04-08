@@ -63,6 +63,11 @@ export type DataSourceWithConnectorDetailsType = DataSourceType &
   WithConnector &
   ConnectorStatusDetails;
 
+export type DataSourceWithPersonalConnection =
+  DataSourceWithConnectorDetailsType & {
+    personalConnection: string | null;
+  };
+
 export type DataSourceWithAgentsUsageType = {
   count: number;
   agentNames: string[];

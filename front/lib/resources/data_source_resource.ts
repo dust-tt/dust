@@ -546,14 +546,16 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   // Personal connection logic.
 
-  getPersonalConnection(auth: Authenticator) {
-    return PersonalConnection.findOne({
+  async getPersonalConnection(auth: Authenticator) {
+    const conn = await PersonalConnection.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: this.id,
         userId: auth.user()?.id,
       },
     });
+
+    return conn?.connectionId;
   }
 
   async createPersonalConnection(
@@ -564,12 +566,27 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       connectionId: string;
     }
   ) {
-    return PersonalConnection.create({
+    const conn = await PersonalConnection.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       dataSourceId: this.id,
       userId: auth.user()?.id,
       connectionId,
     });
+
+    return conn?.connectionId;
+  }
+
+  async removePersonalConnection(auth: Authenticator) {
+    const conn = await PersonalConnection.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        dataSourceId: this.id,
+        userId: auth.user()?.id,
+      },
+    });
+    if (conn) {
+      return conn.destroy();
+    }
   }
 
   // Serialization.

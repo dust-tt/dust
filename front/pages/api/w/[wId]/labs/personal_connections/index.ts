@@ -1,14 +1,20 @@
-import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type {
+  DataSourceWithPersonalConnection,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { removeNulls } from "@app/types";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
@@ -21,47 +27,63 @@ export const PostPersonalConnectionBodySchema = t.type({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<{ success: boolean }>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      { success: boolean } | { dataSources: DataSourceWithPersonalConnection[] }
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
-  const user = auth.getNonNullableUser();
+  const owner = auth.getNonNullableWorkspace();
+  const flags = await getFeatureFlags(owner);
+
+  if (!flags.includes("labs_personal_connections")) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "feature_flag_not_found",
+        message: "The feature is not enabled for this workspace.",
+      },
+    });
+  }
 
   switch (req.method) {
-    case "POST":
-      const bodyValidation = PostPersonalConnectionBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+    case "GET":
+      const dataSources = await DataSourceResource.listByWorkspace(auth);
 
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+      const augmentedDataSources = removeNulls(
+        await concurrentExecutor(
+          dataSources,
+          async (dataSource: DataSourceResource) => {
+            const ds = dataSource.toJSON();
+
+            if (!isManaged(ds)) {
+              return null;
+            }
+
+            // Only show salesforce for now
+            if (ds.connectorProvider !== "salesforce") {
+              return null;
+            }
+
+            const augmentedDataSource =
+              await augmentDataSourceWithConnectorDetails(ds);
+            if (!augmentedDataSource.connector) {
+              return null;
+            }
+            const personalConnection =
+              await dataSource.getPersonalConnection(auth);
+            return {
+              ...augmentedDataSource,
+              personalConnection: personalConnection ?? null,
+            };
           },
-        });
-      }
-
-      const validatedBody = bodyValidation.right;
-      const { connectionId, dataSourceId } = validatedBody;
-
-      const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
-      if (!dataSource) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
-          },
-        });
-      }
-      await dataSource.createPersonalConnection(auth, {
-        connectionId,
-      });
-
-      await user.setMetadata(`connection_id_${dataSourceId}`, connectionId);
+          { concurrency: 10 }
+        )
+      );
 
       return res.status(200).json({
-        success: true,
+        dataSources: augmentedDataSources,
       });
     default:
       return apiError(req, res, {

@@ -46,7 +46,7 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
   {
     id: "personal_connections",
     label: "Personal Connections",
-    featureFlag: "salesforce_feature",
+    featureFlag: "labs_personal_connections",
     visibleWithoutAccess: true,
     icon: LockIcon,
     description:

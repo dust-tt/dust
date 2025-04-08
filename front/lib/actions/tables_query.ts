@@ -493,7 +493,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       const connection =
         await dataSourceView.dataSource.getPersonalConnection(auth);
       if (connection) {
-        connectionIds[dataSourceView.sId] = connection.connectionId;
+        connectionIds[dataSourceView.sId] = connection;
       }
     }
 
