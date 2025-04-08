@@ -56,7 +56,7 @@ export const Basic: Story = {
   args: {
     label: "Example Chip",
     size: "sm",
-    color: "slate",
+    color: "primary",
     isBusy: true,
     onRemove: undefined,
   },
@@ -65,7 +65,6 @@ export const Basic: Story = {
 export const ThinkingChip = () => (
   <Chip
     size="sm"
-    color="slate"
     label="Thinking, Searching"
     isBusy
     onClick={() => console.log()}
@@ -73,10 +72,5 @@ export const ThinkingChip = () => (
 );
 
 export const RemovableChip = () => (
-  <Chip
-    size="sm"
-    color="slate"
-    label="Remove me"
-    onRemove={() => alert("Removed")}
-  />
+  <Chip size="sm" label="Remove me" onRemove={() => alert("Removed")} />
 );

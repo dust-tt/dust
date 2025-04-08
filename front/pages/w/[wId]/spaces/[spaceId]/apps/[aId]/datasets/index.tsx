@@ -200,9 +200,9 @@ export default function DatasetsView({
                 <div className="mt-2 max-w-4xl px-2">
                   <div className="py-2 text-sm text-gray-400 dark:text-gray-400-night">
                     Datasets are used as input data to apps (
-                    <Chip label="input" color="slate" /> block) or few-shot
-                    examples to prompt models (
-                    <Chip label="data" color="slate" /> block).
+                    <Chip label="input" /> block) or few-shot examples to prompt
+                    models (
+                    <Chip label="data" /> block).
                   </div>
                 </div>
               </div>

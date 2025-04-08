@@ -138,7 +138,9 @@ export default function TrackerConfigurations({
         <DataTable.CellContent>
           <Chip
             size="xs"
-            color={info.row.original.status === "active" ? "emerald" : "slate"}
+            color={
+              info.row.original.status === "active" ? "success" : "primary"
+            }
             className="capitalize"
           >
             {capitalize(info.row.original.status)}

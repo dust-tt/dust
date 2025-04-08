@@ -5,15 +5,6 @@ import { Icon } from "@sparkle/components/Icon";
 import { cn } from "@sparkle/lib/utils";
 
 const CONTENT_MESSAGE_VARIANTS = [
-  "emerald",
-  "amber",
-  "slate",
-  "purple",
-  "sky",
-  "pink",
-  "action",
-  "red",
-  //New variants
   "primary",
   "warning",
   "success",
@@ -36,20 +27,6 @@ const contentMessageVariants = cva(
   {
     variants: {
       variant: {
-        emerald:
-          "s-bg-green-100 dark:s-bg-green-100-night s-border-transparent",
-        amber:
-          "s-bg-golden-100 dark:s-bg-golden-100-night s-border-transparent",
-        slate:
-          "s-bg-muted-background dark:s-bg-muted-background-night s-border s-border-border dark:s-border-border-night",
-        purple:
-          "s-bg-purple-100 dark:s-bg-purple-100-night s-border-transparent",
-        sky: "s-bg-sky-100 dark:s-bg-sky-100-night s-border-transparent",
-        pink: "s-bg-pink-100 dark:s-bg-pink-100-night s-border-transparent",
-        action:
-          "s-bg-highlight-100 dark:s-bg-highlight-100-night s-border-transparent",
-        red: "s-bg-red-100 dark:s-bg-red-100-night s-border-transparent",
-        // tbr
         primary:
           "s-bg-muted-background dark:s-bg-muted-background-night s-border-border dark:s-border-border-night",
         success:
@@ -81,15 +58,6 @@ const contentMessageVariants = cva(
 const iconVariants = cva("s-shrink-0", {
   variants: {
     variant: {
-      emerald: "s-text-green-800 dark:s-text-green-800-night",
-      amber: "s-text-golden-800 dark:s-text-golden-800-night",
-      slate: "s-text-primary-800 dark:s-text-primary-800-night",
-      purple: "s-text-purple-800 dark:s-text-purple-800-night",
-      sky: "s-text-sky-800 dark:s-text-sky-800-night",
-      pink: "s-text-pink-800 dark:s-text-pink-800-night",
-      action: "s-text-highlight-800 dark:s-text-highlight-800-night",
-      red: "s-text-red-800 dark:s-text-red-800-night",
-      // tbr
       primary: "s-text-primary-800 dark:s-text-primary-800-night",
       warning: "s-text-warning-800 dark:s-text-warning-800-night",
       success: "s-text-success-800 dark:s-text-success-800-night",
@@ -106,15 +74,6 @@ const iconVariants = cva("s-shrink-0", {
 const titleVariants = cva("s-text-sm s-font-semibold", {
   variants: {
     variant: {
-      emerald: "s-text-green-800 dark:s-text-green-800-night",
-      amber: "s-text-golden-800 dark:s-text-golden-800-night",
-      slate: "s-text-foreground dark:s-text-foreground-night",
-      purple: "s-text-purple-800 dark:s-text-purple-800-night",
-      sky: "s-text-sky-800 dark:s-text-sky-800-night",
-      pink: "s-text-pink-800 dark:s-text-pink-800-night",
-      action: "s-text-highlight-800 dark:s-text-highlight-800-night",
-      red: "s-text-red-800 dark:s-text-red-800-night",
-      // tbr
       primary: "s-text-foreground dark:s-text-foreground-night",
       warning: "s-text-warning-800 dark:s-text-warning-800-night",
       success: "s-text-success-800 dark:s-text-success-800-night",
@@ -131,15 +90,6 @@ const titleVariants = cva("s-text-sm s-font-semibold", {
 const textVariants = cva("s-text-sm", {
   variants: {
     variant: {
-      emerald: "s-text-green-950 dark:s-text-green-950-night",
-      amber: "s-text-golden-950 dark:s-text-golden-950-night",
-      slate: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      purple: "s-text-purple-950 dark:s-text-purple-950-night",
-      sky: "s-text-sky-950 dark:s-text-sky-950-night",
-      pink: "s-text-pink-950 dark:s-text-pink-950-night",
-      action: "s-text-highlight-950 dark:s-text-highlight-950-night",
-      red: "s-text-red-950 dark:s-text-red-950-night",
-      // tbr
       primary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
       warning: "s-text-warning-950 dark:s-text-warning-950-night",
       success: "s-text-success-950 dark:s-text-success-950-night",
@@ -164,7 +114,7 @@ export interface ContentMessageProps {
 
 export function ContentMessage({
   title,
-  variant = "amber",
+  variant = "info",
   children,
   size = "md",
   className = "",

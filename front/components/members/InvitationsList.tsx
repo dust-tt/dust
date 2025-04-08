@@ -113,9 +113,7 @@ export function InvitationsList({
                 <div className="grow text-muted-foreground dark:text-muted-foreground-night"></div>
               </div>
               <div>
-                <Chip size="xs" color="slate">
-                  Loading...
-                </Chip>
+                <Chip size="xs">Loading...</Chip>
               </div>
               <div className="hidden sm:block">
                 <ChevronRightIcon />

@@ -208,7 +208,7 @@ function ProviderListItem({
             <Chip
               size="xs"
               label={isEnabled ? "enabled" : "disabled"}
-              color={isEnabled ? "emerald" : "slate"}
+              color={isEnabled ? "success" : "primary"}
             />
           </div>
           {apiKey && (

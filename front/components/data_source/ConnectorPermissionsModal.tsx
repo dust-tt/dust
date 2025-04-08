@@ -317,7 +317,7 @@ function UpdateConnectionOAuthModal({
             <Page.SectionHeader title="Editing permissions" />
             <ContentMessage
               size="md"
-              variant="pink"
+              variant="warning"
               title="You are not the owner of this connection."
               icon={InformationCircleIcon}
             >

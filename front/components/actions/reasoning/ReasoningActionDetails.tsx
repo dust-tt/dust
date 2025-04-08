@@ -42,7 +42,7 @@ function ReasoningThinking({ action }: { action: ReasoningActionType }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-        <ContentMessage variant="slate" size="lg">
+        <ContentMessage variant="primary" size="lg">
           <Markdown
             content={thinking}
             forcedTextSize="md"

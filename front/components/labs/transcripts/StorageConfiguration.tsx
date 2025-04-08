@@ -180,7 +180,7 @@ export function StorageConfiguration({
       {transcriptsConfiguration.isDefaultWorkspaceConfiguration && (
         <ContentMessage
           title="Default storage"
-          variant="slate"
+          variant="primary"
           size="lg"
           icon={ChatBubbleThoughtIcon}
         >

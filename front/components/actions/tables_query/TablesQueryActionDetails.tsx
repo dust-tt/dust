@@ -83,7 +83,7 @@ function QueryThinking({ action }: { action: TablesQueryActionType }) {
       <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
         <ContentMessage
           title="Reasoning"
-          variant="slate"
+          variant="primary"
           icon={InformationCircleIcon}
           size="lg"
         >

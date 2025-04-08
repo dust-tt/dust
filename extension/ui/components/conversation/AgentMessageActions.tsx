@@ -90,7 +90,6 @@ function ActionDetails({
       <div key={label}>
         <Chip
           size="sm"
-          color="slate"
           isBusy
           label={label === "Thinking" ? label : `Thinking, ${label}`}
         />

@@ -88,7 +88,7 @@ export default function Space({
         <div>
           {/* TODO: Should we move this to the SpaceLayout? */}
           <Chip
-            color="pink"
+            color="rose"
             label="You are not a member of this space."
             size="sm"
             icon={InformationCircleIcon}

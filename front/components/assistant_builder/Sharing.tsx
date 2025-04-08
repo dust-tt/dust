@@ -52,7 +52,7 @@ export const SCOPE_INFO: Record<
   {
     shortLabel: string;
     label: string;
-    color: "pink" | "amber" | "sky" | "slate";
+    color: "green" | "golden" | "blue" | "primary";
     icon: typeof UserGroupIcon | typeof CompanyIcon | typeof LockIcon;
     text: string;
     confirmationModalData: ConfirmationModalDataType | null;
@@ -61,7 +61,7 @@ export const SCOPE_INFO: Record<
   workspace: {
     shortLabel: "Company",
     label: "Company Agent",
-    color: "amber",
+    color: "golden",
     icon: CompanyIcon,
     text: "Activated by default for all members of the workspace.",
     confirmationModalData: {
@@ -74,7 +74,7 @@ export const SCOPE_INFO: Record<
   published: {
     shortLabel: "Shared",
     label: "Shared Agent",
-    color: "pink",
+    color: "green",
     icon: UserGroupIcon,
     text: "Anyone in the workspace can view and edit.",
     confirmationModalData: {
@@ -87,7 +87,7 @@ export const SCOPE_INFO: Record<
   private: {
     shortLabel: "Personal",
     label: "Personal Agent",
-    color: "sky",
+    color: "blue",
     icon: LockIcon,
     text: "Only I can view and edit.",
     confirmationModalData: {
@@ -101,7 +101,7 @@ export const SCOPE_INFO: Record<
   global: {
     shortLabel: "Default",
     label: "Default Agent",
-    color: "slate",
+    color: "primary",
     icon: DustIcon,
     text: "Default agents provided by Dust.",
     confirmationModalData: null,

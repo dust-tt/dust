@@ -499,7 +499,7 @@ export default function ActionsScreen({
         {nonGlobalSpacessUsedInActions.length > 0 && (
           <div className="w-full">
             <Chip
-              color="amber"
+              color="info"
               size="sm"
               label={`Based on the sources you selected, this agent can only be used by users with access to space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacessUsedInActions.map((v) => v.name).join(", ")}.`}
             />

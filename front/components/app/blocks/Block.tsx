@@ -103,7 +103,7 @@ export default function Block({
       >
         <div className="flex w-full flex-row items-start justify-between pb-2">
           <div className="flex flex-row items-start gap-2">
-            <Chip label={block.type} color="slate" size="sm" />
+            <Chip label={block.type} size="sm" />
             <Input
               placeholder="BLOCK_NAME"
               readOnly={readOnly}
