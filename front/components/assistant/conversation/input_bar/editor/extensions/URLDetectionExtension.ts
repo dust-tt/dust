@@ -41,13 +41,18 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
 
             // Check for URLs in pasted content
             const urls = text.match(URL_REGEX);
+            const urlPositions = urls?.map((url) => text.indexOf(url));
             if (urls) {
               // For each URL found, check if it has a node ID
-              urls.forEach((url) => {
+              urls.forEach((url, index) => {
                 const nodeCandidate = nodeCandidateFromUrl(url);
                 const isUrlNodeCandidate = isUrlCandidate(nodeCandidate);
                 if (nodeCandidate) {
-                  const { from } = view.state.selection;
+                  // typescript pleasing
+                  if (!urlPositions) {
+                    throw new Error("Unreachable: urlPositions is not defined");
+                  }
+                  const from = urlPositions[index] + 1;
                   const nodeId = isUrlNodeCandidate
                     ? nodeCandidate.url
                     : nodeCandidate.node;
