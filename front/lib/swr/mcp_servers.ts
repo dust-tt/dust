@@ -49,8 +49,10 @@ export function useMCPServer({
     };
   }
 
+  const server = useMemo(() => (data ? data.server : null), [data]);
+
   return {
-    server: data?.server || null,
+    server,
     isMCPServerLoading: !error && !data && !disabled,
     isMCPServerError: !!error,
     mutateMCPServer: mutate,

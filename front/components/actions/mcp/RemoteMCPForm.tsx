@@ -14,7 +14,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -26,6 +26,7 @@ import {
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
+import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -72,7 +73,7 @@ export function RemoteMCPForm({
   const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer.id);
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.id);
 
-  const onSubmit = async (values: MCPFormType) => {
+  const onSubmit = useCallback(async (values: MCPFormType) => {
     try {
       const result = await updateServer({
         name: values.name,
@@ -99,9 +100,9 @@ export function RemoteMCPForm({
         description: err instanceof Error ? err.message : "An error occurred",
       });
     }
-  };
+  }, [updateServer, mutateMCPServers, sendNotification, form]);
 
-  const handleSynchronize = async () => {
+  const handleSynchronize = useCallback(async () => {
     if (!url) {
       setSyncError("Please enter a valid URL before synchronizing.");
       return;
@@ -140,7 +141,7 @@ export function RemoteMCPForm({
     } finally {
       setIsSynchronizing(false);
     }
-  };
+  }, [url, syncServer, mutateMCPServers, sendNotification]);
 
   const toggleSecretVisibility = () => {
     setIsSecretVisible(!isSecretVisible);
@@ -254,7 +255,7 @@ export function RemoteMCPForm({
                 {...field}
                 isError={!!form.formState.errors.description?.message}
                 message={form.formState.errors.description?.message}
-                placeholder={mcpServer.cachedDescription}
+                placeholder={mcpServer.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION}
               />
               <p className="text-xs text-gray-500">
                 This is only for internal reference and is not shown to the
