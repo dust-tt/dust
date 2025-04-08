@@ -27,6 +27,7 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
+import { useMCPServerRequiredConfiguration } from "@app/hooks/useMCPServerRequiredConfiguration";
 import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/actions/mcp_metadata";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -36,7 +37,6 @@ import type {
   SpaceType,
 } from "@app/types";
 import { assertNever, slugify } from "@app/types";
-import { useMCPServerRequiredConfiguration } from "@app/hooks/useMCPServerRequiredConfiguration";
 
 interface ActionMCPProps {
   owner: LightWorkspaceType;
@@ -59,6 +59,7 @@ export function ActionMCP({
   updateAction,
   setEdited,
 }: ActionMCPProps) {
+  // TODO(mcp): currently broken: we can save an action without having configured it.
   const actionConfiguration =
     action.configuration as AssistantBuilderMCPServerConfiguration;
 
@@ -209,20 +210,20 @@ export function ActionMCP({
 
   return (
     <>
-      {actionConfiguration.dataSourceConfigurations && (
+      {requiresDataSourceConfiguration && (
         <AssistantBuilderDataSourceModal
           isOpen={showDataSourcesModal}
           setOpen={setShowDataSourcesModal}
           owner={owner}
           onSave={handleDataSourceConfigUpdate}
           initialDataSourceConfigurations={
-            actionConfiguration.dataSourceConfigurations
+            actionConfiguration.dataSourceConfigurations ?? {}
           }
           allowedSpaces={allowedSpaces}
           viewType="document"
         />
       )}
-      {actionConfiguration.tablesConfigurations && (
+      {requiresTableConfiguration && (
         <AssistantBuilderDataSourceModal
           isOpen={showTablesModal}
           setOpen={(isOpen) => {
@@ -231,7 +232,7 @@ export function ActionMCP({
           owner={owner}
           onSave={handleTableConfigUpdate}
           initialDataSourceConfigurations={
-            actionConfiguration.tablesConfigurations
+            actionConfiguration.tablesConfigurations ?? {}
           }
           allowedSpaces={allowedSpaces}
           viewType="table"
