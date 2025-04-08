@@ -513,7 +513,6 @@ export async function createConnectionAndGetSetupUrl(
         metadata: { workspace_id: string; user_id: string };
       }
     | undefined = undefined;
-  let copyRelatedCredentialFromConnectionId: string | undefined;
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const userId = auth.getNonNullableUser().sId;
 
@@ -545,7 +544,6 @@ export async function createConnectionAndGetSetupUrl(
     provider,
     metadata,
     relatedCredential,
-    copyRelatedCredentialFromConnectionId,
   });
   if (cRes.isErr()) {
     logger.error({ provider, useCase }, "OAuth: Failed to create connection");

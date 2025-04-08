@@ -60,7 +60,6 @@ export class OAuthAPI {
     metadata,
     migratedCredentials,
     relatedCredential,
-    copyRelatedCredentialFromConnectionId,
   }: {
     provider: OAuthProvider;
     metadata: Record<string, unknown> | null;
@@ -72,7 +71,6 @@ export class OAuthAPI {
         user_id: string;
       };
     };
-    copyRelatedCredentialFromConnectionId?: string;
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
     const body: {
       provider: OAuthProvider;
@@ -97,11 +95,6 @@ export class OAuthAPI {
 
     if (relatedCredential) {
       body.related_credential = relatedCredential;
-    }
-
-    if (copyRelatedCredentialFromConnectionId) {
-      body.copy_related_credential_from_connection_id =
-        copyRelatedCredentialFromConnectionId;
     }
 
     const response = await this._fetchWithError(`${this._url}/connections`, {
