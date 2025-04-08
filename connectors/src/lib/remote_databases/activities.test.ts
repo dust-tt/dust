@@ -265,7 +265,7 @@ describe("sync remote databases", async () => {
       expect(upsertDataSourceRemoteTable).toHaveBeenCalledWith({
         dataSourceConfig: dataSourceConfig,
         tableId: "test-db.test-schema.test-table",
-        tableName: "test-table",
+        tableName: "test-db.test-schema.test-table",
         remoteDatabaseTableId: "custom-remote-table-id",
         remoteDatabaseSecretId: connector.connectionId,
         tableDescription: "",
@@ -487,7 +487,8 @@ describe("sync remote databases", async () => {
         dataSourceConfig: dataSourceConfig,
         tableId:
           "test__DUST_DOT__db.test__DUST_DOT__schema.test__DUST_DOT__table",
-        tableName: "test.table",
+        tableName:
+          "test__DUST_DOT__db.test__DUST_DOT__schema.test__DUST_DOT__table",
         remoteDatabaseTableId:
           "test__DUST_DOT__db.test__DUST_DOT__schema.test__DUST_DOT__table",
         remoteDatabaseSecretId: connector.connectionId,
@@ -572,7 +573,7 @@ describe("sync remote databases", async () => {
       expect(upsertDataSourceRemoteTable).toHaveBeenCalledWith({
         dataSourceConfig: dataSourceConfig,
         tableId: "test-db.test-schema.test-table",
-        tableName: "test-table",
+        tableName: "test-db.test-schema.test-table",
         remoteDatabaseTableId: "custom-remote-table-id",
         remoteDatabaseSecretId: connector.connectionId,
         tableDescription: "",
