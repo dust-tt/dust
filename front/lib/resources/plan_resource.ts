@@ -33,6 +33,50 @@ export function getTrialVersionForPlan(plan: PlanModel): PlanAttributes {
   };
 }
 
+// Helper function to render PlanType from PlanAttributes
+export function renderPlanFromAttributes({
+  plan,
+}: {
+  plan: PlanAttributes;
+}): PlanType {
+  return {
+    code: plan.code,
+    name: plan.name,
+    limits: {
+      assistant: {
+        isSlackBotAllowed: plan.isSlackbotAllowed,
+        maxMessages: plan.maxMessages,
+        maxMessagesTimeframe: plan.maxMessagesTimeframe,
+      },
+      connections: {
+        isConfluenceAllowed: plan.isManagedConfluenceAllowed,
+        isSlackAllowed: plan.isManagedSlackAllowed,
+        isNotionAllowed: plan.isManagedNotionAllowed,
+        isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
+        isGithubAllowed: plan.isManagedGithubAllowed,
+        isIntercomAllowed: plan.isManagedIntercomAllowed,
+        isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
+        isSalesforceAllowed: plan.isManagedSalesforceAllowed,
+      },
+      dataSources: {
+        count: plan.maxDataSourcesCount,
+        documents: {
+          count: plan.maxDataSourcesDocumentsCount,
+          sizeMb: plan.maxDataSourcesDocumentsSizeMb,
+        },
+      },
+      users: {
+        maxUsers: plan.maxUsersInWorkspace,
+      },
+      vaults: {
+        maxVaults: plan.maxVaultsInWorkspace,
+      },
+      canUseProduct: plan.canUseProduct,
+    },
+    trialPeriodDays: plan.trialPeriodDays,
+  };
+}
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -149,42 +193,6 @@ export class PlanResource extends BaseResource<PlanModel> {
   // Serialization.
 
   toJSON(): PlanType {
-    const blob: PlanType = {
-      code: this.code,
-      name: this.name,
-      limits: {
-        assistant: {
-          isSlackBotAllowed: this.isSlackbotAllowed,
-          maxMessages: this.maxMessages,
-          maxMessagesTimeframe: this.maxMessagesTimeframe,
-        },
-        connections: {
-          isConfluenceAllowed: this.isManagedConfluenceAllowed,
-          isSlackAllowed: this.isManagedSlackAllowed,
-          isNotionAllowed: this.isManagedNotionAllowed,
-          isGoogleDriveAllowed: this.isManagedGoogleDriveAllowed,
-          isGithubAllowed: this.isManagedGithubAllowed,
-          isIntercomAllowed: this.isManagedIntercomAllowed,
-          isWebCrawlerAllowed: this.isManagedWebCrawlerAllowed,
-          isSalesforceAllowed: this.isManagedSalesforceAllowed,
-        },
-        dataSources: {
-          count: this.maxDataSourcesCount,
-          documents: {
-            count: this.maxDataSourcesDocumentsCount,
-            sizeMb: this.maxDataSourcesDocumentsSizeMb,
-          },
-        },
-        users: {
-          maxUsers: this.maxUsersInWorkspace,
-        },
-        vaults: {
-          maxVaults: this.maxVaultsInWorkspace,
-        },
-        canUseProduct: this.canUseProduct,
-      },
-      trialPeriodDays: this.trialPeriodDays,
-    };
-    return blob;
+    return renderPlanFromAttributes({ plan: this });
   }
 }

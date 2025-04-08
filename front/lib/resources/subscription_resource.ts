@@ -22,11 +22,17 @@ import {
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
 import { isTrial } from "@app/lib/plans/trial";
+//import { isTrial } from "@app/lib/plans/trial";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { getTrialVersionForPlan } from "@app/lib/resources/plan_resource";
-import { PlanResource } from "@app/lib/resources/plan_resource";
+//import { getTrialVersionForPlan } from "@app/lib/resources/plan_resource";
+import type { PlanAttributes } from "@app/lib/resources/plan_resource";
+import { renderPlanFromAttributes } from "@app/lib/resources/plan_resource";
+import {
+  getTrialVersionForPlan,
+  PlanResource,
+} from "@app/lib/resources/plan_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   PlanModel,
@@ -51,18 +57,8 @@ import type {
 } from "@app/types";
 import { Ok, sendUserOperationMessage } from "@app/types";
 
+const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
-
-const getDefaultFreePlan = async (): Promise<PlanType> => {
-  const plan = await PlanResource.makeNew({
-    ...FREE_NO_PLAN_DATA,
-    id: FREE_NO_PLAN_SUBSCRIPTION_ID,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
-
-  return plan.toJSON();
-};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -138,18 +134,14 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       const activeSubscription =
         activeSubscriptionByWorkspaceId[workspace.id.toString()];
 
-      let plan: PlanType = await getDefaultFreePlan();
+      let plan: PlanAttributes = DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION;
 
       if (activeSubscription) {
         // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
         if (isTrial(activeSubscription)) {
-          plan = (
-            await PlanResource.makeNew(
-              getTrialVersionForPlan(activeSubscription.plan)
-            )
-          ).toJSON();
+          plan = getTrialVersionForPlan(activeSubscription.plan);
         } else if (activeSubscription.plan) {
-          plan = (await PlanResource.makeNew(activeSubscription.plan)).toJSON();
+          plan = activeSubscription.plan;
         } else {
           logger.error(
             {
@@ -164,7 +156,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         Subscription,
         activeSubscription?.get() ||
           this.createFreeNoPlanSubscription(workspace),
-        plan
+        renderPlanFromAttributes({ plan })
       );
     }
 
@@ -178,18 +170,16 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     const subscriptions = await Subscription.findAll({
       where: { workspaceId: owner.id },
-      include: [PlanResource.model],
+      include: [PlanModel],
     });
 
-    return Promise.all(
-      subscriptions.map(
-        async (s) =>
-          new SubscriptionResource(
-            Subscription,
-            s.get(),
-            (await PlanResource.makeNew(s.plan)).toJSON()
-          )
-      )
+    return subscriptions.map(
+      (s) =>
+        new SubscriptionResource(
+          Subscription,
+          s.get(),
+          renderPlanFromAttributes({ plan: s.plan })
+        )
     );
   }
 
@@ -231,7 +221,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       this.createFreeNoPlanSubscription(workspace),
-      await getDefaultFreePlan()
+      renderPlanFromAttributes({ plan: FREE_NO_PLAN_DATA })
     );
   }
 
