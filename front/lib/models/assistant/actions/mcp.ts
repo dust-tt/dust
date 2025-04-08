@@ -246,7 +246,7 @@ export class ChildAgentConfiguration extends WorkspaceAwareModel<ChildAgentConfi
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentConfigurationId: string;
 
   declare mcpServerConfigurationId: ForeignKey<
     AgentMCPServerConfiguration["id"]
@@ -263,6 +263,10 @@ ChildAgentConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
   },
   {
