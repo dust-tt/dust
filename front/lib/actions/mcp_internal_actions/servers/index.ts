@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/ask_agent";
 import { default as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/data_source_utils";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/servers/helloworld";
@@ -27,6 +28,8 @@ export function getInternalMCPServer(
       return tableUtilsServer();
     case "github":
       return githubServer(auth, mcpServerId);
+    case "ask-agent":
+      return askAgentServer();
     default:
       assertNever(internalMCPServerName);
   }
