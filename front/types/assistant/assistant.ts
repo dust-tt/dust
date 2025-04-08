@@ -127,9 +127,7 @@ export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
   "gemini-1.5-flash-latest" as const;
 export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
 export const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
-
-// These Gemini models are preview (AKA experimental) models and have a very small rate limit
-export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-exp-03-25";
+export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-preview-03-25";
 
 // These Gemini preview models are deprecated (either replaced by a GA model or not making it to GA)
 export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
@@ -772,7 +770,6 @@ export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
-  featureFlag: "google_ai_studio_experimental_models_feature",
 };
 
 // DEPRECATED -- Replaced by GA model
@@ -1030,6 +1027,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GEMINI_2_FLASH_MODEL_CONFIG,
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG,
   GEMINI_2_PRO_PREVIEW_MODEL_CONFIG,
+  GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG,
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG,

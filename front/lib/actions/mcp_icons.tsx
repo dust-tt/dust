@@ -3,6 +3,7 @@ import {
   FolderTableIcon,
   GithubIcon,
   RobotIcon,
+  ImageIcon,
   RocketIcon,
 } from "@dust-tt/sparkle";
 
@@ -11,6 +12,7 @@ export const MCP_SERVER_ICONS: Record<AllowedIconType, React.ComponentType> = {
   rocket: RocketIcon,
   table: FolderTableIcon,
   github: GithubIcon,
+  image: ImageIcon,
   robot: RobotIcon,
 } as const;
 
@@ -21,7 +23,8 @@ export const ALLOWED_ICONS = [
   "rocket",
   "table",
   "github",
-  "robot",
+  "image",
+  "robot"
 ] as const;
 export type AllowedIconType = (typeof ALLOWED_ICONS)[number];
 
