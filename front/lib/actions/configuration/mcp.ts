@@ -1,7 +1,6 @@
 import { Op } from "sequelize";
 
 import {
-  renderChildAgentConfiguration,
   renderDataSourceConfiguration,
   renderTableConfiguration,
 } from "@app/lib/actions/configuration/helpers";
@@ -141,9 +140,7 @@ export async function fetchMCPServerActionConfigurations(
           renderDataSourceConfiguration
         ),
         tables: tablesConfigurations.map(renderTableConfiguration),
-        childAgent: childAgentConfigurations[0]
-          ? renderChildAgentConfiguration(childAgentConfigurations[0])
-          : null,
+        childAgentId: childAgentConfigurations[0].agentConfigurationId ?? null,
       });
     }
   }
