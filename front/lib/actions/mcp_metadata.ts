@@ -33,6 +33,10 @@ export type MCPToolType = {
   inputSchema: JSONSchema | undefined;
 };
 
+export type MCPToolWithIsDefaultType = MCPToolType & {
+  isDefault: boolean;
+};
+
 export type MCPServerType = {
   id: string;
   name: string;

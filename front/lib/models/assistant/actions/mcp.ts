@@ -175,6 +175,8 @@ export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPAction
   declare agentMCPActionId: ForeignKey<AgentMCPAction["id"]>;
   declare content: MCPToolResultContent;
   declare fileId: ForeignKey<FileModel["id"]> | null;
+
+  declare file: NonAttribute<FileModel>;
 }
 
 AgentMCPActionOutputItem.init(
@@ -198,7 +200,7 @@ AgentMCPActionOutputItem.init(
             throw new Error("Content must be an object");
           }
           const content = value as { type: string };
-          if (!["text", "image", "embedded_resource"].includes(content.type)) {
+          if (!["text", "image", "resource"].includes(content.type)) {
             throw new Error("Invalid content type");
           }
         },

@@ -431,6 +431,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     }
   }
 
+  get isDefault(): boolean {
+    if (this.serverType !== "internal" || !this.internalMCPServerId) {
+      return false;
+    }
+
+    return isDefaultInternalMCPServer(this.internalMCPServerId);
+  }
+
   static async ensureAllDefaultActionsAreCreated(auth: Authenticator) {
     const names = AVAILABLE_INTERNAL_MCPSERVER_NAMES;
 
