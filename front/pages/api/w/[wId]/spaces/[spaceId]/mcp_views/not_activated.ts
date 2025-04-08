@@ -27,53 +27,59 @@ async function handler(
 ): Promise<void> {
   const { method } = req;
 
-  if (method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected",
-      },
-    });
-  }
-
-  const workspaceServerViews =
-    await MCPServerViewResource.listByWorkspace(auth);
-  const spaceServerViews = await MCPServerViewResource.listBySpace(auth, space);
-
-  const serverViews = _.uniqBy(
-    _.differenceWith(workspaceServerViews, spaceServerViews, (a, b) => {
-      return (
-        (a.internalMCPServerId ?? a.remoteMCPServerId) ===
-        (b.internalMCPServerId ?? b.remoteMCPServerId)
+  switch (method) {
+    case "GET": {
+      const workspaceServerViews =
+        await MCPServerViewResource.listByWorkspace(auth);
+      const spaceServerViews = await MCPServerViewResource.listBySpace(
+        auth,
+        space
       );
-    }),
-    (s) => s.internalMCPServerId ?? s.remoteMCPServerId
-  );
 
-  return res.status(200).json({
-    success: true,
-    serverViews: removeNulls(
-      serverViews.map((s) => {
-        // WARN: Probably due to Intenal MCP Server view pointing to `internalMCPServerId` that doesn't exists anymore.
-        // Need to think about migration of mcp_server_view when we're updating internal mcp servers.
-        try {
-          return s.toJSON();
-        } catch (err) {
-          logger.error(
-            {
-              serverViewId: s.sId,
-              workspaceId: s.workspaceId,
-              spaceId: space.sId,
-              userId: auth.getNonNullableUser().id,
-            },
-            "couldn't toJSON() a mcp_server_view"
+      const serverViews = _.uniqBy(
+        _.differenceWith(workspaceServerViews, spaceServerViews, (a, b) => {
+          return (
+            (a.internalMCPServerId ?? a.remoteMCPServerId) ===
+            (b.internalMCPServerId ?? b.remoteMCPServerId)
           );
-          return null;
-        }
-      })
-    ),
-  });
+        }),
+        (s) => s.internalMCPServerId ?? s.remoteMCPServerId
+      );
+
+      return res.status(200).json({
+        success: true,
+        serverViews: removeNulls(
+          serverViews.map((s) => {
+            // WARN: Probably due to Intenal MCP Server view pointing to `internalMCPServerId` that doesn't exists anymore.
+            // Need to think about migration of mcp_server_view when we're updating internal mcp servers.
+            try {
+              return s.toJSON();
+            } catch (err) {
+              logger.error(
+                {
+                  serverViewId: s.sId,
+                  workspaceId: s.workspaceId,
+                  spaceId: space.sId,
+                  userId: auth.getNonNullableUser().id,
+                },
+                "couldn't toJSON() a mcp_server_view"
+              );
+              return null;
+            }
+          })
+        ),
+      });
+    }
+    default: {
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected",
+        },
+      });
+    }
+  }
 }
 
 export default withSessionAuthenticationForWorkspace(
