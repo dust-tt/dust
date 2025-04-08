@@ -219,8 +219,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   private static async baseFetch(
     auth: Authenticator,
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
-    options?: ResourceFindOptions<DataSourceViewModel>,
-    { assistantDefaultSelected }: { assistantDefaultSelected?: boolean } = {}
+    options?: ResourceFindOptions<DataSourceViewModel>
   ) {
     const { includeDeleted } = fetchDataSourceViewOptions ?? {};
 
@@ -239,7 +238,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       dataSourceIds,
       {
         includeEditedBy: fetchDataSourceViewOptions?.includeEditedBy,
-        assistantDefaultSelected,
       }
     );
 
@@ -301,16 +299,15 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
     const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
 
-    return this.baseFetch(
-      auth,
-      undefined,
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          vaultId: spaces.map((s) => s.id),
-        },
+    const dataSourceViews = await this.baseFetch(auth, undefined, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: spaces.map((s) => s.id),
       },
-      { assistantDefaultSelected: true }
+    });
+
+    return dataSourceViews.filter(
+      (dsv) => dsv.dataSource.assistantDefaultSelected
     );
   }
 
