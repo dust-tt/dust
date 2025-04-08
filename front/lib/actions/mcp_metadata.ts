@@ -115,6 +115,12 @@ interface ConnectViaMCPServerId {
   mcpServerId: string;
 }
 
+export const isConnectViaMCPServerId = (
+  params: MCPConnectionParams
+): params is ConnectViaMCPServerId => {
+  return params.type === "mcpServerId";
+};
+
 interface ConnectViaRemoteMCPServerUrl {
   type: "remoteMCPServerUrl";
   remoteMCPServerUrl: string;

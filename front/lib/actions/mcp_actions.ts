@@ -18,6 +18,7 @@ import type {
 import {
   connectToMCPServer,
   extractMetadataFromTools,
+  isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
@@ -303,9 +304,8 @@ async function listMCPServerTools(
     const config = connectionParamsRes.value;
     mcpClient = await connectToMCPServer(auth, config);
     const isDefault =
-      "mcpServerId" in config
-        ? isDefaultInternalMCPServer(config.mcpServerId)
-        : false;
+      isConnectViaMCPServerId(config) &&
+      isDefaultInternalMCPServer(config.mcpServerId);
 
     let allTools: MCPToolWithIsDefaultType[] = [];
     let nextPageCursor;
