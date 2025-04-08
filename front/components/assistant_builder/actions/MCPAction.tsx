@@ -19,6 +19,7 @@ import React, {
   useState,
 } from "react";
 
+import { ChildAgentSelector } from "@app/components/assistant_builder/actions/configuration/ChildAgentSelector";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -126,6 +127,14 @@ export function ActionMCP({
             })
               ? prevConfig.tablesConfigurations || {}
               : null,
+          childAgentConfiguration:
+            selectedMCPServerView &&
+            serverRequiresInternalConfiguration({
+              serverMetadata: selectedMCPServerView.server,
+              mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
+            })
+              ? prevConfig.childAgentConfiguration || { sId: null }
+              : null,
         };
       },
     });
@@ -183,6 +192,25 @@ export function ActionMCP({
           ...(prev as AssistantBuilderMCPServerConfiguration),
           mcpServerViewId: selectedMCPServerView.id,
           tablesConfigurations: tableConfigs,
+        }),
+      });
+    },
+    [selectedMCPServerView, setEdited, updateAction]
+  );
+
+  const handleChildAgentConfigUpdate = useCallback(
+    (childAgentSId: string) => {
+      if (!selectedMCPServerView) {
+        return;
+      }
+      setEdited(true);
+      updateAction({
+        actionName: slugify(selectedMCPServerView?.server.name ?? ""),
+        actionDescription: selectedMCPServerView?.server.description ?? "",
+        getNewActionConfig: (prev) => ({
+          ...(prev as AssistantBuilderMCPServerConfiguration),
+          mcpServerViewId: selectedMCPServerView.id,
+          childAgentConfiguration: { sId: childAgentSId },
         }),
       });
     },
@@ -369,6 +397,13 @@ export function ActionMCP({
           openDataSourceModal={() => setShowTablesModal(true)}
           onSave={handleTableConfigUpdate}
           viewType="table"
+        />
+      )}
+      {actionConfiguration.childAgentConfiguration && (
+        <ChildAgentSelector
+          onAgentSelect={handleChildAgentConfigUpdate}
+          selectedAgentId={actionConfiguration.childAgentConfiguration.sId}
+          owner={owner}
         />
       )}
     </>
