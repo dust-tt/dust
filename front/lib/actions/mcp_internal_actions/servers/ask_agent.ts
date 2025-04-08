@@ -162,15 +162,6 @@ function createServer(
         );
       }
 
-      logger.info(
-        {
-          conversationId: conversation.sId,
-          childAgentId,
-          response: result.value,
-        },
-        "Child agent response"
-      );
-
       const traces = result.value.traces;
       if (
         !traces ||
@@ -181,8 +172,8 @@ function createServer(
         return makeMCPToolTextError("Child agent did not return any content.");
       }
 
-      const lastBlock = traces[0][1][traces[0][1].length - 1];
-      if (!lastBlock || lastBlock.length === 0 || !lastBlock[0].value) {
+      const lastBlock = result.value.results?.[0][0].value;
+      if (!lastBlock) {
         logger.error(
           {
             conversationId: conversation.sId,
@@ -192,20 +183,23 @@ function createServer(
         );
       }
 
-      const responseContent = lastBlock[0].value as string;
-
-      const contentParser = new AgentMessageContentParser(
-        agentConfiguration,
-        agentMessage.sId,
-        getDelimitersConfiguration({ agentConfiguration })
+      logger.info(
+        {
+          conversationId: conversation.sId,
+          childAgentId,
+          content: lastBlock,
+        },
+        "Child agent response."
       );
-      const parsedContent = await contentParser.parseContents([
-        responseContent,
-      ]);
 
       return {
         isError: false,
-        content: [{ type: "text", text: parsedContent.content || "" }],
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(lastBlock),
+          },
+        ],
       };
     }
   );
