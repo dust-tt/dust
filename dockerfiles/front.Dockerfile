@@ -33,6 +33,7 @@ RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
 # Production
 FROM node:20.13.0-alpine
+ENV HUSKY=0
 WORKDIR /app
 
 COPY --from=build /app/.next .next
