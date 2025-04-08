@@ -119,8 +119,8 @@ export abstract class ResourceWithSpace<
 
           return new this(this.model, b.get(), space, includedResults);
         })
-        // Filter out null entries (where space was not found) and resources that the user cannot fetch.
-        .filter((cls): cls is T => cls !== null && cls.canFetch(auth))
+        // Filter out resources that the user cannot fetch.
+        .filter((cls) => cls.canFetch(auth))
     );
   }
 
