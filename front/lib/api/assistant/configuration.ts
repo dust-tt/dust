@@ -42,8 +42,8 @@ import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/brow
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
+  AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
-  ChildAgentConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
@@ -1395,7 +1395,7 @@ async function createChildAgentConfiguration(
     mcpConfig: AgentMCPServerConfiguration;
   }
 ) {
-  return ChildAgentConfiguration.create(
+  return AgentChildAgentConfiguration.create(
     {
       agentConfigurationId: childAgentId,
       mcpServerConfigurationId: mcpConfig.id,

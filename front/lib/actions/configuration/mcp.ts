@@ -8,8 +8,8 @@ import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
+  AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
-  ChildAgentConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
@@ -84,13 +84,14 @@ export async function fetchMCPServerActionConfigurations(
     });
 
   // Find the associated child agent configurations.
-  const allChildAgentConfigurations = await ChildAgentConfiguration.findAll({
-    where: {
-      mcpServerConfigurationId: {
-        [Op.in]: mcpServerConfigurations.map((r) => r.id),
+  const allChildAgentConfigurations =
+    await AgentChildAgentConfiguration.findAll({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
       },
-    },
-  });
+    });
 
   const actionsByConfigurationId = new Map<
     ModelId,

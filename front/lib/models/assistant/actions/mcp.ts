@@ -242,7 +242,7 @@ AgentMCPActionOutputItem.belongsTo(FileModel, {
  * Configuration of a child agent used by an MCP server.
  * TODO(mcp): move this model in a file dedicated to the configuration blocks, add Resources for all of them.
  */
-export class ChildAgentConfiguration extends WorkspaceAwareModel<ChildAgentConfiguration> {
+export class AgentChildAgentConfiguration extends WorkspaceAwareModel<AgentChildAgentConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -252,7 +252,7 @@ export class ChildAgentConfiguration extends WorkspaceAwareModel<ChildAgentConfi
     AgentMCPServerConfiguration["id"]
   >;
 }
-ChildAgentConfiguration.init(
+AgentChildAgentConfiguration.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -270,17 +270,17 @@ ChildAgentConfiguration.init(
     },
   },
   {
-    modelName: "child_agent_configuration",
+    modelName: "agent_child_agent_configuration",
     indexes: [{ fields: ["mcpServerConfigurationId"] }],
     sequelize: frontSequelize,
   }
 );
 
 // MCP server configuration <> Child agent configuration
-AgentMCPServerConfiguration.hasMany(ChildAgentConfiguration, {
+AgentMCPServerConfiguration.hasMany(AgentChildAgentConfiguration, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
-ChildAgentConfiguration.belongsTo(AgentMCPServerConfiguration, {
+AgentChildAgentConfiguration.belongsTo(AgentMCPServerConfiguration, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
 });

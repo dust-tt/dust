@@ -1,5 +1,5 @@
 -- Migration created on Apr 08, 2025
-CREATE TABLE IF NOT EXISTS "child_agent_configurations"
+CREATE TABLE IF NOT EXISTS "agent_child_agent_configurations"
 (
   "createdAt"                TIMESTAMP WITH TIME ZONE NOT NULL,
   "updatedAt"                TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -10,4 +10,4 @@ CREATE TABLE IF NOT EXISTS "child_agent_configurations"
   PRIMARY KEY ("id")
 );
 
-CREATE INDEX "child_agent_configurations_mcp_server_configuration_id" ON "child_agent_configurations" ("mcpServerConfigurationId");
+CREATE INDEX "agent_child_agent_configurations_mcp_server_configuration_id" ON "agent_child_agent_configurations" ("mcpServerConfigurationId");
