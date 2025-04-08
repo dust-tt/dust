@@ -185,19 +185,21 @@ export function useCreateLabsConnectionConfiguration({
 
 export function useLabsConnectionConfiguration({
   workspaceId,
+  connectionId,
 }: {
   workspaceId: string;
+  connectionId: string;
 }) {
   const configurationFetcher: Fetcher<GetLabsConnectionsConfigurationResponseBody> =
     fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/labs/connections`,
+    `/api/w/${workspaceId}/labs/connections/${connectionId}`,
     configurationFetcher
   );
 
   return {
-    configuration: data ? data.configuration : null,
+    configuration: data ? data : null,
     isConfigurationLoading: !error && !data,
     isConfigurationError: error,
     mutateConfiguration: mutate,
@@ -251,7 +253,7 @@ export function useLabsConnectionConfigurations({
     fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/labs/connections/all`,
+    `/api/w/${workspaceId}/labs/connections`,
     configurationsFetcher
   );
 

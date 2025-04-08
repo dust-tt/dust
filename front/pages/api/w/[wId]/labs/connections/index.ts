@@ -12,13 +12,14 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isCredentialProvider, OAuthAPI, SyncStatus } from "@app/types";
 
-export type GetLabsConnectionsConfigurationResponseBody = {
-  configuration: {
-    id: string;
-    credentialId: string | null;
-    dataSourceViewId: number | null;
-  } | null;
+type LabsConnectionConfiguration = {
+  id: string;
+  credentialId: string | null;
+  dataSourceViewId: number | null;
 };
+
+export type GetLabsConnectionsConfigurationResponseBody =
+  LabsConnectionConfiguration[];
 
 export const acceptableConnectionProvidersCodec = t.union([
   t.literal("hubspot"),
@@ -69,20 +70,19 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const configuration =
-        await LabsConnectionsConfigurationResource.findByUserAndWorkspace({
+      const configurations =
+        await LabsConnectionsConfigurationResource.listByWorkspace({
           auth,
-          userId: user.id,
         });
-      res.status(200).json({
-        configuration: configuration
-          ? {
-              id: configuration.id.toString(),
-              credentialId: configuration.credentialId,
-              dataSourceViewId: configuration.dataSourceViewId,
-            }
-          : null,
-      });
+
+      res.status(200).json(
+        configurations.map((c) => ({
+          id: c.id.toString(),
+          credentialId: c.credentialId,
+          dataSourceViewId: c.dataSourceViewId,
+          provider: c.provider,
+        }))
+      );
       return;
 
     case "POST":
@@ -174,13 +174,13 @@ async function handler(
             syncStatus: SyncStatus.IDLE,
           });
 
-        res.status(200).json({
-          configuration: {
+        res.status(200).json([
+          {
             id: configuration.id.toString(),
             credentialId: configuration.credentialId,
             dataSourceViewId: configuration.dataSourceViewId,
           },
-        });
+        ]);
         return;
       } catch (err) {
         return apiError(req, res, {

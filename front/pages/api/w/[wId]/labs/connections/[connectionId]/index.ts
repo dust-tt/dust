@@ -18,7 +18,9 @@ const PatchLabsConnectionsConfigurationBodySchema = t.partial({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<undefined>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<LabsConnectionsConfigurationResource | null>
+  >,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isUser()) {
@@ -34,6 +36,16 @@ async function handler(
   const connectionId = req.query.connectionId as LabsConnectionType;
 
   switch (req.method) {
+    case "GET":
+      const configuration =
+        await LabsConnectionsConfigurationResource.findByWorkspaceAndProvider({
+          auth,
+          provider: connectionId,
+        });
+
+      res.status(200).json(configuration);
+      return;
+
     case "PATCH":
       let bodyToParse = req.body;
 
@@ -65,13 +77,13 @@ async function handler(
         });
       }
 
-      const configuration =
+      const patchConfiguration =
         await LabsConnectionsConfigurationResource.findByWorkspaceAndProvider({
           auth,
           provider: connectionId,
         });
 
-      if (!configuration) {
+      if (!patchConfiguration) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -84,24 +96,18 @@ async function handler(
       const validatedBody = bodyValidation.right;
       try {
         if (validatedBody.credentialId !== undefined) {
-          await configuration.setCredentialId(validatedBody.credentialId);
+          await patchConfiguration.setCredentialId(validatedBody.credentialId);
         }
         if (validatedBody.connectionId !== undefined) {
-          await configuration.setConnectionId(validatedBody.connectionId);
+          await patchConfiguration.setConnectionId(validatedBody.connectionId);
         }
         if (validatedBody.dataSourceViewId !== undefined) {
-          await configuration.setDataSourceViewId(
+          await patchConfiguration.setDataSourceViewId(
             validatedBody.dataSourceViewId
           );
         }
 
-        res.status(200).json({
-          error: {
-            type: "internal_server_error",
-            message: "",
-          },
-        });
-        return;
+        return res.status(200).json(patchConfiguration);
       } catch (err) {
         return apiError(req, res, {
           status_code: 500,
@@ -140,12 +146,7 @@ async function handler(
         });
       }
 
-      res.status(200).json({
-        error: {
-          type: "internal_server_error",
-          message: "",
-        },
-      });
+      res.status(200).json(null);
       return;
 
     default:

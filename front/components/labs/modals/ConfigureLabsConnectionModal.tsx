@@ -64,6 +64,7 @@ export function ConfigureLabsConnectionModal({
   const { configuration, mutateConfiguration } = useLabsConnectionConfiguration(
     {
       workspaceId: owner.sId,
+      connectionId: connection.id,
     }
   );
 
