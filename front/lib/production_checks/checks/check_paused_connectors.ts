@@ -37,12 +37,11 @@ export const checkPausedConnectors: CheckFunction = async (
 
   // Get all workspace subscriptions for the paused connectors workspaces.
   const workspaceSubscriptions: WorkspaceSubscription[] = await frontDb.query(
-    `SELECT "workspaces"."sId" AS "workspaceId", "plans"."code" AS "planCode"
-      FROM "workspaces"
-      LEFT JOIN "subscriptions" ON "workspaces"."id" = "subscriptions"."workspaceId"
-      LEFT JOIN "plans" ON "subscriptions"."planId" = "plans"."id"
-      WHERE "workspaces"."sId" IN (:workspaceIds)
-      AND "subscriptions"."status" = 'active'; `,
+    `SELECT "workspaces"."sId" AS "workspaceId",
+        COALESCE("plans"."code", 'NO_PLAN') AS "planCode"
+        FROM "workspaces"
+        LEFT JOIN "subscriptions" ON "workspaces"."id" = "subscriptions"."workspaceId"
+        LEFT JOIN "plans" ON "subscriptions"."planId" = "plans"."id" AND "subscriptions"."status" = 'active'`,
     {
       type: QueryTypes.SELECT,
       replacements: {
@@ -62,7 +61,7 @@ export const checkPausedConnectors: CheckFunction = async (
       (s) => s.workspaceId === connector.workspaceId
     );
 
-    if (workspaceSubscription && workspaceSubscription.planCode.length) {
+    if (workspaceSubscription && workspaceSubscription.planCode !== "NO_PLAN") {
       connectorsToReport.push(connector);
     } else {
       logger.info(
