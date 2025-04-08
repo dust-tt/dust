@@ -12,15 +12,16 @@ import {
   internalMCPServerNameToSId,
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import {
   AVAILABLE_INTERNAL_MCPSERVER_NAMES,
+  INTERNAL_MCP_SERVERS,
   isDefaultInternalMCPServer,
   isDefaultInternalMCPServerByName,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
@@ -447,11 +448,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   static async ensureAllDefaultActionsAreCreated(auth: Authenticator) {
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
     const names = AVAILABLE_INTERNAL_MCPSERVER_NAMES;
 
     const defaultInternalMCPServerIds: string[] = [];
     for (const name of names) {
-      const isEnabled = await isEnabledForWorkspace(auth, name);
+      const flag = INTERNAL_MCP_SERVERS[name].flag;
+      const isEnabled = !flag || featureFlags.includes(flag);
       const isDefault = isDefaultInternalMCPServerByName(name);
 
       if (isEnabled && isDefault) {
