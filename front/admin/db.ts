@@ -12,6 +12,7 @@ import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
+  ChildAgentConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
@@ -186,6 +187,7 @@ async function main() {
   await AgentWebsearchAction.sync({ alter: true });
   await AgentMCPAction.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
+  await ChildAgentConfiguration.sync({ alter: true });
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
 
