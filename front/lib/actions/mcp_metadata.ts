@@ -21,10 +21,9 @@ import { RedisMCPTransport } from "@app/lib/api/actions/mcp_local";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { OAuthProvider, OAuthUseCase } from "@app/types";
+import type { EditedByUser, OAuthProvider, OAuthUseCase } from "@app/types";
 import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
 export type MCPToolType = {
@@ -52,7 +51,16 @@ export type RemoteMCPServerType = MCPServerType & {
   lastSyncAt?: Date | null;
 };
 
-type MCPServerDefinitionType = Omit<
+export interface MCPServerViewType {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
+  spaceId: string;
+  server: MCPServerType;
+  editedByUser: EditedByUser | null;
+}
+
+export type MCPServerDefinitionType = Omit<
   MCPServerType,
   "tools" | "id" | "isDefault"
 >;
