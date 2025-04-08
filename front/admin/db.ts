@@ -24,6 +24,7 @@ import {
   AgentReasoningConfiguration,
 } from "@app/lib/models/assistant/actions/reasoning";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerToolMetadata } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
@@ -153,6 +154,7 @@ async function main() {
   await RemoteMCPServer.sync({ alter: true });
   await MCPServerView.sync({ alter: true });
   await MCPServerConnection.sync({ alter: true });
+  await RemoteMCPServerToolMetadata.sync({ alter: true });
 
   await AgentMCPServerConfiguration.sync({ alter: true });
   await AgentRetrievalConfiguration.sync({ alter: true });
