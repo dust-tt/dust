@@ -30,11 +30,13 @@ const RESOURCES_PREFIX = {
   template: "tpl",
   extension: "ext",
   mcp_server_connection: "msc",
-  remote_mcp_server: "rms",
-  internal_mcp_server: "ims",
   mcp_server_view: "msv",
   data_source_configuration: "dsc",
   table_configuration: "tbc",
+
+  // Virtual resources.
+  remote_mcp_server: "rms",
+  internal_mcp_server: "ims",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
