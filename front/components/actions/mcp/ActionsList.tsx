@@ -26,8 +26,10 @@ import {
   DEFAULT_MCP_SERVER_ICON,
   MCP_SERVER_ICONS,
 } from "@app/lib/actions/mcp_icons";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
+import type {
+  MCPServerType,
+  MCPServerViewType,
+} from "@app/lib/actions/mcp_metadata";
 import {
   useAvailableMCPServers,
   useCreateInternalMCPServer,
@@ -90,18 +92,18 @@ const Cell = ({ owner, row, setMCPServerToDelete }: CellProps) => {
 
         <div className="flex gap-2">
           {mcpServerView && !spaces.find((s) => s.kind === "global") && (
-            <Chip color="red" size="xs">
+            <Chip color="info" size="xs">
               Restricted
             </Chip>
           )}
 
           {mcpServerView && isConnected && (
-            <Chip color="emerald" size="xs">
+            <Chip color="success" size="xs">
               Connected
             </Chip>
           )}
           {mcpServerView && !isConnected && mcpServer.authorization && (
-            <Chip color="red" size="xs">
+            <Chip color="warning" size="xs">
               Disconnected
             </Chip>
           )}

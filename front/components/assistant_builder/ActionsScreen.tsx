@@ -87,8 +87,8 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import type { MCPServerViewType } from "@app/lib/actions/mcp_metadata";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
-import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,
@@ -499,7 +499,7 @@ export default function ActionsScreen({
         {nonGlobalSpacessUsedInActions.length > 0 && (
           <div className="w-full">
             <Chip
-              color="amber"
+              color="info"
               size="sm"
               label={`Based on the sources you selected, this agent can only be used by users with access to space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacessUsedInActions.map((v) => v.name).join(", ")}.`}
             />

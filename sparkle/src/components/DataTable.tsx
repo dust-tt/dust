@@ -175,14 +175,16 @@ export function DataTable<TData extends TBaseData>({
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
     onColumnFiltersChange: setColumnFilters,
-    onRowSelectionChange,
+    ...(enableRowSelection && {
+      onRowSelectionChange,
+    }),
     state: {
       columnFilters,
       ...(isServerSideSorting && {
         sorting,
       }),
       pagination,
-      rowSelection,
+      ...(enableRowSelection && { rowSelection }),
     },
     initialState: {
       sorting,
@@ -256,7 +258,9 @@ export function DataTable<TData extends TBaseData>({
               widthClassName={widthClassName}
               key={row.id}
               onClick={row.original.onClick}
-              data-selected={row.getIsSelected()}
+              {...(enableRowSelection && {
+                "data-selected": row.getIsSelected(),
+              })}
             >
               {row.getVisibleCells().map((cell) => {
                 const breakpoint = columnsBreakpoints[cell.column.id];
@@ -357,10 +361,13 @@ export function ScrollableDataTable<TData extends TBaseData>({
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
     onRowSelectionChange,
-    enableRowSelection,
+    ...(enableRowSelection && {
+      onRowSelectionChange,
+    }),
     state: {
-      rowSelection,
+      ...(enableRowSelection && { rowSelection }),
     },
+    enableRowSelection,
   });
 
   useEffect(() => {
@@ -505,7 +512,9 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     widthClassName={widthClassName}
                     onClick={row.original.onClick}
                     className="s-absolute s-w-full"
-                    data-selected={row.getIsSelected()}
+                    {...(enableRowSelection && {
+                      "data-selected": row.getIsSelected(),
+                    })}
                     style={{
                       transform: `translateY(${virtualRow.start}px)`,
                     }}

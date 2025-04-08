@@ -1029,6 +1029,17 @@ async function getOrCreateConversationDataSource(
   return res;
 }
 
+function validateFileMetadataForConversation(
+  file: FileResource
+): Result<string, Error> {
+  const conversationId = file.useCaseMetadata?.conversationId;
+  if (!conversationId) {
+    return new Err(new Error("Field conversationId is missing from metadata"));
+  }
+
+  return new Ok(conversationId);
+}
+
 export async function getOrCreateConversationDataSourceFromFile(
   auth: Authenticator,
   file: FileResource
@@ -1041,20 +1052,18 @@ export async function getOrCreateConversationDataSourceFromFile(
   >
 > {
   // Note: this assume that if we don't have useCaseMetadata, the file is fine.
-  const hasRequiredMetadata =
-    !!file.useCaseMetadata && !!file.useCaseMetadata.conversationId;
-
-  if (!hasRequiredMetadata) {
+  const metadataResult = validateFileMetadataForConversation(file);
+  if (metadataResult.isErr()) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
-      message: "File is missing required metadata for JIT processing.",
+      message: metadataResult.error.message,
     });
   }
 
   const cRes = await ConversationResource.fetchConversationWithoutContent(
     auth,
-    file.useCaseMetadata.conversationId
+    metadataResult.value
   );
   if (cRes.isErr()) {
     return new Err({

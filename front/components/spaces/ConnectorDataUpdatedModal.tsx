@@ -39,7 +39,7 @@ export const ConnectorDataUpdatedModal = ({
           <SheetTitle icon={SparklesIcon}>Data sync in progress...</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <ContentMessage variant="amber">
+          <ContentMessage>
             <div className="flex flex-col gap-2">
               <p>
                 Once synchronized, {isRemoteDbProvider ? "table" : "data"} will

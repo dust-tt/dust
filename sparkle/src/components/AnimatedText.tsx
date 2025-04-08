@@ -6,7 +6,6 @@ import { cn } from "@sparkle/lib/utils";
 const ANIMATED_TEXT_VARIANTS = [
   "primary",
   "muted",
-  "white",
   "highlight",
   "success",
   "warning",
@@ -15,14 +14,6 @@ const ANIMATED_TEXT_VARIANTS = [
   "blue",
   "rose",
   "golden",
-  //to be removed
-  "emerald",
-  "amber",
-  "slate",
-  "purple",
-  "sky",
-  "pink",
-  "red",
 ] as const;
 
 type AnimatedTextVariantType = (typeof ANIMATED_TEXT_VARIANTS)[number];
@@ -35,10 +26,6 @@ const animatedVariants: Record<AnimatedTextVariantType, string> = {
   muted: cn(
     "s-from-transparent s-via-primary-950/80 s-via-50% s-to-transparent",
     "dark:s-from-transparent dark:s-via-primary-50/80 dark:s-via-50% dark:s-to-transparent"
-  ),
-  white: cn(
-    "s-from-primary-600 s-via-primary-950 s-via-50% s-to-primary-600",
-    "dark:s-from-primary-600-night dark:s-via-primary-950-night dark:s-via-50% dark:s-to-primary-600-night"
   ),
   highlight: cn(
     "s-from-highlight s-via-highlight-800 s-via-50% s-to-highlight",
@@ -72,35 +59,6 @@ const animatedVariants: Record<AnimatedTextVariantType, string> = {
     "s-from-golden-800 s-via-golden-950 s-via-50% s-to-golden-800",
     "dark:s-from-golden-800-night dark:s-via-golden-950-night dark:s-via-50% dark:s-to-golden-800-night"
   ),
-  // To be removed
-  emerald: cn(
-    "s-from-emerald-800 s-via-emerald-950 s-via-50% s-to-emerald-800",
-    "dark:s-from-emerald-800-night dark:s-via-emerald-950-night dark:s-via-50% dark:s-to-emerald-800-night"
-  ),
-  amber: cn(
-    "s-from-amber-800 s-via-amber-950 s-via-50% s-to-amber-800",
-    "dark:s-from-amber-800-night dark:s-via-amber-950-night dark:s-via-50% dark:s-to-amber-800-night"
-  ),
-  red: cn(
-    "s-from-red-800 s-via-red-950 s-via-50% s-to-red-800",
-    "dark:s-from-red-800-night dark:s-via-red-950-night dark:s-via-50% dark:s-to-red-800-night"
-  ),
-  sky: cn(
-    "s-from-sky-800 s-via-sky-950 s-via-50% s-to-sky-800",
-    "dark:s-from-sky-800-night dark:s-via-sky-950-night dark:s-via-50% dark:s-to-sky-800-night"
-  ),
-  slate: cn(
-    "s-from-primary-600 s-via-primary-950 s-via-50% s-to-primary-600",
-    "dark:s-from-primary-600-night dark:s-via-primary-950-night dark:s-via-50% dark:s-to-primary-600-night"
-  ),
-  purple: cn(
-    "s-from-purple-800 s-via-purple-950 s-via-50% s-to-purple-800",
-    "dark:s-from-purple-800-night dark:s-via-purple-950-night dark:s-via-50% dark:s-to-purple-800-night"
-  ),
-  pink: cn(
-    "s-from-pink-800 s-via-pink-950 s-via-50% s-to-pink-800",
-    "dark:s-from-pink-800-night dark:s-via-pink-950-night dark:s-via-50% dark:s-to-pink-800-night"
-  ),
 };
 
 const animVariants = cva(
@@ -117,7 +75,6 @@ const animVariants = cva(
 
 const animatedTextVariants: Record<AnimatedTextVariantType, string> = {
   primary: "s-text-primary-800 dark:s-text-primary-800-night",
-  white: "s-text-muted-foreground dark:s-text-muted-foreground-night",
   muted: "s-text-muted-foreground dark:s-text-muted-foreground-night",
   highlight: "s-text-highlight dark:s-text-highlight-night",
   success: "s-text-success-800 dark:s-text-success-800-night",
@@ -127,14 +84,6 @@ const animatedTextVariants: Record<AnimatedTextVariantType, string> = {
   blue: "s-text-sky-800 dark:s-text-sky-800-night",
   rose: "s-text-rose-800 dark:s-text-rose-800-night",
   golden: "s-text-golden-800 dark:s-text-rose-golden-night",
-  //To be removed
-  emerald: "s-text-emerald-800 dark:s-text-emerald-800-night",
-  amber: "s-text-amber-800 dark:s-text-amber-800-night",
-  slate: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-  purple: "s-text-purple-800 dark:s-text-purple-800-night",
-  sky: "s-text-sky-800 dark:s-text-sky-800-night",
-  pink: "s-text-pink-800 dark:s-text-pink-800-night",
-  red: "s-text-red-800 dark:s-text-red-800-night",
 };
 
 const textVariants = cva("s-absolute s-inset-0", {
