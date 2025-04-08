@@ -17,20 +17,23 @@ import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { RedisMCPTransport } from "@app/lib/api/actions/mcp_local";
+import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_local";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { OAuthProvider, OAuthUseCase } from "@app/types";
+import type { EditedByUser, OAuthProvider, OAuthUseCase } from "@app/types";
 import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
 export type MCPToolType = {
   name: string;
   description: string;
   inputSchema: JSONSchema | undefined;
+};
+
+export type MCPToolWithIsDefaultType = MCPToolType & {
+  isDefault: boolean;
 };
 
 export type MCPServerType = {
@@ -47,12 +50,21 @@ export type MCPServerType = {
 export type RemoteMCPServerType = MCPServerType & {
   url?: string;
   cachedName?: string;
-  cachedDescription?: string;
+  cachedDescription?: string | null;
   sharedSecret?: string;
   lastSyncAt?: Date | null;
 };
 
-type MCPServerDefinitionType = Omit<
+export interface MCPServerViewType {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
+  spaceId: string;
+  server: MCPServerType;
+  editedByUser: EditedByUser | null;
+}
+
+export type MCPServerDefinitionType = Omit<
   MCPServerType,
   "tools" | "id" | "isDefault"
 >;
@@ -115,14 +127,14 @@ interface ConnectViaLocalMCPServer {
   mcpServerId: string;
 }
 
-export type MCPConnectionOptions =
+export type MCPConnectionParams =
   | ConnectViaMCPServerId
   | ConnectViaRemoteMCPServerUrl
   | ConnectViaLocalMCPServer;
 
 export const connectToMCPServer = async (
   auth: Authenticator,
-  params: MCPConnectionOptions
+  params: MCPConnectionParams
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -185,7 +197,7 @@ export const connectToMCPServer = async (
     }
 
     case "localMCPServerId": {
-      const transport = new RedisMCPTransport(auth, {
+      const transport = new ClientSideRedisMCPTransport(auth, {
         conversationId: params.conversationId,
         mcpServerId: params.mcpServerId,
         messageId: params.messageId,

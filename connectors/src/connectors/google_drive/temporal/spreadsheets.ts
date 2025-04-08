@@ -3,7 +3,7 @@ import { stringify } from "csv-stringify/sync";
 import tracer from "dd-trace";
 import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
-import type { OAuth2Client } from "googleapis-common";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 
 import {
   getSourceUrlForGoogleDriveFiles,
@@ -272,11 +272,22 @@ async function batchGetSheets(
   for (const chunk of chunks) {
     // Query the API using the previously constructed sheet ranges to fetch
     // the desired data from each corresponding sheet range.
-    const sheetRanges = await sheetsAPI.spreadsheets.values.batchGet({
-      ranges: chunk,
-      spreadsheetId,
-      valueRenderOption: "FORMATTED_VALUE",
-    });
+
+    let sheetRanges: GaxiosResponse<sheets_v4.Schema$BatchGetValuesResponse>;
+    try {
+      sheetRanges = await sheetsAPI.spreadsheets.values.batchGet({
+        ranges: chunk,
+        spreadsheetId,
+        valueRenderOption: "FORMATTED_VALUE",
+      });
+    } catch (err) {
+      if (isStringTooLongError(err)) {
+        // Ignore when the string is too long.
+        continue;
+      } else {
+        throw err;
+      }
+    }
 
     const { valueRanges } = sheetRanges.data;
     if (!valueRanges) {
@@ -650,4 +661,12 @@ export async function deleteSpreadsheet(
 
 function isGAxiosServiceUnavailablError(err: unknown): err is Error {
   return err instanceof Error && "code" in err && err.code === 503;
+}
+
+function isStringTooLongError(
+  err: unknown
+): err is Error & { code: "ERR_STRING_TOO_LONG" } {
+  return (
+    err instanceof Error && "code" in err && err.code === "ERR_STRING_TOO_LONG"
+  );
 }
