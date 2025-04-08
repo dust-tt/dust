@@ -53,7 +53,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
 
     return new Ok(
       allDatabases.map((row) => {
-        const internalId = `${row.name}`;
+        const internalId = buildInternalId({ databaseName: row.name });
         const permission = syncedDatabasesInternalIds.includes(internalId)
           ? "read"
           : "none";
