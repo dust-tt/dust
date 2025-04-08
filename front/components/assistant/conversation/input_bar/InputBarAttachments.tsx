@@ -75,11 +75,11 @@ export function InputBarAttachments({
         ) : (
           <DoubleIcon
             mainIconProps={{
-              visual: logo,
+              visual: getVisualForDataSourceViewContentNode(node),
               size: "md",
             }}
             secondaryIconProps={{
-              visual: getVisualForDataSourceViewContentNode(node),
+              visual: logo,
             }}
           />
         );

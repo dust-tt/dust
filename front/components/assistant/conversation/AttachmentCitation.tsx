@@ -147,16 +147,16 @@ export function contentFragmentToAttachmentCitation(
       ) : (
         <DoubleIcon
           mainIconProps={{
-            visual: logo,
-            size: "md",
-          }}
-          secondaryIconProps={{
             visual:
               nodeType === "table"
                 ? TableIcon
                 : nodeType === "folder"
                   ? FolderIcon
                   : DocumentIcon,
+            size: "md",
+          }}
+          secondaryIconProps={{
+            visual: logo,
           }}
         />
       );
