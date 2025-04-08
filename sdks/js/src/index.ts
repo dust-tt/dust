@@ -1297,7 +1297,7 @@ export class DustAPI {
     return this._resultFromResponse(PostMCPResultsResponseSchema, res);
   }
 
-  async getMcpRequestsConnectionDetails({
+  async getMCPRequestsConnectionDetails({
     serverId,
     lastEventId,
   }: {
