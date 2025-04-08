@@ -1032,10 +1032,6 @@ async function getOrCreateConversationDataSource(
 function validateFileMetadataForConversation(
   file: FileResource
 ): Result<string, Error> {
-  if (!file.useCaseMetadata) {
-    return new Err(new Error("Field useCaseMetadata is missing from metadata"));
-  }
-
   const conversationId = file.useCaseMetadata?.conversationId;
   if (!conversationId) {
     return new Err(new Error("Field conversationId is missing from metadata"));
