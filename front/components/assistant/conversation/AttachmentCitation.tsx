@@ -188,7 +188,12 @@ export function attachmentToAttachmentCitation(
       title: attachment.title,
       preview: attachment.preview,
       isUploading: attachment.isUploading,
-      visual: <Icon visual={attachment.preview ? ImageIcon : DocumentIcon} />,
+      visual: (
+        <Icon
+          visual={attachment.preview ? ImageIcon : DocumentIcon}
+          size="md"
+        />
+      ),
       sourceUrl: null,
     };
   } else {
