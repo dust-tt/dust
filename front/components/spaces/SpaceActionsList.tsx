@@ -17,6 +17,8 @@ import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
 import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
+import { RequestActionsModal } from "./mcp/RequestActionsModal";
+
 type RowData = {
   name: string;
   description: string;
@@ -115,7 +117,7 @@ export const SpaceActionsList = ({
           }}
         />
       ) : (
-        <Button label="Request Action" variant="primary" icon={PlusIcon} />
+        <RequestActionsModal owner={owner} space={space} />
       )}
     </>
   );

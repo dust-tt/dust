@@ -114,7 +114,7 @@ export function RequestDataSourceModal({
                   </p>
                 </label>
               )}
-              {dataSources.length > 1 && (
+              {dataSources.length >= 1 && (
                 <>
                   <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                     <p>Where are the requested Data hosted?</p>
