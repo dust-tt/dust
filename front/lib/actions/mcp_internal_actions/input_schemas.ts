@@ -1,6 +1,7 @@
 import type { InternalConfigurationMimeType } from "@dust-tt/client";
 import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Ajv } from "ajv";
+import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -8,7 +9,10 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import { isMCPActionConfiguration } from "@app/lib/actions/types/guards";
+import {
+  isMCPActionConfiguration,
+  isPlatformMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
 import {
   containsSubSchema,
   findSchemaAtPath,
@@ -71,6 +75,11 @@ function generateConfiguredInput({
   actionConfiguration: MCPToolConfigurationType;
   mimeType: InternalConfigurationMimeType;
 }): ConfigurableToolInputType {
+  assert(
+    isPlatformMCPToolConfiguration(actionConfiguration),
+    "Action configuration must be a platform MCP tool configuration"
+  );
+
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
       return (
@@ -88,6 +97,7 @@ function generateConfiguredInput({
           };
         }) || []
       );
+
     case INTERNAL_MIME_TYPES.CONFIGURATION.TABLE:
       return (
         actionConfiguration.tables?.map((config) => {
@@ -102,6 +112,7 @@ function generateConfiguredInput({
           };
         }) || []
       );
+
     default:
       assertNever(mimeType);
   }

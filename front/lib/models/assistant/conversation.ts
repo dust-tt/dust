@@ -145,6 +145,8 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
 
   declare content: string;
 
+  declare localMCPServerIds: string[];
+
   declare userContextUsername: string;
   declare userContextTimezone: string;
   declare userContextFullName: string | null;
@@ -170,6 +172,11 @@ UserMessage.init(
     content: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    localMCPServerIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
     },
     userContextUsername: {
       type: DataTypes.STRING,

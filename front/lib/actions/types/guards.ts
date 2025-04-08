@@ -8,6 +8,8 @@ import type {
   MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
+  PlatformMCPServerConfigurationType,
+  PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
@@ -125,6 +127,12 @@ export function isMCPActionConfiguration(
   );
 }
 
+export function isPlatformMCPToolConfiguration(
+  action: unknown
+): action is PlatformMCPToolConfigurationType {
+  return isMCPActionConfiguration(action) && "mcpServerViewId" in action;
+}
+
 export function isMCPServerConfiguration(
   arg: unknown
 ): arg is MCPServerConfigurationType {
@@ -134,6 +142,12 @@ export function isMCPServerConfiguration(
     "type" in arg &&
     arg.type === "mcp_server_configuration"
   );
+}
+
+export function isPlatformMCPServerConfiguration(
+  arg: unknown
+): arg is PlatformMCPServerConfigurationType {
+  return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
 }
 
 export function isWebsearchActionType(

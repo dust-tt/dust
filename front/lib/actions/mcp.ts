@@ -36,29 +36,53 @@ import type {
 } from "@app/types";
 import { Ok } from "@app/types";
 
-export type MCPServerConfigurationType = {
+export type BaseMCPServerConfigurationType = {
   id: ModelId;
-  sId: string;
 
-  mcpServerViewId: string; // Hold the sId of the MCP server view.
+  sId: string;
 
   type: "mcp_server_configuration";
 
   name: string;
   description: string | null;
-
-  dataSources: DataSourceConfiguration[] | null;
-  tables: TableDataSourceConfiguration[] | null;
-  // TODO(mcp): add other kinds of configurations here.
 };
 
-export type MCPToolConfigurationType = Omit<
-  MCPServerConfigurationType,
+// Platform = Remote MCP Server OR our own MCP server.
+export type PlatformMCPServerConfigurationType =
+  BaseMCPServerConfigurationType & {
+    dataSources: DataSourceConfiguration[] | null;
+    tables: TableDataSourceConfiguration[] | null;
+    mcpServerViewId: string; // Hold the sId of the MCP server view.
+  };
+
+export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType & {
+  mcpServerId: string;
+};
+
+export type MCPServerConfigurationType =
+  | PlatformMCPServerConfigurationType
+  | LocalMCPServerConfigurationType;
+
+export type PlatformMCPToolConfigurationType = Omit<
+  PlatformMCPServerConfigurationType,
   "type"
 > & {
   type: "mcp_configuration";
   inputSchema: JSONSchema;
 };
+
+export type LocalMCPToolConfigurationType = Omit<
+  LocalMCPServerConfigurationType,
+  "type"
+> & {
+  type: "mcp_configuration";
+  inputSchema: JSONSchema;
+  mcpServerId: string;
+};
+
+export type MCPToolConfigurationType =
+  | PlatformMCPToolConfigurationType
+  | LocalMCPToolConfigurationType;
 
 type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
@@ -386,7 +410,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     // TODO(mcp): listen to sse events to provide live feedback to the user
     const r = await tryCallMCPTool(auth, {
+      messageId: agentMessage.sId,
       actionConfiguration,
+      conversationId: conversation.sId,
       inputs,
     });
 

@@ -7,20 +7,22 @@ import { statsDClient } from "@app/logger/withlogging";
 let client: RedisClientType;
 
 export type RedisUsageTagsType =
+  | "action_validation"
   | "agent_recent_authors"
   | "agent_usage"
   | "assistant_generation"
   | "cancel_message_generation"
   | "conversation_events"
+  | "lock"
+  | "mcp_local_results"
+  | "mcp_local_request"
   | "mentions_count"
   | "message_events"
+  | "notion_url_sync"
+  | "reasoning_generation"
   | "retry_agent_message"
   | "update_authors"
-  | "user_message_events"
-  | "reasoning_generation"
-  | "notion_url_sync"
-  | "action_validation"
-  | "lock";
+  | "user_message_events";
 
 export async function getRedisClient({
   origin,

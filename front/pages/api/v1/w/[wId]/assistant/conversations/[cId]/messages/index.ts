@@ -118,6 +118,7 @@ async function handler(
             email: context.email ?? null,
             profilePictureUrl: context.profilePictureUrl ?? null,
             origin: context.origin ?? "api",
+            localMCPServerIds: context.localMCPServerIds ?? [],
           },
         },
         { resolveAfterFullGeneration: blocking === true }

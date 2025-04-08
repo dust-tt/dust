@@ -33,6 +33,7 @@ import type {
   AgentActionType,
   AgentMessageType,
   ContentFragmentType,
+  ConversationType,
   LightAgentConfigurationType,
   MessageWithRankType,
   ModelId,
@@ -476,4 +477,30 @@ export function canReadMessage(auth: Authenticator, message: AgentMessageType) {
       message.configuration.requestedGroupIds
     )
   );
+}
+
+export async function fetchMessageInConversation(
+  auth: Authenticator,
+  conversation: ConversationType,
+  messageId: string
+) {
+  return Message.findOne({
+    where: {
+      conversationId: conversation.id,
+      sId: messageId,
+      workspaceId: auth.getNonNullableWorkspace()?.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: false,
+      },
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: false,
+      },
+    ],
+  });
 }
