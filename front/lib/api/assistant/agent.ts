@@ -1,4 +1,4 @@
-import { tryGetMCPTools } from "@app/lib/actions/mcp_actions";
+import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -21,6 +21,7 @@ import {
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
+import { createLocalMCPServerConfigurations } from "@app/lib/api/actions/mcp_local";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -373,8 +374,15 @@ async function* runMultiActionsAgent(
     conversation,
   });
 
-  const mcpActions = await tryGetMCPTools(auth, {
-    agentActions,
+  // Get local MCP server configurations from user message context.
+  const localMCPActions = createLocalMCPServerConfigurations(
+    userMessage.context.localMCPServerIds
+  );
+
+  const mcpActions = await tryListMCPTools(auth, {
+    agentActions: [...agentActions, ...localMCPActions],
+    conversationId: conversation.sId,
+    messageId: agentMessage.sId,
   });
 
   if (!isLastGenerationIteration) {

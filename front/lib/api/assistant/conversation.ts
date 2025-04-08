@@ -664,6 +664,7 @@ export async function* postUserMessage(
               await UserMessage.create(
                 {
                   content,
+                  localMCPServerIds: context.localMCPServerIds ?? [],
                   userContextUsername: context.username,
                   userContextTimezone: context.timezone,
                   userContextFullName: context.fullName,
@@ -1125,6 +1126,8 @@ export async function* editUserMessage(
               await UserMessage.create(
                 {
                   content,
+                  // No support for local MCP servers when editing/retrying a user message.
+                  localMCPServerIds: [],
                   userContextUsername: userMessageRow.userContextUsername,
                   userContextTimezone: userMessageRow.userContextTimezone,
                   userContextFullName: userMessageRow.userContextFullName,

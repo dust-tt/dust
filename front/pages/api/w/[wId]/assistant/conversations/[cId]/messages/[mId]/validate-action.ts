@@ -27,7 +27,9 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>,
   auth: Authenticator
 ): Promise<void> {
-  const { cId, mId, wId } = req.query;
+  const owner = auth.getNonNullableWorkspace();
+
+  const { cId, mId } = req.query;
   if (typeof cId !== "string" || typeof mId !== "string") {
     return apiError(req, res, {
       status_code: 404,
@@ -48,7 +50,7 @@ async function handler(
     });
   }
 
-  // Validate request body
+  // Validate request body.
   const parseResult = ValidateActionSchema.safeParse(req.body);
   if (!parseResult.success) {
     return apiError(req, res, {
@@ -61,7 +63,6 @@ async function handler(
   }
 
   const conversationRes = await getConversation(auth, cId);
-
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
   }
@@ -70,7 +71,7 @@ async function handler(
 
   try {
     const result = await validateAction({
-      workspaceId: wId as string,
+      workspaceId: owner.sId,
       conversationId: cId,
       messageId: mId,
       actionId,
@@ -81,7 +82,7 @@ async function handler(
   } catch (error) {
     logger.error(
       {
-        workspaceId: wId,
+        workspaceId: owner.sId,
         conversationId: cId,
         messageId: mId,
         actionId,

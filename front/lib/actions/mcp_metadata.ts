@@ -17,6 +17,7 @@ import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { RedisMCPTransport } from "@app/lib/api/actions/mcp_local";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -45,6 +46,8 @@ export type MCPServerType = {
 
 export type RemoteMCPServerType = MCPServerType & {
   url?: string;
+  cachedName?: string;
+  cachedDescription?: string;
   sharedSecret?: string;
   lastSyncAt?: Date | null;
 };
@@ -95,19 +98,31 @@ async function getAccessTokenForRemoteMCPServer(
   }
 }
 
-type ConnectViaMCPServerId = {
+interface ConnectViaMCPServerId {
   type: "mcpServerId";
   mcpServerId: string;
-};
+}
 
-type ConnectViaRemoteMCPServerUrl = {
+interface ConnectViaRemoteMCPServerUrl {
   type: "remoteMCPServerUrl";
   remoteMCPServerUrl: string;
-};
+}
+
+interface ConnectViaLocalMCPServer {
+  type: "localMCPServerId";
+  conversationId: string;
+  messageId: string;
+  mcpServerId: string;
+}
+
+export type MCPConnectionOptions =
+  | ConnectViaMCPServerId
+  | ConnectViaRemoteMCPServerUrl
+  | ConnectViaLocalMCPServer;
 
 export const connectToMCPServer = async (
   auth: Authenticator,
-  params: ConnectViaMCPServerId | ConnectViaRemoteMCPServerUrl
+  params: MCPConnectionOptions
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -168,6 +183,17 @@ export const connectToMCPServer = async (
       await mcpClient.connect(sseTransport);
       break;
     }
+
+    case "localMCPServerId": {
+      const transport = new RedisMCPTransport(auth, {
+        conversationId: params.conversationId,
+        mcpServerId: params.mcpServerId,
+        messageId: params.messageId,
+      });
+      await mcpClient.connect(transport);
+      break;
+    }
+
     default: {
       assertNever(connectionType);
     }
