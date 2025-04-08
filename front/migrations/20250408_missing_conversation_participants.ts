@@ -8,11 +8,12 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const CHUNK_SIZE = 1000;
-
+const CONVERSATION_CONCURRENCY = 5;
 /**
  * Find all conversations in the workspace that have missing participants and process them.
  * @param workspaceId - The workspace model ID to process. Not the sId.
@@ -28,7 +29,7 @@ async function processConversationsWithMissingParticipants(
       workspaceId,
       id: {
         [Op.notIn]: frontSequelize.literal(
-          `(SELECT DISTINCT "conversationId" FROM conversation_participants)`
+          `(SELECT DISTINCT "conversationId" FROM conversation_participants WHERE "workspaceId" = ${workspaceId})`
         ),
       },
     },
@@ -37,7 +38,7 @@ async function processConversationsWithMissingParticipants(
     `Found ${conversationsWithMissingParticipants.length} conversations with missing participants.`
   );
 
-  // Chunk the conversations into smaller chunks to process concurrently.
+  // Process by chunks to avoid memory issues.
   const conversationChunks = _.chunk(
     conversationsWithMissingParticipants,
     CHUNK_SIZE
@@ -58,9 +59,13 @@ async function processChunk(
   workspaceId: number,
   execute: boolean
 ) {
-  for (const conversation of conversations) {
-    await processConversation(conversation, workspaceId, execute);
-  }
+  await concurrentExecutor(
+    conversations,
+    async (conversation) => {
+      await processConversation(conversation, workspaceId, execute);
+    },
+    { concurrency: CONVERSATION_CONCURRENCY }
+  );
 }
 
 /**
