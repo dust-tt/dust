@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
+import {
+  EmotionLaughIcon,
+  HomeIcon,
+  PlanetIcon,
+  StarStrokeIcon,
+} from "@sparkle/icons";
+
 import { Avatar } from "../index_with_tw_base";
 
 const meta = {
@@ -97,6 +104,15 @@ export const AvatarExample = () => (
         name="Omar Doe"
         visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
       />
+    </div>
+    <div>With icon</div>
+    <div className="s-flex s-gap-4">
+      <Avatar size="xs" icon={HomeIcon} />
+      <Avatar size="sm" icon={StarStrokeIcon} />
+      <Avatar size="md" icon={PlanetIcon} />
+      <Avatar size="lg" icon={EmotionLaughIcon} />
+      <Avatar size="xl" icon={HomeIcon} />
+      <Avatar size="xxl" icon={StarStrokeIcon} />
     </div>
   </div>
 );
