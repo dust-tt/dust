@@ -6,6 +6,7 @@ import type {
   Transaction,
 } from "sequelize";
 
+import type { MCPToolPermissionType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadata } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -13,7 +14,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { MCPToolPermissionType } from "@app/lib/actions/mcp_metadata";
 
 export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPServerToolMetadata> {
   static model: ModelStatic<RemoteMCPServerToolMetadata> =

@@ -57,11 +57,11 @@ RemoteMCPServerToolMetadata.init(
 );
 
 RemoteMCPServerToolMetadata.belongsTo(RemoteMCPServer, {
-  foreignKey: { allowNull: false, name: "serverId" },
+  foreignKey: { allowNull: false, name: "remoteMCPServerId" },
   onDelete: "RESTRICT",
 });
 
 RemoteMCPServer.hasMany(RemoteMCPServerToolMetadata, {
-  foreignKey: "serverId",
+  foreignKey: "remoteMCPServerId",
   onDelete: "RESTRICT",
 });
