@@ -177,7 +177,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
 
     const serverToolMetadatas = await RemoteMCPServerToolMetadata.findAll({
       where: {
-        serverId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        remoteMCPServerId: this.id,
       },
     });
 

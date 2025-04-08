@@ -13,6 +13,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { MCPToolPermissionType } from "@app/lib/actions/mcp_metadata";
 
 export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPServerToolMetadata> {
   static model: ModelStatic<RemoteMCPServerToolMetadata> =
@@ -49,8 +50,14 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     auth: Authenticator,
     options: ResourceFindOptions<RemoteMCPServerToolMetadata>
   ) {
+    const { where, ...opts } = options;
+
     const toolMetadata = await RemoteMCPServerToolMetadata.findAll({
-      ...options,
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        ...where,
+      },
+      ...opts,
     });
 
     return toolMetadata.map(
@@ -65,7 +72,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
   ): Promise<RemoteMCPServerToolMetadataResource[]> {
     return this.baseFetch(auth, {
       where: {
-        serverId,
+        remoteMCPServerId: serverId,
       },
       ...options,
     });
@@ -84,7 +91,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
   ): Promise<RemoteMCPServerToolMetadataResource | null> {
     const toolMetadata = await this.baseFetch(auth, {
       where: {
-        serverId,
+        remoteMCPServerId: serverId,
         toolName,
       },
       ...options,
@@ -95,6 +102,25 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     }
 
     return toolMetadata[0];
+  }
+
+  // Update
+
+  async setPermission(
+    auth: Authenticator,
+    permission: MCPToolPermissionType,
+  ) {
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    assert(
+      systemSpace.canWrite(auth),
+      "The user is not authorized to update a tool metadata"
+    );
+
+    await this.update(
+      {
+        permission,
+      }
+    );
   }
 
   // Delete
@@ -111,6 +137,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
     const result = await RemoteMCPServerToolMetadata.destroy({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,
       },
       transaction,
