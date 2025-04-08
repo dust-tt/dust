@@ -1,6 +1,4 @@
-FROM node:20.13.0 AS front
-
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
+FROM node:20.13.0 AS build
 
 ARG COMMIT_HASH
 ARG NEXT_PUBLIC_VIZ_URL
@@ -32,5 +30,13 @@ RUN find . -name "*.test.tsx" -delete
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+
+# Production
+FROM node:20.13.0-alpine
+WORKDIR /app
+
+COPY --from=build /app/.next .next
+COPY --from=build /app/package*.jon ./
+RUN npm ci --production
 
 CMD ["npm", "--silent", "run", "start"]
