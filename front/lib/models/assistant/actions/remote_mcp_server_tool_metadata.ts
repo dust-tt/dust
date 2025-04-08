@@ -55,3 +55,13 @@ RemoteMCPServerToolMetadata.init(
     ],
   }
 );
+
+RemoteMCPServerToolMetadata.belongsTo(RemoteMCPServer, {
+  foreignKey: { allowNull: false, name: "serverId" },
+  onDelete: "RESTRICT",
+});
+
+RemoteMCPServer.hasMany(RemoteMCPServerToolMetadata, {
+  foreignKey: "serverId",
+  onDelete: "RESTRICT",
+});
