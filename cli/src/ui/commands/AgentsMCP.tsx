@@ -145,30 +145,15 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
       const maxDescWidth = termWidth - descriptionIndent;
 
       let truncatedDescription = "";
-      let needsEllipsis = false;
       const originalLines = (item.description || "").split("\n");
 
       if (originalLines.length > 0) {
         const line1 = originalLines[0];
+        // Only show one line of description for compact display
         if (line1.length > maxDescWidth) {
-          truncatedDescription += line1.substring(0, maxDescWidth - 3) + "...";
-          needsEllipsis = true;
+          truncatedDescription = line1.substring(0, maxDescWidth - 3) + "...";
         } else {
-          truncatedDescription += line1;
-        }
-        if (originalLines.length > 1 && !needsEllipsis) {
-          const line2 = originalLines[1];
-          truncatedDescription += "\n";
-          if (line2.length > maxDescWidth) {
-            truncatedDescription +=
-              line2.substring(0, maxDescWidth - 3) + "...";
-            needsEllipsis = true;
-          } else {
-            truncatedDescription += line2;
-          }
-        }
-        if (originalLines.length > 2 && !needsEllipsis) {
-          truncatedDescription += "\n...";
+          truncatedDescription = line1;
         }
       }
 
@@ -176,30 +161,29 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
       const selectionMark = isSelected ? "x" : " ";
 
       return (
-        <Box key={item.id} flexDirection="column">
+        <Box
+          key={`${item.id}-${termWidth}`}
+          flexDirection="column"
+          height={2}
+          marginBottom={0}
+        >
           <Text color={isFocused ? "blue" : undefined}>
             {`${indicator}[`}
             <Text bold={isSelected}>{selectionMark}</Text>
             {`] ${item.label} (${item.id})`}
           </Text>
-          {truncatedDescription && (
-            <Box marginLeft={descriptionIndent}>
+          <Box marginLeft={descriptionIndent} height={1}>
+            {truncatedDescription ? (
               <Text dimColor>{truncatedDescription}</Text>
-            </Box>
-          )}
+            ) : (
+              <Text> </Text>
+            )}
+          </Box>
         </Box>
       );
     },
     [stdout?.columns]
   );
-
-  const renderSelectedAgentItem = useCallback((item: AgentItem): ReactNode => {
-    return (
-      <Text key={item.id}>
-        - {item.label} ({item.id})
-      </Text>
-    );
-  }, []);
 
   const handleConfirm = useCallback((selectedIds: string[]) => {
     setConfirmedSelection(selectedIds);
@@ -322,11 +306,10 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
         items={agentItems}
         onConfirm={handleConfirm}
         renderItem={renderAgentItem}
-        renderSelectedItem={renderSelectedAgentItem}
         // Number of terminal lines allocated per item to render
-        itemLines={4}
+        itemLines={2}
         // Number of lines of room that we need to render the search
-        legRoom={7}
+        legRoom={5}
         searchPrompt="Search Agents:"
         selectPrompt="Select Agents"
       />
