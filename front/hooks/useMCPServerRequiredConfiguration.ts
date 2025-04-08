@@ -23,19 +23,19 @@ export const useMCPServerRequiredConfiguration = ({
     const { server } = mcpServerView;
     setRequiresDataSourceConfiguration(
       serverRequiresInternalConfiguration({
-        serverMetadata: server,
+        mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
       })
     );
     setRequiresTableConfiguration(
       serverRequiresInternalConfiguration({
-        serverMetadata: server,
+        mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
       })
     );
     setRequiresChildAgentConfiguration(
       serverRequiresInternalConfiguration({
-        serverMetadata: server,
+        mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
       })
     );

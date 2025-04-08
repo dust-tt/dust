@@ -145,14 +145,14 @@ function generateConfiguredInput({
  * contains the specified mimeType.
  */
 export function serverRequiresInternalConfiguration({
-  serverMetadata,
+  mcpServer,
   mimeType,
 }: {
-  serverMetadata: MCPServerType;
+  mcpServer: MCPServerType;
   mimeType: InternalConfigurationMimeType;
 }): boolean {
   return (
-    serverMetadata?.tools?.some(
+    mcpServer?.tools?.some(
       (tool) =>
         tool?.inputSchema &&
         containsSubSchema(
