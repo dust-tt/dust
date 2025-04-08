@@ -88,6 +88,7 @@ function makePlatformMCPConfigurations(
     mcpServerViewId: config.mcpServerViewId,
     dataSources: config.dataSources || [], // Ensure dataSources is always an array
     tables: config.tables,
+    childAgent: config.childAgent,
   }));
 }
 
