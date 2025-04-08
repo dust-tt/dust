@@ -14,6 +14,7 @@ import { apiError } from "@app/logger/withlogging";
 export const PostRequestActionsAccessBodySchema = t.type({
   emailMessage: t.string,
   userTo: t.string,
+  serverName: t.string,
 });
 
 export type PostRequestActionsAccessBody = t.TypeOf<
@@ -38,7 +39,6 @@ async function handler(
       },
     });
   }
-
   const { method } = req;
 
   if (method !== "POST") {
@@ -102,7 +102,7 @@ async function handler(
   const result = await sendEmailWithTemplate({
     to: userRecipient.email,
     from: { name: "Dust team", email: "support@dust.help" },
-    subject: `[Dust] Request Data source from ${emailRequester}`,
+    subject: `[Dust] Request Action from ${emailRequester}`,
     body,
   });
 

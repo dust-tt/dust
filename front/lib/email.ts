@@ -69,14 +69,17 @@ export async function sendRequestFeatureAccessEmail({
 export async function sendRequestActionsAccessEmail({
   userTo,
   emailMessage,
+  serverName,
   owner,
 }: {
   userTo: string;
   emailMessage: string;
+  serverName: string;
   owner: LightWorkspaceType;
 }) {
   const emailBlob: PostRequestActionsAccessBody = {
     emailMessage,
+    serverName,
     userTo,
   };
 

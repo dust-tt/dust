@@ -13,10 +13,20 @@ import type {
   GetMCPServerViewsResponseBody,
   PostMCPServerViewResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
+import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 function getMCPServerViewsKey(owner: LightWorkspaceType, space?: SpaceType) {
   return space ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views` : null;
+}
+
+function getMCPServerViewsNotActivatedKey(
+  owner: LightWorkspaceType,
+  space?: SpaceType
+) {
+  return space
+    ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/not_activated`
+    : null;
 }
 
 export function useMCPServerViews({
@@ -30,6 +40,30 @@ export function useMCPServerViews({
 }) {
   const configFetcher: Fetcher<GetMCPServerViewsResponseBody> = fetcher;
   const url = getMCPServerViewsKey(owner, space);
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled,
+  });
+  const serverViews = useMemo(() => (data ? data.serverViews : []), [data]);
+  return {
+    serverViews,
+    isMCPServerViewsLoading: !error && !data && !disabled,
+    isMCPServerViewsError: error,
+    mutateMCPServerViews: mutate,
+  };
+}
+
+export function useMCPServerViewsNotActivated({
+  owner,
+  space,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  space?: SpaceType;
+  disabled?: boolean;
+}) {
+  const configFetcher: Fetcher<GetMCPServerViewsNotActivatedResponseBody> =
+    fetcher;
+  const url = getMCPServerViewsNotActivatedKey(owner, space);
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled,
   });
