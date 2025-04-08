@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import type { ChildAgentConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import type { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import type { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
@@ -84,5 +85,16 @@ export function renderTableConfiguration(
     }),
     workspaceId: dataSourceView.workspace.sId,
     tableId: table.tableId,
+  };
+}
+
+export function renderChildAgentConfiguration(
+  childAgent: ChildAgentConfiguration
+): { sId: string } {
+  return {
+    sId: makeSId("child_agent_configuration", {
+      id: childAgent.id,
+      workspaceId: childAgent.workspaceId,
+    }),
   };
 }
