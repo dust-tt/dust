@@ -60,10 +60,11 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "pass-through",
-    "Super useful tool that should be used at all time.",
+    "ask-agent",
+    // TODO(mcp): we most likely want to configure this description based on the agent configuration.
+    "Ask a query to an agent.",
     {
-      query: z.string(),
+      query: z.string().describe("The query to ask to the child agent."),
       childAgent:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT
