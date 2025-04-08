@@ -28,6 +28,10 @@ export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
 export const TABLE_CONFIGURATION_URI_PATTERN =
   /^table_configuration:\/\/dust\/w\/(\w+)\/table_configurations\/(\w+)$/;
 
+// URI pattern for configuring the agent to use within an action (agent calls agent, sort of Russian doll situation).
+export const CHILD_AGENT_CONFIGURATION_URI_PATTERN =
+  /^child_agent_configuration:\/\/dust\/w\/(\w+)\/child_agent_configurations\/(\w+)$/;
+
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  */
@@ -44,6 +48,10 @@ export const ConfigurableToolInputSchemas = {
       mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.TABLE),
     })
   ),
+  [INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT]: z.object({
+    uri: z.string().regex(CHILD_AGENT_CONFIGURATION_URI_PATTERN),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT),
+  }),
   // We use a satisfies here to ensure that all the InternalConfigurationMimeType are covered whilst preserving the type
   // inference in tools definitions (server.tool is templated).
 } as const satisfies Record<InternalConfigurationMimeType, z.ZodSchema>;
@@ -112,6 +120,25 @@ function generateConfiguredInput({
           };
         }) || []
       );
+
+    case INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT: {
+      const { childAgent } = actionConfiguration;
+      if (!childAgent) {
+        // TODO(mcp): improve typing wrt this.
+        throw new Error("Unreachable: child agent configuration not found.");
+      }
+      const { sId } = childAgent;
+      if (!sId) {
+        // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
+        throw new Error(
+          "Unreachable: child agent configuration without an sId."
+        );
+      }
+      return {
+        uri: `child_agent_configuration://dust/w/${owner.sId}/child_agent_configurations/${sId}`,
+        mimeType,
+      };
+    }
 
     default:
       assertNever(mimeType);

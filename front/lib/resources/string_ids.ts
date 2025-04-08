@@ -31,9 +31,12 @@ const RESOURCES_PREFIX = {
   extension: "ext",
   mcp_server_connection: "msc",
   mcp_server_view: "msv",
+  remote_mcp_server: "rms",
+
+  // Resources relative to the configuration of an MCP server.
   data_source_configuration: "dsc",
   table_configuration: "tbc",
-  remote_mcp_server: "rms",
+  child_agent_configuration: "cac",
 
   // Virtual resources (no database modelsassociated).
   internal_mcp_server: "ims",
