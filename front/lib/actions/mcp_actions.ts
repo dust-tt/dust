@@ -10,7 +10,7 @@ import type {
   PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type {
-  MCPConnectionOptions,
+  MCPConnectionParams,
   MCPToolType,
 } from "@app/lib/actions/mcp_metadata";
 import {
@@ -102,7 +102,7 @@ function makeLocalMCPConfigurations(
     description: tool.description ?? null,
     inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
     id: config.id,
-    mcpServerId: config.mcpServerId,
+    localMcpServerId: config.localMcpServerId,
   }));
 }
 
@@ -130,7 +130,7 @@ function makeMCPConfigurations<T extends MCPServerConfigurationType>({
 /**
  * Try to call an MCP tool.
  *
- * This function will handle both platform and local MCP tools.
+ * May fail when connecting to remote/client-side servers.
  */
 export async function tryCallMCPTool(
   auth: Authenticator,
@@ -146,7 +146,7 @@ export async function tryCallMCPTool(
     inputs: Record<string, unknown> | undefined;
   }
 ): Promise<Result<MCPToolResultContent[], Error>> {
-  const connectionOptions = await getConnectionOptions(
+  const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
     actionConfiguration,
     {
@@ -155,12 +155,12 @@ export async function tryCallMCPTool(
     }
   );
 
-  if (connectionOptions.isErr()) {
-    return connectionOptions;
+  if (connectionParamsRes.isErr()) {
+    return connectionParamsRes;
   }
 
   try {
-    const mcpClient = await connectToMCPServer(auth, connectionOptions.value);
+    const mcpClient = await connectToMCPServer(auth, connectionParamsRes.value);
 
     const toolCallResult = await mcpClient.callTool(
       {
@@ -187,7 +187,7 @@ export async function tryCallMCPTool(
   }
 }
 
-async function getConnectionOptions(
+async function getMCPClientConnectionParams(
   auth: Authenticator,
   config: MCPServerConfigurationType | MCPToolConfigurationType,
   {
@@ -197,7 +197,7 @@ async function getConnectionOptions(
     conversationId: string;
     messageId: string;
   }
-): Promise<Result<MCPConnectionOptions, Error>> {
+): Promise<Result<MCPConnectionParams, Error>> {
   if (
     isPlatformMCPServerConfiguration(config) ||
     isPlatformMCPToolConfiguration(config)
@@ -218,7 +218,7 @@ async function getConnectionOptions(
 
   return new Ok({
     type: "localMCPServerId",
-    mcpServerId: config.mcpServerId,
+    mcpServerId: config.localMcpServerId,
     conversationId,
     messageId,
   });
@@ -281,18 +281,18 @@ async function listMCPServerTools(
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
-  const connectionOptions = await getConnectionOptions(auth, config, {
+  const connectionParamsRes = await getMCPClientConnectionParams(auth, config, {
     conversationId,
     messageId,
   });
 
-  if (connectionOptions.isErr()) {
-    throw connectionOptions.error;
+  if (connectionParamsRes.isErr()) {
+    throw connectionParamsRes.error;
   }
 
   try {
     // Connect to the MCP server.
-    mcpClient = await connectToMCPServer(auth, connectionOptions.value);
+    mcpClient = await connectToMCPServer(auth, connectionParamsRes.value);
 
     let allTools: MCPToolType[] = [];
     let nextPageCursor;

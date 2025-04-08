@@ -56,7 +56,7 @@ export type PlatformMCPServerConfigurationType =
   };
 
 export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType & {
-  mcpServerId: string;
+  localMcpServerId: string;
 };
 
 export type MCPServerConfigurationType =
@@ -77,7 +77,6 @@ export type LocalMCPToolConfigurationType = Omit<
 > & {
   type: "mcp_configuration";
   inputSchema: JSONSchema;
-  mcpServerId: string;
 };
 
 export type MCPToolConfigurationType =

@@ -22,7 +22,7 @@ export function getMCPServerRegistryKey({
 /**
  * Interface for MCP server registration metadata.
  */
-export interface MCPServerRegistration {
+interface MCPServerRegistration {
   serverId: string;
   workspaceId: string;
   userId: string;

@@ -94,7 +94,7 @@ export function createLocalMCPServerConfigurations(
   return localMCPServerIds.map((serverId) => ({
     description: `Use the MCP Server ${serverId} to interact with the local MCP server.`,
     id: -1, // Default ID for local MCP servers.
-    mcpServerId: serverId,
+    localMcpServerId: serverId,
     name: `MCP Server ${serverId}`,
     sId: serverId,
     type: "mcp_server_configuration",
@@ -109,7 +109,7 @@ export function createLocalMCPServerConfigurations(
  * Custom Transport implementation for MCP using Redis Pub/Sub
  * This allows communication between the client and local MCP servers
  */
-export class RedisMCPTransport implements Transport {
+export class ClientSideRedisMCPTransport implements Transport {
   private unsubscribe?: () => void;
   private lastEventId: string | null = null;
 
