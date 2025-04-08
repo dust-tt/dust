@@ -1,6 +1,5 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { assert } from "console";
 
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isUrlCandidate, nodeCandidateFromUrl } from "@app/lib/connectors";
