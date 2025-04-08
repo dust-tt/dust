@@ -420,6 +420,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       messageId: agentMessage.sId,
       actionConfiguration,
       conversation,
+      agentMessage,
       inputs,
     });
 

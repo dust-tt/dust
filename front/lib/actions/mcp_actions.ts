@@ -28,7 +28,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { ConversationType, Result } from "@app/types";
+import type { AgentMessageType, ConversationType, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
@@ -50,7 +50,7 @@ const BlobResourceContentsSchema = ResourceContentsSchema.extend({
   blob: z.string().base64(),
 });
 
-const TextContentSchema = z.object({
+export const TextContentSchema = z.object({
   type: z.literal("text"),
   text: z.string(),
 });
@@ -143,11 +143,13 @@ export async function tryCallMCPTool(
   auth: Authenticator,
   {
     conversation,
+    agentMessage,
     messageId,
     actionConfiguration,
     inputs,
   }: {
     conversation: ConversationType;
+    agentMessage: AgentMessageType;
     messageId: string;
     actionConfiguration: MCPToolConfigurationType;
     inputs: Record<string, unknown> | undefined;
@@ -170,7 +172,8 @@ export async function tryCallMCPTool(
     const mcpClient = await connectToMCPServer(
       auth,
       connectionParamsRes.value,
-      conversation
+      conversation,
+      agentMessage
     );
 
     const toolCallResult = await mcpClient.callTool(

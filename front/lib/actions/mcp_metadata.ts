@@ -27,6 +27,7 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type {
+  AgentMessageType,
   ConversationType,
   EditedByUser,
   OAuthProvider,
@@ -95,7 +96,8 @@ export type MCPConnectionParams =
 export const connectToMCPServer = async (
   auth: Authenticator,
   params: MCPConnectionParams,
-  conversation?: ConversationType
+  conversation?: ConversationType,
+  agentMessage?: AgentMessageType
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -117,7 +119,8 @@ export const connectToMCPServer = async (
             params.mcpServerId,
             server,
             auth,
-            conversation
+            conversation,
+            agentMessage
           );
           await mcpClient.connect(client);
           break;
