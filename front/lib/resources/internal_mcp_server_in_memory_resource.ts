@@ -53,7 +53,7 @@ export class InternalMCPServerInMemoryResource {
         (await mcpClient.listTools()).tools
       ) as any,
       isDefault: isInternalMCPServerName(md.name)
-        ? isDefaultInternalMCPServer(md.name)
+        ? isDefaultInternalMCPServer(server.id)
         : false,
     };
 
