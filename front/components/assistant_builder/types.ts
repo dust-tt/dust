@@ -1,7 +1,6 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
-import type { SVGProps } from "react";
-import type React from "react";
+import type React, { SVGProps } from "react";
 
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
@@ -129,7 +128,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   mcpServerViewId: string;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
-  childAgentConfiguration: { sId: string | null } | null;
+  childAgentId: string | null;
 };
 
 // Builder State

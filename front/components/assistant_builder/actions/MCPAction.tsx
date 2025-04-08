@@ -127,13 +127,13 @@ export function ActionMCP({
             })
               ? prevConfig.tablesConfigurations || {}
               : null,
-          childAgentConfiguration:
+          childAgentId:
             selectedMCPServerView &&
             serverRequiresInternalConfiguration({
               serverMetadata: selectedMCPServerView.server,
               mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
             })
-              ? prevConfig.childAgentConfiguration || { sId: null }
+              ? prevConfig.childAgentId || null
               : null,
         };
       },
@@ -399,10 +399,10 @@ export function ActionMCP({
           viewType="table"
         />
       )}
-      {actionConfiguration.childAgentConfiguration && (
+      {actionConfiguration.childAgentId && (
         <ChildAgentSelector
           onAgentSelect={handleChildAgentConfigUpdate}
-          selectedAgentId={actionConfiguration.childAgentConfiguration.sId}
+          selectedAgentId={actionConfiguration.childAgentId}
           owner={owner}
         />
       )}
