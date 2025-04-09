@@ -2,7 +2,7 @@ import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { ChevronDownIcon, ChevronRightIcon } from "@sparkle/icons/solid";
+import { ChevronDownIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";

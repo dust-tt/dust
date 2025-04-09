@@ -206,6 +206,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       workspaceId,
     });
   }
+
   // Serialization.
   toJSON(): MCPServerConnectionType {
     return {

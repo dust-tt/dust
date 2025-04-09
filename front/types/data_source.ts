@@ -3,6 +3,7 @@ import type { DataSourceViewType } from "./data_source_view";
 import type { ModelId } from "./shared/model_id";
 import type { Result } from "./shared/result";
 import { Err, Ok } from "./shared/result";
+import type { EditedByUser } from "./user";
 
 export const CONNECTOR_PROVIDERS = [
   "bigquery",
@@ -25,14 +26,6 @@ export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 export function isConnectorProvider(val: string): val is ConnectorProvider {
   return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
 }
-
-export type EditedByUser = {
-  editedAt: number | null;
-  fullName: string | null;
-  imageUrl: string | null;
-  email: string | null;
-  userId: string | null;
-};
 
 export type DataSourceType = {
   id: ModelId;

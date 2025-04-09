@@ -491,7 +491,7 @@ function RetrievalActionTagsFilterPopover({
               <Label>Must-have</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 {tagsIn.map((tag) => (
-                  <Chip key={tag.tag} label={tag.tag} color="slate" />
+                  <Chip key={tag.tag} label={tag.tag} />
                 ))}
               </div>
             </div>
@@ -501,7 +501,7 @@ function RetrievalActionTagsFilterPopover({
               <Label>Must-not-have</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 {tagsNot.map((tag) => (
-                  <Chip key={tag.tag} label={tag.tag} color="red" />
+                  <Chip key={tag.tag} label={tag.tag} color="warning" />
                 ))}
               </div>
             </div>
@@ -511,7 +511,7 @@ function RetrievalActionTagsFilterPopover({
               <Label>In-Conversation filtering</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 <Chip
-                  color="emerald"
+                  color="success"
                   label="Activated"
                   icon={SparklesIcon}
                   isBusy

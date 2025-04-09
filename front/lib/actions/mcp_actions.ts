@@ -1,16 +1,28 @@
+import type { JSONSchema7 } from "json-schema";
 import { z } from "zod";
 
 import type {
+  LocalMCPServerConfigurationType,
+  LocalMCPToolConfigurationType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
+  PlatformMCPServerConfigurationType,
+  PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { MCPToolType } from "@app/lib/actions/mcp_metadata";
+import { isDefaultInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
   extractMetadataFromTools,
+  isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import {
+  isMCPServerConfiguration,
+  isPlatformMCPServerConfiguration,
+  isPlatformMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
+import type { MCPToolType, MCPToolWithIsDefaultType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -18,6 +30,10 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+
+const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
+
+const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
 // See https://github.com/colinhacks/zod/issues/2938
@@ -58,59 +74,109 @@ const Schema = z.union([
 
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
-function makeMCPConfigurations({
+function makePlatformMCPToolConfigurations(
+  config: PlatformMCPServerConfigurationType,
+  tools: (MCPToolType & { isDefault: boolean })[]
+): PlatformMCPToolConfigurationType[] {
+  return tools.map((tool) => ({
+    sId: generateRandomModelSId(),
+    type: "mcp_configuration",
+    name: tool.name,
+    description: tool.description ?? null,
+    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
+    id: config.id,
+    mcpServerViewId: config.mcpServerViewId,
+    dataSources: config.dataSources || [], // Ensure dataSources is always an array
+    tables: config.tables,
+    isDefault: tool.isDefault,
+    childAgentId: config.childAgentId,
+  }));
+}
+
+function makeLocalMCPToolConfigurations(
+  config: LocalMCPServerConfigurationType,
+  tools: MCPToolType[]
+): LocalMCPToolConfigurationType[] {
+  return tools.map((tool) => ({
+    sId: generateRandomModelSId(),
+    type: "mcp_configuration",
+    name: tool.name,
+    description: tool.description ?? null,
+    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
+    id: config.id,
+    localMcpServerId: config.localMcpServerId,
+    isDefault: false, // can't be default for local MCP servers.
+  }));
+}
+
+type MCPToolConfigurationResult<T> =
+  T extends PlatformMCPServerConfigurationType
+    ? PlatformMCPToolConfigurationType[]
+    : LocalMCPToolConfigurationType[];
+
+function makeMCPToolConfigurations<T extends MCPServerConfigurationType>({
   config,
   tools,
 }: {
-  config: MCPServerConfigurationType;
-  tools: MCPToolType[];
-}): MCPToolConfigurationType[] {
-  return tools.map((tool) => {
-    return {
-      id: config.id,
-      sId: generateRandomModelSId(),
-      type: "mcp_configuration",
-      mcpServerViewId: config.mcpServerViewId,
-      name: tool.name,
-      description: tool.description ?? null,
-      inputSchema: tool.inputSchema || { type: "object", properties: {} },
-      dataSources: config.dataSources,
-      tables: config.tables,
-    };
-  });
+  config: T;
+  tools: MCPToolWithIsDefaultType[];
+}): MCPToolConfigurationResult<T> {
+  if (isPlatformMCPServerConfiguration(config)) {
+    return makePlatformMCPToolConfigurations(
+      config,
+      tools
+    ) as MCPToolConfigurationResult<T>;
+  }
+
+  return makeLocalMCPToolConfigurations(
+    config,
+    tools
+  ) as MCPToolConfigurationResult<T>;
 }
 
 /**
  * Try to call an MCP tool.
  *
- * This function will potentially fail if the server is remote as it will try to connect to it.
+ * May fail when connecting to remote/client-side servers.
  */
 export async function tryCallMCPTool(
   auth: Authenticator,
   {
+    conversationId,
+    messageId,
     actionConfiguration,
     inputs,
   }: {
+    conversationId: string;
+    messageId: string;
     actionConfiguration: MCPToolConfigurationType;
     inputs: Record<string, unknown> | undefined;
   }
 ): Promise<Result<MCPToolResultContent[], Error>> {
-  try {
-    const res = await MCPServerViewResource.fetchById(
-      auth,
-      actionConfiguration.mcpServerViewId
-    );
-    if (res.isErr()) {
-      return res;
+  const connectionParamsRes = await getMCPClientConnectionParams(
+    auth,
+    actionConfiguration,
+    {
+      conversationId,
+      messageId,
     }
-    const mcpClient = await connectToMCPServer(auth, {
-      type: "mcpServerId",
-      mcpServerId: res.value.mcpServerId,
-    });
-    const toolCallResult = await mcpClient.callTool({
-      name: actionConfiguration.name,
-      arguments: inputs,
-    });
+  );
+
+  if (connectionParamsRes.isErr()) {
+    return connectionParamsRes;
+  }
+
+  try {
+    const mcpClient = await connectToMCPServer(auth, connectionParamsRes.value);
+
+    const toolCallResult = await mcpClient.callTool(
+      {
+        name: actionConfiguration.name,
+        arguments: inputs,
+      },
+      undefined,
+      { timeout: DEFAULT_MCP_REQUEST_TIMEOUT_MS }
+    );
 
     await mcpClient.close();
 
@@ -128,17 +194,57 @@ export async function tryCallMCPTool(
   }
 }
 
+async function getMCPClientConnectionParams(
+  auth: Authenticator,
+  config: MCPServerConfigurationType | MCPToolConfigurationType,
+  {
+    conversationId,
+    messageId,
+  }: {
+    conversationId: string;
+    messageId: string;
+  }
+): Promise<Result<MCPConnectionParams, Error>> {
+  if (
+    isPlatformMCPServerConfiguration(config) ||
+    isPlatformMCPToolConfiguration(config)
+  ) {
+    const res = await MCPServerViewResource.fetchById(
+      auth,
+      config.mcpServerViewId
+    );
+    if (res.isErr()) {
+      return res;
+    }
+
+    return new Ok({
+      type: "mcpServerId",
+      mcpServerId: res.value.mcpServerId,
+    });
+  }
+
+  return new Ok({
+    type: "localMCPServerId",
+    mcpServerId: config.localMcpServerId,
+    conversationId,
+    messageId,
+  });
+}
+
 /**
- * Get the MCP tools for the given agent actions.
- *
- * This function will return the MCP tools for the given agent actions by connecting to the MCP server(s).
+ * List the MCP tools for the given agent actions.
+ * Returns MCP tools by connecting to the specified MCP servers.
  */
-export async function tryGetMCPTools(
+export async function tryListMCPTools(
   auth: Authenticator,
   {
     agentActions,
+    conversationId,
+    messageId,
   }: {
     agentActions: AgentActionConfigurationType[];
+    conversationId: string;
+    messageId: string;
   }
 ): Promise<MCPToolConfigurationType[]> {
   const owner = auth.getNonNullableWorkspace();
@@ -146,21 +252,19 @@ export async function tryGetMCPTools(
   if (!featureFlags.includes("mcp_actions")) {
     return [];
   }
-  // Discover all the tools exposed by all the mcp server available.
-  const configurations = await Promise.all(
-    agentActions.filter(isMCPServerConfiguration).map(async (action) => {
-      const res = await MCPServerViewResource.fetchById(
-        auth,
-        action.mcpServerViewId
-      );
-      if (res.isErr()) {
-        throw new Error(
-          `MCP server view with id ${action.mcpServerViewId} not found.`
-        );
-      }
-      const tools = await listMCPServerTools(auth, res.value.mcpServerId);
 
-      return makeMCPConfigurations({
+  // Filter for MCP server configurations.
+  const mcpServerActions = agentActions.filter(isMCPServerConfiguration);
+
+  // Discover all the tools exposed by all the mcp servers available.
+  const configurations = await Promise.all(
+    mcpServerActions.map(async (action) => {
+      const tools = await listMCPServerTools(auth, action, {
+        conversationId,
+        messageId,
+      });
+
+      return makeMCPToolConfigurations({
         config: action,
         tools,
       });
@@ -170,34 +274,91 @@ export async function tryGetMCPTools(
   return configurations.flat();
 }
 
-export async function listMCPServerTools(
+async function listMCPServerTools(
   auth: Authenticator,
-  mcpServerId: string
-): Promise<MCPToolType[]> {
-  const mcpClient = await connectToMCPServer(auth, {
-    type: "mcpServerId",
-    mcpServerId,
+  config: MCPServerConfigurationType,
+  {
+    conversationId,
+    messageId,
+  }: {
+    conversationId: string;
+    messageId: string;
+  }
+): Promise<MCPToolWithIsDefaultType[]> {
+  const owner = auth.getNonNullableWorkspace();
+  let mcpClient;
+
+  const connectionParamsRes = await getMCPClientConnectionParams(auth, config, {
+    conversationId,
+    messageId,
   });
+
+  if (connectionParamsRes.isErr()) {
+    throw connectionParamsRes.error;
+  }
+
   try {
-    let allTools: MCPToolType[] = [];
+    // Connect to the MCP server.
+    const config = connectionParamsRes.value;
+    mcpClient = await connectToMCPServer(auth, config);
+    const isDefault =
+      isConnectViaMCPServerId(config) &&
+      isDefaultInternalMCPServer(config.mcpServerId);
+
+    let allTools: MCPToolWithIsDefaultType[] = [];
     let nextPageCursor;
+
+    // Fetch all tools, handling pagination if supported by the MCP server.
     do {
-      const toolsResult = await mcpClient.listTools();
-      nextPageCursor = toolsResult.nextCursor;
-      allTools = [...allTools, ...extractMetadataFromTools(toolsResult.tools)];
+      const { tools, nextCursor } = await mcpClient.listTools();
+      nextPageCursor = nextCursor;
+      allTools = [
+        ...allTools,
+        ...extractMetadataFromTools(tools).map((tool) => ({
+          ...tool,
+          isDefault,
+        })),
+      ];
     } while (nextPageCursor);
 
+    logger.debug(
+      {
+        workspaceId: owner.id,
+        conversationId,
+        messageId,
+        toolCount: allTools.length,
+      },
+      `Retrieved ${allTools.length} tools from MCP server`
+    );
+
     return allTools;
-  } catch (e) {
+  } catch (error) {
     logger.error(
       {
-        mcpServerId,
-        error: e,
+        workspaceId: owner.id,
+        conversationId,
+        messageId,
+        error,
       },
-      `Error listing tools for MCP server.`
+      `Error listing tools from MCP server: ${normalizeError(error)}`
     );
-    return [];
+    throw error;
   } finally {
-    await mcpClient.close();
+    // Ensure we always close the client connection
+    if (mcpClient) {
+      try {
+        await mcpClient.close();
+      } catch (closeError) {
+        logger.warn(
+          {
+            workspaceId: owner.id,
+            conversationId,
+            messageId,
+            error: closeError,
+          },
+          "Error closing MCP client connection"
+        );
+      }
+    }
   }
 }

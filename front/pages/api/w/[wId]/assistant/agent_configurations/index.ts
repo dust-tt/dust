@@ -4,6 +4,7 @@ import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
+import type { PlatformMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
@@ -485,12 +486,13 @@ export async function createOrUpgradeAgentConfiguration({
         auth,
         {
           type: "mcp_server_configuration",
-          mcpServerViewId: action.mcpServerViewId,
           name: action.name,
           description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
-          dataSources: action.dataSources,
+          mcpServerViewId: action.mcpServerViewId,
+          dataSources: action.dataSources || null,
           tables: action.tables,
-        },
+          childAgentId: action.childAgentId,
+        } as PlatformMCPServerConfigurationType,
         agentConfigurationRes.value
       );
       if (res.isErr()) {
@@ -499,6 +501,7 @@ export async function createOrUpgradeAgentConfiguration({
         await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
         return res;
       }
+      actionConfigs.push(res.value);
     } else {
       assertNever(action);
     }

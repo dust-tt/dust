@@ -4,7 +4,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import {
+  isFileTypeUpsertableForUseCase,
+  processAndUpsertToDataSource,
+} from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -140,8 +143,11 @@ async function handler(
         });
       }
 
-      // Only upsert immediately in case of conversation
-      if (file.useCase === "conversation") {
+      // For files with useCase "conversation" that support upsert, directly add them to the data source.
+      if (
+        file.useCase === "conversation" &&
+        isFileTypeUpsertableForUseCase(file)
+      ) {
         const jitDataSource = await getOrCreateConversationDataSourceFromFile(
           auth,
           file
@@ -163,19 +169,23 @@ async function handler(
             { file }
           );
 
-          // For now, silently log the error
           if (rUpsert.isErr()) {
-            {
-              logger.warn({
-                fileModelId: file.id,
-                workspaceId: auth.workspace()?.sId,
-                contentType: file.contentType,
-                useCase: file.useCase,
-                useCaseMetadata: file.useCaseMetadata,
+            logger.error({
+              fileModelId: file.id,
+              workspaceId: auth.workspace()?.sId,
+              contentType: file.contentType,
+              useCase: file.useCase,
+              useCaseMetadata: file.useCaseMetadata,
+              message: "Failed to upsert the file.",
+              error: rUpsert.error,
+            });
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
                 message: "Failed to upsert the file.",
-                error: rUpsert.error,
-              });
-            }
+              },
+            });
           }
         }
       }

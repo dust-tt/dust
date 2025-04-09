@@ -1,7 +1,6 @@
 import type {
   Attributes,
   ForeignKey,
-  Includeable,
   NonAttribute,
   Transaction,
   WhereOptions,
@@ -14,8 +13,7 @@ import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import type { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type {
   ModelStaticSoftDeletable,
   SoftDeletableWorkspaceAwareModel,
@@ -71,34 +69,40 @@ export abstract class ResourceWithSpace<
       includeDeleted,
     }: ResourceFindOptions<M> = {}
   ): Promise<T[]> {
-    const includeClauses: Includeable[] = [
-      {
-        model: SpaceResource.model,
-        as: "space",
-        include: [{ model: GroupResource.model }],
-      },
-      ...(includes || []),
-    ];
-
     const blobs = await this.model.findAll({
       attributes,
       where: where as WhereOptions<M>,
-      include: includeClauses,
+      include: includes,
       limit,
       order,
+      includeDeleted,
+    });
+
+    if (blobs.length === 0) {
+      return [];
+    }
+
+    // We use the model directly here; it's a very rare case where we don't check the workspace, which in this case
+    // is due to the fact that we may need to fetch data from public workspaces as well as the current workspace.
+    const spaces = await SpaceModel.findAll({
+      where: {
+        id: blobs.map((b) => b.vaultId),
+      },
+      include: [
+        {
+          model: GroupResource.model,
+        },
+      ],
       includeDeleted,
     });
 
     return (
       blobs
         .map((b) => {
-          const space = new SpaceResource(
-            SpaceResource.model,
-            b.space.get(),
-            b.space.groups.map(
-              (group) => new GroupResource(GroupModel, group.get())
-            )
-          );
+          const space = spaces.find((space) => space.id === b.vaultId);
+          if (!space) {
+            throw new Error("Unreachable: space not found.");
+          }
 
           const includedResults = (includes || []).reduce<IncludeType>(
             (acc, current) => {
@@ -121,7 +125,12 @@ export abstract class ResourceWithSpace<
             {} as IncludeType
           );
 
-          return new this(this.model, b.get(), space, includedResults);
+          return new this(
+            this.model,
+            b.get(),
+            SpaceResource.fromModel(space),
+            includedResults
+          );
         })
         // Filter out resources that the user cannot fetch.
         .filter((cls) => cls.canFetch(auth))

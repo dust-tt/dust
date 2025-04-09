@@ -90,7 +90,7 @@ export function TagSearchSection({
   };
 
   // Map operation to the appropriate tag color.
-  const tagChipColor = operation === "in" ? "slate" : "red";
+  const tagChipColor = operation === "in" ? "primary" : "warning";
 
   // Select the appropriate tags based on operation.
   const selectedTags = operation === "in" ? selectedTagsIn : selectedTagsNot;

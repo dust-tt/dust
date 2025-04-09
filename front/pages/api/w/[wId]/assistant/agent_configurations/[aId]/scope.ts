@@ -1,8 +1,13 @@
+import assert from "assert";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  isMCPServerConfiguration,
+  isPlatformMCPServerConfiguration,
+} from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -87,14 +92,29 @@ async function handler(
         }
       }
 
+      // Cast the assistant to ensure TypeScript understands the correct types.
+      const typedAssistant = {
+        ...assistant,
+        scope: bodyValidation.right.scope,
+        status: assistant.status as AgentStatus,
+        templateId: assistant.templateId,
+        // Ensure actions are correctly typed.
+        actions: assistant.actions.map((action) => {
+          // If MCP actions are present, they must be platform MCP actions.
+          if (isMCPServerConfiguration(action)) {
+            assert(
+              isPlatformMCPServerConfiguration(action),
+              "MCP actions must be platform MCP actions."
+            );
+          }
+
+          return action;
+        }),
+      };
+
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        assistant: {
-          ...assistant,
-          scope: bodyValidation.right.scope,
-          status: assistant.status as AgentStatus,
-          templateId: assistant.templateId,
-        },
+        assistant: typedAssistant,
         agentConfigurationId: assistant.sId,
       });
 

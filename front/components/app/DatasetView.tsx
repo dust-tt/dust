@@ -16,10 +16,13 @@ import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import type { DatasetDataType } from "@app/lib/datasets";
-import { checkDatasetData, DATASET_DATA_TYPES } from "@app/lib/datasets";
-import { getDatasetTypes, getValueType } from "@app/lib/datasets";
-import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import { classNames } from "@app/lib/utils";
+import {
+  checkDatasetData,
+  DATASET_DATA_TYPES,
+  getDatasetTypes,
+  getValueType,
+} from "@app/lib/datasets";
+import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import type {
   DatasetEntry,
   DatasetSchema,
@@ -578,6 +581,11 @@ export default function DatasetView({
                   Set the properties and types to ensure your dataset is valid
                   when you update it. The properties descriptions are used to
                   generate the inputs to your app when run from an Agent.
+                  <span className="font-medium text-warning-500">
+                    {" "}
+                    (JSON inputs are only supported when using Dust Apps through
+                    the API and not through agent actions)
+                  </span>
                 </p>
               ) : null}
             </div>

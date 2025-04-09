@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ChatBubbleBottomCenterTextIcon } from "@sparkle/icons/solid";
+import { ChatBubbleBottomCenterTextIcon } from "@sparkle/icons/app";
 
 import { BarHeader, Page } from "../index_with_tw_base";
 

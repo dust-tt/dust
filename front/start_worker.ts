@@ -18,11 +18,12 @@ import {
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpsertTableQueueWorker } from "@app/temporal/upsert_tables/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
-import { setupGlobalErrorHandler } from "@app/types";
+import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 
 setupGlobalErrorHandler(logger);
 
 type WorkerName =
+  | "data_retention"
   | "document_tracker"
   | "hard_delete"
   | "labs"
@@ -35,10 +36,10 @@ type WorkerName =
   | "tracker_notification"
   | "update_workspace_usage"
   | "upsert_queue"
-  | "upsert_table_queue"
-  | "data_retention";
+  | "upsert_table_queue";
 
 const workerFunctions: Record<WorkerName, () => Promise<void>> = {
+  data_retention: runDataRetentionWorker,
   document_tracker: runTrackerWorker,
   hard_delete: runHardDeleteWorker,
   labs: runLabsTranscriptsWorker,
@@ -52,7 +53,6 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,
   upsert_table_queue: runUpsertTableQueueWorker,
-  data_retention: runDataRetentionWorker,
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions);

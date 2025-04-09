@@ -10,17 +10,17 @@ import {
   Label,
   Page,
   Separator,
-  TextArea,
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { ALLOWED_ICONS, MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
-import type { RemoteMCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useMCPServers,
   useSyncRemoteMCPServer,
@@ -31,6 +31,7 @@ import type { LightWorkspaceType } from "@app/types";
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
   mcpServer: RemoteMCPServerType;
+  onSave: () => void;
 }
 
 const MCPFormSchema = z.object({
@@ -41,7 +42,11 @@ const MCPFormSchema = z.object({
 
 export type MCPFormType = z.infer<typeof MCPFormSchema>;
 
-export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
+export function RemoteMCPForm({
+  owner,
+  mcpServer,
+  onSave,
+}: RemoteMCPFormProps) {
   const sendNotification = useSendNotification();
 
   const [isSynchronizing, setIsSynchronizing] = useState(false);
@@ -68,36 +73,39 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer.id);
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.id);
 
-  const onSubmit = async (values: MCPFormType) => {
-    try {
-      const result = await updateServer({
-        name: values.name,
-        description: values.description,
-        icon: values.icon,
-      });
-      if (result.success) {
-        void mutateMCPServers();
-
-        sendNotification({
-          title: "MCP server updated",
-          type: "success",
-          description: "The MCP server has been successfully updated.",
+  const onSubmit = useCallback(
+    async (values: MCPFormType) => {
+      try {
+        const result = await updateServer({
+          name: values.name,
+          description: values.description,
+          icon: values.icon,
         });
+        if (result.success) {
+          void mutateMCPServers();
 
-        form.reset(values);
-      } else {
-        throw new Error("Failed to update MCP server");
+          sendNotification({
+            title: "MCP server updated",
+            type: "success",
+            description: "The MCP server has been successfully updated.",
+          });
+
+          form.reset(values);
+        } else {
+          throw new Error("Failed to update MCP server");
+        }
+      } catch (err) {
+        sendNotification({
+          title: "Error updating MCP server",
+          type: "error",
+          description: err instanceof Error ? err.message : "An error occurred",
+        });
       }
-    } catch (err) {
-      sendNotification({
-        title: "Error updating MCP server",
-        type: "error",
-        description: err instanceof Error ? err.message : "An error occurred",
-      });
-    }
-  };
+    },
+    [updateServer, mutateMCPServers, sendNotification, form]
+  );
 
-  const handleSynchronize = async () => {
+  const handleSynchronize = useCallback(async () => {
     if (!url) {
       setSyncError("Please enter a valid URL before synchronizing.");
       return;
@@ -136,7 +144,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     } finally {
       setIsSynchronizing(false);
     }
-  };
+  }, [url, syncServer, mutateMCPServers, sendNotification]);
 
   const toggleSecretVisibility = () => {
     setIsSecretVisible(!isSecretVisible);
@@ -195,6 +203,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 {...field}
                 isError={!!form.formState.errors.name}
                 message={form.formState.errors.name?.message}
+                placeholder={mcpServer.cachedName}
               />
             )}
           />
@@ -245,15 +254,18 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           name="description"
           render={({ field }) => (
             <>
-              <TextArea
-                error={form.formState.errors.description?.message}
+              <Input
                 {...field}
+                isError={!!form.formState.errors.description?.message}
+                message={form.formState.errors.description?.message}
+                placeholder={
+                  mcpServer.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION
+                }
               />
-              {form.formState.errors.description && (
-                <div className="ml-3.5 flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  {form.formState.errors.description?.message}
-                </div>
-              )}
+              <p className="text-xs text-gray-500">
+                This is only for internal reference and is not shown to the
+                model.
+              </p>
             </>
           )}
         />
@@ -266,6 +278,9 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           onClick={async (event: Event) => {
             event.preventDefault();
             void form.handleSubmit(onSubmit)();
+            if (form.formState.isValid) {
+              onSave();
+            }
           }}
         />
       </div>

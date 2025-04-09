@@ -2,7 +2,7 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
-import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -17,7 +17,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare sId: string;
 
-  declare mcpServerViewId: ForeignKey<MCPServerView["id"]>;
+  declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
 }
 
 AgentMCPServerConfiguration.init(
@@ -40,7 +40,7 @@ AgentMCPServerConfiguration.init(
       type: DataTypes.BIGINT,
       allowNull: false,
       references: {
-        model: MCPServerView,
+        model: MCPServerViewModel,
         key: "id",
       },
     },
@@ -69,11 +69,11 @@ AgentMCPServerConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-MCPServerView.hasMany(AgentMCPServerConfiguration, {
+MCPServerViewModel.hasMany(AgentMCPServerConfiguration, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentMCPServerConfiguration.belongsTo(MCPServerView, {
+AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
 });
 
@@ -175,6 +175,8 @@ export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPAction
   declare agentMCPActionId: ForeignKey<AgentMCPAction["id"]>;
   declare content: MCPToolResultContent;
   declare fileId: ForeignKey<FileModel["id"]> | null;
+
+  declare file: NonAttribute<FileModel>;
 }
 
 AgentMCPActionOutputItem.init(
@@ -198,7 +200,7 @@ AgentMCPActionOutputItem.init(
             throw new Error("Content must be an object");
           }
           const content = value as { type: string };
-          if (!["text", "image", "embedded_resource"].includes(content.type)) {
+          if (!["text", "image", "resource"].includes(content.type)) {
             throw new Error("Invalid content type");
           }
         },
@@ -234,4 +236,51 @@ AgentMCPActionOutputItem.belongsTo(AgentMCPAction, {
 AgentMCPActionOutputItem.belongsTo(FileModel, {
   foreignKey: { name: "fileId", allowNull: true },
   onDelete: "SET NULL",
+});
+
+/**
+ * Configuration of a child agent used by an MCP server.
+ * TODO(mcp): move this model in a file dedicated to the configuration blocks, add Resources for all of them.
+ */
+export class AgentChildAgentConfiguration extends WorkspaceAwareModel<AgentChildAgentConfiguration> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare agentConfigurationId: string;
+
+  declare mcpServerConfigurationId: ForeignKey<
+    AgentMCPServerConfiguration["id"]
+  >;
+}
+AgentChildAgentConfiguration.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "agent_child_agent_configuration",
+    indexes: [{ fields: ["mcpServerConfigurationId"] }],
+    sequelize: frontSequelize,
+  }
+);
+
+// MCP server configuration <> Child agent configuration
+AgentMCPServerConfiguration.hasMany(AgentChildAgentConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+AgentChildAgentConfiguration.belongsTo(AgentMCPServerConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
 });

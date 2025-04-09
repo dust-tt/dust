@@ -6,6 +6,9 @@ export const AVAILABLE_INTERNAL_MCPSERVER_NAMES = [
   "data-source-utils",
   "helloworld",
   "table-utils",
+  "github",
+  "ask-agent",
+  "image-generation-dalle",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -18,7 +21,7 @@ export const INTERNAL_MCP_SERVERS: Record<
 > = {
   helloworld: {
     id: 1,
-    isDefault: true,
+    isDefault: false,
     flag: "mcp_actions",
   },
   "data-source-utils": {
@@ -31,15 +34,38 @@ export const INTERNAL_MCP_SERVERS: Record<
     isDefault: false,
     flag: "mcp_actions",
   },
+  github: {
+    id: 4,
+    isDefault: false,
+    flag: "mcp_actions",
+  },
+  "image-generation-dalle": {
+    id: 5,
+    isDefault: true,
+    flag: "mcp_actions",
+  },
+  "ask-agent": {
+    id: 6,
+    isDefault: false,
+    flag: "mcp_actions",
+  },
 };
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCPSERVER_NAMES)[number];
 
-export const isDefaultInternalMCPServer = (
+export const isDefaultInternalMCPServerByName = (
   name: InternalMCPServerNameType
 ): boolean => {
   return INTERNAL_MCP_SERVERS[name].isDefault;
+};
+
+export const isDefaultInternalMCPServer = (sId: string): boolean => {
+  const r = getInternalMCPServerNameAndWorkspaceId(sId);
+  if (r.isErr()) {
+    return false;
+  }
+  return isDefaultInternalMCPServerByName(r.value.name);
 };
 
 export const getInternalMCPServerNameAndWorkspaceId = (

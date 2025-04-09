@@ -22,7 +22,7 @@ import {
   DEFAULT_MCP_SERVER_ICON,
   MCP_SERVER_ICONS,
 } from "@app/lib/actions/mcp_icons";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import { useMCPServer } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
 
@@ -117,6 +117,7 @@ export function MCPServerDetails({
                 <MCPServerDetailsInfo
                   mcpServer={effectiveMCPServer}
                   owner={owner}
+                  onFormSave={onClose}
                 />
               )}
               {selectedTab === "sharing" && (

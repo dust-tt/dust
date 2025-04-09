@@ -331,7 +331,7 @@ const createTableAndHierarchy = async ({
     await upsertDataSourceRemoteTable({
       dataSourceConfig,
       tableId: tableInternalId,
-      tableName: table.name,
+      tableName: tableInternalId,
       remoteDatabaseTableId: internalTableIdToRemoteTableId(tableInternalId),
       remoteDatabaseSecretId: usePersonalConnections
         ? null

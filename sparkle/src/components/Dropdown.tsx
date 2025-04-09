@@ -2,10 +2,11 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
+import { DoubleIcon } from "@sparkle/components/DoubleIcon";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
-import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
+import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
@@ -101,6 +102,7 @@ interface ItemWithLabelIconAndDescriptionProps {
   extraIcon?: React.ComponentType;
   description?: string;
   children?: React.ReactNode;
+  truncate?: boolean;
 }
 
 const ItemWithLabelIconAndDescription = <
@@ -110,12 +112,13 @@ const ItemWithLabelIconAndDescription = <
   icon,
   extraIcon,
   description,
+  truncate,
   children,
 }: T) => {
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-1.5">
+        <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
           {(icon || extraIcon) && (
             <div
               className={cn(
@@ -123,18 +126,34 @@ const ItemWithLabelIconAndDescription = <
                 description ? "s-items-start s-pt-0.5" : "s-items-center"
               )}
             >
-              {icon && <Icon size={description ? "sm" : "xs"} visual={icon} />}
-              {extraIcon && (
-                <div className="-s-ml-1.5 s-mt-1.5">
-                  <Icon size="xs" visual={extraIcon} />
-                </div>
-              )}
+              {icon && extraIcon ? (
+                <DoubleIcon
+                  mainIconProps={{
+                    visual: icon,
+                    size: "sm",
+                  }}
+                  secondaryIconProps={{
+                    visual: extraIcon,
+                    size: "xs",
+                  }}
+                  position="bottom-right"
+                />
+              ) : icon ? (
+                <Icon size="sm" visual={icon} />
+              ) : null}
             </div>
           )}
           <div className="s-flex s-flex-col">
-            <span>{label}</span>
+            <span className={truncate ? "s-line-clamp-1" : undefined}>
+              {label}
+            </span>
             {description && (
-              <span className={menuStyleClasses.description}>
+              <span
+                className={cn(
+                  menuStyleClasses.description,
+                  truncate && "s-line-clamp-1"
+                )}
+              >
                 {description}
               </span>
             )}
@@ -225,6 +244,7 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
   LabelAndIconProps & {
     description?: string;
     extraIcon?: React.ComponentType;
+    truncateText?: boolean;
   }
 >;
 
@@ -241,6 +261,7 @@ const DropdownMenuItem = React.forwardRef<
       inset,
       icon,
       extraIcon,
+      truncateText,
       label,
       href,
       target,
@@ -277,6 +298,7 @@ const DropdownMenuItem = React.forwardRef<
             icon={icon}
             extraIcon={extraIcon}
             description={description}
+            truncate={truncateText}
           >
             {children}
           </ItemWithLabelIconAndDescription>

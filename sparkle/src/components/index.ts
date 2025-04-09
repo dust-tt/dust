@@ -59,6 +59,7 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./Dialog";
+export { DoubleIcon } from "./DoubleIcon";
 export type { DropdownMenuItemProps } from "./Dropdown";
 export {
   DropdownMenu,
@@ -87,7 +88,6 @@ export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
 export { Icon } from "./Icon";
 export { IconButton } from "./IconButton";
-export { IconToggleButton } from "./IconToggleButton";
 export { Input } from "./Input";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";

@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import { useCreateRemoteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
 import { validateUrl } from "@app/types";
@@ -96,6 +96,7 @@ export function CreateRemoteMCPServerModal({
                   onChange={(e) => setUrl(e.target.value)}
                   isError={!!error}
                   message={error}
+                  autoFocus
                 />
               </div>
             </div>

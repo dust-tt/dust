@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -12,14 +12,6 @@ import { assertNever } from "@app/types";
 
 export type GetMCPServerResponseBody = {
   server: MCPServerType;
-};
-
-export type GetRemoteMCPServerResponseBody = {
-  server: MCPServerType & {
-    url: string;
-    lastSyncAt: Date | null;
-    sharedSecret: string;
-  };
 };
 
 export type PatchMCPServerResponseBody = {
