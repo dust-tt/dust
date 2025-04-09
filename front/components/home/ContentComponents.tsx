@@ -60,6 +60,7 @@ interface HContentProps {
   children: React.ReactNode;
   className?: string;
   mono?: boolean;
+  style?: React.CSSProperties;
 }
 
 type TagName = "h1" | "h2" | "h3" | "h4" | "h5";
@@ -69,6 +70,7 @@ const createHeadingComponent = (Tag: TagName) => {
     children,
     className = "",
     mono = false,
+    style,
   }) => {
     const baseClasses = mono
       ? classNames(
@@ -76,7 +78,11 @@ const createHeadingComponent = (Tag: TagName) => {
           "font-mono"
         )
       : classNames(hClasses[Tag], "font-sans");
-    return <Tag className={classNames(className, baseClasses)}>{children}</Tag>;
+    return (
+      <Tag className={classNames(className, baseClasses)} style={style}>
+        {children}
+      </Tag>
+    );
   };
   Component.displayName = Tag.toUpperCase();
   return Component;

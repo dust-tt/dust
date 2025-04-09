@@ -15,11 +15,17 @@ import TrustedBy from "@app/components/home/TrustedBy";
 const HeroContent = () => {
   return (
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
-      <H1 className="text-center font-sans text-4xl font-bold leading-[1.15] sm:text-5xl sm:leading-[1.15] md:text-6xl md:leading-[1.1] lg:text-[72px] lg:leading-[1.1]">
-        Transform how work
-        <br />
-        gets done
-      </H1>
+      <div style={{ letterSpacing: "-0.05em" }}>
+        <H1
+          mono
+          className="text-center text-4xl font-light leading-[1.15] sm:text-5xl sm:leading-[1.15] md:text-6xl md:leading-[1.1] lg:text-[72px] lg:leading-[1.1]"
+          style={{ letterSpacing: "-0.08em" }}
+        >
+          Transform how work
+          <br />
+          gets done
+        </H1>
+      </div>
       <P size="lg" className="text-base text-muted-foreground sm:text-lg">
         The platform to build AI agents, connected to your company knowledge,
         <br className="hidden sm:block" /> powered by the best AI models.
@@ -40,13 +46,6 @@ const HeroContent = () => {
     </div>
   );
 };
-
-const CustomPlayButton = () => (
-  <button className="flex items-center gap-3 rounded-2xl border-[1px] border-white/20 bg-slate-900/95 px-6 py-3 text-white transition-all hover:border-white/30 hover:bg-slate-900">
-    <PlayIcon className="h-6 w-6" />
-    <span className="text-base font-medium">Watch Dust in motion</span>
-  </button>
-);
 
 const HeroVisual = () => {
   return (
@@ -73,7 +72,13 @@ const HeroVisual = () => {
             }
           }}
         >
-          <CustomPlayButton />
+          <Button
+            variant="primary"
+            size="md"
+            label="Watch Dust in motion"
+            icon={PlayIcon}
+            className="shadow-[0_8px_16px_-2px_rgba(0,0,0,0.3),0_4px_8px_-2px_rgba(255,255,255,0.1)] transition-all duration-300 hover:shadow-[0_16px_40px_-2px_rgba(255,255,255,0.2),0_8px_20px_-4px_rgba(255,255,255,0.15)]"
+          />
         </Link>
       </div>
     </div>

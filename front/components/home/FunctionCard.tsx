@@ -56,7 +56,7 @@ export function FunctionCard({
         className={`h-60 w-full ${cardVariants({ color })} rounded-t-2xl px-4 pb-0 pt-4`}
       >
         <div
-          className={`flex h-full w-full items-center justify-center rounded-xl ${colorVariants[color].visual}`}
+          className={`flex h-full w-full items-center justify-center rounded-xl ${colorVariants[color].visual} p-2`}
         >
           <img
             src={visualSrc}
@@ -69,14 +69,14 @@ export function FunctionCard({
       <div
         className={`flex flex-grow flex-col gap-2 rounded-b-2xl px-8 pb-8 pt-4 ${cardVariants({ color })}`}
       >
-        <H3 className="text-gray-950" mono>
+        <H3 className="text-gray-900" mono>
           {title}
         </H3>
-        <ul className="copy-base flex-grow font-medium text-gray-950">
+        <ul className="copy-base flex-grow font-medium text-gray-700">
           {features.map((feature, i) => (
             <li
               key={i}
-              className="flex min-h-6 items-start gap-1 py-1.5 text-gray-950"
+              className="flex min-h-6 items-start gap-1 py-1.5 text-gray-700"
             >
               <div className="pt-0.5">
                 <Icon visual={ChevronRightIcon} size="sm" />
