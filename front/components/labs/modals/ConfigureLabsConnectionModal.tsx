@@ -13,7 +13,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
 
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
@@ -80,7 +80,9 @@ export function ConfigureLabsConnectionModal({
     setPendingDataSourceView(dataSourceView);
   };
 
-  const handleSetSelectionConfigurations = async (
+  const handleSetSelectionConfigurations: Dispatch<
+    SetStateAction<DataSourceViewSelectionConfigurations>
+  > = async (
     newValue: SetStateAction<DataSourceViewSelectionConfigurations>
   ) => {
     const newSelectionConfigurations =
@@ -88,26 +90,15 @@ export function ConfigureLabsConnectionModal({
         ? newValue(selectionConfigurations)
         : newValue;
 
-    const keys = Object.keys(newSelectionConfigurations);
-
-    if (keys.length === 0) {
+    if (Object.keys(newSelectionConfigurations).length === 0) {
       return;
     }
 
-    const lastKey = keys[keys.length - 1];
+    const lastKey = Object.keys(newSelectionConfigurations)[0];
 
-    // If there's no change in the selection, return early
-    if (
-      lastKey &&
-      JSON.stringify(selectionConfigurations[lastKey]) ===
-        JSON.stringify(newSelectionConfigurations[lastKey])
-    ) {
-      return;
-    }
-
-    setSelectionConfigurations(
-      lastKey ? { [lastKey]: newSelectionConfigurations[lastKey] } : {}
-    );
+    setSelectionConfigurations({
+      [lastKey]: newSelectionConfigurations[lastKey],
+    });
 
     if (lastKey) {
       await handleSetConnectionStorageDataSourceView(
