@@ -12,6 +12,7 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
+import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import type {
   RemoteDBSchema,
   RemoteDBTable,
@@ -238,6 +239,8 @@ const createTableAndHierarchy = async ({
   allSchemas,
   allDatabases,
   connector,
+  usePersonalConnections,
+  forceSync,
   mimeTypes,
   internalTableIdToRemoteTableId,
 }: {
@@ -247,6 +250,8 @@ const createTableAndHierarchy = async ({
   allSchemas: RemoteSchemaModel[];
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
+  usePersonalConnections?: boolean;
+  forceSync?: boolean;
   mimeTypes:
     | typeof INTERNAL_MIME_TYPES.BIGQUERY
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
@@ -302,7 +307,7 @@ const createTableAndHierarchy = async ({
   // Check it table already exists
   const existingTable = allTables.find((t) => t.internalId === tableInternalId);
 
-  if (!existingTable || !existingTable.lastUpsertedAt) {
+  if (!existingTable || !existingTable.lastUpsertedAt || forceSync) {
     if (!existingTable) {
       // Create and add the table to the list of all tables.
       newTable = await RemoteTableModel.create({
@@ -330,7 +335,9 @@ const createTableAndHierarchy = async ({
       tableId: tableInternalId,
       tableName: table.name,
       remoteDatabaseTableId: internalTableIdToRemoteTableId(tableInternalId),
-      remoteDatabaseSecretId: connector.connectionId,
+      remoteDatabaseSecretId: usePersonalConnections
+        ? null
+        : connector.connectionId,
       tableDescription: "",
       parents: [tableInternalId, schemaInternalId, databaseInternalId],
       parentId: schemaInternalId,
@@ -347,6 +354,8 @@ export async function sync({
   connector,
   mimeTypes,
   internalTableIdToRemoteTableId = (internalTableId: string) => internalTableId,
+  forceSync = false,
+  usePersonalConnections = false,
 }: {
   remoteDBTree?: RemoteDBTree;
   connector: ConnectorResource;
@@ -355,6 +364,8 @@ export async function sync({
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
     | typeof INTERNAL_MIME_TYPES.SALESFORCE;
   internalTableIdToRemoteTableId?: (internalTableId: string) => string;
+  forceSync?: boolean;
+  usePersonalConnections?: boolean;
 }) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -515,6 +526,8 @@ export async function sync({
             connector,
             mimeTypes,
             internalTableIdToRemoteTableId,
+            usePersonalConnections,
+            forceSync,
           });
           for (const usedInternalId of newTableUsedInternalIds) {
             usedInternalIds.add(usedInternalId);

@@ -398,6 +398,14 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       usePersonalConnections: configValue === "true",
     });
 
+    const launchRes = await launchSalesforceSyncWorkflow(
+      this.connectorId,
+      true
+    );
+    if (launchRes.isErr()) {
+      return launchRes;
+    }
+
     return new Ok(undefined);
   }
 
