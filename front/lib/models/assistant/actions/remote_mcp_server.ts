@@ -4,10 +4,8 @@ import { DataTypes } from "sequelize";
 import { DEFAULT_MCP_ACTION_VERSION } from "@app/lib/actions/constants";
 import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
-import type {
-  AuthorizationInfo,
-  MCPToolType,
-} from "@app/lib/actions/mcp_metadata";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { MCPToolType } from "@app/lib/api/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 

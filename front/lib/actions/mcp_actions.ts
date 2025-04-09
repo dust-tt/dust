@@ -10,11 +10,7 @@ import type {
   PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { isDefaultInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
-import type {
-  MCPConnectionParams,
-  MCPToolType,
-  MCPToolWithIsDefaultType,
-} from "@app/lib/actions/mcp_metadata";
+import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
   extractMetadataFromTools,
@@ -26,6 +22,7 @@ import {
   isPlatformMCPServerConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
+import type { MCPToolType, MCPToolWithIsDefaultType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";

@@ -8,7 +8,7 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 import { OAUTH_PROVIDER_NAMES } from "@app/types";

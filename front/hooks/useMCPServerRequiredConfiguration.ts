@@ -2,7 +2,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { useEffect, useState } from "react";
 
 import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPServerViewType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 export const useMCPServerRequiredConfiguration = ({
   mcpServerView,

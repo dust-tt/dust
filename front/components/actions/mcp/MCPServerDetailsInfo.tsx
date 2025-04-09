@@ -2,7 +2,7 @@ import { AuthorizationInfo } from "@app/components/actions/mcp/AuthorizationInfo
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType } from "@app/types";
 
 type MCPServerDetailsInfoProps = {

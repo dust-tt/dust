@@ -87,8 +87,8 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
-import type { MCPServerViewType } from "@app/lib/actions/mcp_metadata";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,

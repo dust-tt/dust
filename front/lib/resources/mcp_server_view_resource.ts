@@ -19,10 +19,7 @@ import {
   isDefaultInternalMCPServerByName,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type {
-  MCPServerType,
-  MCPServerViewType,
-} from "@app/lib/actions/mcp_metadata";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";

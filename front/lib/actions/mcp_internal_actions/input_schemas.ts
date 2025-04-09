@@ -7,12 +7,12 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isMCPActionConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   containsSubSchema,
   findSchemaAtPath,

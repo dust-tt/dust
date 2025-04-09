@@ -20,7 +20,7 @@ import _ from "lodash";
 import { useState } from "react";
 
 import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
-import type { MCPServerViewType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { sendRequestActionsAccessEmail } from "@app/lib/email";
 import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_server_views";
 import logger from "@app/logger/logger";

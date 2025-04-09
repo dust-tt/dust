@@ -6,7 +6,7 @@ import {
   CHILD_AGENT_CONFIGURATION_URI_PATTERN,
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { InternalMCPServerDefinitionType } from "@app/lib/actions/mcp_metadata";
+import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 

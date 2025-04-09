@@ -1,6 +1,6 @@
 import { createContext } from "react";
 
-import type { MCPServerViewType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AppType, DataSourceViewType, SpaceType } from "@app/types";
 
 type AssistantBuilderContextType = {
