@@ -21,10 +21,7 @@ type LabsConnectionConfiguration = {
 export type GetLabsConnectionsConfigurationResponseBody =
   LabsConnectionConfiguration[];
 
-export const acceptableConnectionProvidersCodec = t.union([
-  t.literal("hubspot"),
-  t.literal("hubspot"), // Duplicate to satisfy union type requirement
-]);
+export const acceptableConnectionProvidersCodec = t.literal("hubspot");
 
 const OAuthConfigSchema = t.type({
   provider: acceptableConnectionProvidersCodec,
@@ -86,24 +83,9 @@ async function handler(
       return;
 
     case "POST":
-      let bodyToParse = req.body;
-
-      if (typeof req.body === "string") {
-        try {
-          bodyToParse = JSON.parse(req.body);
-        } catch (e) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Invalid JSON in request body",
-            },
-          });
-        }
-      }
-
-      const bodyValidation =
-        PostLabsConnectionsConfigurationBodySchema.decode(bodyToParse);
+      const bodyValidation = PostLabsConnectionsConfigurationBodySchema.decode(
+        req.body
+      );
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
 
