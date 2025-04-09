@@ -45,5 +45,6 @@ WORKDIR /app
 COPY --from=build /app/.next .next
 COPY --from=build /app/package*.json ./
 RUN npm ci --omit=dev
+RUN rm -r /sdks
 
 CMD ["npm", "--silent", "run", "start"]
