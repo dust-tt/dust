@@ -13,6 +13,7 @@ import type {
   ModelId,
   Result,
   SupportedFileContentType,
+  UserMessageType,
 } from "@app/types";
 
 export type ActionGeneratedFileType = {
@@ -100,6 +101,7 @@ export interface BaseActionRunParams {
   actionConfiguration: ActionConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
+  userMessage: UserMessageType;
   rawInputs: Record<string, unknown>;
   functionCallId: string | null;
   step: number;

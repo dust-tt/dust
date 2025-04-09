@@ -39,7 +39,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const mcpServerId = internalMCPServerNameToSId({
-      name: "helloworld",
+      name: "hello_world",
       workspaceId: workspace.id,
     });
 
@@ -91,7 +91,7 @@ describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => 
   itInTransaction("only supports DELETE method", async (t) => {
     const { req, res, workspace, space } = await setupTest(t, "admin", "GET");
     const mcpServerId = internalMCPServerNameToSId({
-      name: "helloworld",
+      name: "hello_world",
       workspaceId: workspace.id,
     });
 

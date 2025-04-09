@@ -1,6 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import type { MCPToolResult } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { default as agentHandoffServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_handoff";
 import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/ask_agent";
 import { default as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/data_source_utils";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
@@ -8,6 +10,7 @@ import { default as helloWorldServer } from "@app/lib/actions/mcp_internal_actio
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation_dalle";
 import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/table_utils";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentConfigurationType, ConversationType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export function getInternalMCPServer(
@@ -15,24 +18,38 @@ export function getInternalMCPServer(
   {
     internalMCPServerName,
     mcpServerId,
+    conversation,
+    getAgentConfiguration,
+    runAgent,
   }: {
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
+    conversation?: ConversationType;
+    getAgentConfiguration?: (
+      auth: Authenticator,
+      agentId: string
+    ) => Promise<AgentConfigurationType | null>;
+    runAgent?: (
+      auth: Authenticator,
+      { agentId, query }: { agentId: string; query: string }
+    ) => Promise<MCPToolResult>;
   }
 ): McpServer {
   switch (internalMCPServerName) {
-    case "helloworld":
+    case "hello_world":
       return helloWorldServer(auth, mcpServerId);
-    case "data-source-utils":
+    case "data_source_utils":
       return dataSourceUtilsServer();
-    case "table-utils":
+    case "table_utils":
       return tableUtilsServer();
     case "github":
       return githubServer(auth, mcpServerId);
-    case "image-generation-dalle":
+    case "image_generation_dalle":
       return imageGenerationDallEServer(auth);
-    case "ask-agent":
-      return askAgentServer();
+    case "ask_agent":
+      return askAgentServer(auth, runAgent);
+    case "agent_handoff":
+      return agentHandoffServer(auth, conversation, getAgentConfiguration);
     default:
       assertNever(internalMCPServerName);
   }

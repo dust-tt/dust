@@ -3,13 +3,13 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
+  INTERNAL_MCP_SERVERS,
   isDefaultInternalMCPServerByName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   connectToMCPServer,
   extractMetadataFromServerVersion,
@@ -17,6 +17,7 @@ import {
 } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -149,10 +150,12 @@ export class InternalMCPServerInMemoryResource {
 
   static async listAvailableInternalMCPServers(auth: Authenticator) {
     // Hide servers with flags that are not enabled for the workspace.
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
     const names: InternalMCPServerNameType[] = [];
 
-    for (const name of AVAILABLE_INTERNAL_MCPSERVER_NAMES) {
-      const isEnabled = await isEnabledForWorkspace(auth, name);
+    for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
+      const flag = INTERNAL_MCP_SERVERS[name].flag;
+      const isEnabled = !flag || featureFlags.includes(flag);
 
       if (isEnabled) {
         names.push(name);

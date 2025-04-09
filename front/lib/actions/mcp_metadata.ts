@@ -1,6 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { Ajv } from "ajv";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -11,10 +12,12 @@ import {
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
+import type { MCPToolResult } from "@app/lib/actions/mcp_actions";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
-import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
+import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_local";
 import apiConfig from "@app/lib/api/config";
 import type {
@@ -26,7 +29,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { OAuthProvider, OAuthUseCase } from "@app/types";
+import type {
+  AgentConfigurationType,
+  ConversationType,
+  OAuthProvider,
+  OAuthUseCase,
+} from "@app/types";
 import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
 export type AuthorizationInfo = {
@@ -85,9 +93,63 @@ export type MCPConnectionParams =
   | ConnectViaRemoteMCPServerUrl
   | ConnectViaLocalMCPServer;
 
+async function connectToInternalMCPServer(
+  mcpServerId: string,
+  transport: InMemoryTransport,
+  auth: Authenticator,
+  {
+    conversation,
+    getAgentConfiguration,
+    runAgent,
+  }: {
+    conversation?: ConversationType;
+    getAgentConfiguration?: (
+      auth: Authenticator,
+      agentId: string
+    ) => Promise<AgentConfigurationType | null>;
+    runAgent?: (
+      auth: Authenticator,
+      { agentId, query }: { agentId: string; query: string }
+    ) => Promise<MCPToolResult>;
+  }
+): Promise<McpServer> {
+  const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+  if (res.isErr()) {
+    throw new MCPServerNotFoundError(
+      `Internal MCPServer not found for id ${mcpServerId}`
+    );
+  }
+  const server = getInternalMCPServer(auth, {
+    internalMCPServerName: res.value.name,
+    mcpServerId,
+    conversation,
+    getAgentConfiguration,
+    runAgent,
+  });
+
+  await server.connect(transport);
+
+  return server;
+}
+
 export const connectToMCPServer = async (
   auth: Authenticator,
-  params: MCPConnectionParams
+  params: MCPConnectionParams,
+  {
+    conversation,
+    getAgentConfiguration,
+    runAgent,
+  }: {
+    conversation?: ConversationType;
+    getAgentConfiguration?: (
+      auth: Authenticator,
+      agentId: string
+    ) => Promise<AgentConfigurationType | null>;
+    runAgent?: (
+      auth: Authenticator,
+      { agentId, query }: { agentId: string; query: string }
+    ) => Promise<MCPToolResult>;
+  } = {}
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -105,7 +167,11 @@ export const connectToMCPServer = async (
           // Create a pair of linked in-memory transports
           // And connect the client to the server.
           const [client, server] = InMemoryTransport.createLinkedPair();
-          await connectToInternalMCPServer(params.mcpServerId, server, auth);
+          await connectToInternalMCPServer(params.mcpServerId, server, auth, {
+            conversation,
+            getAgentConfiguration,
+            runAgent,
+          });
           await mcpClient.connect(client);
           break;
 
@@ -216,7 +282,7 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
   });
 }
 
-export async function fetchRemoteServerMetaDataByURL(
+export async function fetchRemoteMCPServerByURL(
   auth: Authenticator,
   url: string
 ): Promise<Omit<MCPServerType, "id">> {

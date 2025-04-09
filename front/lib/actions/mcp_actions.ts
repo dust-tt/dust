@@ -28,7 +28,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type {
+  AgentConfigurationType,
+  ConversationType,
+  Result,
+} from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
@@ -50,7 +54,7 @@ const BlobResourceContentsSchema = ResourceContentsSchema.extend({
   blob: z.string().base64(),
 });
 
-const TextContentSchema = z.object({
+export const TextContentSchema = z.object({
   type: z.literal("text"),
   text: z.string(),
 });
@@ -73,6 +77,11 @@ const Schema = z.union([
 ]);
 
 export type MCPToolResultContent = z.infer<typeof Schema>;
+
+export type MCPToolResult = {
+  isError: boolean;
+  content: MCPToolResultContent[];
+};
 
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
@@ -142,22 +151,32 @@ function makeMCPToolConfigurations<T extends MCPServerConfigurationType>({
 export async function tryCallMCPTool(
   auth: Authenticator,
   {
-    conversationId,
+    conversation,
     messageId,
     actionConfiguration,
     inputs,
+    getAgentConfiguration,
+    runAgent,
   }: {
-    conversationId: string;
+    conversation: ConversationType;
     messageId: string;
     actionConfiguration: MCPToolConfigurationType;
     inputs: Record<string, unknown> | undefined;
+    getAgentConfiguration: (
+      auth: Authenticator,
+      agentId: string
+    ) => Promise<AgentConfigurationType | null>;
+    runAgent: (
+      auth: Authenticator,
+      { agentId, query }: { agentId: string; query: string }
+    ) => Promise<MCPToolResult>;
   }
 ): Promise<Result<MCPToolResultContent[], Error>> {
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
     actionConfiguration,
     {
-      conversationId,
+      conversationId: conversation.sId,
       messageId,
     }
   );
@@ -167,7 +186,15 @@ export async function tryCallMCPTool(
   }
 
   try {
-    const mcpClient = await connectToMCPServer(auth, connectionParamsRes.value);
+    const mcpClient = await connectToMCPServer(
+      auth,
+      connectionParamsRes.value,
+      {
+        conversation,
+        getAgentConfiguration,
+        runAgent,
+      }
+    );
 
     const toolCallResult = await mcpClient.callTool(
       {

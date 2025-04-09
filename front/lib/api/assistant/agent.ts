@@ -27,12 +27,10 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import {
-  constructPromptMultiActions,
-  renderConversationForModel,
-} from "@app/lib/api/assistant/generation";
+import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -66,7 +64,7 @@ const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
-// nor updating it (responsability of the caller based on the emitted events).
+// nor updating it (responsibility of the caller based on the emitted events).
 export async function* runAgent(
   auth: Authenticator,
   configuration: LightAgentConfigurationType,
@@ -901,6 +899,7 @@ async function* runAction(
         rawInputs: inputs,
         functionCallId,
         step,
+        userMessage,
       },
       {
         stepActionIndex,
@@ -979,6 +978,7 @@ async function* runAction(
         rawInputs: inputs,
         functionCallId,
         step,
+        userMessage,
       },
       {
         spec: specification,
@@ -1034,6 +1034,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {
@@ -1133,6 +1134,7 @@ async function* runAction(
         rawInputs: inputs,
         functionCallId,
         step,
+        userMessage,
       },
       {
         stepActionIndex,
@@ -1187,6 +1189,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {
@@ -1235,6 +1238,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {
@@ -1283,6 +1287,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {
@@ -1326,6 +1331,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {
@@ -1376,6 +1382,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {

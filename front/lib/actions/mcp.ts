@@ -6,6 +6,7 @@ import {
   augmentInputsWithConfiguration,
   hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { runAskAgent } from "@app/lib/actions/mcp_internal_actions/runners";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
@@ -20,6 +21,7 @@ import {
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isPlatformMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -227,6 +229,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       agentConfiguration,
       conversation,
       agentMessage,
+      userMessage,
       rawInputs,
       functionCallId,
       step,
@@ -419,8 +422,16 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     const r = await tryCallMCPTool(auth, {
       messageId: agentMessage.sId,
       actionConfiguration,
-      conversationId: conversation.sId,
+      conversation,
+      getAgentConfiguration: async (auth, agentId) =>
+        getAgentConfiguration(auth, agentId, "full"),
       inputs,
+      runAgent: (auth, { agentId, query }) =>
+        runAskAgent(auth, {
+          agentId,
+          query,
+          context: userMessage.context,
+        }),
     });
 
     if (r.isErr()) {
