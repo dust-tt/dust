@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { default as agentHandoffServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_handoff";
 import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/ask_agent";
 import { default as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/data_source_utils";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
@@ -40,7 +41,9 @@ export function getInternalMCPServer(
     case "image_generation_dalle":
       return imageGenerationDallEServer(auth);
     case "ask_agent":
-      return askAgentServer(auth, conversation, getAgentConfiguration);
+      return askAgentServer(auth, getAgentConfiguration);
+    case "agent_handoff":
+      return agentHandoffServer(auth, conversation, getAgentConfiguration);
     default:
       assertNever(internalMCPServerName);
   }
