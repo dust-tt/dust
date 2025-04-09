@@ -2,7 +2,7 @@ import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { ModelId, Result, WhitelistableFeature } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export const AVAILABLE_INTERNAL_MCPSERVER_NAMES = [
+export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "data_source_utils",
   "hello_world",
   "table_utils",
@@ -52,7 +52,7 @@ export const INTERNAL_MCP_SERVERS: Record<
 };
 
 export type InternalMCPServerNameType =
-  (typeof AVAILABLE_INTERNAL_MCPSERVER_NAMES)[number];
+  (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
 
 export const isDefaultInternalMCPServerByName = (
   name: InternalMCPServerNameType
@@ -121,7 +121,7 @@ export const getInternalMCPServerNameAndWorkspaceId = (
 export const isInternalMCPServerName = (
   name: string
 ): name is InternalMCPServerNameType =>
-  AVAILABLE_INTERNAL_MCPSERVER_NAMES.includes(
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES.includes(
     name as InternalMCPServerNameType
   );
 
