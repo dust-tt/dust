@@ -29,7 +29,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { useMCPServerRequiredConfiguration } from "@app/hooks/useMCPServerRequiredConfiguration";
 import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
-import type { MCPServerViewType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   DataSourceViewSelectionConfigurations,

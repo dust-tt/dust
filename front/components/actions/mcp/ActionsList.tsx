@@ -26,10 +26,7 @@ import {
   DEFAULT_MCP_SERVER_ICON,
   MCP_SERVER_ICONS,
 } from "@app/lib/actions/mcp_icons";
-import type {
-  MCPServerType,
-  MCPServerViewType,
-} from "@app/lib/actions/mcp_metadata";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useAvailableMCPServers,
   useCreateInternalMCPServer,

@@ -9,10 +9,7 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 
-import type {
-  MCPServerType,
-  MCPServerViewType,
-} from "@app/lib/actions/mcp_metadata";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useAddMCPServerToSpace,
   useRemoveMCPServerViewFromSpace,
