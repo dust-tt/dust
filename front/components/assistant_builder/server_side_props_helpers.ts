@@ -21,7 +21,7 @@ import type {
   DataSourceConfiguration,
   RetrievalConfigurationType,
 } from "@app/lib/actions/retrieval";
-import {
+import type {
   TableDataSourceConfiguration,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
