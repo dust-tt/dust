@@ -1,14 +1,14 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { assertNever } from "@app/types";
 
-export class MCPServerView extends SoftDeletableWorkspaceAwareModel<MCPServerView> {
+export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServerViewModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -18,14 +18,14 @@ export class MCPServerView extends SoftDeletableWorkspaceAwareModel<MCPServerVie
 
   declare serverType: "internal" | "remote";
   declare internalMCPServerId: string | null;
-  declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]> | null;
+  declare remoteMCPServerId: ForeignKey<RemoteMCPServerModel["id"]> | null;
 
   declare vaultId: ForeignKey<SpaceModel["id"]>;
 
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
 }
-MCPServerView.init(
+MCPServerViewModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -54,7 +54,7 @@ MCPServerView.init(
       type: DataTypes.BIGINT,
       allowNull: true,
       references: {
-        model: RemoteMCPServer,
+        model: RemoteMCPServerModel,
         key: "id",
       },
     },
@@ -82,7 +82,7 @@ MCPServerView.init(
       },
     ],
     hooks: {
-      beforeValidate: (config: MCPServerView) => {
+      beforeValidate: (config: MCPServerViewModel) => {
         if (config.serverType) {
           switch (config.serverType) {
             case "internal":
@@ -118,25 +118,25 @@ MCPServerView.init(
   }
 );
 
-SpaceModel.hasMany(MCPServerView, {
+SpaceModel.hasMany(MCPServerViewModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
 });
-MCPServerView.belongsTo(SpaceModel, {
+MCPServerViewModel.belongsTo(SpaceModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
 });
 
-RemoteMCPServer.hasMany(MCPServerView, {
+RemoteMCPServerModel.hasMany(MCPServerViewModel, {
   as: "remoteMCPServerForView",
   foreignKey: { name: "remoteMCPServerId", allowNull: false },
   onDelete: "RESTRICT",
 });
-MCPServerView.belongsTo(RemoteMCPServer, {
+MCPServerViewModel.belongsTo(RemoteMCPServerModel, {
   as: "remoteMCPServerForView",
   foreignKey: { name: "remoteMCPServerId", allowNull: false },
 });
 
-MCPServerView.belongsTo(UserModel, {
+MCPServerViewModel.belongsTo(UserModel, {
   as: "editedByUser",
   foreignKey: { name: "editedByUserId", allowNull: true },
 });

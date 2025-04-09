@@ -2,7 +2,7 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
-import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -17,7 +17,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare sId: string;
 
-  declare mcpServerViewId: ForeignKey<MCPServerView["id"]>;
+  declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
 }
 
 AgentMCPServerConfiguration.init(
@@ -40,7 +40,7 @@ AgentMCPServerConfiguration.init(
       type: DataTypes.BIGINT,
       allowNull: false,
       references: {
-        model: MCPServerView,
+        model: MCPServerViewModel,
         key: "id",
       },
     },
@@ -69,11 +69,11 @@ AgentMCPServerConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-MCPServerView.hasMany(AgentMCPServerConfiguration, {
+MCPServerViewModel.hasMany(AgentMCPServerConfiguration, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentMCPServerConfiguration.belongsTo(MCPServerView, {
+AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
 });
 
