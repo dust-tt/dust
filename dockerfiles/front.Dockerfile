@@ -34,7 +34,8 @@ RUN find . -name "*.test.tsx" -delete
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
 # Production
-FROM node:${NODE_VERSION}-alpine
+FROM node:${NODE_VERSION}-slim
+RUN apt-get update && apt-get -y install openssl
 ENV HUSKY=0
 
 WORKDIR /sdks/js
