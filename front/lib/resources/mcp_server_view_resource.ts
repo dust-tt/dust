@@ -13,7 +13,7 @@ import {
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
 import {
-  AVAILABLE_INTERNAL_MCPSERVER_NAMES,
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   INTERNAL_MCP_SERVERS,
   isDefaultInternalMCPServer,
   isDefaultInternalMCPServerByName,
@@ -449,7 +449,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   static async ensureAllDefaultActionsAreCreated(auth: Authenticator) {
     const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-    const names = AVAILABLE_INTERNAL_MCPSERVER_NAMES;
+    const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
 
     const defaultInternalMCPServerIds: string[] = [];
     for (const name of names) {

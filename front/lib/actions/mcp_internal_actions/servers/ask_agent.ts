@@ -7,10 +7,10 @@ import {
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { runAction } from "@app/lib/actions/server";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
+import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
@@ -32,7 +32,7 @@ function getPrompt(query: string, agentConfiguration: AgentConfigurationType) {
 }
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "ask-agent",
+  name: "ask_agent",
   version: "1.0.0",
   description: "Demo server showing a basic interaction with a child agent.",
   icon: "robot",
@@ -61,7 +61,7 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "ask-agent",
+    "ask_agent",
     // TODO(mcp): we most likely want to configure this description based on the agent configuration.
     "Ask a query to an agent.",
     {
@@ -74,12 +74,12 @@ function createServer(
     async ({ query, childAgent: { uri } }) => {
       if (!conversation) {
         return makeMCPToolTextError(
-          "Unreachable: calling ask-agent tool without a conversation."
+          "Unreachable: calling ask_agent tool without a conversation."
         );
       }
       if (!getAgentConfiguration) {
         return makeMCPToolTextError(
-          "Unreachable: calling ask-agent tool without a getAgentConfiguration callback."
+          "Unreachable: calling ask_agent tool without a getAgentConfiguration callback."
         );
       }
 

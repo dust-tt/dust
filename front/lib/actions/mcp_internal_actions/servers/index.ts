@@ -29,17 +29,17 @@ export function getInternalMCPServer(
   }
 ): McpServer {
   switch (internalMCPServerName) {
-    case "helloworld":
+    case "hello_world":
       return helloWorldServer(auth, mcpServerId);
-    case "data-source-utils":
+    case "data_source_utils":
       return dataSourceUtilsServer();
-    case "table-utils":
+    case "table_utils":
       return tableUtilsServer();
     case "github":
       return githubServer(auth, mcpServerId);
-    case "image-generation-dalle":
+    case "image_generation_dalle":
       return imageGenerationDallEServer(auth);
-    case "ask-agent":
+    case "ask_agent":
       return askAgentServer(auth, conversation, getAgentConfiguration);
     default:
       assertNever(internalMCPServerName);

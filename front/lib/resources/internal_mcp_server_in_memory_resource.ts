@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  AVAILABLE_INTERNAL_MCPSERVER_NAMES,
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   INTERNAL_MCP_SERVERS,
   isDefaultInternalMCPServerByName,
   isInternalMCPServerName,
@@ -154,7 +154,7 @@ export class InternalMCPServerInMemoryResource {
     const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
     const names: InternalMCPServerNameType[] = [];
 
-    for (const name of AVAILABLE_INTERNAL_MCPSERVER_NAMES) {
+    for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
       const flag = INTERNAL_MCP_SERVERS[name].flag;
       const isEnabled = !flag || featureFlags.includes(flag);
 
