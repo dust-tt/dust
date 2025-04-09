@@ -165,16 +165,6 @@ function createServer(
         );
       }
 
-      const traces = result.value.traces;
-      if (
-        !traces ||
-        traces.length === 0 ||
-        !traces[0][1] ||
-        traces[0][1].length === 0
-      ) {
-        return makeMCPToolTextError("Child agent did not return any content.");
-      }
-
       const lastBlock = result.value.results?.[0][0].value;
       if (!lastBlock) {
         logger.error(
