@@ -21,7 +21,10 @@ import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { PlanResource } from "@app/lib/resources/plan_resource";
-import { Subscription } from "@app/lib/resources/storage/models/plans";
+import {
+  PlanModel,
+  Subscription,
+} from "@app/lib/resources/storage/models/plans";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -156,7 +159,7 @@ async function handler(
           attributes: ["workspaceId"],
           include: [
             {
-              model: PlanResource.model,
+              model: PlanModel,
               as: "plan",
               where: {
                 code: { [Op.ne]: FREE_TEST_PLAN_CODE },
@@ -254,7 +257,7 @@ async function handler(
             required: false,
             include: [
               {
-                model: PlanResource.model,
+                model: PlanModel,
                 as: "plan",
               },
             ],

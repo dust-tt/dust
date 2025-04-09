@@ -24,6 +24,7 @@ import {
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { PlanAttributes } from "@app/lib/resources/plan_resource";
 import {
   getTrialVersionForPlan,
   PlanResource,
@@ -51,7 +52,7 @@ import type {
 } from "@app/types";
 import { Ok, sendUserOperationMessage } from "@app/types";
 
-const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION = FREE_NO_PLAN_DATA;
+const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 
 export function isTrial(
