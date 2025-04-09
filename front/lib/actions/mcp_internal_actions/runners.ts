@@ -32,7 +32,7 @@ export async function runAskAgent(
       conversation,
       content: query,
       mentions: [{ configurationId: agentId }],
-      context,
+      context: { ...context, origin: "mcp_ask_agent" },
     },
     { resolveAfterFullGeneration: true }
   );
