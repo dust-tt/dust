@@ -2,6 +2,7 @@ import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -9,12 +10,13 @@ import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   DataSourceWithPersonalConnection,
   WithAPIErrorResponse,
 } from "@app/types";
-import { removeNulls } from "@app/types";
+import { ConnectorsAPI, removeNulls } from "@app/types";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
@@ -36,6 +38,11 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
   const flags = await getFeatureFlags(owner);
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
 
   if (!flags.includes("labs_personal_connections")) {
     return apiError(req, res, {
@@ -71,11 +78,21 @@ async function handler(
             if (!augmentedDataSource.connector) {
               return null;
             }
+
+            const configRes = await connectorsAPI.getConnectorConfig(
+              augmentedDataSource.connectorId,
+              "usePersonalConnections"
+            );
+
+            const usePersonalConnections =
+              configRes.isOk() && configRes.value.configValue;
+
             const personalConnection =
               await dataSource.getPersonalConnection(auth);
             return {
               ...augmentedDataSource,
               personalConnection: personalConnection ?? null,
+              personalConnectionEnabled: usePersonalConnections === "true",
             };
           },
           { concurrency: 10 }

@@ -197,10 +197,6 @@ impl Table {
         self.remote_database_table_id.as_deref()
     }
     pub fn remote_database_secret_id(&self) -> Option<&str> {
-        println!(
-            "-----------remote_database_secret_id: {:?}",
-            self.remote_database_secret_id
-        );
         self.remote_database_secret_id.as_deref()
     }
     pub fn table_id_for_dbml(&self) -> &str {
@@ -215,6 +211,7 @@ impl Table {
             self.remote_database_secret_id(),
         ) {
             (Some(_), Some(secret_id)) => Ok(TableType::Remote(secret_id.to_string())),
+            (Some(_), None) => Err(anyhow!("require_authentication")),
             (None, None) => Ok(TableType::Local),
             _ => Err(anyhow!(
                 "Inconsistent state: table is neither local nor remote"

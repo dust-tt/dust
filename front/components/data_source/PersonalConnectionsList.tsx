@@ -63,7 +63,7 @@ export const PersonalConnectionsList = ({
       if (cRes.isErr()) {
         sendNotification({
           type: "error",
-          title: "Failed to connect Salesforce",
+          title: "Failed to connect provider",
           description: cRes.error.message,
         });
         return;
@@ -82,6 +82,11 @@ export const PersonalConnectionsList = ({
         CONNECTOR_CONFIGURATIONS[row.dataSource.connectorProvider].name,
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent
+          className={
+            info.row.original.dataSource.personalConnectionEnabled
+              ? ""
+              : "opacity-50"
+          }
           icon={getConnectorProviderLogoWithFallback({
             provider: info.row.original.dataSource.connectorProvider,
             isDark,
@@ -105,6 +110,7 @@ export const PersonalConnectionsList = ({
               {!isConnected && (
                 <Button
                   label={`Connect ${dataSource.connectorProvider}`}
+                  disabled={!dataSource.personalConnectionEnabled}
                   variant="outline"
                   className="flex-grow"
                   size="sm"
@@ -117,6 +123,7 @@ export const PersonalConnectionsList = ({
               {isConnected && (
                 <Button
                   label="Disconnect"
+                  disabled={!dataSource.personalConnectionEnabled}
                   variant="outline"
                   size="sm"
                   icon={CloudArrowLeftRightIcon}
