@@ -37,19 +37,25 @@ async function handler(
         space
       );
 
+      const nonCompanyDataServerViews = workspaceServerViews.filter(
+        (s) => s.space.kind !== "global" && s.space.kind !== "system"
+      );
+
+      // We get the actions that aren't activated in Company Data and not in the space making the request
+      const serverViewsNotActivated = _.differenceWith(
+        nonCompanyDataServerViews,
+        spaceServerViews,
+        (a, b) => {
+          return (
+            (a.internalMCPServerId ?? a.remoteMCPServerId) ===
+            (b.internalMCPServerId ?? b.remoteMCPServerId)
+          );
+        }
+      );
+
+      // We can have duplicate because some actions can be activated in many spaces
       const serverViews = _.uniqBy(
-        _.differenceWith(
-          workspaceServerViews.filter(
-            (s) => s.space.kind !== "global" && s.space.kind !== "system"
-          ),
-          spaceServerViews,
-          (a, b) => {
-            return (
-              (a.internalMCPServerId ?? a.remoteMCPServerId) ===
-              (b.internalMCPServerId ?? b.remoteMCPServerId)
-            );
-          }
-        ),
+        serverViewsNotActivated,
         (s) => s.internalMCPServerId ?? s.remoteMCPServerId
       );
 
