@@ -11,8 +11,8 @@ import {
 } from "@dust-tt/sparkle";
 import { createContext, useCallback, useEffect, useState } from "react";
 
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { useUpdateUserMetadata } from "@app/lib/swr/user";
 
 type ActionValidationContextType = {
@@ -155,7 +155,7 @@ export function ActionValidationProvider({
       `server.${currentValidation.serverId}`,
       currentValidation.action.functionCallName
     );
-  }, [currentValidation]);
+  }, [currentValidation, updateUserMetadata]);
 
   useEffect(() => {
     if (currentValidation) {

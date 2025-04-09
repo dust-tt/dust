@@ -1,7 +1,9 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   augmentInputsWithConfiguration,
   hideInternalConfiguration,
@@ -27,7 +29,10 @@ import {
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
@@ -36,11 +41,6 @@ import type {
   Result,
 } from "@app/types";
 import { isSupportedFileContentType, Ok, removeNulls } from "@app/types";
-import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { UserResource } from "@app/lib/resources/user_resource";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;

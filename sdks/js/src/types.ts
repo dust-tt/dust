@@ -1316,6 +1316,8 @@ const MCPApproveExecutionEventSchema = z.object({
   messageId: z.string(),
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
+  stake: z.optional(z.enum(["low", "high"])),
+  serverId: z.optional(z.string()),
 });
 
 const AgentErrorEventSchema = z.object({
