@@ -64,7 +64,7 @@ export type ConnectorProviderConfiguration = {
   getLogoComponent: (
     isDark?: boolean
   ) => (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
-  optionsComponent?: (props: ConnectorOptionsProps) => React.JSX.Element;
+  optionsComponent?: ComponentType<ConnectorOptionsProps>;
   description: string;
   mismatchError: string;
   limitations: string | null;
