@@ -36,11 +36,11 @@ export function schemasAreEqual(
 }
 
 /**
- * Recursively checks if a schema contains a specific sub-schema anywhere in its structure.
+ * Recursively finds all property keys in a schema that match a specific sub-schema.
  * This function handles nested objects and arrays.
  * @returns An array of property keys that match the schema comparison. Empty array if no matches found.
  */
-export function containsSubSchema(
+export function findMatchingSchemaKeys(
   inputSchema: JSONSchema,
   targetSubSchema: JSONSchema
 ): string[] {
@@ -67,7 +67,7 @@ export function containsSubSchema(
         }
 
         // Recursively check this property's schema
-        const nestedMatches = containsSubSchema(propSchema, targetSubSchema);
+        const nestedMatches = findMatchingSchemaKeys(propSchema, targetSubSchema);
         // For nested matches, prefix with the current property key
         for (const match of nestedMatches) {
           if (match !== "") { // Skip the empty string from direct matches
@@ -82,7 +82,7 @@ export function containsSubSchema(
   if (inputSchema.type === "array" && inputSchema.items) {
     if (isJSONSchemaObject(inputSchema.items)) {
       // Single schema for all items
-      const itemMatches = containsSubSchema(inputSchema.items, targetSubSchema);
+      const itemMatches = findMatchingSchemaKeys(inputSchema.items, targetSubSchema);
       // For array items, we use the 'items' key as a prefix
       for (const match of itemMatches) {
         if (match !== "") {
@@ -96,7 +96,7 @@ export function containsSubSchema(
       for (let i = 0; i < inputSchema.items.length; i++) {
         const item = inputSchema.items[i];
         if (isJSONSchemaObject(item)) {
-          const itemMatches = containsSubSchema(item, targetSubSchema);
+          const itemMatches = findMatchingSchemaKeys(item, targetSubSchema);
           // For tuple items, we use the index as part of the key
           for (const match of itemMatches) {
             if (match !== "") {
@@ -123,7 +123,7 @@ export function containsSubSchema(
     ) {
       matchingKeys.push(key);
     } else if (isJSONSchemaObject(value)) {
-      const nestedMatches = containsSubSchema(value, targetSubSchema);
+      const nestedMatches = findMatchingSchemaKeys(value, targetSubSchema);
       for (const match of nestedMatches) {
         if (match !== "") {
           matchingKeys.push(`${key}.${match}`);

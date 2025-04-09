@@ -14,7 +14,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
-  containsSubSchema,
+  findMatchingSchemaKeys,
   findSchemaAtPath,
   isJSONSchemaObject,
   schemasAreEqual,
@@ -155,7 +155,7 @@ export function serverRequiresInternalConfiguration({
     mcpServer?.tools?.some(
       (tool) =>
         tool?.inputSchema &&
-        containsSubSchema(
+        findMatchingSchemaKeys(
           tool.inputSchema,
           ConfigurableToolInputJSONSchemas[mimeType]
         ).length > 0
