@@ -86,11 +86,7 @@ export const NavigationSidebar = React.forwardRef<
                     label={tab.hideLabel ? undefined : tab.label}
                     tooltip={tab.hideLabel ? tab.label : undefined}
                     icon={tab.icon}
-                    onClick={() => {
-                      if (tab.href) {
-                        void router.push(tab.href);
-                      }
-                    }}
+                    href={tab.href}
                   />
                 ))}
               </TabsList>
