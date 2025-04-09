@@ -21,7 +21,10 @@ import type {
   DataSourceConfiguration,
   RetrievalConfigurationType,
 } from "@app/lib/actions/retrieval";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type {
+  TableDataSourceConfiguration,
+  TablesQueryConfigurationType,
+} from "@app/lib/actions/tables_query";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isBrowseConfiguration,
@@ -249,10 +252,19 @@ async function getMCPServerActionConfiguration(
 
   builderAction.configuration.dataSourceConfigurations = action.dataSources
     ? await renderDataSourcesConfigurations(
-        { ...action, dataSources: action.dataSources }, // overriding to satisfy the typing
+        { ...action, dataSources: action.dataSources }, // repeating action.dataSources to satisfy the typing
         dataSourceViews
       )
     : null;
+
+  builderAction.configuration.tablesConfigurations = action.tables
+    ? await renderTableDataSourcesConfigurations(
+        { ...action, tables: action.tables },
+        dataSourceViews
+      )
+    : null;
+
+  builderAction.configuration.childAgentId = action.childAgentId;
 
   return builderAction;
 }
@@ -345,7 +357,9 @@ async function renderDataSourcesConfigurations(
 }
 
 async function renderTableDataSourcesConfigurations(
-  action: TablesQueryConfigurationType,
+  action:
+    | TablesQueryConfigurationType
+    | (MCPServerConfigurationType & { tables: TableDataSourceConfiguration[] }),
   dataSourceViews: DataSourceViewResource[]
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.tables.map((table) => ({

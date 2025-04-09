@@ -6,10 +6,10 @@ import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   isDefaultInternalMCPServerByName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   connectToMCPServer,
   extractMetadataFromServerVersion,
@@ -160,7 +160,7 @@ export class InternalMCPServerInMemoryResource {
     // Hide servers with flags that are not enabled for the workspace.
     const names: InternalMCPServerNameType[] = [];
 
-    for (const name of AVAILABLE_INTERNAL_MCPSERVER_NAMES) {
+    for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
       const isEnabled = await isEnabledForWorkspace(auth, name);
 
       if (isEnabled) {

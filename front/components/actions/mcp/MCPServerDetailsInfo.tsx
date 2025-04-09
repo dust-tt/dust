@@ -38,7 +38,12 @@ export function MCPServerDetailsInfo({
       {serverType === "remote" && (
         <RemoteMCPForm mcpServer={mcpServer} owner={owner} onSave={onClose} />
       )}
-      <ToolsList tools={mcpServer.tools} />
+      <ToolsList
+        owner={owner}
+        tools={mcpServer.tools}
+        serverType={serverType}
+        serverId={mcpServer.id}
+      />
     </div>
   );
 }
