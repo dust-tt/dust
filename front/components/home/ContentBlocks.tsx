@@ -287,13 +287,6 @@ interface QuoteProps {
 export const AllQuotes: QuoteProps[] = [
   {
     quote:
-      "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
-    name: "Everett Berry",
-    title: "Head of GTM Engineering at Clay",
-    logo: "/static/landing/logos/color/clay.png",
-  },
-  {
-    quote:
       "Thanks to what we've implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
     name: "Vincent Delagabbe",
     title: "Software Engineer at Alan",
