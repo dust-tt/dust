@@ -1,3 +1,3 @@
 -- Migration created on Apr 09, 2025
 CREATE TABLE IF NOT EXISTS "personal_ds_connections" ("createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "connectionId" VARCHAR(255) NOT NULL, "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "id"  BIGSERIAL , "userId" BIGINT REFERENCES "users" ("id") ON DELETE SET NULL ON UPDATE CASCADE, "dataSourceId" BIGINT REFERENCES "data_sources" ("id") ON DELETE SET NULL ON UPDATE CASCADE, PRIMARY KEY ("id"));
-CREATE UNIQUE INDEX "personal_ds_connections_workspace_id_user_id_data_source_id" ON "personal_data_source_connections" ("workspaceId", "userId", "dataSourceId");
+CREATE UNIQUE INDEX "personal_ds_connections_workspace_id_user_id_data_source_id" ON "personal_ds_connections" ("workspaceId", "userId", "dataSourceId");
