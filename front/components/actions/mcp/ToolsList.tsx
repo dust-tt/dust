@@ -81,41 +81,40 @@ export function ToolsList({
                     <h4 className="flex-grow text-sm font-medium">
                       {tool.name}
                     </h4>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        disabled={serverType === "internal"}
-                        asChild
-                      >
-                        <Button
-                          className="capitalize"
-                          variant="outline"
-                          label={`${toolPermission} stake`}
-                          icon={
-                            toolPermission === DEFAULT_MCP_TOOL_STAKE_LEVEL
-                              ? ExclamationCircleIcon
-                              : CheckCircleIcon
-                          }
-                          isSelect
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        {MCP_TOOL_STAKE_LEVELS.map((permission) => (
-                          <DropdownMenuItem
-                            key={permission}
+                    {serverType === "remote" && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
                             className="capitalize"
-                            label={`${permission} stake`}
+                            variant="outline"
+                            label={`${toolPermission} stake`}
                             icon={
-                              permission === DEFAULT_MCP_TOOL_STAKE_LEVEL
+                              toolPermission === DEFAULT_MCP_TOOL_STAKE_LEVEL
                                 ? ExclamationCircleIcon
                                 : CheckCircleIcon
                             }
-                            onClick={() => {
-                              handleClick(tool.name, permission);
-                            }}
+                            isSelect
                           />
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {MCP_TOOL_STAKE_LEVELS.map((permission) => (
+                            <DropdownMenuItem
+                              key={permission}
+                              className="capitalize"
+                              label={`${permission} stake`}
+                              icon={
+                                permission === DEFAULT_MCP_TOOL_STAKE_LEVEL
+                                  ? ExclamationCircleIcon
+                                  : CheckCircleIcon
+                              }
+                              onClick={() => {
+                                handleClick(tool.name, permission);
+                              }}
+                            />
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                   {tool.description && (
                     <p className="mt-1 text-xs text-gray-500">
