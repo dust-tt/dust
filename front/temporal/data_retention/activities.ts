@@ -1,3 +1,5 @@
+import { Op } from "sequelize";
+
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
@@ -11,16 +13,15 @@ import logger from "@app/logger/logger";
 export async function getWorkspacesWithConversationsRetentionActivity(): Promise<
   number[]
 > {
-  return [];
-  // const workspaces = await Workspace.findAll({
-  //   attributes: ["id"],
-  //   where: {
-  //     conversationsRetentionDays: {
-  //       [Op.not]: null,
-  //     },
-  //   },
-  // });
-  // return workspaces.map((w) => w.id);
+  const workspaces = await Workspace.findAll({
+    attributes: ["id"],
+    where: {
+      conversationsRetentionDays: {
+        [Op.not]: null,
+      },
+    },
+  });
+  return workspaces.map((w) => w.id);
 }
 
 /**
