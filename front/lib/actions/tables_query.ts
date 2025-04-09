@@ -18,7 +18,7 @@ import {
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { CSVRecord } from "@app/lib/api/csv";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";

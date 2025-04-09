@@ -9,7 +9,7 @@ import {
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { runAction } from "@app/lib/actions/server";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
