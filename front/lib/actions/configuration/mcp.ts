@@ -141,7 +141,10 @@ export async function fetchMCPServerActionConfigurations(
           renderDataSourceConfiguration
         ),
         tables: tablesConfigurations.map(renderTableConfiguration),
-        childAgentId: childAgentConfigurations[0].agentConfigurationId ?? null,
+        childAgentId:
+          childAgentConfigurations.length > 0
+            ? childAgentConfigurations[0].agentConfigurationId
+            : null,
       });
     }
   }
