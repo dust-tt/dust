@@ -143,21 +143,14 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
       "The user is not authorized to update a tool metadata"
     );
 
-    const toolMetadata = await this.fetchByServerIdAndToolName(auth, {
-      serverId,
+    const [toolMetadata] = await this.model.upsert({
+      remoteMCPServerId: serverId,
       toolName,
+      permission,
+      workspaceId: auth.getNonNullableWorkspace().id,
     });
-    if (toolMetadata) {
-      await toolMetadata.update({
-        permission,
-      });
-    } else {
-      await this.makeNew(auth, {
-        remoteMCPServerId: serverId,
-        toolName,
-        permission,
-      });
-    }
+
+    return new this(this.model, toolMetadata.get());
   }
 
   // Delete
