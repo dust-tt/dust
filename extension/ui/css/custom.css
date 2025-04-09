@@ -8,7 +8,6 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-synthesis: none;
-  font-size: 14px;
 }
 
 @supports (font-synthesis-weight: none) {
