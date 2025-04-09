@@ -18,6 +18,8 @@ import type {
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections";
 import type { LightWorkspaceType } from "@app/types";
+import { GetMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
+import { PatchMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools/[toolName]";
 
 /**
  * Hook to fetch a specific remote MCP server by ID
@@ -387,4 +389,74 @@ export function useDeleteMCPServerConnection({
   };
 
   return { deleteMCPServerConnection };
+}
+
+export function useMCPServerToolsPermissions({
+  owner,
+  serverId,
+}: {
+  owner: LightWorkspaceType;
+  serverId: string;
+}) {
+  const toolsFetcher: Fetcher<GetMCPServerToolsPermissionsResponseBody> =
+    fetcher;
+
+  const url = `/api/w/${owner.sId}/mcp/${serverId}/tools`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, toolsFetcher);
+
+  const toolsPermissions = useMemo(
+    () => (data ? data.permissions : {}),
+    [data]
+  );
+
+  return {
+    toolsPermissions,
+    isToolsPermissionsLoading: !error && !data,
+    isToolsPermissionsError: error,
+    mutateToolsPermissions: mutate,
+  };
+}
+
+export function useUpdateMCPServerToolsPermissions({
+  owner,
+  serverId,
+}: {
+  owner: LightWorkspaceType;
+  serverId: string;
+}) {
+  const { mutateToolsPermissions } = useMCPServerToolsPermissions({
+    owner,
+    serverId,
+  });
+
+  const updateToolPermission = async ({
+    toolName,
+    permission,
+  }: {
+    toolName: string;
+    permission: string;
+  }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ permission }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.log(error);
+      throw new Error(
+        error.api_error?.message || "Failed to update permission"
+      );
+    }
+
+    await mutateToolsPermissions();
+    return response.json();
+  };
+
+  return { updateToolPermission };
 }

@@ -49,3 +49,7 @@ export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
 export const DEFAULT_MCP_ACTION_ICON = "command";
+
+export const MCP_TOOL_STAKE_LEVEL_TYPE = ["high", "low"] as const;
+export type MCPToolStakeLevelType = typeof MCP_TOOL_STAKE_LEVEL_TYPE[number];
+export const DEFAULT_MCP_TOOL_STAKE_LEVEL: MCPToolStakeLevelType = "high";
