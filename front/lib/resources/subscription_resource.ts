@@ -605,7 +605,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       startDate: this.startDate?.getTime() || null,
       endDate: this.endDate?.getTime() || null,
       paymentFailingSince: this.paymentFailingSince?.getTime() || null,
-      plan: this.plan.toJSON(),
+      plan: this.getPlan(),
       requestCancelAt: this.requestCancelAt?.getTime() ?? null,
     };
   }

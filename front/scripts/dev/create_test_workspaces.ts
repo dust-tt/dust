@@ -8,7 +8,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { createAndLogMembership } from "@app/pages/api/login";
 import { makeScript } from "@app/scripts/helpers";
-
 async function createTestWorkspaces(
   { userId, count }: { userId: number; count: number },
   execute: boolean,
@@ -16,14 +15,6 @@ async function createTestWorkspaces(
 ) {
   if (process.env.NODE_ENV !== "development") {
     throw new Error("This script can only be run in development.");
-  }
-
-  const firstPlan = await PlanResource.fetchFirst();
-
-  if (firstPlan === null) {
-    throw new Error(
-      "No plans found in the database. Please create some plans first."
-    );
   }
 
   if (!count || count <= 0) {
@@ -75,6 +66,14 @@ async function createTestWorkspaces(
       user.sId,
       workspace.sId
     );
+
+    const plans = await PlanResource.fetchAll(authenticator);
+
+    if (plans.length === 0) {
+      throw new Error(
+        "No plans found in the database. Please create some plans first."
+      );
+    }
 
     await SubscriptionResource.pokeUpgradeWorkspaceToPlan(
       authenticator,
