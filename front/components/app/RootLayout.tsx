@@ -9,6 +9,7 @@ import type { UrlObject } from "url";
 
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
+import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { isAPIErrorResponse } from "@app/types";
 
 function NextLinkWrapper({
@@ -74,27 +75,29 @@ export default function RootLayout({
 
   return (
     <SparkleContext.Provider value={{ components: { link: NextLinkWrapper } }}>
-      <SWRConfig
-        value={{
-          onError: async (error) => {
-            if (
-              isAPIErrorResponse(error) &&
-              error.error.type === "not_authenticated"
-            ) {
-              // Redirect to login page.
-              await router.push("/api/auth/login");
-            }
-          },
-        }}
-      >
-        <UserProvider>
-          <SidebarProvider>
-            <ConfirmPopupArea>
-              <Notification.Area>{children}</Notification.Area>
-            </ConfirmPopupArea>
-          </SidebarProvider>
-        </UserProvider>
-      </SWRConfig>
+      <ThemeProvider>
+        <SWRConfig
+          value={{
+            onError: async (error) => {
+              if (
+                isAPIErrorResponse(error) &&
+                error.error.type === "not_authenticated"
+              ) {
+                // Redirect to login page.
+                await router.push("/api/auth/login");
+              }
+            },
+          }}
+        >
+          <UserProvider>
+            <SidebarProvider>
+              <ConfirmPopupArea>
+                <Notification.Area>{children}</Notification.Area>
+              </ConfirmPopupArea>
+            </SidebarProvider>
+          </UserProvider>
+        </SWRConfig>
+      </ThemeProvider>
     </SparkleContext.Provider>
   );
 }

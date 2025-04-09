@@ -82,7 +82,7 @@ export default function AppLayout({
   }, [user?.email, user?.fullName, user?.sId]);
 
   return (
-    <ThemeProvider>
+    <>
       <Head>
         <title>{pageTitle ? pageTitle : `Dust - ${owner.name}`}</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
@@ -196,6 +196,6 @@ export default function AppLayout({
               })(window,document,'script','dataLayer','${process.env.NEXT_PUBLIC_GTM_TRACKING_ID}');
             `}
       </Script>
-    </ThemeProvider>
+    </>
   );
 }
