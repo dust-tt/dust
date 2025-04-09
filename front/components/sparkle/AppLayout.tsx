@@ -8,7 +8,6 @@ import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/con
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
-import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
