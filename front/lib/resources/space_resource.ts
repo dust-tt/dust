@@ -30,8 +30,7 @@ import type {
   SpaceKind,
   SpaceType,
 } from "@app/types";
-import { Err } from "@app/types";
-import { Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
