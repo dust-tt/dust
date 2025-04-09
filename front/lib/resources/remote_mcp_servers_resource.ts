@@ -15,9 +15,10 @@ import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -30,22 +31,22 @@ import { Ok, removeNulls } from "@app/types";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface RemoteMCPServerResource
-  extends ReadonlyAttributesType<RemoteMCPServer> {}
+  extends ReadonlyAttributesType<RemoteMCPServerModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
-  static model: ModelStatic<RemoteMCPServer> = RemoteMCPServer;
+export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> {
+  static model: ModelStatic<RemoteMCPServerModel> = RemoteMCPServerModel;
 
   constructor(
-    model: ModelStatic<RemoteMCPServer>,
-    blob: Attributes<RemoteMCPServer>
+    model: ModelStatic<RemoteMCPServerModel>,
+    blob: Attributes<RemoteMCPServerModel>
   ) {
-    super(RemoteMCPServer, blob);
+    super(RemoteMCPServerModel, blob);
   }
 
   static async makeNew(
     auth: Authenticator,
     blob: Omit<
-      CreationAttributes<RemoteMCPServer>,
+      CreationAttributes<RemoteMCPServerModel>,
       "name" | "description" | "spaceId" | "sId" | "sharedSecret" | "lastSyncAt"
     >,
     transaction?: Transaction
@@ -59,7 +60,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
 
     const sharedSecret = randomBytes(32).toString("hex");
 
-    const server = await RemoteMCPServer.create(
+    const server = await RemoteMCPServerModel.create(
       {
         ...blob,
         name: blob.cachedName || DEFAULT_MCP_ACTION_NAME,
@@ -71,7 +72,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     );
 
     // Immediately create a view for the server in the system space.
-    await MCPServerView.create(
+    await MCPServerViewModel.create(
       {
         workspaceId: auth.getNonNullableWorkspace().id,
         serverType: "remote",
@@ -85,26 +86,28 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       }
     );
 
-    return new this(RemoteMCPServer, server.get());
+    return new this(RemoteMCPServerModel, server.get());
   }
 
   // Fetching.
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<RemoteMCPServer>
+    options?: ResourceFindOptions<RemoteMCPServerModel>
   ) {
     const { where, ...otherOptions } = options ?? {};
 
-    const servers = await RemoteMCPServer.findAll({
+    const servers = await RemoteMCPServerModel.findAll({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
         ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       ...otherOptions,
     });
 
-    return servers.map((server) => new this(RemoteMCPServer, server.get()));
+    return servers.map(
+      (server) => new this(RemoteMCPServerModel, server.get())
+    );
   }
 
   static async fetchByIds(
@@ -129,7 +132,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   static async findByPk(
     auth: Authenticator,
     id: number,
-    options?: ResourceFindOptions<RemoteMCPServer>
+    options?: ResourceFindOptions<RemoteMCPServerModel>
   ): Promise<RemoteMCPServerResource | null> {
     const servers = await this.baseFetch(auth, {
       where: {
@@ -167,7 +170,14 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   async delete(
     auth: Authenticator
   ): Promise<Result<undefined | number, Error>> {
-    const mcpServerViews = await MCPServerView.findAll({
+    const mcpServerViews = await MCPServerViewModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        remoteMCPServerId: this.id,
+      },
+    });
+
+    const serverToolMetadatas = await RemoteMCPServerToolMetadataModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         remoteMCPServerId: this.id,
@@ -184,8 +194,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       { concurrency: 10 }
     );
 
+    await concurrentExecutor(
+      serverToolMetadatas,
+      async (serverToolMetadata) => {
+        await serverToolMetadata.destroy();
+      },
+      { concurrency: 10 }
+    );
+
     // Directly delete the MCPServerView here to avoid a circular dependency.
-    await MCPServerView.destroy({
+    await MCPServerViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         remoteMCPServerId: this.id,
@@ -195,7 +213,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       hardDelete: true,
     });
 
-    const deletedCount = await RemoteMCPServer.destroy({
+    const deletedCount = await RemoteMCPServerModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,

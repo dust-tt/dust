@@ -34,6 +34,8 @@ export type AuthorizationInfo = {
   use_case: OAuthUseCase;
 };
 
+export type MCPToolPermissionLevelType = "high" | "low";
+
 async function getAccessTokenForRemoteMCPServer(
   auth: Authenticator,
   remoteMCPServer: RemoteMCPServerResource
