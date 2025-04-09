@@ -7,8 +7,9 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hello_world",
   "table_utils",
   "github",
-  "ask_agent",
   "image_generation_dalle",
+  "ask_agent",
+  "agent_handoff",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -46,6 +47,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   ask_agent: {
     id: 6,
+    isDefault: false,
+    flag: "mcp_actions",
+  },
+  agent_handoff: {
+    id: 7,
     isDefault: false,
     flag: "mcp_actions",
   },
