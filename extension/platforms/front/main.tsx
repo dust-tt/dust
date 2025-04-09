@@ -12,9 +12,9 @@ import { FrontContextProvider } from "@app/platforms/front/context/FrontProvider
 import { AuthProvider } from "@app/ui/components/auth/AuthProvider";
 import { routes } from "@app/ui/pages/routes";
 import { Notification } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { useEffect, useState } from "react";
 
 // Create a router instance outside the component to avoid recreation.
 const router = createBrowserRouter(routes);
