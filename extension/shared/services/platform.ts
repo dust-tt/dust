@@ -1,6 +1,7 @@
 import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
 import type { AuthService, StoredUser } from "@app/shared/services/auth";
 import type { CaptureService } from "@app/shared/services/capture";
+import type { McpService } from "@app/shared/services/mcp";
 import type { StorageService } from "@app/shared/services/storage";
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import type {
@@ -51,19 +52,22 @@ export abstract class CorePlatformService {
   readonly messaging?: BrowserMessagingService;
   readonly platform: PlatformType;
   readonly storage: StorageService;
+  readonly mcp?: McpService;
 
   constructor(
     platform: PlatformType,
     authCls: new (storage: StorageService) => AuthService,
     storage: StorageService,
     capture: CaptureService,
-    browserMessaging?: BrowserMessagingService
+    browserMessaging?: BrowserMessagingService,
+    mcp?: McpService
   ) {
     this.platform = platform;
     this.auth = new authCls(storage);
     this.storage = storage;
     this.messaging = browserMessaging;
     this.capture = capture;
+    this.mcp = mcp;
   }
 
   // Conversations.
@@ -183,6 +187,7 @@ export abstract class CorePlatformService {
 }
 
 export abstract class PlatformService extends CorePlatformService {
+  readonly supportsMCP: boolean = false;
   // Abstract methods that must be implemented by platform-specific classes.
 
   // Content capture.

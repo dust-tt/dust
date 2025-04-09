@@ -10,20 +10,6 @@ export const routes = [
     element: <LoginPage />,
   },
   {
-    path: "*",
-    element: (
-      <ProtectedRoute>
-        {({ user, workspace, handleLogout }) => (
-          <MainPage
-            user={user}
-            workspace={workspace}
-            handleLogout={handleLogout}
-          />
-        )}
-      </ProtectedRoute>
-    ),
-  },
-  {
     path: "/conversations/:conversationId",
     element: (
       <ProtectedRoute>
@@ -40,5 +26,20 @@ export const routes = [
   {
     path: "/run",
     element: <ProtectedRoute>{() => <RunPage />}</ProtectedRoute>,
+  },
+  // Keep catch-all route last.
+  {
+    path: "*",
+    element: (
+      <ProtectedRoute>
+        {({ user, workspace, handleLogout }) => (
+          <MainPage
+            user={user}
+            workspace={workspace}
+            handleLogout={handleLogout}
+          />
+        )}
+      </ProtectedRoute>
+    ),
   },
 ];

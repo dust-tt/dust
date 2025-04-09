@@ -1,3 +1,5 @@
+import { useDustAPI } from "@app/shared/lib/dust_api";
+import type { MCPActionPublicType } from "@dust-tt/client";
 import {
   Button,
   CodeBlock,
@@ -11,14 +13,12 @@ import {
 } from "@dust-tt/sparkle";
 import { createContext, useCallback, useEffect, useState } from "react";
 
-import type { MCPActionType } from "@app/lib/actions/mcp";
-
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: {
     workspaceId: string;
     messageId: string;
     conversationId: string;
-    action: MCPActionType;
+    action: MCPActionPublicType;
     inputs: Record<string, unknown>;
   }) => void;
 };
@@ -28,7 +28,7 @@ export type PendingValidationRequestType = {
   workspaceId: string;
   messageId: string;
   conversationId: string;
-  action: MCPActionType;
+  action: MCPActionPublicType;
   inputs: Record<string, unknown>;
 };
 
@@ -89,6 +89,8 @@ export function ActionValidationProvider({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const dustAPI = useDustAPI();
+
   const sendCurrentValidation = useCallback(
     async (approved: boolean) => {
       if (!currentValidation) {
@@ -98,21 +100,14 @@ export function ActionValidationProvider({
       setErrorMessage(null);
       setIsProcessing(true);
 
-      const response = await fetch(
-        `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            actionId: currentValidation.action.id,
-            approved,
-          }),
-        }
-      );
+      const response = await dustAPI.validateAction({
+        conversationId: currentValidation.conversationId,
+        messageId: currentValidation.messageId,
+        actionId: currentValidation.action.id,
+        approved,
+      });
 
-      if (!response.ok) {
+      if (response.isErr()) {
         setErrorMessage(
           `Failed to ${approved ? "approve" : "reject"} action. Please try again.`
         );
@@ -144,7 +139,7 @@ export function ActionValidationProvider({
     workspaceId: string;
     messageId: string;
     conversationId: string;
-    action: MCPActionType;
+    action: MCPActionPublicType;
     inputs: Record<string, unknown>;
   }) => {
     addToQueue(validationRequest);
@@ -179,9 +174,11 @@ export function ActionValidationProvider({
                 Object.keys(currentValidation.inputs).length > 0 && (
                   <div>
                     <span className="font-medium">Inputs:</span>
-                    <CodeBlock className="language-json">
-                      JSON.stringify(currentValidation?.inputs, null, 2)
-                    </CodeBlock>
+                    <pre className="mt-2 whitespace-pre-wrap rounded bg-primary-50 p-2 text-sm dark:bg-primary-50-night">
+                      <CodeBlock className="language-json">
+                        {JSON.stringify(currentValidation?.inputs, null, 2)}
+                      </CodeBlock>
+                    </pre>
                   </div>
                 )}
               <div>Do you want to allow this action to proceed?</div>

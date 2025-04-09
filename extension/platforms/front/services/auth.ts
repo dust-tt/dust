@@ -54,10 +54,13 @@ export class FrontAuthService extends AuthService {
       const { access_token: token } = authResponse;
       const claims = jwtDecode<Record<string, string>>(token);
 
+      const expiresInSeconds =
+        Number.parseInt(claims.exp, 10) - Math.floor(Date.now() / 1000);
+
       const tokens = await this.saveTokens({
         accessToken: token,
         refreshToken: "",
-        expiresIn: Number.parseInt(claims.exp, 10) * 1000,
+        expiresIn: expiresInSeconds,
       });
 
       return new Ok(tokens);
