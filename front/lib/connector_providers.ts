@@ -22,7 +22,8 @@ import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnab
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
-import { SalesforceOauthExtraConfig } from "@app/components/data_source/SalesforceOAuthExtractConfig";
+import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
+import { SalesforceOptionComponent } from "@app/components/data_source/salesforce/SalesforceOptionComponent";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
@@ -342,6 +343,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     connectorProvider: "salesforce",
     status: "rolling_out",
     rollingOutFlag: "salesforce_feature",
+    optionsComponent: SalesforceOptionComponent,
     hide: true,
     description:
       "Authorize access to your Salesforce organization, in order to query your Salesforce data from Dust.",
