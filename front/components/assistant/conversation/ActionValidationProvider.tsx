@@ -12,6 +12,8 @@ import {
 import { createContext, useCallback, useEffect, useState } from "react";
 
 import type { MCPActionType } from "@app/lib/actions/mcp";
+import { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { useUpdateUserMetadata } from "@app/lib/swr/user";
 
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: {
@@ -20,6 +22,8 @@ type ActionValidationContextType = {
     conversationId: string;
     action: MCPActionType;
     inputs: Record<string, unknown>;
+    stake?: MCPToolStakeLevelType;
+    serverId?: string;
   }) => void;
 };
 
@@ -30,6 +34,8 @@ export type PendingValidationRequestType = {
   conversationId: string;
   action: MCPActionType;
   inputs: Record<string, unknown>;
+  stake?: MCPToolStakeLevelType;
+  serverId?: string;
 };
 
 export const ActionValidationContext =
@@ -89,6 +95,8 @@ export function ActionValidationProvider({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const { updateUserMetadata } = useUpdateUserMetadata();
+
   const sendCurrentValidation = useCallback(
     async (approved: boolean) => {
       if (!currentValidation) {
@@ -123,7 +131,7 @@ export function ActionValidationProvider({
   );
 
   const handleSubmit = useCallback(
-    async (approved: boolean) => {
+    (approved: boolean) => {
       void sendCurrentValidation(approved);
       setIsProcessing(false);
       const foundItem = takeNextFromQueue();
@@ -133,6 +141,21 @@ export function ActionValidationProvider({
     },
     [sendCurrentValidation, takeNextFromQueue]
   );
+
+  const handleNeverAskAgain = useCallback(() => {
+    if (
+      !currentValidation ||
+      !currentValidation?.serverId ||
+      !currentValidation?.action.functionCallName
+    ) {
+      return;
+    }
+
+    void updateUserMetadata(
+      `server.${currentValidation.serverId}`,
+      currentValidation.action.functionCallName
+    );
+  }, [currentValidation]);
 
   useEffect(() => {
     if (currentValidation) {
@@ -146,6 +169,8 @@ export function ActionValidationProvider({
     conversationId: string;
     action: MCPActionType;
     inputs: Record<string, unknown>;
+    stake?: MCPToolStakeLevelType;
+    serverId?: string;
   }) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
@@ -180,7 +205,7 @@ export function ActionValidationProvider({
                   <div>
                     <span className="font-medium">Inputs:</span>
                     <CodeBlock className="language-json">
-                      JSON.stringify(currentValidation?.inputs, null, 2)
+                      {JSON.stringify(currentValidation?.inputs, null, 2)}
                     </CodeBlock>
                   </div>
                 )}
@@ -200,7 +225,7 @@ export function ActionValidationProvider({
               )}
             </div>
           </DialogContainer>
-          <DialogFooter>
+          <DialogFooter className="flex justify-between">
             <Button
               label="Decline"
               variant="outline"
@@ -214,19 +239,39 @@ export function ActionValidationProvider({
                 </div>
               )}
             </Button>
-            <Button
-              label="Approve"
-              variant="primary"
-              onClick={() => handleSubmit(true)}
-              disabled={isProcessing}
-            >
-              {isProcessing && (
-                <div className="flex items-center">
-                  <span className="mr-2">Approving</span>
-                  <Spinner size="xs" variant="light" />
-                </div>
+            <div className="flex gap-2">
+              {currentValidation?.stake === "low" && (
+                <Button
+                  label="Approve and never ask again"
+                  variant="ghost"
+                  onClick={() => {
+                    handleNeverAskAgain();
+                    handleSubmit(true);
+                  }}
+                  disabled={isProcessing}
+                >
+                  {isProcessing && (
+                    <div className="flex items-center">
+                      <span className="mr-2">Approving</span>
+                      <Spinner size="xs" variant="dark" />
+                    </div>
+                  )}
+                </Button>
               )}
-            </Button>
+              <Button
+                label="Approve"
+                variant="primary"
+                onClick={() => handleSubmit(true)}
+                disabled={isProcessing}
+              >
+                {isProcessing && (
+                  <div className="flex items-center">
+                    <span className="mr-2">Approving</span>
+                    <Spinner size="xs" variant="light" />
+                  </div>
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

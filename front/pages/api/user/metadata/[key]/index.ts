@@ -6,6 +6,7 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { UserMetadataType, WithAPIErrorResponse } from "@app/types";
+import { z } from "zod";
 
 export type PostUserMetadataResponseBody = {
   metadata: UserMetadataType;
@@ -13,6 +14,10 @@ export type PostUserMetadataResponseBody = {
 export type GetUserMetadataResponseBody = {
   metadata: UserMetadataType | null;
 };
+
+const PatchUserMetadataRequestBodySchema = z.object({
+  value: z.string(),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -92,13 +97,34 @@ async function handler(
       });
       return;
 
+    // PATCH is used to append a value to the existing metadata
+    case "PATCH":
+      const body = PatchUserMetadataRequestBodySchema.safeParse(req.body);
+      if (!body.success || !body.data.value) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The request body is invalid, expects { value: string }.",
+          },
+        });
+      }
+
+      await u.appendToMetadata(key, body.data.value);
+      return res.status(200).json({
+        metadata: {
+          key,
+          value: body.data.value,
+        },
+      });
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or POST is expected.",
+            "The method passed is not supported, GET, PATCH, POST or DELETE is expected.",
         },
       });
   }

@@ -260,6 +260,25 @@ export class UserResource extends BaseResource<UserModel> {
     await metadata.update({ value });
   }
 
+  async appendToMetadata(key: string, value: string) {
+    const metadata = await UserMetadataModel.findOne({
+      where: {
+        userId: this.id,
+        key,
+      },
+    });
+    if (!metadata) {
+      await UserMetadataModel.create({
+        userId: this.id,
+        key,
+        value,
+      });
+      return;
+    }
+    const newValue = `${metadata.value}, ${value}`;
+    await metadata.update({ value: newValue });
+  }
+
   async deleteAllMetadata() {
     return UserMetadataModel.destroy({
       where: {
