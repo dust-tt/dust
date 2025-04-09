@@ -13,7 +13,6 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { DataSourceTableSelector } from "@app/components/data_source_view/DataSourceTableSelector";
 
 interface DataSourceViewsSpaceSelectorProps {
   allowedSpaces?: SpaceType[];
@@ -98,18 +97,9 @@ export const DataSourceViewsSpaceSelector = ({
         }
 
         return (
-          // <DataSourceViewsSelector
-          //   owner={owner}
-          //   useCase={useCase}
-          //   dataSourceViews={dataSourceViewsForSpace}
-          //   selectionConfigurations={selectionConfigurations}
-          //   setSelectionConfigurations={setSelectionConfigurations}
-          //   viewType={viewType}
-          //   isRootSelectable={isRootSelectable}
-          //   space={space}
-          // />
-          <DataSourceTableSelector
+          <DataSourceViewsSelector
             owner={owner}
+            useCase={useCase}
             dataSourceViews={dataSourceViewsForSpace}
             selectionConfigurations={selectionConfigurations}
             setSelectionConfigurations={setSelectionConfigurations}
