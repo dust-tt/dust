@@ -113,11 +113,6 @@ export class PlanResource extends BaseResource<PlanModel> {
     return plans.map((plan) => new this(this.model, plan.get()));
   }
 
-  static async fetchFirst(): Promise<PlanResource | null> {
-    const plan = await this.model.findOne({});
-    return plan ? new this(this.model, plan.get()) : null;
-  }
-
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
