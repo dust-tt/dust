@@ -290,18 +290,16 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       action: mcpAction,
     };
 
-    let status:
-      | "allowed_implicitly"
-      | "allowed_explicitly"
-      | "pending"
-      | "denied" = "pending";
-
     const {
       status: s,
       stake,
       serverId,
     } = await computeStatusFromConfig(auth, actionConfiguration);
-    status = s;
+    let status:
+      | "allowed_implicitly"
+      | "allowed_explicitly"
+      | "pending"
+      | "denied" = s;
 
     if (status === "pending") {
       yield {
