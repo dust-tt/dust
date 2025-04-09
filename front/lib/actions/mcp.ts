@@ -6,6 +6,7 @@ import {
   augmentInputsWithConfiguration,
   hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { runAskAgent } from "@app/lib/actions/mcp_internal_actions/runners";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
@@ -37,7 +38,6 @@ import type {
   Result,
 } from "@app/types";
 import { isSupportedFileContentType, Ok, removeNulls } from "@app/types";
-import { runAskAgent } from "@app/lib/actions/mcp_internal_actions/runners";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
