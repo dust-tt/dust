@@ -266,6 +266,9 @@ async function getMCPServerActionConfiguration(
 
   builderAction.configuration.childAgentId = action.childAgentId;
 
+  builderAction.configuration.additionalConfiguration =
+    action.additionalConfiguration;
+
   return builderAction;
 }
 

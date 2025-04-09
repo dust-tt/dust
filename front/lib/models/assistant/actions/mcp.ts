@@ -17,6 +17,11 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare sId: string;
 
+  declare additionalConfiguration: Record<
+    string,
+    boolean | number | string | null
+  >;
+
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
 }
 
@@ -35,6 +40,25 @@ AgentMCPServerConfiguration.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    additionalConfiguration: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      validate: {
+        isValidJSON(value: string) {
+          if (value) {
+            let parsed;
+            try {
+              parsed = JSON.parse(value);
+            } catch (e) {
+              throw new Error("Response format is invalid JSON");
+            }
+            if (parsed && typeof parsed !== "object") {
+              throw new Error("Response format is invalid JSON");
+            }
+          }
+        },
+      },
     },
     mcpServerViewId: {
       type: DataTypes.BIGINT,

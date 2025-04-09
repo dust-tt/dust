@@ -492,6 +492,7 @@ export async function createOrUpgradeAgentConfiguration({
           dataSources: action.dataSources || null,
           tables: action.tables,
           childAgentId: action.childAgentId,
+          additionalConfiguration: action.additionalConfiguration,
         } as PlatformMCPServerConfigurationType,
         agentConfigurationRes.value
       );

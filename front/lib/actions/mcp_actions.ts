@@ -90,6 +90,7 @@ function makePlatformMCPToolConfigurations(
     tables: config.tables,
     isDefault: tool.isDefault,
     childAgentId: config.childAgentId,
+    additionalConfiguration: config.additionalConfiguration,
   }));
 }
 
