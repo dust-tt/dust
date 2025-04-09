@@ -105,7 +105,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       ...otherOptions,
     });
 
-    return servers.map((server) => new this(RemoteMCPServerModel, server.get()));
+    return servers.map(
+      (server) => new this(RemoteMCPServerModel, server.get())
+    );
   }
 
   static async fetchByIds(

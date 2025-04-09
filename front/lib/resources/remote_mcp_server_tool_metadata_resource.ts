@@ -51,7 +51,8 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     options: ResourceFindOptions<RemoteMCPServerToolMetadataModel>
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-    assert(systemSpace.canAdministrate(auth),
+    assert(
+      systemSpace.canAdministrate(auth),
       "The user is not authorized to fetch tool metadata"
     );
 
@@ -111,7 +112,10 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
   // Update
 
-  async setPermission(auth: Authenticator, permission: MCPToolPermissionLevelType) {
+  async setPermission(
+    auth: Authenticator,
+    permission: MCPToolPermissionLevelType
+  ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
     assert(
       systemSpace.canWrite(auth),
