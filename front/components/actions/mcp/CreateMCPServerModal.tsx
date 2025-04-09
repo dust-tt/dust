@@ -152,7 +152,9 @@ export function CreateMCPServerModal({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Add MCP Server</DialogTitle>
+          <DialogTitle>
+            {internalMCPServer ? "Add Toolset" : "Add MCP Server"}
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           {!internalMCPServer && (
@@ -176,7 +178,7 @@ export function CreateMCPServerModal({
           {authorization && (
             <div className="flex flex-col items-center gap-2">
               <Label className="self-start">
-                This action requires authentication with{" "}
+                This toolset requires authentication with{" "}
                 {OAUTH_PROVIDER_NAMES[authorization.provider]}.
               </Label>
               <span className="w-full font-semibold text-red-500">

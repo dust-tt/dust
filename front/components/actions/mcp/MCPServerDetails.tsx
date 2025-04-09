@@ -1,6 +1,7 @@
 import {
   Avatar,
   Button,
+  Chip,
   classNames,
   Dialog,
   DialogContainer,
@@ -88,9 +89,10 @@ export function MCPServerDetails({
   );
 
   const [isLoading, setIsLoading] = useState(false);
-  const { createAndSaveMCPServerConnection } = useMCPConnectionManagement({
-    owner,
-  });
+  const { createAndSaveMCPServerConnection, deleteMCPServerConnection } =
+    useMCPConnectionManagement({
+      owner,
+    });
 
   return (
     <>
@@ -104,10 +106,10 @@ export function MCPServerDetails({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete action</DialogTitle>
+            <DialogTitle>Remove action</DialogTitle>
           </DialogHeader>
           <DialogContainer>
-            Are you sure you want to delete the action "
+            Are you sure you want to remove the action "
             {mcpServerToDelete?.name}"?
             <div className="mt-2">
               <b>This action cannot be undone.</b>
@@ -121,7 +123,7 @@ export function MCPServerDetails({
               onClick: () => setMCPServerToDelete(undefined),
             }}
             rightButtonProps={{
-              label: "Delete",
+              label: "Remove",
               variant: "warning",
               disabled: isLoading,
               onClick: async () => {
@@ -165,6 +167,13 @@ export function MCPServerDetails({
                 <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {effectiveMCPServer?.description}
                 </div>
+                {authorization && !connection && (
+                  <div>
+                    <Chip color="warning" size="xs">
+                      Requires authentication
+                    </Chip>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -172,9 +181,8 @@ export function MCPServerDetails({
               {authorization && !connection && (
                 <div>
                   <Button
-                    variant="outline"
+                    variant="highlight"
                     disabled={isConnectionsLoading}
-                    icon={LockIcon}
                     label={"Connect"}
                     size="sm"
                     onClick={() => {
@@ -186,12 +194,27 @@ export function MCPServerDetails({
                   />
                 </div>
               )}
+              {authorization && connection && (
+                <div>
+                  <Button
+                    variant="outline"
+                    disabled={isConnectionsLoading}
+                    label={"Disconnect"}
+                    size="sm"
+                    onClick={() => {
+                      void deleteMCPServerConnection({
+                        connectionId: connection.sId,
+                      });
+                    }}
+                  />
+                </div>
+              )}
               {effectiveMCPServer && !effectiveMCPServer.isDefault && (
                 <div>
                   <Button
-                    variant="warning"
+                    variant="outline"
                     icon={TrashIcon}
-                    label={"Delete"}
+                    label={"Remove"}
                     size="sm"
                     onClick={() => {
                       setMCPServerToDelete(effectiveMCPServer);

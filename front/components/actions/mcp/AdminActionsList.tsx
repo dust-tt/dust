@@ -73,26 +73,6 @@ const NameCell = ({ row }: { row: RowData }) => {
   );
 };
 
-const AccessCell = ({ row }: { row: RowData }) => {
-  const { mcpServerView, spaces } = row;
-
-  return (
-    <DataTable.CellContent>
-      {mcpServerView &&
-        (!spaces.find((s) => s.kind === "global") ? (
-          <span>
-            {spaces
-              .filter((s) => s.kind === "regular")
-              .map((s) => s.name)
-              .join(", ")}
-          </span>
-        ) : (
-          <span>Everybody</span>
-        ))}
-    </DataTable.CellContent>
-  );
-};
-
 type AdminActionsListProps = {
   owner: LightWorkspaceType;
   setMcpServer: (mcpServer: MCPServerType) => void;
@@ -155,22 +135,25 @@ export const AdminActionsList = ({
       },
       {
         id: "access",
-        accessorKey: "mcpServer",
+        accessorKey: "spaces",
         header: "Access",
-        cell: (info: CellContext<RowData, MCPServerType>) => (
-          <AccessCell row={info.row.original} />
+        cell: (info: CellContext<RowData, SpaceType[]>) => (
+          <DataTable.BasicCellContent
+            label={
+              !info.getValue().find((s) => s.kind === "global")
+                ? info
+                    .getValue()
+                    .filter((s) => s.kind === "regular")
+                    .map((s) => s.name)
+                    .join(", ")
+                : "Everybody"
+            }
+          />
         ),
-        meta: {
-          className: "w-28",
-        },
-      },
-      {
-        id: "lastUpdated",
-        accessorKey: "mcpServerView.editedByUser",
-        header: "Last updated",
-        cell: (info: CellContext<RowData, EditedByUser>) => {
-          const date = info.getValue()?.editedAt;
-          return date ? formatTimestampToFriendlyDate(date, "compact") : "";
+        sortingFn: (rowA, rowB) => {
+          return rowA.original.mcpServer.name.localeCompare(
+            rowB.original.mcpServer.name
+          );
         },
         meta: {
           className: "w-28",
@@ -190,7 +173,23 @@ export const AdminActionsList = ({
             />
           );
         },
-
+        meta: {
+          className: "w-10",
+        },
+      },
+      {
+        id: "lastUpdated",
+        accessorKey: "mcpServerView.editedByUser.editedAt",
+        header: "Last updated",
+        cell: (info: CellContext<RowData, number>) => (
+          <DataTable.BasicCellContent
+            label={
+              info.getValue()
+                ? formatTimestampToFriendlyDate(info.getValue(), "compact")
+                : "-"
+            }
+          />
+        ),
         meta: {
           className: "w-28",
         },

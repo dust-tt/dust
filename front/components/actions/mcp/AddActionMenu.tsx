@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +10,7 @@ import {
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
+import React from "react";
 
 import {
   DEFAULT_MCP_SERVER_ICON,
@@ -71,9 +73,16 @@ export const AddActionMenu = ({
               <DropdownMenuItem
                 key={mcpServer.id}
                 label={mcpServer.name}
-                icon={
-                  MCP_SERVER_ICONS[mcpServer.icon || DEFAULT_MCP_SERVER_ICON]
-                }
+                icon={() => (
+                  <Avatar
+                    visual={React.createElement(
+                      MCP_SERVER_ICONS[
+                        mcpServer.icon || DEFAULT_MCP_SERVER_ICON
+                      ]
+                    )}
+                    size="xs"
+                  />
+                )}
                 description={mcpServer.description}
                 onClick={async () => {
                   createInternalMCPServer(mcpServer);
