@@ -17,6 +17,7 @@ import {
 } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -121,6 +122,13 @@ export class InternalMCPServerInMemoryResource {
         internalMCPServerId: this.id,
       },
       hardDelete: true,
+    });
+
+    await MCPServerConnection.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: this.id,
+      },
     });
   }
 

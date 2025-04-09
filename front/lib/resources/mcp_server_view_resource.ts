@@ -576,7 +576,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.serverType === "remote"
           ? this.getRemoteMCPServer().toJSON()
           : this.getInternalMCPServer().toJSON(),
-      editedByUser: this.makeEditedBy(this.editedByUser, this.updatedAt),
+      editedByUser: this.makeEditedBy(
+        this.editedByUser,
+        this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
+      ),
     };
   }
 }
