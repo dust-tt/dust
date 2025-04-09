@@ -3,6 +3,7 @@ import { usePlatform } from "@app/shared/context/PlatformContext";
 import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import { retryMessage } from "@app/shared/lib/conversation";
 import type { StoredUser } from "@app/shared/services/auth";
+import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/ui/components/conversation/FeedbackSelector";
@@ -183,6 +184,8 @@ export function AgentMessage({
 
   const isGlobalAgent = message.configuration.id === -1;
 
+  const { showValidationDialog } = useContext(ActionValidationContext);
+
   const shouldStream = (() => {
     if (message.status !== "created") {
       return false;
@@ -300,17 +303,28 @@ export function AgentMessage({
         break;
       }
       case "tool_approve_execution":
-        setStreamedAgentMessage((m) => {
-          return {
-            ...m,
-            status: "failed",
-            error: {
-              message: "Tools are not available in the extension",
-              code: "tool_not_available",
-            },
-          };
-        });
-        setLastAgentStateClassification("done");
+        if (platform.supportsMCP) {
+          // Show the validation dialog when this event is received
+          showValidationDialog({
+            workspaceId: owner.sId,
+            messageId: message.sId,
+            conversationId: conversationId,
+            action: event.action,
+            inputs: event.inputs,
+          });
+        } else {
+          setStreamedAgentMessage((m) => {
+            return {
+              ...m,
+              status: "failed",
+              error: {
+                message: "Tools are not available in the extension",
+                code: "tool_not_available",
+              },
+            };
+          });
+          setLastAgentStateClassification("done");
+        }
         break;
 
       case "generation_tokens": {

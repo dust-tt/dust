@@ -128,11 +128,12 @@ export async function postConversation(
       input: string;
       mentions: AgentMentionType[];
       contentFragments: ContentFragmentsType;
+      mcpServerIds?: string[];
     };
     visibility?: ConversationVisibility;
   }
 ): Promise<Result<ConversationPublicType, SubmitMessageError>> {
-  const { input, mentions, contentFragments } = messageData;
+  const { input, mentions, contentFragments, mcpServerIds } = messageData;
   const user = await platform.auth.getStoredUser();
 
   if (!user) {
@@ -157,6 +158,7 @@ export async function postConversation(
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         profilePictureUrl: user.image,
         origin: "extension",
+        localMCPServerIds: mcpServerIds ?? [],
       },
       mentions,
     },
@@ -217,6 +219,7 @@ export async function postMessage(
       input: string;
       mentions: AgentMentionType[];
       contentFragments: ContentFragmentsType;
+      mcpServerIds?: string[];
     };
   }
 ): Promise<
@@ -225,7 +228,7 @@ export async function postMessage(
     SubmitMessageError
   >
 > {
-  const { input, mentions, contentFragments } = messageData;
+  const { input, mentions, contentFragments, mcpServerIds } = messageData;
   const user = await platform.auth.getStoredUser();
 
   if (!user) {
@@ -310,6 +313,7 @@ export async function postMessage(
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         profilePictureUrl: user.image,
         origin: "extension",
+        localMCPServerIds: mcpServerIds ?? [],
       },
       mentions,
     },
