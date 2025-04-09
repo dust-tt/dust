@@ -1,4 +1,6 @@
-FROM node:20.13.0 AS build
+ARG NODE_VERSION=20.13.0
+
+FROM node:${NODE_VERSION} AS build
 
 ARG COMMIT_HASH
 ARG NEXT_PUBLIC_VIZ_URL
@@ -32,10 +34,13 @@ RUN find . -name "*.test.tsx" -delete
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
 # Production
-FROM node:20.13.0-alpine
+FROM node:${NODE_VERSION}-alpine
 ENV HUSKY=0
-WORKDIR /app
 
+WORKDIR /sdks/js
+COPY --from=build /sdks/js .
+
+WORKDIR /app
 COPY --from=build /app/.next .next
 COPY --from=build /app/package*.json ./
 RUN npm ci --omit=dev
