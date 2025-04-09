@@ -11,8 +11,9 @@ import type { Authenticator } from "@app/lib/auth";
 import type { Workspace } from "@app/lib/models/workspace";
 import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type {
   ModelStaticSoftDeletable,
   SoftDeletableWorkspaceAwareModel,
@@ -81,8 +82,17 @@ export abstract class ResourceWithSpace<
       return [];
     }
 
-    const spaceIds = blobs.map((b) => b.vaultId);
-    const spaces = await SpaceResource.fetchByModelIdsUnsafe(spaceIds, {
+    // We use the model directly here; it's a very rare case where we don't check the workspace, which in this case
+    // is due to the fact that we may need to fetch data from public workspaces as well as the current workspace.
+    const spaces = await SpaceModel.findAll({
+      where: {
+        id: blobs.map((b) => b.vaultId),
+      },
+      include: [
+        {
+          model: GroupResource.model,
+        },
+      ],
       includeDeleted,
     });
 
@@ -115,7 +125,12 @@ export abstract class ResourceWithSpace<
             {} as IncludeType
           );
 
-          return new this(this.model, b.get(), space, includedResults);
+          return new this(
+            this.model,
+            b.get(),
+            SpaceResource.fromModel(space),
+            includedResults
+          );
         })
         // Filter out resources that the user cannot fetch.
         .filter((cls) => cls.canFetch(auth))
