@@ -20,7 +20,7 @@ import { z } from "zod";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { ALLOWED_ICONS, MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
-import type { RemoteMCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useMCPServers,
   useSyncRemoteMCPServer,

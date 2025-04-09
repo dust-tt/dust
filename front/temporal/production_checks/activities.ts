@@ -7,6 +7,7 @@ import { checkConnectorsLastSyncSuccess } from "@app/lib/production_checks/check
 import { checkDataSourcesConsistency } from "@app/lib/production_checks/checks/check_data_sources_consistency";
 import { checkExtraneousWorkflows } from "@app/lib/production_checks/checks/check_extraneous_workflows_for_paused_connectors";
 import { checkNotionActiveWorkflows } from "@app/lib/production_checks/checks/check_notion_active_workflows";
+import { checkPausedConnectors } from "@app/lib/production_checks/checks/check_paused_connectors";
 import { checkWebcrawlerSchedulerActiveWorkflow } from "@app/lib/production_checks/checks/check_webcrawler_scheduler_active_workflow";
 import { managedDataSourceGCGdriveCheck } from "@app/lib/production_checks/checks/managed_data_source_gdrive_gc";
 import type { Check } from "@app/lib/production_checks/types";
@@ -51,6 +52,11 @@ export const REGISTERED_CHECKS: Check[] = [
   {
     name: "check_webcrawler_scheduler_active_workflow",
     check: checkWebcrawlerSchedulerActiveWorkflow,
+    everyHour: 8,
+  },
+  {
+    name: "checked_paused_connectors",
+    check: checkPausedConnectors,
     everyHour: 8,
   },
 ];
