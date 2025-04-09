@@ -14,7 +14,7 @@ import {
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_MCP_TOOL_STAKE_LEVEL,
-  MCP_TOOL_STAKE_LEVEL_TYPE,
+  MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import {
   useMCPServerToolsPermissions,
@@ -99,7 +99,7 @@ export function ToolsList({
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        {MCP_TOOL_STAKE_LEVEL_TYPE.map((permission) => (
+                        {MCP_TOOL_STAKE_LEVELS.map((permission) => (
                           <DropdownMenuItem
                             key={permission}
                             className="capitalize"
