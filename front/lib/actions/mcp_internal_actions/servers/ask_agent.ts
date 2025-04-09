@@ -9,7 +9,6 @@ import {
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { runAction } from "@app/lib/actions/server";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -53,7 +52,11 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
 
 function createServer(
   auth: Authenticator,
-  conversation?: ConversationType
+  conversation?: ConversationType,
+  getAgentConfiguration?: (
+    auth: Authenticator,
+    agentId: string
+  ) => Promise<AgentConfigurationType | null>
 ): McpServer {
   const server = new McpServer(serverInfo);
 
@@ -74,6 +77,11 @@ function createServer(
           "Unreachable: calling ask-agent tool without a conversation."
         );
       }
+      if (!getAgentConfiguration) {
+        return makeMCPToolTextError(
+          "Unreachable: calling ask-agent tool without a getAgentConfiguration callback."
+        );
+      }
 
       // Parse the child agent ID from the URI
       const childAgentIdRes = parseAgentConfigurationUri(uri);
@@ -86,8 +94,7 @@ function createServer(
       // Get the child agent configuration.
       const agentConfiguration = await getAgentConfiguration(
         auth,
-        childAgentId,
-        "full"
+        childAgentId
       );
       if (!agentConfiguration) {
         return makeMCPToolTextError("Failed to retrieve agent configuration.");

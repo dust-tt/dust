@@ -20,6 +20,7 @@ import {
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isPlatformMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -420,7 +421,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       messageId: agentMessage.sId,
       actionConfiguration,
       conversation,
-      agentMessage,
+      getAgentConfiguration: async (auth, agentId) =>
+        getAgentConfiguration(auth, agentId, "full"),
       inputs,
     });
 

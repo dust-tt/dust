@@ -28,7 +28,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { AgentMessageType, ConversationType, Result } from "@app/types";
+import type {
+  AgentConfigurationType,
+  ConversationType,
+  Result,
+} from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
@@ -143,16 +147,19 @@ export async function tryCallMCPTool(
   auth: Authenticator,
   {
     conversation,
-    agentMessage,
     messageId,
     actionConfiguration,
     inputs,
+    getAgentConfiguration,
   }: {
     conversation: ConversationType;
-    agentMessage: AgentMessageType;
     messageId: string;
     actionConfiguration: MCPToolConfigurationType;
     inputs: Record<string, unknown> | undefined;
+    getAgentConfiguration: (
+      auth: Authenticator,
+      agentId: string
+    ) => Promise<AgentConfigurationType | null>;
   }
 ): Promise<Result<MCPToolResultContent[], Error>> {
   const connectionParamsRes = await getMCPClientConnectionParams(
@@ -172,7 +179,8 @@ export async function tryCallMCPTool(
     const mcpClient = await connectToMCPServer(
       auth,
       connectionParamsRes.value,
-      conversation
+      conversation,
+      getAgentConfiguration
     );
 
     const toolCallResult = await mcpClient.callTool(
