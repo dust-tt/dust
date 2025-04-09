@@ -29,13 +29,14 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 interface TableRowData {
   id: string;
   title: string;
-  onClick?: () => void;
+  onClick?: (node: DataSourceViewContentNode) => void;
   parentTitle?: string;
   icon?: React.JSX.Element;
 }
 
 export function getTableRows(
-  nodes: DataSourceViewContentNode[]
+  nodes: DataSourceViewContentNode[],
+  onNodeClick: (node: DataSourceViewContentNode) => void
 ): TableRowData[] {
   return nodes.map((node) => {
     const { dataSource } = node.dataSourceView;
@@ -62,7 +63,7 @@ export function getTableRows(
       title: node.title,
       icon: visual,
       parentTitle: node.parentTitle,
-      onClick: node.expandable ? () => {} : undefined,
+      onClick: node.expandable ? () => onNodeClick(node) : undefined,
     };
   });
 }
@@ -89,6 +90,9 @@ export function DataSourceTableSelector({
 }: DataSourceTableSelectorProps) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [searchResults, setSearchResults] = useState<TableRowData[]>([]);
+  const [traversedNode, setTraversedNode] = useState<
+    DataSourceViewContentNode | undefined
+  >(undefined);
 
   const {
     cursorPagination,
@@ -117,13 +121,16 @@ export function DataSourceTableSelector({
     isSearchValidating,
     nextPageCursor,
   } = useSpaceSearch({
-    dataSourceViews,
+    dataSourceViews: traversedNode
+      ? [traversedNode.dataSourceView]
+      : dataSourceViews,
     includeDataSources: true,
     owner,
     search: debouncedSearch,
     viewType,
     space,
     pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
+    parentId: traversedNode ? traversedNode.internalId : undefined,
   });
 
   const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
@@ -146,10 +153,17 @@ export function DataSourceTableSelector({
   ]);
 
   useEffect(() => {
+    const tableRows = getTableRows(
+      searchResultNodes,
+      (node: DataSourceViewContentNode) => {
+        setTraversedNode(node);
+        console.log(node);
+      }
+    );
     if (tablePagination.pageIndex === 0) {
-      setSearchResults(getTableRows(searchResultNodes));
+      setSearchResults(tableRows);
     } else if (searchResultNodes.length > 0) {
-      setSearchResults((prev) => [...prev, ...getTableRows(searchResultNodes)]);
+      setSearchResults((prev) => [...prev, ...tableRows]);
     }
   }, [searchResultNodes, tablePagination.pageIndex]);
 
