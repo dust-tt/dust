@@ -7,7 +7,7 @@ import type { OAuthProvider } from "@app/types";
 
 const provider: OAuthProvider = "google_drive" as const;
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "helloworld",
+  name: "hello_world",
   version: "1.0.0",
   description: "You are a helpful server that can say hello to the user.",
   authorization: {
@@ -20,7 +20,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   const server = new McpServer(serverInfo);
 
-  server.tool("helloworld", "A simple hello world tool", async () => {
+  server.tool("hello_world", "A simple hello world tool", async () => {
     const accessToken = await getAccessTokenForInternalMCPServer(auth, {
       mcpServerId,
       provider,

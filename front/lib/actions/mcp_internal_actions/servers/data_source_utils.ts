@@ -15,7 +15,7 @@ import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "data-source-utils",
+  name: "data_source_utils",
   version: "1.0.0",
   description:
     "Demo server showing a basic interaction with a data source configuration.",
@@ -73,7 +73,7 @@ function createServer(): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "show-data-source-names",
+    "show_data_source_names",
     "Shows the names of the data sources available.",
     {
       query: z.string(),
