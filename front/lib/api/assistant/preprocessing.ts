@@ -61,7 +61,7 @@ export async function renderConversationForModel(
   const now = Date.now();
   const messages: ModelMessageTypeMultiActions[] = [];
 
-  // Render loop: dender all messages and all actions.
+  // Render loop: render all messages and all actions.
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
 
@@ -69,7 +69,7 @@ export async function renderConversationForModel(
       const actions = removeNulls(m.actions);
 
       // This is a record of arrays, because we can have multiple calls per agent message (parallel
-      // calls).  Actions all have a step index which indicates how they should be grouped but some
+      // calls). Actions all have a step index which indicates how they should be grouped but some
       // actions injected by `getEmulatedAgentMessageActions` have a step index of `-1`. We
       // therefore group by index, then order and transform in a 2D array to present to the model.
       const stepByStepIndex = {} as Record<
@@ -92,8 +92,8 @@ export async function renderConversationForModel(
       for (const action of actions) {
         const stepIndex = action.step;
         stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
-        // All these calls (except `conversation_include_files_action` are not async so we're not
-        // doing a Promise.all for now but might need to be reconsiderd in the future.
+        // All these calls (except `conversation_include_files_action`) are not async so we're not
+        // doing a Promise.all for now but might need to be reconsidered in the future.
         stepByStepIndex[stepIndex].actions.push({
           call: action.renderForFunctionCall(),
           result: await action.renderForMultiActionsModel({
