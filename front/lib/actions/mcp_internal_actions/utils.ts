@@ -1,12 +1,6 @@
-import type { z } from "zod";
+import type { MCPToolResult } from "@app/lib/actions/mcp_actions";
 
-import type { TextContentSchema } from "@app/lib/actions/mcp_actions";
-
-// TODO(mcp): define these types somewhere.
-export function makeMCPToolTextError(text: string): {
-  isError: true;
-  content: z.infer<typeof TextContentSchema>[];
-} {
+export function makeMCPToolTextError(text: string): MCPToolResult {
   return {
     isError: true,
     content: [

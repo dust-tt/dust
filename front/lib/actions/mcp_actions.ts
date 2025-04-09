@@ -32,7 +32,6 @@ import type {
   AgentConfigurationType,
   ConversationType,
   Result,
-  UserMessageType,
 } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
@@ -78,6 +77,11 @@ const Schema = z.union([
 ]);
 
 export type MCPToolResultContent = z.infer<typeof Schema>;
+
+export type MCPToolResult = {
+  isError: boolean;
+  content: MCPToolResultContent[];
+};
 
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
@@ -152,7 +156,7 @@ export async function tryCallMCPTool(
     actionConfiguration,
     inputs,
     getAgentConfiguration,
-    userMessage,
+    runAgent,
   }: {
     conversation: ConversationType;
     messageId: string;
@@ -162,7 +166,10 @@ export async function tryCallMCPTool(
       auth: Authenticator,
       agentId: string
     ) => Promise<AgentConfigurationType | null>;
-    userMessage: UserMessageType;
+    runAgent: (
+      auth: Authenticator,
+      { agentId, query }: { agentId: string; query: string }
+    ) => Promise<MCPToolResult>;
   }
 ): Promise<Result<MCPToolResultContent[], Error>> {
   const connectionParamsRes = await getMCPClientConnectionParams(
@@ -182,9 +189,11 @@ export async function tryCallMCPTool(
     const mcpClient = await connectToMCPServer(
       auth,
       connectionParamsRes.value,
-      conversation,
-      getAgentConfiguration,
-      userMessage
+      {
+        conversation,
+        getAgentConfiguration,
+        runAgent,
+      }
     );
 
     const toolCallResult = await mcpClient.callTool(

@@ -37,6 +37,7 @@ import type {
   Result,
 } from "@app/types";
 import { isSupportedFileContentType, Ok, removeNulls } from "@app/types";
+import { runAskAgent } from "@app/lib/actions/mcp_internal_actions/runners";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -425,7 +426,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       getAgentConfiguration: async (auth, agentId) =>
         getAgentConfiguration(auth, agentId, "full"),
       inputs,
-      userMessage,
+      runAgent: (auth, { agentId, query }) =>
+        runAskAgent(auth, {
+          agentId,
+          query,
+          context: userMessage.context,
+        }),
     });
 
     if (r.isErr()) {

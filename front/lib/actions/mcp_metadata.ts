@@ -12,6 +12,7 @@ import {
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
+import type { MCPToolResult } from "@app/lib/actions/mcp_actions";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
@@ -33,7 +34,6 @@ import type {
   ConversationType,
   OAuthProvider,
   OAuthUseCase,
-  UserMessageType,
 } from "@app/types";
 import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
@@ -102,14 +102,17 @@ async function connectToInternalMCPServer(
   {
     conversation,
     getAgentConfiguration,
-    userMessage,
+    runAgent,
   }: {
     conversation?: ConversationType;
     getAgentConfiguration?: (
       auth: Authenticator,
       agentId: string
     ) => Promise<AgentConfigurationType | null>;
-    userMessage?: UserMessageType;
+    runAgent?: (
+      auth: Authenticator,
+      { agentId, query }: { agentId: string; query: string }
+    ) => Promise<MCPToolResult>;
   }
 ): Promise<McpServer> {
   const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
@@ -123,7 +126,7 @@ async function connectToInternalMCPServer(
     mcpServerId,
     conversation,
     getAgentConfiguration,
-    userMessage,
+    runAgent,
   });
 
   await server.connect(transport);
@@ -134,12 +137,21 @@ async function connectToInternalMCPServer(
 export const connectToMCPServer = async (
   auth: Authenticator,
   params: MCPConnectionParams,
-  conversation?: ConversationType,
-  getAgentConfiguration?: (
-    auth: Authenticator,
-    agentId: string
-  ) => Promise<AgentConfigurationType | null>,
-  userMessage?: UserMessageType
+  {
+    conversation,
+    getAgentConfiguration,
+    runAgent,
+  }: {
+    conversation?: ConversationType;
+    getAgentConfiguration?: (
+      auth: Authenticator,
+      agentId: string
+    ) => Promise<AgentConfigurationType | null>;
+    runAgent?: (
+      auth: Authenticator,
+      { agentId, query }: { agentId: string; query: string }
+    ) => Promise<MCPToolResult>;
+  } = {}
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -160,7 +172,7 @@ export const connectToMCPServer = async (
           await connectToInternalMCPServer(params.mcpServerId, server, auth, {
             conversation,
             getAgentConfiguration,
-            userMessage,
+            runAgent,
           });
           await mcpClient.connect(client);
           break;
