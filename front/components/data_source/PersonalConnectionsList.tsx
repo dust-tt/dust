@@ -34,7 +34,7 @@ type PersonalConnectionsListProps = {
   owner: WorkspaceType;
 };
 
-export const PersonalConnectionsList = ({
+export const LabsPersonalConnectionsList = ({
   owner,
 }: PersonalConnectionsListProps) => {
   const { isDark } = useTheme();

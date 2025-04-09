@@ -2,7 +2,7 @@ import { CommandIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { PersonalConnectionsList } from "@app/components/data_source/PersonalConnectionsList";
+import { LabsPersonalConnectionsList } from "@app/components/data_source/PersonalConnectionsList";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -54,7 +54,7 @@ export default function PersonalConnections({
             icon={CommandIcon}
             description="Connect your personal accounts on data sources."
           />
-          <PersonalConnectionsList owner={owner} />
+          <LabsPersonalConnectionsList owner={owner} />
         </Page.Vertical>
       </AppLayout>
     </ConversationsNavigationProvider>
