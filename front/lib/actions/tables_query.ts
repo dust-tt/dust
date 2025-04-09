@@ -514,12 +514,12 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
       ...new Set(actionConfiguration.tables.map((t) => t.dataSourceViewId)),
     ]);
-    const connectionIds: Record<string, string> = {};
+    const personalConnectionIds: Record<string, string> = {};
     for (const dataSourceView of dataSourceViews) {
-      const connection =
+      const personalConnection =
         await dataSourceView.dataSource.getPersonalConnection(auth);
-      if (connection) {
-        connectionIds[dataSourceView.sId] = connection;
+      if (personalConnection) {
+        personalConnectionIds[dataSourceView.sId] = personalConnection;
       }
     }
 
@@ -529,7 +529,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       // Note: This value is passed to the registry for lookup. The registry will return the
       // associated data source's dustAPIDataSourceId.
       data_source_id: t.dataSourceViewId,
-      remote_database_secret_id: connectionIds[t.dataSourceViewId],
+      remote_database_secret_id: personalConnectionIds[t.dataSourceViewId],
     }));
     if (tables.length === 0) {
       yield {

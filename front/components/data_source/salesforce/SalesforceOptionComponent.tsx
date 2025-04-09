@@ -91,7 +91,8 @@ export function SalesforceOptionComponent({
         >
           <ContextItem.Description>
             <div className="text-muted-foreground dark:text-muted-foreground-night">
-              Use personal connections to query your Salesforce data.
+              Require each user to connect to Salesforce before they can query
+              data. This allows enforcing per-user permissions.
             </div>
           </ContextItem.Description>
         </ContextItem>

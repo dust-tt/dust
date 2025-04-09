@@ -551,7 +551,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: this.id,
-        userId: auth.user()?.id,
+        userId: auth.getNonNullableUser().id,
       },
     });
 
@@ -569,7 +569,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     const conn = await PersonalDataSourceConnection.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       dataSourceId: this.id,
-      userId: auth.user()?.id,
+      userId: auth.getNonNullableUser().id,
       connectionId,
     });
 
