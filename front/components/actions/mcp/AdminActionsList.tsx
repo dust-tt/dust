@@ -64,7 +64,7 @@ const NameCell = ({ row }: { row: RowData }) => {
         </div>
 
         {mcpServerView && !isConnected && mcpServer.authorization && (
-          <Chip color="red" size="xs">
+          <Chip color="warning" size="xs">
             Disconnected
           </Chip>
         )}
