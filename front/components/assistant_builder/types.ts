@@ -130,7 +130,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
-  additionalConfiguration: Record<string, boolean>;
+  additionalConfiguration: Record<string, boolean | number | string | null>;
 };
 
 // Builder State
