@@ -29,7 +29,6 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type {
-  AgentMessageType,
   ConversationType,
   OAuthProvider,
   OAuthUseCase,
@@ -98,8 +97,7 @@ async function connectToInternalMCPServer(
   mcpServerId: string,
   transport: InMemoryTransport,
   auth: Authenticator,
-  conversation?: ConversationType,
-  agentMessage?: AgentMessageType
+  conversation?: ConversationType
 ): Promise<McpServer> {
   const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
   if (res.isErr()) {
@@ -111,7 +109,6 @@ async function connectToInternalMCPServer(
     internalMCPServerName: res.value.name,
     mcpServerId,
     conversation,
-    agentMessage,
   });
 
   await server.connect(transport);
@@ -122,8 +119,7 @@ async function connectToInternalMCPServer(
 export const connectToMCPServer = async (
   auth: Authenticator,
   params: MCPConnectionParams,
-  conversation?: ConversationType,
-  agentMessage?: AgentMessageType
+  conversation?: ConversationType
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -145,8 +141,7 @@ export const connectToMCPServer = async (
             params.mcpServerId,
             server,
             auth,
-            conversation,
-            agentMessage
+            conversation
           );
           await mcpClient.connect(client);
           break;

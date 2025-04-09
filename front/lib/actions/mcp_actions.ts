@@ -172,8 +172,7 @@ export async function tryCallMCPTool(
     const mcpClient = await connectToMCPServer(
       auth,
       connectionParamsRes.value,
-      conversation,
-      agentMessage
+      conversation
     );
 
     const toolCallResult = await mcpClient.callTool(

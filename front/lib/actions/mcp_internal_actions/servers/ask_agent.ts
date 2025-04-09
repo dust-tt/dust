@@ -17,7 +17,6 @@ import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
-  AgentMessageType,
   ConversationType,
   Result,
 } from "@app/types";
@@ -54,8 +53,7 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
 
 function createServer(
   auth: Authenticator,
-  conversation?: ConversationType,
-  agentMessage?: AgentMessageType
+  conversation?: ConversationType
 ): McpServer {
   const server = new McpServer(serverInfo);
 
@@ -74,11 +72,6 @@ function createServer(
       if (!conversation) {
         return makeMCPToolTextError(
           "Unreachable: calling ask-agent tool without a conversation."
-        );
-      }
-      if (!agentMessage) {
-        return makeMCPToolTextError(
-          "Unreachable: calling ask-agent tool without an agent message."
         );
       }
 
