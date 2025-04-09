@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
@@ -73,6 +73,33 @@ export function ConfigureLabsConnectionModal({
   const [apiKey, setApiKey] = useState("");
   const [pendingDataSourceView, setPendingDataSourceView] =
     useState<DataSourceViewType | null>(null);
+
+  useEffect(() => {
+    if (!dataSourcesViews.length || !configuration) {
+      return;
+    }
+
+    const labsConnectionConfigurationRes =
+      configuration as unknown as LabsConnectionsConfigurationResource;
+
+    if (labsConnectionConfigurationRes.dataSourceViewId) {
+      const dataSourceView = dataSourcesViews.find(
+        (dsv) => dsv.id === labsConnectionConfigurationRes.dataSourceViewId
+      );
+
+      if (dataSourceView) {
+        setSelectionConfigurations({
+          [dataSourceView.sId]: {
+            dataSourceView,
+            selectedResources: [],
+            isSelectAll: true,
+            tagsFilter: null,
+          },
+        });
+        setPendingDataSourceView(dataSourceView);
+      }
+    }
+  }, [configuration, dataSourcesViews]);
 
   const handleSetConnectionStorageDataSourceView = async (
     dataSourceView: DataSourceViewType | null
