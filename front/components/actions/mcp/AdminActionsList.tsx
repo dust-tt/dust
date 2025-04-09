@@ -93,67 +93,6 @@ const AccessCell = ({ row }: { row: RowData }) => {
   );
 };
 
-// const ActionCell = ({
-//   owner,
-//   row,
-//   setMCPServerToDelete,
-// }: {
-//   owner: LightWorkspaceType;
-//   row: RowData;
-//   setMCPServerToDelete: (mcpServer: MCPServerType) => void;
-// }) => {
-//   const { mcpServer, mcpServerView } = row;
-//   const { deleteServer } = useDeleteMCPServer(owner);
-//   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
-
-//   const [loading, setLoading] = useState(false);
-//   const { serverType } = getServerTypeAndIdFromSId(mcpServer.id);
-
-//   const enabled = mcpServerView !== undefined;
-
-//   return (
-//     <DataTable.CellContent grow>
-//       <div
-//         className={classNames(
-//           "flex flex-row items-center gap-2 py-3",
-//           mcpServerView ? "" : "opacity-50"
-//         )}
-//       >
-//         {!mcpServer.isDefault && (
-//           <>
-//             {serverType === "internal" ? (
-//               <SliderToggle
-//                 disabled={loading}
-//                 selected={enabled}
-//                 onClick={async (e) => {
-//                   e.stopPropagation();
-//                   setLoading(true);
-//                   if (enabled) {
-//                     await deleteServer(mcpServer.id);
-//                   } else {
-//                     await createInternalMCPServer(mcpServer.name, true);
-//                   }
-//                   setLoading(false);
-//                 }}
-//               />
-//             ) : (
-//               <IconButton
-//                 variant="outline"
-//                 icon={TrashIcon}
-//                 onClick={(e) => {
-//                   e.stopPropagation();
-//                   setMCPServerToDelete(mcpServer);
-//                 }}
-//                 size="sm"
-//               />
-//             )}
-//           </>
-//         )}
-//       </div>
-//     </DataTable.CellContent>
-//   );
-// };
-
 type AdminActionsListProps = {
   owner: LightWorkspaceType;
   setMcpServer: (mcpServer: MCPServerType) => void;
@@ -187,9 +126,6 @@ export const AdminActionsList = ({
     owner,
   });
 
-  // const [mcpServerToDelete, setMCPServerToDelete] = useState<
-  //   MCPServerType | undefined
-  // >();
   const [isLoading, setIsLoading] = useState(false);
 
   const { connections } = useMCPServerConnections({
@@ -228,17 +164,6 @@ export const AdminActionsList = ({
           className: "w-28",
         },
       },
-      // {
-      //   id: "usedBy",
-      //   accessorKey: "mcpServer",
-      //   header: "Used by",
-      //   cell: (info: CellContext<RowData, MCPServerType>) => {
-      //     return "";
-      //   },
-      //   meta: {
-      //     className: "w-28",
-      //   },
-      // },
       {
         id: "lastUpdated",
         accessorKey: "mcpServerView.editedByUser",
