@@ -50,7 +50,7 @@ COPY --from=build /sdks/js .
 WORKDIR /app
 COPY --from=build /app/.next .next
 COPY --from=build /app/package*.json ./
-COPY --from=build /app/public ./
+COPY --from=build /app/public public
 RUN npm ci --omit=dev
 RUN rm -r /sdks
 
@@ -68,8 +68,8 @@ ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
 
 WORKDIR /app
 COPY --from=prod /app/.next .next
-COPY --from=prod /app/node_modules ./
+COPY --from=prod /app/node_modules node_modules
 COPY --from=prod /app/package*.json ./
-COPY --from=prod /app/public ./
+COPY --from=prod /app/public public
 
 CMD ["./node_modules/next/dist/bin/next", "--silent", "run", "start"]
