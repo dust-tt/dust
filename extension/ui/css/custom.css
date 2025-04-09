@@ -10,6 +10,13 @@ html {
   font-synthesis: none;
 }
 
+@supports (font-synthesis-weight: none) {
+  html {
+    font-synthesis: initial;
+    font-synthesis-weight: none;
+  }
+}
+
 #InputBarContainer {
   font-size: 14px;
 }
