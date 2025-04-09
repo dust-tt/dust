@@ -29,10 +29,8 @@ import {
   PlanResource,
 } from "@app/lib/resources/plan_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  PlanModel,
-  Subscription,
-} from "@app/lib/resources/storage/models/plans";
+import { PlanModel } from "@app/lib/resources/storage/models/plans";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -53,8 +51,7 @@ import type {
 } from "@app/types";
 import { Ok, sendUserOperationMessage } from "@app/types";
 
-const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanModel =
-  PlanModel.build(FREE_NO_PLAN_DATA);
+const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 
 export function isTrial(
@@ -72,18 +69,21 @@ export interface SubscriptionResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SubscriptionResource extends BaseResource<Subscription> {
   static model: ModelStatic<Subscription> = Subscription;
-  private readonly plan: PlanType;
+  private readonly plan: PlanResource;
 
   constructor(
     model: ModelStatic<Subscription>,
     blob: Attributes<Subscription>,
-    plan: PlanType
+    plan: PlanResource
   ) {
     super(Subscription, blob);
     this.plan = plan;
   }
 
-  static async makeNew(blob: CreationAttributes<Subscription>, plan: PlanType) {
+  static async makeNew(
+    blob: CreationAttributes<Subscription>,
+    plan: PlanResource
+  ) {
     const subscription = await Subscription.create({ ...blob });
     return new SubscriptionResource(Subscription, subscription.get(), plan);
   }
@@ -104,7 +104,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       subscription.get(),
-      PlanResource.fromModel(subscription.plan).toJSON()
+      PlanResource.fromModel(subscription.plan)
     );
   }
 
@@ -157,10 +157,9 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       const activeSubscription =
         activeSubscriptionByWorkspaceId[workspace.id.toString()];
 
-      let plan: PlanResource = PlanResource.fromModel(
-        PlanModel.build(DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION)
+      let plan: PlanResource = PlanResource.fromAttributes(
+        DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION
       );
-
       if (activeSubscription) {
         // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
         if (isTrial(activeSubscription)) {
@@ -183,7 +182,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         Subscription,
         activeSubscription?.get() ||
           this.createFreeNoPlanSubscription(workspace),
-        plan.toJSON()
+        plan
       );
     }
 
@@ -205,7 +204,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         new SubscriptionResource(
           Subscription,
           s.get(),
-          PlanResource.fromModel(s.plan).toJSON()
+          PlanResource.fromModel(s.plan)
         )
     );
   }
@@ -238,7 +237,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       this.createFreeNoPlanSubscription(workspace),
-      PlanResource.fromModel(PlanModel.build(FREE_NO_PLAN_DATA)).toJSON()
+      PlanResource.fromAttributes(FREE_NO_PLAN_DATA)
     );
   }
 
@@ -331,7 +330,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       newSubscription.get(),
-      newPlan.toJSON()
+      newPlan
     );
   }
 
@@ -594,7 +593,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   }
 
   getPlan(): PlanType {
-    return Object.freeze({ ...this.plan });
+    return this.plan.toJSON();
   }
 
   toJSON(): SubscriptionType {
@@ -606,7 +605,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       startDate: this.startDate?.getTime() || null,
       endDate: this.endDate?.getTime() || null,
       paymentFailingSince: this.paymentFailingSince?.getTime() || null,
-      plan: this.getPlan(),
+      plan: this.plan.toJSON(),
       requestCancelAt: this.requestCancelAt?.getTime() ?? null,
     };
   }

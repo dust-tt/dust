@@ -21,10 +21,7 @@ import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { PlanResource } from "@app/lib/resources/plan_resource";
-import {
-  PlanModel,
-  Subscription,
-} from "@app/lib/resources/storage/models/plans";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -297,7 +294,7 @@ async function handler(
                 plan: activeSubscription
                   ? PlanResource.fromModel(activeSubscription.plan)
                   : // If there is no active subscription, we use the free plan data.
-                    PlanResource.fromModel(PlanModel.build(FREE_NO_PLAN_DATA)),
+                    PlanResource.fromAttributes(FREE_NO_PLAN_DATA),
                 activeSubscription: activeSubscription,
               }
             );

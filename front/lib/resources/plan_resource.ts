@@ -19,45 +19,6 @@ export type PlanAttributes = Omit<
   "id" | "createdAt" | "updatedAt"
 >;
 
-export function renderPlanFromAttributes(plan: PlanAttributes): PlanType {
-  return {
-    code: plan.code,
-    name: plan.name,
-    limits: {
-      assistant: {
-        isSlackBotAllowed: plan.isSlackbotAllowed,
-        maxMessages: plan.maxMessages,
-        maxMessagesTimeframe: plan.maxMessagesTimeframe,
-      },
-      connections: {
-        isConfluenceAllowed: plan.isManagedConfluenceAllowed,
-        isSlackAllowed: plan.isManagedSlackAllowed,
-        isNotionAllowed: plan.isManagedNotionAllowed,
-        isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-        isGithubAllowed: plan.isManagedGithubAllowed,
-        isIntercomAllowed: plan.isManagedIntercomAllowed,
-        isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
-        isSalesforceAllowed: plan.isManagedSalesforceAllowed,
-      },
-      dataSources: {
-        count: plan.maxDataSourcesCount,
-        documents: {
-          count: plan.maxDataSourcesDocumentsCount,
-          sizeMb: plan.maxDataSourcesDocumentsSizeMb,
-        },
-      },
-      users: {
-        maxUsers: plan.maxUsersInWorkspace,
-      },
-      vaults: {
-        maxVaults: plan.maxVaultsInWorkspace,
-      },
-      canUseProduct: plan.canUseProduct,
-    },
-    trialPeriodDays: plan.trialPeriodDays,
-  };
-}
-
 // These limits are applied to all plans during the trial period.
 export const TRIAL_LIMITS: Partial<PlanAttributes> = {
   maxUsersInWorkspace: 5,
@@ -65,6 +26,7 @@ export const TRIAL_LIMITS: Partial<PlanAttributes> = {
   maxMessagesTimeframe: "day",
 };
 
+// This function is used to get the trial version of a plan.
 export function getTrialVersionForPlan(plan: PlanModel): PlanModel {
   return PlanModel.build({
     ...plan.get(),
@@ -85,15 +47,23 @@ export class PlanResource extends BaseResource<PlanModel> {
     super(PlanModel, blob);
   }
 
-  static fromModel(plan: PlanModel) {
+  //build a new plan resource from a given plan model. It is not saved to the database.
+  static fromModel(plan: PlanModel): PlanResource {
     return new PlanResource(PlanModel, plan.get());
   }
 
+  //build a new plan resource from a given set of attributes. It is not saved to the database.
+  static fromAttributes(planAttributes: PlanAttributes): PlanResource {
+    return this.fromModel(PlanModel.build({ ...planAttributes }));
+  }
+
+  //create a new plan resource in the database.
   static async makeNew(blob: CreationAttributes<PlanModel>) {
     const plan = await this.model.create(blob);
     return new this(this.model, plan.get());
   }
 
+  //upsert a new plan resource in the database.
   static async upsertByPlanCode(blob: CreationAttributes<PlanModel>) {
     const existing = await this.model.findOne({
       where: { code: blob.code },
@@ -161,7 +131,7 @@ export class PlanResource extends BaseResource<PlanModel> {
     return new Ok(undefined);
   }
 
-  // This function is used to set the message limits for a given plan.
+  // set the message limits for a given plan.
   static async setMessageLimitsForPlan(
     data: Pick<Attributes<PlanModel>, "maxMessages" | "maxMessagesTimeframe">,
     planCode: PlanModel["code"]
@@ -172,16 +142,54 @@ export class PlanResource extends BaseResource<PlanModel> {
     return new Ok(undefined);
   }
 
-  // This function is used to reset the plan with new data.
+  // update the plan with new data.
   async update(
     planData: Omit<Attributes<PlanModel>, "id" | "createdAt" | "updatedAt">
   ): Promise<[affectedCount: number]> {
-    return this.update(planData);
+    return this.model.update(planData, {
+      where: {
+        id: this.id,
+      },
+    });
   }
 
   // Serialization.
-
   toJSON(): PlanType {
-    return renderPlanFromAttributes(this);
+    return {
+      code: this.code,
+      name: this.name,
+      limits: {
+        assistant: {
+          isSlackBotAllowed: this.isSlackbotAllowed,
+          maxMessages: this.maxMessages,
+          maxMessagesTimeframe: this.maxMessagesTimeframe,
+        },
+        connections: {
+          isConfluenceAllowed: this.isManagedConfluenceAllowed,
+          isSlackAllowed: this.isManagedSlackAllowed,
+          isNotionAllowed: this.isManagedNotionAllowed,
+          isGoogleDriveAllowed: this.isManagedGoogleDriveAllowed,
+          isGithubAllowed: this.isManagedGithubAllowed,
+          isIntercomAllowed: this.isManagedIntercomAllowed,
+          isWebCrawlerAllowed: this.isManagedWebCrawlerAllowed,
+          isSalesforceAllowed: this.isManagedSalesforceAllowed,
+        },
+        dataSources: {
+          count: this.maxDataSourcesCount,
+          documents: {
+            count: this.maxDataSourcesDocumentsCount,
+            sizeMb: this.maxDataSourcesDocumentsSizeMb,
+          },
+        },
+        users: {
+          maxUsers: this.maxUsersInWorkspace,
+        },
+        vaults: {
+          maxVaults: this.maxVaultsInWorkspace,
+        },
+        canUseProduct: this.canUseProduct,
+      },
+      trialPeriodDays: this.trialPeriodDays,
+    };
   }
 }
