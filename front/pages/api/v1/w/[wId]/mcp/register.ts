@@ -1,3 +1,4 @@
+import type { RegisterMCPResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { registerMCPServer } from "@app/lib/api/actions/mcp/local_registry";
@@ -60,9 +61,7 @@ import { isValidUUIDv4 } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<{ success: boolean; expiresAt: string }>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<RegisterMCPResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   // Extract the client-provided server ID.

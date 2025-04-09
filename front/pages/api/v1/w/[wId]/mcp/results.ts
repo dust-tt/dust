@@ -1,3 +1,4 @@
+import type { PostMCPResultsResponseType } from "@dust-tt/client";
 import { PublicPostMCPResultsRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
@@ -74,7 +75,7 @@ import { isValidUUIDv4 } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<{ success: true }>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostMCPResultsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   // Extract the client-provided server ID.
