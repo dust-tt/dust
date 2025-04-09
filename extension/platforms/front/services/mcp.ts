@@ -1,29 +1,9 @@
+import { registerAllTools } from "@app/platforms/front/tools";
 import { McpService } from "@app/shared/services/mcp";
 import { DustMcpServerTransport } from "@app/shared/services/transport";
 import type { DustAPI } from "@dust-tt/client";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
-
-const FrontCreateDraftToolArgsSchema = z.object({
-  to: z.array(z.string()).describe("The email addresses of the recipients."),
-  subject: z
-    .string()
-    .describe(
-      "The subject line of the email. If not provided, the subject line of the original " +
-        "message will be used."
-    )
-    .optional(),
-  content: z
-    .object({
-      type: z.enum(["text", "html"]),
-      body: z.string().describe("The body of the email."),
-    })
-    .describe(
-      "The content of the email. Specify the type and body of the email."
-    )
-    .optional(),
-});
 
 /**
  * Front-specific implementation of the MCP service
@@ -58,54 +38,8 @@ export class FrontMcpService extends McpService {
         version: "1.0.0",
       });
 
-      // Register a tool to create an email draft in the current Front conversation.
-      server.tool(
-        "front-create-email-reply-draft",
-        "Creates a draft email reply in the current Front conversation. The message will\n" +
-          "be saved as a draft, ready for human review. Supports specifying recipients,\n" +
-          "subject line, and message content in either text or HTML format.",
-        {
-          draft: FrontCreateDraftToolArgsSchema,
-        },
-        async ({ draft }) => {
-          console.log(`Creating draft in Front: ${draft.to}`);
-
-          if (this.frontContext?.type !== "singleConversation") {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: "Not in a single conversation",
-                },
-              ],
-            };
-          }
-
-          try {
-            const messages = await this.frontContext.listMessages();
-            const lastMessage = messages.results[messages.results.length - 1];
-
-            await this.frontContext.createDraft({
-              ...draft,
-              replyOptions: {
-                type: "reply",
-                originalMessageId: lastMessage.id,
-              },
-            });
-
-            return {
-              content: [{ type: "text", text: "Draft created successfully" }],
-            };
-          } catch (error) {
-            console.error("Error creating draft in Front:", error);
-            return {
-              content: [
-                { type: "text", text: `Error creating draft: ${error}` },
-              ],
-            };
-          }
-        }
-      );
+      // Register all tools with the server.
+      registerAllTools(server, this.frontContext);
 
       this.server = server;
       return server;
