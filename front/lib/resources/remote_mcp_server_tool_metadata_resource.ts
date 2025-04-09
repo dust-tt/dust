@@ -141,7 +141,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     assert(
       systemSpace.canWrite(auth),
       "The user is not authorized to update a tool metadata"
-    );gs
+    );
 
     const toolMetadata = await this.fetchByServerIdAndToolName(auth, {
       serverId,
