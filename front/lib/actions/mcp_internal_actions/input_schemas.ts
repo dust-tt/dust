@@ -64,7 +64,7 @@ export type ConfigurableToolInputType = z.infer<
  * Mapping between the mime types we used to identify a configurable resource
  * and the JSON schema resulting from the Zod schema defined above.
  */
-const ConfigurableToolInputJSONSchemas = Object.fromEntries(
+export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
   Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
     key,
     zodToJsonSchema(schema),
