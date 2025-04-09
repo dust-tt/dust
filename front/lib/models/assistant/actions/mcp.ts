@@ -42,9 +42,17 @@ AgentMCPServerConfiguration.init(
       type: DataTypes.JSONB,
       allowNull: false,
       validate: {
-        isValidContent(value: unknown) {
-          if (!value || typeof value !== "object") {
-            throw new Error("Content must be an object");
+        isValidJSON(value: string) {
+          if (value) {
+            let parsed;
+            try {
+              parsed = JSON.parse(value);
+            } catch (e) {
+              throw new Error("Response format is invalid JSON");
+            }
+            if (parsed && typeof parsed !== "object") {
+              throw new Error("Response format is invalid JSON");
+            }
           }
         },
       },
