@@ -64,7 +64,7 @@ const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
-// nor updating it (responsability of the caller based on the emitted events).
+// nor updating it (responsibility of the caller based on the emitted events).
 export async function* runAgent(
   auth: Authenticator,
   configuration: LightAgentConfigurationType,
