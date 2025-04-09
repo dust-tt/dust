@@ -2,7 +2,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { PersonalDataSourceConnection } from "@app/lib/models/personal_data_source_connection";
+import { LabsPersonalDataSourceConnection } from "@app/lib/models/labs_personal_data_source_connection";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
@@ -193,7 +193,7 @@ export class UserResource extends BaseResource<UserModel> {
   ): Promise<Result<undefined, Error>> {
     await this.deleteAllMetadata();
 
-    await PersonalDataSourceConnection.destroy({
+    await LabsPersonalDataSourceConnection.destroy({
       where: {
         userId: this.id,
       },
