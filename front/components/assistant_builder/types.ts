@@ -130,6 +130,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
+  additionalConfiguration: Record<string, boolean>;
 };
 
 // Builder State
@@ -369,6 +370,7 @@ export function getDefaultMCPServerActionConfiguration(): AssistantBuilderAction
       dataSourceConfigurations: null,
       tablesConfigurations: null,
       childAgentId: null,
+      additionalConfiguration: {},
     },
     name: DEFAULT_MCP_ACTION_NAME,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,

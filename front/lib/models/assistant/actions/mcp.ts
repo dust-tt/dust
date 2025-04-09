@@ -17,6 +17,8 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare sId: string;
 
+  declare additionalConfiguration: Record<string, boolean>;
+
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
 }
 
@@ -35,6 +37,17 @@ AgentMCPServerConfiguration.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    additionalConfiguration: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      validate: {
+        isValidContent(value: unknown) {
+          if (!value || typeof value !== "object") {
+            throw new Error("Content must be an object");
+          }
+        },
+      },
     },
     mcpServerViewId: {
       type: DataTypes.BIGINT,
