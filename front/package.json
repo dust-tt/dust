@@ -24,6 +24,7 @@
     "@dust-tt/client": "file:../sdks/js",
     "@dust-tt/sparkle": "^0.2.508",
     "@google-cloud/bigquery": "^7.9.1",
+    "@google-cloud/storage": "^7.11.2",
     "@google-cloud/storage-transfer": "^3.6.0",
     "@heroicons/react": "^2.0.11",
     "@hookform/resolvers": "^3.3.4",
@@ -142,7 +143,6 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^9.3.0",
-    "@google-cloud/storage": "^7.11.2",
     "@redocly/openapi-cli": "^1.0.0-beta.95",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
