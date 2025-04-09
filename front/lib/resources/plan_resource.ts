@@ -138,14 +138,10 @@ export class PlanResource extends BaseResource<PlanModel> {
   }
 
   // update the plan with new data.
-  async update(
+  async setPlanData(
     planData: Omit<Attributes<PlanModel>, "id" | "createdAt" | "updatedAt">
   ): Promise<[affectedCount: number]> {
-    return this.model.update(planData, {
-      where: {
-        id: this.id,
-      },
-    });
+    return this.update(planData);
   }
 
   // Serialization.
