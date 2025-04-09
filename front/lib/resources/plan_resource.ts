@@ -127,14 +127,10 @@ export class PlanResource extends BaseResource<PlanModel> {
   }
 
   // set the message limits for a given plan.
-  static async setMessageLimitsForPlan(
-    data: Pick<Attributes<PlanModel>, "maxMessages" | "maxMessagesTimeframe">,
-    planCode: PlanModel["code"]
-  ): Promise<Result<undefined, Error>> {
-    await this.model.update(data, {
-      where: { code: planCode },
-    });
-    return new Ok(undefined);
+  async setMessageLimitsForPlan(
+    data: Pick<Attributes<PlanModel>, "maxMessages" | "maxMessagesTimeframe">
+  ): Promise<[affectedCount: number]> {
+    return this.update(data);
   }
 
   // update the plan with new data.
