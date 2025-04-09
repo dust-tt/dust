@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -20,7 +20,7 @@ export class MCPServerConnection extends WorkspaceAwareModel<MCPServerConnection
 
   declare internalMCPServerId: string | null;
 
-  declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]> | null;
+  declare remoteMCPServerId: ForeignKey<RemoteMCPServerModel["id"]> | null;
 
   declare user: NonAttribute<UserModel>;
 }
@@ -60,7 +60,7 @@ MCPServerConnection.init(
       type: DataTypes.BIGINT,
       allowNull: true,
       references: {
-        model: RemoteMCPServer,
+        model: RemoteMCPServerModel,
         key: "id",
       },
     },
@@ -115,11 +115,11 @@ MCPServerConnection.init(
   }
 );
 
-RemoteMCPServer.hasMany(MCPServerConnection, {
+RemoteMCPServerModel.hasMany(MCPServerConnection, {
   foreignKey: { name: "remoteMCPServerId", allowNull: true },
   onDelete: "RESTRICT",
 });
-MCPServerConnection.belongsTo(RemoteMCPServer, {
+MCPServerConnection.belongsTo(RemoteMCPServerModel, {
   foreignKey: { name: "remoteMCPServerId", allowNull: true },
 });
 

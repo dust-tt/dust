@@ -10,4 +10,4 @@ CREATE TABLE IF NOT EXISTS "remote_mcp_server_tool_metadata" (
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "remote_mcp_server_tool_metadata_workspace_id_remote_m_c_p_server_id_tool_name" ON "remote_mcp_server_tool_metadata" ("workspaceId", "remoteMCPServerId", "toolName");
+CREATE UNIQUE INDEX "remote_mcp_server_tool_metadata_wid_serverid_tool_name" ON "remote_mcp_server_tool_metadata" ("workspaceId", "remoteMCPServerId", "toolName");

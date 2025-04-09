@@ -1,4 +1,4 @@
-import { assert } from "console";
+import assert from "assert";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -17,7 +17,7 @@ import {
   extractMetadataFromTools,
 } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -82,7 +82,7 @@ export class InternalMCPServerInMemoryResource {
       })
     );
 
-    await MCPServerView.create(
+    await MCPServerViewModel.create(
       {
         workspaceId: auth.getNonNullableWorkspace().id,
         serverType: "internal",
@@ -98,7 +98,7 @@ export class InternalMCPServerInMemoryResource {
   }
 
   async delete(auth: Authenticator) {
-    const mcpServerViews = await MCPServerView.findAll({
+    const mcpServerViews = await MCPServerViewModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         internalMCPServerId: this.id,
@@ -115,7 +115,7 @@ export class InternalMCPServerInMemoryResource {
       { concurrency: 10 }
     );
 
-    await MCPServerView.destroy({
+    await MCPServerViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         internalMCPServerId: this.id,
@@ -127,7 +127,7 @@ export class InternalMCPServerInMemoryResource {
   static async fetchById(auth: Authenticator, id: string) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    const server = await MCPServerView.findOne({
+    const server = await MCPServerViewModel.findOne({
       attributes: ["internalMCPServerId"],
       where: {
         serverType: "internal",
@@ -179,7 +179,7 @@ export class InternalMCPServerInMemoryResource {
     // In case of internal MCP servers, we list the ones that have a view in the system space.
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    const servers = await MCPServerView.findAll({
+    const servers = await MCPServerViewModel.findAll({
       attributes: ["internalMCPServerId"],
       where: {
         serverType: "internal",

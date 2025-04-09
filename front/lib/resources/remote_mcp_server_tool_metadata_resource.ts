@@ -1,4 +1,4 @@
-import { assert } from "console";
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -6,31 +6,31 @@ import type {
   Transaction,
 } from "sequelize";
 
-import type { MCPToolPermissionType } from "@app/lib/actions/mcp_metadata";
+import type { MCPToolPermissionLevelType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { RemoteMCPServerToolMetadata } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPServerToolMetadata> {
-  static model: ModelStatic<RemoteMCPServerToolMetadata> =
-    RemoteMCPServerToolMetadata;
+export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPServerToolMetadataModel> {
+  static model: ModelStatic<RemoteMCPServerToolMetadataModel> =
+    RemoteMCPServerToolMetadataModel;
 
   constructor(
-    model: typeof RemoteMCPServerToolMetadata,
-    blob: Attributes<RemoteMCPServerToolMetadata>
+    model: typeof RemoteMCPServerToolMetadataModel,
+    blob: Attributes<RemoteMCPServerToolMetadataModel>
   ) {
-    super(RemoteMCPServerToolMetadata, blob);
+    super(RemoteMCPServerToolMetadataModel, blob);
   }
 
   // Creation
 
   static async makeNew(
     auth: Authenticator,
-    blob: CreationAttributes<RemoteMCPServerToolMetadata>,
+    blob: CreationAttributes<RemoteMCPServerToolMetadataModel>,
     transaction?: Transaction
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -41,40 +41,45 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
     const toolMetadata = await this.model.create(blob, { transaction });
 
-    return new this(RemoteMCPServerToolMetadata, toolMetadata.get());
+    return new this(RemoteMCPServerToolMetadataModel, toolMetadata.get());
   }
 
   // Fetch
 
   private static async baseFetch(
     auth: Authenticator,
-    options: ResourceFindOptions<RemoteMCPServerToolMetadata>
+    options: ResourceFindOptions<RemoteMCPServerToolMetadataModel>
   ) {
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    assert(systemSpace.canAdministrate(auth),
+      "The user is not authorized to fetch tool metadata"
+    );
+
     const { where, ...opts } = options;
 
-    const toolMetadata = await RemoteMCPServerToolMetadata.findAll({
+    const toolMetadata = await RemoteMCPServerToolMetadataModel.findAll({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
         ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       ...opts,
     });
 
     return toolMetadata.map(
-      (tool) => new this(RemoteMCPServerToolMetadata, tool.get())
+      (tool) => new this(RemoteMCPServerToolMetadataModel, tool.get())
     );
   }
 
   static async fetchByServerId(
     auth: Authenticator,
     serverId: string,
-    options?: ResourceFindOptions<RemoteMCPServerToolMetadata>
+    options?: ResourceFindOptions<RemoteMCPServerToolMetadataModel>
   ): Promise<RemoteMCPServerToolMetadataResource[]> {
     return this.baseFetch(auth, {
+      ...options,
       where: {
         remoteMCPServerId: serverId,
       },
-      ...options,
     });
   }
 
@@ -87,14 +92,14 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
       serverId: string;
       toolName: string;
     },
-    options?: ResourceFindOptions<RemoteMCPServerToolMetadata>
+    options?: ResourceFindOptions<RemoteMCPServerToolMetadataModel>
   ): Promise<RemoteMCPServerToolMetadataResource | null> {
     const toolMetadata = await this.baseFetch(auth, {
+      ...options,
       where: {
         remoteMCPServerId: serverId,
         toolName,
       },
-      ...options,
     });
 
     if (toolMetadata.length === 0) {
@@ -106,7 +111,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
   // Update
 
-  async setPermission(auth: Authenticator, permission: MCPToolPermissionType) {
+  async setPermission(auth: Authenticator, permission: MCPToolPermissionLevelType) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
     assert(
       systemSpace.canWrite(auth),
@@ -130,7 +135,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
       "The user is not authorized to delete a tool metadata"
     );
 
-    const result = await RemoteMCPServerToolMetadata.destroy({
+    const result = await RemoteMCPServerToolMetadataModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,

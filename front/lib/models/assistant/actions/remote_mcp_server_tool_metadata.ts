@@ -1,21 +1,21 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { MCPToolPermissionType } from "@app/lib/actions/mcp_metadata";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import type { MCPToolPermissionLevelType } from "@app/lib/actions/mcp_metadata";
+import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class RemoteMCPServerToolMetadata extends WorkspaceAwareModel<RemoteMCPServerToolMetadata> {
+export class RemoteMCPServerToolMetadataModel extends WorkspaceAwareModel<RemoteMCPServerToolMetadataModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]>;
+  declare remoteMCPServerId: ForeignKey<RemoteMCPServerModel["id"]>;
   declare toolName: string;
-  declare permission: MCPToolPermissionType;
+  declare permission: MCPToolPermissionLevelType;
 }
 
-RemoteMCPServerToolMetadata.init(
+RemoteMCPServerToolMetadataModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -31,7 +31,7 @@ RemoteMCPServerToolMetadata.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: RemoteMCPServer,
+        model: RemoteMCPServerModel,
         key: "id",
       },
     },
@@ -51,17 +51,18 @@ RemoteMCPServerToolMetadata.init(
       {
         unique: true,
         fields: ["workspaceId", "remoteMCPServerId", "toolName"],
+        name: "remote_mcp_server_tool_metadata_wid_serverid_tool_name"
       },
     ],
   }
 );
 
-RemoteMCPServerToolMetadata.belongsTo(RemoteMCPServer, {
+RemoteMCPServerToolMetadataModel.belongsTo(RemoteMCPServerModel, {
   foreignKey: { allowNull: false, name: "remoteMCPServerId" },
   onDelete: "RESTRICT",
 });
 
-RemoteMCPServer.hasMany(RemoteMCPServerToolMetadata, {
+RemoteMCPServerModel.hasMany(RemoteMCPServerToolMetadataModel, {
   foreignKey: "remoteMCPServerId",
   onDelete: "RESTRICT",
 });

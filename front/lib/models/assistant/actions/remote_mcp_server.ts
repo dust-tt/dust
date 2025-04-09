@@ -11,7 +11,7 @@ import type {
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
+export class RemoteMCPServerModel extends WorkspaceAwareModel<RemoteMCPServerModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -30,7 +30,7 @@ export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
   declare authorization: AuthorizationInfo | null;
 }
 
-RemoteMCPServer.init(
+RemoteMCPServerModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -94,7 +94,7 @@ RemoteMCPServer.init(
     sequelize: frontSequelize,
     modelName: "remote_mcp_server",
     hooks: {
-      beforeValidate: (server: RemoteMCPServer) => {
+      beforeValidate: (server: RemoteMCPServerModel) => {
         if (server.icon && !isAllowedIconType(server.icon)) {
           throw new Error(`Invalid icon type: ${server.icon}`);
         }
