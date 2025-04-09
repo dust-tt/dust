@@ -1,3 +1,4 @@
+import { normalizeError } from "@app/shared/lib/utils";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -28,7 +29,7 @@ export function registerNewConversationDraftTool(
 ): void {
   server.tool(
     "front-create-new-conversation-draft",
-    "Creates a new conversation draft in Front. This is different from a reply draft as it\n" +
+    "Creates a new conversation draft in Front email client. This is different from a reply draft as it\n" +
       "creates a completely new conversation rather than replying to an existing one.\n" +
       "The message will be saved as a draft, ready for human review.",
     {
@@ -66,7 +67,7 @@ export function registerNewConversationDraftTool(
           content: [
             {
               type: "text",
-              text: `Error creating new conversation draft: ${error}`,
+              text: `Error creating new conversation draft: ${normalizeError(error)}`,
             },
           ],
         };

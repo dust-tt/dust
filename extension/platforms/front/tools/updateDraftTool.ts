@@ -1,3 +1,4 @@
+import { normalizeError } from "@app/shared/lib/utils";
 import type { ApplicationDraftUpdate } from "@frontapp/plugin-sdk";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -33,7 +34,7 @@ export function registerUpdateDraftTool(
 ): void {
   server.tool(
     "front-update-draft",
-    "Updates an existing draft in Front. This allows modifying the recipients,\n" +
+    "Updates an existing draft in Front email client. This allows modifying the recipients,\n" +
       "subject line, or content of an existing draft. Only the fields that are\n" +
       "provided will be updated.",
     {
@@ -78,7 +79,12 @@ export function registerUpdateDraftTool(
       } catch (error) {
         console.error("Error updating draft in Front:", error);
         return {
-          content: [{ type: "text", text: `Error updating draft: ${error}` }],
+          content: [
+            {
+              type: "text",
+              text: `Error updating draft: ${normalizeError(error)}`,
+            },
+          ],
         };
       }
     }

@@ -1,3 +1,4 @@
+import { normalizeError } from "@app/shared/lib/utils";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -34,9 +35,10 @@ export function registerEmailDraftTool(
 ): void {
   server.tool(
     "front-create-email-reply-draft",
-    "Creates a draft email reply in the current Front conversation. The message will\n" +
+    "Creates a draft email reply in the current Front email client conversation. The message will\n" +
       "be saved as a draft, ready for human review. Supports specifying recipients,\n" +
-      "subject line, and message content in either text or HTML format.",
+      "subject line, and message content in either text or HTML format. Do not use this tool\n" +
+      "for creating new conversations.",
     {
       draft: FrontCreateDraftToolArgsSchema,
     },
@@ -75,7 +77,12 @@ export function registerEmailDraftTool(
       } catch (error) {
         console.error("Error creating draft in Front:", error);
         return {
-          content: [{ type: "text", text: `Error creating draft: ${error}` }],
+          content: [
+            {
+              type: "text",
+              text: `Error creating draft: ${normalizeError(error)}`,
+            },
+          ],
         };
       }
     }
