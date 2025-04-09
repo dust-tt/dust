@@ -87,7 +87,7 @@ export const upsertProPlans = async () => {
       await PlanResource.makeNew(planData);
       console.log(`Pro plan ${planData.code} created.`);
     } else {
-      await plan.updateByPlanCode(planData.code, planData);
+      await plan.update(planData);
       console.log(`Pro plan ${planData.code} updated.`);
     }
   }

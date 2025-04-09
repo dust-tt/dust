@@ -84,6 +84,7 @@ async function handler(
       // Ensure that the stripe subscription is either attached to the current workspace
       // or is not attached to any workspace.
       const subscription = await SubscriptionResource.fetchByStripeId(
+        auth,
         stripeSubscription.id
       );
       const currentWorkspaceSubscription = auth.subscription();

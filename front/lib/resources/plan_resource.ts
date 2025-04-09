@@ -12,33 +12,14 @@ import { PlanModel } from "@app/lib/resources/storage/models/plans";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { PlanType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Ok } from "@app/types";
 
 export type PlanAttributes = Omit<
   Attributes<PlanModel>,
   "id" | "createdAt" | "updatedAt"
 >;
 
-// These limits are applied to all plans during the trial period.
-export const TRIAL_LIMITS: Partial<PlanAttributes> = {
-  maxUsersInWorkspace: 5,
-  maxMessages: 100,
-  maxMessagesTimeframe: "day",
-};
-
-export function getTrialVersionForPlan(plan: PlanModel): PlanAttributes {
-  return {
-    ...plan.get(),
-    ...TRIAL_LIMITS,
-  };
-}
-
-// Helper function to render PlanType from PlanAttributes
-export function renderPlanFromAttributes({
-  plan,
-}: {
-  plan: PlanAttributes;
-}): PlanType {
+export function renderPlanFromAttributes(plan: PlanAttributes): PlanType {
   return {
     code: plan.code,
     name: plan.name,
@@ -77,6 +58,20 @@ export function renderPlanFromAttributes({
   };
 }
 
+// These limits are applied to all plans during the trial period.
+export const TRIAL_LIMITS: Partial<PlanAttributes> = {
+  maxUsersInWorkspace: 5,
+  maxMessages: 100,
+  maxMessagesTimeframe: "day",
+};
+
+export function getTrialVersionForPlan(plan: PlanModel): PlanModel {
+  return PlanModel.build({
+    ...plan.get(),
+    ...TRIAL_LIMITS,
+  });
+}
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -88,6 +83,10 @@ export class PlanResource extends BaseResource<PlanModel> {
 
   constructor(model: ModelStatic<PlanModel>, blob: Attributes<PlanModel>) {
     super(PlanModel, blob);
+  }
+
+  static fromModel(plan: PlanModel) {
+    return new PlanResource(PlanModel, plan.get());
   }
 
   static async makeNew(blob: CreationAttributes<PlanModel>) {
@@ -167,32 +166,22 @@ export class PlanResource extends BaseResource<PlanModel> {
     data: Pick<Attributes<PlanModel>, "maxMessages" | "maxMessagesTimeframe">,
     planCode: PlanModel["code"]
   ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.update(data, {
-        where: { code: planCode },
-      });
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    await this.model.update(data, {
+      where: { code: planCode },
+    });
+    return new Ok(undefined);
   }
 
   // This function is used to reset the plan with new data.
-  async updateByPlanCode(
-    planCode: string,
+  async update(
     planData: Omit<Attributes<PlanModel>, "id" | "createdAt" | "updatedAt">
-  ): Promise<Result<undefined, Error>> {
-    await this.model.update(planData, {
-      where: {
-        code: planCode,
-      },
-    });
-    return new Ok(undefined);
+  ): Promise<[affectedCount: number]> {
+    return this.update(planData);
   }
 
   // Serialization.
 
   toJSON(): PlanType {
-    return renderPlanFromAttributes({ plan: this });
+    return renderPlanFromAttributes(this);
   }
 }
