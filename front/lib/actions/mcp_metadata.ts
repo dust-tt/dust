@@ -13,74 +13,21 @@ import {
 } from "@app/lib/actions/constants";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_local";
 import apiConfig from "@app/lib/api/config";
+import type {
+  MCPServerDefinitionType,
+  MCPServerType,
+  MCPToolType,
+} from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { EditedByUser, OAuthProvider, OAuthUseCase } from "@app/types";
+import type { OAuthProvider, OAuthUseCase } from "@app/types";
 import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
-
-export type MCPToolType = {
-  name: string;
-  description: string;
-  inputSchema: JSONSchema | undefined;
-};
-
-export type MCPToolWithIsDefaultType = MCPToolType & {
-  isDefault: boolean;
-};
-
-export type MCPServerType = {
-  id: string;
-  name: string;
-  version: string;
-  description: string;
-  icon: AllowedIconType;
-  authorization: AuthorizationInfo | null;
-  tools: MCPToolType[];
-  isDefault: boolean;
-};
-
-export type RemoteMCPServerType = MCPServerType & {
-  url?: string;
-  cachedName?: string;
-  cachedDescription?: string | null;
-  sharedSecret?: string;
-  lastSyncAt?: Date | null;
-};
-
-export interface MCPServerViewType {
-  id: string;
-  createdAt: number;
-  updatedAt: number;
-  spaceId: string;
-  server: MCPServerType;
-  editedByUser: EditedByUser | null;
-}
-
-export type MCPServerDefinitionType = Omit<
-  MCPServerType,
-  "tools" | "id" | "isDefault"
->;
-
-type InternalMCPServerType = MCPServerType & {
-  name: InternalMCPServerNameType;
-};
-
-export type InternalMCPServerDefinitionType = Omit<
-  InternalMCPServerType,
-  "tools" | "id" | "isDefault"
->;
-
-export type MCPServerTypeWithViews = MCPServerType & {
-  views: MCPServerViewType[];
-};
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;

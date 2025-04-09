@@ -898,9 +898,12 @@ export type WebsearchActionPublicType = z.infer<
 
 const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
+  functionCallName: z.string().nullable(),
   params: z.unknown(),
   type: z.literal("tool_action"),
 });
+
+export type MCPActionPublicType = z.infer<typeof MCPActionTypeSchema>;
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "active"
@@ -1824,15 +1827,6 @@ export const PostMessageFeedbackResponseSchema = z.object({
   success: z.literal(true),
 });
 
-export const PublicPostMCPResultsRequestBodySchema = z.object({
-  requestId: z.string(),
-  result: z.unknown(),
-});
-
-export type PublicPostMCPResultsRequestBody = z.infer<
-  typeof PublicPostMCPResultsRequestBodySchema
->;
-
 export const PostUserMessageResponseSchema = z.object({
   message: UserMessageSchema,
 });
@@ -2694,19 +2688,6 @@ export const GetSpacesResponseSchema = z.object({
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
-const ValidateActionResponseSchema = z.object({
-  success: z.boolean(),
-});
-
-export type ValidateActionResponseType = z.infer<
-  typeof ValidateActionResponseSchema
->;
-
-export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.number(),
-  approved: z.boolean(),
-});
-
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,
   spaceIds: z.array(z.string()),
@@ -2815,3 +2796,55 @@ export const ACTION_RUNNING_LABELS: Record<
   websearch_action: "Searching the web",
   tool_action: "Calling MCP Server",
 };
+
+// MCP Related.
+
+export const ValidateActionResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type ValidateActionResponseType = z.infer<
+  typeof ValidateActionResponseSchema
+>;
+
+export const ValidateActionRequestBodySchema = z.object({
+  actionId: z.number(),
+  approved: z.boolean(),
+});
+
+export type ValidateActionRequestBodyType = z.infer<
+  typeof ValidateActionRequestBodySchema
+>;
+
+export const RegisterMCPResponseSchema = z.object({
+  success: z.boolean(),
+  expiresAt: z.string(),
+});
+
+export type RegisterMCPResponseType = z.infer<typeof RegisterMCPResponseSchema>;
+
+export const HeartbeatMCPResponseSchema = z.object({
+  success: z.boolean(),
+  expiresAt: z.string(),
+});
+
+export type HeartbeatMCPResponseType = z.infer<
+  typeof HeartbeatMCPResponseSchema
+>;
+
+export const PublicPostMCPResultsRequestBodySchema = z.object({
+  requestId: z.string(),
+  result: z.unknown(),
+});
+
+export type PublicPostMCPResultsRequestBody = z.infer<
+  typeof PublicPostMCPResultsRequestBodySchema
+>;
+
+export const PostMCPResultsResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type PostMCPResultsResponseType = z.infer<
+  typeof PostMCPResultsResponseSchema
+>;
