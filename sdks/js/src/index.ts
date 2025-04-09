@@ -1243,7 +1243,7 @@ export class DustAPI {
     return this._resultFromResponse(ValidateActionResponseSchema, res);
   }
 
-  async registerMcpServer({
+  async registerMCPServer({
     serverId,
   }: {
     serverId: string;
@@ -1259,7 +1259,7 @@ export class DustAPI {
     return this._resultFromResponse(RegisterMCPResponseSchema, res);
   }
 
-  async heartbeatMcpServer({
+  async heartbeatMCPServer({
     serverId,
   }: {
     serverId: string;
