@@ -899,6 +899,7 @@ async function* runAction(
         rawInputs: inputs,
         functionCallId,
         step,
+        userMessage,
       },
       {
         stepActionIndex,
@@ -977,6 +978,7 @@ async function* runAction(
         rawInputs: inputs,
         functionCallId,
         step,
+        userMessage,
       },
       {
         spec: specification,
@@ -1032,6 +1034,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {
@@ -1131,6 +1134,7 @@ async function* runAction(
         rawInputs: inputs,
         functionCallId,
         step,
+        userMessage,
       },
       {
         stepActionIndex,
@@ -1185,6 +1189,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {
@@ -1233,6 +1238,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {
@@ -1281,6 +1287,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {
@@ -1324,6 +1331,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {
@@ -1374,6 +1382,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      userMessage,
     });
 
     for await (const event of eventStream) {

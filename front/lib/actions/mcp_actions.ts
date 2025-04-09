@@ -32,6 +32,7 @@ import type {
   AgentConfigurationType,
   ConversationType,
   Result,
+  UserMessageType,
 } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
@@ -151,6 +152,7 @@ export async function tryCallMCPTool(
     actionConfiguration,
     inputs,
     getAgentConfiguration,
+    userMessage,
   }: {
     conversation: ConversationType;
     messageId: string;
@@ -160,6 +162,7 @@ export async function tryCallMCPTool(
       auth: Authenticator,
       agentId: string
     ) => Promise<AgentConfigurationType | null>;
+    userMessage: UserMessageType;
   }
 ): Promise<Result<MCPToolResultContent[], Error>> {
   const connectionParamsRes = await getMCPClientConnectionParams(
@@ -180,7 +183,8 @@ export async function tryCallMCPTool(
       auth,
       connectionParamsRes.value,
       conversation,
-      getAgentConfiguration
+      getAgentConfiguration,
+      userMessage
     );
 
     const toolCallResult = await mcpClient.callTool(

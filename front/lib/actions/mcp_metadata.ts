@@ -33,6 +33,7 @@ import type {
   ConversationType,
   OAuthProvider,
   OAuthUseCase,
+  UserMessageType,
 } from "@app/types";
 import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
@@ -98,11 +99,18 @@ async function connectToInternalMCPServer(
   mcpServerId: string,
   transport: InMemoryTransport,
   auth: Authenticator,
-  conversation?: ConversationType,
-  getAgentConfiguration?: (
-    auth: Authenticator,
-    agentId: string
-  ) => Promise<AgentConfigurationType | null>
+  {
+    conversation,
+    getAgentConfiguration,
+    userMessage,
+  }: {
+    conversation?: ConversationType;
+    getAgentConfiguration?: (
+      auth: Authenticator,
+      agentId: string
+    ) => Promise<AgentConfigurationType | null>;
+    userMessage?: UserMessageType;
+  }
 ): Promise<McpServer> {
   const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
   if (res.isErr()) {
@@ -115,6 +123,7 @@ async function connectToInternalMCPServer(
     mcpServerId,
     conversation,
     getAgentConfiguration,
+    userMessage,
   });
 
   await server.connect(transport);
@@ -129,7 +138,8 @@ export const connectToMCPServer = async (
   getAgentConfiguration?: (
     auth: Authenticator,
     agentId: string
-  ) => Promise<AgentConfigurationType | null>
+  ) => Promise<AgentConfigurationType | null>,
+  userMessage?: UserMessageType
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -147,13 +157,11 @@ export const connectToMCPServer = async (
           // Create a pair of linked in-memory transports
           // And connect the client to the server.
           const [client, server] = InMemoryTransport.createLinkedPair();
-          await connectToInternalMCPServer(
-            params.mcpServerId,
-            server,
-            auth,
+          await connectToInternalMCPServer(params.mcpServerId, server, auth, {
             conversation,
-            getAgentConfiguration
-          );
+            getAgentConfiguration,
+            userMessage,
+          });
           await mcpClient.connect(client);
           break;
 

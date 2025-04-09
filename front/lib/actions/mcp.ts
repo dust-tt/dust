@@ -228,6 +228,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       agentConfiguration,
       conversation,
       agentMessage,
+      userMessage,
       rawInputs,
       functionCallId,
       step,
@@ -424,6 +425,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       getAgentConfiguration: async (auth, agentId) =>
         getAgentConfiguration(auth, agentId, "full"),
       inputs,
+      userMessage,
     });
 
     if (r.isErr()) {
