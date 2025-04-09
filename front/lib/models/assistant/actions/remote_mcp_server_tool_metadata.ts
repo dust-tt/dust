@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { MCPToolPermissionLevelType } from "@app/lib/actions/mcp_metadata";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -12,7 +12,7 @@ export class RemoteMCPServerToolMetadataModel extends WorkspaceAwareModel<Remote
 
   declare remoteMCPServerId: ForeignKey<RemoteMCPServerModel["id"]>;
   declare toolName: string;
-  declare permission: MCPToolPermissionLevelType;
+  declare permission: MCPToolStakeLevelType;
 }
 
 RemoteMCPServerToolMetadataModel.init(
