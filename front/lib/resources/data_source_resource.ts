@@ -11,7 +11,7 @@ import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { PersonalConnection } from "@app/lib/models/personal_connection";
+import { PersonalDataSourceConnection } from "@app/lib/models/personal_data_source_connection";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -448,7 +448,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       hardDelete: true,
     });
 
-    await PersonalConnection.destroy({
+    await PersonalDataSourceConnection.destroy({
       where: {
         dataSourceId: this.id,
       },
@@ -547,7 +547,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   // Personal connection logic.
 
   async getPersonalConnection(auth: Authenticator) {
-    const conn = await PersonalConnection.findOne({
+    const conn = await PersonalDataSourceConnection.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: this.id,
@@ -566,7 +566,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       connectionId: string;
     }
   ) {
-    const conn = await PersonalConnection.create({
+    const conn = await PersonalDataSourceConnection.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       dataSourceId: this.id,
       userId: auth.user()?.id,
@@ -577,7 +577,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   }
 
   async removePersonalConnection(auth: Authenticator) {
-    const conn = await PersonalConnection.findOne({
+    const conn = await PersonalDataSourceConnection.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: this.id,

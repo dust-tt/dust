@@ -6,7 +6,7 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class PersonalConnection extends WorkspaceAwareModel<PersonalConnection> {
+export class PersonalDataSourceConnection extends WorkspaceAwareModel<PersonalDataSourceConnection> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -14,7 +14,7 @@ export class PersonalConnection extends WorkspaceAwareModel<PersonalConnection> 
   declare userId: ForeignKey<UserModel["id"]> | null;
   declare dataSourceId: ForeignKey<DataSourceModel["id"]> | null;
 }
-PersonalConnection.init(
+PersonalDataSourceConnection.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -32,7 +32,7 @@ PersonalConnection.init(
     },
   },
   {
-    modelName: "personal_connection",
+    modelName: "personal_ds_connection",
     sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId", "userId", "dataSourceId"], unique: true },
@@ -40,10 +40,10 @@ PersonalConnection.init(
   }
 );
 
-UserModel.hasMany(PersonalConnection, {
+UserModel.hasMany(PersonalDataSourceConnection, {
   foreignKey: "userId",
 });
 
-DataSourceModel.hasMany(PersonalConnection, {
+DataSourceModel.hasMany(PersonalDataSourceConnection, {
   foreignKey: "dataSourceId",
 });
