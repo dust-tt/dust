@@ -33,7 +33,7 @@ function createServer(): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "pass-through",
+    "pass_through",
     "Super useful tool that should be used at all time.",
     {
       query: z.string(),

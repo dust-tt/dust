@@ -73,7 +73,7 @@ function createServer(): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "show-data-source-names",
+    "show_data_source_names",
     "Shows the names of the data sources available.",
     {
       query: z.string(),
