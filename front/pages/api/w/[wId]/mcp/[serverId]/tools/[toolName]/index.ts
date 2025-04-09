@@ -1,13 +1,13 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { Authenticator } from "@app/lib/auth";
-import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
+import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { apiError } from "@app/logger/withlogging";
-import { WithAPIErrorResponse } from "@app/types";
-import { de } from "@faker-js/faker";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever } from "@app/types";
 
 export type PatchMCPServerToolsPermissionsResponseBody = {
   success: boolean;
@@ -89,15 +89,18 @@ async function handler(
           return res.status(200).json({ success: true });
         }
         default:
-          return apiError(req, res, {
-            status_code: 405,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Method not allowed.",
-            },
-          });
+          assertNever(serverType);
       }
+      break;
     }
+    default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, PATCH expected.",
+        },
+      });
   }
 }
 

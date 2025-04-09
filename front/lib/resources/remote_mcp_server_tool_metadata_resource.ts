@@ -11,10 +11,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -155,7 +155,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
       toolName,
     });
     if (toolMetadata) {
-      toolMetadata.update({
+      await toolMetadata.update({
         permission,
       });
     } else {

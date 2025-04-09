@@ -1,9 +1,3 @@
-import { DEFAULT_MCP_TOOL_STAKE_LEVEL, MCP_TOOL_STAKE_LEVEL_TYPE, MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import {
-  useMCPServerToolsPermissions,
-  useUpdateMCPServerToolsPermissions,
-} from "@app/lib/swr/mcp_servers";
-import { LightWorkspaceType } from "@app/types";
 import {
   BookOpenIcon,
   Button,
@@ -16,6 +10,17 @@ import {
   ExclamationCircleIcon,
   Page,
 } from "@dust-tt/sparkle";
+
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import {
+  DEFAULT_MCP_TOOL_STAKE_LEVEL,
+  MCP_TOOL_STAKE_LEVEL_TYPE,
+} from "@app/lib/actions/constants";
+import {
+  useMCPServerToolsPermissions,
+  useUpdateMCPServerToolsPermissions,
+} from "@app/lib/swr/mcp_servers";
+import type { LightWorkspaceType } from "@app/types";
 
 export function ToolsList({
   owner,
@@ -38,10 +43,7 @@ export function ToolsList({
     serverId,
   });
 
-  const handleClick = (
-    name: string,
-    permission: MCPToolStakeLevelType
-  ) => {
+  const handleClick = (name: string, permission: MCPToolStakeLevelType) => {
     void updateToolPermission({
       toolName: name,
       permission,
@@ -92,7 +94,7 @@ export function ToolsList({
                             toolPermission === DEFAULT_MCP_TOOL_STAKE_LEVEL
                               ? ExclamationCircleIcon
                               : CheckCircleIcon
-                      }
+                          }
                           isSelect
                         />
                       </DropdownMenuTrigger>

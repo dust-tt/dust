@@ -1,12 +1,13 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { apiError } from "@app/logger/withlogging";
-import { assertNever, WithAPIErrorResponse } from "@app/types";
-import { NextApiRequest, NextApiResponse } from "next";
-import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever } from "@app/types";
 
 export type GetMCPServerToolsPermissionsResponseBody = {
   permissions: {
@@ -68,6 +69,7 @@ async function handler(
         default:
           assertNever(serverType);
       }
+      break;
     }
     default:
       return apiError(req, res, {
