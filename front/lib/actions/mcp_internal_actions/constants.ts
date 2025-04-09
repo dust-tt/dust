@@ -3,8 +3,9 @@ import type { ModelId, Result, WhitelistableFeature } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export const AVAILABLE_INTERNAL_MCPSERVER_NAMES = [
-  "helloworld",
   "data-source-utils",
+  "helloworld",
+  "table-utils",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -22,6 +23,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   "data-source-utils": {
     id: 2,
+    isDefault: false,
+    flag: "mcp_actions",
+  },
+  "table-utils": {
+    id: 3,
     isDefault: false,
     flag: "mcp_actions",
   },
@@ -52,7 +58,11 @@ export const getInternalMCPServerNameAndWorkspaceId = (
   }
 
   if (sIdParts.resourceName !== "internal_mcp_server") {
-    return new Err(new Error(`Invalid internal MCPServer sId: ${sId}`));
+    return new Err(
+      new Error(
+        `Invalid internal MCPServer sId: ${sId}, does not refer to an internal MCP server.`
+      )
+    );
   }
 
   // Swap keys and values.
@@ -61,14 +71,20 @@ export const getInternalMCPServerNameAndWorkspaceId = (
   );
 
   if (!details) {
-    return new Err(new Error(`Invalid internal MCPServer sId: ${sId}`));
+    return new Err(
+      new Error(
+        `Invalid internal MCPServer sId: ${sId}, ID does not match any known internal MCPServer.`
+      )
+    );
   }
 
   if (!isInternalMCPServerName(details[0])) {
-    return new Err(new Error(`Invalid internal MCPServer sId: ${sId}`));
+    return new Err(
+      new Error(`Invalid internal MCPServer name: ${details[0]}, sId: ${sId}`)
+    );
   }
 
-  const name: InternalMCPServerNameType = details[0];
+  const name = details[0];
 
   return new Ok({
     name,

@@ -350,7 +350,7 @@ const InstructionsCharacterCount = ({
       className={classNames(
         "text-end text-xs",
         count >= maxCount
-          ? "text-red-500"
+          ? "text-warning"
           : "text-muted-foreground dark:text-muted-foreground-night"
       )}
     >

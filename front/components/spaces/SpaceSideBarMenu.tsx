@@ -2,8 +2,6 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
-  FolderIcon,
-  GlobeAltIcon,
   NavigationList,
   NavigationListLabel,
   PlusIcon,
@@ -16,26 +14,32 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";
 import {
+  CATEGORY_DETAILS,
   getSpaceIcon,
   getSpaceName,
   groupSpacesForDisplay,
 } from "@app/lib/spaces";
 import { useApps } from "@app/lib/swr/apps";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
 import {
   useSpaceDataSourceViews,
   useSpaceInfo,
   useSpaces,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AppType,
   DataSourceViewCategory,
+  DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
@@ -230,7 +234,7 @@ const SystemSpaceMenu = ({
     <Tree variant="navigator">
       {SYSTEM_SPACE_ITEMS.map((item) => (
         <SystemSpaceItem
-          category={item.category as Exclude<DataSourceViewCategory, "apps">}
+          category={item.category as DataSourceViewCategoryWithoutApps}
           key={item.label}
           label={item.label}
           owner={owner}
@@ -251,7 +255,7 @@ const SystemSpaceItem = ({
   space,
   visual,
 }: {
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
   label: string;
   owner: LightWorkspaceType;
   space: SpaceType;
@@ -339,6 +343,9 @@ const SpaceMenuItem = ({
 }) => {
   const router = useRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const isAncestorToCurrentPage =
@@ -377,11 +384,22 @@ const SpaceMenuItem = ({
         <Tree isLoading={isSpaceInfoLoading}>
           {spaceInfo?.categories &&
             DATA_SOURCE_VIEW_CATEGORIES.filter(
-              (c) => !!spaceInfo.categories[c]
+              (c) =>
+                !!spaceInfo.categories[c] &&
+                hasFeature(CATEGORY_DETAILS[c].flag)
             ).map((c) => {
               if (c === "apps") {
                 return (
                   <SpaceAppSubMenu
+                    key={c}
+                    category={c}
+                    owner={owner}
+                    space={space}
+                  />
+                );
+              } else if (c === "actions") {
+                return (
+                  <SpaceActionsSubMenu
                     key={c}
                     category={c}
                     owner={owner}
@@ -405,32 +423,6 @@ const SpaceMenuItem = ({
       )}
     </Tree.Item>
   );
-};
-
-const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
-  [key: string]: {
-    icon: ComponentType<{
-      className?: string;
-    }>;
-    label: string;
-  };
-} = {
-  managed: {
-    icon: CloudArrowLeftRightIcon,
-    label: "Connected Data",
-  },
-  folder: {
-    icon: FolderIcon,
-    label: "Folders",
-  },
-  website: {
-    icon: GlobeAltIcon,
-    label: "Websites",
-  },
-  apps: {
-    icon: CommandLineIcon,
-    label: "Apps",
-  },
 };
 
 const SpaceDataSourceViewItem = ({
@@ -551,7 +543,7 @@ const SpaceDataSourceViewSubMenu = ({
 }: {
   owner: LightWorkspaceType;
   space: SpaceType;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
@@ -569,7 +561,7 @@ const SpaceDataSourceViewSubMenu = ({
     }
   }, [isAncestorToCurrentPage]);
 
-  const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
+  const categoryDetails = CATEGORY_DETAILS[category];
   const { isSpaceDataSourceViewsLoading, spaceDataSourceViews } =
     useSpaceDataSourceViews({
       workspaceId: owner.sId,
@@ -649,6 +641,22 @@ const SpaceAppItem = ({
   );
 };
 
+const SpaceActionItem = ({
+  action,
+}: {
+  action: MCPServerViewType;
+  owner: LightWorkspaceType;
+}): ReactElement => {
+  return (
+    <Tree.Item
+      type="leaf"
+      label={action.server.name}
+      visual={MCP_SERVER_ICONS[action.server.icon]}
+      areActionsFading={false}
+    />
+  );
+};
+
 const SpaceAppSubMenu = ({
   owner,
   space,
@@ -674,7 +682,7 @@ const SpaceAppSubMenu = ({
     }
   }, [isAncestorToCurrentPage]);
 
-  const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
+  const categoryDetails = CATEGORY_DETAILS[category];
 
   const { isAppsLoading, apps } = useApps({
     owner,
@@ -700,6 +708,68 @@ const SpaceAppSubMenu = ({
         <Tree isLoading={isAppsLoading}>
           {sortBy(apps, "name").map((app) => (
             <SpaceAppItem app={app} key={app.sId} owner={owner} />
+          ))}
+        </Tree>
+      )}
+    </Tree.Item>
+  );
+};
+
+const SpaceActionsSubMenu = ({
+  owner,
+  space,
+  category,
+}: {
+  owner: LightWorkspaceType;
+  space: SpaceType;
+  category: "actions";
+}) => {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
+  const router = useRouter();
+
+  const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
+  const isAncestorToCurrentPage =
+    router.asPath.startsWith(spaceCategoryPath + "/") ||
+    router.asPath === spaceCategoryPath;
+
+  // Unfold the space's category if it's an ancestor of the current page.
+  const [isExpanded, setIsExpanded] = useState(false);
+  useEffect(() => {
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
+  }, [isAncestorToCurrentPage]);
+
+  const categoryDetails = CATEGORY_DETAILS[category];
+
+  const { isMCPServerViewsLoading, serverViews } = useMCPServerViews({
+    owner,
+    space,
+  });
+
+  return (
+    <Tree.Item
+      isNavigatable
+      label={categoryDetails.label}
+      collapsed={!isExpanded}
+      onItemClick={async () => {
+        await setNavigationSelection({ lastSpaceId: space.sId });
+        void router.push(spaceCategoryPath);
+      }}
+      isSelected={router.asPath === spaceCategoryPath}
+      onChevronClick={() => setIsExpanded(!isExpanded)}
+      visual={categoryDetails.icon}
+      areActionsFading={false}
+      type={isMCPServerViewsLoading || serverViews.length > 0 ? "node" : "leaf"}
+    >
+      {isExpanded && (
+        <Tree isLoading={isMCPServerViewsLoading}>
+          {sortBy(serverViews, "name").map((serverView) => (
+            <SpaceActionItem
+              action={serverView}
+              key={serverView.server.name}
+              owner={owner}
+            />
           ))}
         </Tree>
       )}

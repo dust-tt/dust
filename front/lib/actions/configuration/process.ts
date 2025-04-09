@@ -1,8 +1,10 @@
 import _ from "lodash";
 import { Op } from "sequelize";
 
-import { renderRetrievalTimeframeType } from "@app/lib/actions/configuration/helpers";
-import { getDataSource } from "@app/lib/actions/configuration/retrieval";
+import {
+  renderDataSourceConfiguration,
+  renderRetrievalTimeframeType,
+} from "@app/lib/actions/configuration/helpers";
 import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -77,7 +79,7 @@ export async function fetchAgentProcessActionConfigurations({
         id: processConfig.id,
         sId: processConfig.sId,
         type: "process_configuration",
-        dataSources: dataSourceConfig.map(getDataSource),
+        dataSources: dataSourceConfig.map(renderDataSourceConfiguration),
         relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
         schema: processConfig.schema,
         name: processConfig.name || DEFAULT_PROCESS_ACTION_NAME,

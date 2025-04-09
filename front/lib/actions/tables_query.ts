@@ -9,11 +9,13 @@ import type { DustAppParameters } from "@app/lib/actions/dust_app_run";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionGeneratedFileType,
+  BaseActionRunParams,
   ExtractActionBlob,
 } from "@app/lib/actions/types";
-import type { BaseActionRunParams } from "@app/lib/actions/types";
-import { BaseAction } from "@app/lib/actions/types";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
+import {
+  BaseAction,
+  BaseActionConfigurationServerRunner,
+} from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
@@ -51,6 +53,7 @@ export type TablesQueryConfigurationType = {
 };
 
 export type TableDataSourceConfiguration = {
+  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
   workspaceId: string;
   dataSourceViewId: string;
   tableId: string;

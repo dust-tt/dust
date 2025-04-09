@@ -15,10 +15,7 @@ import {
 import { useState } from "react";
 
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import {
-  useCreateRemoteMCPServer,
-  useMCPServers,
-} from "@app/lib/swr/mcp_servers";
+import { useCreateRemoteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
 import { validateUrl } from "@app/types";
 
@@ -38,10 +35,6 @@ export function CreateRemoteMCPServerModal({
   const [error, setError] = useState<string | null>(null);
 
   const { createWithUrlSync } = useCreateRemoteMCPServer(owner);
-  const { mutateMCPServers } = useMCPServers({
-    owner,
-    disabled: true,
-  });
 
   const handleSynchronize = async (e: Event) => {
     const urlValidation = validateUrl(url);
@@ -57,7 +50,6 @@ export function CreateRemoteMCPServerModal({
     setIsCreating(true);
     try {
       const result = await createWithUrlSync(url, true);
-      await mutateMCPServers();
 
       if (result.success) {
         sendNotification({

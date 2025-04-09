@@ -16,6 +16,7 @@ import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -48,14 +49,23 @@ export type RemoteMCPServerType = MCPServerType & {
   lastSyncAt?: Date | null;
 };
 
-export type MCPServerTypeWithViews = MCPServerType & {
-  views: MCPServerViewType[];
-};
-
-export type MCPServerDefinitionType = Omit<
+type MCPServerDefinitionType = Omit<
   MCPServerType,
   "tools" | "id" | "isDefault"
 >;
+
+type InternalMCPServerType = MCPServerType & {
+  name: InternalMCPServerNameType;
+};
+
+export type InternalMCPServerDefinitionType = Omit<
+  InternalMCPServerType,
+  "tools" | "id" | "isDefault"
+>;
+
+export type MCPServerTypeWithViews = MCPServerType & {
+  views: MCPServerViewType[];
+};
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;

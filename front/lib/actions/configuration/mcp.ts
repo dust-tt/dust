@@ -1,17 +1,18 @@
 import { Op } from "sequelize";
 
-import { getDataSource } from "@app/lib/actions/configuration/retrieval";
+import {
+  renderDataSourceConfiguration,
+  renderTableConfiguration,
+} from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
-import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
-import { assertNever } from "@app/types";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
@@ -57,6 +58,28 @@ export async function fetchMCPServerActionConfigurations(
       ],
     });
 
+  // Find the associated tables configurations.
+  const allTablesConfigurations =
+    await AgentTablesQueryConfigurationTable.findAll({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
+      },
+      include: [
+        {
+          model: DataSourceViewModel,
+          as: "dataSourceView",
+          include: [
+            {
+              model: Workspace,
+              as: "workspace",
+            },
+          ],
+        },
+      ],
+    });
+
   const actionsByConfigurationId = new Map<
     ModelId,
     MCPServerConfigurationType[]
@@ -65,51 +88,26 @@ export async function fetchMCPServerActionConfigurations(
   for (const config of mcpServerConfigurations) {
     const { agentConfigurationId, sId, id, mcpServerViewId } = config;
 
-    const dataSourceConfigurations =
-      allDataSourceConfigurations.filter(
-        (ds) => ds.mcpServerConfigurationId === config.id
-      ) ?? [];
+    const dataSourceConfigurations = allDataSourceConfigurations.filter(
+      (ds) => ds.mcpServerConfigurationId === config.id
+    );
+
+    const tablesConfigurations = allTablesConfigurations.filter(
+      (tc) => tc.mcpServerConfigurationId === config.id
+    );
 
     const mcpServerView = await MCPServerViewResource.fetchByModelPk(
       auth,
       mcpServerViewId
     );
-
     if (!mcpServerView) {
       throw new Error(
         `MCPServerView with mcpServerViewId ${mcpServerViewId} not found.`
       );
     }
 
-    let metadata: MCPServerType;
-    if (mcpServerView.serverType === "remote") {
-      const remoteMCPServer = mcpServerView.getRemoteMCPServer();
-
-      // Note: this won't attempt to connect to remote servers and will use the cached metadata.
-      metadata = remoteMCPServer.toJSON();
-    } else if (mcpServerView.serverType === "internal") {
-      if (!mcpServerView.internalMCPServerId) {
-        throw new Error(
-          `Internal MCP server ID is required for internal server type.`
-        );
-      }
-
-      const internalMCPServer =
-        await InternalMCPServerInMemoryResource.fetchById(
-          auth,
-          mcpServerView.internalMCPServerId
-        );
-
-      if (!internalMCPServer) {
-        throw new Error(
-          `Internal MCP server with ID ${mcpServerView.internalMCPServerId} not found.`
-        );
-      }
-
-      metadata = internalMCPServer.toJSON();
-    } else {
-      assertNever(mcpServerView.serverType);
-    }
+    const { name, description } =
+      await mcpServerView.getMCPServerMetadata(auth);
 
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
       actionsByConfigurationId.set(agentConfigurationId, []);
@@ -121,10 +119,13 @@ export async function fetchMCPServerActionConfigurations(
         id,
         sId,
         type: "mcp_server_configuration",
-        name: metadata.name,
-        description: metadata.description,
+        name,
+        description,
         mcpServerViewId: mcpServerView.sId,
-        dataSources: dataSourceConfigurations.map(getDataSource),
+        dataSources: dataSourceConfigurations.map(
+          renderDataSourceConfiguration
+        ),
+        tables: tablesConfigurations.map(renderTableConfiguration),
       });
     }
   }

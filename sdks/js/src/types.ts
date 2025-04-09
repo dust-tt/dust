@@ -430,7 +430,7 @@ export interface LoggerInterface {
 }
 
 const DataSourceViewCategoriesSchema = FlexibleEnumSchema<
-  "managed" | "folder" | "website" | "apps"
+  "managed" | "folder" | "website" | "apps" | "actions"
 >();
 
 const BlockTypeSchema = FlexibleEnumSchema<
@@ -2682,6 +2682,19 @@ export const GetSpacesResponseSchema = z.object({
 });
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
+
+const ValidateActionResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type ValidateActionResponseType = z.infer<
+  typeof ValidateActionResponseSchema
+>;
+
+export const ValidateActionRequestBodySchema = z.object({
+  actionId: z.number(),
+  approved: z.boolean(),
+});
 
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,

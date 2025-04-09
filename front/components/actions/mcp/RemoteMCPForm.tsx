@@ -1,57 +1,140 @@
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EyeIcon,
   EyeSlashIcon,
   Input,
   Label,
   Page,
+  Separator,
   TextArea,
+  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { ChangeEvent } from "react";
-import { useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { z } from "zod";
 
-import type { MCPFormAction, MCPFormState } from "@app/lib/actions/mcp";
+import { ALLOWED_ICONS, MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import type { RemoteMCPServerType } from "@app/lib/actions/mcp_metadata";
+import {
+  useMCPServers,
+  useSyncRemoteMCPServer,
+  useUpdateRemoteMCPServer,
+} from "@app/lib/swr/mcp_servers";
+import type { LightWorkspaceType } from "@app/types";
 
 interface RemoteMCPFormProps {
-  state: MCPFormState;
-  dispatch: React.Dispatch<MCPFormAction>;
-  onSynchronize: () => Promise<void>;
-  sharedSecret?: string;
-  isSynchronizing?: boolean;
+  owner: LightWorkspaceType;
+  mcpServer: RemoteMCPServerType;
 }
 
-export function RemoteMCPForm({
-  state,
-  dispatch,
-  onSynchronize,
-  sharedSecret,
-  isSynchronizing = false,
-}: RemoteMCPFormProps) {
+const MCPFormSchema = z.object({
+  name: z.string().min(1, "Name is required."),
+  description: z.string().min(1, "Description is required."),
+  icon: z.enum(ALLOWED_ICONS, { required_error: "Icon is required." }),
+});
+
+export type MCPFormType = z.infer<typeof MCPFormSchema>;
+
+export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
+  const sendNotification = useSendNotification();
+
+  const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isSecretVisible, setIsSecretVisible] = useState(false);
 
-  useEffect(() => {
-    setSyncError(null);
-  }, [state.url]);
+  const form = useForm<MCPFormType>({
+    resolver: zodResolver(MCPFormSchema),
+    defaultValues: {
+      name: mcpServer.name,
+      description: mcpServer.description,
+      icon: mcpServer.icon,
+    },
+  });
+
+  const { url, sharedSecret } = mcpServer;
+
+  const { mutateMCPServers } = useMCPServers({
+    owner,
+    disabled: true,
+  });
+
+  // Use the serverId from state for the hooks
+  const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer.id);
+  const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.id);
+
+  const onSubmit = async (values: MCPFormType) => {
+    try {
+      const result = await updateServer({
+        name: values.name,
+        description: values.description,
+        icon: values.icon,
+      });
+      if (result.success) {
+        void mutateMCPServers();
+
+        sendNotification({
+          title: "MCP server updated",
+          type: "success",
+          description: "The MCP server has been successfully updated.",
+        });
+
+        form.reset(values);
+      } else {
+        throw new Error("Failed to update MCP server");
+      }
+    } catch (err) {
+      sendNotification({
+        title: "Error updating MCP server",
+        type: "error",
+        description: err instanceof Error ? err.message : "An error occurred",
+      });
+    }
+  };
 
   const handleSynchronize = async () => {
-    if (!state.url) {
+    if (!url) {
       setSyncError("Please enter a valid URL before synchronizing.");
       return;
     }
 
     setSyncError(null);
+    setIsSynchronizing(true);
 
     try {
-      await onSynchronize();
+      const result = await syncServer();
+
+      if (result.success) {
+        void mutateMCPServers();
+
+        sendNotification({
+          title: "Success",
+          type: "success",
+          description: "MCP server synchronized successfully.",
+        });
+      } else {
+        throw new Error("Failed to synchronize MCP server");
+      }
     } catch (error) {
       console.error("Error synchronizing with MCP:", error);
+      sendNotification({
+        title: "Error synchronizing MCP server",
+        type: "error",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+      });
       setSyncError(
         error instanceof Error
           ? error.message
           : "Failed to synchronize with MCP server"
       );
+    } finally {
+      setIsSynchronizing(false);
     }
   };
 
@@ -84,19 +167,9 @@ export function RemoteMCPForm({
         <div className="flex space-x-2">
           <div className="flex-grow">
             <Input
-              id="url"
+              value={url}
               disabled
               placeholder="https://example.com/api/mcp"
-              value={state.url}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "url",
-                  value: e.target.value,
-                })
-              }
-              isError={!!state.errors?.url}
-              message={state.errors?.url}
             />
           </div>
           <Button
@@ -108,73 +181,123 @@ export function RemoteMCPForm({
         </div>
       </div>
 
-      <hr />
+      <Separator className="my-4" />
 
       <Page.SectionHeader title="Settings" />
-      <div>
-        <Label htmlFor="name">Name</Label>
-        <Input
-          id="name"
-          placeholder="MCP Server Name"
-          value={state.name}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            dispatch({
-              type: "SET_FIELD",
-              field: "name",
-              value: e.target.value,
-            })
-          }
-          isError={!!state.errors?.name}
-          message={state.errors?.name}
-        />
+      <div className="flex space-x-2">
+        <div className="flex-grow">
+          <Label htmlFor="name">Name</Label>
+          <Controller
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <Input
+                {...field}
+                isError={!!form.formState.errors.name}
+                message={form.formState.errors.name?.message}
+              />
+            )}
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="icon">Icon</Label>
+          <br />
+          <Controller
+            control={form.control}
+            name="icon"
+            render={({ field }) => {
+              const currentIcon = field.value;
+              const Icon = MCP_SERVER_ICONS[currentIcon];
+              return (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      className="capitalize"
+                      variant="outline"
+                      label={currentIcon}
+                      icon={Icon}
+                      isSelect
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {Object.entries(MCP_SERVER_ICONS).map(([value, Icon]) => (
+                      <DropdownMenuItem
+                        key={value}
+                        className="capitalize"
+                        label={value}
+                        icon={Icon}
+                        onClick={() => field.onChange(value)}
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              );
+            }}
+          />
+        </div>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
-        <TextArea
-          id="description"
-          placeholder="Description of the MCP Server"
-          value={state.description}
-          onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-            dispatch({
-              type: "SET_FIELD",
-              field: "description",
-              value: e.target.value,
-            })
-          }
+        <Controller
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <>
+              <TextArea
+                error={form.formState.errors.description?.message}
+                {...field}
+              />
+              {form.formState.errors.description && (
+                <div className="ml-3.5 flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {form.formState.errors.description?.message}
+                </div>
+              )}
+            </>
+          )}
         />
-        {state.errors?.description && (
-          <p className="mt-1 text-sm text-red-600">
-            {state.errors.description}
-          </p>
-        )}
       </div>
 
+      <div className="flex flex-col items-end gap-2">
+        <Button
+          label={form.formState.isSubmitting ? "Saving..." : "Save"}
+          disabled={!form.formState.isDirty || form.formState.isSubmitting}
+          onClick={async (event: Event) => {
+            event.preventDefault();
+            void form.handleSubmit(onSubmit)();
+          }}
+        />
+      </div>
+
+      <Separator className="my-4" />
+
       {sharedSecret && (
-        <div className="space-y-2">
-          <Label htmlFor="sharedSecret">Shared Secret</Label>
-          <div className="relative">
-            <Input
-              id="sharedSecret"
-              value={sharedSecret}
-              readOnly
-              type={isSecretVisible ? "text" : "password"}
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-1">
-              <Button
-                icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
-                variant="tertiary"
-                size="xs"
-                onClick={toggleSecretVisibility}
-                labelVisible={false}
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="sharedSecret">Shared Secret</Label>
+            <div className="relative">
+              <Input
+                value={sharedSecret}
+                readOnly
+                type={isSecretVisible ? "text" : "password"}
               />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-1">
+                <Button
+                  icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
+                  variant="tertiary"
+                  size="xs"
+                  onClick={toggleSecretVisibility}
+                />
+              </div>
             </div>
+            <p className="text-xs text-gray-500">
+              This is the secret key used to authenticate your MCP server with
+              Dust. Keep it secure.
+            </p>
           </div>
-          <p className="text-xs text-gray-500">
-            This is the secret key used to authenticate your MCP server with
-            Dust. Keep it secure.
-          </p>
-        </div>
+          <Separator className="my-4" />
+        </>
       )}
     </div>
   );

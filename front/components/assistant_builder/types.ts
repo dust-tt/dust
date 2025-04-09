@@ -128,6 +128,7 @@ export type AssistantBuilderReasoningConfiguration = {
 export type AssistantBuilderMCPServerConfiguration = {
   mcpServerViewId: string;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
+  tablesConfigurations: DataSourceViewSelectionConfigurations | null;
 };
 
 // Builder State
@@ -365,6 +366,7 @@ export function getDefaultMCPServerActionConfiguration(): AssistantBuilderAction
     configuration: {
       mcpServerViewId: "not-a-valid-sId",
       dataSourceConfigurations: null,
+      tablesConfigurations: null,
     },
     name: DEFAULT_MCP_ACTION_NAME,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,

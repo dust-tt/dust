@@ -27,8 +27,8 @@ export const ACTION_SPECIFICATIONS: Record<
   {
     label: string;
     description: string;
-    dropDownIcon: React.ComponentProps<typeof Icon>["visual"];
-    cardIcon: React.ComponentProps<typeof Icon>["visual"];
+    dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+    cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
     flag: WhitelistableFeature | null;
   }
 > = {

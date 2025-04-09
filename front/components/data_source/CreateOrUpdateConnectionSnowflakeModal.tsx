@@ -2,6 +2,7 @@ import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,
   Button,
+  Chip,
   Icon,
   Input,
   Page,
@@ -250,11 +251,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
             <Page.SectionHeader title="Snowflake Credentials" />
 
-            {error && (
-              <div className="w-full rounded-md bg-red-100 p-4 text-red-800">
-                {error}
-              </div>
-            )}
+            {error && <Chip color="red" label={error} />}
 
             <div className="w-full space-y-4">
               <Input
