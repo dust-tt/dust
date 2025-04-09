@@ -158,7 +158,7 @@ export function serverRequiresInternalConfiguration({
         containsSubSchema(
           tool.inputSchema,
           ConfigurableToolInputJSONSchemas[mimeType]
-        )
+        ).length > 0
     ) ?? false
   );
 }
