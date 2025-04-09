@@ -1,4 +1,4 @@
-import { Button, RocketIcon } from "@dust-tt/sparkle";
+import { Button, PlayIcon, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -15,10 +15,7 @@ import TrustedBy from "@app/components/home/TrustedBy";
 const HeroContent = () => {
   return (
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
-      <H1
-        className="text-center text-4xl !font-light leading-[1.15] sm:text-5xl sm:leading-[1.15] md:text-6xl md:leading-[1.1] lg:text-[72px] lg:leading-[1.1]"
-        mono
-      >
+      <H1 className="text-center font-sans text-4xl font-bold leading-[1.15] sm:text-5xl sm:leading-[1.15] md:text-6xl md:leading-[1.1] lg:text-[72px] lg:leading-[1.1]">
         Transform how work
         <br />
         gets done
@@ -43,6 +40,13 @@ const HeroContent = () => {
     </div>
   );
 };
+
+const CustomPlayButton = () => (
+  <button className="flex items-center gap-3 rounded-2xl border-[1px] border-white/20 bg-slate-900/95 px-6 py-3 text-white transition-all hover:border-white/30 hover:bg-slate-900">
+    <PlayIcon className="h-6 w-6" />
+    <span className="text-base font-medium">Watch Dust in motion</span>
+  </button>
+);
 
 const HeroVisual = () => {
   return (
@@ -69,12 +73,7 @@ const HeroVisual = () => {
             }
           }}
         >
-          <Button
-            variant="highlight"
-            size="md"
-            label="Watch Dust in motion"
-            icon={RocketIcon}
-          />
+          <CustomPlayButton />
         </Link>
       </div>
     </div>

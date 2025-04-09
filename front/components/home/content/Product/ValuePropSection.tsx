@@ -1,3 +1,5 @@
+"use client";
+
 import { H3, P } from "../../ContentComponents";
 
 export function ValuePropSection() {
@@ -42,7 +44,7 @@ export function ValuePropSection() {
             <div className="flex aspect-video items-center justify-center rounded-2xl bg-blue-50">
               <img
                 src="/static/landing/code/code.png"
-                alt="Code"
+                alt="Platform Integration"
                 className="h-full w-full object-contain"
               />
             </div>
