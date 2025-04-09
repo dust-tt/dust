@@ -10,7 +10,6 @@ import {
   isDefaultInternalMCPServerByName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   connectToMCPServer,
   extractMetadataFromServerVersion,
