@@ -34,7 +34,7 @@ RUN find . -name "*.test.tsx" -delete
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
 # Production
-FROM node:${NODE_VERSION}-slim
+FROM node:${NODE_VERSION} AS prod
 RUN apt-get update && apt-get -y install openssl
 
 ARG COMMIT_HASH
@@ -54,7 +54,26 @@ COPY --from=build /sdks/js .
 WORKDIR /app
 COPY --from=build /app/.next .next
 COPY --from=build /app/package*.json ./
+COPY --from=build /app/public ./
 RUN npm ci --omit=dev
 RUN rm -r /sdks
 
-CMD ["npm", "--silent", "run", "start"]
+FROM gcr.io/distroless/nodejs20-debian12:debug AS runner
+
+ARG COMMIT_HASH
+ARG NEXT_PUBLIC_VIZ_URL
+ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ARG NEXT_PUBLIC_GTM_TRACKING_ID
+
+ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
+ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
+ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
+
+WORKDIR /app
+COPY --from=prod /app/.next .next
+COPY --from=prod /app/node_modules ./
+COPY --from=prod /app/package*.json ./
+COPY --from=prod /app/public ./
+
+CMD ["./node_modules/next/dist/bin/next", "--silent", "run", "start"]
