@@ -31,18 +31,25 @@ async function handler(
     case "GET": {
       const workspaceServerViews =
         await MCPServerViewResource.listByWorkspace(auth);
+
       const spaceServerViews = await MCPServerViewResource.listBySpace(
         auth,
         space
       );
 
       const serverViews = _.uniqBy(
-        _.differenceWith(workspaceServerViews, spaceServerViews, (a, b) => {
-          return (
-            (a.internalMCPServerId ?? a.remoteMCPServerId) ===
-            (b.internalMCPServerId ?? b.remoteMCPServerId)
-          );
-        }),
+        _.differenceWith(
+          workspaceServerViews.filter(
+            (s) => s.space.kind !== "global" && s.space.kind !== "system"
+          ),
+          spaceServerViews,
+          (a, b) => {
+            return (
+              (a.internalMCPServerId ?? a.remoteMCPServerId) ===
+              (b.internalMCPServerId ?? b.remoteMCPServerId)
+            );
+          }
+        ),
         (s) => s.internalMCPServerId ?? s.remoteMCPServerId
       );
 
