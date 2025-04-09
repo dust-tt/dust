@@ -31,18 +31,31 @@ async function handler(
     case "GET": {
       const workspaceServerViews =
         await MCPServerViewResource.listByWorkspace(auth);
+
       const spaceServerViews = await MCPServerViewResource.listBySpace(
         auth,
         space
       );
 
-      const serverViews = _.uniqBy(
-        _.differenceWith(workspaceServerViews, spaceServerViews, (a, b) => {
+      const nonCompanyDataServerViews = workspaceServerViews.filter(
+        (s) => s.space.kind !== "global" && s.space.kind !== "system"
+      );
+
+      // We get the actions that aren't activated in Company Data and not in the space making the request
+      const serverViewsNotActivated = _.differenceWith(
+        nonCompanyDataServerViews,
+        spaceServerViews,
+        (a, b) => {
           return (
             (a.internalMCPServerId ?? a.remoteMCPServerId) ===
             (b.internalMCPServerId ?? b.remoteMCPServerId)
           );
-        }),
+        }
+      );
+
+      // We can have duplicate because some actions can be activated in many spaces
+      const serverViews = _.uniqBy(
+        serverViewsNotActivated,
         (s) => s.internalMCPServerId ?? s.remoteMCPServerId
       );
 
