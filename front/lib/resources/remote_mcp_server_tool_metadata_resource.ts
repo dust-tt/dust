@@ -106,21 +106,16 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
   // Update
 
-  async setPermission(
-    auth: Authenticator,
-    permission: MCPToolPermissionType,
-  ) {
+  async setPermission(auth: Authenticator, permission: MCPToolPermissionType) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
     assert(
       systemSpace.canWrite(auth),
       "The user is not authorized to update a tool metadata"
     );
 
-    await this.update(
-      {
-        permission,
-      }
-    );
+    await this.update({
+      permission,
+    });
   }
 
   // Delete
