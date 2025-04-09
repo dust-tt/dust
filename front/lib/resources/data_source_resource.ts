@@ -55,7 +55,6 @@ export type FetchDataSourceOptions = {
   limit?: number;
   order?: [string, "ASC" | "DESC"][];
   origin?: FetchDataSourceOrigin;
-  assistantDefaultSelected?: boolean;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
