@@ -76,4 +76,4 @@ COPY --from=prod /app/node_modules node_modules
 COPY --from=prod /app/package*.json ./
 COPY --from=prod /app/public public
 
-CMD ["./node_modules/next/dist/bin/next", "--silent", "run", "start"]
+CMD ["./node_modules/next/dist/bin/next",  "start"]
