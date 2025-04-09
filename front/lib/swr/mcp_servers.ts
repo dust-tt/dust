@@ -430,6 +430,8 @@ export function useUpdateMCPServerToolsPermissions({
     serverId,
   });
 
+  const sendNotification = useSendNotification();
+
   const updateToolPermission = async ({
     toolName,
     permission,
@@ -448,11 +450,16 @@ export function useUpdateMCPServerToolsPermissions({
 
     if (!response.ok) {
       const error = await response.json();
-      console.log(error);
       throw new Error(
         error.api_error?.message || "Failed to update permission"
       );
     }
+
+    sendNotification({
+      type: "success",
+      title: "Permission updated",
+      description: `The permission for ${toolName} has been updated.`,
+    });
 
     await mutateToolsPermissions();
     return response.json();
