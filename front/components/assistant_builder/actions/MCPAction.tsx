@@ -96,6 +96,9 @@ export function ActionMCP({
     requiresChildAgentConfiguration,
     requiresTableConfiguration,
     requiresDataSourceConfiguration,
+    requiredStrings,
+    requiredNumbers,
+    requiredBooleans,
   } = useMCPServerRequiredConfiguration({
     mcpServerView: selectedMCPServerView,
   });

@@ -186,25 +186,23 @@ export function generateConfiguredInput({
 }
 
 /**
- * Checks if a server requires internal configuration by examining if any tool's inputSchema
- * contains the specified mimeType.
+ * Returns all paths in a server's tools' inputSchemas that match the schema for the specified mimeType.
+ * @returns An array of paths where the schema matches the specified mimeType
  */
-export function serverRequiresInternalConfiguration({
+export function findPathsToConfiguration({
   mcpServer,
   mimeType,
 }: {
   mcpServer: MCPServerType;
   mimeType: InternalConfigurationMimeType;
-}): boolean {
-  return (
-    mcpServer?.tools?.some(
-      (tool) =>
-        tool?.inputSchema &&
-        findMatchingSchemaKeys(
+}): string[] {
+  return mcpServer.tools.flatMap((tool) =>
+    tool.inputSchema
+      ? findMatchingSchemaKeys(
           tool.inputSchema,
           ConfigurableToolInputJSONSchemas[mimeType]
-        ).length > 0
-    ) ?? false
+        )
+      : []
   );
 }
 
