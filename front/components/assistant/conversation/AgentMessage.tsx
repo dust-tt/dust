@@ -265,6 +265,7 @@ export function AgentMessage({
             conversationId: conversationId,
             action: event.action,
             inputs: event.inputs,
+            stake: event.stake,
           });
           break;
 

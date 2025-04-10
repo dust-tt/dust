@@ -1,5 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
@@ -13,6 +14,11 @@ export type MCPToolType = {
 
 export type MCPToolWithIsDefaultType = MCPToolType & {
   isDefault: boolean;
+};
+
+export type MCPToolWithStakeLevelType = MCPToolWithIsDefaultType & {
+  stakeLevel?: MCPToolStakeLevelType;
+  toolServerId?: string;
 };
 
 export type MCPServerType = {

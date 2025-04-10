@@ -1315,6 +1315,7 @@ const MCPApproveExecutionEventSchema = z.object({
   messageId: z.string(),
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
+  stake: z.optional(z.enum(["low", "high"])),
 });
 
 const AgentErrorEventSchema = z.object({
@@ -2809,7 +2810,7 @@ export type ValidateActionResponseType = z.infer<
 
 export const ValidateActionRequestBodySchema = z.object({
   actionId: z.number(),
-  approved: z.boolean(),
+  approved: z.enum(["approved", "rejected", "always_approved"]),
 });
 
 export type ValidateActionRequestBodyType = z.infer<
