@@ -2,13 +2,20 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  EmotionLaughIcon,
-  HomeIcon,
-  PlanetIcon,
-  StarStrokeIcon,
-} from "@sparkle/icons/app";
+  BeerIcon,
+  FlagIcon,
+  ShirtIcon,
+  UmbrellaIcon,
+} from "@sparkle/icons/actions";
+import SvgHome from "@sparkle/icons/actions/Home";
+import { StarStrokeIcon } from "@sparkle/icons/app";
 
-import { Avatar } from "../index_with_tw_base";
+import {
+  Avatar,
+  DriveLogo,
+  NotionLogo,
+  SlackLogo,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Components/Avatar",
@@ -107,11 +114,14 @@ export const AvatarExample = () => (
     </div>
     <div>With icon</div>
     <div className="s-flex s-gap-4">
-      <Avatar size="xs" icon={HomeIcon} />
-      <Avatar size="sm" icon={StarStrokeIcon} />
-      <Avatar size="md" icon={PlanetIcon} />
-      <Avatar size="lg" icon={EmotionLaughIcon} />
-      <Avatar size="xl" icon={HomeIcon} />
+      <Avatar size="xs" icon={SvgHome} />
+      <Avatar size="xs" icon={DriveLogo} />
+      <Avatar size="sm" icon={BeerIcon} />
+      <Avatar size="sm" icon={NotionLogo} backgroundColor="s-bg-blue-50" />
+      <Avatar size="md" icon={UmbrellaIcon} />
+      <Avatar size="lg" icon={FlagIcon} />
+      <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
+      <Avatar size="xl" icon={ShirtIcon} />
       <Avatar size="xxl" icon={StarStrokeIcon} />
     </div>
   </div>
