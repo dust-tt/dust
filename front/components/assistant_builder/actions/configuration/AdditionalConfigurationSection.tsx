@@ -7,9 +7,11 @@ interface BooleanConfigurationSectionProps {
   onConfigUpdate: (key: string, value: boolean) => void;
 }
 
-const BooleanConfigurationSection: React.FC<
-  BooleanConfigurationSectionProps
-> = ({ requiredBooleans, additionalConfiguration, onConfigUpdate }) => {
+function BooleanConfigurationSection({
+  requiredBooleans,
+  additionalConfiguration,
+  onConfigUpdate,
+}: BooleanConfigurationSectionProps) {
   if (Object.keys(requiredBooleans).length === 0) {
     return null;
   }
@@ -36,7 +38,7 @@ const BooleanConfigurationSection: React.FC<
       </div>
     </div>
   );
-};
+}
 
 interface NumberConfigurationSectionProps {
   requiredNumbers: Record<string, number>;
@@ -44,11 +46,11 @@ interface NumberConfigurationSectionProps {
   onConfigUpdate: (key: string, value: number) => void;
 }
 
-const NumberConfigurationSection: React.FC<NumberConfigurationSectionProps> = ({
+function NumberConfigurationSection({
   requiredNumbers,
   additionalConfiguration,
   onConfigUpdate,
-}) => {
+}: NumberConfigurationSectionProps) {
   if (Object.keys(requiredNumbers).length === 0) {
     return null;
   }
@@ -57,8 +59,7 @@ const NumberConfigurationSection: React.FC<NumberConfigurationSectionProps> = ({
     <div className="mt-4">
       <div className="space-y-4">
         {Object.entries(requiredNumbers).map(([key, defaultValue]) => {
-          const value =
-            (additionalConfiguration[key] as number) ?? defaultValue;
+          const value = additionalConfiguration[key] ?? defaultValue;
           return (
             <div key={key} className="flex flex-col gap-2">
               <Label htmlFor={`number-${key}`} className="text-sm font-medium">
@@ -79,7 +80,7 @@ const NumberConfigurationSection: React.FC<NumberConfigurationSectionProps> = ({
       </div>
     </div>
   );
-};
+}
 
 interface StringConfigurationSectionProps {
   requiredStrings: Record<string, string>;
@@ -87,11 +88,11 @@ interface StringConfigurationSectionProps {
   onConfigUpdate: (key: string, value: string) => void;
 }
 
-const StringConfigurationSection: React.FC<StringConfigurationSectionProps> = ({
+function StringConfigurationSection({
   requiredStrings,
   additionalConfiguration,
   onConfigUpdate,
-}) => {
+}: StringConfigurationSectionProps) {
   if (Object.keys(requiredStrings).length === 0) {
     return null;
   }
@@ -100,8 +101,7 @@ const StringConfigurationSection: React.FC<StringConfigurationSectionProps> = ({
     <div className="mt-4">
       <div className="space-y-4">
         {Object.entries(requiredStrings).map(([key, defaultValue]) => {
-          const value =
-            (additionalConfiguration[key] as string) ?? defaultValue;
+          const value = additionalConfiguration[key] ?? defaultValue;
           return (
             <div key={key} className="flex flex-col gap-2">
               <Label htmlFor={`string-${key}`} className="text-sm font-medium">
@@ -110,7 +110,7 @@ const StringConfigurationSection: React.FC<StringConfigurationSectionProps> = ({
               <Input
                 id={`string-${key}`}
                 type="text"
-                value={value}
+                value={value.toString()}
                 onChange={(e) => onConfigUpdate(key, e.target.value)}
                 placeholder={`Enter value for ${key.split(".").pop()}`}
               />
@@ -120,7 +120,7 @@ const StringConfigurationSection: React.FC<StringConfigurationSectionProps> = ({
       </div>
     </div>
   );
-};
+}
 
 interface AdditionalConfigurationSectionProps {
   requiredStrings: Record<string, string>;
