@@ -100,7 +100,7 @@ export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
-export { Picker } from "./Picker";
+export { ColorPicker, IconPicker } from "./Picker";
 export {
   Popover,
   PopoverContent,
