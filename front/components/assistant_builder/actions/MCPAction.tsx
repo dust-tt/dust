@@ -18,6 +18,7 @@ import React, {
   useState,
 } from "react";
 
+import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
 import { ChildAgentSelector } from "@app/components/assistant_builder/actions/configuration/ChildAgentSelector";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -125,6 +126,7 @@ export function ActionMCP({
           dataSourceConfigurations: prevConfig.dataSourceConfigurations,
           tablesConfigurations: prevConfig.tablesConfigurations,
           childAgentId: prevConfig.childAgentId,
+          additionalConfiguration: prevConfig.additionalConfiguration,
         };
       },
     });
@@ -202,6 +204,31 @@ export function ActionMCP({
           mcpServerViewId: selectedMCPServerView.id,
           childAgentId: newChildAgentId,
         }),
+      });
+    },
+    [selectedMCPServerView, setEdited, updateAction]
+  );
+
+  const handleAdditionalConfigUpdate = useCallback(
+    (key: string, value: string | number | boolean) => {
+      if (!selectedMCPServerView) {
+        return;
+      }
+      setEdited(true);
+      updateAction({
+        actionName: slugify(selectedMCPServerView?.server.name ?? ""),
+        actionDescription: selectedMCPServerView?.server.description ?? "",
+        getNewActionConfig: (prev) => {
+          const prevConfig = prev as AssistantBuilderMCPServerConfiguration;
+          return {
+            ...prevConfig,
+            mcpServerViewId: selectedMCPServerView.id,
+            additionalConfiguration: {
+              ...prevConfig.additionalConfiguration,
+              [key]: value,
+            },
+          };
+        },
       });
     },
     [selectedMCPServerView, setEdited, updateAction]
@@ -397,6 +424,13 @@ export function ActionMCP({
           owner={owner}
         />
       )}
+      <AdditionalConfigurationSection
+        requiredStrings={requiredStrings}
+        requiredNumbers={requiredNumbers}
+        requiredBooleans={requiredBooleans}
+        additionalConfiguration={actionConfiguration.additionalConfiguration}
+        onConfigUpdate={handleAdditionalConfigUpdate}
+      />
     </>
   );
 }

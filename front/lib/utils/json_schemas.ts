@@ -52,8 +52,6 @@ export function findMatchingSchemaKeys(
 
   // Direct schema equality check
   if (schemasAreEqual(inputSchema, targetSubSchema)) {
-    // For the root schema, we use an empty string as the key
-    matchingKeys.push("");
     return matchingKeys;
   }
 
