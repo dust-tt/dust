@@ -515,7 +515,6 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
 
     // This is for salesforce personal connections.
     const flags = await getFeatureFlags(owner);
-    console.log("flags", flags);
     if (flags.includes("labs_salesforce_personal_connections")) {
       for (const dataSourceView of dataSourceViews) {
         if (dataSourceView.dataSource.connectorProvider === "salesforce") {
@@ -543,8 +542,6 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       }
     }
     // End salesforce specific
-
-    console.log("personalConnectionIds", personalConnectionIds);
 
     const tables = actionConfiguration.tables.map((t) => ({
       workspace_id: t.workspaceId,
