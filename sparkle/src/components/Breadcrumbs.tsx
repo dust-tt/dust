@@ -19,11 +19,30 @@ const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const LABEL_TRUNCATE_LENGTH_END = 30;
 const ELLIPSIS_STRING = "...";
 
-interface BreadcrumbItem {
+type BaseBreadcrumbItem = {
   icon?: ComponentType<{ className?: string }>;
   label: string;
-  href?: string;
-}
+};
+
+type LinkBreadcrumbItem = BaseBreadcrumbItem & {
+  href: string;
+  onClick?: never;
+};
+
+type ButtonBreadcrumbItem = BaseBreadcrumbItem & {
+  href?: never;
+  onClick: () => void;
+};
+
+type LabelBreadcrumbItem = BaseBreadcrumbItem & {
+  href?: never;
+  onClick?: never;
+};
+
+type BreadcrumbItem =
+  | LinkBreadcrumbItem
+  | ButtonBreadcrumbItem
+  | LabelBreadcrumbItem;
 
 interface BreadcrumbProps {
   items: BreadcrumbItem[];
@@ -34,6 +53,16 @@ interface BreadcrumbsAccumulator {
   itemsShown: BreadcrumbItem[];
   itemsHidden: BreadcrumbItem[];
 }
+
+const isLinkItem = (
+  item: BreadcrumbItem | { label: string }
+): item is LinkBreadcrumbItem =>
+  "href" in item && typeof item.href === "string";
+
+const isButtonItem = (
+  item: BreadcrumbItem | { label: string }
+): item is ButtonBreadcrumbItem =>
+  "onClick" in item && typeof item.onClick === "function";
 
 export function Breadcrumbs({ items, className }: BreadcrumbProps) {
   const { components } = React.useContext(SparkleContext);
@@ -78,7 +107,8 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
                     {itemsHidden.map((item, index) => (
                       <DropdownMenuItem
                         key={`breadcrumbs-hidden-${index}`}
-                        href={item.href}
+                        href={isLinkItem(item) ? item.href : undefined}
+                        onClick={isButtonItem(item) ? item.onClick : undefined}
                         icon={item.icon}
                         label={item.label}
                       />
@@ -86,7 +116,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : item.href ? (
+            ) : isLinkItem(item) ? (
               <Link
                 href={item.href}
                 className={
@@ -102,6 +132,28 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
                       LABEL_TRUNCATE_LENGTH_MIDDLE
                     )}
               </Link>
+            ) : isButtonItem(item) ? (
+              <Button
+                variant="ghost"
+                onClick={item.onClick}
+                className={
+                  index === itemsShown.length - 1
+                    ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
+                    : "s-text-muted-foreground dark:s-text-muted-foreground-night"
+                }
+                label={
+                  index === itemsShown.length - 1
+                    ? truncateTextToLength(
+                        item.label,
+                        LABEL_TRUNCATE_LENGTH_END
+                      )
+                    : truncateTextToLength(
+                        item.label,
+                        LABEL_TRUNCATE_LENGTH_MIDDLE
+                      )
+                }
+                tooltip={item.label}
+              />
             ) : (
               <div
                 className={
@@ -130,11 +182,14 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
 
 function truncateWithTooltip(text: string, length: number) {
   return text.length > length ? (
-    <Tooltip
-      trigger={`${text.substring(0, length - 1)}${ELLIPSIS_STRING}`}
-      label={text}
-    />
+    <Tooltip trigger={truncateTextToLength(text, length)} label={text} />
   ) : (
     text
   );
+}
+
+function truncateTextToLength(text: string, length: number) {
+  return text.length > length
+    ? `${text.substring(0, length - 1)}${ELLIPSIS_STRING}`
+    : text;
 }
