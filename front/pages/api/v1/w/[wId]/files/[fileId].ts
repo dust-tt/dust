@@ -85,10 +85,10 @@ async function handler(
       !ConversationResource.canAccessConversation(auth, conversation)
     ) {
       return apiError(req, res, {
-        status_code: 403,
+        status_code: 404,
         api_error: {
-          type: "conversation_access_restricted",
-          message: "You don't have access to this file.",
+          type: "file_not_found",
+          message: "File not found.",
         },
       });
     }
@@ -103,10 +103,10 @@ async function handler(
     );
     if (!space || !space.canRead(auth)) {
       return apiError(req, res, {
-        status_code: 403,
+        status_code: 404,
         api_error: {
-          type: "conversation_access_restricted",
-          message: "You don't have access to this file.",
+          type: "file_not_found",
+          message: "File not found.",
         },
       });
     }

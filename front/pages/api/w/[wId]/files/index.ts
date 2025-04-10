@@ -15,25 +15,37 @@ import { ensureFileSize, isSupportedFileContentType } from "@app/types";
 
 // File upload form validation.
 
-const FileUploadUrlRequestSchema = t.type({
-  contentType: t.string,
-  fileName: t.string,
-  fileSize: t.number,
-  useCase: t.union([
-    t.literal("conversation"),
-    t.literal("avatar"),
-    t.literal("upsert_document"),
-    t.literal("folders_document"),
-    t.literal("upsert_table"),
-  ]),
-  useCaseMetadata: t.union([
-    t.undefined,
-    t.type({
+const FileUploadUrlRequestSchema = t.union([
+  t.type({
+    contentType: t.string,
+    fileName: t.string,
+    fileSize: t.number,
+    useCase: t.literal("conversation"),
+    useCaseMetadata: t.type({
       conversationId: t.string,
+    }),
+  }),
+  t.type({
+    contentType: t.string,
+    fileName: t.string,
+    fileSize: t.number,
+    useCase: t.literal("folders_document"),
+    useCaseMetadata: t.type({
       spaceId: t.string,
     }),
-  ]),
-});
+  }),
+  t.type({
+    contentType: t.string,
+    fileName: t.string,
+    fileSize: t.number,
+    useCase: t.union([
+      t.literal("avatar"),
+      t.literal("upsert_document"),
+      t.literal("upsert_table"),
+    ]),
+    useCaseMetadata: t.undefined,
+  }),
+]);
 
 export interface FileUploadRequestResponseBody {
   file: FileTypeWithUploadUrl;
