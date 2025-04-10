@@ -610,12 +610,12 @@ async function computeStatusFromConfig(
       toolName: actionConfiguration.name,
     });
 
-  const user = await UserResource.fetchById(auth.getNonNullableUser().sId);
-  if (!user) {
+  if (!serverMetadata || serverMetadata?.permission === "high") {
     return { status: "pending" };
   }
 
-  if (!serverMetadata || serverMetadata?.permission === "high") {
+  const user = await UserResource.fetchById(auth.getNonNullableUser().sId);
+  if (!user) {
     return { status: "pending" };
   }
 
