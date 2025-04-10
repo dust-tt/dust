@@ -1,22 +1,11 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import type { PlatformMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types";
 
 import { generateConfiguredInput } from "./input_schemas";
-
-// Mock the workspace type
-const mockWorkspace: WorkspaceType = {
-  id: 1,
-  sId: "w123",
-  name: "Test Workspace",
-  role: "admin",
-  segmentation: "interesting",
-  whiteListedProviders: [],
-  defaultEmbeddingProvider: null,
-  metadata: null,
-};
 
 // Mock the action configuration
 const mockActionConfiguration: PlatformMCPToolConfigurationType = {
@@ -39,8 +28,13 @@ const mockActionConfiguration: PlatformMCPToolConfigurationType = {
 };
 
 describe("Input Schemas", () => {
+  let mockWorkspace: WorkspaceType;
+
+  beforeEach(async () => {
+    mockWorkspace = await WorkspaceFactory.basic();
+  });
   describe("generateConfiguredInput", () => {
-    it("should return the correct string value from additionalConfiguration", () => {
+    it("should return the correct string value from additionalConfiguration", async () => {
       const result = generateConfiguredInput({
         owner: mockWorkspace,
         actionConfiguration: mockActionConfiguration,
@@ -51,7 +45,7 @@ describe("Input Schemas", () => {
       expect(result).toBe("string value");
     });
 
-    it("should return the correct number value from additionalConfiguration", () => {
+    it("should return the correct number value from additionalConfiguration", async () => {
       const result = generateConfiguredInput({
         owner: mockWorkspace,
         actionConfiguration: mockActionConfiguration,
@@ -62,7 +56,7 @@ describe("Input Schemas", () => {
       expect(result).toBe(42);
     });
 
-    it("should return the correct boolean value from additionalConfiguration", () => {
+    it("should return the correct boolean value from additionalConfiguration", async () => {
       const result = generateConfiguredInput({
         owner: mockWorkspace,
         actionConfiguration: mockActionConfiguration,
@@ -73,7 +67,7 @@ describe("Input Schemas", () => {
       expect(result).toBe(true);
     });
 
-    it("should return default values for null values in additionalConfiguration", () => {
+    it("should return default values for null values in additionalConfiguration", async () => {
       const stringResult = generateConfiguredInput({
         owner: mockWorkspace,
         actionConfiguration: mockActionConfiguration,
@@ -102,7 +96,7 @@ describe("Input Schemas", () => {
       expect(booleanResult).toBe(false);
     });
 
-    it("should throw an error for missing key path", () => {
+    it("should throw an error for missing key path", async () => {
       expect(() =>
         generateConfiguredInput({
           owner: mockWorkspace,
@@ -113,7 +107,7 @@ describe("Input Schemas", () => {
       ).toThrow("Key path is required for STRING configuration");
     });
 
-    it("should throw an error for incorrect value type", () => {
+    it("should throw an error for incorrect value type", async () => {
       const wrongActionConfig = {
         ...mockActionConfiguration,
         additionalConfiguration: {
