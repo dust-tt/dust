@@ -23,6 +23,7 @@ import {
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isPlatformMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -584,45 +585,4 @@ export async function mcpActionTypesFromAgentMessageIds(
       ),
     });
   });
-}
-
-async function getExecutionStatusFromConfig(
-  auth: Authenticator,
-  actionConfiguration: MCPToolConfigurationType
-): Promise<{
-  stake?: MCPToolStakeLevelType;
-  status: "allowed_implicitly" | "pending";
-  serverId?: string;
-}> {
-  if (!isPlatformMCPToolConfiguration(actionConfiguration)) {
-    return { status: "pending" };
-  }
-
-  if (actionConfiguration.isDefault) {
-    return { status: "allowed_implicitly" };
-  }
-
-  if (
-    !actionConfiguration.permission ||
-    actionConfiguration.permission === "high"
-  ) {
-    return { status: "pending" };
-  }
-
-  const user = auth.getNonNullableUser();
-  const neverAskSetting = await user.getMetadata(
-    `toolsValidations:${actionConfiguration.toolServerId}`
-  );
-  if (
-    neverAskSetting &&
-    neverAskSetting.value.includes(
-      `${actionConfiguration.name}`
-    )
-  ) {
-    return { status: "allowed_implicitly" };
-  }
-
-  return {
-    status: "pending",
-  };
 }
