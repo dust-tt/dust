@@ -2811,7 +2811,7 @@ export type ValidateActionResponseType = z.infer<
 
 export const ValidateActionRequestBodySchema = z.object({
   actionId: z.number(),
-  approved: z.boolean(),
+  approved: z.enum(["action_approved", "action_rejected", "action_always_approved"]),
 });
 
 export type ValidateActionRequestBodyType = z.infer<
