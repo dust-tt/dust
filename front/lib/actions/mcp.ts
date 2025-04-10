@@ -1,6 +1,10 @@
+import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type {MCPToolStakeLevelType} from "@app/lib/actions/constants";
+import {
+  DEFAULT_MCP_TOOL_STAKE_LEVEL
+} from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
@@ -98,7 +102,6 @@ type MCPApproveExecutionEvent = {
   action: MCPActionType;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
-  serverId?: string;
 };
 
 type MCPParamsEvent = {
@@ -288,11 +291,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       action: mcpAction,
     };
 
-    const {
-      status: s,
-      stake,
-      serverId,
-    } = await getExecutionStatusAndStakeFromConfig(auth, actionConfiguration);
+    const { status: s } = await getExecutionStatusFromConfig(
+      auth,
+      actionConfiguration
+    );
     let status:
       | "allowed_implicitly"
       | "allowed_explicitly"
@@ -307,7 +309,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         action: mcpAction,
         inputs: rawInputs,
-        stake,
+        stake: isPlatformMCPToolConfiguration(actionConfiguration)
+          ? actionConfiguration.permission
+          : DEFAULT_MCP_TOOL_STAKE_LEVEL,
       };
 
       try {
@@ -330,10 +334,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             data.type === "action_always_approved" &&
             data.actionId === mcpAction.id
           ) {
+            assert(isPlatformMCPToolConfiguration(actionConfiguration));
             const user = auth.getNonNullableUser();
             await user.appendToMetadata(
               `mcpServersToolsValidations`,
-              `${serverId}:${actionConfiguration.name}`
+              `${actionConfiguration.toolServerId}:${actionConfiguration.name}`
             );
           }
 
@@ -584,7 +589,7 @@ export async function mcpActionTypesFromAgentMessageIds(
   });
 }
 
-async function getExecutionStatusAndStakeFromConfig(
+async function getExecutionStatusFromConfig(
   auth: Authenticator,
   actionConfiguration: MCPToolConfigurationType
 ): Promise<{
@@ -619,8 +624,6 @@ async function getExecutionStatusAndStakeFromConfig(
   }
 
   return {
-    stake: "low",
     status: "pending",
-    serverId: actionConfiguration.toolServerId,
   };
 }

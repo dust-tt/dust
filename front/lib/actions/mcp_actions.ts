@@ -25,10 +25,7 @@ import {
   isPlatformMCPServerConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type {
-  MCPToolType,
-  MCPToolWithStakeLevelType,
-} from "@app/lib/api/mcp";
+import type { MCPToolType, MCPToolWithStakeLevelType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
