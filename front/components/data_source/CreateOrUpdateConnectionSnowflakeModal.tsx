@@ -12,6 +12,10 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -21,9 +25,12 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
-  SnowflakeCredentials,
   WorkspaceType,
 } from "@app/types";
+import type {
+  BaseSnowflakeCredentials,
+  SnowflakeCredentials,
+} from "@app/types/oauth/lib";
 
 type CreateOrUpdateConnectionSnowflakeModalProps = {
   owner: WorkspaceType;
@@ -53,12 +60,19 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [credentials, setCredentials] = useState<SnowflakeCredentials>({
+  const [authMethod, setAuthMethod] = useState<"password" | "keypair">(
+    "password"
+  );
+  const [credentials, setCredentials] = useState<
+    BaseSnowflakeCredentials & Partial<SnowflakeCredentials>
+  >({
     username: "",
-    password: "",
     account: "",
     role: "",
     warehouse: "",
+    password: undefined,
+    privateKey: undefined,
+    privateKeyPass: undefined,
   });
 
   if (connectorProviderConfiguration.connectorProvider !== "snowflake") {
@@ -67,16 +81,41 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   }
 
   const areCredentialsValid = () => {
-    return Object.values(credentials).every((value) => value.length > 0);
+    // Base fields from BaseSnowflakeCredentialsSchema that are required for both auth methods
+    const baseFields = ["username", "account", "role", "warehouse"];
+    const baseValid = baseFields.every(
+      (field) =>
+        typeof credentials[field as keyof typeof credentials] === "string" &&
+        (credentials[field as keyof typeof credentials] as string).length > 0
+    );
+
+    if (!baseValid) {
+      return false;
+    }
+
+    // Check auth method specific credentials
+    if (authMethod === "password") {
+      return (
+        typeof credentials.password === "string" &&
+        credentials.password.length > 0
+      );
+    } else {
+      return (
+        typeof credentials.privateKey === "string" &&
+        credentials.privateKey.length > 0
+      );
+    }
   };
 
   function onSuccess(ds: DataSourceType) {
     setCredentials({
       username: "",
-      password: "",
       account: "",
       role: "",
       warehouse: "",
+      password: "",
+      privateKey: "",
+      privateKeyPass: "",
     });
     _onSuccess(ds);
     onClose();
@@ -257,7 +296,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               <Input
                 label="Snowflake Account identifier"
                 name="account_identifier"
-                value={credentials.account}
+                value={credentials.account || ""}
                 placeholder="au12345.us-east-1"
                 onChange={(e) => {
                   setCredentials({ ...credentials, account: e.target.value });
@@ -267,7 +306,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               <Input
                 label="Role"
                 name="role"
-                value={credentials.role}
+                value={credentials.role || ""}
                 placeholder="dev_role"
                 onChange={(e) => {
                   setCredentials({ ...credentials, role: e.target.value });
@@ -277,7 +316,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               <Input
                 label="Warehouse"
                 name="warehouse"
-                value={credentials.warehouse}
+                value={credentials.warehouse || ""}
                 placeholder="dev_warehouse"
                 onChange={(e) => {
                   setCredentials({ ...credentials, warehouse: e.target.value });
@@ -287,24 +326,99 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               <Input
                 label="Username"
                 name="username"
-                value={credentials.username}
+                value={credentials.username || ""}
                 placeholder="dev_user"
                 onChange={(e) => {
                   setCredentials({ ...credentials, username: e.target.value });
                   setError(null);
                 }}
               />
-              <Input
-                label="Password"
-                name="password"
-                type="password"
-                value={credentials.password}
-                placeholder=""
-                onChange={(e) => {
-                  setCredentials({ ...credentials, password: e.target.value });
-                  setError(null);
+
+              <Tabs
+                defaultValue="password"
+                value={authMethod}
+                onValueChange={(value) => {
+                  setAuthMethod(value as "password" | "keypair");
+                  // Clear auth-specific fields when switching methods
+                  if (value === "password") {
+                    setCredentials({
+                      ...credentials,
+                      privateKey: undefined,
+                      privateKeyPass: undefined,
+                      password: "",
+                    });
+                  } else {
+                    setCredentials({
+                      ...credentials,
+                      password: undefined,
+                      privateKey: "",
+                    });
+                  }
                 }}
-              />
+              >
+                <TabsList>
+                  <TabsTrigger
+                    value="password"
+                    label="Password"
+                    buttonVariant="outline"
+                  />
+                  <TabsTrigger
+                    value="keypair"
+                    label="Key Pair"
+                    buttonVariant="outline"
+                  />
+                </TabsList>
+
+                <TabsContent value="password">
+                  <Input
+                    label="Password"
+                    name="password"
+                    type="password"
+                    value={credentials.password || ""}
+                    placeholder=""
+                    onChange={(e) => {
+                      setCredentials({
+                        ...credentials,
+                        password: e.target.value,
+                      });
+                      setError(null);
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="keypair">
+                  <div className="space-y-4">
+                    <Input
+                      label="Private Key"
+                      name="privateKey"
+                      type="password"
+                      value={credentials.privateKey || ""}
+                      placeholder="-----BEGIN PRIVATE KEY-----..."
+                      onChange={(e) => {
+                        setCredentials({
+                          ...credentials,
+                          privateKey: e.target.value,
+                        });
+                        setError(null);
+                      }}
+                    />
+                    <Input
+                      label="Private Key Passphrase (Optional)"
+                      name="privateKeyPass"
+                      type="password"
+                      value={credentials.privateKeyPass || ""}
+                      placeholder=""
+                      onChange={(e) => {
+                        setCredentials({
+                          ...credentials,
+                          privateKeyPass: e.target.value,
+                        });
+                        setError(null);
+                      }}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </SheetContainer>

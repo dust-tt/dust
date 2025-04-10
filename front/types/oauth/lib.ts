@@ -120,13 +120,41 @@ export function isProviderWithDefaultWorkspaceConfiguration(
 
 // Credentials
 
-export const SnowflakeCredentialsSchema = t.type({
+export const BaseSnowflakeCredentialsSchema = t.type({
   username: t.string,
-  password: t.string,
   account: t.string,
   role: t.string,
   warehouse: t.string,
 });
+
+export type BaseSnowflakeCredentials = t.TypeOf<
+  typeof BaseSnowflakeCredentialsSchema
+>;
+
+export const SnowflakePasswordCredentialsSchema = t.intersection([
+  BaseSnowflakeCredentialsSchema,
+  t.type({
+    password: t.string,
+  }),
+]);
+
+export const SnowflakeKeyPairCredentialsSchema = t.intersection([
+  BaseSnowflakeCredentialsSchema,
+  t.intersection([
+    t.type({
+      privateKey: t.string,
+    }),
+    t.partial({
+      privateKeyPass: t.string,
+    }),
+  ]),
+]);
+
+export const SnowflakeCredentialsSchema = t.union([
+  SnowflakePasswordCredentialsSchema,
+  SnowflakeKeyPairCredentialsSchema,
+]);
+
 export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
 
 export const CheckBigQueryCredentialsSchema = t.type({
@@ -188,7 +216,11 @@ export type ConnectionCredentials =
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
 ): credentials is SnowflakeCredentials {
-  return "username" in credentials && "password" in credentials;
+  return (
+    "username" in credentials &&
+    "account" in credentials &&
+    ("password" in credentials || "privateKey" in credentials)
+  );
 }
 
 export function isModjoCredentials(
