@@ -31,6 +31,7 @@ import type {
   PostSpaceSearchRequestBody,
   PostSpaceSearchResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
+import type { GetLastViewedSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/last_viewed";
 import type {
   ContentNodesViewType,
   DataSourceViewCategoryWithoutApps,
@@ -863,5 +864,28 @@ export function useSpacesSearchWithInfiniteScroll({
     nextPage: useCallback(async () => {
       await setSize((size) => size + 1);
     }, [setSize]),
+  };
+}
+
+export function useLastSpaceViewed({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const lastSpaceFetcher: Fetcher<GetLastViewedSpaceResponseBody> = fetcher;
+
+  const { data, isLoading, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/spaces/last_viewed`,
+    lastSpaceFetcher,
+    { disabled }
+  );
+
+  return {
+    lastViewedSpace: data?.success ? data.lastSpaceId : undefined,
+    isLastViewedSpaceLoading: isLoading,
+    isLastViewedSpaceError: error,
+    mutate,
   };
 }
