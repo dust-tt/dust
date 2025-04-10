@@ -36,39 +36,48 @@ export function schemasAreEqual(
 }
 
 /**
- * Recursively checks if a schema contains a specific sub-schema anywhere in its structure.
+ * Recursively finds all property keys in a schema that match a specific sub-schema.
  * This function handles nested objects and arrays.
+ * @returns An array of property keys that match the schema comparison. Empty array if no matches found.
  */
-export function containsSubSchema(
+export function findMatchingSchemaKeys(
   inputSchema: JSONSchema,
   targetSubSchema: JSONSchema
-): boolean {
-  if (schemasAreEqual(inputSchema, targetSubSchema)) {
-    return true;
-  }
+): string[] {
+  const matchingKeys: string[] = [];
 
   if (!isJSONSchemaObject(inputSchema)) {
-    return false;
+    return matchingKeys;
   }
 
-  // Check all properties and values in the schema
-  for (const value of Object.values(inputSchema)) {
-    if (
-      value === targetSubSchema ||
-      (isJSONSchemaObject(value) && containsSubSchema(value, targetSubSchema))
-    ) {
-      return true;
-    }
+  // Direct schema equality check
+  if (schemasAreEqual(inputSchema, targetSubSchema)) {
+    // For the root schema, we use an empty string as the key
+    matchingKeys.push("");
+    return matchingKeys;
   }
 
   // Check properties in object schemas
   if (inputSchema.properties) {
-    for (const propSchema of Object.values(inputSchema.properties)) {
-      if (
-        isJSONSchemaObject(propSchema) &&
-        containsSubSchema(propSchema, targetSubSchema)
-      ) {
-        return true;
+    for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
+      if (isJSONSchemaObject(propSchema)) {
+        // Check if this property's schema matches the target
+        if (schemasAreEqual(propSchema, targetSubSchema)) {
+          matchingKeys.push(key);
+        }
+
+        // Recursively check this property's schema
+        const nestedMatches = findMatchingSchemaKeys(
+          propSchema,
+          targetSubSchema
+        );
+        // For nested matches, prefix with the current property key
+        for (const match of nestedMatches) {
+          if (match !== "") {
+            // Skip the empty string from direct matches
+            matchingKeys.push(`${key}.${match}`);
+          }
+        }
       }
     }
   }
@@ -77,17 +86,59 @@ export function containsSubSchema(
   if (inputSchema.type === "array" && inputSchema.items) {
     if (isJSONSchemaObject(inputSchema.items)) {
       // Single schema for all items
-      if (containsSubSchema(inputSchema.items, targetSubSchema)) {
-        return true;
+      const itemMatches = findMatchingSchemaKeys(
+        inputSchema.items,
+        targetSubSchema
+      );
+      // For array items, we use the 'items' key as a prefix
+      for (const match of itemMatches) {
+        if (match !== "") {
+          matchingKeys.push(`items.${match}`);
+        } else {
+          matchingKeys.push("items");
+        }
       }
     } else if (Array.isArray(inputSchema.items)) {
       // Array of schemas for tuple validation
-      for (const item of inputSchema.items) {
-        if (
-          isJSONSchemaObject(item) &&
-          containsSubSchema(item, targetSubSchema)
-        ) {
-          return true;
+      for (let i = 0; i < inputSchema.items.length; i++) {
+        const item = inputSchema.items[i];
+        if (isJSONSchemaObject(item)) {
+          const itemMatches = findMatchingSchemaKeys(item, targetSubSchema);
+          // For tuple items, we use the index as part of the key
+          for (const match of itemMatches) {
+            if (match !== "") {
+              matchingKeys.push(`items[${i}].${match}`);
+            } else {
+              matchingKeys.push(`items[${i}]`);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Check all other properties and values in the schema
+  for (const [key, value] of Object.entries(inputSchema)) {
+    // Skip properties and items as they are handled separately above
+    if (
+      key === "properties" ||
+      (key === "items" && inputSchema.type === "array")
+    ) {
+      continue;
+    }
+
+    if (
+      value === targetSubSchema ||
+      (isJSONSchemaObject(value) && schemasAreEqual(value, targetSubSchema))
+    ) {
+      matchingKeys.push(key);
+    } else if (isJSONSchemaObject(value)) {
+      const nestedMatches = findMatchingSchemaKeys(value, targetSubSchema);
+      for (const match of nestedMatches) {
+        if (match !== "") {
+          matchingKeys.push(`${key}.${match}`);
+        } else {
+          matchingKeys.push(key);
         }
       }
     }
@@ -96,7 +147,7 @@ export function containsSubSchema(
   // Note: we don't handle anyOf, allOf, oneOf yet as we cannot disambiguate whether to inject the configuration
   // since we entirely hide the configuration from the agent.
 
-  return false;
+  return matchingKeys;
 }
 
 /**
@@ -142,7 +193,7 @@ export function findSchemaAtPath(
 export function setValueAtPath(
   obj: Record<string, unknown>,
   path: string[],
-  value: ConfigurableToolInputType
+  value: ConfigurableToolInputType | string | number | boolean
 ): void {
   if (path.length === 0) {
     return;
