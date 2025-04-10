@@ -193,7 +193,7 @@ export function findSchemaAtPath(
 export function setValueAtPath(
   obj: Record<string, unknown>,
   path: string[],
-  value: ConfigurableToolInputType
+  value: ConfigurableToolInputType | string | number | boolean
 ): void {
   if (path.length === 0) {
     return;

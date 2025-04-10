@@ -77,14 +77,16 @@ export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
 /**
  * Defines how we fill the actual inputs of the tool for each mime type.
  */
-function generateConfiguredInput({
+export function generateConfiguredInput({
   actionConfiguration,
   owner,
   mimeType,
+  keyPath = [],
 }: {
   owner: WorkspaceType;
   actionConfiguration: MCPToolConfigurationType;
   mimeType: InternalConfigurationMimeType;
+  keyPath?: string[];
 }): ConfigurableToolInputType {
   assert(
     isPlatformMCPToolConfiguration(actionConfiguration),
@@ -136,6 +138,50 @@ function generateConfiguredInput({
         uri: `agent://dust/w/${owner.sId}/agents/${childAgentId}`,
         mimeType,
       };
+    }
+
+    case INTERNAL_MIME_TYPES.CONFIGURATION.STRING: {
+      // For simple types, we extract the last key from the path and use it to look up the value
+      // in additionalConfiguration
+      if (keyPath.length === 0) {
+        throw new Error("Key path is required for STRING configuration");
+      }
+      const lastKey = keyPath[keyPath.length - 1];
+      const value = actionConfiguration.additionalConfiguration[lastKey];
+      if (typeof value !== "string") {
+        throw new Error(
+          `Expected string value for key ${lastKey}, got ${typeof value}`
+        );
+      }
+      return value;
+    }
+
+    case INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER: {
+      if (keyPath.length === 0) {
+        throw new Error("Key path is required for NUMBER configuration");
+      }
+      const lastKey = keyPath[keyPath.length - 1];
+      const value = actionConfiguration.additionalConfiguration[lastKey];
+      if (typeof value !== "number") {
+        throw new Error(
+          `Expected number value for key ${lastKey}, got ${typeof value}`
+        );
+      }
+      return value;
+    }
+
+    case INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN: {
+      if (keyPath.length === 0) {
+        throw new Error("Key path is required for BOOLEAN configuration");
+      }
+      const lastKey = keyPath[keyPath.length - 1];
+      const value = actionConfiguration.additionalConfiguration[lastKey];
+      if (typeof value !== "boolean") {
+        throw new Error(
+          `Expected boolean value for key ${lastKey}, got ${typeof value}`
+        );
+      }
+      return value;
     }
 
     default:
@@ -294,7 +340,12 @@ export function augmentInputsWithConfiguration({
             setValueAtPath(
               inputs,
               fullPath,
-              generateConfiguredInput({ owner, actionConfiguration, mimeType })
+              generateConfiguredInput({
+                owner,
+                actionConfiguration,
+                mimeType,
+                keyPath: fullPath,
+              })
             );
           }
         }
