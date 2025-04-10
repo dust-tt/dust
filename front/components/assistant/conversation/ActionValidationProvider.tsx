@@ -225,7 +225,7 @@ export function ActionValidationProvider({
               )}
             </div>
           </DialogContainer>
-          <DialogFooter className="flex justify-between">
+          <DialogFooterg>
             <Button
               label="Decline"
               variant="outline"
@@ -239,39 +239,37 @@ export function ActionValidationProvider({
                 </div>
               )}
             </Button>
-            <div className="flex gap-2">
-              {currentValidation?.stake === "low" && (
-                <Button
-                  label="Approve and never ask again"
-                  variant="ghost"
-                  onClick={() => {
-                    handleNeverAskAgain();
-                    handleSubmit(true);
-                  }}
-                  disabled={isProcessing}
-                >
-                  {isProcessing && (
-                    <div className="flex items-center">
-                      <span className="mr-2">Approving</span>
-                      <Spinner size="xs" variant="dark" />
-                    </div>
-                  )}
-                </Button>
-              )}
+            {currentValidation?.stake === "low" && (
               <Button
-                label="Approve"
-                variant="primary"
-                onClick={() => handleSubmit(true)}
+                label="Approve and never ask again"
+                variant="ghost"
+                onClick={() => {
+                  handleNeverAskAgain();
+                  handleSubmit(true);
+                }}
                 disabled={isProcessing}
               >
                 {isProcessing && (
                   <div className="flex items-center">
                     <span className="mr-2">Approving</span>
-                    <Spinner size="xs" variant="light" />
+                    <Spinner size="xs" variant="dark" />
                   </div>
                 )}
               </Button>
-            </div>
+            )}
+            <Button
+              label="Approve"
+              variant="primary"
+              onClick={() => handleSubmit(true)}
+              disabled={isProcessing}
+            >
+              {isProcessing && (
+                <div className="flex items-center">
+                  <span className="mr-2">Approving</span>
+                  <Spinner size="xs" variant="light" />
+                </div>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
