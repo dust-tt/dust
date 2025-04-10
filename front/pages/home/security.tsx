@@ -5,6 +5,7 @@ import {
   Grid,
   H1,
   H2,
+  H3,
   P,
   Strong,
 } from "@app/components/home/ContentComponents";
@@ -95,10 +96,15 @@ export default function Security() {
               "col-span-10"
             )}
           >
-            <P size="lg" className="text-muted-foreground">
+            <H3 className="text-muted-foreground" style={{ fontWeight: 400 }}>
               Designed for enterprises
-            </P>
-            <H1>Enterprise-grade Security</H1>
+            </H3>
+            <H1
+              mono
+              className="text-5xl font-medium leading-tight md:text-6xl lg:text-7xl"
+            >
+              Enterprise-grade Security
+            </H1>
             <P size="lg" className="text-muted-foreground">
               We've made security our core focus from day&nbsp;one to safeguard
               your&nbsp;company&nbsp;data and workspace&nbsp;privacy. <br></br>

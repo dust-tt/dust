@@ -15,17 +15,14 @@ import TrustedBy from "@app/components/home/TrustedBy";
 const HeroContent = () => {
   return (
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
-      <div style={{ letterSpacing: "-0.05em" }}>
-        <H1
-          mono
-          className="text-center text-4xl font-light leading-[1.15] sm:text-5xl sm:leading-[1.15] md:text-6xl md:leading-[1.1] lg:text-[72px] lg:leading-[1.1]"
-          style={{ letterSpacing: "-0.08em" }}
-        >
-          Transform how work
-          <br />
-          gets done
-        </H1>
-      </div>
+      <H1
+        mono
+        className="text-center text-5xl font-medium leading-tight md:text-6xl lg:text-7xl"
+      >
+        Transform how work
+        <br />
+        gets done
+      </H1>
       <P size="lg" className="text-base text-muted-foreground sm:text-lg">
         The platform to build AI agents, connected to your company knowledge,
         <br className="hidden sm:block" /> powered by the best AI models.
@@ -88,7 +85,7 @@ const HeroVisual = () => {
 export function IntroSection() {
   return (
     <section className="w-full">
-      <div className="flex flex-col gap-12 pt-8 md:gap-16 md:pt-16 lg:gap-20 lg:pt-20">
+      <div className="sm:pt-18 flex flex-col gap-12 pt-12 md:gap-16 lg:gap-20 lg:pt-36">
         <div className="flex flex-col gap-16 pt-16">
           <HeroContent />
           <HeroVisual />

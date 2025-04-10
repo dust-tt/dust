@@ -153,7 +153,7 @@ export const HeaderContentBlock = ({
   <Grid>
     <div
       className={classNames(
-        "sm:pt-18 flex flex-col justify-end gap-12 pt-12 lg:pt-36",
+        "sm:pt-18 flex flex-col justify-end gap-6 pt-12 lg:pt-36",
         "col-span-12",
         "sm:col-span-12 md:col-span-12",
         "lg:col-span-8 lg:col-start-2",
@@ -169,9 +169,14 @@ export const HeaderContentBlock = ({
           {uptitle}
         </P>
       )}
-      <H1>{title}</H1>
+      <H1
+        mono
+        className="text-5xl font-medium leading-tight md:text-6xl lg:text-7xl"
+      >
+        {title}
+      </H1>
       {subtitle && (
-        <P size="lg" className="text-white dark:text-black">
+        <P size="lg" className="text-muted-foreground">
           {subtitle}
         </P>
       )}

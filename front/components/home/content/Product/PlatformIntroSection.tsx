@@ -14,7 +14,12 @@ export function PlatformIntroSection() {
       <P size="lg" className="text-muted-foreground">
         Dust Platform
       </P>
-      <H1>For Developers</H1>
+      <H1
+        mono
+        className="text-5xl font-medium leading-tight md:text-6xl lg:text-7xl"
+      >
+        For Developers
+      </H1>
       <P size="lg" className="text-muted-foreground">
         Push the boundaries by building custom actions and integrations
         to&nbsp;fit your team's exact&nbsp;needs.

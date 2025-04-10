@@ -102,8 +102,8 @@ export default function LandingLayout({
           className={classNames(
             "container flex w-full flex-col",
             "gap-24 px-6 py-24 pb-12",
-            "xl:gap-36",
-            "2xl:gap-48"
+            "xl:gap-16",
+            "2xl:gap-24"
           )}
         >
           {children}
