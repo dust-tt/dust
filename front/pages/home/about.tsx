@@ -355,12 +355,7 @@ export default function About() {
             "sm:pt-18 flex w-full flex-col justify-end gap-4 pt-12 lg:pt-36"
           )}
         >
-          <H3
-            className="text-center text-muted-foreground"
-            style={{ fontWeight: 400 }}
-          >
-            About us
-          </H3>
+          <H3 className="text-center text-muted-foreground">About us</H3>
           <div className="flex flex-row justify-center">
             <H1
               mono
