@@ -46,10 +46,82 @@ interface EditorContentForModel {
   }[];
 }
 
+export function getEditorContentForModelFromDom(
+  editor: Editor
+): EditorContentForModel {
+  const nodes: Array<{
+    id: string;
+    position: number;
+    content: Array<{
+      text: string;
+      author: "llm" | "user";
+      startOffset: number;
+      endOffset: number;
+    }>;
+    fullText: string;
+    html: string;
+  }> = [];
+
+  let currentNodeIndex = 0;
+
+  editor.state.doc.descendants((node, pos, parent) => {
+    // Only process top-level nodes
+    if (parent === editor.state.doc) {
+      const id = node.attrs["data-id"];
+      const segments: Array<{
+        text: string;
+        author: "llm" | "user";
+        startOffset: number;
+        endOffset: number;
+      }> = [];
+
+      // Get the DOM node and its HTML
+      const domNode = editor.view.nodeDOM(pos);
+      const html = domNode instanceof HTMLElement ? domNode.outerHTML : "";
+
+      // Use ProseMirror's native position mapping :cite[ri]
+      node.descendants((textNode, textPos) => {
+        if (textNode.isText) {
+          const isUserContent = textNode.marks.some(
+            (mark) => mark.type.name === "userContent"
+          );
+
+          // Get absolute positions from ProseMirror
+          const start = pos + textPos;
+          const end = start + textNode.nodeSize;
+
+          // These are now real document positions
+          segments.push({
+            text: textNode.text ?? "",
+            author: isUserContent ? "user" : "llm",
+            startOffset: start,
+            endOffset: end,
+          });
+        }
+      });
+
+      nodes.push({
+        id,
+        position: currentNodeIndex++,
+        content: segments,
+        fullText: node.textContent,
+        html,
+      });
+    }
+  });
+
+  return {
+    type: "document",
+    nodes,
+  };
+}
+
 export function getEditorContentForModel(
   editor: Editor
 ): EditorContentForModel {
   const editorJSON = editor.getJSON();
+
+  console.log("?>>> ", getEditorContentForModelFromDom(editor));
 
   if (!editorJSON.content) {
     return {

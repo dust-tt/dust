@@ -94,7 +94,10 @@ export const LLMContentMark = Mark.create({
       {
         tag: "span",
         getAttrs: (element) => {
-          return element.hasAttribute("data-llm-content");
+          return (
+            element.hasAttribute("data-author") &&
+            element.getAttribute("data-author") === "llm"
+          );
         },
       },
     ];
@@ -103,7 +106,7 @@ export const LLMContentMark = Mark.create({
   renderHTML({ HTMLAttributes }) {
     return [
       "span",
-      mergeAttributes(HTMLAttributes, { "data-llm-content": "" }),
+      mergeAttributes(HTMLAttributes, { "data-author": "llm" }),
       0,
     ];
   },
@@ -126,7 +129,10 @@ export const UserContentMark = Mark.create({
       {
         tag: "span",
         getAttrs: (element) => {
-          return element.hasAttribute("data-user-content");
+          return (
+            element.hasAttribute("data-author") &&
+            element.getAttribute("data-author") === "user"
+          );
         },
       },
     ];
@@ -135,7 +141,7 @@ export const UserContentMark = Mark.create({
   renderHTML({ HTMLAttributes }) {
     return [
       "span",
-      mergeAttributes(HTMLAttributes, { "data-user-content": "" }),
+      mergeAttributes(HTMLAttributes, { "data-author": "user" }),
       0,
     ];
   },
