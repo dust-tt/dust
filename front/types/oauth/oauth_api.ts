@@ -83,7 +83,6 @@ export class OAuthAPI {
           user_id: string;
         };
       };
-      copy_related_credential_from_connection_id?: string;
     } = {
       provider,
       metadata,
