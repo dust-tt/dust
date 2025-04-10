@@ -10,8 +10,10 @@ const { syncSalesforceConnection } = proxyActivities<typeof activities>({
 
 export async function salesforceSyncWorkflow({
   connectorId,
+  forceSync,
 }: {
   connectorId: ModelId;
+  forceSync?: boolean;
 }) {
   let signaled = false;
 
@@ -21,6 +23,6 @@ export async function salesforceSyncWorkflow({
 
   do {
     signaled = false;
-    await syncSalesforceConnection(connectorId);
+    await syncSalesforceConnection(connectorId, forceSync);
   } while (signaled);
 }

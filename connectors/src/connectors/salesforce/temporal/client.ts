@@ -16,7 +16,8 @@ function makeSalesforceSyncWorkflowId(connectorId: ModelId): string {
 }
 
 export async function launchSalesforceSyncWorkflow(
-  connectorId: ModelId
+  connectorId: ModelId,
+  forceSync?: boolean
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -33,6 +34,7 @@ export async function launchSalesforceSyncWorkflow(
       args: [
         {
           connectorId: connector.id,
+          forceSync,
         },
       ],
       taskQueue: QUEUE_NAME,

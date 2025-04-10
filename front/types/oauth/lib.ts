@@ -4,6 +4,7 @@ export const OAUTH_USE_CASES = [
   "connection",
   "labs_transcripts",
   "platform_actions",
+  "personal_connection",
 ] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];

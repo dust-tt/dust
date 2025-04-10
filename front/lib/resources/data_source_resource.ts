@@ -11,6 +11,7 @@ import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { LabsPersonalDataSourceConnection } from "@app/lib/models/labs_personal_data_source_connection";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -447,6 +448,13 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       hardDelete: true,
     });
 
+    await LabsPersonalDataSourceConnection.destroy({
+      where: {
+        dataSourceId: this.id,
+      },
+      transaction,
+    });
+
     const deletedCount = await DataSourceModel.destroy({
       where: {
         id: this.id,
@@ -534,6 +542,51 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   static isDataSourceSId(sId: string): boolean {
     return isResourceSId("data_source", sId);
+  }
+
+  // Personal connection logic.
+
+  async getPersonalConnection(auth: Authenticator) {
+    const conn = await LabsPersonalDataSourceConnection.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        dataSourceId: this.id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+
+    return conn?.connectionId;
+  }
+
+  async createPersonalConnection(
+    auth: Authenticator,
+    {
+      connectionId,
+    }: {
+      connectionId: string;
+    }
+  ) {
+    const conn = await LabsPersonalDataSourceConnection.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      dataSourceId: this.id,
+      userId: auth.getNonNullableUser().id,
+      connectionId,
+    });
+
+    return conn?.connectionId;
+  }
+
+  async removePersonalConnection(auth: Authenticator) {
+    const conn = await LabsPersonalDataSourceConnection.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        dataSourceId: this.id,
+        userId: auth.user()?.id,
+      },
+    });
+    if (conn) {
+      return conn.destroy();
+    }
   }
 
   // Serialization.
