@@ -46,14 +46,14 @@ export function findMatchingSchemaKeys(
 ): string[] {
   const matchingKeys: string[] = [];
 
+  if (!isJSONSchemaObject(inputSchema)) {
+    return matchingKeys;
+  }
+
   // Direct schema equality check
   if (schemasAreEqual(inputSchema, targetSubSchema)) {
     // For the root schema, we use an empty string as the key
     matchingKeys.push("");
-    return matchingKeys;
-  }
-
-  if (!isJSONSchemaObject(inputSchema)) {
     return matchingKeys;
   }
 
@@ -67,10 +67,14 @@ export function findMatchingSchemaKeys(
         }
 
         // Recursively check this property's schema
-        const nestedMatches = findMatchingSchemaKeys(propSchema, targetSubSchema);
+        const nestedMatches = findMatchingSchemaKeys(
+          propSchema,
+          targetSubSchema
+        );
         // For nested matches, prefix with the current property key
         for (const match of nestedMatches) {
-          if (match !== "") { // Skip the empty string from direct matches
+          if (match !== "") {
+            // Skip the empty string from direct matches
             matchingKeys.push(`${key}.${match}`);
           }
         }
@@ -82,7 +86,10 @@ export function findMatchingSchemaKeys(
   if (inputSchema.type === "array" && inputSchema.items) {
     if (isJSONSchemaObject(inputSchema.items)) {
       // Single schema for all items
-      const itemMatches = findMatchingSchemaKeys(inputSchema.items, targetSubSchema);
+      const itemMatches = findMatchingSchemaKeys(
+        inputSchema.items,
+        targetSubSchema
+      );
       // For array items, we use the 'items' key as a prefix
       for (const match of itemMatches) {
         if (match !== "") {
@@ -113,7 +120,10 @@ export function findMatchingSchemaKeys(
   // Check all other properties and values in the schema
   for (const [key, value] of Object.entries(inputSchema)) {
     // Skip properties and items as they are handled separately above
-    if (key === "properties" || (key === "items" && inputSchema.type === "array")) {
+    if (
+      key === "properties" ||
+      (key === "items" && inputSchema.type === "array")
+    ) {
       continue;
     }
 
