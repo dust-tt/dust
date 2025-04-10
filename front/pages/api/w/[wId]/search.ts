@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { handleSearch, SearchRequestBody } from "@app/lib/api/search";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   ContentNodeWithParent,
@@ -13,7 +14,6 @@ import type {
   SearchWarningCode,
   WithAPIErrorResponse,
 } from "@app/types";
-import logger from "@app/logger/logger";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;

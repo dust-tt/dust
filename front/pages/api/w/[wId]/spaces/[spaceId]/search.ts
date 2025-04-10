@@ -11,6 +11,7 @@ import { searchContenNodesInSpace } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   DataSourceViewContentNode,
@@ -18,7 +19,6 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
-import logger from "@app/logger/logger";
 
 const SearchRequestBody = t.type({
   // Optional array of data source view IDs to search in.
