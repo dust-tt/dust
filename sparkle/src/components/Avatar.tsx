@@ -187,7 +187,7 @@ export function Avatar({
   return (
     <div
       className={cn(
-        typeof visualToUse != "string" && "s-border s-border-primary-800/10",
+        typeof visualToUse !== "string" && "s-border s-border-primary-800/10",
         avatarVariants({
           size,
           variant,
