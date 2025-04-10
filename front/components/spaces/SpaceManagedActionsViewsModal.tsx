@@ -14,7 +14,7 @@ import React, { useState } from "react";
 import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
-import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_server_views";
+import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 type SpaceManagedActionsViewsModelProps = {
@@ -29,7 +29,7 @@ export default function SpaceManagedActionsViewsModel({
   onAddServer,
 }: SpaceManagedActionsViewsModelProps) {
   const [searchText, setSearchText] = useState("");
-  const { serverViews } = useMCPServerViewsNotActivated({
+  const { availableMCPServers } = useAvailableMCPServers({
     owner,
     space,
   });
@@ -56,21 +56,19 @@ export default function SpaceManagedActionsViewsModel({
           />
         </div>
         <ScrollArea className="max-h-[500px]">
-          {serverViews.length <= 0 && (
+          {availableMCPServers.length <= 0 && (
             <DropdownMenuItem label="No more actions to add" disabled />
           )}
-          {serverViews
-            .filter((s) => filterMCPServer(s.server, searchText))
-            .map((serverView) => (
+          {availableMCPServers
+            .filter((s) => filterMCPServer(s, searchText))
+            .map((server) => (
               <DropdownMenuItem
-                key={serverView.id}
-                label={serverView.server.name}
-                icon={() => (
-                  <Avatar visual={getVisual(serverView.server)} size="xs" />
-                )}
-                description={serverView.server.description}
+                key={server.id}
+                label={server.name}
+                icon={() => <Avatar visual={getVisual(server)} size="xs" />}
+                description={server.description}
                 onClick={() => {
-                  onAddServer(serverView.server);
+                  onAddServer(server);
                 }}
               />
             ))}
