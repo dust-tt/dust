@@ -52,6 +52,9 @@ export const ConfigurableToolInputSchemas = {
     uri: z.string().regex(CHILD_AGENT_CONFIGURATION_URI_PATTERN),
     mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT),
   }),
+  [INTERNAL_MIME_TYPES.CONFIGURATION.STRING]: z.string(),
+  [INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER]: z.number(),
+  [INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN]: z.boolean(),
   // We use a satisfies here to ensure that all the InternalConfigurationMimeType are covered whilst preserving the type
   // inference in tools definitions (server.tool is templated).
 } as const satisfies Record<InternalConfigurationMimeType, z.ZodSchema>;
