@@ -1,12 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import {
-  Breadcrumbs,
-  CompanyIcon,
-  FolderIcon,
-  HomeIcon,
-} from "../index_with_tw_base";
+import { Breadcrumbs, CompanyIcon, FolderIcon, HomeIcon } from "../index_with_tw_base";
 
 const meta = {
   title: "Components/Breadcrumbs",
@@ -71,8 +66,8 @@ export const BreadcrumbsExample = () => {
     <div className="s-flex s-flex-col s-gap-4 s-pb-8">
       <Breadcrumbs items={items1} />
       <Breadcrumbs items={items2} />
-      <Breadcrumbs items={items4} />
       <Breadcrumbs items={items3} />
+      <Breadcrumbs items={items4} />
       <Breadcrumbs items={items5} />
     </div>
   );

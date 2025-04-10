@@ -1,3 +1,4 @@
+import { isFolder, isWebsite } from "@dust-tt/client";
 import {
   Checkbox,
   DataTable,
@@ -12,6 +13,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { useSpaceSearch } from "@app/lib/swr/spaces";
 import type {
   ContentNodesViewType,
@@ -22,14 +25,11 @@ import type {
   SpaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
-import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { isFolder, isWebsite } from "@dust-tt/client";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 
 interface TableRowData {
   id: string;
   title: string;
-  onClick?: (node: DataSourceViewContentNode) => void;
+  onClick?: () => void;
   parentTitle?: string;
   icon?: React.JSX.Element;
 }
@@ -78,6 +78,11 @@ interface DataSourceTableSelectorProps {
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
   space: SpaceType;
+  updateBreadcrumbs: (label: string, onClick: () => void) => void;
+  traversedNode: DataSourceViewContentNode | undefined;
+  setTraversedNode: Dispatch<
+    SetStateAction<DataSourceViewContentNode | undefined>
+  >;
 }
 
 const PAGE_SIZE = 25;
@@ -87,12 +92,12 @@ export function DataSourceTableSelector({
   dataSourceViews,
   viewType,
   space,
+  updateBreadcrumbs,
+  traversedNode,
+  setTraversedNode,
 }: DataSourceTableSelectorProps) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [searchResults, setSearchResults] = useState<TableRowData[]>([]);
-  const [traversedNode, setTraversedNode] = useState<
-    DataSourceViewContentNode | undefined
-  >(undefined);
 
   const {
     cursorPagination,
@@ -157,7 +162,8 @@ export function DataSourceTableSelector({
       searchResultNodes,
       (node: DataSourceViewContentNode) => {
         setTraversedNode(node);
-        console.log(node);
+        setSearchSpaceText("");
+        updateBreadcrumbs(node.title, () => setTraversedNode(node));
       }
     );
     if (tablePagination.pageIndex === 0) {
@@ -165,7 +171,12 @@ export function DataSourceTableSelector({
     } else if (searchResultNodes.length > 0) {
       setSearchResults((prev) => [...prev, ...tableRows]);
     }
-  }, [searchResultNodes, tablePagination.pageIndex]);
+  }, [
+    searchResultNodes,
+    setSearchSpaceText,
+    tablePagination.pageIndex,
+    updateBreadcrumbs,
+  ]);
 
   const columns: ColumnDef<TableRowData>[] = useMemo(
     () => [

@@ -1,25 +1,33 @@
 import {
+  Breadcrumbs,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  Label,
+  HomeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { Dispatch, SetStateAction } from "react";
+import type { ComponentType, Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { DataSourceTableSelector } from "@app/components/data_source_view/DataSourceTableSelector";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   ContentNodesViewType,
+  DataSourceViewContentNode,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
+
+type ButtonBreadcrumbItem = {
+  label: string;
+  icon?: ComponentType<{ className?: string }>;
+  onClick: () => void;
+};
 
 interface DataSourceBuilderSelectorProps {
   allowedSpaces?: SpaceType[];
@@ -44,6 +52,28 @@ export const DataSourceBuilderSelector = ({
 }: DataSourceBuilderSelectorProps) => {
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  const [traversedNode, setTraversedNode] = useState<
+    DataSourceViewContentNode | undefined
+  >(undefined);
+
+  const handleGoToRoot = () => {
+    setBreadcrumbItems([rootBreadcrumb]);
+    setTraversedNode(undefined);
+  };
+  const rootBreadcrumb = {
+    icon: HomeIcon,
+    onClick: handleGoToRoot,
+    label: "Home",
+  };
+
+  const [breadcrumbItems, setBreadcrumbItems] = useState<
+    ButtonBreadcrumbItem[]
+  >([rootBreadcrumb]);
+
+  const handleBreadcrumbClick = (index: number) => {
+    // Keep breadcrumbs up to the clicked one and remove the rest
+    setBreadcrumbItems(breadcrumbItems.slice(0, index + 1));
+  };
 
   // Filter spaces to only those with data source views
   const filteredSpaces = useMemo(() => {
@@ -78,7 +108,6 @@ export const DataSourceBuilderSelector = ({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <Label className="text-sm text-muted-foreground">Space:</Label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -91,7 +120,11 @@ export const DataSourceBuilderSelector = ({
           <DropdownMenuContent>
             <DropdownMenuRadioGroup
               value={selectedSpaceId || ""}
-              onValueChange={setSelectedSpaceId}
+              onValueChange={(newSpaceId) => {
+                setSelectedSpaceId(newSpaceId);
+                setBreadcrumbItems([rootBreadcrumb]);
+                setTraversedNode(undefined);
+              }}
             >
               {filteredSpaces.map((space) => (
                 <DropdownMenuRadioItem
@@ -106,6 +139,18 @@ export const DataSourceBuilderSelector = ({
         </DropdownMenu>
       </div>
 
+      {breadcrumbItems?.length > 0 && (
+        <Breadcrumbs
+          items={breadcrumbItems.map((item, index) => ({
+            ...item,
+            onClick: () => {
+              handleBreadcrumbClick(index);
+              item.onClick();
+            },
+          }))}
+        />
+      )}
+
       {selectedSpace && (
         <DataSourceTableSelector
           owner={owner}
@@ -117,6 +162,17 @@ export const DataSourceBuilderSelector = ({
           viewType={viewType}
           isRootSelectable={isRootSelectable}
           space={selectedSpace}
+          updateBreadcrumbs={(label: string, onClick: () => void) => {
+            setBreadcrumbItems([
+              ...breadcrumbItems,
+              {
+                label,
+                onClick,
+              },
+            ]);
+          }}
+          traversedNode={traversedNode}
+          setTraversedNode={setTraversedNode}
         />
       )}
     </div>
