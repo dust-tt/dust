@@ -1,6 +1,12 @@
 import { Checkbox, Input, Label } from "@dust-tt/sparkle";
 import React from "react";
 
+const formatKeyForDisplay = (key: string): string => {
+  const lastPart = key.split(".").pop() || key;
+  const withSpaces = lastPart.replace("_", " ").replace("-", " ");
+  return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
+};
+
 interface BooleanConfigurationSectionProps {
   requiredBooleans: Record<string, boolean>;
   additionalConfiguration: Record<string, string | number | boolean>;
@@ -26,7 +32,7 @@ function BooleanConfigurationSection({
           onCheckedChange={(checked) => onConfigUpdate(key, !!checked)}
         />
         <Label htmlFor={`boolean-${key}`} className="text-sm font-medium">
-          {key.split(".").pop()}
+          {formatKeyForDisplay(key)}
         </Label>
       </div>
     );
@@ -53,14 +59,14 @@ function NumberConfigurationSection({
     return (
       <div key={key} className="flex flex-col gap-2">
         <Label htmlFor={`number-${key}`} className="text-sm font-medium">
-          {key.split(".").pop()}
+          {formatKeyForDisplay(key)}
         </Label>
         <Input
           id={`number-${key}`}
           type="number"
           value={value.toString()}
           onChange={(e) => onConfigUpdate(key, parseFloat(e.target.value))}
-          placeholder={`Enter value for ${key.split(".").pop()}`}
+          placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
         />
       </div>
     );
@@ -87,14 +93,14 @@ function StringConfigurationSection({
     return (
       <div key={key} className="flex flex-col gap-2">
         <Label htmlFor={`string-${key}`} className="text-sm font-medium">
-          {key.split(".").pop()}
+          {formatKeyForDisplay(key)}
         </Label>
         <Input
           id={`string-${key}`}
           type="text"
           value={value.toString()}
           onChange={(e) => onConfigUpdate(key, e.target.value)}
-          placeholder={`Enter value for ${key.split(".").pop()}`}
+          placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
         />
       </div>
     );
