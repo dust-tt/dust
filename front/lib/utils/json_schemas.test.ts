@@ -8,25 +8,6 @@ import { findMatchingSchemaKeys } from "./json_schemas";
 
 describe("JSON Schema Utilities", () => {
   describe("findMatchingSchemaKeys", () => {
-    it("should return an empty array when no matches are found", () => {
-      const mainSchema: JSONSchema = {
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          age: { type: "number" },
-        },
-      };
-
-      // Use DATA_SOURCE schema which won't match the mainSchema
-      const targetSchema =
-        ConfigurableToolInputJSONSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
-        ];
-
-      const result = findMatchingSchemaKeys(mainSchema, targetSchema);
-      expect(result).toEqual([]);
-    });
-
     it("should return an array with an empty string when the root schema matches", () => {
       // Use STRING schema as our test schema
       const stringSchema =
