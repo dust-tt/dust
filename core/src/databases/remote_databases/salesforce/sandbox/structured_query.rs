@@ -304,6 +304,30 @@ fn is_valid_iso8601_datetime(value: &str) -> bool {
     ISO8601_REGEX.is_match(value)
 }
 
+fn is_valid_date_literal(value: &str) -> bool {
+    // Check for simple literals
+    if matches!(value, "TODAY" | "YESTERDAY" | "TOMORROW" | "THIS_WEEK" | "LAST_WEEK" | 
+                     "NEXT_WEEK" | "THIS_MONTH" | "LAST_MONTH" | "NEXT_MONTH" | "THIS_QUARTER" | 
+                     "LAST_QUARTER" | "NEXT_QUARTER" | "THIS_YEAR" | "LAST_YEAR" | "NEXT_YEAR" |
+                     "LAST_90_DAYS" | "NEXT_90_DAYS") {
+        return true;
+    }
+    
+    // Check for parameterized literals with regex
+    lazy_static! {
+        static ref N_PATTERN: Regex = 
+            Regex::new(r"^(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS):\d+$").unwrap();
+        static ref FISCAL_PATTERN: Regex = 
+            Regex::new(r"^(THIS|LAST|NEXT)_FISCAL_(QUARTER|YEAR)$").unwrap();
+        static ref FISCAL_N_PATTERN: Regex = 
+            Regex::new(r"^(LAST|NEXT)_N_FISCAL_(QUARTERS|YEARS):\d+$").unwrap();
+    }
+    
+    N_PATTERN.is_match(value) || 
+    FISCAL_PATTERN.is_match(value) || 
+    FISCAL_N_PATTERN.is_match(value)
+}
+
 pub trait Validator {
     fn validate(&self) -> Result<(), SoqlError>;
 }
@@ -397,10 +421,16 @@ impl Validator for TypedValue {
     fn validate(&self) -> Result<(), SoqlError> {
         match self {
             TypedValue::DateTime { value, .. } => {
+                // Check if it's a date literal first
+                if is_valid_date_literal(value) {
+                    return Ok(());
+                }
+                
+                // Otherwise, validate as ISO 8601 datetime
                 if !is_valid_iso8601_datetime(value) {
                     return Err(SoqlError::value_error(
                         "datetime",
-                        format!("Invalid ISO 8601 datetime format: {}", value),
+                        format!("Invalid datetime format: {} - must be either a valid ISO 8601 date (YYYY-MM-DD[THH:MM:SSZ]) or a Salesforce date literal (TODAY, YESTERDAY, LAST_N_DAYS:n, etc.)", value),
                     ));
                 }
                 Ok(())
@@ -709,6 +739,68 @@ impl GroupType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_date_literals_validation() {
+        // Test simple date literals
+        let date_literals = vec![
+            "TODAY", "YESTERDAY", "TOMORROW", 
+            "THIS_WEEK", "LAST_WEEK", "NEXT_WEEK",
+            "THIS_MONTH", "LAST_MONTH", "NEXT_MONTH",
+            "THIS_QUARTER", "LAST_QUARTER", "NEXT_QUARTER",
+            "THIS_YEAR", "LAST_YEAR", "NEXT_YEAR",
+            "LAST_90_DAYS", "NEXT_90_DAYS"
+        ];
+        
+        for literal in date_literals {
+            let value = TypedValue::DateTime {
+                value_type: DateTimeType::DateTime,
+                value: literal.to_string(),
+            };
+            
+            assert!(value.validate().is_ok(), "Failed to validate date literal: {}", literal);
+        }
+        
+        // Test parameterized date literals
+        let parameterized_literals = vec![
+            "LAST_N_DAYS:7", "NEXT_N_DAYS:30",
+            "LAST_N_WEEKS:4", "NEXT_N_WEEKS:2",
+            "LAST_N_MONTHS:3", "NEXT_N_MONTHS:6",
+            "LAST_N_QUARTERS:2", "NEXT_N_QUARTERS:1",
+            "LAST_N_YEARS:1", "NEXT_N_YEARS:5",
+            "THIS_FISCAL_QUARTER", "LAST_FISCAL_QUARTER", "NEXT_FISCAL_QUARTER",
+            "THIS_FISCAL_YEAR", "LAST_FISCAL_YEAR", "NEXT_FISCAL_YEAR",
+            "LAST_N_FISCAL_QUARTERS:2", "NEXT_N_FISCAL_QUARTERS:3",
+            "LAST_N_FISCAL_YEARS:1", "NEXT_N_FISCAL_YEARS:2"
+        ];
+        
+        for literal in parameterized_literals {
+            let value = TypedValue::DateTime {
+                value_type: DateTimeType::DateTime,
+                value: literal.to_string(),
+            };
+            
+            assert!(value.validate().is_ok(), "Failed to validate parameterized date literal: {}", literal);
+        }
+        
+        // Test invalid date literals
+        let invalid_literals = vec![
+            "INVALID_LITERAL", "LAST_DAYS", "TOMORROW_PLUS_1", 
+            "LAST_N_DAYS", // Missing number
+            "LAST_DAYS:7",  // Missing N
+            "LAST_N_INVALID:10" // Invalid period
+        ];
+        
+        for literal in invalid_literals {
+            let value = TypedValue::DateTime {
+                value_type: DateTimeType::DateTime,
+                value: literal.to_string(),
+            };
+            
+            assert!(value.validate().is_err(), "Should have failed for invalid date literal: {}", literal);
+        }
+    }
 
     #[test]
     fn test_validate_basic_query_success() {
