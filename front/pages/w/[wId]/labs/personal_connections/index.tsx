@@ -50,7 +50,7 @@ export default function PersonalConnections({
       >
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header
-            title="Personal connecttion"
+            title="Personal connections"
             icon={CommandIcon}
             description="Connect your personal accounts on data sources."
           />
