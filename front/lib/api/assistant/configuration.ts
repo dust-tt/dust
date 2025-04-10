@@ -1193,6 +1193,12 @@ export async function createAgentActionConfiguration(
           return new Err(mcpServerView.error);
         }
 
+        const {
+          server: { name: serverName, description: serverDescription, tools },
+        } = mcpServerView.value.toJSON();
+
+        const isSingleTool = tools.length === 1;
+
         const mcpConfig = await AgentMCPServerConfiguration.create(
           {
             sId: generateRandomModelSId(),
@@ -1200,6 +1206,11 @@ export async function createAgentActionConfiguration(
             workspaceId: owner.id,
             mcpServerViewId: mcpServerView.value.id,
             additionalConfiguration: action.additionalConfiguration,
+            name: serverName !== action.name ? action.name : null,
+            singleToolDescriptionOverride:
+              isSingleTool && serverDescription !== action.description
+                ? action.description
+                : null,
           },
           { transaction: t }
         );

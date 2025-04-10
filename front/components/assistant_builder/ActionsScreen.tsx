@@ -87,6 +87,7 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -129,7 +130,8 @@ function ActionModeSection({
 }
 
 export function hasActionError(
-  action: AssistantBuilderActionConfiguration
+  action: AssistantBuilderActionConfiguration,
+  mcpServerViews: MCPServerViewType[]
 ): string | null {
   switch (action.type) {
     case "RETRIEVAL_SEARCH":
@@ -137,7 +139,7 @@ export function hasActionError(
     case "RETRIEVAL_EXHAUSTIVE":
       return hasErrorActionRetrievalExhaustive(action);
     case "MCP":
-      return hasErrorActionMCP(action);
+      return hasErrorActionMCP(action, mcpServerViews);
     case "PROCESS":
       return hasErrorActionProcess(action);
     case "DUST_APP_RUN":
@@ -584,7 +586,7 @@ function NewActionModal({
   setEdited,
   builderState,
 }: NewActionModalProps) {
-  const [newAction, setNewAction] = useState<
+  const [newActionConfig, setNewActionConfig] = useState<
     (AssistantBuilderActionConfiguration & { id: string }) | null
   >(null);
 
@@ -598,15 +600,17 @@ function NewActionModal({
     string | null
   >(null);
 
+  const { mcpServerViews } = useContext(AssistantBuilderContext);
+
   useEffect(() => {
-    if (initialAction && !newAction) {
-      setNewAction(initialAction);
+    if (initialAction && !newActionConfig) {
+      setNewActionConfig(initialAction);
     }
-  }, [initialAction, newAction]);
+  }, [initialAction, newActionConfig]);
 
   const titleError =
-    initialAction && initialAction?.name !== newAction?.name
-      ? getActionNameError(newAction?.name, builderState.actions)
+    initialAction && initialAction?.name !== newActionConfig?.name
+      ? getActionNameError(newActionConfig?.name, builderState.actions)
       : null;
 
   function getActionNameError(
@@ -617,7 +621,7 @@ function NewActionModal({
       return "The name cannot be empty.";
     }
     if (existingActions.some((a) => a.name === name)) {
-      return "This name is already used for another tool. Please use a different name.";
+      return 'This name is already used for another tool. Use the "..." button to rename it.';
     }
     if (!/^[a-z0-9_]+$/.test(name)) {
       return "The name can only contain lowercase letters, numbers, and underscores (no spaces).";
@@ -634,12 +638,13 @@ function NewActionModal({
     return null;
   }
 
-  const descriptionValid = (newAction?.description?.trim() ?? "").length > 0;
+  const descriptionValid =
+    (newActionConfig?.description?.trim() ?? "").length > 0;
 
   const onCloseLocal = useCallback(() => {
     onClose();
     setTimeout(() => {
-      setNewAction(null);
+      setNewActionConfig(null);
       setShowInvalidActionNameError(null);
       setShowInvalidActionDescError(null);
       setShowInvalidActionError(null);
@@ -650,14 +655,14 @@ function NewActionModal({
     (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       if (
-        newAction &&
+        newActionConfig &&
         !titleError &&
         descriptionValid &&
-        !hasActionError(newAction)
+        !hasActionError(newActionConfig, mcpServerViews)
       ) {
-        newAction.name = newAction.name.trim();
-        newAction.description = newAction.description.trim();
-        onSave(newAction);
+        newActionConfig.name = newActionConfig.name.trim();
+        newActionConfig.description = newActionConfig.description.trim();
+        onSave(newActionConfig);
         onCloseLocal();
       } else {
         if (titleError) {
@@ -666,12 +671,21 @@ function NewActionModal({
         if (!descriptionValid) {
           setShowInvalidActionDescError("Description cannot be empty.");
         }
-        if (newAction) {
-          setShowInvalidActionError(hasActionError(newAction));
+        if (newActionConfig) {
+          setShowInvalidActionError(
+            hasActionError(newActionConfig, mcpServerViews)
+          );
         }
       }
     },
-    [newAction, onCloseLocal, onSave, titleError, descriptionValid]
+    [
+      newActionConfig,
+      onCloseLocal,
+      onSave,
+      titleError,
+      descriptionValid,
+      mcpServerViews,
+    ]
   );
 
   const updateAction = useCallback(
@@ -686,7 +700,7 @@ function NewActionModal({
         old: AssistantBuilderActionConfiguration["configuration"]
       ) => AssistantBuilderActionConfiguration["configuration"];
     }) => {
-      setNewAction((prev) => {
+      setNewActionConfig((prev) => {
         if (!prev) {
           return null;
         }
@@ -720,9 +734,9 @@ function NewActionModal({
 
         <SheetContainer>
           <div className="w-full pt-8">
-            {newAction && (
+            {newActionConfig && (
               <ActionEditor
-                action={newAction}
+                action={newActionConfig}
                 spacesUsedInActions={spacesUsedInActions}
                 updateAction={updateAction}
                 owner={owner}
@@ -746,10 +760,6 @@ function NewActionModal({
           rightButtonProps={{
             label: "Save",
             onClick: onModalSave,
-            disabled:
-              titleError ||
-              !descriptionValid ||
-              (newAction && hasActionError(newAction)),
           }}
         />
       </SheetContent>
@@ -775,7 +785,7 @@ function ActionCard({
     return null;
   }
 
-  const actionError = hasActionError(action);
+  const actionError = hasActionError(action, mcpServerViews);
   return (
     <Card
       variant="primary"
@@ -887,12 +897,14 @@ function ActionConfigEditor({
           owner={owner}
           actionConfiguration={action.configuration}
           allowedSpaces={allowedSpaces}
-          updateAction={(setNewAction) => {
+          updateAction={(setNewActionConfig) => {
             updateAction({
               actionName: action.name,
               actionDescription: action.description,
               getNewActionConfig: (old) =>
-                setNewAction(old as AssistantBuilderRetrievalConfiguration),
+                setNewActionConfig(
+                  old as AssistantBuilderRetrievalConfiguration
+                ),
             });
           }}
           setEdited={setEdited}
@@ -905,12 +917,14 @@ function ActionConfigEditor({
           owner={owner}
           actionConfiguration={action.configuration}
           allowedSpaces={allowedSpaces}
-          updateAction={(setNewAction) => {
+          updateAction={(setNewActionConfig) => {
             updateAction({
               actionName: action.name,
               actionDescription: action.description,
               getNewActionConfig: (old) =>
-                setNewAction(old as AssistantBuilderRetrievalConfiguration),
+                setNewActionConfig(
+                  old as AssistantBuilderRetrievalConfiguration
+                ),
             });
           }}
           setEdited={setEdited}
@@ -935,12 +949,12 @@ function ActionConfigEditor({
           instructions={instructions}
           actionConfiguration={action.configuration}
           allowedSpaces={allowedSpaces}
-          updateAction={(setNewAction) => {
+          updateAction={(setNewActionConfig) => {
             updateAction({
               actionName: action.name,
               actionDescription: action.description,
               getNewActionConfig: (old) =>
-                setNewAction(old as AssistantBuilderProcessConfiguration),
+                setNewActionConfig(old as AssistantBuilderProcessConfiguration),
             });
           }}
           setEdited={setEdited}
@@ -955,12 +969,12 @@ function ActionConfigEditor({
           owner={owner}
           actionConfiguration={action.configuration}
           allowedSpaces={allowedSpaces}
-          updateAction={(setNewAction) => {
+          updateAction={(setNewActionConfig) => {
             updateAction({
               actionName: action.name,
               actionDescription: action.description,
               getNewActionConfig: (old) =>
-                setNewAction(old as AssistantBuilderTableConfiguration),
+                setNewActionConfig(old as AssistantBuilderTableConfiguration),
             });
           }}
           setEdited={setEdited}
@@ -1011,17 +1025,38 @@ function ActionEditor({
   setEdited,
   builderState,
 }: ActionEditorProps) {
-  const isDataSourceAction = [
-    "TABLES_QUERY",
-    "RETRIEVAL_EXHAUSTIVE",
-    "RETRIEVAL_SEARCH",
-  ].includes(action.type as any);
+  const { mcpServerViews } = useContext(AssistantBuilderContext);
+
+  const isActionWithDataSource = useMemo(() => {
+    const actionType = action.type;
+    switch (actionType) {
+      case "DUST_APP_RUN":
+      case "PROCESS":
+      case "REASONING":
+      case "WEB_NAVIGATION":
+        return false;
+      case "TABLES_QUERY":
+      case "RETRIEVAL_EXHAUSTIVE":
+      case "RETRIEVAL_SEARCH":
+        return true;
+      case "MCP":
+        const selectedMCPServerView = mcpServerViews.find((mcpServerView) =>
+          action.type === "MCP"
+            ? mcpServerView.id === action.configuration.mcpServerViewId
+            : false
+        );
+
+        const requirements = getRequirements(selectedMCPServerView);
+        return (
+          requirements.requiresDataSourceConfiguration ||
+          requirements.requiresTableConfiguration
+        );
+      default:
+        assertNever(actionType);
+    }
+  }, [action.type, action.configuration, mcpServerViews]);
 
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
-
-  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS", "MCP"].includes(
-    action.type
-  );
 
   return (
     <div className="px-1">
@@ -1092,28 +1127,20 @@ function ActionEditor({
           </div>
         )}
       </ActionModeSection>
-      {shouldDisplayDescription && (
+      {isActionWithDataSource && (
         <div className="flex flex-col gap-4 pt-8">
-          {isDataSourceAction ? (
-            <div className="flex flex-col gap-2">
-              <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                What's the data?
-              </div>
-              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Provide a brief description (maximum 800 characters) of the data
-                content and context to help the agent determine when to utilize
-                it effectively.
-              </div>
-            </div>
-          ) : (
+          <div className="flex flex-col gap-2">
             <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-              What is this tool about?
+              What's the data?
             </div>
-          )}
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Provide a brief description (maximum 800 characters) of the data
+              content and context to help the agent determine when to utilize it
+              effectively.
+            </div>
+          </div>
           <TextArea
-            placeholder={
-              isDataSourceAction ? "This data contains…" : "This tool is about…"
-            }
+            placeholder={"This data contains…"}
             value={action.description}
             onChange={(e) => {
               if (e.target.value.length < 800) {
