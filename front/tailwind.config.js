@@ -268,70 +268,70 @@ module.exports = {
       lg: [
         "18px",
         {
-          lineHeight: "28px",
-          letterSpacing: "normal",
+          lineHeight: "26px",
+          letterSpacing: "-0.36px",
         },
       ],
       xl: [
         "20px",
         {
-          lineHeight: "26px",
+          lineHeight: "28px",
           letterSpacing: "-0.4px",
         },
       ],
       "2xl": [
         "24px",
         {
-          lineHeight: "32px",
+          lineHeight: "30px",
           letterSpacing: "-0.96px",
         },
       ],
       "3xl": [
         "32px",
         {
-          lineHeight: "40px",
+          lineHeight: "36px",
           letterSpacing: "-1.28px",
         },
       ],
       "4xl": [
         "40px",
         {
-          lineHeight: "48px",
+          lineHeight: "42px",
           letterSpacing: "-2.4px",
         },
       ],
       "5xl": [
         "48px",
         {
-          lineHeight: "56px",
+          lineHeight: "52px",
           letterSpacing: "-2.88px",
         },
       ],
       "6xl": [
         "56px",
         {
-          lineHeight: "56px",
+          lineHeight: "60px",
           letterSpacing: "-3.36px",
         },
       ],
       "7xl": [
         "64px",
         {
-          lineHeight: "64px",
+          lineHeight: "68px",
           letterSpacing: "-3.84px",
         },
       ],
       "8xl": [
         "72px",
         {
-          lineHeight: "72px",
+          lineHeight: "76px",
           letterSpacing: "-4.32px",
         },
       ],
       "9xl": [
         "80px",
         {
-          lineHeight: "80px",
+          lineHeight: "84px",
           letterSpacing: "-4.8px",
         },
       ],
