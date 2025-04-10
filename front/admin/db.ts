@@ -67,7 +67,6 @@ import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
-import { LabsPersonalDataSourceConnection } from "@app/lib/models/labs_personal_data_source_connection";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
@@ -196,8 +195,6 @@ async function main() {
 
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
-
-  await LabsPersonalDataSourceConnection.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
