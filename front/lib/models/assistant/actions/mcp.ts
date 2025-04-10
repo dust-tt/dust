@@ -17,10 +17,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare sId: string;
 
-  declare additionalConfiguration: Record<
-    string,
-    boolean | number | string | null
-  >;
+  declare additionalConfiguration: Record<string, boolean | number | string>;
 
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
 }
