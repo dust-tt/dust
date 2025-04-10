@@ -18,6 +18,7 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import logger from "@app/logger/logger";
 
 const SearchRequestBody = t.type({
   // Optional array of data source view IDs to search in.
@@ -121,6 +122,15 @@ async function handler(
       },
     });
   }
+
+  logger.info(
+    {
+      workspaceId: auth.workspace()?.sId,
+      params: bodyValidation.right,
+      spaceId: space.sId,
+    },
+    "Search knowledge (single space)"
+  );
 
   const searchRes = await searchContenNodesInSpace(
     auth,

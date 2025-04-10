@@ -13,6 +13,7 @@ import type {
   SearchWarningCode,
   WithAPIErrorResponse,
 } from "@app/types";
+import logger from "@app/logger/logger";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -53,6 +54,13 @@ async function handler(
     });
   }
 
+  logger.info(
+    {
+      workspaceId: auth.workspace()?.sId,
+      params: bodyValidation.right,
+    },
+    "Search knowledge (global)"
+  );
   const searchResult = await handleSearch(req, auth, bodyValidation.right);
 
   if (searchResult.isErr()) {
