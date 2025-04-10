@@ -1,7 +1,7 @@
 use super::error::SoqlError;
 use super::structured_query::{
     Filter, GroupBy, LogicalOperator, NullsPosition, OrderBy, OrderDirection, StructuredQuery,
-    Validator, WhereClause,
+    TypedValue, Validator, WhereClause,
 };
 
 /// Convert a JSON query to a SOQL string with detailed error handling and suggestions
@@ -160,7 +160,7 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
                     filter.function.as_str(),
                     filter.field,
                     filter.operator,
-                    format_value(&filter.value)
+                    format_typed_value(&filter.value)
                 )
             })
             .collect();
@@ -204,7 +204,12 @@ fn build_where_clause(where_clause: &WhereClause) -> Result<String, SoqlError> {
                 field,
                 operator,
                 value,
-            } => Ok(format!("{} {} {}", field, operator, format_value(value))),
+            } => Ok(format!(
+                "{} {} {}",
+                field,
+                operator,
+                format_typed_value(value)
+            )),
             Filter::NestedCondition(nested) => {
                 let nested_str = build_nested_condition(nested)?;
                 Ok(format!("({})", nested_str))
@@ -236,7 +241,12 @@ fn build_nested_condition(where_clause: &WhereClause) -> Result<String, SoqlErro
                 field,
                 operator,
                 value,
-            } => Ok(format!("{} {} {}", field, operator, format_value(value))),
+            } => Ok(format!(
+                "{} {} {}",
+                field,
+                operator,
+                format_typed_value(value)
+            )),
             Filter::NestedCondition(nested) => {
                 let nested_str = build_nested_condition(nested)?;
                 Ok(format!("({})", nested_str))
@@ -287,7 +297,18 @@ fn build_order_by(order_by: &[OrderBy]) -> String {
 }
 
 /// Formats a value for use in a SOQL query.
-fn format_value(value: &serde_json::Value) -> String {
+fn format_typed_value(value: &TypedValue) -> String {
+    match value {
+        TypedValue::DateTime { value, .. } => {
+            // For datetime objects, just return the value without quotes
+            value.clone()
+        }
+        TypedValue::Regular(json_value) => format_json_value(json_value),
+    }
+}
+
+/// Formats a JSON value for use in a SOQL query.
+fn format_json_value(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::Null => String::from("NULL"),
         serde_json::Value::Bool(b) => b.to_string(),
@@ -300,7 +321,7 @@ fn format_value(value: &serde_json::Value) -> String {
             format!("'{}'", escaped)
         }
         serde_json::Value::Array(arr) => {
-            let values: Vec<String> = arr.iter().map(format_value).collect();
+            let values: Vec<String> = arr.iter().map(format_json_value).collect();
             format!("({})", values.join(", "))
         }
         serde_json::Value::Object(_) => {
@@ -315,42 +336,70 @@ fn format_value(value: &serde_json::Value) -> String {
 mod tests {
     use super::*;
 
-    // Test for the format_value function
+    // Test for the format_json_value function
     #[test]
-    fn test_format_value_escaping() {
+    fn test_format_json_value_escaping() {
         // Test null value
-        assert_eq!(format_value(&serde_json::Value::Null), "NULL");
+        assert_eq!(format_json_value(&serde_json::Value::Null), "NULL");
 
         // Test boolean value
-        assert_eq!(format_value(&serde_json::json!(true)), "true");
-        assert_eq!(format_value(&serde_json::json!(false)), "false");
+        assert_eq!(format_json_value(&serde_json::json!(true)), "true");
+        assert_eq!(format_json_value(&serde_json::json!(false)), "false");
 
         // Test number value
-        assert_eq!(format_value(&serde_json::json!(42)), "42");
-        assert_eq!(format_value(&serde_json::json!(3.14)), "3.14");
+        assert_eq!(format_json_value(&serde_json::json!(42)), "42");
+        assert_eq!(format_json_value(&serde_json::json!(3.14)), "3.14");
 
         // Test string value with special characters
-        assert_eq!(format_value(&serde_json::json!("hello")), "'hello'");
-        assert_eq!(format_value(&serde_json::json!("O'Reilly")), "'O''Reilly'"); // Single quotes are doubled
+        assert_eq!(format_json_value(&serde_json::json!("hello")), "'hello'");
         assert_eq!(
-            format_value(&serde_json::json!("Line1\nLine2")),
+            format_json_value(&serde_json::json!("O'Reilly")),
+            "'O''Reilly'"
+        ); // Single quotes are doubled
+        assert_eq!(
+            format_json_value(&serde_json::json!("Line1\nLine2")),
             "'Line1\nLine2'"
         ); // Newlines preserved
 
         // Test array value
         assert_eq!(
-            format_value(&serde_json::json!(["a", "b", "c"])),
+            format_json_value(&serde_json::json!(["a", "b", "c"])),
             "('a', 'b', 'c')"
         );
 
         // Test mixed array
         assert_eq!(
-            format_value(&serde_json::json!(["a", 1, true, null])),
+            format_json_value(&serde_json::json!(["a", 1, true, null])),
             "('a', 1, true, NULL)"
         );
 
         // Test object (not supported)
-        assert_eq!(format_value(&serde_json::json!({"key": "value"})), "NULL");
+        assert_eq!(
+            format_json_value(&serde_json::json!({"key": "value"})),
+            "NULL"
+        );
+    }
+
+    #[test]
+    fn test_format_typed_value() {
+        use crate::databases::remote_databases::salesforce::sandbox::structured_query::{
+            DateTimeType, TypedValue,
+        };
+
+        // Test datetime value (unquoted)
+        let datetime_value = TypedValue::DateTime {
+            value_type: DateTimeType::DateTime,
+            value: "2023-01-01T00:00:00Z".to_string(),
+        };
+        assert_eq!(format_typed_value(&datetime_value), "2023-01-01T00:00:00Z");
+
+        // Test regular string value (quoted)
+        let string_value = TypedValue::Regular(serde_json::json!("hello"));
+        assert_eq!(format_typed_value(&string_value), "'hello'");
+
+        // Test regular number value
+        let number_value = TypedValue::Regular(serde_json::json!(42));
+        assert_eq!(format_typed_value(&number_value), "42");
     }
 
     #[test]
@@ -867,8 +916,22 @@ mod tests {
             "where": {
                 "condition": "AND",
                 "filters": [
-                    {"field": "CreatedDate", "operator": ">", "value": "2023-01-01T00:00:00Z"},
-                    {"field": "CloseDate", "operator": "<", "value": "2023-12-31"}
+                    {
+                        "field": "CreatedDate", 
+                        "operator": ">", 
+                        "value": {
+                            "type": "datetime",
+                            "value": "2023-01-01T00:00:00Z"
+                        }
+                    },
+                    {
+                        "field": "CloseDate", 
+                        "operator": "<", 
+                        "value": {
+                            "type": "datetime",
+                            "value": "2023-12-31"
+                        }
+                    }
                 ]
             }
         }"#;
@@ -877,8 +940,33 @@ mod tests {
         let soql = convert_to_soql(&query).unwrap();
         assert_eq!(
             soql,
-            "SELECT Id, Name, CloseDate FROM Opportunity WHERE CreatedDate > '2023-01-01T00:00:00Z' AND CloseDate < '2023-12-31'"
+            "SELECT Id, Name, CloseDate FROM Opportunity WHERE CreatedDate > 2023-01-01T00:00:00Z AND CloseDate < 2023-12-31"
         );
+    }
+
+    #[test]
+    fn test_invalid_datetime_format() {
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["Id", "Name"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    {
+                        "field": "CreatedDate", 
+                        "operator": ">", 
+                        "value": {
+                            "type": "datetime",
+                            "value": "01/01/2023"
+                        }
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let result = convert_to_soql(&query);
+        assert!(result.is_err());
     }
 
     #[test]

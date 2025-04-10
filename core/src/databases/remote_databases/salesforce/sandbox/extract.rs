@@ -158,7 +158,7 @@ impl ObjectExtractor for Aggregate {
 mod tests {
     use crate::databases::remote_databases::salesforce::sandbox::structured_query::{
         Aggregate, AggregateFilter, AggregateFunction, Filter, GroupBy, HavingClause,
-        LogicalOperator, OrderBy, OrderDirection, ParentField, Relationship, WhereClause,
+        LogicalOperator, OrderBy, OrderDirection, ParentField, Relationship, TypedValue, WhereClause,
     };
 
     use super::*;
@@ -283,7 +283,7 @@ mod tests {
                 filters: vec![Filter::Condition {
                     field: "Owner.Department".to_string(),
                     operator: "=".to_string(),
-                    value: json!("Sales"),
+                    value: TypedValue::Regular(json!("Sales")),
                 }],
             }),
             order_by: vec![],
@@ -374,7 +374,7 @@ mod tests {
                 filters: vec![AggregateFilter {
                     field: "Hello.World".to_string(),
                     operator: "=".to_string(),
-                    value: json!("Sales"),
+                    value: TypedValue::Regular(json!("Sales")),
                     function: AggregateFunction::Count,
                 }],
             }),

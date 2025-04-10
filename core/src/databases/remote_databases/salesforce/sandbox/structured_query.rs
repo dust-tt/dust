@@ -1,4 +1,6 @@
 use super::error::SoqlError;
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 const MAX_DOT_NOTATION_TRAVERSAL_DEPTH: usize = 1;
@@ -73,6 +75,28 @@ pub enum LogicalOperator {
     Or,
 }
 
+/// Represents a strongly-typed value for use in SOQL queries
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum TypedValue {
+    /// A datetime value
+    DateTime {
+        #[serde(rename = "type")]
+        value_type: DateTimeType,
+        value: String,
+    },
+    /// A regular JSON value
+    Regular(serde_json::Value),
+}
+
+/// Represents the type of a datetime value
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DateTimeType {
+    /// A datetime value
+    DateTime,
+}
+
 /// Represents a filter in a where clause.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -86,7 +110,7 @@ pub enum Filter {
         operator: String,
 
         /// The value to compare against.
-        value: serde_json::Value,
+        value: TypedValue,
     },
 
     /// A nested condition with its own logical operator and filters.
@@ -247,7 +271,7 @@ pub struct AggregateFilter {
     pub operator: String,
 
     /// The value to compare against.
-    pub value: serde_json::Value,
+    pub value: TypedValue,
 }
 
 /// Default function for order direction.
@@ -268,6 +292,16 @@ fn validate_max_depth(path: &str, allowed_depth: usize) -> Result<(), SoqlError>
         ));
     }
     Ok(())
+}
+
+fn is_valid_iso8601_datetime(value: &str) -> bool {
+    lazy_static! {
+        static ref ISO8601_REGEX: Regex =
+            Regex::new(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$")
+                .unwrap();
+    }
+
+    ISO8601_REGEX.is_match(value)
 }
 
 pub trait Validator {
@@ -359,6 +393,23 @@ impl Validator for StructuredQuery {
     }
 }
 
+impl Validator for TypedValue {
+    fn validate(&self) -> Result<(), SoqlError> {
+        match self {
+            TypedValue::DateTime { value, .. } => {
+                if !is_valid_iso8601_datetime(value) {
+                    return Err(SoqlError::value_error(
+                        "datetime",
+                        format!("Invalid ISO 8601 datetime format: {}", value),
+                    ));
+                }
+                Ok(())
+            }
+            TypedValue::Regular(_) => Ok(()),
+        }
+    }
+}
+
 impl Validator for WhereClause {
     fn validate(&self) -> Result<(), SoqlError> {
         if self.filters.is_empty() {
@@ -384,10 +435,20 @@ impl Validator for WhereClause {
                         ));
                     }
 
+                    value.validate()?;
+
+                    // Get the underlying value for operator validation
+                    let json_value = match value {
+                        TypedValue::DateTime { value, .. } => {
+                            serde_json::Value::String(value.clone())
+                        }
+                        TypedValue::Regular(val) => val.clone(),
+                    };
+
                     // Validate operator and value combinations
                     match operator.to_uppercase().as_str() {
                         "IN" | "NOT IN" => {
-                            if !matches!(value, serde_json::Value::Array(_)) {
+                            if !matches!(json_value, serde_json::Value::Array(_)) {
                                 return Err(SoqlError::operator_error(
                                     field,
                                     operator,
@@ -397,7 +458,7 @@ impl Validator for WhereClause {
                             }
                         }
                         "LIKE" | "NOT LIKE" => {
-                            if !matches!(value, serde_json::Value::String(_)) {
+                            if !matches!(json_value, serde_json::Value::String(_)) {
                                 return Err(SoqlError::operator_error(
                                     field,
                                     operator,
@@ -581,6 +642,9 @@ impl Validator for HavingClause {
                     "HAVING aggregate fields can only include one level of dot notation",
                 )
             })?;
+
+            // Validate the typed value
+            filter.value.validate()?;
         }
         Ok(())
     }
@@ -804,7 +868,7 @@ mod tests {
                     function: AggregateFunction::Count,
                     field: "Id".to_string(),
                     operator: ">".to_string(),
-                    value: serde_json::json!(10),
+                    value: TypedValue::Regular(serde_json::json!(10)),
                 }],
             }),
         };
@@ -872,7 +936,7 @@ mod tests {
             filters: vec![Filter::Condition {
                 field: "Name".to_string(),
                 operator: "CONTAINS".to_string(),
-                value: serde_json::json!("Test"),
+                value: TypedValue::Regular(serde_json::json!("Test")),
             }],
         };
 
@@ -900,7 +964,7 @@ mod tests {
             filters: vec![Filter::Condition {
                 field: "Email".to_string(),
                 operator: "LIKE".to_string(),
-                value: serde_json::json!(123),
+                value: TypedValue::Regular(serde_json::json!(123)),
             }],
         };
 
