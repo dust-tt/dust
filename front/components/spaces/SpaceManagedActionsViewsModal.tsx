@@ -11,10 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  MCP_SERVER_ICONS,
-} from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_server_views";
@@ -69,14 +66,7 @@ export default function SpaceManagedActionsViewsModel({
                 key={serverView.id}
                 label={serverView.server.name}
                 icon={() => (
-                  <Avatar
-                    visual={React.createElement(
-                      MCP_SERVER_ICONS[
-                        serverView.server.icon || DEFAULT_MCP_SERVER_ICON
-                      ]
-                    )}
-                    size="xs"
-                  />
+                  <Avatar visual={getVisual(serverView.server)} size="xs" />
                 )}
                 description={serverView.server.description}
                 onClick={() => {
