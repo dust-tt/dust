@@ -24,7 +24,8 @@ const HeroContent = () => {
         gets done
       </H1>
       <P size="lg" className="text-base text-muted-foreground sm:text-lg">
-        The platform to build AI agents, connected to your company knowledge,
+        The platform to build AI agents in minutes, connected to your company
+        knowledge,
         <br className="hidden sm:block" /> powered by the best AI models.
       </P>
       <div className="mt-4 flex flex-row justify-center gap-4">
