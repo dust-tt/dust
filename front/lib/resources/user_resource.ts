@@ -266,6 +266,7 @@ export class UserResource extends BaseResource<UserModel> {
         userId: this.id,
       },
     });
+  }
 
   async appendToMetadata(key: string, value: string) {
     const metadata = await UserMetadataModel.findOne({

@@ -179,12 +179,12 @@ export function UserMenu({
             <DropdownMenuSubTrigger label="Metadata" icon={UserCogIcon} />
             <DropdownMenuSubContent>
               <DropdownMenuItem
-                label="Delete server validation metadata"
+                label="Delete tool approbation history"
                 onClick={() => {
                   void deleteServerValidationMetadata();
                   sendNotification({
                     title: "Success !",
-                    description: "Server validation metadata deleted.",
+                    description: "Tool approbation history deleted.",
                     type: "success",
                   });
                 }}
