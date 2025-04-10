@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { handleSearch, SearchRequestBody } from "@app/lib/api/search";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   ContentNodeWithParent,
@@ -53,6 +54,13 @@ async function handler(
     });
   }
 
+  logger.info(
+    {
+      workspaceId: auth.workspace()?.sId,
+      params: bodyValidation.right,
+    },
+    "Search knowledge (global)"
+  );
   const searchResult = await handleSearch(req, auth, bodyValidation.right);
 
   if (searchResult.isErr()) {
