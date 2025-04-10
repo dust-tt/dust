@@ -212,8 +212,7 @@ export function Avatar({
           alt={name}
           className={cn(
             avatarVariants({ size }),
-            "s-object-cover s-object-center",
-            "s-border s-border-primary-800/10"
+            "s-object-cover s-object-center"
           )}
         />
       ) : visualToUse ? (
