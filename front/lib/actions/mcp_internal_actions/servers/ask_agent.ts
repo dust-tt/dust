@@ -14,7 +14,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "ask_agent",
   version: "1.0.0",
   description: "Demo server showing a basic interaction with a child agent.",
-  icon: "robot",
+  visual: "robot",
   authorization: null,
 };
 

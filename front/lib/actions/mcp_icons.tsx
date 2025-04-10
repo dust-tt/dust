@@ -6,6 +6,9 @@ import {
   RobotIcon,
   RocketIcon,
 } from "@dust-tt/sparkle";
+import React from "react";
+
+import type { MCPServerType } from "@app/lib/api/mcp";
 
 export const MCP_SERVER_ICONS: Record<AllowedIconType, React.ComponentType> = {
   command: CommandIcon,
@@ -30,3 +33,13 @@ export type AllowedIconType = (typeof ALLOWED_ICONS)[number];
 
 export const isAllowedIconType = (icon: string): icon is AllowedIconType =>
   ALLOWED_ICONS.includes(icon as AllowedIconType);
+
+export const getVisual = (mcpServer: MCPServerType) => {
+  if (isAllowedIconType(mcpServer.visual)) {
+    return React.createElement(
+      MCP_SERVER_ICONS[mcpServer.visual || DEFAULT_MCP_SERVER_ICON]
+    );
+  }
+
+  return mcpServer.visual;
+};
