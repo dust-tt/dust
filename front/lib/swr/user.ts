@@ -31,8 +31,8 @@ export function useUserMetadata(key: string) {
   };
 }
 
-export function useUpdateUserMetadata() {
-  const updateUserMetadata = async (key: string, value: string) => {
+export function useUpdateUserMetadata(key: string) {
+  const updateUserMetadata = async (value: string) => {
     await fetch(`/api/user/metadata/${encodeURIComponent(key)}`, {
       method: "PATCH",
       headers: {

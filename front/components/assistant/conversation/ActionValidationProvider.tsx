@@ -95,7 +95,9 @@ export function ActionValidationProvider({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { updateUserMetadata } = useUpdateUserMetadata();
+  const { updateUserMetadata } = useUpdateUserMetadata(
+    "mcpServerToolValidation"
+  );
 
   const sendCurrentValidation = useCallback(
     async (approved: boolean) => {
@@ -152,8 +154,7 @@ export function ActionValidationProvider({
     }
 
     void updateUserMetadata(
-      `server.${currentValidation.serverId}`,
-      currentValidation.action.functionCallName
+      `${currentValidation.serverId}:${currentValidation.action.functionCallName}`
     );
   }, [currentValidation, updateUserMetadata]);
 
@@ -225,7 +226,7 @@ export function ActionValidationProvider({
               )}
             </div>
           </DialogContainer>
-          <DialogFooterg>
+          <DialogFooter>
             <Button
               label="Decline"
               variant="outline"

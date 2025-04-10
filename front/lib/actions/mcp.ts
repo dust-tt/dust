@@ -615,16 +615,22 @@ async function computeStatusFromConfig(
     return { status: "pending" };
   }
 
-  const neverAskSetting = await user.getMetadata(`server.${mcpServer.id}`);
+  if (!serverMetadata || serverMetadata?.permission === "high") {
+    return { status: "pending" };
+  }
+
+  const neverAskSetting = await user.getMetadata(`mcpServerToolValidation`);
   if (
     neverAskSetting &&
-    neverAskSetting.value.includes(actionConfiguration.name)
+    neverAskSetting.value.includes(
+      `${mcpServer.id}:${actionConfiguration.name}`
+    )
   ) {
     return { status: "allowed_implicitly" };
   }
 
   return {
-    stake: serverMetadata?.permission,
+    stake: "low",
     status: "pending",
     serverId: mcpServer.id,
   };
