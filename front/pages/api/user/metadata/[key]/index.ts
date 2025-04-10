@@ -6,6 +6,7 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { UserMetadataType, WithAPIErrorResponse } from "@app/types";
+import { Op } from "sequelize";
 
 export type PostUserMetadataResponseBody = {
   metadata: UserMetadataType;
@@ -92,13 +93,22 @@ async function handler(
       });
       return;
 
+    case "DELETE":
+      await u.deleteMetadata({
+        key: {
+          [Op.like]: `${key}%`,
+        },
+      });
+      res.status(200);
+      return;
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or POST is expected.",
+            "The method passed is not supported, GET, DELETE or POST is expected.",
         },
       });
   }
