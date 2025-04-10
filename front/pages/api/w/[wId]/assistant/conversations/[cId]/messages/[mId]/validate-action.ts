@@ -12,7 +12,11 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 export const ValidateActionSchema = z.object({
   actionId: z.number(),
-  approved: z.boolean(),
+  approved: z.enum([
+    "action_approved",
+    "action_rejected",
+    "action_always_approved",
+  ]),
 });
 
 export type ValidateActionResponse = {

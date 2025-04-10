@@ -266,7 +266,6 @@ export function AgentMessage({
             action: event.action,
             inputs: event.inputs,
             stake: event.stake,
-            serverId: event.serverId,
           });
           break;
 

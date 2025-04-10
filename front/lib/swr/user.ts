@@ -30,17 +30,3 @@ export function useUserMetadata(key: string) {
     mutateMetadata: mutate,
   };
 }
-
-export function useUpdateUserMetadata(key: string) {
-  const updateUserMetadata = async (value: string) => {
-    await fetch(`/api/user/metadata/${encodeURIComponent(key)}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ value }),
-    });
-  };
-
-  return { updateUserMetadata };
-}

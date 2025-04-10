@@ -11,9 +11,11 @@ import {
 } from "@dust-tt/sparkle";
 import { createContext, useCallback, useEffect, useState } from "react";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type {
+  MCPToolStakeLevelType,
+  MCPValidationOutputType,
+} from "@app/lib/actions/constants";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import { useUpdateUserMetadata } from "@app/lib/swr/user";
 
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: {
@@ -23,7 +25,6 @@ type ActionValidationContextType = {
     action: MCPActionType;
     inputs: Record<string, unknown>;
     stake?: MCPToolStakeLevelType;
-    serverId?: string;
   }) => void;
 };
 
@@ -35,7 +36,6 @@ export type PendingValidationRequestType = {
   action: MCPActionType;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
-  serverId?: string;
 };
 
 export const ActionValidationContext =
@@ -95,12 +95,8 @@ export function ActionValidationProvider({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { updateUserMetadata } = useUpdateUserMetadata(
-    "mcpServerToolValidation"
-  );
-
   const sendCurrentValidation = useCallback(
-    async (approved: boolean) => {
+    async (approved: MCPValidationOutputType) => {
       if (!currentValidation) {
         return;
       }
@@ -123,9 +119,7 @@ export function ActionValidationProvider({
       );
 
       if (!response.ok) {
-        setErrorMessage(
-          `Failed to ${approved ? "approve" : "reject"} action. Please try again.`
-        );
+        setErrorMessage(`Failed to assess action approval. Please try again.`);
         return;
       }
     },
@@ -133,7 +127,7 @@ export function ActionValidationProvider({
   );
 
   const handleSubmit = useCallback(
-    (approved: boolean) => {
+    (approved: MCPValidationOutputType) => {
       void sendCurrentValidation(approved);
       setIsProcessing(false);
       const foundItem = takeNextFromQueue();
@@ -143,20 +137,6 @@ export function ActionValidationProvider({
     },
     [sendCurrentValidation, takeNextFromQueue]
   );
-
-  const handleNeverAskAgain = useCallback(() => {
-    if (
-      !currentValidation ||
-      !currentValidation?.serverId ||
-      !currentValidation?.action.functionCallName
-    ) {
-      return;
-    }
-
-    void updateUserMetadata(
-      `${currentValidation.serverId}:${currentValidation.action.functionCallName}`
-    );
-  }, [currentValidation, updateUserMetadata]);
 
   useEffect(() => {
     if (currentValidation) {
@@ -171,7 +151,6 @@ export function ActionValidationProvider({
     action: MCPActionType;
     inputs: Record<string, unknown>;
     stake?: MCPToolStakeLevelType;
-    serverId?: string;
   }) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
@@ -186,7 +165,7 @@ export function ActionValidationProvider({
         onOpenChange={(open) => {
           if (open === false && !isProcessing) {
             if (currentValidation) {
-              void handleSubmit(false);
+              void handleSubmit("action_rejected");
             }
           }
         }}
@@ -230,7 +209,7 @@ export function ActionValidationProvider({
             <Button
               label="Decline"
               variant="outline"
-              onClick={() => handleSubmit(false)}
+              onClick={() => handleSubmit("action_rejected")}
               disabled={isProcessing}
             >
               {isProcessing && (
@@ -245,8 +224,7 @@ export function ActionValidationProvider({
                 label="Approve and never ask again"
                 variant="ghost"
                 onClick={() => {
-                  handleNeverAskAgain();
-                  handleSubmit(true);
+                  handleSubmit("action_always_approved");
                 }}
                 disabled={isProcessing}
               >
@@ -261,7 +239,7 @@ export function ActionValidationProvider({
             <Button
               label="Approve"
               variant="primary"
-              onClick={() => handleSubmit(true)}
+              onClick={() => handleSubmit("action_approved")}
               disabled={isProcessing}
             >
               {isProcessing && (

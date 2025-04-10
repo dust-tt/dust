@@ -32,7 +32,6 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
-import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
@@ -294,7 +293,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       status: s,
       stake,
       serverId,
-    } = await computeStatusFromConfig(auth, actionConfiguration);
+    } = await getExecutionStatusAndStakeFromConfig(auth, actionConfiguration);
     let status:
       | "allowed_implicitly"
       | "allowed_explicitly"
@@ -310,7 +309,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         action: mcpAction,
         inputs: rawInputs,
         stake,
-        serverId,
       };
 
       try {
@@ -330,7 +328,19 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           const { data } = event;
 
           if (
-            data.type === "action_approved" &&
+            data.type === "action_always_approved" &&
+            data.actionId === mcpAction.id
+          ) {
+            const user = auth.getNonNullableUser();
+            await user.appendToMetadata(
+              `mcpServersToolsValidations`,
+              `${serverId}:${actionConfiguration.name}`
+            );
+          }
+
+          if (
+            (data.type === "action_approved" ||
+              data.type === "action_always_approved") &&
             data.actionId === mcpAction.id
           ) {
             status = "allowed_explicitly";
@@ -575,7 +585,7 @@ export async function mcpActionTypesFromAgentMessageIds(
   });
 }
 
-async function computeStatusFromConfig(
+async function getExecutionStatusAndStakeFromConfig(
   auth: Authenticator,
   actionConfiguration: MCPToolConfigurationType
 ): Promise<{
@@ -614,12 +624,8 @@ async function computeStatusFromConfig(
     return { status: "pending" };
   }
 
-  const user = await UserResource.fetchById(auth.getNonNullableUser().sId);
-  if (!user) {
-    return { status: "pending" };
-  }
-
-  const neverAskSetting = await user.getMetadata(`mcpServerToolValidation`);
+  const user = auth.getNonNullableUser();
+  const neverAskSetting = await user.getMetadata(`mcpServersToolsValidations`);
   if (
     neverAskSetting &&
     neverAskSetting.value.includes(

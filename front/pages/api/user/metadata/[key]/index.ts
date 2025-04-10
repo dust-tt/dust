@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -14,10 +13,6 @@ export type PostUserMetadataResponseBody = {
 export type GetUserMetadataResponseBody = {
   metadata: UserMetadataType | null;
 };
-
-const PatchUserMetadataRequestBodySchema = z.object({
-  value: z.string(),
-});
 
 async function handler(
   req: NextApiRequest,
@@ -97,34 +92,13 @@ async function handler(
       });
       return;
 
-    // PATCH is used to append a value to the existing metadata
-    case "PATCH":
-      const body = PatchUserMetadataRequestBodySchema.safeParse(req.body);
-      if (!body.success || !body.data.value) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The request body is invalid, expects { value: string }.",
-          },
-        });
-      }
-
-      await u.appendToMetadata(key, body.data.value);
-      return res.status(200).json({
-        metadata: {
-          key,
-          value: body.data.value,
-        },
-      });
-
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET, PATCH, or POST is expected.",
+            "The method passed is not supported, GET, or POST is expected.",
         },
       });
   }

@@ -1,3 +1,4 @@
+import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { createCallbackPromise } from "@app/lib/utils";
@@ -14,7 +15,7 @@ export async function* getMCPEvents({
   {
     eventId: string;
     data: {
-      type: "action_approved" | "action_rejected";
+      type: MCPValidationOutputType;
       created: number;
       actionId: number;
       messageId?: string;
