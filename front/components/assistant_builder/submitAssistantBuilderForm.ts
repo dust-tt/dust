@@ -201,6 +201,7 @@ export async function submitAssistantBuilderForm({
             tablesConfigurations,
             dataSourceConfigurations,
             childAgentId,
+            additionalConfiguration,
           },
         } = a;
         return [
@@ -216,6 +217,7 @@ export async function submitAssistantBuilderForm({
               ? processTableSelection({ owner, tablesConfigurations })
               : null,
             childAgentId,
+            additionalConfiguration,
           },
         ];
 

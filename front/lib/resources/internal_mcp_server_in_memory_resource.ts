@@ -6,10 +6,10 @@ import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   isDefaultInternalMCPServerByName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   connectToMCPServer,
   extractMetadataFromServerVersion,
@@ -17,6 +17,7 @@ import {
 } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -122,6 +123,13 @@ export class InternalMCPServerInMemoryResource {
       },
       hardDelete: true,
     });
+
+    await MCPServerConnection.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: this.id,
+      },
+    });
   }
 
   static async fetchById(auth: Authenticator, id: string) {
@@ -151,7 +159,7 @@ export class InternalMCPServerInMemoryResource {
     // Hide servers with flags that are not enabled for the workspace.
     const names: InternalMCPServerNameType[] = [];
 
-    for (const name of AVAILABLE_INTERNAL_MCPSERVER_NAMES) {
+    for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
       const isEnabled = await isEnabledForWorkspace(auth, name);
 
       if (isEnabled) {

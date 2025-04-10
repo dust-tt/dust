@@ -54,6 +54,7 @@ export type PlatformMCPServerConfigurationType =
     dataSources: DataSourceConfiguration[] | null;
     tables: TableDataSourceConfiguration[] | null;
     childAgentId: string | null;
+    additionalConfiguration: Record<string, boolean | number | string | null>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
   };
 

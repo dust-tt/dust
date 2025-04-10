@@ -2,13 +2,13 @@ import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { ModelId, Result, WhitelistableFeature } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export const AVAILABLE_INTERNAL_MCPSERVER_NAMES = [
-  "data-source-utils",
-  "helloworld",
-  "table-utils",
+export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
+  "data_source_utils",
+  "hello_world",
+  "table_utils",
   "github",
-  "ask-agent",
-  "image-generation-dalle",
+  "ask_agent",
+  "image_generation_dalle",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -19,17 +19,17 @@ export const INTERNAL_MCP_SERVERS: Record<
     flag: WhitelistableFeature | null;
   }
 > = {
-  helloworld: {
+  hello_world: {
     id: 1,
     isDefault: false,
     flag: "mcp_actions",
   },
-  "data-source-utils": {
+  data_source_utils: {
     id: 2,
     isDefault: false,
     flag: "mcp_actions",
   },
-  "table-utils": {
+  table_utils: {
     id: 3,
     isDefault: false,
     flag: "mcp_actions",
@@ -39,12 +39,12 @@ export const INTERNAL_MCP_SERVERS: Record<
     isDefault: false,
     flag: "mcp_actions",
   },
-  "image-generation-dalle": {
+  image_generation_dalle: {
     id: 5,
     isDefault: true,
     flag: "mcp_actions",
   },
-  "ask-agent": {
+  ask_agent: {
     id: 6,
     isDefault: false,
     flag: "mcp_actions",
@@ -52,7 +52,7 @@ export const INTERNAL_MCP_SERVERS: Record<
 };
 
 export type InternalMCPServerNameType =
-  (typeof AVAILABLE_INTERNAL_MCPSERVER_NAMES)[number];
+  (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
 
 export const isDefaultInternalMCPServerByName = (
   name: InternalMCPServerNameType
@@ -121,7 +121,7 @@ export const getInternalMCPServerNameAndWorkspaceId = (
 export const isInternalMCPServerName = (
   name: string
 ): name is InternalMCPServerNameType =>
-  AVAILABLE_INTERNAL_MCPSERVER_NAMES.includes(
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES.includes(
     name as InternalMCPServerNameType
   );
 

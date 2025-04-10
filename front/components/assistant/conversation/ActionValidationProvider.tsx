@@ -1,5 +1,6 @@
 import {
   Button,
+  CodeBlock,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -9,7 +10,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { createContext, useCallback, useEffect, useState } from "react";
-import sanitizeHtml from "sanitize-html";
 
 import type { MCPActionType } from "@app/lib/actions/mcp";
 
@@ -179,11 +179,9 @@ export function ActionValidationProvider({
                 Object.keys(currentValidation.inputs).length > 0 && (
                   <div>
                     <span className="font-medium">Inputs:</span>
-                    <pre className="mt-2 whitespace-pre-wrap rounded bg-primary-50 p-2 text-sm dark:bg-primary-50-night">
-                      {sanitizeHtml(
-                        JSON.stringify(currentValidation?.inputs, null, 2)
-                      )}
-                    </pre>
+                    <CodeBlock className="language-json">
+                      JSON.stringify(currentValidation?.inputs, null, 2)
+                    </CodeBlock>
                   </div>
                 )}
               <div>Do you want to allow this action to proceed?</div>

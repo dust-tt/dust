@@ -4,7 +4,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/ask_agent";
 import { default as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/data_source_utils";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
-import { default as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/servers/helloworld";
+import { default as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/servers/hello_world";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation_dalle";
 import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/table_utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,17 +21,17 @@ export function getInternalMCPServer(
   }
 ): McpServer {
   switch (internalMCPServerName) {
-    case "helloworld":
+    case "hello_world":
       return helloWorldServer(auth, mcpServerId);
-    case "data-source-utils":
+    case "data_source_utils":
       return dataSourceUtilsServer();
-    case "table-utils":
+    case "table_utils":
       return tableUtilsServer();
     case "github":
       return githubServer(auth, mcpServerId);
-    case "image-generation-dalle":
+    case "image_generation_dalle":
       return imageGenerationDallEServer(auth);
-    case "ask-agent":
+    case "ask_agent":
       return askAgentServer();
     default:
       assertNever(internalMCPServerName);

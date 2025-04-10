@@ -14,7 +14,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import {
-  AVAILABLE_INTERNAL_MCPSERVER_NAMES,
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   isDefaultInternalMCPServer,
   isDefaultInternalMCPServerByName,
   isValidInternalMCPServerId,
@@ -447,7 +447,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   static async ensureAllDefaultActionsAreCreated(auth: Authenticator) {
-    const names = AVAILABLE_INTERNAL_MCPSERVER_NAMES;
+    const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
 
     const defaultInternalMCPServerIds: string[] = [];
     for (const name of names) {
@@ -576,7 +576,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.serverType === "remote"
           ? this.getRemoteMCPServer().toJSON()
           : this.getInternalMCPServer().toJSON(),
-      editedByUser: this.makeEditedBy(this.editedByUser, this.updatedAt),
+      editedByUser: this.makeEditedBy(
+        this.editedByUser,
+        this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
+      ),
     };
   }
 }
