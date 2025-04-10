@@ -263,7 +263,7 @@ type ActionProcessProps = {
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
   allowedSpaces: SpaceType[];
   updateAction: (
-    setNewAction: (
+    setNewActionConfig: (
       previousAction: AssistantBuilderProcessConfiguration
     ) => AssistantBuilderProcessConfiguration
   ) => void;

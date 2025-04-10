@@ -29,7 +29,7 @@ type ActionRetrievalSearchProps = {
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
   allowedSpaces: SpaceType[];
   updateAction: (
-    setNewAction: (
+    setNewActionConfig: (
       previousAction: AssistantBuilderRetrievalConfiguration
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;
@@ -106,7 +106,7 @@ type ActionRetrievalExhaustiveProps = {
   actionConfiguration: AssistantBuilderRetrievalExhaustiveConfiguration | null;
   allowedSpaces: SpaceType[];
   updateAction: (
-    setNewAction: (
+    setNewActionConfig: (
       previousAction: AssistantBuilderRetrievalExhaustiveConfiguration
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;

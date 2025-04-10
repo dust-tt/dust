@@ -12,7 +12,6 @@ import {
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
-import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
@@ -43,7 +42,6 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
@@ -246,9 +244,8 @@ async function getMCPServerActionConfiguration(
 
   builderAction.configuration.mcpServerViewId = action.mcpServerViewId;
 
-  builderAction.name = action.name + "_" + generateRandomModelSId();
-  builderAction.description =
-    action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION;
+  builderAction.name = "";
+  builderAction.description = "";
 
   builderAction.configuration.dataSourceConfigurations = action.dataSources
     ? await renderDataSourcesConfigurations(

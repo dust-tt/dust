@@ -16,11 +16,18 @@ import {
 } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import ActionsScreen, {
   hasActionError,
 } from "@app/components/assistant_builder/ActionsScreen";
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
 import {
@@ -176,6 +183,7 @@ export default function AssistantBuilder({
     agentConfigurationId,
   });
   useNavigationLock(edited && !disableUnsavedChangesPrompt);
+  const { mcpServerViews } = useContext(AssistantBuilderContext);
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -267,10 +275,21 @@ export default function AssistantBuilder({
     setInstructionsError(localInstructionError);
 
     // Check if there are any errors in the actions
-    const anyActionError = builderState.actions.some(hasActionError);
+    const anyActionError = builderState.actions.some((action) =>
+      hasActionError(action, mcpServerViews)
+    );
 
     setHasAnyActionsError(anyActionError);
-  }, [builderState, owner, initialBuilderState?.handle]);
+  }, [
+    owner,
+    builderState.handle,
+    builderState.description,
+    builderState.instructions,
+    builderState.actions,
+    builderState.generationSettings.modelSettings.modelId,
+    initialBuilderState?.handle,
+    mcpServerViews,
+  ]);
 
   useEffect(() => {
     if (edited) {

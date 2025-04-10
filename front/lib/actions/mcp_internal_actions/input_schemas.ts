@@ -12,7 +12,7 @@ import {
   isMCPActionConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   findMatchingSchemaKeys,
   findSchemaAtPath,
@@ -363,4 +363,31 @@ export function augmentInputsWithConfiguration({
   }
 
   return inputs;
+}
+
+export function getRequirements(
+  mcpServerView: MCPServerViewType | null | undefined
+) {
+  if (!mcpServerView) {
+    return {
+      requiresDataSourceConfiguration: false,
+      requiresTableConfiguration: false,
+      requiresChildAgentConfiguration: false,
+    };
+  }
+  const { server } = mcpServerView;
+  return {
+    requiresDataSourceConfiguration: serverRequiresInternalConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
+    }),
+    requiresTableConfiguration: serverRequiresInternalConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
+    }),
+    requiresChildAgentConfiguration: serverRequiresInternalConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
+    }),
+  };
 }

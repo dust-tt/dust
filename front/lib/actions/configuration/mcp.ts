@@ -121,7 +121,7 @@ export async function fetchMCPServerActionConfigurations(
       );
     }
 
-    const { name, description } =
+    const { name: serverName, description: serverDescription } =
       await mcpServerView.getMCPServerMetadata(auth);
 
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
@@ -134,8 +134,8 @@ export async function fetchMCPServerActionConfigurations(
         id: config.id,
         sId: config.sId,
         type: "mcp_server_configuration",
-        name,
-        description,
+        name: config.name ?? serverName,
+        description: config.singleToolDescriptionOverride ?? serverDescription,
         mcpServerViewId: mcpServerView.sId,
         dataSources: dataSourceConfigurations.map(
           renderDataSourceConfiguration
