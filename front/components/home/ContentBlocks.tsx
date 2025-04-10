@@ -385,26 +385,22 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => {
   return (
     <div className="w-full">
       <Carousel className="w-full" opts={{ align: "start" }} isLooping={true}>
-        <div className="mb-2 flex items-center justify-between sm:mb-4">
-          <H2>Driving AI ROI together</H2>
-          <div className="flex gap-1.5 sm:gap-4">
-            <CarouselPrevious
-              size="sm"
-              className="h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10"
-            />
-            <CarouselNext
-              size="sm"
-              className="h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10"
-            />
+        <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex-1">
+            <H2>Driving AI ROI together</H2>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <CarouselPrevious className="h-8 w-8 sm:h-10 sm:w-10" />
+            <CarouselNext className="h-8 w-8 sm:h-10 sm:w-10" />
           </div>
         </div>
-        <CarouselContent className="h-[250px] sm:h-[280px]">
+        <CarouselContent className="h-[280px] sm:h-[300px]">
           {quotes.map((q, index) => (
             <CarouselItem
               key={index}
-              className="h-full basis-full pl-1 sm:basis-1/2 sm:pl-2 md:pl-4 lg:basis-1/3"
+              className="h-full basis-full pl-2 pr-2 sm:basis-1/2 sm:pl-4 sm:pr-4 lg:basis-1/3"
             >
-              <div className="h-full w-full pr-1 sm:pr-2 md:pr-4">
+              <div className="h-full w-full">
                 <QuoteCard {...q} />
               </div>
             </CarouselItem>

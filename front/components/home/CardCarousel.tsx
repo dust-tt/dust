@@ -17,11 +17,11 @@ function CardCarousel({ title, children }: CardCarouselProps) {
   return (
     <div className="w-full rounded-xl">
       <Carousel className="w-full rounded-xl" opts={{ align: "start" }}>
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex-1">{title}</div>
-          <div className="flex gap-4">
-            <CarouselPrevious />
-            <CarouselNext />
+        <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex-1 text-lg font-semibold sm:text-xl">{title}</div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <CarouselPrevious className="h-8 w-8 sm:h-10 sm:w-10" />
+            <CarouselNext className="h-8 w-8 sm:h-10 sm:w-10" />
           </div>
         </div>
 

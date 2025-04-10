@@ -86,7 +86,7 @@ export function BlogSection({ className = "" }: BlogSectionProps) {
   return (
     <div className={`w-full rounded-2xl ${className}`}>
       <Carousel className="w-full">
-        <div className="mb-8 flex flex-col items-start justify-between space-y-4 md:flex-row md:items-end md:space-y-0">
+        <div className="mb-4 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
           <div className="rounded-xl">
             <H2>Customer Stories</H2>
             <P size="lg" className="text-muted-foreground">
@@ -94,9 +94,9 @@ export function BlogSection({ className = "" }: BlogSectionProps) {
               Dust.
             </P>
           </div>
-          <div className="flex gap-4">
-            <CarouselPrevious />
-            <CarouselNext />
+          <div className="flex items-center gap-2 sm:gap-4">
+            <CarouselPrevious className="h-8 w-8 sm:h-10 sm:w-10" />
+            <CarouselNext className="h-8 w-8 sm:h-10 sm:w-10" />
           </div>
         </div>
 
