@@ -186,6 +186,7 @@ export function extractMetadataFromServerVersion(
         "icon" in r && typeof r.icon === "string" && isAllowedIconType(r.icon)
           ? r.icon
           : DEFAULT_MCP_ACTION_ICON,
+      avatar: "avatar" in r && typeof r.avatar === "string" ? r.avatar : null,
     };
   }
 
@@ -194,6 +195,7 @@ export function extractMetadataFromServerVersion(
     version: DEFAULT_MCP_ACTION_VERSION,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
     icon: DEFAULT_MCP_ACTION_ICON,
+    avatar: null,
     authorization: null,
   };
 }

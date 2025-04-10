@@ -1,4 +1,5 @@
 import {
+  Avatar,
   classNames,
   ContentMessage,
   Icon,
@@ -28,7 +29,7 @@ import type {
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import { useMCPServerRequiredConfiguration } from "@app/hooks/useMCPServerRequiredConfiguration";
-import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
@@ -321,38 +322,37 @@ export function ActionMCP({
                                 id={mcpServerView.id}
                                 iconPosition="start"
                                 customItem={
-                                  <div className="flex items-center gap-1 pl-2">
-                                    <Icon
-                                      visual={
-                                        MCP_SERVER_ICONS[
-                                          mcpServerView.server.icon
-                                        ]
-                                      }
-                                      size="md"
-                                      className={classNames(
-                                        "inline-block flex-shrink-0 align-middle"
-                                      )}
-                                    />
-                                    <Label
-                                      className={classNames(
-                                        "font-bold",
-                                        "align-middle",
-                                        "text-foreground dark:text-foreground-night"
-                                      )}
-                                      htmlFor={mcpServerView.id}
-                                    >
-                                      {mcpServerView.server.name}
-                                    </Label>
+                                  <div className="flex flex-row items-center gap-2">
+                                    <div>
+                                      <Avatar
+                                        visual={getVisual(mcpServerView.server)}
+                                      />
+                                    </div>
+                                    <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
+                                      <div className="flex flex-col gap-1">
+                                        <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                                          <Label
+                                            className={classNames(
+                                              "font-bold",
+                                              "align-middle",
+                                              "text-foreground dark:text-foreground-night"
+                                            )}
+                                            htmlFor={mcpServerView.id}
+                                          >
+                                            {mcpServerView.server.name}
+                                          </Label>
+                                        </div>
+                                        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                                          {mcpServerView.server.description}
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
                                 }
                                 onClick={() => {
                                   handleServerSelection(mcpServerView);
                                 }}
-                              >
-                                <div className="text-element-700 dark:text-element-700-night ml-10 mt-1 text-sm">
-                                  {mcpServerView.server.description}
-                                </div>
-                              </RadioGroupCustomItem>
+                              ></RadioGroupCustomItem>
                               {idx !== arr.length - 1 && <Separator />}
                             </React.Fragment>
                           );

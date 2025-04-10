@@ -19,7 +19,11 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import { ALLOWED_ICONS, MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import {
+  ALLOWED_ICONS,
+  DEFAULT_MCP_SERVER_ICON,
+  MCP_SERVER_ICONS,
+} from "@app/lib/actions/mcp_icons";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useMCPServers,
@@ -58,7 +62,7 @@ export function RemoteMCPForm({
     defaultValues: {
       name: mcpServer.name,
       description: mcpServer.description,
-      icon: mcpServer.icon,
+      icon: mcpServer.icon ?? DEFAULT_MCP_SERVER_ICON,
     },
   });
 

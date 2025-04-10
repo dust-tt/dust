@@ -20,6 +20,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description:
     "Demo server showing a basic interaction with a data source configuration.",
   icon: "command",
+  avatar: null,
   authorization: null,
 };
 

@@ -11,6 +11,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description: "Generate images with the Dall-E v3 model from OpenAI.",
   icon: "image",
+  avatar: null,
   authorization: null,
 };
 

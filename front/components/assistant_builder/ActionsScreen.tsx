@@ -1,4 +1,5 @@
 import {
+  Avatar,
   BookOpenIcon,
   Button,
   Card,
@@ -15,7 +16,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Icon,
   InformationCircleIcon,
   Input,
   MoreIcon,
@@ -86,7 +86,7 @@ import {
   getDefaultActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
-import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -158,15 +158,15 @@ function actionIcon(
   mcpServerViews: MCPServerViewType[]
 ) {
   if (action.type === "MCP") {
-    const serverIcon = mcpServerViews.find(
+    const server = mcpServerViews.find(
       (v) => v.id === action.configuration.mcpServerViewId
-    )?.server.icon;
+    )?.server;
 
-    if (serverIcon) {
-      return MCP_SERVER_ICONS[serverIcon];
+    if (server) {
+      return getVisual(server);
     }
   }
-  return ACTION_SPECIFICATIONS[action.type].cardIcon;
+  return React.createElement(ACTION_SPECIFICATIONS[action.type].cardIcon);
 }
 
 function actionDisplayName(action: AssistantBuilderActionConfiguration) {
@@ -792,12 +792,8 @@ function ActionCard({
       }
     >
       <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full gap-1 font-medium text-foreground dark:text-foreground-night">
-          <Icon
-            visual={actionIcon(action, mcpServerViews)}
-            size="sm"
-            className="text-foreground dark:text-foreground-night"
-          />
+        <div className="flex w-full items-center gap-1 font-medium text-foreground dark:text-foreground-night">
+          <Avatar visual={actionIcon(action, mcpServerViews)} />
           <div className="w-full truncate">{actionDisplayName(action)}</div>
         </div>
         {isLegacyConfig ? (

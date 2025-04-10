@@ -28,10 +28,7 @@ import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetai
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  MCP_SERVER_ICONS,
-} from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServer,
@@ -147,11 +144,9 @@ export function MCPServerDetails({
               <SheetTitle />
             </VisuallyHidden>
             <div className="flex flex-col items-center gap-3 sm:flex-row">
-              <Avatar
-                visual={React.createElement(
-                  MCP_SERVER_ICONS[mcpServer?.icon || DEFAULT_MCP_SERVER_ICON]
-                )}
-              />
+              {effectiveMCPServer && (
+                <Avatar visual={getVisual(effectiveMCPServer)} />
+              )}
               <div className="flex grow flex-col gap-1">
                 <div
                   className={classNames(
