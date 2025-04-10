@@ -38,6 +38,11 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
 }: MultiSelectWithSearchProps<T>) => {
   const { stdout } = useStdout();
   const terminalHeight = stdout?.rows || 24;
+  const terminalWidth = stdout?.columns || 80;
+
+  // Constants for minimum terminal dimensions
+  const MIN_TERMINAL_HEIGHT = 15;
+  const MIN_TERMINAL_WIDTH = 60;
 
   const [cursor, setCursor] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -47,19 +52,13 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
   // Used to trigger re-render on "enter" press when the terminal size is too small.
   const [_forceRerenderKey, setForceRerenderKey] = useState(0);
 
-  const selectedBlockHeight =
-    selectionOrder.length > 0
-      ? 1 + 1 + 2 + selectionOrder.length // marginTop + header + border + lines
-      : 0;
-  const baseAvailableHeight = Math.max(0, terminalHeight - legRoom);
-  const listAvailableHeight = Math.max(
-    0,
-    baseAvailableHeight - selectedBlockHeight
+  // Use a fixed approach rather than dynamic to prevent UI jumping
+  // This gives us a stable layout regardless of content changes
+  const fixedListHeight = Math.max(
+    3,
+    Math.floor((terminalHeight - legRoom - 3) / 2)
   );
-  const dynamicPageSize = Math.max(
-    1,
-    Math.floor(listAvailableHeight / itemLines)
-  );
+  const dynamicPageSize = Math.max(1, Math.floor(fixedListHeight / itemLines));
 
   const filteredItems = items.filter((item) =>
     item.label.toLowerCase().startsWith(searchQuery.toLowerCase())
@@ -91,7 +90,13 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
 
   useInput(
     (input, key) => {
-      if (terminalHeight < 30) {
+      // Get current terminal dimensions (may have changed since render)
+      const currentWidth = stdout?.columns || 80;
+      const currentHeight = stdout?.rows || 24;
+      if (
+        currentHeight < MIN_TERMINAL_HEIGHT ||
+        currentWidth < MIN_TERMINAL_WIDTH
+      ) {
         if (key.return) {
           setForceRerenderKey((k) => k + 1);
         }
@@ -168,11 +173,16 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
     { isActive: true }
   );
 
-  if (terminalHeight < 30) {
+  if (
+    terminalHeight < MIN_TERMINAL_HEIGHT ||
+    terminalWidth < MIN_TERMINAL_WIDTH
+  ) {
     return (
       <Box>
         <Text color="red">
-          Terminal height must be at least 25 lines. Resize and press Enter.
+          Terminal size too small. Required: {MIN_TERMINAL_WIDTH}x
+          {MIN_TERMINAL_HEIGHT}. Current: {terminalWidth}x{terminalHeight}.
+          Resize and press Enter.
         </Text>
       </Box>
     );
@@ -184,61 +194,76 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
         <Text>{searchPrompt} </Text>
         <Text color="cyan">{searchQuery}</Text>
         <Text color="gray">_</Text>
+        {searchQuery !== "" && filteredItems.length > 0 && totalPages > 1 && (
+          <Text color="gray">
+            {" "}
+            ({filteredItems.length} results, {totalPages} pages)
+          </Text>
+        )}
       </Box>
-      {searchQuery !== "" && filteredItems.length > 0 && totalPages > 1 && (
-        <Text>
-          Use Up/Down to navigate, Left/Right for pages ({currentPage + 1} /{" "}
-          {totalPages})
-        </Text>
-      )}
-      <Box marginTop={1}>
-        <Text bold>
-          {selectPrompt} (Space to toggle, Enter to confirm, Esc to undo last
-          selection)
+      <Box>
+        <Text dimColor>
+          {selectPrompt} (↑↓: Navigate, ←→: Pages, Space: Select, Enter:
+          Confirm)
         </Text>
       </Box>
-      <Box flexDirection="column" marginTop={1} minHeight={5}>
+      <Box flexDirection="column" height={fixedListHeight} marginTop={1}>
         {searchQuery === "" ? (
           <Text color="gray">Type to search...</Text>
         ) : paginatedFilteredItems.length === 0 ? (
           <Text color="yellow">No matching items found.</Text>
         ) : (
-          paginatedFilteredItems.map((item, index) => {
-            const isSelected = selected.has(item.id);
-            const isFocused = index === cursor;
-            return (
-              <Box key={item.id}>{renderItem(item, isSelected, isFocused)}</Box>
-            );
+          // Render a fixed number of items regardless of actual content
+          Array.from({ length: dynamicPageSize }).map((_, index) => {
+            if (index < paginatedFilteredItems.length) {
+              const item = paginatedFilteredItems[index];
+              const isSelected = selected.has(item.id);
+              const isFocused = index === cursor;
+              return (
+                <Box key={`item-${index}-${currentPage}`}>
+                  {renderItem(item, isSelected, isFocused)}
+                </Box>
+              );
+            } else {
+              // Render empty placeholder rows to maintain stable height
+              return <Box key={`empty-${index}`} height={itemLines}></Box>;
+            }
           })
         )}
       </Box>
 
-      {selectionOrder.length > 0 && (
-        <Box
-          flexDirection="column"
-          marginTop={1}
-          borderStyle="round"
-          paddingX={1}
-        >
-          <Text bold>Selected:</Text>
-          {selectionOrder.map((itemId) => {
-            const item = items.find((i) => i.id === itemId);
-            return item ? (
-              renderSelectedItem(item)
-            ) : (
-              <Text key={itemId}>- {itemId} (Removed?)</Text>
-            );
-          })}
-        </Box>
-      )}
+      <Box flexDirection="column" marginTop={1} height={3}>
+        {selectionOrder.length > 0 ? (
+          <>
+            <Text bold>Selected:</Text>
+            <Box marginLeft={1} flexDirection="row" flexWrap="wrap">
+              {selectionOrder.map((itemId) => {
+                const item = items.find((i) => i.id === itemId);
 
-      {searchQuery !== "" && totalPages > 1 && (
-        <Box marginTop={1} justifyContent="center">
-          <Text dimColor>
-            --- Page {currentPage + 1} of {totalPages} ---
+                return (
+                  <Box key={itemId} marginRight={2}>
+                    <Text>{item ? renderSelectedItem(item) : itemId}</Text>
+                  </Box>
+                );
+              })}
+            </Box>
+          </>
+        ) : (
+          // Empty placeholder to maintain consistent layout
+          <Box></Box>
+        )}
+      </Box>
+
+      <Box height={2} justifyContent="center" marginTop={1}>
+        {searchQuery !== "" && totalPages > 1 ? (
+          <Text>
+            Page {currentPage + 1}/{totalPages} (←→ to change)
           </Text>
-        </Box>
-      )}
+        ) : (
+          // Empty placeholder to maintain consistent layout
+          <Box></Box>
+        )}
+      </Box>
     </Box>
   );
 };
