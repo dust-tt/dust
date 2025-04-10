@@ -149,6 +149,7 @@ interface AvatarProps {
   busy?: boolean;
   isRounded?: boolean;
   backgroundColor?: string;
+  hexBgColor?: string;
   className?: string;
   disabled?: boolean;
   icon?: React.ComponentType<{ className?: string }>;
@@ -164,6 +165,7 @@ export function Avatar({
   busy = false,
   isRounded = false,
   backgroundColor,
+  hexBgColor,
   disabled = false,
   className,
   icon,
@@ -185,19 +187,23 @@ export function Avatar({
   return (
     <div
       className={cn(
+        typeof visualToUse !== "string" && "s-border s-border-primary-800/10",
         avatarVariants({
           size,
           variant,
           rounded: isRounded,
         }),
         busy ? "s-animate-breathing s-cursor-default" : "",
-        backgroundColorToUse
-          ? backgroundColorToUse
-          : name
-            ? getColor(name)
-            : "s-bg-primary-200 dark:s-bg-primary-200-night",
+        hexBgColor
+          ? ""
+          : backgroundColorToUse
+            ? backgroundColorToUse
+            : name
+              ? getColor(name)
+              : "s-bg-muted-background dark:s-bg-muted-background-night",
         className
       )}
+      style={hexBgColor ? { backgroundColor: hexBgColor } : undefined}
     >
       {size === "auto" && <div style={{ paddingBottom: "100%" }} />}
       {typeof visualToUse === "string" ? (
@@ -206,7 +212,7 @@ export function Avatar({
           alt={name}
           className={cn(
             avatarVariants({ size }),
-            "s-h-full s-w-full s-object-cover s-object-center"
+            "s-object-cover s-object-center"
           )}
         />
       ) : visualToUse ? (

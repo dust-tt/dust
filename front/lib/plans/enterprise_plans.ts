@@ -1,12 +1,5 @@
-import type { Attributes } from "sequelize";
-
 import { ENT_PLAN_FAKE_CODE } from "@app/lib/plans/plan_codes";
-import type { PlanModel } from "@app/lib/resources/storage/models/plans";
-
-export type PlanAttributes = Omit<
-  Attributes<PlanModel>,
-  "id" | "createdAt" | "updatedAt"
->;
+import type { PlanAttributes } from "@app/lib/resources/plan_resource";
 
 /**
  * We have 3 categories of plans:

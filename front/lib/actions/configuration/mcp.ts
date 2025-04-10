@@ -99,7 +99,7 @@ export async function fetchMCPServerActionConfigurations(
   >();
 
   for (const config of mcpServerConfigurations) {
-    const { agentConfigurationId, sId, id, mcpServerViewId } = config;
+    const { agentConfigurationId, mcpServerViewId } = config;
 
     const dataSourceConfigurations = allDataSourceConfigurations.filter(
       (ds) => ds.mcpServerConfigurationId === config.id
@@ -131,8 +131,8 @@ export async function fetchMCPServerActionConfigurations(
     const actions = actionsByConfigurationId.get(agentConfigurationId);
     if (actions) {
       actions.push({
-        id,
-        sId,
+        id: config.id,
+        sId: config.sId,
         type: "mcp_server_configuration",
         name,
         description,
@@ -145,6 +145,7 @@ export async function fetchMCPServerActionConfigurations(
           childAgentConfigurations.length > 0
             ? childAgentConfigurations[0].agentConfigurationId
             : null,
+        additionalConfiguration: config.additionalConfiguration,
       });
     }
   }

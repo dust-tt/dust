@@ -1,17 +1,29 @@
 import { fetchTree } from "@connectors/connectors/salesforce/lib/salesforce_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/salesforce/lib/utils";
+import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import { sync } from "@connectors/lib/remote_databases/activities";
 import { parseInternalId } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
-export async function syncSalesforceConnection(connectorId: ModelId) {
+export async function syncSalesforceConnection(
+  connectorId: ModelId,
+  forceSync?: boolean
+) {
   const getConnectorAndCredentialsRes =
     await getConnectorAndCredentials(connectorId);
   if (getConnectorAndCredentialsRes.isErr()) {
     throw getConnectorAndCredentialsRes.error;
   }
+
+  const config = await SalesforceConfigurationModel.findOne({
+    where: {
+      connectorId,
+    },
+  });
+
+  const usePersonalConnections = config?.usePersonalConnections ?? false;
 
   await syncStarted(connectorId);
 
@@ -30,6 +42,8 @@ export async function syncSalesforceConnection(connectorId: ModelId) {
     // Only keep the table name in the remote table id.
     internalTableIdToRemoteTableId: (internalTableId: string) =>
       parseInternalId(internalTableId).tableName ?? internalTableId,
+    usePersonalConnections,
+    forceSync,
   });
 
   await syncSucceeded(connectorId);

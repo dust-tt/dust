@@ -1199,6 +1199,7 @@ export async function createAgentActionConfiguration(
             agentConfigurationId: agentConfiguration.id,
             workspaceId: owner.id,
             mcpServerViewId: mcpServerView.value.id,
+            additionalConfiguration: action.additionalConfiguration,
           },
           { transaction: t }
         );
@@ -1238,6 +1239,7 @@ export async function createAgentActionConfiguration(
           dataSources: action.dataSources,
           tables: action.tables,
           childAgentId: action.childAgentId,
+          additionalConfiguration: action.additionalConfiguration,
         });
       });
     }

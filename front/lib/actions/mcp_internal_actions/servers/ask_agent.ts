@@ -11,7 +11,7 @@ import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "ask-agent",
+  name: "ask_agent",
   version: "1.0.0",
   description: "Demo server showing a basic interaction with a child agent.",
   icon: "robot",
@@ -33,7 +33,7 @@ function createServer(): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "pass-through",
+    "pass_through",
     "Super useful tool that should be used at all time.",
     {
       query: z.string(),

@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -6,6 +7,7 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { TRIAL_LIMITS } from "@app/lib/plans/trial";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { Subscription } from "@app/lib/resources/storage/models/plans";
 import { PlanModel } from "@app/lib/resources/storage/models/plans";
@@ -18,13 +20,6 @@ export type PlanAttributes = Omit<
   Attributes<PlanModel>,
   "id" | "createdAt" | "updatedAt"
 >;
-
-// These limits are applied to all plans during the trial period.
-export const TRIAL_LIMITS: Partial<PlanAttributes> = {
-  maxUsersInWorkspace: 5,
-  maxMessages: 100,
-  maxMessagesTimeframe: "day",
-};
 
 // This function is used to get the trial version of a plan.
 export function getTrialVersionForPlan(plan: PlanModel): PlanModel {
@@ -47,31 +42,31 @@ export class PlanResource extends BaseResource<PlanModel> {
     super(PlanModel, blob);
   }
 
-  //build a new plan resource from a given plan model. It is not saved to the database.
+  // Build a new plan resource from a given plan model. Not saved to the database.
   static fromModel(plan: PlanModel): PlanResource {
     return new PlanResource(PlanModel, plan.get());
   }
 
-  //build a new plan resource from a given set of attributes. It is not saved to the database.
+  // Build a new plan resource from a given set of attributes. Not saved to the database.
   static fromAttributes(planAttributes: PlanAttributes): PlanResource {
-    return this.fromModel(PlanModel.build({ ...planAttributes }));
+    return this.fromModel(PlanModel.build(planAttributes));
   }
 
-  //create a new plan resource in the database.
+  // Create a new plan resource in the database.
   static async makeNew(blob: CreationAttributes<PlanModel>) {
     const plan = await this.model.create(blob);
     return new this(this.model, plan.get());
   }
 
-  //upsert a new plan resource in the database.
-  static async upsertByPlanCode(blob: CreationAttributes<PlanModel>) {
-    const existing = await this.model.findOne({
-      where: { code: blob.code },
-    });
+  // Upsert a new plan resource in the database.
+  static async upsertByPlanCode(
+    blob: CreationAttributes<PlanModel>
+  ): Promise<Result<PlanResource, Error>> {
+    const existing = await this.fetchByPlanCode(blob.code);
 
     if (existing) {
       await existing.update(blob);
-      return new Ok(new PlanResource(this.model, existing.get()));
+      return new Ok(existing);
     }
     const plan = await PlanResource.makeNew(blob);
     return new Ok(plan);
@@ -86,7 +81,7 @@ export class PlanResource extends BaseResource<PlanModel> {
     return plan ? new this(this.model, plan.get()) : null;
   }
 
-  // fetch all plans associated to a given set of subscriptions
+  // Fetch all plans associated to a given set of subscriptions
   static async fetchBySubscriptionModels(
     subscriptions: Subscription[]
   ): Promise<PlanResource[] | null> {
@@ -98,14 +93,11 @@ export class PlanResource extends BaseResource<PlanModel> {
     return plans.map((plan) => new this(this.model, plan.get()));
   }
 
-  static async fetchAll(
+  static async listAll(
     auth: Authenticator,
     { limit, order }: ResourceFindOptions<PlanModel> = {}
   ): Promise<PlanResource[]> {
-    if (!auth.isDustSuperUser()) {
-      throw new Error("Cannot fetch all plans : not allowed.");
-    }
-
+    assert(auth.isDustSuperUser(), "Cannot fetch all plans: not allowed");
     const plans = await this.model.findAll({
       limit,
       order,
@@ -126,14 +118,14 @@ export class PlanResource extends BaseResource<PlanModel> {
     return new Ok(undefined);
   }
 
-  // set the message limits for a given plan.
+  // Set the message limits for a given plan.
   async setMessageLimitsForPlan(
     data: Pick<Attributes<PlanModel>, "maxMessages" | "maxMessagesTimeframe">
   ): Promise<[affectedCount: number]> {
     return this.update(data);
   }
 
-  // update the plan with new data.
+  // Update the plan with new data.
   async setPlanData(
     planData: Omit<Attributes<PlanModel>, "id" | "createdAt" | "updatedAt">
   ): Promise<[affectedCount: number]> {

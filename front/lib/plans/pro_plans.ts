@@ -1,17 +1,10 @@
-import type { Attributes } from "sequelize";
-
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
+import type { PlanAttributes } from "@app/lib/resources/plan_resource";
 import { PlanResource } from "@app/lib/resources/plan_resource";
-import type { PlanModel } from "@app/lib/resources/storage/models/plans";
 import { isDevelopment, isTest } from "@app/types";
-
-export type PlanAttributes = Omit<
-  Attributes<PlanModel>,
-  "id" | "createdAt" | "updatedAt"
->;
 
 /**
  * We have 3 categories of plans:

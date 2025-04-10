@@ -4,6 +4,7 @@ import {
   EyeIcon,
   HubspotLogo,
   Icon,
+  LockIcon,
   Page,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
@@ -41,6 +42,15 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     icon: BookOpenIcon,
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
+  },
+  {
+    id: "personal_connections",
+    label: "Personal Connections",
+    featureFlag: "labs_personal_connections",
+    visibleWithoutAccess: true,
+    icon: LockIcon,
+    description:
+      "Connect your personal accounts to Dust. We'll use your credentials to fetch data.",
   },
 ];
 const LABS_CONNECTIONS: LabsConnectionItemType[] = [

@@ -67,7 +67,7 @@ async function createTestWorkspaces(
       workspace.sId
     );
 
-    const plans = await PlanResource.fetchAll(authenticator);
+    const plans = await PlanResource.listAll(authenticator);
 
     if (plans.length === 0) {
       throw new Error(

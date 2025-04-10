@@ -1,4 +1,4 @@
-import _ from "lodash";
+import * as _ from "lodash";
 import type {
   CreationAttributes,
   InferAttributes,
@@ -64,16 +64,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   private static getOptions(
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {
-    const where: ResourceFindOptions<ConversationModel>["where"] = {};
-
-    if (!options?.includeDeleted) {
-      where.visibility = {
-        [Op.ne]: "deleted",
+    if (options?.includeDeleted) {
+      return {
+        where: {},
       };
     }
 
     return {
-      where,
+      where: {
+        visibility: { [Op.ne]: "deleted" },
+      },
     };
   }
 
