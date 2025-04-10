@@ -10,8 +10,10 @@ const SvgClipboard = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="#111418"
-      d="M7 4V2h10v2h2.007a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H4.993a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2H7Zm0 2H5v15h14V6h-2v2H7V6Zm2-2v2h6V4H9Z"
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M15 2H9v3h6V2ZM7 7V4H5.993a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h12.014a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H17v3H7Zm11 2H6v12h12V9Z"
+      clipRule="evenodd"
     />
   </svg>
 );
