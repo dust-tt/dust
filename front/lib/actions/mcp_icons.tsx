@@ -35,10 +35,11 @@ export const isAllowedIconType = (icon: string): icon is AllowedIconType =>
   ALLOWED_ICONS.includes(icon as AllowedIconType);
 
 export const getVisual = (mcpServer: MCPServerType) => {
-  if (mcpServer.avatar) {
-    return mcpServer.avatar;
+  if (isAllowedIconType(mcpServer.visual)) {
+    return React.createElement(
+      MCP_SERVER_ICONS[mcpServer.visual || DEFAULT_MCP_SERVER_ICON]
+    );
   }
-  return React.createElement(
-    MCP_SERVER_ICONS[mcpServer.icon || DEFAULT_MCP_SERVER_ICON]
-  );
+
+  return mcpServer.visual;
 };

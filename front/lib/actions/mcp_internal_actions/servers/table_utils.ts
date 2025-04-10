@@ -10,8 +10,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "Demo server showing a basic interaction with a table configuration.",
-  icon: "table",
-  avatar: null,
+  visual: "table",
   authorization: null,
 };
 

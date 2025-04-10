@@ -22,6 +22,7 @@ import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import {
   ALLOWED_ICONS,
   DEFAULT_MCP_SERVER_ICON,
+  isAllowedIconType,
   MCP_SERVER_ICONS,
 } from "@app/lib/actions/mcp_icons";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
@@ -62,7 +63,9 @@ export function RemoteMCPForm({
     defaultValues: {
       name: mcpServer.name,
       description: mcpServer.description,
-      icon: mcpServer.icon ?? DEFAULT_MCP_SERVER_ICON,
+      icon: isAllowedIconType(mcpServer.visual)
+        ? mcpServer.visual
+        : DEFAULT_MCP_SERVER_ICON,
     },
   });
 
