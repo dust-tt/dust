@@ -30,3 +30,13 @@ export function useUserMetadata(key: string) {
     mutateMetadata: mutate,
   };
 }
+
+export function useDeleteMetadata(key: string) {
+  const deleteMetadata = async () => {
+    await fetch(`/api/user/metadata/${encodeURIComponent(key)}`, {
+      method: "DELETE",
+    });
+  };
+
+  return { deleteMetadata };
+}
