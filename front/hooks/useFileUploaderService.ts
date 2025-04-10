@@ -56,10 +56,7 @@ export function useFileUploaderService({
 }: {
   owner: LightWorkspaceType;
   useCase: FileUseCase;
-  useCaseMetadata?: {
-    conversationId?: string;
-    spaceId?: string;
-  };
+  useCaseMetadata?: FileUseCaseMetadata;
 }) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);

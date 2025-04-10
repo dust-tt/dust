@@ -82,7 +82,10 @@ async function handler(
       auth,
       file.useCaseMetadata.conversationId
     );
-    if (!conversation) {
+    if (
+      !conversation ||
+      !ConversationResource.canAccessConversation(auth, conversation)
+    ) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
@@ -99,7 +102,7 @@ async function handler(
       auth,
       file.useCaseMetadata.spaceId
     );
-    if (!space) {
+    if (!space || !space.canRead(auth)) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {

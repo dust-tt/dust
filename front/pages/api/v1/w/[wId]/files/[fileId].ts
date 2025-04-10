@@ -9,15 +9,13 @@ import {
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isPublicySupportedUseCase } from "@app/types";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { ConversationError } from "@app/types";
-import { DustError } from "@app/lib/error";
 
 export const config = {
   api: {
