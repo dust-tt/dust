@@ -133,8 +133,7 @@ export class CoEditionServer {
   }
 
   isCoEditionEnabled(): boolean {
-    // return this.transport !== null && this.state.isEnabled;
-    return true;
+    return this.transport !== null && this.state.isEnabled;
   }
 
   onStateUpdate(callback: (state: CoEditionState) => void) {

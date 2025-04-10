@@ -110,9 +110,7 @@ const ConversationLayoutContent = ({
               onClose={() => onOpenChangeAssistantModal(false)}
             />
             <CoEditionProvider owner={owner}>
-              <ConversationInnerLayout conversationId={activeConversationId}>
-                {children}
-              </ConversationInnerLayout>
+              <ConversationInnerLayout>{children}</ConversationInnerLayout>
             </CoEditionProvider>
           </>
         )}
@@ -123,39 +121,33 @@ const ConversationLayoutContent = ({
 
 interface ConversationInnerLayoutProps {
   children: React.ReactNode;
-  conversationId: string | null;
 }
 
-function ConversationInnerLayout({
-  children,
-  conversationId,
-}: ConversationInnerLayoutProps) {
+function ConversationInnerLayout({ children }: ConversationInnerLayoutProps) {
   const { server } = useCoEditionContext();
 
   return (
-    <ResizablePanelGroup
-      direction="horizontal"
-      className="w-full overflow-hidden rounded-lg border"
-    >
-      <FileDropProvider>
-        <GenerationContextProvider>
-          <ResizablePanel
-            minSize={20}
-            defaultSize={conversationId ? 50 : 100}
-            className="overflow-y-visible border-none"
-          >
-            {children}
-          </ResizablePanel>
-        </GenerationContextProvider>
-      </FileDropProvider>
-      {server?.isCoEditionEnabled() && <ResizableHandle />}
-      <ResizablePanel
-        minSize={20}
-        defaultSize={50}
-        className={server?.isCoEditionEnabled() ? "" : "hidden"}
+    <div className="flex h-full w-full flex-col">
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="flex h-full w-full flex-1"
       >
-        {server?.isCoEditionEnabled() && <CoEditionContainer />}
-      </ResizablePanel>
-    </ResizablePanelGroup>
+        <ResizablePanel defaultSize={100}>
+          <FileDropProvider>
+            <GenerationContextProvider>
+              <div className="h-full overflow-y-auto">{children}</div>
+            </GenerationContextProvider>
+          </FileDropProvider>
+        </ResizablePanel>
+        {server?.isCoEditionEnabled() && <ResizableHandle />}
+        <ResizablePanel
+          minSize={20}
+          defaultSize={50}
+          className={server?.isCoEditionEnabled() ? "" : "hidden"}
+        >
+          {server?.isCoEditionEnabled() && <CoEditionContainer />}
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
   );
 }
