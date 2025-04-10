@@ -2,7 +2,6 @@ import {
   Avatar,
   classNames,
   ContentMessage,
-  Icon,
   InformationCircleIcon,
   Label,
   RadioGroup,

@@ -3,6 +3,7 @@ import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -15,7 +16,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 
 export type GetMCPServersResponseBody = {
   success: boolean;

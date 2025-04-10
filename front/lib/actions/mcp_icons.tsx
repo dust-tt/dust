@@ -1,4 +1,3 @@
-import { MCPServerType } from "@app/lib/api/mcp";
 import {
   CommandIcon,
   FolderTableIcon,
@@ -8,6 +7,8 @@ import {
   RocketIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
+
+import type { MCPServerType } from "@app/lib/api/mcp";
 
 export const MCP_SERVER_ICONS: Record<AllowedIconType, React.ComponentType> = {
   command: CommandIcon,
