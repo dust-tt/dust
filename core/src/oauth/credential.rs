@@ -119,15 +119,7 @@ impl Credential {
         metadata: CredentialMetadata,
         content: serde_json::Map<String, serde_json::Value>,
     ) -> Result<Self> {
-        if let Some(from_connection_id) = content.get("from_connection_id") {
-            if let Some(from_connection_id) = from_connection_id.as_str() {
-                let connection = store.retrieve_connection(&from_connection_id).await?;
-                if let Some(credential_id) = connection.related_credential_id() {
-                    return store.retrieve_credential(&credential_id).await;
-                }
-            }
-        }
-
+        // Check format of content based on provider
         let keys_to_check = match provider {
             CredentialProvider::Snowflake => {
                 vec!["account", "warehouse", "username", "password", "role"]

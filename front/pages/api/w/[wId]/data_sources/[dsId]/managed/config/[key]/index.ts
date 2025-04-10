@@ -84,7 +84,6 @@ async function handler(
       "intercomConversationsNotesSyncEnabled",
       "zendeskSyncUnresolvedTicketsEnabled",
       "gongRetentionPeriodDays",
-      "usePersonalConnections",
     ].includes(configKey)
   ) {
     return apiError(req, res, {

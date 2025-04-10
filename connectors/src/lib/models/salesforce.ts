@@ -7,7 +7,6 @@ import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model
 export class SalesforceConfigurationModel extends ConnectorBaseModel<SalesforceConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare usePersonalConnections: CreationOptional<boolean>;
 }
 
 SalesforceConfigurationModel.init(
@@ -21,11 +20,6 @@ SalesforceConfigurationModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    usePersonalConnections: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
     },
   },
   {
