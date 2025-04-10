@@ -615,6 +615,7 @@ export function useSpaceSearch({
   space,
   viewType,
   pagination,
+  parentId,
 }: {
   dataSourceViews: DataSourceViewType[];
   disabled?: boolean;
@@ -625,6 +626,7 @@ export function useSpaceSearch({
   viewType: ContentNodesViewType;
   warningCode?: SearchWarningCode;
   pagination?: CursorPaginationParams;
+  parentId?: string;
 }): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -649,11 +651,12 @@ export function useSpaceSearch({
     limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
     query: search,
     viewType,
+    parentId,
   };
 
   // Only perform a query if we have a valid search.
   const url =
-    search.length >= MIN_SEARCH_QUERY_SIZE
+    search.length >= MIN_SEARCH_QUERY_SIZE || parentId
       ? `/api/w/${owner.sId}/spaces/${space.sId}/search?${params}`
       : null;
 
