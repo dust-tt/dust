@@ -101,12 +101,6 @@ export function ConfigureLabsConnectionModal({
     }
   }, [configuration, dataSourcesViews]);
 
-  const handleSetConnectionStorageDataSourceView = async (
-    dataSourceView: DataSourceViewType | null
-  ) => {
-    setPendingDataSourceView(dataSourceView);
-  };
-
   const handleSetSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
   > = async (
@@ -117,20 +111,16 @@ export function ConfigureLabsConnectionModal({
         ? newValue(selectionConfigurations)
         : newValue;
 
-    if (Object.keys(newSelectionConfigurations).length === 0) {
-      return;
-    }
+    setSelectionConfigurations(newSelectionConfigurations);
 
-    const lastKey = Object.keys(newSelectionConfigurations)[0];
-
-    setSelectionConfigurations({
-      [lastKey]: newSelectionConfigurations[lastKey],
-    });
-
-    if (lastKey) {
-      await handleSetConnectionStorageDataSourceView(
-        newSelectionConfigurations[lastKey].dataSourceView
-      );
+    const keys = Object.keys(newSelectionConfigurations);
+    if (keys.length > 0) {
+      const selectedKey = keys[0];
+      const selectedDsv =
+        newSelectionConfigurations[selectedKey].dataSourceView;
+      setPendingDataSourceView(selectedDsv);
+    } else {
+      setPendingDataSourceView(null);
     }
   };
 
@@ -280,6 +270,7 @@ export function ConfigureLabsConnectionModal({
                             }
                             viewType="document"
                             isRootSelectable={true}
+                            selectionMode="radio"
                           />
                         )}
                       </div>
