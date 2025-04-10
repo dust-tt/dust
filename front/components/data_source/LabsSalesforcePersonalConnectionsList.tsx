@@ -3,7 +3,6 @@ import {
   CloudArrowLeftRightIcon,
   DataTable,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 
@@ -15,9 +14,7 @@ import {
   useDeleteSalesforcePersonalConnection,
   useSalesforceDataSourcesWithPersonalConnection,
 } from "@app/lib/swr/salesforce";
-import { getPKCEConfig } from "@app/lib/utils/pkce";
-import type { DataSourceType, WorkspaceType } from "@app/types";
-import { Err, isOAuthProvider, setupOAuthConnection } from "@app/types";
+import type { WorkspaceType } from "@app/types";
 
 type RowData = {
   dataSource: SalesforceDataSourceWithPersonalConnection;
@@ -36,40 +33,10 @@ export const LabsSalesforcePersonalConnectionsList = ({
     useSalesforceDataSourcesWithPersonalConnection({
       owner,
     });
-  const sendNotification = useSendNotification();
   const { createPersonalConnection } =
     useCreateSalesforcePersonalConnection(owner);
   const { deletePersonalConnection } =
     useDeleteSalesforcePersonalConnection(owner);
-
-  const handleConnectionCreate = async (dataSource: DataSourceType) => {
-    const provider = dataSource.connectorProvider;
-    const { code_verifier, code_challenge } = await getPKCEConfig();
-    if (isOAuthProvider(provider)) {
-      const cRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
-        owner,
-        provider,
-        useCase: "salesforce_personal",
-        extraConfig: {
-          code_verifier,
-          code_challenge,
-        },
-      });
-
-      if (cRes.isErr()) {
-        sendNotification({
-          type: "error",
-          title: "Failed to connect provider",
-          description: cRes.error.message,
-        });
-        return;
-      }
-      await createPersonalConnection(dataSource, cRes.value.connection_id);
-    } else {
-      return new Err(new Error(`Unknown provider ${provider}`));
-    }
-  };
 
   const columns = [
     {
@@ -108,7 +75,7 @@ export const LabsSalesforcePersonalConnectionsList = ({
                   size="sm"
                   icon={CloudArrowLeftRightIcon}
                   onClick={async () => {
-                    await handleConnectionCreate(dataSource);
+                    await createPersonalConnection(dataSource);
                   }}
                 />
               )}

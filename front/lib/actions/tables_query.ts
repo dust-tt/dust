@@ -21,7 +21,7 @@ import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import type { CSVRecord } from "@app/lib/api/csv";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import type {Authenticator} from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -104,7 +104,7 @@ type TablesQueryErrorEvent = {
     code:
       | "tables_query_error"
       | "too_many_result_rows"
-      | "require_authentication";
+      | "require_salesforce_authentication";
     message: string;
   };
 };
@@ -267,11 +267,6 @@ export class TablesQueryActionType extends BaseAction {
 
 const getTablesQueryError = (error: string) => {
   switch (error) {
-    case "require_authentication":
-      return {
-        code: "require_authentication" as const,
-        message: `The query requires authentication. Please connect to the data source.`,
-      };
     case "too_many_result_rows":
       return {
         code: "too_many_result_rows" as const,
@@ -538,8 +533,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
               configurationId: agentConfiguration.sId,
               messageId: agentMessage.sId,
               error: {
-                code: "tables_query_error",
-                message: "tables_authentication_error",
+                code: "require_salesforce_authentication" as const,
+                message: `The query requires authentication. Please connect to the data source.`,
               },
             };
             return;

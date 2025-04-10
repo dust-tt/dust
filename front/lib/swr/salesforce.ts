@@ -2,7 +2,9 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { getPKCEConfig } from "@app/lib/utils/pkce";
 import type { DataSourceType, LightWorkspaceType } from "@app/types";
+import { isOAuthProvider, setupOAuthConnection } from "@app/types";
 
 export type SalesforceDataSourceWithPersonalConnection = DataSourceType & {
   personalConnection: string | null;
@@ -44,40 +46,68 @@ export function useCreateSalesforcePersonalConnection(
   const sendNotification = useSendNotification();
 
   const createPersonalConnection = async (
-    dataSource: DataSourceType,
-    connectionId: string
+    dataSource: DataSourceType
   ): Promise<void> => {
     try {
-      const response = await fetch(
-        `/api/w/${owner.sId}/labs/salesforce_personal_connections/${dataSource.sId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ connectionId }),
+      const provider = dataSource.connectorProvider;
+      const { code_verifier, code_challenge } = await getPKCEConfig();
+      if (isOAuthProvider(provider)) {
+        const cRes = await setupOAuthConnection({
+          dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+          owner,
+          provider,
+          useCase: "salesforce_personal",
+          extraConfig: {
+            code_verifier,
+            code_challenge,
+          },
+        });
+
+        if (cRes.isErr()) {
+          sendNotification({
+            type: "error",
+            title: "Failed to connect provider",
+            description: cRes.error.message,
+          });
+          return;
         }
-      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(
-          error.api_error?.message || "Failed to synchronize server"
+        const response = await fetch(
+          `/api/w/${owner.sId}/labs/salesforce_personal_connections/${dataSource.sId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ connectionId: cRes.value.connection_id }),
+          }
         );
-      }
 
-      void mutate();
-      if (!response.ok) {
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(
+            error.api_error?.message || "Failed to synchronize server"
+          );
+        }
+
+        if (!response.ok) {
+          sendNotification({
+            type: "error",
+            title: "Failed to connect provider",
+            description: "Could not connect to your account. Please try again.",
+          });
+        } else {
+          sendNotification({
+            type: "success",
+            title: "Provider connected",
+            description: "Your account has been connected successfully.",
+          });
+          await mutate();
+        }
+      } else {
         sendNotification({
           type: "error",
           title: "Failed to connect provider",
-          description: "Could not connect to your account. Please try again.",
+          description: "Unknown provider",
         });
-      } else {
-        sendNotification({
-          type: "success",
-          title: "Provider connected",
-          description: "Your account has been connected successfully.",
-        });
-        await mutate();
       }
     } catch (error) {
       sendNotification({
