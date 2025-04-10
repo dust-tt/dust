@@ -1,17 +1,12 @@
 import {
   BracesIcon,
   Button,
-  ChatBubbleThoughtIcon,
   Chip,
-  CommandIcon,
-  CommandLineIcon,
   DocumentIcon,
   ExternalLinkIcon,
   FolderIcon,
-  Icon,
   IconButton,
   Label,
-  PlanetIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -26,28 +21,12 @@ import { useMemo, useState } from "react";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
-import type {
-  DataSourceConfiguration,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
-import type {
-  TableDataSourceConfiguration,
-  TablesQueryConfigurationType,
-} from "@app/lib/actions/tables_query";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import {
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isMCPActionConfiguration,
-  isMCPServerConfiguration,
   isPlatformMCPServerConfiguration,
-  isPlatformMCPToolConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
-  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -71,11 +50,7 @@ import type {
   LightWorkspaceType,
   TagsFilter,
 } from "@app/types";
-import {
-  assertNever,
-  DocumentViewRawContentKey,
-  GLOBAL_AGENTS_SID,
-} from "@app/types";
+import { DocumentViewRawContentKey, GLOBAL_AGENTS_SID } from "@app/types";
 
 interface AssistantKnowledgeSectionProps {
   agentConfiguration: AgentConfigurationType;
@@ -283,84 +258,6 @@ function getDataSourceConfigurationsForTableAction(
       },
       {} as Record<string, DataSourceConfiguration>
     )
-  );
-}
-
-function renderOtherAction(
-  action: AgentActionConfigurationType,
-  index: number,
-  owner: LightWorkspaceType,
-  dataSourceViews: DataSourceViewType[]
-) {
-  if (isDustAppRunConfiguration(action)) {
-    return (
-      <ActionSection title="Run Actions" key={`other-${index}`}>
-        <DustAppSection dustApp={action} />
-      </ActionSection>
-    );
-  } else if (isProcessConfiguration(action)) {
-    return (
-      <ActionSection title="Extract from documents" key={`other-${index}`}>
-        <DataSourceViewsSection
-          owner={owner}
-          dataSourceViews={dataSourceViews}
-          dataSourceConfigurations={action.dataSources}
-          viewType="document"
-        />
-      </ActionSection>
-    );
-  } else if (isWebsearchConfiguration(action)) {
-    return (
-      <ActionSection title="Web navigation" key={`other-${index}`}>
-        <div className="flex gap-2 text-muted-foreground">
-          <Icon visual={PlanetIcon} size="sm" />
-          <div>
-            Agent can navigate the web (browse any provided links, make a google
-            search, etc.) to answer.
-          </div>
-        </div>
-      </ActionSection>
-    );
-  } else if (isReasoningConfiguration(action)) {
-    return (
-      <ActionSection title="Reasoning" key={`other-${index}`}>
-        <Icon visual={ChatBubbleThoughtIcon} size="sm" />
-        <div>
-          Agent can perform step by step reasoning to solve complex problems.
-          Slow but powerful.
-        </div>
-      </ActionSection>
-    );
-  } else if (isMCPServerConfiguration(action)) {
-    return (
-      <ActionSection title={action.name} key={`other-${index}`}>
-        <Icon visual={CommandIcon} size="sm" />
-        <div>{action.description}</div>
-      </ActionSection>
-    );
-  } else if (isBrowseConfiguration(action)) {
-    return null;
-  } else if (
-    !isRetrievalConfiguration(action) &&
-    !isTablesQueryConfiguration(action)
-  ) {
-    return assertNever(action);
-  }
-}
-
-interface ActionSectionProps {
-  title: string;
-  children: React.ReactNode;
-}
-
-function ActionSection({ title, children }: ActionSectionProps) {
-  return (
-    <div>
-      <div className="text-text-foreground dark:text-text-foreground-night heading-lg pb-2">
-        {title}
-      </div>
-      {children}
-    </div>
   );
 }
 
@@ -633,23 +530,5 @@ function DataSourceViewSelectedNodes({
         </Tree.Item>
       ))}
     </>
-  );
-}
-
-interface DustAppSectionProps {
-  dustApp: DustAppRunConfigurationType;
-}
-
-function DustAppSection({ dustApp }: DustAppSectionProps) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div>The following tool is run before answering:</div>
-      <div className="flex gap-2 capitalize text-muted-foreground">
-        <div>
-          <CommandLineIcon />
-        </div>
-        <div>{dustApp.name}</div>
-      </div>
-    </div>
   );
 }
