@@ -90,12 +90,12 @@ export function generateConfiguredInput({
   actionConfiguration,
   owner,
   mimeType,
-  keyPath = [],
+  keyPath,
 }: {
   owner: WorkspaceType;
   actionConfiguration: MCPToolConfigurationType;
   mimeType: InternalConfigurationMimeType;
-  keyPath?: string[];
+  keyPath: string;
 }): ConfigurableToolInputType {
   assert(
     isPlatformMCPToolConfiguration(actionConfiguration),
@@ -150,44 +150,31 @@ export function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.STRING: {
-      // For simple types, we extract the last key from the path and use it to look up the value
-      // in additionalConfiguration
-      if (keyPath.length === 0) {
-        throw new Error("Key path is required for STRING configuration");
-      }
-      const lastKey = keyPath[keyPath.length - 1];
-      const value = actionConfiguration.additionalConfiguration[lastKey];
+      // For primitive types, we have rendered the key from the path and use it to look up the value.
+      const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "string") {
         throw new Error(
-          `Expected string value for key ${lastKey}, got ${typeof value}`
+          `Expected string value for key ${keyPath}, got ${typeof value}`
         );
       }
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER: {
-      if (keyPath.length === 0) {
-        throw new Error("Key path is required for NUMBER configuration");
-      }
-      const lastKey = keyPath[keyPath.length - 1];
-      const value = actionConfiguration.additionalConfiguration[lastKey];
+      const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "number") {
         throw new Error(
-          `Expected number value for key ${lastKey}, got ${typeof value}`
+          `Expected number value for key ${keyPath}, got ${typeof value}`
         );
       }
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN: {
-      if (keyPath.length === 0) {
-        throw new Error("Key path is required for BOOLEAN configuration");
-      }
-      const lastKey = keyPath[keyPath.length - 1];
-      const value = actionConfiguration.additionalConfiguration[lastKey];
+      const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "boolean") {
         throw new Error(
-          `Expected boolean value for key ${lastKey}, got ${typeof value}`
+          `Expected boolean value for key ${keyPath}, got ${typeof value}`
         );
       }
       return { value, mimeType };
@@ -199,25 +186,23 @@ export function generateConfiguredInput({
 }
 
 /**
- * Checks if a server requires internal configuration by examining if any tool's inputSchema
- * contains the specified mimeType.
+ * Returns all paths in a server's tools' inputSchemas that match the schema for the specified mimeType.
+ * @returns An array of paths where the schema matches the specified mimeType
  */
-export function serverRequiresInternalConfiguration({
+export function findPathsToConfiguration({
   mcpServer,
   mimeType,
 }: {
   mcpServer: MCPServerType;
   mimeType: InternalConfigurationMimeType;
-}): boolean {
-  return (
-    mcpServer?.tools?.some(
-      (tool) =>
-        tool?.inputSchema &&
-        findMatchingSchemaKeys(
+}): string[] {
+  return mcpServer.tools.flatMap((tool) =>
+    tool.inputSchema
+      ? findMatchingSchemaKeys(
           tool.inputSchema,
           ConfigurableToolInputJSONSchemas[mimeType]
-        ).length > 0
-    ) ?? false
+        )
+      : []
   );
 }
 
@@ -353,7 +338,7 @@ export function augmentInputsWithConfiguration({
                 owner,
                 actionConfiguration,
                 mimeType,
-                keyPath: fullPath,
+                keyPath: fullPath.join("."),
               })
             );
           }

@@ -50,13 +50,6 @@ export function findMatchingSchemaKeys(
     return matchingKeys;
   }
 
-  // Direct schema equality check
-  if (schemasAreEqual(inputSchema, targetSubSchema)) {
-    // For the root schema, we use an empty string as the key
-    matchingKeys.push("");
-    return matchingKeys;
-  }
-
   // Check properties in object schemas
   if (inputSchema.properties) {
     for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
