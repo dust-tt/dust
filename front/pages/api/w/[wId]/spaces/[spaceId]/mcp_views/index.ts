@@ -47,9 +47,9 @@ async function handler(
       );
       return res.status(200).json({
         success: true,
-        serverViews: mcpServerViews.map((mcpServerView) =>
-          mcpServerView.toJSON()
-        ),
+        serverViews: mcpServerViews
+          .map((mcpServerView) => mcpServerView.toJSON())
+          .filter((s) => !s.server.isDefault),
       });
     }
     case "POST": {
