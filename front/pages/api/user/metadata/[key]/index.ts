@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -92,13 +93,22 @@ async function handler(
       });
       return;
 
+    case "DELETE":
+      await u.deleteMetadata({
+        key: {
+          [Op.like]: `${key}%`,
+        },
+      });
+      res.status(200);
+      return;
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or POST is expected.",
+            "The method passed is not supported, GET, DELETE or POST is expected.",
         },
       });
   }

@@ -1,10 +1,11 @@
 import { Op } from "sequelize";
 
+import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 
 /**
  * Get workspace ids with conversations retention policy.
@@ -62,9 +63,10 @@ export async function purgeConversationsBatchActivity({
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const conversations = await ConversationResource.listAll(auth, {
-      updatedBefore: cutoffDate,
-    });
+    const conversations = await ConversationResource.listAllBeforeDate(
+      auth,
+      cutoffDate
+    );
 
     logger.info(
       {
@@ -76,9 +78,13 @@ export async function purgeConversationsBatchActivity({
       "Purging conversations for workspace."
     );
 
-    await concurrentExecutor(conversations, async (c) => c.delete(auth), {
-      concurrency: 4,
-    });
+    await concurrentExecutor(
+      conversations,
+      async (c) => destroyConversation(auth, { conversationId: c.sId }),
+      {
+        concurrency: 4,
+      }
+    );
 
     res.push({
       workspaceModelId: workspace.id,

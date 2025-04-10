@@ -1,7 +1,21 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Avatar } from "../index_with_tw_base";
+import {
+  BeerIcon,
+  FlagIcon,
+  ShirtIcon,
+  UmbrellaIcon,
+} from "@sparkle/icons/actions";
+import SvgHome from "@sparkle/icons/actions/Home";
+import { StarStrokeIcon } from "@sparkle/icons/app";
+
+import {
+  Avatar,
+  DriveLogo,
+  NotionLogo,
+  SlackLogo,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Components/Avatar",
@@ -48,10 +62,10 @@ export const AvatarExample = () => (
     <div className="s-flex s-gap-4">
       <Avatar size="xs" emoji="❤️" backgroundColor="s-bg-red-100" />
       <Avatar size="sm" emoji="💀" backgroundColor="s-bg-gray-800" />
-      <Avatar size="md" emoji="😂" backgroundColor="s-bg-amber-200" />
+      <Avatar size="md" emoji="😂" backgroundColor="s-bg-info-200" />
       <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-gray-200" />
-      <Avatar size="xl" emoji="👕" backgroundColor="s-bg-sky-200" />
-      <Avatar size="xxl" emoji="👕" backgroundColor="s-bg-sky-200" />
+      <Avatar size="xl" emoji="👕" backgroundColor="s-bg-blue-200" />
+      <Avatar size="xxl" emoji="👕" backgroundColor="s-bg-blue-200" />
     </div>
     <div className="s-flex s-gap-4">
       <Avatar size="sm" name="Eleanor Wright" />
@@ -97,6 +111,18 @@ export const AvatarExample = () => (
         name="Omar Doe"
         visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
       />
+    </div>
+    <div>With icon</div>
+    <div className="s-flex s-gap-4">
+      <Avatar size="xs" icon={SvgHome} />
+      <Avatar size="xs" icon={DriveLogo} />
+      <Avatar size="sm" icon={BeerIcon} />
+      <Avatar size="sm" icon={NotionLogo} backgroundColor="s-bg-blue-50" />
+      <Avatar size="md" icon={UmbrellaIcon} />
+      <Avatar size="lg" icon={FlagIcon} />
+      <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
+      <Avatar size="xl" icon={ShirtIcon} />
+      <Avatar size="xxl" icon={StarStrokeIcon} />
     </div>
   </div>
 );

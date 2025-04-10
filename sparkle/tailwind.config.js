@@ -13,20 +13,12 @@ const safeColorsArray = [
   "success",
   "warning",
   "info",
-  "indigo",
+  "emerald",
   "lime",
   "orange",
   "pink",
   "red",
-  "sky",
-  "teal",
-  "amber",
-  "cyan",
-  "fuchsia",
   "violet",
-  "yellow",
-  "action",
-  "slate", //To be cleaned after transition
 ];
 
 // Get all color names from Tailwind's default palette, excluding special colors
@@ -104,6 +96,84 @@ const customColors = {
     100: "#FFDCEC",
     50: "#FFF1F7",
   },
+  violet: {
+    950: "#2E1065",
+    900: "#4C1D95",
+    800: "#5B21B6",
+    700: "#6D28D9",
+    600: "#7C3AED",
+    500: "#8B5CF6",
+    400: "#A78BFA",
+    300: "#C4B5FD",
+    200: "#DDD6FE",
+    100: "#EDE9FE",
+    50: "#F5F3FF",
+  },
+  red: {
+    950: "#220A04",
+    900: "#571609",
+    800: "#8C230D",
+    700: "#B22E13",
+    600: "#C9391A",
+    500: "#E14322",
+    400: "#E76449",
+    300: "#EC8874",
+    200: "#F2AD9F",
+    100: "#F8CEC7",
+    50: "#FEF2F2",
+  },
+  orange: {
+    950: "#431407",
+    900: "#7C2D12",
+    800: "#9A3412",
+    700: "#C2410C",
+    600: "#EA580C",
+    500: "#F97316",
+    400: "#FB923C",
+    300: "#FDBA74",
+    200: "#FED7AA",
+    100: "#FFEDD5",
+    50: "#FFF7ED",
+  },
+  lime: {
+    950: "#172604",
+    900: "#365314",
+    800: "#3F6212",
+    700: "#4D7C0F",
+    600: "#65A30D",
+    500: "#84CC16",
+    400: "#A3E635",
+    300: "#CCF16E",
+    200: "#E2F78C",
+    100: "#F0FBBD",
+    50: "#FEFFF0",
+  },
+  emerald: {
+    950: "#04140A",
+    900: "#065F46",
+    800: "#0A361A",
+    700: "#277644",
+    600: "#418B5C",
+    500: "#54B47D",
+    400: "#65DA9B",
+    300: "#82EFB8",
+    200: "#99FFCF",
+    100: "#C2FEE2",
+    50: "#ECFDF5",
+  },
+  pink: {
+    950: "#39061A",
+    900: "#841936",
+    800: "#9E254A",
+    700: "#B8315E",
+    600: "#D13C72",
+    500: "#EC4987",
+    400: "#F373A5",
+    300: "#F99BC3",
+    200: "#FFC3DF",
+    100: "#FFDCEC",
+    50: "#FFF1F7",
+  },
 };
 
 Object.assign(colors, {
@@ -113,11 +183,12 @@ Object.assign(colors, {
   rose: customColors.rose,
   golden: customColors.golden,
   //For compatibility, to be removed after all direct color ref are edited for golden
-  slate: customColors.gray,
+  emerald: customColors.emerald,
+  lime: customColors.lime,
+  red: customColors.red,
+  pink: customColors.pink,
+  //to remove
   amber: customColors.golden,
-  emerald: customColors.green,
-  red: customColors.rose,
-  pink: customColors.rose,
   sky: customColors.blue,
 });
 
@@ -128,6 +199,8 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
   ...Array.from({ length: 9 }, (_, i) => `s-bg-${color}-${(i + 1) * 100}`),
   // Include 950 shade
   `s-bg-${color}-950`,
+  // Include muted shade
+  `s-bg-${color}-muted`,
   // Add night mode variants
   `dark:s-bg-${color}-50-night`,
   ...Array.from(
@@ -152,6 +225,7 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
   `dark:s-text-${color}-900-night`,
   `dark:s-text-${color}-950-night`,
 ]);
+
 module.exports = {
   theme: {
     screens: {
@@ -192,70 +266,70 @@ module.exports = {
       lg: [
         "18px",
         {
-          lineHeight: "28px",
+          lineHeight: "26px",
           letterSpacing: "-0.36px",
         },
       ],
       xl: [
         "20px",
         {
-          lineHeight: "26px",
+          lineHeight: "28px",
           letterSpacing: "-0.4px",
         },
       ],
       "2xl": [
         "24px",
         {
-          lineHeight: "32px",
+          lineHeight: "30px",
           letterSpacing: "-0.96px",
         },
       ],
       "3xl": [
         "32px",
         {
-          lineHeight: "40px",
+          lineHeight: "36px",
           letterSpacing: "-1.28px",
         },
       ],
       "4xl": [
         "40px",
         {
-          lineHeight: "48px",
+          lineHeight: "42px",
           letterSpacing: "-2.4px",
         },
       ],
       "5xl": [
         "48px",
         {
-          lineHeight: "56px",
+          lineHeight: "52px",
           letterSpacing: "-2.88px",
         },
       ],
       "6xl": [
         "56px",
         {
-          lineHeight: "56px",
+          lineHeight: "60px",
           letterSpacing: "-3.36px",
         },
       ],
       "7xl": [
         "64px",
         {
-          lineHeight: "64px",
+          lineHeight: "68px",
           letterSpacing: "-3.84px",
         },
       ],
       "8xl": [
         "72px",
         {
-          lineHeight: "72px",
+          lineHeight: "76px",
           letterSpacing: "-4.32px",
         },
       ],
       "9xl": [
         "80px",
         {
-          lineHeight: "80px",
+          lineHeight: "84px",
           letterSpacing: "-4.8px",
         },
       ],

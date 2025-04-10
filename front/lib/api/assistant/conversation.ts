@@ -664,6 +664,7 @@ export async function* postUserMessage(
               await UserMessage.create(
                 {
                   content,
+                  localMCPServerIds: context.localMCPServerIds ?? [],
                   userContextUsername: context.username,
                   userContextTimezone: context.timezone,
                   userContextFullName: context.fullName,
@@ -1125,6 +1126,8 @@ export async function* editUserMessage(
               await UserMessage.create(
                 {
                   content,
+                  // No support for local MCP servers when editing/retrying a user message.
+                  localMCPServerIds: [],
                   userContextUsername: userMessageRow.userContextUsername,
                   userContextTimezone: userMessageRow.userContextTimezone,
                   userContextFullName: userMessageRow.userContextFullName,
@@ -1603,10 +1606,14 @@ export async function postNewContentFragment(
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
-  await maybeUpsertFileAttachment(auth, {
+  const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {
     contentFragments: [cf],
     conversation,
   });
+
+  if (upsertAttachmentRes.isErr()) {
+    return upsertAttachmentRes;
+  }
 
   const messageId = generateRandomModelSId();
 

@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
@@ -10,7 +12,6 @@ import {
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
-import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
@@ -19,12 +20,16 @@ import type {
   DataSourceConfiguration,
   RetrievalConfigurationType,
 } from "@app/lib/actions/retrieval";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type {
+  TableDataSourceConfiguration,
+  TablesQueryConfigurationType,
+} from "@app/lib/actions/tables_query";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
+  isPlatformMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -37,7 +42,6 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
@@ -231,6 +235,8 @@ async function getMCPServerActionConfiguration(
   action: MCPServerConfigurationType,
   dataSourceViews: DataSourceViewResource[]
 ): Promise<AssistantBuilderActionConfiguration> {
+  assert(isPlatformMCPServerConfiguration(action));
+
   const builderAction = getDefaultMCPServerActionConfiguration();
   if (builderAction.type !== "MCP") {
     throw new Error("MCP action configuration is not valid");
@@ -238,16 +244,27 @@ async function getMCPServerActionConfiguration(
 
   builderAction.configuration.mcpServerViewId = action.mcpServerViewId;
 
-  builderAction.name = action.name + "_" + generateRandomModelSId();
-  builderAction.description =
-    action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION;
+  builderAction.name = "";
+  builderAction.description = "";
 
   builderAction.configuration.dataSourceConfigurations = action.dataSources
     ? await renderDataSourcesConfigurations(
-        { ...action, dataSources: action.dataSources }, // overriding to satisfy the typing
+        { ...action, dataSources: action.dataSources }, // repeating action.dataSources to satisfy the typing
         dataSourceViews
       )
     : null;
+
+  builderAction.configuration.tablesConfigurations = action.tables
+    ? await renderTableDataSourcesConfigurations(
+        { ...action, tables: action.tables },
+        dataSourceViews
+      )
+    : null;
+
+  builderAction.configuration.childAgentId = action.childAgentId;
+
+  builderAction.configuration.additionalConfiguration =
+    action.additionalConfiguration;
 
   return builderAction;
 }
@@ -340,7 +357,9 @@ async function renderDataSourcesConfigurations(
 }
 
 async function renderTableDataSourcesConfigurations(
-  action: TablesQueryConfigurationType,
+  action:
+    | TablesQueryConfigurationType
+    | (MCPServerConfigurationType & { tables: TableDataSourceConfiguration[] }),
   dataSourceViews: DataSourceViewResource[]
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.tables.map((table) => ({

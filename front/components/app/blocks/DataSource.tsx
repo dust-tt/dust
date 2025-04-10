@@ -343,7 +343,6 @@ export default function DataSource({
                                 key={i}
                                 label={tag}
                                 onRemove={() => handleRemoveTagsIn(i)}
-                                color="slate"
                               />
                             )
                           )}
@@ -395,7 +394,6 @@ export default function DataSource({
                                   key={i}
                                   label={tag}
                                   onRemove={() => handleRemoveTagsNot(i)}
-                                  color="slate"
                                 />
                               )
                             )}

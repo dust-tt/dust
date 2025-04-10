@@ -29,15 +29,15 @@ const meta = {
     },
     variant: {
       options: [
-        "amber",
-        "slate",
-        "emerald",
-        "pink",
-        "purple",
+        "primary",
         "warning",
-        "sky",
-        "action",
-        "red",
+        "success",
+        "highlight",
+        "info",
+        "green",
+        "blue",
+        "rose",
+        "golden",
       ],
       control: { type: "select" },
       description: "Visual style variant",
@@ -70,7 +70,7 @@ export const Basic: Story = {
 export const WithList: Story = {
   args: {
     title: "Agent Thoughts",
-    variant: "slate",
+    variant: "primary",
     size: "md",
     children: (
       <ul className="s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0">

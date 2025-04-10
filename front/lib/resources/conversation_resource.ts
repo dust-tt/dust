@@ -1,4 +1,4 @@
-import _ from "lodash";
+import * as _ from "lodash";
 import type {
   CreationAttributes,
   InferAttributes,
@@ -34,10 +34,6 @@ import type { ResourceFindOptions } from "./types";
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
-  /**
-   * before updatedAt. Less Than
-   */
-  updatedBefore?: Date;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -68,16 +64,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   private static getOptions(
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {
-    const where: ResourceFindOptions<ConversationModel>["where"] = {};
-
-    if (!options?.includeDeleted) {
-      where.visibility = {
-        [Op.ne]: "deleted",
+    if (options?.includeDeleted) {
+      return {
+        where: {},
       };
     }
 
     return {
-      where,
+      where: {
+        visibility: { [Op.ne]: "deleted" },
+      },
     };
   }
 
@@ -91,8 +87,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const conversations = await this.model.findAll({
       where: {
-        ...options.where,
         ...where,
+        ...options.where,
         workspaceId: workspace.id,
       },
       limit: options.limit,
@@ -190,6 +186,24 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return mentions;
+  }
+
+  static async listAllBeforeDate(
+    auth: Authenticator,
+    date: Date
+  ): Promise<ConversationResource[]> {
+    const conversations = await this.baseFetch(
+      auth,
+      { includeDeleted: true, includeTest: true },
+      {
+        where: {
+          updatedAt: {
+            [Op.lt]: date,
+          },
+        },
+      }
+    );
+    return conversations;
   }
 
   static canAccessConversation(

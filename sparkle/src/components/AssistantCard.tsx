@@ -7,7 +7,7 @@ import {
   MiniButtonProps,
 } from "@sparkle/components/";
 import { CardVariantType } from "@sparkle/components/Card";
-import { MoreIcon } from "@sparkle/icons/";
+import { MoreIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";
 
 interface BaseAssistantCardProps {

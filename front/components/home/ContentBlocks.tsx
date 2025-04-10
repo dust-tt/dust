@@ -50,7 +50,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
         className
       )}
     >
-      <div className="flex aspect-video items-center justify-center bg-primary-800 p-4">
+      <div className="flex aspect-video w-full items-center justify-center bg-primary-800 p-4">
         <div className="max-w-[400px]">{children ? children : null}</div>
       </div>
       <div className="flex flex-col gap-3 px-6 pb-6 pt-4">

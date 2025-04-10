@@ -23,7 +23,7 @@ type ActionTablesQueryProps = {
   actionConfiguration: AssistantBuilderTableConfiguration | null;
   allowedSpaces: SpaceType[];
   updateAction: (
-    setNewAction: (
+    setNewActionConfig: (
       previousAction: AssistantBuilderTableConfiguration
     ) => AssistantBuilderTableConfiguration
   ) => void;

@@ -32,7 +32,6 @@ export {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./Collapsible";
-export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
 export { ContentMessage } from "./ContentMessage";
@@ -59,6 +58,7 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./Dialog";
+export { DoubleIcon } from "./DoubleIcon";
 export type { DropdownMenuItemProps } from "./Dropdown";
 export {
   DropdownMenu,
@@ -87,7 +87,6 @@ export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
 export { Icon } from "./Icon";
 export { IconButton } from "./IconButton";
-export { IconToggleButton } from "./IconToggleButton";
 export { Input } from "./Input";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
@@ -101,6 +100,7 @@ export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
+export { ColorPicker, IconPicker } from "./Picker";
 export {
   Popover,
   PopoverContent,

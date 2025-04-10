@@ -14,14 +14,15 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import {
-  AVAILABLE_INTERNAL_MCPSERVER_NAMES,
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   isDefaultInternalMCPServer,
+  isDefaultInternalMCPServerByName,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -33,27 +34,33 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { ModelId, Result } from "@app/types";
-import { assertNever, Err, Ok, removeNulls } from "@app/types";
+import {
+  assertNever,
+  Err,
+  formatUserFullName,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface MCPServerViewResource
-  extends ReadonlyAttributesType<MCPServerView> {}
+  extends ReadonlyAttributesType<MCPServerViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
-  static model: ModelStatic<MCPServerView> = MCPServerView;
+export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
+  static model: ModelStatic<MCPServerViewModel> = MCPServerViewModel;
   readonly editedByUser?: Attributes<UserModel>;
 
   private remoteMCPServer?: RemoteMCPServerResource;
   private internalMCPServer?: InternalMCPServerInMemoryResource;
 
   constructor(
-    model: ModelStatic<MCPServerView>,
-    blob: Attributes<MCPServerView>,
+    model: ModelStatic<MCPServerViewModel>,
+    blob: Attributes<MCPServerViewModel>,
     space: SpaceResource,
     { editedByUser }: { editedByUser?: Attributes<UserModel> } = {}
   ) {
-    super(MCPServerView, blob, space);
+    super(MCPServerViewModel, blob, space);
 
     this.editedByUser = editedByUser;
   }
@@ -78,7 +85,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
   private static async makeNew(
     auth: Authenticator,
     blob: Omit<
-      CreationAttributes<MCPServerView>,
+      CreationAttributes<MCPServerViewModel>,
       "editedAt" | "editedByUserId" | "vaultId" | "workspaceId"
     >,
     space: SpaceResource,
@@ -97,7 +104,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       );
     }
 
-    const server = await MCPServerView.create(
+    const server = await MCPServerViewModel.create(
       {
         ...blob,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -146,7 +153,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
 
   private static async baseFetch(
     auth: Authenticator,
-    { where }: ResourceFindOptions<MCPServerView> = {}
+    { where }: ResourceFindOptions<MCPServerViewModel> = {}
   ) {
     const views = await this.baseFetchWithAuthorization(auth, {
       where,
@@ -297,7 +304,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       "Can only delete MCP server views for the current workspace"
     );
 
-    const deletedCount = await MCPServerView.destroy({
+    const deletedCount = await MCPServerViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,
@@ -318,7 +325,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       transaction,
     });
 
-    const deletedCount = await MCPServerView.destroy({
+    const deletedCount = await MCPServerViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,
@@ -431,13 +438,21 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     }
   }
 
+  get isDefault(): boolean {
+    if (this.serverType !== "internal" || !this.internalMCPServerId) {
+      return false;
+    }
+
+    return isDefaultInternalMCPServer(this.internalMCPServerId);
+  }
+
   static async ensureAllDefaultActionsAreCreated(auth: Authenticator) {
-    const names = AVAILABLE_INTERNAL_MCPSERVER_NAMES;
+    const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
 
     const defaultInternalMCPServerIds: string[] = [];
     for (const name of names) {
       const isEnabled = await isEnabledForWorkspace(auth, name);
-      const isDefault = isDefaultInternalMCPServer(name);
+      const isDefault = isDefaultInternalMCPServerByName(name);
 
       if (isEnabled && isDefault) {
         defaultInternalMCPServerIds.push(
@@ -463,7 +478,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     const spaces = await SpaceResource.listWorkspaceDefaultSpaces(auth);
 
     // There should be MCPServerView for theses ids both in system and global spaces
-    const views = await MCPServerView.findAll({
+    const views = await MCPServerViewModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         serverType: "internal",
@@ -526,6 +541,30 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     });
   }
 
+  async setEditedBy(auth: Authenticator) {
+    await this.update({
+      editedByUserId: auth.user()?.id ?? null,
+      editedAt: new Date(),
+    });
+  }
+
+  private makeEditedBy(
+    editedByUser: Attributes<UserModel> | undefined,
+    editedAt: Date | undefined
+  ) {
+    if (!editedByUser || !editedAt) {
+      return null;
+    }
+
+    return {
+      editedAt: editedAt.getTime(),
+      fullName: formatUserFullName(editedByUser),
+      imageUrl: editedByUser.imageUrl,
+      email: editedByUser.email,
+      userId: editedByUser.sId,
+    };
+  }
+
   // Serialization.
   toJSON(): MCPServerViewType {
     return {
@@ -537,14 +576,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
         this.serverType === "remote"
           ? this.getRemoteMCPServer().toJSON()
           : this.getInternalMCPServer().toJSON(),
+      editedByUser: this.makeEditedBy(
+        this.editedByUser,
+        this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
+      ),
     };
   }
-}
-
-export interface MCPServerViewType {
-  id: string;
-  createdAt: number;
-  updatedAt: number;
-  spaceId: string;
-  server: MCPServerType;
 }

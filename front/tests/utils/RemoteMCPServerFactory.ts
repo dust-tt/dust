@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
 
-import type { MCPToolType } from "@app/lib/actions/mcp_metadata";
+import type { MCPToolType } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { WorkspaceType } from "@app/types";
@@ -19,9 +19,9 @@ export class RemoteMCPServerFactory {
       tools?: MCPToolType[];
     } = {}
   ) {
-    const name = options.name || "Test Server";
+    const cachedName = options.name || "Test Server";
     const url = options.url || `https://${faker.internet.domainName()}`;
-    const description = options.description || `${name} description`;
+    const cachedDescription = options.description || `${name} description`;
     const tools: MCPToolType[] = options.tools || [
       { name: "tool", description: "Tool description", inputSchema: undefined },
     ];
@@ -29,9 +29,9 @@ export class RemoteMCPServerFactory {
 
     return RemoteMCPServerResource.makeNew(auth, {
       workspaceId: workspace.id,
-      name,
+      cachedName,
       url,
-      description,
+      cachedDescription,
       cachedTools: tools,
       icon: DEFAULT_MCP_ACTION_ICON,
       version: DEFAULT_MCP_ACTION_VERSION,

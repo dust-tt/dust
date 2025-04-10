@@ -312,7 +312,7 @@ export const TrackerBuilder = ({
                 <DropdownMenuTrigger>
                   <Chip
                     size="sm"
-                    color={tracker.status === "active" ? "emerald" : "warning"}
+                    color={tracker.status === "active" ? "success" : "warning"}
                     className="capitalize"
                     icon={tracker.status === "active" ? undefined : LockIcon}
                   >

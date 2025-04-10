@@ -1,11 +1,16 @@
 import { Op } from "sequelize";
 
-import { getDataSource } from "@app/lib/actions/configuration/retrieval";
-import { getTableConfiguration } from "@app/lib/actions/configuration/table_query";
+import {
+  renderDataSourceConfiguration,
+  renderTableConfiguration,
+} from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import {
+  AgentChildAgentConfiguration,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -78,20 +83,32 @@ export async function fetchMCPServerActionConfigurations(
       ],
     });
 
+  // Find the associated child agent configurations.
+  const allChildAgentConfigurations =
+    await AgentChildAgentConfiguration.findAll({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
+      },
+    });
+
   const actionsByConfigurationId = new Map<
     ModelId,
     MCPServerConfigurationType[]
   >();
 
   for (const config of mcpServerConfigurations) {
-    const { agentConfigurationId, sId, id, mcpServerViewId } = config;
+    const { agentConfigurationId, mcpServerViewId } = config;
 
     const dataSourceConfigurations = allDataSourceConfigurations.filter(
       (ds) => ds.mcpServerConfigurationId === config.id
     );
-
     const tablesConfigurations = allTablesConfigurations.filter(
       (tc) => tc.mcpServerConfigurationId === config.id
+    );
+    const childAgentConfigurations = allChildAgentConfigurations.filter(
+      (ca) => ca.mcpServerConfigurationId === config.id
     );
 
     const mcpServerView = await MCPServerViewResource.fetchByModelPk(
@@ -104,7 +121,7 @@ export async function fetchMCPServerActionConfigurations(
       );
     }
 
-    const { name, description } =
+    const { name: serverName, description: serverDescription } =
       await mcpServerView.getMCPServerMetadata(auth);
 
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
@@ -114,14 +131,21 @@ export async function fetchMCPServerActionConfigurations(
     const actions = actionsByConfigurationId.get(agentConfigurationId);
     if (actions) {
       actions.push({
-        id,
-        sId,
+        id: config.id,
+        sId: config.sId,
         type: "mcp_server_configuration",
-        name,
-        description,
+        name: config.name ?? serverName,
+        description: config.singleToolDescriptionOverride ?? serverDescription,
         mcpServerViewId: mcpServerView.sId,
-        dataSources: dataSourceConfigurations.map(getDataSource),
-        tables: tablesConfigurations.map(getTableConfiguration),
+        dataSources: dataSourceConfigurations.map(
+          renderDataSourceConfiguration
+        ),
+        tables: tablesConfigurations.map(renderTableConfiguration),
+        childAgentId:
+          childAgentConfigurations.length > 0
+            ? childAgentConfigurations[0].agentConfigurationId
+            : null,
+        additionalConfiguration: config.additionalConfiguration,
       });
     }
   }

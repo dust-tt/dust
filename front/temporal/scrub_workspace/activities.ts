@@ -4,6 +4,7 @@ import {
   archiveAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
+import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
 import {
@@ -121,7 +122,10 @@ export async function pauseAllConnectors({
 
 export async function deleteAllConversations(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
-  const conversations = await ConversationResource.listAll(auth);
+  const conversations = await ConversationResource.listAll(auth, {
+    includeDeleted: true,
+    includeTest: true,
+  });
   logger.info(
     { workspaceId: workspace.sId, conversationsCount: conversations.length },
     "Deleting all conversations for workspace."
@@ -131,7 +135,7 @@ export async function deleteAllConversations(auth: Authenticator) {
   for (const conversationChunk of conversationChunks) {
     await Promise.all(
       conversationChunk.map(async (c) => {
-        await c.delete(auth);
+        await destroyConversation(auth, { conversationId: c.sId });
       })
     );
   }

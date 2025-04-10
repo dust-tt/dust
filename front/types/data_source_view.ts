@@ -4,9 +4,9 @@ import type {
   ConnectorStatusDetails,
   DataSourceType,
   DataSourceWithAgentsUsageType,
-  EditedByUser,
 } from "./data_source";
 import type { ModelId } from "./shared/model_id";
+import type { EditedByUser } from "./user";
 
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
