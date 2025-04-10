@@ -25,7 +25,10 @@ import {
   isPlatformMCPServerConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { MCPToolType, MCPToolWithIsDefaultType } from "@app/lib/api/mcp";
+import type {
+  MCPToolType,
+  MCPToolWithStakeLevelType,
+} from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -80,7 +83,7 @@ export type MCPToolResultContent = z.infer<typeof Schema>;
 
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
-  tools: (MCPToolType & { isDefault: boolean })[]
+  tools: MCPToolWithStakeLevelType[]
 ): PlatformMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
@@ -95,6 +98,8 @@ function makePlatformMCPToolConfigurations(
     isDefault: tool.isDefault,
     childAgentId: config.childAgentId,
     additionalConfiguration: config.additionalConfiguration,
+    permission: tool.stakeLevel,
+    toolServerId: tool.toolServerSId,
   }));
 }
 
@@ -124,7 +129,7 @@ function makeMCPToolConfigurations<T extends MCPServerConfigurationType>({
   tools,
 }: {
   config: T;
-  tools: MCPToolWithIsDefaultType[];
+  tools: MCPToolWithStakeLevelType[];
 }): MCPToolConfigurationResult<T> {
   if (isPlatformMCPServerConfiguration(config)) {
     return makePlatformMCPToolConfigurations(
@@ -289,7 +294,7 @@ async function listMCPServerTools(
     conversationId: string;
     messageId: string;
   }
-): Promise<MCPToolWithIsDefaultType[]> {
+): Promise<MCPToolWithStakeLevelType[]> {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
@@ -310,7 +315,7 @@ async function listMCPServerTools(
       isConnectViaMCPServerId(config) &&
       isDefaultInternalMCPServer(config.mcpServerId);
 
-    let allTools: MCPToolWithIsDefaultType[] = [];
+    let allTools: MCPToolWithStakeLevelType[] = [];
     let nextPageCursor;
 
     // Fetch all tools, handling pagination if supported by the MCP server.
@@ -328,10 +333,8 @@ async function listMCPServerTools(
 
     // Enrich tool metadata with permissions and serverId to avoid re-fetching at validation modal
     // level.
-    if (config.type === "remoteMCPServerUrl") {
-      const { serverType, id } = getServerTypeAndIdFromSId(
-        config.remoteMCPServerUrl
-      );
+    if (config.type === "mcpServerId") {
+      const { serverType, id } = getServerTypeAndIdFromSId(config.mcpServerId);
       if (serverType === "remote") {
         const toolMetadata =
           await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
@@ -345,8 +348,8 @@ async function listMCPServerTools(
 
         allTools = allTools.map((tool) => ({
           ...tool,
-          permission: metadataMap[tool.name] || DEFAULT_MCP_TOOL_STAKE_LEVEL,
-          toolServerId: id,
+          stakeLevel: metadataMap[tool.name] || DEFAULT_MCP_TOOL_STAKE_LEVEL,
+          toolServerSId: config.mcpServerId,
         }));
       }
     }
