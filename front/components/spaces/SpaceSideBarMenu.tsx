@@ -747,6 +747,7 @@ const SpaceActionsSubMenu = ({
     owner,
     space,
   });
+  const filteredServerViews = serverViews.filter((s) => !s.server.isDefault);
 
   return (
     <Tree.Item
@@ -761,11 +762,15 @@ const SpaceActionsSubMenu = ({
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={categoryDetails.icon}
       areActionsFading={false}
-      type={isMCPServerViewsLoading || serverViews.length > 0 ? "node" : "leaf"}
+      type={
+        isMCPServerViewsLoading || filteredServerViews.length > 0
+          ? "node"
+          : "leaf"
+      }
     >
       {isExpanded && (
         <Tree isLoading={isMCPServerViewsLoading}>
-          {sortBy(serverViews, "server.name").map((serverView) => (
+          {sortBy(filteredServerViews, "server.name").map((serverView) => (
             <SpaceActionItem
               action={serverView}
               key={serverView.server.name}
