@@ -32,7 +32,6 @@ export {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./Collapsible";
-export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
 export { ContentMessage } from "./ContentMessage";
@@ -101,6 +100,7 @@ export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
+export { ColorPicker, IconPicker } from "./Picker";
 export {
   Popover,
   PopoverContent,
