@@ -20,7 +20,7 @@ export type MCPServerType = {
   name: string;
   version: string;
   description: string;
-  icon: AllowedIconType;
+  visual: AllowedIconType | string;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   isDefault: boolean;

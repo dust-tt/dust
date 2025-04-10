@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Button,
   DataTable,
   PlusIcon,
@@ -13,7 +14,7 @@ import * as React from "react";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
@@ -22,7 +23,7 @@ import { RequestActionsModal } from "./mcp/RequestActionsModal";
 type RowData = {
   name: string;
   description: string;
-  icon: React.ComponentType;
+  visual: string | React.ReactNode;
   onClick?: () => void;
 };
 
@@ -31,8 +32,13 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
     {
       id: "name",
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent icon={info.row.original.icon}>
-          {info.getValue()}
+        <DataTable.CellContent>
+          <div className="flex flex-row items-center gap-2 py-3">
+            <div>
+              <Avatar visual={info.row.original.visual} />
+            </div>
+            <div className="flex-grow truncate">{info.getValue()}</div>
+          </div>
         </DataTable.CellContent>
       ),
       accessorFn: (row: RowData) => row.name,
@@ -83,7 +89,7 @@ export const SpaceActionsList = ({
       sortBy(serverViews, "server.name").map((serverView) => ({
         name: serverView.server.name,
         description: serverView.server.description,
-        icon: MCP_SERVER_ICONS[serverView.server.icon],
+        visual: getVisual(serverView.server),
       })) || [],
     [serverViews]
   );

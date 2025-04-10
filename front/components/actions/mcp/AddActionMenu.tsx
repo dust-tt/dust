@@ -12,10 +12,7 @@ import {
 import { useState } from "react";
 import React from "react";
 
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  MCP_SERVER_ICONS,
-} from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
@@ -73,16 +70,7 @@ export const AddActionMenu = ({
               <DropdownMenuItem
                 key={mcpServer.id}
                 label={mcpServer.name}
-                icon={() => (
-                  <Avatar
-                    visual={React.createElement(
-                      MCP_SERVER_ICONS[
-                        mcpServer.icon || DEFAULT_MCP_SERVER_ICON
-                      ]
-                    )}
-                    size="xs"
-                  />
-                )}
+                icon={() => <Avatar visual={getVisual(mcpServer)} size="xs" />}
                 description={mcpServer.description}
                 onClick={async () => {
                   createInternalMCPServer(mcpServer);

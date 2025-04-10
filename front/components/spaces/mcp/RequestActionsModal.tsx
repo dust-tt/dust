@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +20,7 @@ import {
 import _ from "lodash";
 import { useState } from "react";
 
-import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { sendRequestActionsAccessEmail } from "@app/lib/email";
 import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_server_views";
@@ -121,9 +122,12 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                           <Button
                             variant="outline"
                             label={selectedMcpServer.server.name}
-                            icon={
-                              MCP_SERVER_ICONS[selectedMcpServer.server.icon]
-                            }
+                            icon={() => (
+                              <Avatar
+                                visual={getVisual(selectedMcpServer.server)}
+                                size="xs"
+                              />
+                            )}
                           />
                         ) : (
                           <Button
@@ -139,7 +143,9 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                           <DropdownMenuItem
                             key={v.id}
                             label={v.server.name}
-                            icon={MCP_SERVER_ICONS[v.server.icon]}
+                            icon={() => (
+                              <Avatar visual={getVisual(v.server)} size="xs" />
+                            )}
                             onClick={() => setSelectedMcpServer(v)}
                           />
                         ))}

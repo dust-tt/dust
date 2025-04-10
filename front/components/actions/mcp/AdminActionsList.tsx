@@ -7,18 +7,14 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { CreateMCPServerModal } from "@app/components/actions/mcp/CreateMCPServerModal";
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  MCP_SERVER_ICONS,
-} from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import {
-  useAvailableMCPServers,
   useCreateInternalMCPServer,
   useMCPServerConnections,
   useMCPServers,
@@ -46,11 +42,7 @@ const NameCell = ({ row }: { row: RowData }) => {
         )}
       >
         <div>
-          <Avatar
-            visual={React.createElement(
-              MCP_SERVER_ICONS[mcpServer.icon || DEFAULT_MCP_SERVER_ICON]
-            )}
-          />
+          <Avatar visual={getVisual(mcpServer)} />
         </div>
         <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
           <div className="flex flex-col gap-1">
@@ -94,13 +86,6 @@ export const AdminActionsList = ({
   const systemSpace = useMemo(() => {
     return spaces.find((space) => space.kind === "system");
   }, [spaces]);
-
-  const {
-    availableMCPServers: internalMCPServers,
-    isAvailableMCPServersLoading,
-  } = useAvailableMCPServers({
-    owner,
-  });
 
   const { mcpServers, isMCPServersLoading } = useMCPServers({
     owner,
@@ -199,32 +184,30 @@ export const AdminActionsList = ({
     return columns;
   };
 
-  const allServers = [
-    ...internalMCPServers.filter((server) => server.isDefault),
-    ...mcpServers,
-  ];
-  const rows: RowData[] = allServers.map((mcpServer) => {
-    const mcpServerWithViews = mcpServers.find((s) => s.id === mcpServer.id);
-    const mcpServerView = mcpServerWithViews?.views.find(
-      (v) => v.spaceId === systemSpace?.sId
-    );
-    const spaceIds = mcpServerWithViews
-      ? mcpServerWithViews.views.map((v) => v.spaceId)
-      : [];
-    return {
-      mcpServer,
-      mcpServerView,
-      spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
-      isConnected: !!connections.find(
-        (c) => c.internalMCPServerId === mcpServer.id
-      ),
-      onClick: () => {
-        if (mcpServerView && mcpServer) {
-          setMcpServer(mcpServer);
-        }
-      },
-    };
-  });
+  const rows: RowData[] = mcpServers
+    .filter((mcpServer) => !mcpServer.isDefault)
+    .map((mcpServer) => {
+      const mcpServerWithViews = mcpServers.find((s) => s.id === mcpServer.id);
+      const mcpServerView = mcpServerWithViews?.views.find(
+        (v) => v.spaceId === systemSpace?.sId
+      );
+      const spaceIds = mcpServerWithViews
+        ? mcpServerWithViews.views.map((v) => v.spaceId)
+        : [];
+      return {
+        mcpServer,
+        mcpServerView,
+        spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
+        isConnected: !!connections.find(
+          (c) => c.internalMCPServerId === mcpServer.id
+        ),
+        onClick: () => {
+          if (mcpServerView && mcpServer) {
+            setMcpServer(mcpServer);
+          }
+        },
+      };
+    });
   const columns = getTableColumns();
 
   const [filter, setFilter] = useState("");
@@ -267,12 +250,13 @@ export const AdminActionsList = ({
         />
       </div>
 
-      {isAvailableMCPServersLoading || isMCPServersLoading || isLoading ? (
+      {isMCPServersLoading || isLoading ? (
         <div className="mt-16 flex justify-center">
           <Spinner />
         </div>
       ) : (
         <DataTable
+          sorting={[{ id: "name", desc: false }]}
           data={rows}
           columns={columns}
           className="pb-4"
