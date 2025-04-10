@@ -34,31 +34,31 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
 
     // Add parent fields if present
     if !query.parent_fields.is_empty() {
+        // First, validate that no parent field is a function
+        for parent in &query.parent_fields {
+            for field in &parent.fields {
+                if let FieldExpression::Function { .. } = field {
+                    return Err(SoqlError::unsupported_feature(
+                        "Function calls are not supported on parent fields. Use simple field references only."
+                    ));
+                }
+            }
+        }
+
+        // Then, process the fields (which we know are now all FieldExpression::Field variants)
         let parent_fields: Vec<String> = query
             .parent_fields
             .iter()
             .flat_map(|parent| {
                 parent.fields.iter().map(move |field| {
-                    // For simple fields, prefix with parent relationship
-                    // For functions, include the relationship in the first argument
-                    match field {
-                        FieldExpression::Field(field_str) => {
-                            format!("{}.{}", parent.relationship, field_str)
-                        }
-                        FieldExpression::Function {
-                            function,
-                            arguments,
-                        } => {
-                            // For functions on parent fields, we need to prefix the first argument
-                            // with the parent relationship if it doesn't already have a relationship
-                            let mut args = arguments.clone();
-                            if let Some(first_arg) = args.first_mut() {
-                                if !first_arg.contains('.') {
-                                    *first_arg = format!("{}.{}", parent.relationship, first_arg);
-                                }
-                            }
-                            format!("{}({})", function, args.join(", "))
-                        }
+                    // We've validated above that this is a Field variant
+                    if let FieldExpression::Field(field_str) = field {
+                        format!("{}.{}", parent.relationship, field_str)
+                    } else {
+                        // This should never happen due to the validation above
+                        unreachable!(
+                            "Function in parent fields should have been caught by validation"
+                        )
                     }
                 })
             })
@@ -1098,6 +1098,36 @@ mod tests {
         let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
         let result = convert_to_soql(&query);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_function_on_parent_field_fails() {
+        let json = r#"{
+            "object": "Contact",
+            "fields": ["Id", "FirstName", "LastName"],
+            "parentFields": [
+                {
+                    "relationship": "Account",
+                    "fields": [
+                        "Name", 
+                        {"function": "DAY_ONLY", "arguments": ["CreatedDate"]}
+                    ]
+                }
+            ]
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let result = convert_to_soql(&query);
+        assert!(result.is_err());
+
+        // Verify the error message is about function calls on parent fields
+        let error = result.unwrap_err();
+        match error {
+            SoqlError::UnsupportedFeature(msg) => {
+                assert!(msg.contains("Function calls are not supported on parent fields"));
+            }
+            _ => panic!("Expected UnsupportedFeature error, got {:?}", error),
+        }
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use super::structured_query::{
-    Aggregate, FieldExpression, Filter, GroupBy, HavingClause, ParentField, Relationship, StructuredQuery,
-    TypedValue, WhereClause,
+    Aggregate, FieldExpression, Filter, GroupBy, HavingClause, ParentField, Relationship,
+    StructuredQuery, TypedValue, WhereClause,
 };
 use std::collections::HashSet;
 
@@ -28,7 +28,6 @@ fn extract_objects_from_field(field: &FieldExpression, objects: &mut HashSet<Str
             extract_objects_from_field_str(field_str, objects);
         }
         FieldExpression::Function { arguments, .. } => {
-            // Extract objects from each function argument
             for arg in arguments {
                 extract_objects_from_field_str(arg, objects);
             }
@@ -38,7 +37,6 @@ fn extract_objects_from_field(field: &FieldExpression, objects: &mut HashSet<Str
 
 fn extract_objects_from_typed_value(value: &TypedValue, objects: &mut HashSet<String>) {
     if let TypedValue::Function { arguments, .. } = value {
-        // Extract objects from each function argument
         for arg in arguments {
             extract_objects_from_field_str(arg, objects);
         }
@@ -182,9 +180,9 @@ impl ObjectExtractor for Aggregate {
 #[cfg(test)]
 mod tests {
     use crate::databases::remote_databases::salesforce::sandbox::structured_query::{
-        Aggregate, AggregateFilter, AggregateFunction, FieldExpression, Filter, GroupBy, HavingClause,
-        LogicalOperator, OrderBy, OrderDirection, ParentField, Relationship, TypedValue, WhereClause,
-        FunctionType,
+        Aggregate, AggregateFilter, AggregateFunction, FieldExpression, Filter, FunctionType,
+        GroupBy, HavingClause, LogicalOperator, OrderBy, OrderDirection, ParentField, Relationship,
+        TypedValue, WhereClause,
     };
 
     use super::*;
@@ -195,8 +193,8 @@ mod tests {
         let query = StructuredQuery {
             object: "Account".to_string(),
             fields: vec![
-                FieldExpression::Field("Id".to_string()), 
-                FieldExpression::Field("Name".to_string())
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Field("Name".to_string()),
             ],
             where_clause: None,
             order_by: vec![],
@@ -245,7 +243,10 @@ mod tests {
     fn test_extract_parent_fields() {
         let query = StructuredQuery {
             object: "Contact".to_string(),
-            fields: vec![FieldExpression::Field("Id".to_string()), FieldExpression::Field("Name".to_string())],
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Field("Name".to_string()),
+            ],
             where_clause: None,
             order_by: vec![],
             limit: None,
@@ -253,7 +254,10 @@ mod tests {
             relationships: vec![],
             parent_fields: vec![ParentField {
                 relationship: "Account".to_string(),
-                fields: vec![FieldExpression::Field("Name".to_string()), FieldExpression::Field("Industry".to_string())],
+                fields: vec![
+                    FieldExpression::Field("Name".to_string()),
+                    FieldExpression::Field("Industry".to_string()),
+                ],
             }],
             aggregates: vec![],
             group_by: None,
@@ -272,7 +276,10 @@ mod tests {
     fn test_extract_relationships() {
         let query = StructuredQuery {
             object: "Account".to_string(),
-            fields: vec![FieldExpression::Field("Id".to_string()), FieldExpression::Field("Name".to_string())],
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Field("Name".to_string()),
+            ],
             where_clause: None,
             order_by: vec![],
             limit: None,
@@ -306,7 +313,10 @@ mod tests {
     fn test_extract_where_clause() {
         let query = StructuredQuery {
             object: "Account".to_string(),
-            fields: vec![FieldExpression::Field("Id".to_string()), FieldExpression::Field("Name".to_string())],
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Field("Name".to_string()),
+            ],
             where_clause: Some(WhereClause {
                 condition: LogicalOperator::And,
                 filters: vec![Filter::Condition {
@@ -337,7 +347,10 @@ mod tests {
     fn test_extract_order_by() {
         let query = StructuredQuery {
             object: "Account".to_string(),
-            fields: vec![FieldExpression::Field("Id".to_string()), FieldExpression::Field("Name".to_string())],
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Field("Name".to_string()),
+            ],
             where_clause: None,
             order_by: vec![OrderBy {
                 field: FieldExpression::Field("Dust.DoIt".to_string()),
@@ -365,7 +378,10 @@ mod tests {
     fn test_extract_group_by() {
         let query = StructuredQuery {
             object: "Account".to_string(),
-            fields: vec![FieldExpression::Field("Id".to_string()), FieldExpression::Field("Name".to_string())],
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Field("Name".to_string()),
+            ],
             where_clause: None,
             order_by: vec![],
             limit: None,
@@ -389,7 +405,10 @@ mod tests {
     fn test_extract_having() {
         let query = StructuredQuery {
             object: "Account".to_string(),
-            fields: vec![FieldExpression::Field("Id".to_string()), FieldExpression::Field("Name".to_string())],
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Field("Name".to_string()),
+            ],
             where_clause: None,
             order_by: vec![],
             limit: None,
@@ -421,7 +440,10 @@ mod tests {
     fn test_extract_aggregate_function() {
         let query = StructuredQuery {
             object: "Account".to_string(),
-            fields: vec![FieldExpression::Field("Id".to_string()), FieldExpression::Field("Name".to_string())],
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Field("Name".to_string()),
+            ],
             aggregates: vec![Aggregate {
                 field: "Hello.World".to_string(),
                 function: AggregateFunction::Count,
@@ -444,7 +466,7 @@ mod tests {
             expected
         );
     }
-    
+
     #[test]
     fn test_extract_function_field() {
         let query = StructuredQuery {
@@ -478,12 +500,15 @@ mod tests {
             expected
         );
     }
-    
+
     #[test]
     fn test_extract_function_where_clause() {
         let query = StructuredQuery {
             object: "Case".to_string(),
-            fields: vec![FieldExpression::Field("Id".to_string()), FieldExpression::Field("Subject".to_string())],
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Field("Subject".to_string()),
+            ],
             where_clause: Some(WhereClause {
                 condition: LogicalOperator::And,
                 filters: vec![
@@ -503,7 +528,7 @@ mod tests {
                             function: "DAY_ONLY".to_string(),
                             arguments: vec!["Account.LastModifiedDate".to_string()],
                         },
-                    }
+                    },
                 ],
             }),
             order_by: vec![],
@@ -523,12 +548,15 @@ mod tests {
             expected
         );
     }
-    
+
     #[test]
     fn test_extract_function_order_by() {
         let query = StructuredQuery {
             object: "Contact".to_string(),
-            fields: vec![FieldExpression::Field("Id".to_string()), FieldExpression::Field("Name".to_string())],
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Field("Name".to_string()),
+            ],
             where_clause: None,
             order_by: vec![OrderBy {
                 field: FieldExpression::Function {
