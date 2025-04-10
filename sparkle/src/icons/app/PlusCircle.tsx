@@ -10,7 +10,7 @@ const SvgPlusCircle = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       d="M4.929 19.071c-3.905-3.905-3.905-10.237 0-14.142 3.905-3.905 10.237-3.905 14.142 0 3.905 3.905 3.905 10.237 0 14.142-3.905 3.905-10.237 3.905-14.142 0ZM13 11V7h-2v4H7v2h4v4h2v-4h4v-2h-4Z"
     />
   </svg>

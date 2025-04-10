@@ -10,7 +10,7 @@ const SvgPlus = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       d="M10.5 10.5V5h3v5.5H19v3h-5.5V19h-3v-5.5H5v-3h5.5Z"
     />
   </svg>

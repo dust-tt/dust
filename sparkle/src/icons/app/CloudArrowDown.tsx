@@ -10,7 +10,7 @@ const SvgCloudArrowDown = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       fillRule="evenodd"
       d="M1 12.5a8.5 8.5 0 0 0 8 8.485V21h8v-.019a6.5 6.5 0 0 0-.285-12.978A8.5 8.5 0 0 0 1 12.5ZM16 14l-4 4-4-4h3v-4h2v4h3Z"
       clipRule="evenodd"

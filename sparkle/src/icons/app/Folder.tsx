@@ -10,7 +10,7 @@ const SvgFolder = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       d="M11.414 6H22v15H2V3h5.563a3 3 0 0 1 2.338 1.12L11.414 6Z"
     />
   </svg>

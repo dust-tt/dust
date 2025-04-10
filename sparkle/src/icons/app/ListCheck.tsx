@@ -10,13 +10,13 @@ const SvgListCheck = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       fillRule="evenodd"
       d="M3 11V4h7v7H3Zm5-2V6H5v3h3Z"
       clipRule="evenodd"
     />
     <path
-      fill="currentColor"
+      fill="#111418"
       d="M21 6h-8v3h8V6ZM21 16h-8v3h8v-3ZM6 20.414l4.707-4.707-1.414-1.414L6 17.586l-1.793-1.793-1.414 1.414L6 20.414Z"
     />
   </svg>

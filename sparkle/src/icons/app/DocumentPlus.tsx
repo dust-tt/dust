@@ -10,12 +10,12 @@ const SvgDocumentPlus = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       fillRule="evenodd"
       d="M14 2H4v20h16V9h-6V2ZM8 13h3v-3h2v3h3v2h-3v3h-2v-3H8v-2Z"
       clipRule="evenodd"
     />
-    <path fill="currentColor" d="M20 7h-4V3l4 4Z" />
+    <path fill="#111418" d="M20 7h-4V3l4 4Z" />
   </svg>
 );
 export default SvgDocumentPlus;

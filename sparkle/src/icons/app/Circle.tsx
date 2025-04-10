@@ -9,7 +9,7 @@ const SvgCircle = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
+    <path fill="#111418" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
   </svg>
 );
 export default SvgCircle;

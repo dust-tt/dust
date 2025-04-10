@@ -9,7 +9,7 @@ const SvgRectangle = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M7 2h10v20H7z" />
+    <path fill="#111418" d="M7 2h10v20H7z" />
   </svg>
 );
 export default SvgRectangle;

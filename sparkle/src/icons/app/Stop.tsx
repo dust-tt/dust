@@ -9,7 +9,7 @@ const SvgStop = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M5 5h14v14H5z" />
+    <path fill="#111418" d="M5 5h14v14H5z" />
   </svg>
 );
 export default SvgStop;

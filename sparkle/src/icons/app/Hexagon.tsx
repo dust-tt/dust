@@ -9,7 +9,7 @@ const SvgHexagon = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="m17 3 5 9-5 9H7l-5-9 5-9h10Z" />
+    <path fill="#111418" d="m17 3 5 9-5 9H7l-5-9 5-9h10Z" />
   </svg>
 );
 export default SvgHexagon;

@@ -10,7 +10,7 @@ const SvgArrowRight = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       d="m15.5 10.5-5-5 2-2L21 12l-8.5 8.5-2-2 5-5H3v-3h12.5Z"
     />
   </svg>

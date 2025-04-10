@@ -10,13 +10,13 @@ const SvgMagnifyingGlass = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       fillRule="evenodd"
       d="M17.364 17.364A9 9 0 1 1 4.636 4.636a9 9 0 0 1 12.728 12.728Zm-2.121-2.121a6 6 0 1 1-8.486-8.485 6 6 0 0 1 8.486 8.485Z"
       clipRule="evenodd"
     />
     <path
-      fill="currentColor"
+      fill="#111418"
       d="m22.374 20.253-3.535-3.535-2.121 2.12 3.535 3.536 2.121-2.121Z"
     />
   </svg>

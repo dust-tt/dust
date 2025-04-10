@@ -10,7 +10,7 @@ const SvgXMark = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       d="m12 10 5-5 2 2-5 5 5 5-2 2-5-5-5 5-2-2 5-5-5-5 2-2 5 5Z"
     />
   </svg>

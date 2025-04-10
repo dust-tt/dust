@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgDocumentDuplicate = (props: SVGProps<SVGSVGElement>) => (
+const SvgLock1 = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -9,13 +9,12 @@ const SvgDocumentDuplicate = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M13 6v4h4l-4-4Z" />
     <path
-      fill="currentColor"
+      fill="#111418"
       fillRule="evenodd"
-      d="M7 6V2h10l4 4v12h-4v4H3V6h4Zm12 10h-2v-4h-6V6H9V4h7v3h3v9Z"
+      d="M12 4a4 4 0 0 0-4 4v2h8V8a4 4 0 0 0-4-4Zm6 4v2h2v12H4V10h2V8a6 6 0 1 1 12 0ZM6 12v8h12v-8H6Z"
       clipRule="evenodd"
     />
   </svg>
 );
-export default SvgDocumentDuplicate;
+export default SvgLock1;

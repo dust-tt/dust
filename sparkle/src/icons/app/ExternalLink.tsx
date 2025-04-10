@@ -10,10 +10,10 @@ const SvgExternalLink = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       d="M19 11h3V3h-8v3h2.983C15.49 8.777 12.24 10.5 9 10.5v3c3.748 0 7.737-1.796 10-5.05V11Z"
     />
-    <path fill="currentColor" d="M7 7h4V5H5v14h14v-5h-2v3H7V7Z" />
+    <path fill="#111418" d="M7 7h4V5H5v14h14v-5h-2v3H7V7Z" />
   </svg>
 );
 export default SvgExternalLink;

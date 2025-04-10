@@ -10,13 +10,13 @@ const SvgPaint = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       fillRule="evenodd"
       d="M9.586 5 7.293 2.707l1.414-1.414L20.414 13l-7.293 7.293a3 3 0 0 1-4.242 0l-5.172-5.172a3 3 0 0 1 0-4.242L9.586 5ZM11 6.414l-5.879 5.879a.997.997 0 0 0-.293.707h12.758L11 6.414Z"
       clipRule="evenodd"
     />
     <path
-      fill="currentColor"
+      fill="#111418"
       d="m20.995 16.964-1.767 1.768a2.5 2.5 0 1 0 3.535 0l-1.768-1.768Z"
     />
   </svg>

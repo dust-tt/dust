@@ -10,7 +10,7 @@ const SvgTag = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       fillRule="evenodd"
       d="M1 12 11 2l7.558.756a3 3 0 0 1 2.686 2.686L22 13 12 23 1 12Zm14-1a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
       clipRule="evenodd"

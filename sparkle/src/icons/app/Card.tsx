@@ -10,7 +10,7 @@ const SvgCard = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       d="M22.005 11v7a3 3 0 0 1-3 3h-14a3 3 0 0 1-3-3v-7h20Zm0-4h-20V6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v1Z"
     />
   </svg>

@@ -9,7 +9,7 @@ const SvgDot = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+    <path fill="#111418" d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
   </svg>
 );
 export default SvgDot;

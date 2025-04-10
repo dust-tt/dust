@@ -10,7 +10,7 @@ const SvgFlag = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       d="M10.586 3c.905 0 1.774.36 2.414 1 .64.64 1.509 1 2.414 1H21v13h-6.586c-.905 0-1.774-.36-2.414-1-.64-.64-1.509-1-2.414-1H5v6H3V3h7.586Z"
     />
   </svg>

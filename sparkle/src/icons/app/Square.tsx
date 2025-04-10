@@ -9,7 +9,7 @@ const SvgSquare = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M4 4h16v16H4z" />
+    <path fill="#111418" d="M4 4h16v16H4z" />
   </svg>
 );
 export default SvgSquare;

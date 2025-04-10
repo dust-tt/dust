@@ -10,7 +10,7 @@ const SvgLightMode = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="currentColor"
+      fill="#111418"
       fillRule="evenodd"
       d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Zm8-10a8 8 0 0 1-8 8v-4a4 4 0 0 0 0-8V4a8 8 0 0 1 8 8Zm-8-4v8a4 4 0 0 1 0-8Z"
       clipRule="evenodd"
