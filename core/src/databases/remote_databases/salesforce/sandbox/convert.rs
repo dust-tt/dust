@@ -1,7 +1,7 @@
 use super::error::SoqlError;
 use super::structured_query::{
-    Filter, GroupBy, LogicalOperator, NullsPosition, OrderBy, OrderDirection, StructuredQuery,
-    TypedValue, Validator, WhereClause,
+    FieldExpression, Filter, GroupBy, LogicalOperator, NullsPosition, OrderBy, OrderDirection,
+    StructuredQuery, TypedValue, Validator, WhereClause,
 };
 
 /// Convert a JSON query to a SOQL string with detailed error handling and suggestions
@@ -27,9 +27,9 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
     // Add fields and/or aggregates
     let mut select_parts: Vec<String> = Vec::new();
 
-    // Add regular fields
+    // Add regular fields and function calls
     if !query.fields.is_empty() {
-        select_parts.extend(query.fields.iter().cloned());
+        select_parts.extend(query.fields.iter().map(|f| f.format()));
     }
 
     // Add parent fields if present
@@ -38,10 +38,29 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
             .parent_fields
             .iter()
             .flat_map(|parent| {
-                parent
-                    .fields
-                    .iter()
-                    .map(move |field| format!("{}.{}", parent.relationship, field))
+                parent.fields.iter().map(move |field| {
+                    // For simple fields, prefix with parent relationship
+                    // For functions, include the relationship in the first argument
+                    match field {
+                        FieldExpression::Field(field_str) => {
+                            format!("{}.{}", parent.relationship, field_str)
+                        }
+                        FieldExpression::Function {
+                            function,
+                            arguments,
+                        } => {
+                            // For functions on parent fields, we need to prefix the first argument
+                            // with the parent relationship if it doesn't already have a relationship
+                            let mut args = arguments.clone();
+                            if let Some(first_arg) = args.first_mut() {
+                                if !first_arg.contains('.') {
+                                    *first_arg = format!("{}.{}", parent.relationship, first_arg);
+                                }
+                            }
+                            format!("{}({})", function, args.join(", "))
+                        }
+                    }
+                })
             })
             .collect();
 
@@ -94,10 +113,15 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
             .iter()
             .map(|rel| {
                 // Start the subquery but don't close the parenthesis yet
+                let formatted_fields = rel
+                    .fields
+                    .iter()
+                    .map(|f| f.format())
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 let mut subquery = format!(
                     "(SELECT {} FROM {}",
-                    rel.fields.join(", "),
-                    rel.relationship_name
+                    formatted_fields, rel.relationship_name
                 );
 
                 // Add WHERE clause if present - inside the parentheses
@@ -206,7 +230,7 @@ fn build_where_clause(where_clause: &WhereClause) -> Result<String, SoqlError> {
                 value,
             } => Ok(format!(
                 "{} {} {}",
-                field,
+                field.format(),
                 operator,
                 format_typed_value(value)
             )),
@@ -243,7 +267,7 @@ fn build_nested_condition(where_clause: &WhereClause) -> Result<String, SoqlErro
                 value,
             } => Ok(format!(
                 "{} {} {}",
-                field,
+                field.format(),
                 operator,
                 format_typed_value(value)
             )),
@@ -273,7 +297,7 @@ fn build_order_by(order_by: &[OrderBy]) -> String {
     let order_strings: Vec<String> = order_by
         .iter()
         .map(|order| {
-            let mut order_str = order.field.clone();
+            let mut order_str = order.field.format();
 
             // Add direction
             match order.direction {
@@ -302,6 +326,14 @@ fn format_typed_value(value: &TypedValue) -> String {
         TypedValue::DateTime { value, .. } => {
             // For datetime objects, just return the value without quotes
             value.clone()
+        }
+        TypedValue::Function {
+            function,
+            arguments,
+            ..
+        } => {
+            // Format function call: FUNCTION(arg1, arg2, ...)
+            format!("{}({})", function, arguments.join(", "))
         }
         TypedValue::Regular(json_value) => format_json_value(json_value),
     }
@@ -335,6 +367,46 @@ fn format_json_value(value: &serde_json::Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Test for function support in SOQL queries
+    #[test]
+    fn test_json_to_soql_with_functions() {
+        let json = r#"{
+            "object": "Account",
+            "fields": [
+                "Id", 
+                "Name", 
+                {"function": "DAY_ONLY", "arguments": ["CreatedDate"]},
+                {"function": "CALENDAR_MONTH", "arguments": ["LastModifiedDate"]}
+            ],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    {
+                        "field": {"function": "DAY_ONLY", "arguments": ["CreatedDate"]},
+                        "operator": "=",
+                        "value": {"type": "datetime", "value": "2023-01-01"}
+                    },
+                    {
+                        "field": "LastModifiedDate",
+                        "operator": "=",
+                        "value": {
+                            "type": "function",
+                            "function": "DAY_ONLY",
+                            "arguments": ["CreatedDate"]
+                        }
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, DAY_ONLY(CreatedDate), CALENDAR_MONTH(LastModifiedDate) FROM Account WHERE DAY_ONLY(CreatedDate) = 2023-01-01 AND LastModifiedDate = DAY_ONLY(CreatedDate)"
+        );
+    }
 
     // Test for the format_json_value function
     #[test]
@@ -774,6 +846,65 @@ mod tests {
         assert_eq!(
             soql,
             "SELECT Id, FirstName, LastName, Email FROM Lead WHERE Email NOT LIKE '%@competitor.com'"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_date_functions() {
+        let json = r#"{
+            "object": "Account",
+            "fields": [
+                "Id", 
+                "Name", 
+                {"function": "DAY_ONLY", "arguments": ["CreatedDate"]},
+                {"function": "CALENDAR_MONTH", "arguments": ["LastModifiedDate"]}
+            ],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    {
+                        "field": {"function": "DAY_ONLY", "arguments": ["CreatedDate"]},
+                        "operator": "=",
+                        "value": "2023-01-01"
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, DAY_ONLY(CreatedDate), CALENDAR_MONTH(LastModifiedDate) FROM Account WHERE DAY_ONLY(CreatedDate) = '2023-01-01'"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_function_as_value() {
+        let json = r#"{
+            "object": "Account",
+            "fields": ["Id", "Name"],
+            "where": {
+                "condition": "AND", 
+                "filters": [
+                    {
+                        "field": "LastModifiedDate",
+                        "operator": ">",
+                        "value": {
+                            "type": "function",
+                            "function": "DAY_ONLY",
+                            "arguments": ["CreatedDate"]
+                        }
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name FROM Account WHERE LastModifiedDate > DAY_ONLY(CreatedDate)"
         );
     }
 
