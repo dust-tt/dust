@@ -46,52 +46,52 @@ const ColorSwatch = ({ color, onClick, isSelected }: ColorSwatchProps) => {
   );
 };
 
-type PickerVariant = "color" | "icon";
-
-export interface PickerProps {
-  variant?: PickerVariant;
-  colors?: string[];
-  icons?: Record<string, React.ComponentType>;
-  onColorSelect?: (color: string) => void;
-  onIconSelect?: (iconName: string) => void;
-  selectedColor?: string;
-  selectedIcon?: string;
+export interface IconPickerProps {
+  icons: Record<string, React.ComponentType>;
+  onIconSelect: (iconName: string) => void;
+  selectedIcon: string;
 }
 
-export const Picker: React.FC<PickerProps> = ({
-  variant = "color",
-  colors = [],
-  icons = {},
-  onColorSelect,
+export const IconPicker: React.FC<IconPickerProps> = ({
+  icons,
   onIconSelect,
-  selectedColor,
   selectedIcon,
 }) => {
-  if (variant === "icon") {
-    return (
-      <ScrollArea className="s-h-[340px] s-w-fit s-overflow-auto">
-        <div className="s-grid-rows-20 w-auto s-grid s-h-fit s-w-fit s-grid-cols-8 s-gap-1.5 s-py-4">
-          {Object.entries(icons).map(([name, IconComponent]) => (
-            <IconSwatch
-              key={name}
-              icon={IconComponent}
-              onClick={() => onIconSelect?.(name)}
-              isSelected={selectedIcon === name}
-            />
-          ))}
-        </div>
-        <ScrollBar orientation="vertical" size="compact" />
-      </ScrollArea>
-    );
-  }
+  return (
+    <ScrollArea className="s-h-[340px] s-w-fit s-overflow-auto">
+      <div className="s-grid-rows-20 w-auto s-grid s-h-fit s-w-fit s-grid-cols-8 s-gap-1.5 s-py-4">
+        {Object.entries(icons).map(([name, IconComponent]) => (
+          <IconSwatch
+            key={name}
+            icon={IconComponent}
+            onClick={() => onIconSelect(name)}
+            isSelected={selectedIcon === name}
+          />
+        ))}
+      </div>
+      <ScrollBar orientation="vertical" size="compact" />
+    </ScrollArea>
+  );
+};
 
+export interface ColorPickerProps {
+  colors: string[];
+  onColorSelect: (color: string) => void;
+  selectedColor: string;
+}
+
+export const ColorPicker: React.FC<ColorPickerProps> = ({
+  colors,
+  onColorSelect,
+  selectedColor,
+}) => {
   return (
     <div className="s-grid-rows-20 w-auto s-grid s-h-fit s-w-fit s-grid-cols-8 s-gap-1.5">
       {colors.map((color) => (
         <ColorSwatch
           key={color}
           color={color}
-          onClick={() => onColorSelect?.(color)}
+          onClick={() => onColorSelect(color)}
           isSelected={selectedColor === color}
         />
       ))}

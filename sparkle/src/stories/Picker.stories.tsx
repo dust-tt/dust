@@ -10,12 +10,12 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "../components";
-import { Picker } from "../components/Picker";
+import { ColorPicker, IconPicker } from "../components/Picker";
 
 const meta = {
   title: "Components/Picker",
-  component: Picker,
-} satisfies Meta<typeof Picker>;
+  component: ColorPicker,
+} satisfies Meta<typeof ColorPicker>;
 
 export default meta;
 
@@ -113,10 +113,10 @@ const ColorPickerExample = () => {
             />
           </PopoverTrigger>
           <PopoverContent className="s-w-fit">
-            <Picker
+            <ColorPicker
               colors={colors}
               selectedColor={selectedColor}
-              onColorSelect={(color) => {
+              onColorSelect={(color: string) => {
                 setSelectedColor(color);
                 setIsOpen(false);
               }}
@@ -147,11 +147,10 @@ const IconPickerExample = () => {
             />
           </PopoverTrigger>
           <PopoverContent className="s-w-fit s-py-0">
-            <Picker
-              variant="icon"
+            <IconPicker
               icons={ActionIcons}
               selectedIcon={selectedIcon}
-              onIconSelect={(iconName) => {
+              onIconSelect={(iconName: string) => {
                 setSelectedIcon(iconName);
                 setIsOpen(false);
               }}
