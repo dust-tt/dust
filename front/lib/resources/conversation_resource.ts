@@ -65,10 +65,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {
     const result: ResourceFindOptions<ConversationModel> = {
-      where: {
-        visibility: options?.includeDeleted ? {} : { [Op.ne]: "deleted" },
-      },
+      where: {},
     };
+
+    if (!options?.includeDeleted) {
+      result.where = {
+        visibility: { [Op.ne]: "deleted" },
+      };
+    }
 
     return result;
   }
