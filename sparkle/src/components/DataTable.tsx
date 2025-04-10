@@ -98,6 +98,12 @@ interface DataTableProps<TData extends TBaseData> {
   setSorting?: (sorting: SortingState) => void;
   isServerSideSorting?: boolean;
   disablePaginationNumbers?: boolean;
+  getRowId?: (
+    originalRow: TData,
+    index: number,
+    parent?: Row<TData> | undefined
+  ) => string;
+  // row selection props
   rowSelection?: RowSelectionState;
   setRowSelection?: (rowSelection: RowSelectionState) => void;
   enableRowSelection?: boolean | ((row: Row<TData>) => boolean);
@@ -122,6 +128,7 @@ export function DataTable<TData extends TBaseData>({
   rowSelection,
   setRowSelection,
   enableRowSelection = false,
+  getRowId,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -191,6 +198,7 @@ export function DataTable<TData extends TBaseData>({
     },
     onPaginationChange,
     enableRowSelection,
+    getRowId,
   });
 
   useEffect(() => {
@@ -320,6 +328,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   rowSelection,
   setRowSelection,
   enableRowSelection,
+  getRowId,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -368,6 +377,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
       ...(enableRowSelection && { rowSelection }),
     },
     enableRowSelection,
+    getRowId,
   });
 
   useEffect(() => {
