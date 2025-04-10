@@ -586,7 +586,7 @@ function NewActionModal({
   setEdited,
   builderState,
 }: NewActionModalProps) {
-  const [newAction, setNewActionConfig] = useState<
+  const [newActionConfig, setNewActionConfig] = useState<
     (AssistantBuilderActionConfiguration & { id: string }) | null
   >(null);
 
@@ -603,14 +603,14 @@ function NewActionModal({
   const { mcpServerViews } = useContext(AssistantBuilderContext);
 
   useEffect(() => {
-    if (initialAction && !newAction) {
+    if (initialAction && !newActionConfig) {
       setNewActionConfig(initialAction);
     }
-  }, [initialAction, newAction]);
+  }, [initialAction, newActionConfig]);
 
   const titleError =
-    initialAction && initialAction?.name !== newAction?.name
-      ? getActionNameError(newAction?.name, builderState.actions)
+    initialAction && initialAction?.name !== newActionConfig?.name
+      ? getActionNameError(newActionConfig?.name, builderState.actions)
       : null;
 
   function getActionNameError(
@@ -638,7 +638,8 @@ function NewActionModal({
     return null;
   }
 
-  const descriptionValid = (newAction?.description?.trim() ?? "").length > 0;
+  const descriptionValid =
+    (newActionConfig?.description?.trim() ?? "").length > 0;
 
   const onCloseLocal = useCallback(() => {
     onClose();
@@ -654,14 +655,14 @@ function NewActionModal({
     (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       if (
-        newAction &&
+        newActionConfig &&
         !titleError &&
         descriptionValid &&
-        !hasActionError(newAction, mcpServerViews)
+        !hasActionError(newActionConfig, mcpServerViews)
       ) {
-        newAction.name = newAction.name.trim();
-        newAction.description = newAction.description.trim();
-        onSave(newAction);
+        newActionConfig.name = newActionConfig.name.trim();
+        newActionConfig.description = newActionConfig.description.trim();
+        onSave(newActionConfig);
         onCloseLocal();
       } else {
         if (titleError) {
@@ -670,13 +671,15 @@ function NewActionModal({
         if (!descriptionValid) {
           setShowInvalidActionDescError("Description cannot be empty.");
         }
-        if (newAction) {
-          setShowInvalidActionError(hasActionError(newAction, mcpServerViews));
+        if (newActionConfig) {
+          setShowInvalidActionError(
+            hasActionError(newActionConfig, mcpServerViews)
+          );
         }
       }
     },
     [
-      newAction,
+      newActionConfig,
       onCloseLocal,
       onSave,
       titleError,
@@ -731,9 +734,9 @@ function NewActionModal({
 
         <SheetContainer>
           <div className="w-full pt-8">
-            {newAction && (
+            {newActionConfig && (
               <ActionEditor
-                action={newAction}
+                action={newActionConfig}
                 spacesUsedInActions={spacesUsedInActions}
                 updateAction={updateAction}
                 owner={owner}
@@ -1024,7 +1027,7 @@ function ActionEditor({
 }: ActionEditorProps) {
   const { mcpServerViews } = useContext(AssistantBuilderContext);
 
-  const shouldDisplayDescription = useMemo(() => {
+  const isActionWithDataSource = useMemo(() => {
     const actionType = action.type;
     switch (actionType) {
       case "DUST_APP_RUN":
@@ -1124,7 +1127,7 @@ function ActionEditor({
           </div>
         )}
       </ActionModeSection>
-      {shouldDisplayDescription && (
+      {isActionWithDataSource && (
         <div className="flex flex-col gap-4 pt-8">
           <div className="flex flex-col gap-2">
             <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
