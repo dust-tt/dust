@@ -8,6 +8,7 @@ export {
 export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
+export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type {
   ButtonProps,
