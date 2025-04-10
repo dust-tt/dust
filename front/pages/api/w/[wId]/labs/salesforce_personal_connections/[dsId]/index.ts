@@ -9,10 +9,8 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  DataSourceWithPersonalConnection,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
+import { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/salesforce";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
@@ -26,7 +24,8 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      { success: boolean } | { dataSources: DataSourceWithPersonalConnection[] }
+      | { success: boolean }
+      | { dataSources: SalesforceDataSourceWithPersonalConnection[] }
     >
   >,
   auth: Authenticator
@@ -34,7 +33,7 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
   const flags = await getFeatureFlags(owner);
 
-  if (!flags.includes("labs_personal_connections")) {
+  if (!flags.includes("labs_salesforce_personal_connections")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

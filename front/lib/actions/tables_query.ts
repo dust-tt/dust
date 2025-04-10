@@ -21,7 +21,7 @@ import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import type { CSVRecord } from "@app/lib/api/csv";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags, type Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -514,14 +514,41 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
       ...new Set(actionConfiguration.tables.map((t) => t.dataSourceViewId)),
     ]);
+
     const personalConnectionIds: Record<string, string> = {};
-    for (const dataSourceView of dataSourceViews) {
-      const personalConnection =
-        await dataSourceView.dataSource.getPersonalConnection(auth);
-      if (personalConnection) {
-        personalConnectionIds[dataSourceView.sId] = personalConnection;
+
+    // This is for salesforce personal connections.
+    const flags = await getFeatureFlags(owner);
+    console.log("flags", flags);
+    if (flags.includes("labs_salesforce_personal_connections")) {
+      for (const dataSourceView of dataSourceViews) {
+        if (dataSourceView.dataSource.connectorProvider === "salesforce") {
+          console.log("look", personalConnectionIds);
+          const personalConnection =
+            await dataSourceView.dataSource.getPersonalConnection(auth);
+          if (personalConnection) {
+            personalConnectionIds[dataSourceView.sId] = personalConnection;
+
+            console.log("personalConnectionIds", personalConnectionIds);
+          } else {
+            yield {
+              type: "tables_query_error",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              error: {
+                code: "tables_query_error",
+                message: "tables_authentication_error",
+              },
+            };
+            return;
+          }
+        }
       }
     }
+    // End salesforce specific
+
+    console.log("personalConnectionIds", personalConnectionIds);
 
     const tables = actionConfiguration.tables.map((t) => ({
       workspace_id: t.workspaceId,

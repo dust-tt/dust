@@ -1,8 +1,8 @@
-import { CommandIcon, Page } from "@dust-tt/sparkle";
+import { Page, SalesforceLogo } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { LabsPersonalConnectionsList } from "@app/components/data_source/LabsPersonalConnectionsList";
+import { LabsSalesforcePersonalConnectionsList } from "@app/components/data_source/LabsSalesforcePersonalConnectionsList";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -23,7 +23,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const flags = await getFeatureFlags(owner);
-  if (!flags.includes("labs_personal_connections")) {
+  if (!flags.includes("labs_salesforce_personal_connections")) {
     return {
       notFound: true,
     };
@@ -46,15 +46,15 @@ export default function PersonalConnections({
       <AppLayout
         subscription={subscription}
         owner={owner}
-        pageTitle="Dust - Personal connections"
+        pageTitle="Dust - Salesforce personal connections"
       >
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header
-            title="Personal connections"
-            icon={CommandIcon}
-            description="Connect your personal accounts on data sources."
+            title="Salesforce personal connections"
+            icon={SalesforceLogo}
+            description="Connect your personal accounts on your Salesforce connector."
           />
-          <LabsPersonalConnectionsList owner={owner} />
+          <LabsSalesforcePersonalConnectionsList owner={owner} />
         </Page.Vertical>
       </AppLayout>
     </ConversationsNavigationProvider>

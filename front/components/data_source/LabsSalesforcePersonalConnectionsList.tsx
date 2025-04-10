@@ -8,25 +8,19 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import type { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/salesforce";
 import {
-  CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers";
-import {
-  useCreatePersonalConnection,
-  useDataSourcesWithPersonalConnection,
-  useDeletePersonalConnection,
-} from "@app/lib/swr/data_sources";
+  useCreateSalesforcePersonalConnection,
+  useDeleteSalesforcePersonalConnection,
+  useSalesforceDataSourcesWithPersonalConnection,
+} from "@app/lib/swr/salesforce";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
-import type {
-  DataSourceType,
-  DataSourceWithPersonalConnection,
-  WorkspaceType,
-} from "@app/types";
+import type { DataSourceType, WorkspaceType } from "@app/types";
 import { Err, isOAuthProvider, setupOAuthConnection } from "@app/types";
 
 type RowData = {
-  dataSource: DataSourceWithPersonalConnection;
+  dataSource: SalesforceDataSourceWithPersonalConnection;
   onClick: () => void;
 };
 
@@ -34,16 +28,19 @@ type PersonalConnectionsListProps = {
   owner: WorkspaceType;
 };
 
-export const LabsPersonalConnectionsList = ({
+export const LabsSalesforcePersonalConnectionsList = ({
   owner,
 }: PersonalConnectionsListProps) => {
   const { isDark } = useTheme();
-  const { dataSources, isLoading } = useDataSourcesWithPersonalConnection({
-    owner,
-  });
+  const { dataSources, isLoading } =
+    useSalesforceDataSourcesWithPersonalConnection({
+      owner,
+    });
   const sendNotification = useSendNotification();
-  const { createPersonalConnection } = useCreatePersonalConnection(owner);
-  const { deletePersonalConnection } = useDeletePersonalConnection(owner);
+  const { createPersonalConnection } =
+    useCreateSalesforcePersonalConnection(owner);
+  const { deletePersonalConnection } =
+    useDeleteSalesforcePersonalConnection(owner);
 
   const handleConnectionCreate = async (dataSource: DataSourceType) => {
     const provider = dataSource.connectorProvider;
@@ -53,7 +50,7 @@ export const LabsPersonalConnectionsList = ({
         dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
         provider,
-        useCase: "personal_connection",
+        useCase: "salesforce_personal",
         extraConfig: {
           code_verifier,
           code_challenge,
@@ -78,15 +75,9 @@ export const LabsPersonalConnectionsList = ({
     {
       id: "name",
       header: "Name",
-      accessorFn: (row: RowData) =>
-        CONNECTOR_CONFIGURATIONS[row.dataSource.connectorProvider].name,
+      accessorFn: (row: RowData) => row.dataSource.name,
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent
-          className={
-            info.row.original.dataSource.personalConnectionEnabled
-              ? ""
-              : "opacity-50"
-          }
           icon={getConnectorProviderLogoWithFallback({
             provider: info.row.original.dataSource.connectorProvider,
             isDark,
@@ -100,7 +91,9 @@ export const LabsPersonalConnectionsList = ({
       id: "actions",
       accessorKey: "dataSource",
       header: "",
-      cell: (info: CellContext<RowData, DataSourceWithPersonalConnection>) => {
+      cell: (
+        info: CellContext<RowData, SalesforceDataSourceWithPersonalConnection>
+      ) => {
         const dataSource = info.getValue();
         const isConnected = dataSource.personalConnection !== null;
 
@@ -109,8 +102,7 @@ export const LabsPersonalConnectionsList = ({
             <div key={dataSource.sId}>
               {!isConnected && (
                 <Button
-                  label={`Connect ${dataSource.connectorProvider}`}
-                  disabled={!dataSource.personalConnectionEnabled}
+                  label={`Connect`}
                   variant="outline"
                   className="flex-grow"
                   size="sm"
@@ -123,7 +115,6 @@ export const LabsPersonalConnectionsList = ({
               {isConnected && (
                 <Button
                   label="Disconnect"
-                  disabled={!dataSource.personalConnectionEnabled}
                   variant="outline"
                   size="sm"
                   icon={CloudArrowLeftRightIcon}

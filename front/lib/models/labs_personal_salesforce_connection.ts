@@ -6,7 +6,7 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class LabsPersonalDataSourceConnection extends WorkspaceAwareModel<LabsPersonalDataSourceConnection> {
+export class LabsPersonalSalesforceConnection extends WorkspaceAwareModel<LabsPersonalSalesforceConnection> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -14,7 +14,7 @@ export class LabsPersonalDataSourceConnection extends WorkspaceAwareModel<LabsPe
   declare userId: ForeignKey<UserModel["id"]> | null;
   declare dataSourceId: ForeignKey<DataSourceModel["id"]> | null;
 }
-LabsPersonalDataSourceConnection.init(
+LabsPersonalSalesforceConnection.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -32,22 +32,22 @@ LabsPersonalDataSourceConnection.init(
     },
   },
   {
-    modelName: "labs_personal_data_source_connection",
+    modelName: "labs_personal_salesforce_connection",
     sequelize: frontSequelize,
     indexes: [
       {
         fields: ["workspaceId", "userId", "dataSourceId"],
         unique: true,
-        name: "labs_personal_data_source_connection_unique",
+        name: "labs_personal_salesforce_connection_unique",
       },
     ],
   }
 );
 
-UserModel.hasMany(LabsPersonalDataSourceConnection, {
+UserModel.hasMany(LabsPersonalSalesforceConnection, {
   foreignKey: "userId",
 });
 
-DataSourceModel.hasMany(LabsPersonalDataSourceConnection, {
+DataSourceModel.hasMany(LabsPersonalSalesforceConnection, {
   foreignKey: "dataSourceId",
 });

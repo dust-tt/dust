@@ -409,7 +409,7 @@ const PROVIDER_STRATEGIES: Record<
       return getStringFromQuery(query, "state");
     },
     isExtraConfigValid: (extraConfig, useCase) => {
-      if (useCase === "personal_connection") {
+      if (useCase === "salesforce_personal") {
         return true;
       }
 
@@ -425,7 +425,7 @@ const PROVIDER_STRATEGIES: Record<
       userId,
       useCase
     ) => {
-      if (useCase === "personal_connection") {
+      if (useCase === "salesforce_personal") {
         // For personal connection, we reuse the existing connection credential id
         // from the existing data source, if it exists.
         const dataSources = await DataSourceResource.listByConnectorProvider(

@@ -4,8 +4,8 @@ import {
   EyeIcon,
   HubspotLogo,
   Icon,
-  LockIcon,
   Page,
+  SalesforceLogo,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
@@ -43,15 +43,6 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
   },
-  {
-    id: "personal_connections",
-    label: "Personal Connections",
-    featureFlag: "labs_personal_connections",
-    visibleWithoutAccess: true,
-    icon: LockIcon,
-    description:
-      "Connect your personal accounts to Dust. We'll use your credentials to fetch data.",
-  },
 ];
 const LABS_CONNECTIONS: LabsConnectionItemType[] = [
   {
@@ -61,6 +52,15 @@ const LABS_CONNECTIONS: LabsConnectionItemType[] = [
     visibleWithoutAccess: false,
     logo: HubspotLogo,
     description: "Import your Hubspot data into Dust.",
+  },
+  {
+    id: "salesforce_personal_connections",
+    label: "Salesforce Personal Connections",
+    featureFlag: "labs_salesforce_personal_connections",
+    visibleWithoutAccess: true,
+    logo: SalesforceLogo,
+    description:
+      "Connect your Salesforce personal accounts to Dust. We'll use your credentials to fetch data from Salesforce connector.",
   },
 ];
 

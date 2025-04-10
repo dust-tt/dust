@@ -2,21 +2,16 @@ import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import config from "@app/lib/api/config";
-import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import type { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/salesforce";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  DataSourceWithPersonalConnection,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { ConnectorsAPI, removeNulls } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
+import { removeNulls } from "@app/types";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
@@ -31,7 +26,8 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      { success: boolean } | { dataSources: DataSourceWithPersonalConnection[] }
+      | { success: boolean }
+      | { dataSources: SalesforceDataSourceWithPersonalConnection[] }
     >
   >,
   auth: Authenticator
@@ -39,12 +35,7 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
   const flags = await getFeatureFlags(owner);
 
-  const connectorsAPI = new ConnectorsAPI(
-    config.getConnectorsAPIConfig(),
-    logger
-  );
-
-  if (!flags.includes("labs_personal_connections")) {
+  if (!flags.includes("labs_salesforce_personal_connections")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -56,11 +47,12 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const dataSources = await DataSourceResource.listByWorkspace(auth);
+      const salesforceDataSources =
+        await DataSourceResource.listByConnectorProvider(auth, "salesforce");
 
       const augmentedDataSources = removeNulls(
         await concurrentExecutor(
-          dataSources,
+          salesforceDataSources,
           async (dataSource: DataSourceResource) => {
             const ds = dataSource.toJSON();
 
@@ -68,31 +60,11 @@ async function handler(
               return null;
             }
 
-            // Only show salesforce for now
-            if (ds.connectorProvider !== "salesforce") {
-              return null;
-            }
-
-            const augmentedDataSource =
-              await augmentDataSourceWithConnectorDetails(ds);
-            if (!augmentedDataSource.connector) {
-              return null;
-            }
-
-            const configRes = await connectorsAPI.getConnectorConfig(
-              augmentedDataSource.connectorId,
-              "usePersonalConnections"
-            );
-
-            const usePersonalConnections =
-              configRes.isOk() && configRes.value.configValue;
-
             const personalConnection =
               await dataSource.getPersonalConnection(auth);
             return {
-              ...augmentedDataSource,
+              ...ds,
               personalConnection: personalConnection ?? null,
-              personalConnectionEnabled: usePersonalConnections === "true",
             };
           },
           { concurrency: 10 }
