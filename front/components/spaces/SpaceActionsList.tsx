@@ -101,19 +101,8 @@ export const SpaceActionsList = ({
   });
 
   const onAddServer = async (server: MCPServerType) => {
-    const res = await addToSpace(server, space);
-    if (res.success) {
-      await mutateMCPServerViews(async (prev) => {
-        if (!prev) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-          serverViews: prev.serverViews.concat([res.serverView]),
-        };
-      });
-    }
+    await addToSpace(server, space);
+    await mutateMCPServerViews();
   };
 
   if (isMCPServerViewsLoading) {
