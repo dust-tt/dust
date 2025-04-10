@@ -146,7 +146,7 @@ const IconPickerExample = () => {
               icon={SelectedIcon}
             />
           </PopoverTrigger>
-          <PopoverContent className="s-w-fit">
+          <PopoverContent className="s-w-fit s-py-0">
             <Picker
               variant="icon"
               icons={ActionIcons}

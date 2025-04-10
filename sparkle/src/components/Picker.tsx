@@ -2,7 +2,7 @@ import React from "react";
 
 import { cn } from "@sparkle/lib";
 
-import { ScrollArea } from "../components";
+import { ScrollArea, ScrollBar } from "../components";
 
 interface IconSwatchProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -69,8 +69,8 @@ export const Picker: React.FC<PickerProps> = ({
 }) => {
   if (variant === "icon") {
     return (
-      <ScrollArea className="s-h-[300px] s-w-fit s-overflow-auto">
-        <div className="s-grid-rows-20 w-auto s-grid s-h-fit s-w-fit s-grid-cols-8 s-gap-1.5">
+      <ScrollArea className="s-h-[340px] s-w-fit s-overflow-auto">
+        <div className="s-grid-rows-20 w-auto s-grid s-h-fit s-w-fit s-grid-cols-8 s-gap-1.5 s-py-4">
           {Object.entries(icons).map(([name, IconComponent]) => (
             <IconSwatch
               key={name}
@@ -80,6 +80,7 @@ export const Picker: React.FC<PickerProps> = ({
             />
           ))}
         </div>
+        <ScrollBar orientation="vertical" size="compact" />
       </ScrollArea>
     );
   }
