@@ -25,6 +25,8 @@ export interface SearchMembersPaginationParams {
   limit: number;
 }
 
+const USER_METADATA_COMMA_SEPARATOR = ",";
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface UserResource extends ReadonlyAttributesType<UserModel> {}
@@ -250,6 +252,25 @@ export class UserResource extends BaseResource<UserModel> {
     }
 
     await metadata.update({ value });
+  }
+
+  async appendToMetadata(key: string, value: string) {
+    const metadata = await UserMetadataModel.findOne({
+      where: {
+        userId: this.id,
+        key,
+      },
+    });
+    if (!metadata) {
+      await UserMetadataModel.create({
+        userId: this.id,
+        key,
+        value,
+      });
+      return;
+    }
+    const newValue = `${metadata.value}${USER_METADATA_COMMA_SEPARATOR}${value}`;
+    await metadata.update({ value: newValue });
   }
 
   async deleteAllMetadata() {
