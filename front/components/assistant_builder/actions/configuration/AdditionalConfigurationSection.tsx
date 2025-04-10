@@ -16,28 +16,21 @@ function BooleanConfigurationSection({
     return null;
   }
 
-  return (
-    <div className="mt-4">
-      <div className="space-y-4">
-        {Object.entries(requiredBooleans).map(([key, defaultValue]) => {
-          const value =
-            (additionalConfiguration[key] as boolean) ?? defaultValue;
-          return (
-            <div key={key} className="flex items-center gap-2">
-              <Checkbox
-                id={`boolean-${key}`}
-                checked={value}
-                onCheckedChange={(checked) => onConfigUpdate(key, !!checked)}
-              />
-              <Label htmlFor={`boolean-${key}`} className="text-sm font-medium">
-                {key.split(".").pop()}
-              </Label>
-            </div>
-          );
-        })}
+  return Object.entries(requiredBooleans).map(([key, defaultValue]) => {
+    const value = (additionalConfiguration[key] as boolean) ?? defaultValue;
+    return (
+      <div key={key} className="flex items-center gap-2">
+        <Checkbox
+          id={`boolean-${key}`}
+          checked={value}
+          onCheckedChange={(checked) => onConfigUpdate(key, !!checked)}
+        />
+        <Label htmlFor={`boolean-${key}`} className="text-sm font-medium">
+          {key.split(".").pop()}
+        </Label>
       </div>
-    </div>
-  );
+    );
+  });
 }
 
 interface NumberConfigurationSectionProps {
@@ -55,31 +48,23 @@ function NumberConfigurationSection({
     return null;
   }
 
-  return (
-    <div className="mt-4">
-      <div className="space-y-4">
-        {Object.entries(requiredNumbers).map(([key, defaultValue]) => {
-          const value = additionalConfiguration[key] ?? defaultValue;
-          return (
-            <div key={key} className="flex flex-col gap-2">
-              <Label htmlFor={`number-${key}`} className="text-sm font-medium">
-                {key.split(".").pop()}
-              </Label>
-              <Input
-                id={`number-${key}`}
-                type="number"
-                value={value.toString()}
-                onChange={(e) =>
-                  onConfigUpdate(key, parseFloat(e.target.value))
-                }
-                placeholder={`Enter value for ${key.split(".").pop()}`}
-              />
-            </div>
-          );
-        })}
+  return Object.entries(requiredNumbers).map(([key, defaultValue]) => {
+    const value = additionalConfiguration[key] ?? defaultValue;
+    return (
+      <div key={key} className="flex flex-col gap-2">
+        <Label htmlFor={`number-${key}`} className="text-sm font-medium">
+          {key.split(".").pop()}
+        </Label>
+        <Input
+          id={`number-${key}`}
+          type="number"
+          value={value.toString()}
+          onChange={(e) => onConfigUpdate(key, parseFloat(e.target.value))}
+          placeholder={`Enter value for ${key.split(".").pop()}`}
+        />
       </div>
-    </div>
-  );
+    );
+  });
 }
 
 interface StringConfigurationSectionProps {
@@ -97,29 +82,23 @@ function StringConfigurationSection({
     return null;
   }
 
-  return (
-    <div className="mt-4">
-      <div className="space-y-4">
-        {Object.entries(requiredStrings).map(([key, defaultValue]) => {
-          const value = additionalConfiguration[key] ?? defaultValue;
-          return (
-            <div key={key} className="flex flex-col gap-2">
-              <Label htmlFor={`string-${key}`} className="text-sm font-medium">
-                {key.split(".").pop()}
-              </Label>
-              <Input
-                id={`string-${key}`}
-                type="text"
-                value={value.toString()}
-                onChange={(e) => onConfigUpdate(key, e.target.value)}
-                placeholder={`Enter value for ${key.split(".").pop()}`}
-              />
-            </div>
-          );
-        })}
+  return Object.entries(requiredStrings).map(([key, defaultValue]) => {
+    const value = additionalConfiguration[key] ?? defaultValue;
+    return (
+      <div key={key} className="flex flex-col gap-2">
+        <Label htmlFor={`string-${key}`} className="text-sm font-medium">
+          {key.split(".").pop()}
+        </Label>
+        <Input
+          id={`string-${key}`}
+          type="text"
+          value={value.toString()}
+          onChange={(e) => onConfigUpdate(key, e.target.value)}
+          placeholder={`Enter value for ${key.split(".").pop()}`}
+        />
       </div>
-    </div>
-  );
+    );
+  });
 }
 
 interface AdditionalConfigurationSectionProps {
@@ -151,14 +130,13 @@ export const AdditionalConfigurationSection: React.FC<
   return (
     <>
       <div className="mt-6">
-        <div className="mb-4">
-          <Label className="text-element-800 text-sm font-medium">
-            Additional Configuration
-          </Label>
-          <div className="text-element-600 text-xs">
-            Configure additional parameters required by this action.
-          </div>
-        </div>
+        <Label className="text-lg font-medium text-foreground dark:text-foreground-night">
+          Additional configuration
+        </Label>
+        <br />
+        <Label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+          Configure additional parameters required by this action.
+        </Label>
       </div>
 
       <StringConfigurationSection
