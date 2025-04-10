@@ -39,7 +39,7 @@ type LabelBreadcrumbItem = BaseBreadcrumbItem & {
   onClick?: never;
 };
 
-type BreadcrumbItem =
+export type BreadcrumbItem =
   | LinkBreadcrumbItem
   | ButtonBreadcrumbItem
   | LabelBreadcrumbItem;
