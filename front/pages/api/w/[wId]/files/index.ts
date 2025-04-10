@@ -26,7 +26,13 @@ const FileUploadUrlRequestSchema = t.type({
     t.literal("folders_document"),
     t.literal("upsert_table"),
   ]),
-  useCaseMetadata: t.union([t.undefined, t.type({ conversationId: t.string })]),
+  useCaseMetadata: t.union([
+    t.undefined,
+    t.type({
+      conversationId: t.string,
+      spaceId: t.string,
+    }),
+  ]),
 });
 
 export interface FileUploadRequestResponseBody {
