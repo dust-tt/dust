@@ -29,7 +29,7 @@ export async function lookupUserRegionByEmail(
     }),
   ]);
 
-  // If workspace has already been relocated, do not consider it for affinity.
+  // Check if workspace with verified domain exists but has been relocated
   if (
     workspaceWithVerifiedDomain &&
     isWorkspaceRelocationDone(
@@ -41,11 +41,13 @@ export async function lookupUserRegionByEmail(
     return false;
   }
 
-  if (pendingInvite || workspaceWithVerifiedDomain) {
-    return true;
+  // Check if pending invite exists but workspace has been relocated
+  if (pendingInvite && isWorkspaceRelocationDone(pendingInvite.workspace)) {
+    return false;
   }
 
-  return false;
+  // Return true if there is either a valid pending invite or workspace with verified domain
+  return Boolean(pendingInvite || workspaceWithVerifiedDomain);
 }
 
 export async function handleLookupWorkspace(workspaceLookup: {
