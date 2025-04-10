@@ -29,6 +29,18 @@ export async function lookupUserRegionByEmail(
     }),
   ]);
 
+  // If workspace has already been relocated, do not consider it for affinity.
+  if (
+    workspaceWithVerifiedDomain &&
+    isWorkspaceRelocationDone(
+      renderLightWorkspaceType({
+        workspace: workspaceWithVerifiedDomain.workspace,
+      })
+    )
+  ) {
+    return false;
+  }
+
   if (pendingInvite || workspaceWithVerifiedDomain) {
     return true;
   }
