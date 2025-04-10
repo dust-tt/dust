@@ -45,17 +45,21 @@ AgentMCPServerConfiguration.init(
       type: DataTypes.JSONB,
       allowNull: false,
       validate: {
-        isValidJSON(value: string) {
-          if (value) {
+        isValidJSON(value: any) {
+          if (typeof value === "string") {
             let parsed;
             try {
               parsed = JSON.parse(value);
             } catch (e) {
-              throw new Error("Response format is invalid JSON");
+              throw new Error("additionalConfiguration is invalid JSON");
             }
             if (parsed && typeof parsed !== "object") {
-              throw new Error("Response format is invalid JSON");
+              throw new Error(
+                "additionalConfiguration couldn't be parsed to an object"
+              );
             }
+          } else if (typeof value !== "object") {
+            throw new Error("additionalConfiguration is not an object");
           }
         },
       },
