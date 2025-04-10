@@ -64,7 +64,16 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<RegisterMCPResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  // Extract the client-provided server ID.
+  if (req.method !== "POST") {
+    return apiError(req, res, {
+      status_code: 405,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Method not allowed.",
+      },
+    });
+  }
+
   const { serverId } = req.body;
   if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
     return apiError(req, res, {

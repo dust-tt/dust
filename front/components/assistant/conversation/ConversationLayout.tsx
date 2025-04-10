@@ -1,8 +1,16 @@
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { CoEditionContainer } from "@app/components/assistant/conversation/co_edition/CoEditionContainer";
+import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
+import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   ConversationsNavigationProvider,
@@ -101,12 +109,53 @@ const ConversationLayoutContent = ({
               assistantId={assistantSId}
               onClose={() => onOpenChangeAssistantModal(false)}
             />
-            <FileDropProvider>
-              <GenerationContextProvider>{children}</GenerationContextProvider>
-            </FileDropProvider>
+            <CoEditionProvider owner={owner}>
+              <ConversationInnerLayout conversationId={activeConversationId}>
+                {children}
+              </ConversationInnerLayout>
+            </CoEditionProvider>
           </>
         )}
       </AppLayout>
     </InputBarProvider>
   );
 };
+
+interface ConversationInnerLayoutProps {
+  children: React.ReactNode;
+  conversationId: string | null;
+}
+
+function ConversationInnerLayout({
+  children,
+  conversationId,
+}: ConversationInnerLayoutProps) {
+  const { server } = useCoEditionContext();
+
+  return (
+    <ResizablePanelGroup
+      direction="horizontal"
+      className="w-full overflow-hidden rounded-lg border"
+    >
+      <FileDropProvider>
+        <GenerationContextProvider>
+          <ResizablePanel
+            minSize={20}
+            defaultSize={conversationId ? 50 : 100}
+            className="overflow-y-visible border-none"
+          >
+            {children}
+          </ResizablePanel>
+        </GenerationContextProvider>
+      </FileDropProvider>
+      {server?.isCoEditionEnabled() && <ResizableHandle />}
+      <ResizablePanel
+        minSize={20}
+        defaultSize={50}
+        className={server?.isCoEditionEnabled() ? "" : "hidden"}
+      >
+        {server?.isCoEditionEnabled() && <CoEditionContainer />}
+      </ResizablePanel>
+    </ResizablePanelGroup>
+  );
+}

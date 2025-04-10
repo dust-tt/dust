@@ -69,6 +69,8 @@ async function handler(
         });
       }
 
+      // TODO: Validate localMCPServerIds.
+
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
 
@@ -153,6 +155,7 @@ async function handler(
               email: user.email,
               profilePictureUrl: message.context.profilePictureUrl,
               origin: "web",
+              localMCPServerIds: message.context.localMCPServerIds ?? [],
             },
           },
           { resolveAfterFullGeneration: false }

@@ -180,7 +180,7 @@ export function ActionValidationProvider({
                   <div>
                     <span className="font-medium">Inputs:</span>
                     <CodeBlock className="language-json">
-                      JSON.stringify(currentValidation?.inputs, null, 2)
+                      {JSON.stringify(currentValidation?.inputs, null, 2)}
                     </CodeBlock>
                   </div>
                 )}

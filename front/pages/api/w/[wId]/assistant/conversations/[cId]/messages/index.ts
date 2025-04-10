@@ -115,6 +115,7 @@ async function handler(
             email: user.email,
             profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
             origin: "web",
+            localMCPServerIds: context.localMCPServerIds ?? [],
           },
         },
         { resolveAfterFullGeneration: false }
