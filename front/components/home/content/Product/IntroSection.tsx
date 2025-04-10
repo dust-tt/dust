@@ -17,7 +17,7 @@ const HeroContent = () => {
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
       <H1
         mono
-        className="text-center text-5xl font-medium leading-tight md:text-6xl lg:text-7xl"
+        className="text-center text-5xl font-medium md:text-6xl lg:text-7xl"
       >
         Transform how work
         <br />
@@ -86,7 +86,7 @@ const HeroVisual = () => {
 export function IntroSection() {
   return (
     <section className="w-full">
-      <div className="sm:pt-18 flex flex-col gap-12 pt-12 md:gap-16 lg:gap-20 lg:pt-36">
+      <div className="sm:pt-18 flex flex-col gap-6 pt-6 md:gap-4 lg:gap-8 lg:pt-8">
         <div className="flex flex-col gap-16 pt-16">
           <HeroContent />
           <HeroVisual />
