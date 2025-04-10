@@ -119,7 +119,7 @@ export function ActionValidationProvider({
       );
 
       if (!response.ok) {
-        setErrorMessage(`Failed to assess action approval. Please try again.`);
+        setErrorMessage("Failed to assess action approval. Please try again.");
         return;
       }
     },
@@ -165,12 +165,12 @@ export function ActionValidationProvider({
         onOpenChange={(open) => {
           if (open === false && !isProcessing) {
             if (currentValidation) {
-              void handleSubmit("action_rejected");
+              void handleSubmit("rejected");
             }
           }
         }}
       >
-        <DialogContent>
+        <DialogContent isAlertDialog>
           <DialogHeader>
             <DialogTitle>Action Validation Required</DialogTitle>
           </DialogHeader>
@@ -209,7 +209,7 @@ export function ActionValidationProvider({
             <Button
               label="Decline"
               variant="outline"
-              onClick={() => handleSubmit("action_rejected")}
+              onClick={() => handleSubmit("rejected")}
               disabled={isProcessing}
             >
               {isProcessing && (
@@ -224,7 +224,7 @@ export function ActionValidationProvider({
                 label="Approve and never ask again"
                 variant="ghost"
                 onClick={() => {
-                  handleSubmit("action_always_approved");
+                  handleSubmit("always_approved");
                 }}
                 disabled={isProcessing}
               >
@@ -239,7 +239,7 @@ export function ActionValidationProvider({
             <Button
               label="Approve"
               variant="primary"
-              onClick={() => handleSubmit("action_approved")}
+              onClick={() => handleSubmit("approved")}
               disabled={isProcessing}
             >
               {isProcessing && (

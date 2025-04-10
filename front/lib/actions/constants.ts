@@ -55,8 +55,8 @@ export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
 export const DEFAULT_MCP_TOOL_STAKE_LEVEL: MCPToolStakeLevelType = "high";
 
 export const MCP_VALIDATION_OUTPUTS = [
-  "action_approved",
-  "action_rejected",
-  "action_always_approved",
+  "approved",
+  "rejected",
+  "always_approved",
 ] as const;
 export type MCPValidationOutputType = (typeof MCP_VALIDATION_OUTPUTS)[number];

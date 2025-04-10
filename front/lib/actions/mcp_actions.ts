@@ -96,7 +96,7 @@ function makePlatformMCPToolConfigurations(
     childAgentId: config.childAgentId,
     additionalConfiguration: config.additionalConfiguration,
     permission: tool.stakeLevel,
-    toolServerId: tool.toolServerSId,
+    toolServerId: tool.toolServerId,
   }));
 }
 
@@ -306,11 +306,11 @@ async function listMCPServerTools(
 
   try {
     // Connect to the MCP server.
-    const config = connectionParamsRes.value;
-    mcpClient = await connectToMCPServer(auth, config);
+    const connectionParams = connectionParamsRes.value;
+    mcpClient = await connectToMCPServer(auth, connectionParams);
     const isDefault =
-      isConnectViaMCPServerId(config) &&
-      isDefaultInternalMCPServer(config.mcpServerId);
+      isConnectViaMCPServerId(connectionParams) &&
+      isDefaultInternalMCPServer(connectionParams.mcpServerId);
 
     let allTools: MCPToolWithStakeLevelType[] = [];
     let nextPageCursor;
@@ -330,23 +330,24 @@ async function listMCPServerTools(
 
     // Enrich tool metadata with permissions and serverId to avoid re-fetching at validation modal
     // level.
-    if (config.type === "mcpServerId") {
-      const { serverType, id } = getServerTypeAndIdFromSId(config.mcpServerId);
+    if (connectionParams.type === "mcpServerId") {
+      const { serverType, id } = getServerTypeAndIdFromSId(
+        connectionParams.mcpServerId
+      );
       if (serverType === "remote") {
         const toolMetadata =
           await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
-        const metadataMap = toolMetadata.reduce(
-          (acc, metadata) => {
-            acc[metadata.toolName] = metadata.permission;
-            return acc;
-          },
-          {} as Record<string, MCPToolStakeLevelType>
-        );
+        const metadataMap = toolMetadata.reduce<
+          Record<string, MCPToolStakeLevelType>
+        >((acc, metadata) => {
+          acc[metadata.toolName] = metadata.permission;
+          return acc;
+        }, {});
 
         allTools = allTools.map((tool) => ({
           ...tool,
           stakeLevel: metadataMap[tool.name] || DEFAULT_MCP_TOOL_STAKE_LEVEL,
-          toolServerSId: config.mcpServerId,
+          toolServerId: connectionParams.mcpServerId,
         }));
       }
     }

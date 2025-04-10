@@ -1,10 +1,8 @@
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-import type {MCPToolStakeLevelType} from "@app/lib/actions/constants";
-import {
-  DEFAULT_MCP_TOOL_STAKE_LEVEL
-} from "@app/lib/actions/constants";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { DEFAULT_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
@@ -331,26 +329,25 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           const { data } = event;
 
           if (
-            data.type === "action_always_approved" &&
+            data.type === "always_approved" &&
             data.actionId === mcpAction.id
           ) {
             assert(isPlatformMCPToolConfiguration(actionConfiguration));
             const user = auth.getNonNullableUser();
             await user.appendToMetadata(
-              `mcpServersToolsValidations`,
-              `${actionConfiguration.toolServerId}:${actionConfiguration.name}`
+              `toolsValidations:${actionConfiguration.toolServerId}`,
+              `${actionConfiguration.name}`
             );
           }
 
           if (
-            (data.type === "action_approved" ||
-              data.type === "action_always_approved") &&
+            (data.type === "approved" || data.type === "always_approved") &&
             data.actionId === mcpAction.id
           ) {
             status = "allowed_explicitly";
             break;
           } else if (
-            data.type === "action_rejected" &&
+            data.type === "rejected" &&
             data.actionId === mcpAction.id
           ) {
             status = "denied";
@@ -613,11 +610,13 @@ async function getExecutionStatusFromConfig(
   }
 
   const user = auth.getNonNullableUser();
-  const neverAskSetting = await user.getMetadata(`mcpServersToolsValidations`);
+  const neverAskSetting = await user.getMetadata(
+    `toolsValidations:${actionConfiguration.toolServerId}`
+  );
   if (
     neverAskSetting &&
     neverAskSetting.value.includes(
-      `${actionConfiguration.toolServerId}:${actionConfiguration.name}`
+      `${actionConfiguration.name}`
     )
   ) {
     return { status: "allowed_implicitly" };
