@@ -31,7 +31,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
-import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
+import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
@@ -81,7 +81,7 @@ function AssistantDetailsInfo({
       )}
       <Page.Separator />
 
-      <AssistantActionsSection
+      <AssistantKnowledgeSection
         agentConfiguration={agentConfiguration}
         owner={owner}
       />

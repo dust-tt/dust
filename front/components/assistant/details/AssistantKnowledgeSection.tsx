@@ -5,6 +5,7 @@ import {
   Chip,
   CommandIcon,
   CommandLineIcon,
+  DocumentIcon,
   ExternalLinkIcon,
   FolderIcon,
   Icon,
@@ -15,6 +16,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   SparklesIcon,
+  TableIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import _ from "lodash";
@@ -29,12 +31,18 @@ import type {
   DataSourceConfiguration,
   RetrievalConfigurationType,
 } from "@app/lib/actions/retrieval";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type {
+  TableDataSourceConfiguration,
+  TablesQueryConfigurationType,
+} from "@app/lib/actions/tables_query";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
+  isMCPActionConfiguration,
   isMCPServerConfiguration,
+  isPlatformMCPServerConfiguration,
+  isPlatformMCPToolConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -69,24 +77,23 @@ import {
   GLOBAL_AGENTS_SID,
 } from "@app/types";
 
-interface AssistantActionsSectionProps {
+interface AssistantKnowledgeSectionProps {
   agentConfiguration: AgentConfigurationType;
   owner: LightWorkspaceType;
 }
 
-export function AssistantActionsSection({
+export function AssistantKnowledgeSection({
   agentConfiguration,
   owner,
-}: AssistantActionsSectionProps) {
+}: AssistantKnowledgeSectionProps) {
   const { dataSourceViews } = useDataSourceViews(owner, {
     disabled: agentConfiguration.actions.length === 0,
   });
 
   const categorizedActions = useMemo(() => {
     const initial = {
-      retrieval: [] as RetrievalConfigurationType[],
-      queryTables: [] as TablesQueryConfigurationType[],
-      other: [] as AgentActionConfigurationType[],
+      retrieval: [] as { dataSources: DataSourceConfiguration[] }[],
+      queryTables: [] as { tables: TableDataSourceConfiguration[] }[],
     };
 
     const isDustGlobalAgent = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
@@ -102,8 +109,14 @@ export function AssistantActionsSection({
         acc.retrieval.push(action);
       } else if (isTablesQueryConfiguration(action)) {
         acc.queryTables.push(action);
-      } else {
-        acc.other.push(action);
+      } else if (isPlatformMCPServerConfiguration(action)) {
+        const { tables, dataSources } = action;
+        if (dataSources) {
+          acc.retrieval.push({ dataSources });
+        }
+        if (tables) {
+          acc.queryTables.push({ tables });
+        }
       }
       return acc;
     }, initial);
@@ -179,51 +192,64 @@ export function AssistantActionsSection({
     return acc;
   }, [categorizedActions.queryTables, dataSourceViews]);
 
-  if (agentConfiguration.actions.length === 0) {
+  if (
+    categorizedActions.retrieval.length === 0 &&
+    categorizedActions.queryTables.length === 0
+  ) {
     return null;
   }
 
   return (
-    <>
-      {Object.values(retrievalByDataSources).length > 0 && (
-        <ActionSection title="Retrieve from Documents">
-          {Object.values(retrievalByDataSources).map((dataSources, index) => (
-            <div className="flex flex-col gap-2" key={`retrieval-${index}`}>
-              <DataSourceViewsSection
-                owner={owner}
-                dataSourceViews={dataSourceViews}
-                dataSourceConfigurations={[dataSources]}
-                viewType="document"
-              />
-            </div>
-          ))}
-        </ActionSection>
-      )}
-
-      {Object.values(queryTableByDataSources).length > 0 && (
-        <ActionSection title="Query Tables">
-          {Object.values(queryTableByDataSources).map((dataSources, index) => (
-            <div className="flex flex-col gap-2" key={`query-tables-${index}`}>
-              <DataSourceViewsSection
-                owner={owner}
-                dataSourceViews={dataSourceViews}
-                dataSourceConfigurations={[dataSources]}
-                viewType="table"
-              />
-            </div>
-          ))}
-        </ActionSection>
-      )}
-
-      {categorizedActions.other.map((action, index) =>
-        renderOtherAction(action, index, owner, dataSourceViews)
-      )}
-    </>
+    <div className="flex flex-col gap-5">
+      <div className="heading-lg text-foreground dark:text-foreground-night">
+        Knowledge
+      </div>
+      <div className="rounded-xl border bg-muted-background p-2 dark:bg-muted-background-night">
+        <Tree>
+          <Tree.Item label="Documents" visual={DocumentIcon}>
+            {Object.values(retrievalByDataSources).length > 0 &&
+              Object.values(retrievalByDataSources).map(
+                (dataSources, index) => (
+                  <div
+                    className="flex flex-col gap-2"
+                    key={`retrieval-${index}`}
+                  >
+                    <DataSourceViewsSection
+                      owner={owner}
+                      dataSourceViews={dataSourceViews}
+                      dataSourceConfigurations={[dataSources]}
+                      viewType="document"
+                    />
+                  </div>
+                )
+              )}
+          </Tree.Item>
+          <Tree.Item label="Tables" visual={TableIcon}>
+            {Object.values(queryTableByDataSources).length > 0 &&
+              Object.values(queryTableByDataSources).map(
+                (dataSources, index) => (
+                  <div
+                    className="flex flex-col gap-2"
+                    key={`query-tables-${index}`}
+                  >
+                    <DataSourceViewsSection
+                      owner={owner}
+                      dataSourceViews={dataSourceViews}
+                      dataSourceConfigurations={[dataSources]}
+                      viewType="table"
+                    />
+                  </div>
+                )
+              )}
+          </Tree.Item>
+        </Tree>
+      </div>
+    </div>
   );
 }
 
 function getDataSourceConfigurationsForTableAction(
-  action: TablesQueryConfigurationType,
+  action: { tables: TableDataSourceConfiguration[] },
   dataSourceViews: DataSourceViewType[]
 ) {
   return Object.values(
