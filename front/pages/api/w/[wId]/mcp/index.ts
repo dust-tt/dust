@@ -15,6 +15,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 
 export type GetMCPServersResponseBody = {
   success: boolean;
@@ -127,7 +128,7 @@ async function handler(
           cachedName: metadata.name,
           cachedDescription: metadata.description,
           cachedTools: metadata.tools,
-          icon: metadata.icon,
+          icon: metadata.icon ?? DEFAULT_MCP_SERVER_ICON,
           version: metadata.version,
         });
 

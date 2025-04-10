@@ -284,6 +284,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       description: this.description,
       version: this.version,
       icon: this.icon,
+      avatar: null,
       tools: this.cachedTools,
 
       cachedName: this.cachedName,
