@@ -792,7 +792,7 @@ function ActionCard({
       }
     >
       <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full items-center gap-1 font-medium text-foreground dark:text-foreground-night">
+        <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
           <Avatar size="xs" visual={actionIcon(action, mcpServerViews)} />
           <div className="w-full truncate">{actionDisplayName(action)}</div>
         </div>

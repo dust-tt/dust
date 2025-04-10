@@ -765,7 +765,7 @@ const SpaceActionsSubMenu = ({
     >
       {isExpanded && (
         <Tree isLoading={isMCPServerViewsLoading}>
-          {sortBy(serverViews, "name").map((serverView) => (
+          {sortBy(serverViews, "server.name").map((serverView) => (
             <SpaceActionItem
               action={serverView}
               key={serverView.server.name}
