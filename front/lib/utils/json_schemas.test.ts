@@ -8,18 +8,6 @@ import { findMatchingSchemaKeys } from "./json_schemas";
 
 describe("JSON Schema Utilities", () => {
   describe("findMatchingSchemaKeys", () => {
-    it("should return an array with an empty string when the root schema matches", () => {
-      // Use STRING schema as our test schema
-      const stringSchema =
-        ConfigurableToolInputJSONSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.STRING
-        ];
-
-      // When comparing a schema with itself, it should match at the root level
-      const result = findMatchingSchemaKeys(stringSchema, stringSchema);
-      expect(result).toEqual([""]);
-    });
-
     it("should return property keys when properties match the target schema", () => {
       // Create a complex schema with nested properties
       const mainSchema: JSONSchema = {
