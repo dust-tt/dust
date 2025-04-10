@@ -360,83 +360,12 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async setConfigurationKey({
-    configKey,
-    configValue,
-  }: {
-    configKey: string;
-    configValue: string;
-  }): Promise<Result<void, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      throw new Error(`Connector ${this.connectorId} not found`);
-    }
-
-    const config = await SalesforceConfigurationModel.findOne({
-      where: {
-        connectorId: connector.id,
-      },
-    });
-    if (!config) {
-      return new Err(
-        new Error(
-          `Salesforce config not found with connectorId ${this.connectorId}`
-        )
-      );
-    }
-
-    if (configKey !== "usePersonalConnections") {
-      return new Err(new Error(`Invalid config key ${configKey}`));
-    }
-    if (!["true", "false"].includes(configValue)) {
-      return new Err(
-        new Error(`Invalid config value ${configValue}, must be true or false`)
-      );
-    }
-
-    await config.update({
-      usePersonalConnections: configValue === "true",
-    });
-
-    const launchRes = await launchSalesforceSyncWorkflow(
-      this.connectorId,
-      true
-    );
-    if (launchRes.isErr()) {
-      return launchRes;
-    }
-
-    return new Ok(undefined);
+  async setConfigurationKey(): Promise<Result<void, Error>> {
+    throw new Error("Method setConfigurationKey not implemented.");
   }
 
-  async getConfigurationKey({
-    configKey,
-  }: {
-    configKey: string;
-  }): Promise<Result<string | null, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      throw new Error(`Connector ${this.connectorId} not found`);
-    }
-
-    const config = await SalesforceConfigurationModel.findOne({
-      where: {
-        connectorId: connector.id,
-      },
-    });
-    if (!config) {
-      return new Err(
-        new Error(
-          `Salesforce config not found with connectorId ${this.connectorId}`
-        )
-      );
-    }
-
-    if (configKey !== "usePersonalConnections") {
-      return new Err(new Error(`Invalid config key ${configKey}`));
-    }
-
-    return new Ok(config.usePersonalConnections.toString());
+  async getConfigurationKey(): Promise<Result<string | null, Error>> {
+    throw new Error("Method getConfigurationKey not implemented.");
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

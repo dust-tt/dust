@@ -93,16 +93,8 @@ impl Block for Database {
                             Some(Value::String(s)) => s,
                             _ => Err(anyhow!(err_msg.clone()))?,
                         };
-                        let remote_database_secret_id = match v.get("remote_database_secret_id") {
-                            Some(Value::String(s)) => Some(s),
-                            _ => None,
-                        };
-                        Ok((
-                            workspace_id,
-                            data_source_id,
-                            table_id,
-                            remote_database_secret_id,
-                        ))
+
+                        Ok((workspace_id, data_source_id, table_id))
                     })
                     .collect::<Result<Vec<_>>>()?,
                 _ => Err(anyhow!(err_msg.clone()))?,

@@ -10,11 +10,7 @@ export const labsTranscriptsProviders = [
 export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
 
-export const labsFeatures = [
-  "transcripts",
-  "trackers",
-  "personal_connections",
-] as const;
+export const labsFeatures = ["transcripts", "trackers"] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 
 export const labsConnections = ["hubspot"] as const;

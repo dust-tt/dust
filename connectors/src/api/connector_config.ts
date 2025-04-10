@@ -52,6 +52,7 @@ const _getConnectorConfig = async (
       status_code: 404,
     });
   }
+
   const configValueRes = await getConnectorManager({
     connectorId: connector.id,
     connectorProvider: connector.type,

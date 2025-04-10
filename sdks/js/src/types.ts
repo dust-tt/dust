@@ -794,7 +794,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "labs_connection_hubspot"
   | "labs_trackers"
-  | "labs_personal_connections"
   | "document_tracker"
   | "openai_o1_feature"
   | "openai_o1_mini_feature"
