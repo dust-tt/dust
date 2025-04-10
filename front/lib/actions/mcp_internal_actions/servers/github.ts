@@ -104,6 +104,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           query($owner: String!, $repo: String!, $pullNumber: Int!) {
             repository(owner: $owner, name: $repo) {
               pullRequest(number: $pullNumber) {
+                title
                 body
                 commits(last: ${GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS}) {
                   nodes {
@@ -156,6 +157,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         })) as {
           repository: {
             pullRequest: {
+              title: string;
               body: string;
               commits: {
                 nodes: {
@@ -200,6 +202,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           };
         };
 
+        const pullTitle = pull.repository.pullRequest.title;
         const pullBody = pull.repository.pullRequest.body;
         const pullCommits = pull.repository.pullRequest.commits.nodes.map(
           (n) => {
@@ -286,7 +289,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             repo,
             pull_number: pullNumber,
             headers: {
-              Accept: "diff",
+              Accept: "application/vnd.github.v3.diff",
             },
           }
         );
@@ -295,6 +298,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         const pullDiff = diff.data as string;
 
         const content =
+          `TITLE: ${pullTitle}\n\n` +
+          `BODY:\n` +
           `${pullBody}\n\n` +
           `COMMITS:\n` +
           `${(pullCommits || [])
