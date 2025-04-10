@@ -2,7 +2,7 @@ import { CommandIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { LabsPersonalConnectionsList } from "@app/components/data_source/PersonalConnectionsList";
+import { LabsPersonalConnectionsList } from "@app/components/data_source/LabsPersonalConnectionsList";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
