@@ -2,6 +2,7 @@ import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
 type EventCallback = (event: EventPayload | "close") => void;
@@ -371,14 +372,19 @@ class RedisHybridManager {
       "message_events"
     );
 
-    history.forEach(async (event) => {
-      if (callback(event)) {
-        const streamClient = await this.getStreamAndPublishClient();
-        const streamName = this.getStreamName(channel);
-        await streamClient.xDel(streamName, event.id);
-        logger.debug({ channel }, "Deleted event from Redis stream");
-      }
-    });
+    await concurrentExecutor(
+      history,
+      async (event) => {
+        if (callback(event)) {
+          const streamClient = await this.getStreamAndPublishClient();
+          const streamName = this.getStreamName(channel);
+          await streamClient.xDel(streamName, event.id);
+          logger.debug({ channel }, "Deleted event from Redis stream");
+        }
+      },
+      { concurrency: 10 }
+    );
+
     unsubscribe();
   }
 

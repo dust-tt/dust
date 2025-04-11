@@ -96,7 +96,7 @@ export type MCPToolConfigurationType = (
   originalName: string;
 };
 
-export type MCPApproveExecutionEvent = {
+type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
   created: number;
   configurationId: string;
@@ -105,6 +105,12 @@ export type MCPApproveExecutionEvent = {
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
 };
+
+export function isMCPApproveExecutionEvent(
+  event: MCPActionRunningEvents
+): event is MCPApproveExecutionEvent {
+  return event.type === "tool_approve_execution";
+}
 
 type MCPParamsEvent = {
   type: "tool_params";

@@ -1,5 +1,5 @@
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
+import { isMCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import {
   getMessageChannelId,
   publishEvent,
@@ -49,14 +49,11 @@ export async function validateAction({
     }),
   });
 
-  void getRedisHybridManager().removeEvent((event) => {
+  await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
-    const { action } = payload as MCPApproveExecutionEvent;
-    if (!action) {
-      return false;
-    }
-    const { id } = action;
-    return actionId === id;
+    return isMCPApproveExecutionEvent(payload)
+      ? payload.action.id === actionId
+      : false;
   }, getMessageChannelId(messageId));
 
   logger.info(
