@@ -1,7 +1,7 @@
-import type { PostMCPResultsResponseType } from "@dust-tt/client";
-import { PublicPostMCPResultsRequestBodySchema } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
 import {
@@ -17,6 +17,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isValidUUIDv4 } from "@app/types";
+
+const PostMCPResultsRequestBodyCodec = t.type({
+  requestId: t.string,
+  result: t.unknown,
+});
+
+type PostMCPResultsResponseType = {
+  success: boolean;
+};
 
 async function handler(
   req: NextApiRequest,
@@ -49,18 +58,20 @@ async function handler(
     });
   }
 
-  const r = PublicPostMCPResultsRequestBodySchema.safeParse(req.body);
-  if (r.error) {
+  const r = PostMCPResultsRequestBodyCodec.decode(req.body);
+  if (isLeft(r)) {
+    const pathError = reporter.formatValidationErrors(r.left);
+
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: fromError(r.error).toString(),
+        message: pathError.join(","),
       },
     });
   }
 
-  const parsed = parseLocalMCPRequestId(r.data.requestId);
+  const parsed = parseLocalMCPRequestId(r.right.requestId);
   if (!parsed) {
     return apiError(req, res, {
       status_code: 400,
@@ -104,7 +115,7 @@ async function handler(
     event: JSON.stringify({
       type: "mcp_local_results",
       messageId,
-      result: r.data.result,
+      result: r.right.result,
     }),
   });
 

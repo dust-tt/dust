@@ -9,8 +9,10 @@ import {
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -72,6 +74,43 @@ async function handler(
         message: "File not found.",
       },
     });
+  }
+
+  // Check permissions based on useCase and useCaseMetadata
+  if (file.useCase === "conversation" && file.useCaseMetadata?.conversationId) {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      file.useCaseMetadata.conversationId
+    );
+    if (
+      !conversation ||
+      !ConversationResource.canAccessConversation(auth, conversation)
+    ) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+  } else if (
+    file.useCase === "folders_document" &&
+    file.useCaseMetadata?.spaceId
+  ) {
+    const space = await SpaceResource.fetchById(
+      auth,
+      file.useCaseMetadata.spaceId
+    );
+    if (!space || !space.canRead(auth)) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
   }
 
   switch (req.method) {

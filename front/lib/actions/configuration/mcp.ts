@@ -15,6 +15,7 @@ import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/ac
 import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types";
 
 export async function fetchMCPServerActionConfigurations(
@@ -115,15 +116,22 @@ export async function fetchMCPServerActionConfigurations(
       auth,
       mcpServerViewId
     );
+    let serverName: string | null = null;
+    let serverDescription: string | null = null;
+
     if (!mcpServerView) {
-      throw new Error(
+      logger.warn(
         `MCPServerView with mcpServerViewId ${mcpServerViewId} not found.`
       );
+      serverName = "Missing";
+      serverDescription = "Missing";
+    } else {
+      const { name, description } =
+        await mcpServerView.getMCPServerMetadata(auth);
+
+      serverName = name;
+      serverDescription = description;
     }
-
-    const { name, description } =
-      await mcpServerView.getMCPServerMetadata(auth);
-
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
       actionsByConfigurationId.set(agentConfigurationId, []);
     }
@@ -134,9 +142,9 @@ export async function fetchMCPServerActionConfigurations(
         id: config.id,
         sId: config.sId,
         type: "mcp_server_configuration",
-        name,
-        description,
-        mcpServerViewId: mcpServerView.sId,
+        name: config.name ?? serverName,
+        description: config.singleToolDescriptionOverride ?? serverDescription,
+        mcpServerViewId: mcpServerView?.sId ?? "",
         dataSources: dataSourceConfigurations.map(
           renderDataSourceConfiguration
         ),

@@ -20,6 +20,12 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
   declare additionalConfiguration: Record<string, boolean | number | string>;
 
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
+
+  declare name: string | null;
+
+  // This is a temporary override for the tool description when we only have one tool
+  // to keep backward compatibility with the previous action behavior (like retrieval).
+  declare singleToolDescriptionOverride: string | null;
 }
 
 AgentMCPServerConfiguration.init(
@@ -68,6 +74,14 @@ AgentMCPServerConfiguration.init(
         model: MCPServerViewModel,
         key: "id",
       },
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    singleToolDescriptionOverride: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

@@ -1,5 +1,8 @@
+import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { DEFAULT_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
@@ -20,6 +23,7 @@ import {
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isPlatformMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -73,6 +77,8 @@ export type PlatformMCPToolConfigurationType = Omit<
   type: "mcp_configuration";
   inputSchema: JSONSchema;
   isDefault: boolean;
+  permission?: MCPToolStakeLevelType;
+  toolServerId?: string;
 };
 
 export type LocalMCPToolConfigurationType = Omit<
@@ -94,6 +100,7 @@ type MCPApproveExecutionEvent = {
   messageId: string;
   action: MCPActionType;
   inputs: Record<string, unknown>;
+  stake?: MCPToolStakeLevelType;
 };
 
 type MCPParamsEvent = {
@@ -283,17 +290,17 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       action: mcpAction,
     };
 
+    const { status: s } = await getExecutionStatusFromConfig(
+      auth,
+      actionConfiguration
+    );
     let status:
       | "allowed_implicitly"
       | "allowed_explicitly"
       | "pending"
-      | "denied" = "pending";
-    if (
-      isPlatformMCPToolConfiguration(actionConfiguration) &&
-      actionConfiguration.isDefault
-    ) {
-      status = "allowed_implicitly";
-    } else {
+      | "denied" = s;
+
+    if (status === "pending") {
       yield {
         type: "tool_approve_execution",
         created: Date.now(),
@@ -301,6 +308,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         action: mcpAction,
         inputs: rawInputs,
+        stake: isPlatformMCPToolConfiguration(actionConfiguration)
+          ? actionConfiguration.permission
+          : DEFAULT_MCP_TOOL_STAKE_LEVEL,
       };
 
       try {
@@ -320,81 +330,33 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           const { data } = event;
 
           if (
-            data.type === "action_approved" &&
+            data.type === "always_approved" &&
+            data.actionId === mcpAction.id
+          ) {
+            assert(isPlatformMCPToolConfiguration(actionConfiguration));
+            const user = auth.getNonNullableUser();
+            await user.appendToMetadata(
+              `toolsValidations:${actionConfiguration.toolServerId}`,
+              `${actionConfiguration.name}`
+            );
+          }
+
+          if (
+            (data.type === "approved" || data.type === "always_approved") &&
             data.actionId === mcpAction.id
           ) {
             status = "allowed_explicitly";
             break;
           } else if (
-            data.type === "action_rejected" &&
+            data.type === "rejected" &&
             data.actionId === mcpAction.id
           ) {
             status = "denied";
             break;
           }
         }
-
-        // The action timed-out, status was not updated
-        if (status === "pending") {
-          localLogger.info("Action validation timed out");
-
-          // Yield a tool success, with a message that the action timed out
-          yield {
-            type: "tool_success",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            action: new MCPActionType({
-              ...actionBaseParams,
-              executionState: "denied",
-              id: action.id,
-              isError: false,
-              output: [
-                {
-                  type: "text",
-                  text:
-                    "The action validation timed out. " +
-                    "Using this action is hence forbidden for this message.",
-                },
-              ],
-              type: "tool_action",
-            }),
-          };
-          return;
-        }
-
-        if (status === "denied") {
-          localLogger.info("Action execution rejected by user");
-
-          // Yield a tool success, with a message that the action was rejected.
-          yield {
-            type: "tool_success",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            action: new MCPActionType({
-              ...actionBaseParams,
-              executionState: "denied",
-              id: action.id,
-              isError: false,
-              output: [
-                {
-                  type: "text",
-                  text:
-                    "The user rejected this specific action execution. " +
-                    "Using this action is hence forbidden for this message.",
-                },
-              ],
-              type: "tool_action",
-            }),
-          };
-          return;
-        }
-
-        localLogger.info("Proceeding with action execution after validation");
       } catch (error) {
         localLogger.error({ error }, "Error checking action validation status");
-
         yield {
           type: "tool_error",
           created: Date.now(),
@@ -407,6 +369,62 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         };
         return;
       }
+    }
+
+    // The action timed-out, status was not updated
+    if (status === "pending") {
+      localLogger.info("Action validation timed out");
+      // Yield a tool success, with a message that the action timed out
+      yield {
+        type: "tool_success",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        action: new MCPActionType({
+          ...actionBaseParams,
+          executionState: "denied",
+          id: action.id,
+          isError: false,
+          output: [
+            {
+              type: "text",
+              text:
+                "The action validation timed out. " +
+                "Using this action is hence forbidden for this message.",
+            },
+          ],
+          type: "tool_action",
+        }),
+      };
+      return;
+    }
+
+    if (status === "denied") {
+      localLogger.info("Action execution rejected by user");
+
+      // Yield a tool success, with a message that the action was rejected.
+      yield {
+        type: "tool_success",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        action: new MCPActionType({
+          ...actionBaseParams,
+          executionState: "denied",
+          id: action.id,
+          isError: false,
+          output: [
+            {
+              type: "text",
+              text:
+                "The user rejected this specific action execution. " +
+                "Using this action is hence forbidden for this message.",
+            },
+          ],
+          type: "tool_action",
+        }),
+      };
+      return;
     }
 
     // We put back the preconfigured inputs (data sources for instance) from the agent configuration if any.
@@ -459,7 +477,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         const r = await processAndStoreFromUrl(auth, {
           url: c.resource.uri,
           useCase: "conversation",
-          fileName: "generated-image.png",
+          fileName: c.resource.uri.split("/").pop() ?? "generated-file",
           contentType: c.resource.mimeType,
         });
         if (r.isErr()) {

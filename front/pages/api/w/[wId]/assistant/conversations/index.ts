@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
 import {
   createConversation,
   getConversation,
@@ -12,6 +13,7 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
   ContentFragmentType,
@@ -73,6 +75,28 @@ async function handler(
 
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
+
+      if (message?.context.localMCPServerIds) {
+        const hasServerAccess = await concurrentExecutor(
+          message.context.localMCPServerIds,
+          async (serverId) =>
+            validateMCPServerAccess(auth, {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              serverId,
+            }),
+          { concurrency: 10 }
+        );
+
+        if (hasServerAccess.some((r) => r === false)) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "invalid_request_error",
+              message: "User does not have access to the local MCP servers.",
+            },
+          });
+        }
+      }
 
       let conversation = await createConversation(auth, {
         title,

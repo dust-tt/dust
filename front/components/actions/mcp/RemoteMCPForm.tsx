@@ -32,6 +32,7 @@ import {
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -61,7 +62,7 @@ export function RemoteMCPForm({
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
     defaultValues: {
-      name: mcpServer.name,
+      name: asDisplayName(mcpServer.name),
       description: mcpServer.description,
       icon: isAllowedIconType(mcpServer.visual)
         ? mcpServer.visual

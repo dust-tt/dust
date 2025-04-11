@@ -1,4 +1,5 @@
-import type { HeartbeatMCPResponseType } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/local_registry";
@@ -8,14 +9,32 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isValidUUIDv4 } from "@app/types";
 
+const PostMCPHeartbeatRequestBodyCodec = t.type({
+  serverId: t.string,
+});
+
+type HeartbeatMCPResponseType = {
+  expiresAt: string;
+  success: boolean;
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<HeartbeatMCPResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  // Extract the client-provided server ID.
-  const { serverId } = req.body;
-  if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
+  if (req.method !== "POST") {
+    return apiError(req, res, {
+      status_code: 405,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Method not allowed.",
+      },
+    });
+  }
+
+  const bodyValidation = PostMCPHeartbeatRequestBodyCodec.decode(req.body);
+  if (isLeft(bodyValidation) || !isValidUUIDv4(bodyValidation.right.serverId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -24,6 +43,8 @@ async function handler(
       },
     });
   }
+
+  const { serverId } = bodyValidation.right;
 
   // Update the heartbeat for the server.
   const result = await updateMCPServerHeartbeat({

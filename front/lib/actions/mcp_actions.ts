@@ -1,6 +1,8 @@
 import type { JSONSchema7 } from "json-schema";
 import { z } from "zod";
 
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { DEFAULT_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import type {
   LocalMCPServerConfigurationType,
   LocalMCPToolConfigurationType,
@@ -9,6 +11,7 @@ import type {
   PlatformMCPServerConfigurationType,
   PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { isDefaultInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import {
@@ -22,10 +25,11 @@ import {
   isPlatformMCPServerConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { MCPToolType, MCPToolWithIsDefaultType } from "@app/lib/api/mcp";
+import type { MCPToolType, MCPToolWithStakeLevelType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -76,7 +80,7 @@ export type MCPToolResultContent = z.infer<typeof Schema>;
 
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
-  tools: (MCPToolType & { isDefault: boolean })[]
+  tools: MCPToolWithStakeLevelType[]
 ): PlatformMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
@@ -91,6 +95,8 @@ function makePlatformMCPToolConfigurations(
     isDefault: tool.isDefault,
     childAgentId: config.childAgentId,
     additionalConfiguration: config.additionalConfiguration,
+    permission: tool.stakeLevel,
+    toolServerId: tool.toolServerId,
   }));
 }
 
@@ -120,7 +126,7 @@ function makeMCPToolConfigurations<T extends MCPServerConfigurationType>({
   tools,
 }: {
   config: T;
-  tools: MCPToolWithIsDefaultType[];
+  tools: MCPToolWithStakeLevelType[];
 }): MCPToolConfigurationResult<T> {
   if (isPlatformMCPServerConfiguration(config)) {
     return makePlatformMCPToolConfigurations(
@@ -285,7 +291,7 @@ async function listMCPServerTools(
     conversationId: string;
     messageId: string;
   }
-): Promise<MCPToolWithIsDefaultType[]> {
+): Promise<MCPToolWithStakeLevelType[]> {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
@@ -300,13 +306,13 @@ async function listMCPServerTools(
 
   try {
     // Connect to the MCP server.
-    const config = connectionParamsRes.value;
-    mcpClient = await connectToMCPServer(auth, config);
+    const connectionParams = connectionParamsRes.value;
+    mcpClient = await connectToMCPServer(auth, connectionParams);
     const isDefault =
-      isConnectViaMCPServerId(config) &&
-      isDefaultInternalMCPServer(config.mcpServerId);
+      isConnectViaMCPServerId(connectionParams) &&
+      isDefaultInternalMCPServer(connectionParams.mcpServerId);
 
-    let allTools: MCPToolWithIsDefaultType[] = [];
+    let allTools: MCPToolWithStakeLevelType[] = [];
     let nextPageCursor;
 
     // Fetch all tools, handling pagination if supported by the MCP server.
@@ -321,6 +327,30 @@ async function listMCPServerTools(
         })),
       ];
     } while (nextPageCursor);
+
+    // Enrich tool metadata with permissions and serverId to avoid re-fetching at validation modal
+    // level.
+    if (connectionParams.type === "mcpServerId") {
+      const { serverType, id } = getServerTypeAndIdFromSId(
+        connectionParams.mcpServerId
+      );
+      if (serverType === "remote") {
+        const toolMetadata =
+          await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
+        const metadataMap = toolMetadata.reduce<
+          Record<string, MCPToolStakeLevelType>
+        >((acc, metadata) => {
+          acc[metadata.toolName] = metadata.permission;
+          return acc;
+        }, {});
+
+        allTools = allTools.map((tool) => ({
+          ...tool,
+          stakeLevel: metadataMap[tool.name] || DEFAULT_MCP_TOOL_STAKE_LEVEL,
+          toolServerId: connectionParams.mcpServerId,
+        }));
+      }
+    }
 
     logger.debug(
       {

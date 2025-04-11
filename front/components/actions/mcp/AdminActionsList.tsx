@@ -22,6 +22,7 @@ import {
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { EditedByUser, LightWorkspaceType, SpaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 type RowData = {
   mcpServer: MCPServerType;
@@ -47,7 +48,7 @@ const NameCell = ({ row }: { row: RowData }) => {
         <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
           <div className="flex flex-col gap-1">
             <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-              {mcpServer.name}
+              {asDisplayName(mcpServer.name)}
             </div>
             <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {mcpServer.description}

@@ -74,6 +74,7 @@ async function handler(
     });
   }
 
+  // Extract the client-provided server ID.
   const { serverId } = req.body;
   if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
     return apiError(req, res, {

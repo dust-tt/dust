@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
@@ -10,6 +11,7 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { UserMessageType, WithAPIErrorResponse } from "@app/types";
 import { InternalPostMessagesRequestBodySchema } from "@app/types";
@@ -91,6 +93,28 @@ async function handler(
       }
 
       const { content, context, mentions } = bodyValidation.right;
+
+      if (context.localMCPServerIds) {
+        const hasServerAccess = await concurrentExecutor(
+          context.localMCPServerIds,
+          async (serverId) =>
+            validateMCPServerAccess(auth, {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              serverId,
+            }),
+          { concurrency: 10 }
+        );
+
+        if (hasServerAccess.some((r) => r === false)) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "invalid_request_error",
+              message: "User does not have access to the local MCP servers.",
+            },
+          });
+        }
+      }
 
       const conversationRes = await getConversation(auth, conversationId);
 
