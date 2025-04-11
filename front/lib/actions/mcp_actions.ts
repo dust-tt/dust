@@ -1,3 +1,4 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 } from "json-schema";
 import { z } from "zod";
 
@@ -13,6 +14,7 @@ import type {
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { isDefaultInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
+import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
@@ -31,9 +33,10 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok, slugify } from "@app/types";
 
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
 
@@ -178,7 +181,7 @@ export async function tryCallMCPTool(
 
     const toolCallResult = await mcpClient.callTool(
       {
-        name: actionConfiguration.name,
+        name: actionConfiguration.originalName,
         arguments: inputs,
       },
       undefined,
@@ -238,6 +241,13 @@ async function getMCPClientConnectionParams(
   });
 }
 
+function getPrefixedToolName(
+  config: MCPServerConfigurationType,
+  originalName: string
+): string {
+  return slugify(config.name) + "___" + slugify(originalName);
+}
+
 /**
  * List the MCP tools for the given agent actions.
  * Returns MCP tools by connecting to the specified MCP servers.
@@ -271,9 +281,56 @@ export async function tryListMCPTools(
         messageId,
       });
 
-      return makeMCPToolConfigurations({
+      const toolConfigurations = makeMCPToolConfigurations({
         config: action,
         tools,
+      });
+
+      // This handle the case where the MCP server configuration is using pre-configured data sources
+      // or tables.
+      // We add the description of the data sources or tables to the tool description so that the model
+      // has more information to make the right choice.
+      // This replicate the current behavior of the Retrieval action for example.
+      let extraDescription: string = "";
+
+      // Only do it when there is a single tool configuration as we only have one description to add.
+      if (toolConfigurations.length === 1 && action.description) {
+        const hasDataSourceConfiguration =
+          findMatchingSchemaKeys(
+            toolConfigurations[0].inputSchema,
+            ConfigurableToolInputJSONSchemas[
+              INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
+            ]
+          ).length > 0;
+
+        const hasTableConfiguration =
+          findMatchingSchemaKeys(
+            toolConfigurations[0].inputSchema,
+            ConfigurableToolInputJSONSchemas[
+              INTERNAL_MIME_TYPES.CONFIGURATION.TABLE
+            ]
+          ).length > 0;
+
+        if (hasDataSourceConfiguration && hasTableConfiguration) {
+          // Might be confusing for the model if we end up in this situation,
+          // which is not a use case we have now.
+          extraDescription += `\nDescription of the data sources and tables:\n${action.description}`;
+        } else if (hasDataSourceConfiguration) {
+          extraDescription += `\nDescription of the data sources:\n${action.description}`;
+        } else if (hasTableConfiguration) {
+          extraDescription += `\nDescription of the tables:\n${action.description}`;
+        }
+      }
+
+      return toolConfigurations.map((toolConfig) => {
+        const prefixedName = getPrefixedToolName(action, toolConfig.name);
+
+        return {
+          ...toolConfig,
+          originalName: toolConfig.name,
+          name: prefixedName,
+          description: toolConfig.description + extraDescription,
+        };
       });
     })
   );
