@@ -2,7 +2,6 @@ import Head from "next/head";
 import React from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { usePokeRegion } from "@app/lib/swr/poke";
 
@@ -18,12 +17,12 @@ export default function PokeLayout({
   title: string;
 }) {
   return (
-    <ThemeProvider>
+    <>
       <Head>
         <title>{"Poke - " + title}</title>
       </Head>
       <PokeLayoutContent>{children}</PokeLayoutContent>
-    </ThemeProvider>
+    </>
   );
 }
 
