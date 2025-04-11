@@ -124,7 +124,7 @@ interface ConversationInnerLayoutProps {
 }
 
 function ConversationInnerLayout({ children }: ConversationInnerLayoutProps) {
-  const { server } = useCoEditionContext();
+  const { isCoEditionOpen } = useCoEditionContext();
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -139,13 +139,13 @@ function ConversationInnerLayout({ children }: ConversationInnerLayoutProps) {
             </GenerationContextProvider>
           </FileDropProvider>
         </ResizablePanel>
-        {server?.isCoEditionEnabled() && <ResizableHandle />}
+        {isCoEditionOpen && <ResizableHandle />}
         <ResizablePanel
           minSize={20}
           defaultSize={50}
-          className={server?.isCoEditionEnabled() ? "" : "hidden"}
+          className={isCoEditionOpen ? "" : "hidden"}
         >
-          {server?.isCoEditionEnabled() && <CoEditionContainer />}
+          {isCoEditionOpen && <CoEditionContainer />}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

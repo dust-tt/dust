@@ -29,7 +29,9 @@ export function insertNodes(
 
       chain()
         .setMark("agentContent")
-        .insertContentAt(insertPos, params.content);
+        .insertContentAt(insertPos, params.content)
+        .unsetMark("agentContent")
+        .run();
 
       return true;
     })

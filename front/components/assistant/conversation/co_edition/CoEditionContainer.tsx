@@ -1,4 +1,4 @@
-import { cn } from "@dust-tt/sparkle";
+import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
 import Placeholder from "@tiptap/extension-placeholder";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -16,7 +16,8 @@ import { insertNodes } from "@app/components/assistant/conversation/co_edition/t
 interface CoEditionContainerProps {}
 
 export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
-  const { serverId, isConnected, server, state } = useCoEditionContext();
+  const { closeCoEdition, isConnected, server, serverId } =
+    useCoEditionContext();
 
   const editor = useEditor({
     extensions: [
@@ -74,17 +75,16 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
 
   // Apply initial nodes when they're available and co-edition is enabled.
   React.useEffect(() => {
+    const state = server?.getState();
     if (
       editor &&
+      state &&
       state.isEnabled &&
       state.initialNodes &&
       state.initialNodes.length > 0
     ) {
       // Apply initial nodes with agent marking.
       state.initialNodes.forEach((node, idx) => {
-        // Set the agent mark before inserting content.
-        editor.commands.setMark("agentContent");
-
         // Use the existing insertNodes utility.
         insertNodes(editor, {
           position: idx,
@@ -97,11 +97,11 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
         server.clearInitialNodes();
       }
     }
-  }, [editor, state.isEnabled, state.initialNodes, server]);
+  }, [editor, server]);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b p-2">
+      <div className="flex flex-row items-center justify-between border-b p-2">
         <div className="text-sm text-gray-500">
           {isConnected ? (
             <span className="text-green-500">
@@ -111,6 +111,12 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
             <span className="text-red-500">Disconnected</span>
           )}
         </div>
+        <Button
+          icon={XMarkIcon}
+          variant="ghost"
+          size="sm"
+          onClick={closeCoEdition}
+        />
       </div>
       <div className="flex-1 overflow-auto p-4">
         <EditorContent editor={editor} />

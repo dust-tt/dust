@@ -10,12 +10,21 @@ interface CoEditionProviderProps {
 }
 
 export function CoEditionProvider({ owner, children }: CoEditionProviderProps) {
-  const { server, state, isConnected, serverId } = useCoEditionServer({
-    owner,
-  });
+  const { closeCoEdition, isCoEditionOpen, isConnected, server, serverId } =
+    useCoEditionServer({
+      owner,
+    });
 
   return (
-    <CoEditionContext.Provider value={{ server, serverId, state, isConnected }}>
+    <CoEditionContext.Provider
+      value={{
+        closeCoEdition,
+        isCoEditionOpen,
+        isConnected,
+        server,
+        serverId,
+      }}
+    >
       {children}
     </CoEditionContext.Provider>
   );

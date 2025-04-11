@@ -27,7 +27,7 @@ export class CoEditionServer {
   setEditor(editor: Editor) {
     this.editor = editor;
 
-    // Register TipTap editor tools if co-edition is enabled.
+    // Register editor tools if co-edition is enabled.
     if (this.state.isEnabled) {
       registerEditorTools(this.server, this.editor);
     }
@@ -42,7 +42,7 @@ export class CoEditionServer {
     // Always register toggle tool.
     registerToggleTool(server, this.handleToggle);
 
-    // Register TipTap tools only if enabled and editor is available.
+    // Register editor tools only if enabled and editor is available.
     if (this.state.isEnabled && this.editor) {
       registerEditorTools(server, this.editor);
     }

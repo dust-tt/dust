@@ -1,7 +1,6 @@
 import type { LightWorkspaceType } from "@dust-tt/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { CoEditionState } from "@app/components/assistant/conversation/co_edition/server";
 import { CoEditionServer } from "@app/components/assistant/conversation/co_edition/server";
 import { CoEditionTransport } from "@app/components/assistant/conversation/co_edition/transport";
 
@@ -11,7 +10,7 @@ interface UseCoEditionServerProps {
 
 export function useCoEditionServer({ owner }: UseCoEditionServerProps) {
   const [isConnected, setIsConnected] = useState(false);
-  const [state, setState] = useState<CoEditionState>({ isEnabled: false });
+  const [isCoEditionOpen, setIsCoEditionOpen] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [serverId, setServerId] = useState<string | null>(null);
   const serverRef = useRef<CoEditionServer | null>(null);
@@ -21,6 +20,10 @@ export function useCoEditionServer({ owner }: UseCoEditionServerProps) {
       await serverRef.current.disconnect();
       setIsConnected(false);
     }
+  }, []);
+
+  const closeCoEdition = useCallback(() => {
+    setIsCoEditionOpen(false);
   }, []);
 
   useEffect(() => {
@@ -34,7 +37,7 @@ export function useCoEditionServer({ owner }: UseCoEditionServerProps) {
         // Listen for state changes.
         server.onStateUpdate((newState) => {
           if (isMounted) {
-            setState(newState);
+            setIsCoEditionOpen(newState.isEnabled);
           }
         });
 
@@ -66,11 +69,12 @@ export function useCoEditionServer({ owner }: UseCoEditionServerProps) {
   }, [disconnect, owner]);
 
   return {
+    closeCoEdition,
+    disconnect,
+    error,
+    isCoEditionOpen,
+    isConnected,
     server: serverRef.current,
     serverId,
-    isConnected,
-    state,
-    error,
-    disconnect,
   };
 }

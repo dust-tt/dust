@@ -1,23 +1,22 @@
 import { createContext } from "react";
 import React from "react";
 
-import type {
-  CoEditionServer,
-  CoEditionState,
-} from "@app/components/assistant/conversation/co_edition/server";
+import type { CoEditionServer } from "@app/components/assistant/conversation/co_edition/server";
 
 interface CoEditionContextType {
+  closeCoEdition: () => void;
+  isCoEditionOpen: boolean;
   isConnected: boolean;
   server: CoEditionServer | null;
   serverId: string | null;
-  state: CoEditionState;
 }
 
 export const CoEditionContext = createContext<CoEditionContextType>({
+  closeCoEdition: () => {},
+  isCoEditionOpen: false,
   isConnected: false,
   server: null,
   serverId: null,
-  state: { isEnabled: false },
 });
 
 export const useCoEditionContext = () => {

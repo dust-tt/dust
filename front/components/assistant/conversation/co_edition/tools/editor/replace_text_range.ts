@@ -40,7 +40,7 @@ export function registerReplaceTextRangeTool(
         .chain()
         .focus()
         .command(({ chain, tr }) => {
-          // Find the node and replace the range
+          // Find the node and replace the range.
           const doc = tr.doc;
           let found = false;
           doc.descendants((node) => {
