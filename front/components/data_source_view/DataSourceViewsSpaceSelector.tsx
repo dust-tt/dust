@@ -44,7 +44,7 @@ export const DataSourceViewsSpaceSelector = ({
   const defaultSpace = useMemo(() => {
     const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
     return firstKey
-      ? (selectionConfigurations[firstKey]?.dataSourceView?.spaceId ?? "")
+      ? selectionConfigurations[firstKey]?.dataSourceView?.spaceId ?? ""
       : "";
   }, [selectionConfigurations]);
 
