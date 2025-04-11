@@ -81,7 +81,7 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Amplify your engineering team's capabilities ",
+  sectionTitle: "Amplify your engineering team’s capabilities ",
   items: [
     {
       icon: MagicIcon,
@@ -158,7 +158,7 @@ export const ROI: ROIProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "It's really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
+    "It’s really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
   name: "Vincent Delagabbe",
   title: "Software Engineer at Alan",
   logo: "/static/landing/logos/color/alan.png",
@@ -172,14 +172,14 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
-    title: "Alan's engineering team speeds up projects 20% with Dust",
+    title: "Alan’s engineering team speeds up projects 20% with Dust",
     content:
       "Alan uses Dust to improve efficiency in the context of an expanding codebase and documentation.",
     href: "https://blog.dust.tt/integrating-ai-workflows-alan/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan-1.png",
   },
   // {
-  //   title: "November Five's journey to minimizing routine tasks with Dust",
+  //   title: "November Five’s journey to minimizing routine tasks with Dust",
   //   content:
   //     "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
   //   href: "https://blog.dust.tt/november-five-ai-transformation-dust/",

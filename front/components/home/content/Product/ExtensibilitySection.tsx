@@ -13,11 +13,11 @@ export function ExtensibilitySection({ page = "default" }) {
         <P size="lg" className="max-w-[700px] text-muted-foreground">
           Developer friendly&nbsp;platform designed to&nbsp;build custom actions
           and&nbsp;application orchestration to&nbsp;fit your
-          team's&nbsp;exact&nbsp;needs.
+          team’s&nbsp;exact&nbsp;needs.
           <br />{" "}
           {page == "default" && (
             <Link href="/home/solutions/dust-platform" shallow={true}>
-              <A variant="primary">More about Dust's&nbsp;Developer Platform</A>
+              <A variant="primary">More about Dust’s&nbsp;Developer Platform</A>
             </Link>
           )}
           {page != "default" && (

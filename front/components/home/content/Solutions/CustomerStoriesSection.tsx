@@ -8,7 +8,7 @@ import {
   CarouselPrevious,
 } from "@app/components/home/Carousel";
 import { BlogBlock } from "@app/components/home/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/ContentComponents";
+import { Grid, H2, P } from "@app/components/home/ContentComponents";
 
 export interface CustomerStory {
   title: string;
@@ -26,6 +26,7 @@ export interface QuoteProps {
 
 interface CustomerStoriesSectionProps {
   title?: string;
+  subtitle?: string;
   stories: CustomerStory[];
 }
 
@@ -33,12 +34,12 @@ export const defaultCustomerStories: CustomerStory[] = [
   {
     title: "Malt cuts support ticket closing time by 50% with Dust",
     content:
-      "Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses.",
+      "Malt streamlines customer support using Dust’s AI platform for rapid, consistent multilingual responses.",
     href: "https://blog.dust.tt/malt-customer-support/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg",
   },
   {
-    title: "Pennylane's journey to deploy Dust for Customer Care teams",
+    title: "Pennylane’s journey to deploy Dust for Customer Care teams",
     content:
       "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
     href: "https://blog.dust.tt/pennylane-dust-customer-support-journey/",
@@ -55,34 +56,43 @@ export const defaultCustomerStories: CustomerStory[] = [
 
 export const CustomerStoriesSection: FC<CustomerStoriesSectionProps> = ({
   title = "Customer stories",
+  subtitle = "Leading enterprises are already transforming their operations with Dust.",
   stories = defaultCustomerStories,
 }) => (
   <Grid gap="gap-8">
     <div className="col-span-11 mt-16 sm:col-span-12">
       <Carousel className="w-full">
-        <div className="mb-2 flex items-center justify-between">
-          <div>
+        <div className="mb-4 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+          <div className="rounded-xl">
             <H2>{title}</H2>
+            <P size="lg" className="text-muted-foreground">
+              {subtitle}
+            </P>
           </div>
-          <div className="flex gap-4">
-            <CarouselPrevious />
-            <CarouselNext />
+          <div className="flex items-center gap-2 sm:gap-4">
+            <CarouselPrevious className="h-8 w-8 sm:h-10 sm:w-10" />
+            <CarouselNext className="h-8 w-8 sm:h-10 sm:w-10" />
           </div>
         </div>
 
-        <CarouselContent className="-ml-8">
+        <CarouselContent className="-ml-4 rounded-xl">
           {stories.map((story, index) => (
             <CarouselItem
               key={index}
-              className="basis-full pl-8 md:basis-1/2 lg:basis-1/3"
+              className="basis-full rounded-xl pl-8 sm:basis-1/2 lg:basis-1/3"
             >
               <BlogBlock
                 title={story.title}
                 content={story.content}
                 href={story.href}
-                className="h-full"
+                className="overflow-hidden"
               >
-                <img src={story.src} alt={story.title} />
+                <img
+                  src={story.src}
+                  alt={`${story.title} thumbnail`}
+                  className="aspect-video w-full object-cover"
+                  style={{ borderRadius: 0 }}
+                />
               </BlogBlock>
             </CarouselItem>
           ))}

@@ -12,9 +12,13 @@ export interface DemoVideoProps {
 
 interface DemoVideoSectionProps {
   demoVideo: DemoVideoProps;
+  id?: string;
 }
 
-export const DemoVideoSection: FC<DemoVideoSectionProps> = ({ demoVideo }) => {
+export const DemoVideoSection: FC<DemoVideoSectionProps> = ({
+  demoVideo,
+  id,
+}) => {
   // Construct the video URL with consistent parameters
   const videoUrl = new URL(demoVideo.videoUrl);
   videoUrl.searchParams.set("seo", "true");
@@ -27,7 +31,7 @@ export const DemoVideoSection: FC<DemoVideoSectionProps> = ({ demoVideo }) => {
   }
 
   return (
-    <div className="flex flex-col justify-center gap-8 pb-4">
+    <div id={id} className="flex flex-col justify-center gap-8 pb-4">
       {demoVideo.sectionTitle && (
         <div>
           <H2>{demoVideo.sectionTitle}</H2>
