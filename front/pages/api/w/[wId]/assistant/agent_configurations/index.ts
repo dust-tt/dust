@@ -310,7 +310,7 @@ export async function createOrUpgradeAgentConfiguration({
     if (actionsWithoutDesc.length) {
       return new Err(
         Error(
-          `Every action must have a description. Missing names for: ${actionsWithoutDesc
+          `Every action must have a description. Missing descriptions for: ${actionsWithoutDesc
             .map((action) => action.type)
             .join(", ")}`
         )
