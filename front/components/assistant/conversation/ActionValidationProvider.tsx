@@ -11,12 +11,12 @@ import {
 } from "@dust-tt/sparkle";
 import { createContext, useCallback, useEffect, useState } from "react";
 
+import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type {
   MCPToolStakeLevelType,
   MCPValidationOutputType,
 } from "@app/lib/actions/constants";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: {

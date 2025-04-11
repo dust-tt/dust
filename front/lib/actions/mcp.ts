@@ -96,7 +96,7 @@ export type MCPToolConfigurationType = (
   originalName: string;
 };
 
-type MCPApproveExecutionEvent = {
+export type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
   created: number;
   configurationId: string;

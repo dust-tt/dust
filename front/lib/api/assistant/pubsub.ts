@@ -1,3 +1,4 @@
+import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -38,7 +39,6 @@ import {
   postUserMessage,
   retryAgentMessage,
 } from "./conversation";
-import { MCPActionRunningEvents } from "@app/lib/actions/mcp";
 
 export async function postUserMessageWithPubSub(
   auth: Authenticator,
@@ -588,7 +588,7 @@ export async function* getMessagesEvents(
   try {
     for (const event of history) {
       const data = JSON.parse(event.message.payload);
-      if (data satisfies MCPActionRunningEvents) {
+      if (data satisfies MCPApproveExecutionEvent) {
         continue;
       }
 
