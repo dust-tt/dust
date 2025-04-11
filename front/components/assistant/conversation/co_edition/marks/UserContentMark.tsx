@@ -1,6 +1,6 @@
 import { Mark, mergeAttributes } from "@tiptap/react";
 
-// Mark for user-typed conten.
+// Mark for user-typed content.
 export const UserContentMark = Mark.create({
   name: "userContent",
 

@@ -9,7 +9,7 @@ import { BlockIdExtension } from "@app/components/assistant/conversation/co_edit
 import { CoEditionParagraphExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionParagraphExtension";
 import { CoEditionStyleExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionStyleExtension";
 import { UserContentMark } from "@app/components/assistant/conversation/co_edition/marks/UserContentMark";
-import { getEditorContentForModelFromDom } from "@app/components/assistant/conversation/co_edition/tools/editor/get_editor_content_for_model";
+import { getEditorContentForModelFromDom } from "@app/components/assistant/conversation/co_edition/tools/editor/get_editor_content";
 import { insertNodes } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
 
 interface CoEditionContainerProps {}
@@ -105,7 +105,7 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
               Connected to MCP Server: {serverId}
             </span>
           ) : (
-            <span className="text-red-500">Disconnected</span>
+            <span className="text-warning-400">Disconnected</span>
           )}
         </div>
         <Button
