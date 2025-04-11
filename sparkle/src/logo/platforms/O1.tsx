@@ -11,7 +11,7 @@ const SvgO1 = (props: SVGProps<SVGSVGElement>) => (
   >
     <g clipPath="url(#o1_svg__a)">
       <path
-        fill="currentColor"
+        fill="#020617"
         d="M0 4a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4Z"
       />
       <path

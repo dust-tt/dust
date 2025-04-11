@@ -9,9 +9,12 @@ const SvgBriefcase = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
+    <path fill="currentColor" d="M7 10h2v7H7v-7ZM17 10h-2v7h2v-7Z" />
     <path
-      fill="#111418"
-      d="M7 5V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v3h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4Zm8 2H9v12h6V7ZM7 7H4v12h3V7Zm10 0v12h3V7h-3ZM9 3v2h6V3H9Z"
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M8 4v2H5a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-3V4a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1Zm11 4a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h14Zm-9-2V5h4v1h-4Z"
+      clipRule="evenodd"
     />
   </svg>
 );
