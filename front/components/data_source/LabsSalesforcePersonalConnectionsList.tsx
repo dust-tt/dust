@@ -8,12 +8,12 @@ import type { CellContext } from "@tanstack/react-table";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import type { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/labs_salesforce";
+import type { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/labs";
 import {
-  useCreateSalesforcePersonalConnection,
-  useDeleteSalesforcePersonalConnection,
-  useSalesforceDataSourcesWithPersonalConnection,
-} from "@app/lib/swr/labs_salesforce";
+  useLabsCreateSalesforcePersonalConnection,
+  useLabsDeleteSalesforcePersonalConnection,
+  useLabsSalesforceDataSourcesWithPersonalConnection,
+} from "@app/lib/swr/labs";
 import type { WorkspaceType } from "@app/types";
 
 type RowData = {
@@ -30,13 +30,13 @@ export const LabsSalesforcePersonalConnectionsList = ({
 }: PersonalConnectionsListProps) => {
   const { isDark } = useTheme();
   const { dataSources, isLoading } =
-    useSalesforceDataSourcesWithPersonalConnection({
+    useLabsSalesforceDataSourcesWithPersonalConnection({
       owner,
     });
   const { createPersonalConnection } =
-    useCreateSalesforcePersonalConnection(owner);
+    useLabsCreateSalesforcePersonalConnection(owner);
   const { deletePersonalConnection } =
-    useDeleteSalesforcePersonalConnection(owner);
+    useLabsDeleteSalesforcePersonalConnection(owner);
 
   const columns = [
     {

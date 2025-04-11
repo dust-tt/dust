@@ -2,9 +2,9 @@ import { Button, CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
 import {
-  useCreateSalesforcePersonalConnection,
-  useSalesforceDataSourcesWithPersonalConnection,
-} from "@app/lib/swr/labs_salesforce";
+  useLabsCreateSalesforcePersonalConnection,
+  useLabsSalesforceDataSourcesWithPersonalConnection,
+} from "@app/lib/swr/labs";
 import type { LightWorkspaceType } from "@app/types";
 
 export function LabsSalesforceAuthenticationError({
@@ -14,12 +14,12 @@ export function LabsSalesforceAuthenticationError({
   owner: LightWorkspaceType;
   retryHandler: () => void;
 }) {
-  const { dataSources } = useSalesforceDataSourcesWithPersonalConnection({
+  const { dataSources } = useLabsSalesforceDataSourcesWithPersonalConnection({
     owner,
   });
   const dataSource = dataSources[0];
   const { createPersonalConnection } =
-    useCreateSalesforcePersonalConnection(owner);
+    useLabsCreateSalesforcePersonalConnection(owner);
 
   useEffect(() => {
     if (dataSource && dataSource.personalConnection) {

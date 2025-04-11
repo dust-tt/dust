@@ -537,7 +537,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
               messageId: agentMessage.sId,
               error: {
                 code: "require_salesforce_authentication" as const,
-                message: `The query requires authentication. Please connect to the data source.`,
+                message: `The query requires authentication. Please connect to Salesforce.`,
               },
             };
             return;

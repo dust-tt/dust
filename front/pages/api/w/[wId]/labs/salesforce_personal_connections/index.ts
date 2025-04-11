@@ -8,7 +8,7 @@ import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import type { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/labs_salesforce";
+import type { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/labs";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
