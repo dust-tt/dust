@@ -105,6 +105,14 @@ export function stripNullBytes(text: string): string {
   return text.replace(/\0/g, "");
 }
 
+export function asDisplayName(name?: string | null) {
+  if (!name) {
+    return "";
+  }
+
+  return name.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 // UUID utils.
 
 export function isValidUUIDv4(uuid: string): boolean {

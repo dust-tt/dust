@@ -17,6 +17,7 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 type AddActionMenuProps = {
   owner: WorkspaceType;
@@ -69,7 +70,7 @@ export const AddActionMenu = ({
             .map((mcpServer) => (
               <DropdownMenuItem
                 key={mcpServer.id}
-                label={mcpServer.name}
+                label={asDisplayName(mcpServer.name)}
                 icon={() => <Avatar visual={getVisual(mcpServer)} size="xs" />}
                 description={mcpServer.description}
                 onClick={async () => {

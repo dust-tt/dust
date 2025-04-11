@@ -28,7 +28,12 @@ import {
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
-import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import {
+  asDisplayName,
+  assertNever,
+  removeNulls,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;
@@ -91,7 +96,7 @@ export function AssistantToolsSection({
                 key={action.title}
               >
                 <Avatar visual={action.visual} size="xs" />
-                <div>{action.title}</div>
+                <div>{asDisplayName(action.title)}</div>
               </div>
             ))}
           </div>

@@ -18,6 +18,7 @@ import {
   useMCPServerViews,
 } from "@app/lib/swr/mcp_server_views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 import { RequestActionsModal } from "./mcp/RequestActionsModal";
 import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";
@@ -43,7 +44,7 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
           </div>
         </DataTable.CellContent>
       ),
-      accessorFn: (row: RowData) => row.name,
+      accessorFn: (row: RowData) => asDisplayName(row.name),
       meta: {
         className: "w-80",
       },

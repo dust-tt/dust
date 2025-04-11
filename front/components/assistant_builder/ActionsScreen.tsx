@@ -97,7 +97,11 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
+import {
+  asDisplayName,
+  assertNever,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
+} from "@app/types";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -173,7 +177,7 @@ function actionIcon(
 
 function actionDisplayName(action: AssistantBuilderActionConfiguration) {
   if (action.type === "MCP") {
-    return action.name;
+    return asDisplayName(action.name);
   }
   return `${ACTION_SPECIFICATIONS[action.type].label}${
     !isDefaultActionName(action) ? " - " + action.name : ""

@@ -1,6 +1,6 @@
 import {
   Avatar,
-  classNames,
+  Card,
   ContentMessage,
   InformationCircleIcon,
   Label,
@@ -30,7 +30,7 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { assertNever, slugify } from "@app/types";
+import { asDisplayName, assertNever, slugify } from "@app/types";
 
 interface ActionMCPProps {
   owner: LightWorkspaceType;
@@ -281,32 +281,40 @@ export function ActionMCP({
                                 id={mcpServerView.id}
                                 iconPosition="start"
                                 customItem={
-                                  <div className="flex flex-row items-center gap-2">
-                                    <div>
-                                      <Avatar
-                                        visual={getVisual(mcpServerView.server)}
-                                      />
-                                    </div>
-                                    <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
-                                      <div className="flex flex-col gap-1">
-                                        <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                                          <Label
-                                            className={classNames(
-                                              "font-bold",
-                                              "align-middle",
-                                              "text-foreground dark:text-foreground-night"
+                                  <Label
+                                    htmlFor={mcpServerView.id}
+                                    className="font-normal"
+                                  >
+                                    <Card
+                                      variant="tertiary"
+                                      size="sm"
+                                      onClick={() => {
+                                        handleServerSelection(mcpServerView);
+                                      }}
+                                    >
+                                      <div className="flex flex-row items-center gap-2">
+                                        <div>
+                                          <Avatar
+                                            visual={getVisual(
+                                              mcpServerView.server
                                             )}
-                                            htmlFor={mcpServerView.id}
-                                          >
-                                            {mcpServerView.server.name}
-                                          </Label>
+                                          />
                                         </div>
-                                        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                                          {mcpServerView.server.description}
+                                        <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
+                                          <div className="flex flex-col gap-1">
+                                            <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                                              {asDisplayName(
+                                                mcpServerView.server.name
+                                              )}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                                              {mcpServerView.server.description}
+                                            </div>
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
-                                  </div>
+                                    </Card>
+                                  </Label>
                                 }
                                 onClick={() => {
                                   handleServerSelection(mcpServerView);

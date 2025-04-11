@@ -36,6 +36,7 @@ import {
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 type MCPServerDetailsProps = {
   owner: WorkspaceType;
@@ -107,7 +108,7 @@ export function MCPServerDetails({
           </DialogHeader>
           <DialogContainer>
             Are you sure you want to remove the action "
-            {mcpServerToDelete?.name}"?
+            {asDisplayName(mcpServerToDelete?.name)}"?
             <div className="mt-2">
               <b>This action cannot be undone.</b>
             </div>
@@ -157,7 +158,7 @@ export function MCPServerDetails({
                       : "heading-lg"
                   )}
                 >
-                  {effectiveMCPServer?.name}
+                  {asDisplayName(effectiveMCPServer?.name)}
                 </div>
                 <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {effectiveMCPServer?.description}

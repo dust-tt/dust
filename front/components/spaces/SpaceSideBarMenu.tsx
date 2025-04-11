@@ -46,7 +46,11 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
+import {
+  asDisplayName,
+  assertNever,
+  DATA_SOURCE_VIEW_CATEGORIES,
+} from "@app/types";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -651,7 +655,7 @@ const SpaceActionItem = ({
   return (
     <Tree.Item
       type="leaf"
-      label={action.server.name}
+      label={asDisplayName(action.server.name)}
       visual={() => <Avatar visual={getVisual(action.server)} size="xs" />}
       areActionsFading={false}
     />
