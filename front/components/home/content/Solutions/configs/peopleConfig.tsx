@@ -161,14 +161,14 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
-    title: "30% time savings in HR: How Alan's People team scaled with Dust",
+    title: "30% time savings in HR: How Alan’s People team scaled with Dust",
     content:
-      "Alan's HR team quadrupled AI adoption and saved 30% of time spent on employee queries by deploying custom Dust agents for people operations.",
+      "Alan’s HR team quadrupled AI adoption and saved 30% of time spent on employee queries by deploying custom Dust agents for people operations.",
     href: "https://blog.dust.tt/how-lucas-people-analyst-at-alan-introduced-dust-to-his-hr-team/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan.png",
   },
   // {
-  //   title: "Kyriba's RFP Agent for improving pre-sales efficiency",
+  //   title: "Kyriba’s RFP Agent for improving pre-sales efficiency",
   //   content:
   //     "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
   //   href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
