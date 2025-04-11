@@ -8,7 +8,6 @@ import { useCoEditionContext } from "@app/components/assistant/conversation/co_e
 import { BlockIdExtension } from "@app/components/assistant/conversation/co_edition/extensions/BlockIdExtension";
 import { CoEditionParagraphExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionParagraphExtension";
 import { CoEditionStyleExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionStyleExtension";
-import { AgentContentMark } from "@app/components/assistant/conversation/co_edition/marks/AgentContentMark";
 import { UserContentMark } from "@app/components/assistant/conversation/co_edition/marks/UserContentMark";
 import { getEditorContentForModelFromDom } from "@app/components/assistant/conversation/co_edition/tools/editor/get_editor_content_for_model";
 import { insertNodes } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
@@ -25,7 +24,6 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
         paragraph: false,
       }),
       CoEditionParagraphExtension,
-      AgentContentMark,
       UserContentMark,
       CoEditionStyleExtension,
       BlockIdExtension.configure({
@@ -60,7 +58,6 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
       handleKeyDown: () => {
         // On any user input, wrap the current selection in UserContentMark.
         // TODO(2025-04-10, flav): Narrow down to only changes.
-        editor.commands.unsetMark("agentContent");
         editor.commands.setMark("userContent");
       },
     },

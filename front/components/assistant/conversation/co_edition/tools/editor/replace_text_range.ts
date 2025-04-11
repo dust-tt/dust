@@ -52,7 +52,6 @@ export function registerReplaceTextRangeTool(
                   to: params.endOffset,
                 })
                 // Then insert the new content with agentContent mark.
-                .setMark("agentContent")
                 .insertContent(params.content, {
                   parseOptions: { preserveWhitespace: "full" },
                 });

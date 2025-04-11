@@ -7,7 +7,7 @@ export const UserContentMark = Mark.create({
   addAttributes() {
     return {
       class: {
-        default: "text-purple-600", // Purple color.
+        default: "text-gray-600", // Gray color.
       },
     };
   },

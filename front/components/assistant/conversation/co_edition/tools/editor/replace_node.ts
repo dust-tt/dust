@@ -32,7 +32,7 @@ export function registerReplaceNodeTool(server: McpServer, editor: Editor) {
       editor
         .chain()
         .focus()
-        .command(({ tr, chain }) => {
+        .command(({ tr, commands }) => {
           // Find the node.
           const doc = tr.doc;
           let found = false;
@@ -40,12 +40,10 @@ export function registerReplaceNodeTool(server: McpServer, editor: Editor) {
           doc.descendants((node, pos) => {
             if (node.attrs["data-id"] === params.nodeId) {
               // Replace content using insertContentAt.
-              chain()
-                .setMark("agentContent")
-                .insertContentAt(
-                  { from: pos, to: pos + node.nodeSize },
-                  params.content
-                );
+              commands.insertContentAt(
+                { from: pos, to: pos + node.nodeSize },
+                params.content
+              );
               found = true;
 
               return false;
