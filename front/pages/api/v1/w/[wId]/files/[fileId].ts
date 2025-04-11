@@ -9,7 +9,9 @@ import {
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -33,23 +35,25 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { fileId } = req.query;
-  if (typeof fileId !== "string") {
+
+  if (!fileId || typeof fileId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Missing fileId query parameter.",
+        message: "The `fileId` query parameter is required.",
       },
     });
   }
 
   const file = await FileResource.fetchById(auth, fileId);
+
   if (!file) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
-        message: "File not found.",
+        message: "The file was not found.",
       },
     });
   }
@@ -62,6 +66,45 @@ async function handler(
         api_error: {
           type: "invalid_request_error",
           message: "The file use case is not supported by the API.",
+        },
+      });
+    }
+  }
+
+  // Check if the user has access to the file based on its useCase and useCaseMetadata
+  if (file.useCase === "conversation" && file.useCaseMetadata?.conversationId) {
+    // For conversation files, check if the user has access to the conversation
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      file.useCaseMetadata.conversationId
+    );
+    if (
+      !conversation ||
+      !ConversationResource.canAccessConversation(auth, conversation)
+    ) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+  } else if (
+    file.useCase === "folders_document" &&
+    file.useCaseMetadata?.spaceId
+  ) {
+    // For folder documents, check if the user has access to the space
+    const space = await SpaceResource.fetchById(
+      auth,
+      file.useCaseMetadata.spaceId
+    );
+    if (!space || !space.canRead(auth)) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
         },
       });
     }
