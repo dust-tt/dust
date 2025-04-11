@@ -2,7 +2,6 @@ import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
 type EventCallback = (event: EventPayload | "close") => void;
