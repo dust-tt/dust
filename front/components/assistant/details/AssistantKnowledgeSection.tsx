@@ -168,8 +168,8 @@ export function AssistantKnowledgeSection({
   }, [categorizedActions.queryTables, dataSourceViews]);
 
   if (
-    categorizedActions.retrieval.length === 0 &&
-    categorizedActions.queryTables.length === 0
+    Object.values(retrievalByDataSources).length === 0 &&
+    Object.values(queryTableByDataSources).length === 0
   ) {
     return null;
   }
@@ -181,9 +181,9 @@ export function AssistantKnowledgeSection({
       </div>
       <div className="rounded-xl border bg-muted-background p-2 dark:bg-muted-background-night">
         <Tree>
-          <Tree.Item label="Documents" visual={DocumentIcon}>
-            {Object.values(retrievalByDataSources).length > 0 &&
-              Object.values(retrievalByDataSources).map(
+          {Object.values(retrievalByDataSources).length > 0 && (
+            <Tree.Item label="Documents" visual={DocumentIcon}>
+              {Object.values(retrievalByDataSources).map(
                 (dataSources, index) => (
                   <div
                     className="flex flex-col gap-2"
@@ -198,10 +198,11 @@ export function AssistantKnowledgeSection({
                   </div>
                 )
               )}
-          </Tree.Item>
-          <Tree.Item label="Tables" visual={TableIcon}>
-            {Object.values(queryTableByDataSources).length > 0 &&
-              Object.values(queryTableByDataSources).map(
+            </Tree.Item>
+          )}
+          {Object.values(queryTableByDataSources).length > 0 && (
+            <Tree.Item label="Tables" visual={TableIcon}>
+              {Object.values(queryTableByDataSources).map(
                 (dataSources, index) => (
                   <div
                     className="flex flex-col gap-2"
@@ -216,7 +217,8 @@ export function AssistantKnowledgeSection({
                   </div>
                 )
               )}
-          </Tree.Item>
+            </Tree.Item>
+          )}
         </Tree>
       </div>
     </div>
