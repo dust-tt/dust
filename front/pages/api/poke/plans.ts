@@ -6,8 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Plan } from "@app/lib/models/plan";
-import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { PlanType, WithAPIErrorResponse } from "@app/types";
 
@@ -77,10 +76,10 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const planModels = await Plan.findAll({ order: [["createdAt", "ASC"]] });
-      const plans: PlanType[] = planModels.map((plan) =>
-        renderPlanFromModel({ plan })
-      );
+      const planResources = await PlanResource.listAll(auth, {
+        order: [["createdAt", "ASC"]],
+      });
+      const plans: PlanType[] = planResources.map((plan) => plan.toJSON());
 
       res.status(200).json({
         plans,
@@ -100,8 +99,7 @@ async function handler(
         });
       }
       const body = bodyValidation.right;
-
-      await Plan.upsert({
+      await PlanResource.upsertByPlanCode({
         code: body.code,
         name: body.name,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,

@@ -1,16 +1,10 @@
-import type { Attributes } from "sequelize";
-
-import { Plan } from "@app/lib/models/plan";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
-
-export type PlanAttributes = Omit<
-  Attributes<Plan>,
-  "id" | "createdAt" | "updatedAt"
->;
+import type { PlanAttributes } from "@app/lib/resources/plan_resource";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 
 /**
  * We have 3 categories of plans:
@@ -106,16 +100,12 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
  */
 export const upsertFreePlans = async () => {
   for (const planData of FREE_PLANS_DATA) {
-    const plan = await Plan.findOne({
-      where: {
-        code: planData.code,
-      },
-    });
+    const plan = await PlanResource.fetchByPlanCode(planData.code);
     if (plan === null) {
-      await Plan.create(planData);
+      await PlanResource.makeNew(planData);
       console.log(`Free plan ${planData.code} created.`);
     } else {
-      await plan.update(planData);
+      await plan.setPlanData(planData);
       console.log(`Free plan ${planData.code} updated.`);
     }
   }

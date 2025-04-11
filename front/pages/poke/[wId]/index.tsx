@@ -36,11 +36,12 @@ import {
 } from "@app/lib/api/workspace";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { Plan, Subscription } from "@app/lib/models/plan";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import type { ActionRegistry } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { PlanResource } from "@app/lib/resources/plan_resource";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 import type {
   ExtensionConfigurationType,
   SubscriptionType,
@@ -76,11 +77,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   });
 
   const plans = keyBy(
-    await Plan.findAll({
-      where: {
-        id: subscriptionModels.map((s) => s.planId),
-      },
-    }),
+    await PlanResource.fetchBySubscriptionModels(subscriptionModels),
     "id"
   );
 

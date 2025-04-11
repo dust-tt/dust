@@ -1,9 +1,12 @@
 import { checkSeatCountForWorkspace } from "@app/lib/api/workspace";
-import { Plan, Subscription } from "@app/lib/models/plan";
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
+import {
+  PlanModel,
+  Subscription,
+} from "@app/lib/resources/storage/models/plans";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -19,7 +22,7 @@ async function checkWorkspaceSeatCount(
       workspaceId: workspace.id,
       status: "active",
     },
-    include: [Plan],
+    include: [PlanModel],
   });
   const localLogger = logger.child({
     workspaceId: workspace.sId,

@@ -1,50 +1,6 @@
-import type { Subscription } from "@app/lib/models/plan";
-import type { PlanAttributes } from "@app/lib/plans/free_plans";
-import type { PlanType, SubscriptionType } from "@app/types";
-
-// Helper function to render PlanType from PlanAttributes
-export function renderPlanFromModel({
-  plan,
-}: {
-  plan: PlanAttributes;
-}): PlanType {
-  return {
-    code: plan.code,
-    name: plan.name,
-    limits: {
-      assistant: {
-        isSlackBotAllowed: plan.isSlackbotAllowed,
-        maxMessages: plan.maxMessages,
-        maxMessagesTimeframe: plan.maxMessagesTimeframe,
-      },
-      connections: {
-        isConfluenceAllowed: plan.isManagedConfluenceAllowed,
-        isSlackAllowed: plan.isManagedSlackAllowed,
-        isNotionAllowed: plan.isManagedNotionAllowed,
-        isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-        isGithubAllowed: plan.isManagedGithubAllowed,
-        isIntercomAllowed: plan.isManagedIntercomAllowed,
-        isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
-        isSalesforceAllowed: plan.isManagedSalesforceAllowed,
-      },
-      dataSources: {
-        count: plan.maxDataSourcesCount,
-        documents: {
-          count: plan.maxDataSourcesDocumentsCount,
-          sizeMb: plan.maxDataSourcesDocumentsSizeMb,
-        },
-      },
-      users: {
-        maxUsers: plan.maxUsersInWorkspace,
-      },
-      vaults: {
-        maxVaults: plan.maxVaultsInWorkspace,
-      },
-      canUseProduct: plan.canUseProduct,
-    },
-    trialPeriodDays: plan.trialPeriodDays,
-  };
-}
+import type { PlanResource } from "@app/lib/resources/plan_resource";
+import type { Subscription } from "@app/lib/resources/storage/models/plans";
+import type { SubscriptionType } from "@app/types";
 
 // Helper in charge of rendering the SubscriptionType object form PlanAttributes and optionally an
 // active Subscription model.
@@ -52,7 +8,7 @@ export function renderSubscriptionFromModels({
   plan,
   activeSubscription,
 }: {
-  plan: PlanAttributes;
+  plan: PlanResource;
   activeSubscription: Subscription | null;
 }): SubscriptionType {
   return {
@@ -64,7 +20,7 @@ export function renderSubscriptionFromModels({
     endDate: activeSubscription?.endDate?.getTime() || null,
     paymentFailingSince:
       activeSubscription?.paymentFailingSince?.getTime() || null,
-    plan: renderPlanFromModel({ plan }),
+    plan: plan.toJSON(),
     requestCancelAt: activeSubscription?.requestCancelAt?.getTime() ?? null,
   };
 }
