@@ -60,7 +60,7 @@ function FunctionsSection() {
         "Extract competitor insights automatically",
         "Generate and refine user stories",
       ],
-      visualSrc: "/static/landing/functions/product and design.png",
+      visualSrc: "/static/landing/functions/product_and_design.png",
       href: "/home/solutions/product",
     },
     {
