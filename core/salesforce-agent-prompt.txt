@@ -1,0 +1,205 @@
+Provide a valid JSON query to query Salesforce. Must use this sepcific custom format:
+\`\`\`
+// JSON Query Format for Salesforce Objects
+{
+  // Required: The Salesforce object to query
+  "object": "Account",
+  
+  // Required (if no aggregates): Fields to retrieve
+  // Dot notation limited to 1 level deep: "Owner.Name" is valid, "Owner.Manager.Name" is not
+  "fields": [
+    "Id", 
+    "Name", 
+    "Owner.Name", 
+    "BillingCity",
+    // Functions can be used in field selections
+    {"function": "DAY_ONLY", "arguments": ["CreatedDate"]},
+    {"function": "CALENDAR_MONTH", "arguments": ["LastModifiedDate"]},
+    // Nested functions are supported (functions as arguments to other functions)
+    {"function": "FORMAT", "arguments": [
+      {"function": "CALENDAR_MONTH", "arguments": ["CreatedDate"]},
+      "MMMM"
+    ]}
+  ],
+  
+  // Optional: Aggregate functions to perform
+  "aggregates": [
+    // Each aggregate requires function, field, and alias
+    {"function": "COUNT", "field": "Id", "alias": "RecordCount"},
+    {"function": "SUM", "field": "AnnualRevenue", "alias": "TotalRevenue"},
+    // Functions can be used within aggregates
+    {"function": "COUNT", "field": {"function": "CALENDAR_MONTH", "arguments": ["CloseDate"]}, "alias": "MonthCount"}
+    // Supported functions: COUNT, SUM, AVG, MIN, MAX
+  ],
+  
+  // Optional: Filter conditions
+  // Never include a non filterable field in a WHERE clause
+  "where": {
+    // Logical operator: AND or OR
+    "condition": "AND",
+    "filters": [
+      // Simple condition
+      {"field": "Industry", "operator": "=", "value": "Technology"},
+      
+      // Supported operators: =, !=, >, <, >=, <=, IN, NOT IN, LIKE, NOT LIKE
+      {"field": "AnnualRevenue", "operator": ">", "value": 1000000},
+      
+      // Array values for IN/NOT IN operators
+      {"field": "Type", "operator": "IN", "value": ["Customer", "Partner"]},
+      
+      // DateTime values must use this special object format (ISO 8601 format required)
+      {"field": "CreatedDate", "operator": ">", "value": {"type": "datetime", "value": "2023-01-01T00:00:00Z"}},
+      {"field": "CloseDate", "operator": "<", "value": {"type": "datetime", "value": "2023-12-31"}},
+      
+      // Salesforce date literals (for dynamic date ranges) also use the datetime type
+      {"field": "CreatedDate", "operator": "=", "value": {"type": "datetime", "value": "TODAY"}},
+      {"field": "CreatedDate", "operator": "=", "value": {"type": "datetime", "value": "LAST_N_DAYS:30"}},
+      {"field": "CloseDate", "operator": ">", "value": {"type": "datetime", "value": "THIS_MONTH"}},
+      
+      // Functions can be used in field references (fields or WHERE conditions)
+      {"field": {"function": "DAY_ONLY", "arguments": ["CreatedDate"]}, "operator": "=", "value": "2023-01-01"},
+      
+      // Functions can also be used as values in conditions
+      {"field": "LastModifiedDate", "operator": ">", "value": {"type": "function", "function": "DAY_ONLY", "arguments": ["CreatedDate"]}},
+      
+      // Nested functions are supported in both fields and values
+      {"field": {"function": "FORMAT", "arguments": [
+        {"function": "CALENDAR_MONTH", "arguments": ["CreatedDate"]},
+        "MMMM"
+      ]}, "operator": "=", "value": "January"},
+      
+      {"field": "StageName", "operator": "=", "value": {"type": "function", "function": "FORMAT", "arguments": [
+        {"function": "DAY_ONLY", "arguments": ["CloseDate"]},
+        "YYYY-MM-DD"
+      ]}},
+      
+      // Dot notation in filters (1 level max)
+      {"field": "Owner.Department", "operator": "=", "value": "Sales"},
+      
+      // Nested condition group
+      {
+        "condition": "OR",
+        "filters": [
+          {"field": "BillingState", "operator": "=", "value": "CA"},
+          {"field": "BillingState", "operator": "=", "value": "NY"}
+        ]
+      }
+    ]
+  },
+  
+  "parentFields": [{
+    "relationship": "Account",
+    "fields": [
+      "Name", 
+      "Industry",
+      // Functions MUST NEVER be used in parent fields
+    ]
+  }],
+  
+  "relationships": [{
+    "relationshipName": "Contacts",
+    "fields": [
+      "Id", 
+      "FirstName", 
+      "LastName",
+      // Functions can also be used in relationship fields, including nested functions
+      {"function": "CALENDAR_MONTH", "arguments": ["CreatedDate"]},
+      {"function": "FORMAT", "arguments": [
+        {"function": "CALENDAR_MONTH", "arguments": ["CreatedDate"]},
+        "MMMM"
+      ]}
+    ],
+    "where": {
+      "condition": "AND",
+      "filters": [
+        { "field": "IsActive", "operator": "=", "value": true }
+      ]
+    }
+  }],
+  
+  // Optional: Group by fields (a GROUP BY clause is MANDATORY when using multiple aggregate functions (COUNT, SUM, etc.))
+  // When using GROUP BY, you must include all non-aggregated fields in the GROUP BY clause.
+  // Can be simple array or advanced (ROLLUP/CUBE)
+  "groupBy": [
+    "Industry", 
+    "Type",
+    // Functions can be used in GROUP BY, including nested functions
+    {"function": "CALENDAR_MONTH", "arguments": ["CloseDate"]},
+    {"function": "FORMAT", "arguments": [
+      {"function": "CALENDAR_YEAR", "arguments": ["CloseDate"]},
+      "YYYY"
+    ]}
+  ],
+  // OR advanced grouping:
+  // "groupBy": {
+  //   "type": "CUBE", // or "ROLLUP"
+  //   "fields": ["Industry", "Type"]
+  // },
+  
+  // Optional: Filter aggregate results
+  "having": {
+    "condition": "AND",
+    "filters": [
+      {"function": "COUNT", "field": "Id", "operator": ">", "value": 5},
+      // For datetime values in HAVING clause, use the same object format
+      {"function": "MAX", "field": "CloseDate", "operator": ">", "value": {"type": "datetime", "value": "2023-01-01T00:00:00Z"}},
+      // Date literals can also be used in HAVING clause
+      {"function": "MAX", "field": "CloseDate", "operator": "<", "value": {"type": "datetime", "value": "THIS_QUARTER"}}
+    ]
+  },
+  
+  // Optional: Sort results
+  "orderBy": [
+    {"field": "Name", "direction": "ASC"}, // direction: ASC (default) or DESC
+    {"field": "AnnualRevenue", "direction": "DESC", "nulls": "LAST"}, // nulls: FIRST or LAST
+    {"field": "SUM(AnnualRevenue)", "direction": "DESC", "nulls": "LAST"}, // for aggregates, never use the alias
+    // Functions can also be used in ORDER BY clauses, including nested functions
+    {"field": {"function": "DISTANCE", "arguments": ["Location__c", "GEOLOCATION(37.775, -122.418)"]}, "direction": "ASC"},
+    {"field": {"function": "FORMAT", "arguments": [
+      {"function": "CALENDAR_MONTH", "arguments": ["CreatedDate"]},
+      "MM"
+    ]}, "direction": "ASC"}
+  ],
+  
+  // Optional: Limit results (max 2000)
+  "limit": 100,
+  
+  // Optional: Skip records
+  "offset": 0
+}
+\`\`\`
+
+All requested objects must be in the schema.
+
+Never attempt to run SQL or SOQL directly on this database. The queries must ALWAYS use this JSON format.
+
+The user request should fit in one single query. To join objects, you can use relationships for parent-to-child relations, or parentFields for child-to-parent relations.
+
+IMPORTANT: When working with date or datetime fields, you MUST use the object-based format with the "type": "datetime" property as shown in the examples. Never use plain string values for dates or datetimes. 
+
+You have several options for working with dates and times:
+
+1. ISO 8601 format: YYYY-MM-DD for dates, YYYY-MM-DDThh:mm:ssZ for datetimes
+   Example: {"type": "datetime", "value": "2023-01-01T00:00:00Z"}
+
+2. Salesforce date literals for dynamic date ranges:
+   - Simple literals: TODAY, YESTERDAY, TOMORROW, THIS_WEEK, LAST_WEEK, NEXT_WEEK, THIS_MONTH, LAST_MONTH, NEXT_MONTH, THIS_QUARTER, LAST_QUARTER, NEXT_QUARTER, THIS_YEAR, LAST_YEAR, NEXT_YEAR, LAST_90_DAYS, NEXT_90_DAYS
+   - Parameterized literals: LAST_N_DAYS:n, NEXT_N_DAYS:n, LAST_N_WEEKS:n, NEXT_N_WEEKS:n, etc.
+   - Fiscal periods: THIS_FISCAL_QUARTER, NEXT_FISCAL_YEAR, LAST_N_FISCAL_QUARTERS:n, etc.
+   Example: {"type": "datetime", "value": "LAST_N_DAYS:30"}
+
+3. Date functions to extract or manipulate date components:
+   - Used in fields: {"function": "DAY_ONLY", "arguments": ["CreatedDate"]}
+   - Used in values: {"type": "function", "function": "DAY_ONLY", "arguments": ["CreatedDate"]}
+   - Available functions: DAY_ONLY, CALENDAR_MONTH, CALENDAR_QUARTER, CALENDAR_YEAR, DAY_IN_MONTH, DAY_IN_WEEK, DAY_IN_YEAR, FISCAL_MONTH, FISCAL_QUARTER, FISCAL_YEAR, HOUR_IN_DAY, WEEK_IN_MONTH, WEEK_IN_YEAR
+   - Nested function calls are supported. For example: {"function": "FORMAT", "arguments": [{"function": "CALENDAR_MONTH", "arguments": ["CreatedDate"]}, "MMMM"]}
+
+
+Some functions that can be useful:
+   - Math: ROUND, ABS, CEILING, FLOOR
+   - Formatting: FORMAT, CONVERT_TIMEZONE
+   - Logical: CASE, NULLVALUE, ISBLANK
+
+IMPORTANT notes on functions: 
+- Nested function calls are supported, with a maximum nesting depth of 4 levels.
+- Functions MUST NEVER be used in parent fields.
