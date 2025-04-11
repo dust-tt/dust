@@ -88,6 +88,9 @@ export const DocumentUploadOrEditModal = ({
   const fileUploaderService = useFileUploaderService({
     owner,
     useCase: "folders_document",
+    useCaseMetadata: {
+      spaceId: dataSourceView.spaceId,
+    },
   });
 
   const [editionStatus, setEditionStatus] = useState({

@@ -83,7 +83,7 @@ export function MCPActionDetails({
                 return (
                   <div key={file.fileId}>
                     <a
-                      href={file.fileId}
+                      href={`/api/w/${owner.sId}/files/${file.fileId}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >

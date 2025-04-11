@@ -23,7 +23,8 @@ export type FileUseCase =
   | "upsert_table";
 
 export type FileUseCaseMetadata = {
-  conversationId: string;
+  conversationId?: string;
+  spaceId?: string;
   generatedTables?: string[];
 };
 

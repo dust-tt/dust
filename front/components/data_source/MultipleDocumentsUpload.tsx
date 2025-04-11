@@ -62,6 +62,9 @@ export const MultipleDocumentsUpload = ({
   const fileUploaderService = useFileUploaderService({
     owner,
     useCase: "folders_document",
+    useCaseMetadata: {
+      spaceId: dataSourceView.spaceId,
+    },
   });
 
   const doUpsertFileAsDataSourceEntry = useUpsertFileAsDatasourceEntry(

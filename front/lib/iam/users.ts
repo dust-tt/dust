@@ -231,7 +231,7 @@ export async function mergeUserIdentities({
   const auth0ManagemementClient = getAuth0ManagemementClient();
 
   const users = await auth0ManagemementClient.usersByEmail.getByEmail({
-    email: primaryUser.email.toLowerCase(),
+    email: primaryUser.email,
   });
 
   const primaryUserAuth0 = users.data.find(
