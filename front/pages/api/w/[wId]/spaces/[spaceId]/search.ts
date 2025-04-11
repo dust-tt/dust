@@ -11,6 +11,7 @@ import { searchContenNodesInSpace } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   DataSourceViewContentNode,
@@ -33,6 +34,7 @@ const SearchRequestBody = t.type({
   ]),
   includeDataSources: t.boolean,
   limit: t.number,
+  parentId: t.union([t.undefined, t.string]),
 });
 export type PostSpaceSearchRequestBody = t.TypeOf<typeof SearchRequestBody>;
 
@@ -82,7 +84,7 @@ async function handler(
     });
   }
 
-  const { dataSourceViewIds, includeDataSources, query, viewType } =
+  const { dataSourceViewIds, includeDataSources, query, viewType, parentId } =
     bodyValidation.right;
 
   // If no data source views are provided, use all data source views in the space.
@@ -91,7 +93,7 @@ async function handler(
       ? await DataSourceViewResource.listBySpace(auth, space)
       : await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds);
 
-  if (query.length < MIN_SEARCH_QUERY_SIZE) {
+  if (query.length < MIN_SEARCH_QUERY_SIZE && !parentId) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -121,6 +123,15 @@ async function handler(
     });
   }
 
+  logger.info(
+    {
+      workspaceId: auth.workspace()?.sId,
+      params: bodyValidation.right,
+      spaceId: space.sId,
+    },
+    "Search knowledge (single space)"
+  );
+
   const searchRes = await searchContenNodesInSpace(
     auth,
     space,
@@ -134,6 +145,7 @@ async function handler(
       },
       query,
       viewType,
+      parentId,
     }
   );
 

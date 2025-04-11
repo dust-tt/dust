@@ -6,11 +6,11 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "table_utils",
+  name: "tables_debugger",
   version: "1.0.0",
   description:
     "Demo server showing a basic interaction with a table configuration.",
-  icon: "table",
+  visual: "table",
   authorization: null,
 };
 

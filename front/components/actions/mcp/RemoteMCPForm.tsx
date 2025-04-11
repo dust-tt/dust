@@ -19,7 +19,12 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import { ALLOWED_ICONS, MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import {
+  ALLOWED_ICONS,
+  DEFAULT_MCP_SERVER_ICON,
+  isAllowedIconType,
+  MCP_SERVER_ICONS,
+} from "@app/lib/actions/mcp_icons";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useMCPServers,
@@ -27,6 +32,7 @@ import {
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -56,9 +62,11 @@ export function RemoteMCPForm({
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
     defaultValues: {
-      name: mcpServer.name,
+      name: asDisplayName(mcpServer.name),
       description: mcpServer.description,
-      icon: mcpServer.icon,
+      icon: isAllowedIconType(mcpServer.visual)
+        ? mcpServer.visual
+        : DEFAULT_MCP_SERVER_ICON,
     },
   });
 

@@ -25,6 +25,7 @@ interface DataSourceViewsSpaceSelectorProps {
   >;
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
+  selectionMode?: "checkbox" | "radio";
 }
 
 export const DataSourceViewsSpaceSelector = ({
@@ -36,6 +37,7 @@ export const DataSourceViewsSpaceSelector = ({
   setSelectionConfigurations,
   viewType,
   isRootSelectable,
+  selectionMode = "checkbox",
 }: DataSourceViewsSpaceSelectorProps) => {
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
@@ -71,6 +73,7 @@ export const DataSourceViewsSpaceSelector = ({
         viewType={viewType}
         isRootSelectable={isRootSelectable}
         space={space}
+        selectionMode={selectionMode}
       />
     );
   }
@@ -103,6 +106,7 @@ export const DataSourceViewsSpaceSelector = ({
             viewType={viewType}
             isRootSelectable={isRootSelectable}
             space={space}
+            selectionMode={selectionMode}
           />
         );
       }}

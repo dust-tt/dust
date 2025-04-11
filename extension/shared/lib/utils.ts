@@ -82,6 +82,10 @@ export function subFilter(a: string, b: string) {
   return subFilterLastIndex(a, b) > -1;
 }
 
+export function removeDiacritics(input: string): string {
+  return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 /**
  * Compares two strings for fuzzy sorting against a query First sort by spread
  * of subfilter, then by first index of subfilter, then length, then by

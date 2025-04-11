@@ -5,11 +5,14 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
+import type { GetLabsConnectionsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/connections";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
-import type { DataSourceType, LightWorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types";
+import type { LightWorkspaceType, ModelId } from "@app/types";
 import { isOAuthProvider, setupOAuthConnection } from "@app/types";
 
 // Transcripts
@@ -271,4 +274,164 @@ export function useLabsDeleteSalesforcePersonalConnection(
   };
 
   return { deletePersonalConnection };
+}
+
+export function useUpdateLabsConnectionConfiguration({
+  workspaceId,
+  connectionId,
+}: {
+  workspaceId: string;
+  connectionId: string;
+}) {
+  return async (
+    data: Partial<{
+      dataSourceViewId: ModelId | null;
+      apiKey: string | null;
+      connectionId: string | null;
+    }>
+  ) => {
+    const response = await fetch(
+      `/api/w/${workspaceId}/labs/connections/${connectionId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
+
+    return response.ok;
+  };
+}
+
+export function useCreateLabsConnectionConfiguration({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const createConnectionConfiguration = async ({
+    provider,
+    apiKey,
+    connectionId,
+  }: {
+    provider: string;
+    apiKey?: string;
+    connectionId?: string;
+  }) => {
+    const res = await fetch(`/api/w/${workspaceId}/labs/connections`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        provider,
+        ...(apiKey ? { apiKey } : {}),
+        ...(connectionId ? { connectionId } : {}),
+      }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Failed to create connection",
+        description: error.error.message,
+      });
+      return false;
+    }
+
+    sendNotification({
+      type: "success",
+      title: "Success!",
+      description: "Connection created successfully.",
+    });
+    return true;
+  };
+
+  return createConnectionConfiguration;
+}
+
+export function useLabsConnectionConfiguration({
+  workspaceId,
+  connectionId,
+}: {
+  workspaceId: string;
+  connectionId: string;
+}) {
+  const configurationFetcher: Fetcher<GetLabsConnectionsConfigurationResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/labs/connections/${connectionId}`,
+    configurationFetcher
+  );
+
+  return {
+    configuration: data ? data : null,
+    isConfigurationLoading: !error && !data,
+    isConfigurationError: error,
+    mutateConfiguration: mutate,
+  };
+}
+
+export function useDeleteLabsConnectionConfiguration({
+  workspaceId,
+  connectionId,
+}: {
+  workspaceId: string;
+  connectionId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const deleteConnectionConfiguration = async () => {
+    const res = await fetch(
+      `/api/w/${workspaceId}/labs/connections/${connectionId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!res.ok) {
+      const error = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Failed to disconnect",
+        description: error.error.message,
+      });
+      return false;
+    }
+
+    sendNotification({
+      type: "success",
+      title: "Success!",
+      description: "Connection disconnected successfully.",
+    });
+    return true;
+  };
+
+  return deleteConnectionConfiguration;
+}
+
+export function useLabsConnectionConfigurations({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const configurationsFetcher: Fetcher<LabsConnectionsConfigurationResource[]> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/labs/connections`,
+    configurationsFetcher
+  );
+
+  return {
+    configurations: data || [],
+    isConfigurationsLoading: !error && !data,
+    isConfigurationsError: error,
+    mutateConfigurations: mutate,
+  };
 }

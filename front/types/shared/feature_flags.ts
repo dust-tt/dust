@@ -22,6 +22,7 @@ export const WHITELISTABLE_FEATURES = [
   "force_gdrive_labels_scope",
   "claude_3_7_reasoning",
   "mcp_actions",
+  "dev_mcp_actions",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

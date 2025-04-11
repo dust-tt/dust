@@ -17,12 +17,15 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare sId: string;
 
-  declare additionalConfiguration: Record<
-    string,
-    boolean | number | string | null
-  >;
+  declare additionalConfiguration: Record<string, boolean | number | string>;
 
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
+
+  declare name: string | null;
+
+  // This is a temporary override for the tool description when we only have one tool
+  // to keep backward compatibility with the previous action behavior (like retrieval).
+  declare singleToolDescriptionOverride: string | null;
 }
 
 AgentMCPServerConfiguration.init(
@@ -45,17 +48,21 @@ AgentMCPServerConfiguration.init(
       type: DataTypes.JSONB,
       allowNull: false,
       validate: {
-        isValidJSON(value: string) {
-          if (value) {
+        isValidJSON(value: any) {
+          if (typeof value === "string") {
             let parsed;
             try {
               parsed = JSON.parse(value);
             } catch (e) {
-              throw new Error("Response format is invalid JSON");
+              throw new Error("additionalConfiguration is invalid JSON");
             }
             if (parsed && typeof parsed !== "object") {
-              throw new Error("Response format is invalid JSON");
+              throw new Error(
+                "additionalConfiguration couldn't be parsed to an object"
+              );
             }
+          } else if (typeof value !== "object") {
+            throw new Error("additionalConfiguration is not an object");
           }
         },
       },
@@ -67,6 +74,14 @@ AgentMCPServerConfiguration.init(
         model: MCPServerViewModel,
         key: "id",
       },
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    singleToolDescriptionOverride: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

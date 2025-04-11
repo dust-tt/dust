@@ -16,10 +16,11 @@ pub static CREDENTIAL_ID_PREFIX: &str = "cred";
 #[serde(rename_all = "snake_case")]
 pub enum CredentialProvider {
     Snowflake,
-    Modjo,
     Bigquery,
     Salesforce,
     Microsoft,
+    Modjo,
+    Hubspot,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -133,6 +134,9 @@ impl Credential {
                 vec!["account", "warehouse", "username", "password", "role"]
             }
             CredentialProvider::Modjo => {
+                vec!["api_key"]
+            }
+            CredentialProvider::Hubspot => {
                 vec!["api_key"]
             }
             CredentialProvider::Bigquery => {

@@ -84,9 +84,11 @@ export type ProvidersWithWorkspaceConfigurations =
 
 export const CREDENTIALS_PROVIDERS = [
   "snowflake",
-  "modjo",
   "bigquery",
   "salesforce",
+  // Labs
+  "modjo",
+  "hubspot",
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 

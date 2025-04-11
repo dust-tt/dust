@@ -34,6 +34,8 @@ export type LabsTranscriptsConfigurationType = {
   useConnectorConnection: boolean;
 };
 
+export type LabsConnectionAuthType = "apiKey" | "oauth" | "email_password";
+
 export type LabsConnectionItemType = {
   id: LabsConnectionType;
   featureFlag: WhitelistableFeature;
@@ -41,6 +43,7 @@ export type LabsConnectionItemType = {
   logo: React.ComponentType;
   label: string;
   description: string;
+  authType: LabsConnectionAuthType;
 };
 
 export type LabsFeatureItemType = {
@@ -51,3 +54,10 @@ export type LabsFeatureItemType = {
   label: string;
   description: string;
 };
+
+export enum SyncStatus {
+  IDLE = "idle",
+  IN_PROGRESS = "running",
+  COMPLETED = "completed",
+  FAILED = "failed",
+}

@@ -256,12 +256,14 @@ export async function searchContenNodesInSpace(
     options,
     query,
     viewType,
+    parentId,
   }: {
     excludedNodeMimeTypes: readonly string[];
     includeDataSources: boolean;
     options: CoreAPISearchOptions;
     query: string;
     viewType: ContentNodesViewType;
+    parentId?: string;
   }
 ): Promise<
   Result<
@@ -287,6 +289,7 @@ export async function searchContenNodesInSpace(
       excludedNodeMimeTypes,
       includeDataSources,
       viewType,
+      parentId,
     }
   );
 

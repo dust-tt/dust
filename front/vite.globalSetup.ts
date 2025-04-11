@@ -5,13 +5,13 @@ export default async function setup() {
     !process.env.FRONT_DATABASE_URI.includes("test")
   ) {
     throw new Error(
-      `FRONT_DATABASE_URI must be set to a test DB (value: ${process.env.FRONT_DATABASE_URI}). Action: make sure your have the correct environnement variable set.`
+      `FRONT_DATABASE_URI must be set to a test DB (value: ${process.env.FRONT_DATABASE_URI}). Action: make sure your have the correct environment variable set.`
     );
   }
 
   if (process.env.NODE_ENV !== "test") {
     throw new Error(
-      `NODE_ENV must be set to "test" (value: ${process.env.NODE_ENV}). Action: make sure your have the correct environnement variable set.`
+      `NODE_ENV must be set to "test" (value: ${process.env.NODE_ENV}). Action: make sure your have the correct environment variable set.`
     );
   }
 
