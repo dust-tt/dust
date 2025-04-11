@@ -19,7 +19,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let db = get_remote_database(&args.connection_string).await?;
 
-    let r = db
+    let _r = db
         .authorize_and_execute_query(
             &vec![Table::new(
                 Project::new_from_id(0),
