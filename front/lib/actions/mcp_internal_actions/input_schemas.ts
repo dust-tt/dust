@@ -373,21 +373,33 @@ export function getRequirements(
       requiresDataSourceConfiguration: false,
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
+      noRequirements: false,
     };
   }
   const { server } = mcpServerView;
+
+  const requiresDataSourceConfiguration = serverRequiresInternalConfiguration({
+    mcpServer: server,
+    mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
+  });
+  const requiresTableConfiguration = serverRequiresInternalConfiguration({
+    mcpServer: server,
+    mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
+  });
+  const requiresChildAgentConfiguration = serverRequiresInternalConfiguration({
+    mcpServer: server,
+    mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
+  });
+
   return {
-    requiresDataSourceConfiguration: serverRequiresInternalConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
-    }),
-    requiresTableConfiguration: serverRequiresInternalConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
-    }),
-    requiresChildAgentConfiguration: serverRequiresInternalConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
-    }),
+    requiresDataSourceConfiguration,
+    requiresTableConfiguration,
+    requiresChildAgentConfiguration,
+
+    // Useful shortcut
+    noRequirements:
+      !requiresDataSourceConfiguration &&
+      !requiresTableConfiguration &&
+      !requiresChildAgentConfiguration,
   };
 }

@@ -13,7 +13,9 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import { getRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationScope,
@@ -361,19 +363,27 @@ export function getDefaultReasoningActionConfiguration(): AssistantBuilderAction
   } satisfies AssistantBuilderActionConfiguration;
 }
 
-export function getDefaultMCPServerActionConfiguration(): AssistantBuilderActionConfiguration {
+export function getDefaultMCPServerActionConfiguration(
+  mcpServerView?: MCPServerViewType
+): AssistantBuilderActionConfiguration {
+  const requirements = getRequirements(mcpServerView);
+
   return {
     type: "MCP",
     configuration: {
-      mcpServerViewId: "not-a-valid-sId",
+      mcpServerViewId: mcpServerView?.id ?? "not-a-valid-sId",
       dataSourceConfigurations: null,
       tablesConfigurations: null,
       childAgentId: null,
       additionalConfiguration: {},
     },
-    name: "",
-    description: "",
-    noConfigurationRequired: false,
+    name: mcpServerView?.server.name ?? "",
+    description:
+      requirements.requiresDataSourceConfiguration ||
+      requirements.requiresTableConfiguration
+        ? ""
+        : mcpServerView?.server.description ?? "",
+    noConfigurationRequired: requirements.noRequirements,
   };
 }
 export function getDefaultActionConfiguration(
