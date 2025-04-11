@@ -1,4 +1,5 @@
-import type { RegisterMCPResponseType } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { registerMCPServer } from "@app/lib/api/actions/mcp/local_registry";
@@ -7,6 +8,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isValidUUIDv4 } from "@app/types";
+
+const PostMCPRegisterRequestBodyCodec = t.type({
+  serverId: t.string,
+});
+
+type RegisterMCPResponseType = {
+  expiresAt: string;
+  success: boolean;
+};
 
 async function handler(
   req: NextApiRequest,
@@ -23,9 +33,9 @@ async function handler(
     });
   }
 
-  // Extract the client-provided server ID.
-  const { serverId } = req.body;
-  if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
+  const bodyValidation = PostMCPRegisterRequestBodyCodec.decode(req.body);
+
+  if (isLeft(bodyValidation) || !isValidUUIDv4(bodyValidation.right.serverId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -34,6 +44,8 @@ async function handler(
       },
     });
   }
+
+  const { serverId } = bodyValidation.right;
 
   // Register the server.
   const registration = await registerMCPServer({
