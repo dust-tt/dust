@@ -84,18 +84,6 @@ async function handler(
         space,
       });
 
-      if (space.kind === "global") {
-        const mcpServerViews = await MCPServerViewResource.listByMCPServer(
-          auth,
-          mcpServerId
-        );
-        for (const mcpServerView of mcpServerViews) {
-          if (mcpServerView.space.kind === "regular") {
-            await mcpServerView.delete(auth, { hardDelete: true });
-          }
-        }
-      }
-
       return res.status(200).json({
         success: true,
         serverView: mcpServerView.toJSON(),

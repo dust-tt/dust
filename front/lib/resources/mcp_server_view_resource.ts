@@ -165,6 +165,15 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   ) {
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
+    if (space.kind === "global") {
+      const mcpServerViews = await this.listByMCPServer(auth, mcpServerId);
+      for (const mcpServerView of mcpServerViews) {
+        if (mcpServerView.space.kind === "regular") {
+          await mcpServerView.delete(auth, { hardDelete: true });
+        }
+      }
+    }
+
     return this.makeNew(
       auth,
       {
