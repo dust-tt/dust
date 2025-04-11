@@ -3,6 +3,7 @@ import {
   CloudArrowLeftRightIcon,
   Page,
   SalesforceLogo,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
@@ -51,9 +52,10 @@ export default function PersonalConnections({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { dataSources } = useLabsSalesforceDataSourcesWithPersonalConnection({
-    owner,
-  });
+  const { dataSources, isLoading } =
+    useLabsSalesforceDataSourcesWithPersonalConnection({
+      owner,
+    });
   const { createPersonalConnection } =
     useLabsCreateSalesforcePersonalConnection(owner);
   const { deletePersonalConnection } =
@@ -76,7 +78,11 @@ export default function PersonalConnections({
             icon={SalesforceLogo}
             description="Connect your personal accounts on your Salesforce connector."
           />
-          {dataSource ? (
+          {isLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <Spinner />
+            </div>
+          ) : dataSource ? (
             <>
               <Page.SectionHeader title="Connect your personal Salesforce account." />
               <div className="flex flex-row gap-2">
