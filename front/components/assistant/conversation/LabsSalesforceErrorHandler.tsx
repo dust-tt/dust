@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import {
   useCreateSalesforcePersonalConnection,
   useSalesforceDataSourcesWithPersonalConnection,
-} from "@app/lib/swr/salesforce";
+} from "@app/lib/swr/labs_salesforce";
 import type { LightWorkspaceType } from "@app/types";
 
 export function LabsSalesforceAuthenticationError({

@@ -11,8 +11,8 @@ export class LabsPersonalSalesforceConnection extends WorkspaceAwareModel<LabsPe
   declare updatedAt: CreationOptional<Date>;
 
   declare connectionId: string;
-  declare userId: ForeignKey<UserModel["id"]> | null;
-  declare dataSourceId: ForeignKey<DataSourceModel["id"]> | null;
+  declare userId: ForeignKey<UserModel["id"]>;
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
 }
 LabsPersonalSalesforceConnection.init(
   {

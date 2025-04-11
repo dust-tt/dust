@@ -8,12 +8,12 @@ import type { CellContext } from "@tanstack/react-table";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import type { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/salesforce";
+import type { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/labs_salesforce";
 import {
   useCreateSalesforcePersonalConnection,
   useDeleteSalesforcePersonalConnection,
   useSalesforceDataSourcesWithPersonalConnection,
-} from "@app/lib/swr/salesforce";
+} from "@app/lib/swr/labs_salesforce";
 import type { WorkspaceType } from "@app/types";
 
 type RowData = {

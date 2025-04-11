@@ -7,8 +7,9 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import type { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/salesforce";
+import type { SalesforceDataSourceWithPersonalConnection } from "@app/lib/swr/labs_salesforce";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -68,7 +69,13 @@ async function handler(
         });
       }
 
-      await dataSource.removePersonalConnection(auth);
+      const salesforceConnection =
+        await LabsSalesforcePersonalConnectionResource.fetchByDataSource(auth, {
+          dataSource: dataSource.toJSON(),
+        });
+      if (salesforceConnection) {
+        await salesforceConnection.delete(auth);
+      }
 
       return res.status(200).json({
         success: true,
@@ -101,7 +108,9 @@ async function handler(
           },
         });
       }
-      await dataSource.createPersonalConnection(auth, {
+
+      await LabsSalesforcePersonalConnectionResource.makeNew(auth, {
+        dataSource: dataSource.toJSON(),
         connectionId,
       });
 

@@ -27,6 +27,7 @@ import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -518,13 +519,16 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     if (flags.includes("labs_salesforce_personal_connections")) {
       for (const dataSourceView of dataSourceViews) {
         if (dataSourceView.dataSource.connectorProvider === "salesforce") {
-          console.log("look", personalConnectionIds);
           const personalConnection =
-            await dataSourceView.dataSource.getPersonalConnection(auth);
+            await LabsSalesforcePersonalConnectionResource.fetchByDataSource(
+              auth,
+              {
+                dataSource: dataSourceView.dataSource.toJSON(),
+              }
+            );
           if (personalConnection) {
-            personalConnectionIds[dataSourceView.sId] = personalConnection;
-
-            console.log("personalConnectionIds", personalConnectionIds);
+            personalConnectionIds[dataSourceView.sId] =
+              personalConnection.connectionId;
           } else {
             yield {
               type: "tables_query_error",

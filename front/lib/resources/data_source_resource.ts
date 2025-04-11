@@ -544,51 +544,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return isResourceSId("data_source", sId);
   }
 
-  // Personal connection logic.
-
-  async getPersonalConnection(auth: Authenticator) {
-    const conn = await LabsPersonalSalesforceConnection.findOne({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        dataSourceId: this.id,
-        userId: auth.getNonNullableUser().id,
-      },
-    });
-
-    return conn?.connectionId;
-  }
-
-  async createPersonalConnection(
-    auth: Authenticator,
-    {
-      connectionId,
-    }: {
-      connectionId: string;
-    }
-  ) {
-    const conn = await LabsPersonalSalesforceConnection.create({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      dataSourceId: this.id,
-      userId: auth.getNonNullableUser().id,
-      connectionId,
-    });
-
-    return conn?.connectionId;
-  }
-
-  async removePersonalConnection(auth: Authenticator) {
-    const conn = await LabsPersonalSalesforceConnection.findOne({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        dataSourceId: this.id,
-        userId: auth.user()?.id,
-      },
-    });
-    if (conn) {
-      return conn.destroy();
-    }
-  }
-
   // Serialization.
 
   toJSON(): DataSourceType {
