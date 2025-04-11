@@ -11,6 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import { createContext, useCallback, useEffect, useState } from "react";
 
+import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type {
   MCPToolStakeLevelType,
   MCPValidationOutputType,
@@ -94,6 +95,8 @@ export function ActionValidationProvider({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useNavigationLock(isDialogOpen);
 
   const sendCurrentValidation = useCallback(
     async (approved: MCPValidationOutputType) => {

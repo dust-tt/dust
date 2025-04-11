@@ -106,6 +106,12 @@ type MCPApproveExecutionEvent = {
   stake?: MCPToolStakeLevelType;
 };
 
+export function isMCPApproveExecutionEvent(
+  event: MCPActionRunningEvents
+): event is MCPApproveExecutionEvent {
+  return event.type === "tool_approve_execution";
+}
+
 type MCPParamsEvent = {
   type: "tool_params";
   created: number;
