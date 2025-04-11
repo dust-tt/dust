@@ -8,7 +8,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "table_utils",
   "github",
   "ask_agent",
-  "image_generation_dalle",
+  "generate_image",
+  "generate_file",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -39,7 +40,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isDefault: false,
     flag: "mcp_actions",
   },
-  image_generation_dalle: {
+  generate_image: {
     id: 5,
     isDefault: true,
     flag: "mcp_actions",
@@ -47,6 +48,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   ask_agent: {
     id: 6,
     isDefault: false,
+    flag: "mcp_actions",
+  },
+  generate_file: {
+    id: 7,
+    isDefault: true,
     flag: "mcp_actions",
   },
 };

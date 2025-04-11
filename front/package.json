@@ -59,6 +59,7 @@
     "class-variance-authority": "^0.7.0",
     "cls-hooked": "^4.2.2",
     "cmdk": "^1.0.0",
+    "convertapi": "^1.15.0",
     "cron-parser": "^4.9.0",
     "csv-parse": "^5.5.2",
     "csv-stringify": "^6.4.5",

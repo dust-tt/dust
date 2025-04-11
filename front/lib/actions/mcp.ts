@@ -477,7 +477,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         const r = await processAndStoreFromUrl(auth, {
           url: c.resource.uri,
           useCase: "conversation",
-          fileName: "generated-image.png",
+          fileName: c.resource.uri.split("/").pop() ?? "generated-file",
           contentType: c.resource.mimeType,
         });
         if (r.isErr()) {
