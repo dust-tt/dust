@@ -9,11 +9,8 @@ import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
-import type {DataSourceType, LightWorkspaceType} from "@app/types";
-import {
-  isOAuthProvider,
-  setupOAuthConnection
-} from "@app/types";
+import type { DataSourceType, LightWorkspaceType } from "@app/types";
+import { isOAuthProvider, setupOAuthConnection } from "@app/types";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
