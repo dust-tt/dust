@@ -2,7 +2,7 @@ import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
 import { PaintIcon } from "@sparkle/icons";
-import * as ActionIcons from "@sparkle/icons/actions";
+import { ActionIcons } from "@sparkle/icons";
 
 import {
   Button,
