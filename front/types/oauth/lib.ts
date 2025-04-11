@@ -210,7 +210,7 @@ export function isModjoCredentials(
 export function isHubspotCredentials(
   credentials: ConnectionCredentials
 ): credentials is HubspotCredentials {
-  return "api_key" in credentials;
+  return "accessToken" in credentials && "portalId" in credentials;
 }
 
 export function isBigQueryWithLocationCredentials(
