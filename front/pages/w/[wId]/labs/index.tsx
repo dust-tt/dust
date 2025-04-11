@@ -5,6 +5,7 @@ import {
   HubspotLogo,
   Icon,
   Page,
+  SalesforceLogo,
   Spinner,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
@@ -45,6 +46,15 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     icon: BookOpenIcon,
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
+  },
+  {
+    id: "salesforce_personal_connections",
+    label: "Salesforce Personal Connections",
+    featureFlag: "labs_salesforce_personal_connections",
+    visibleWithoutAccess: false,
+    icon: SalesforceLogo,
+    description:
+      "Connect your Salesforce personal accounts to Dust. We'll use your credentials to fetch data from Salesforce connector.",
   },
 ];
 const LABS_CONNECTIONS: LabsConnectionItemType[] = [

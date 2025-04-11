@@ -11,6 +11,7 @@ export const WHITELISTABLE_FEATURES = [
   "index_private_slack_channel",
   "labs_connection_hubspot",
   "labs_features",
+  "labs_salesforce_personal_connections",
   "labs_trackers",
   "labs_transcripts",
   "mcp_actions",
