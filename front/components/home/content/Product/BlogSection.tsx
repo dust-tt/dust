@@ -21,7 +21,7 @@ const blogPosts: BlogPost[] = [
   {
     title: "Qonto partners with Dust to upgrade its customer experience",
     content:
-      "Qonto streamlines operations with Dust's AI agents, saving 50,000 hours yearly.",
+      "Qonto streamlines operations with Dust’s AI agents, saving 50,000 hours yearly.",
     href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2024/11/qonto_dust.jpg",
@@ -29,7 +29,7 @@ const blogPosts: BlogPost[] = [
   {
     title: "Malt cuts support ticket closing time by 50% with Dust",
     content:
-      "Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses.",
+      "Malt streamlines customer support using Dust’s AI platform for rapid, consistent multilingual responses.",
     href: "https://blog.dust.tt/malt-customer-support/",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg",
@@ -38,15 +38,15 @@ const blogPosts: BlogPost[] = [
     title:
       "How Vincent, Engineer at Alan, reduces project completion time by 20%",
     content:
-      "Discover how Alan's Engineering team built Dust agents to accelerate their workflows beyond coding.",
+      "Discover how Alan’s Engineering team built Dust agents to accelerate their workflows beyond coding.",
     href: "https://blog.dust.tt/integrating-ai-workflows-alan/",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2024/12/alan_dust_customer_story_.png",
   },
   {
-    title: "Pennylane's journey to deploy Dust for Customer Care teams",
+    title: "Pennylane’s journey to deploy Dust for Customer Care teams",
     content:
-      "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
+      "Dust evolved from a simple support tool into an integral part of Pennylane’s operations.",
     href: "https://blog.dust.tt/pennylane-customer-support-journey/",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",

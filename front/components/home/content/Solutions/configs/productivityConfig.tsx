@@ -151,7 +151,7 @@ export const UseCases: UseCaseProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "The Dust platform is more than just a tool for post-ideation; it's a catalyst for innovation, stimulating idea generation as employees engage with it.",
+    "The Dust platform is more than just a tool for post-ideation; it’s a catalyst for innovation, stimulating idea generation as employees engage with it.",
   name: "Boris Lipiainen",
   title: "Chief Product and Technology Officer at Kyriba",
   logo: "/static/landing/logos/color/kyriba.png",
@@ -165,7 +165,7 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
-    title: "Kyriba's adoption of Dust across all functions",
+    title: "Kyriba’s adoption of Dust across all functions",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
@@ -180,7 +180,7 @@ export const Stories: CustomerStory[] = [
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_payfit.png",
   },
   {
-    title: "November Five's journey to minimizing routine tasks with Dust",
+    title: "November Five’s journey to minimizing routine tasks with Dust",
     content:
       "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
     href: "https://blog.dust.tt/november-five-ai-transformation-dust/",
