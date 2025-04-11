@@ -71,8 +71,6 @@ async function handler(
         });
       }
 
-      // TODO: Validate localMCPServerIds.
-
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
 
