@@ -10,8 +10,10 @@ const SvgTable = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="#111418"
-      d="M4 8h16V5H4v3Zm10 11v-9h-4v9h4Zm2 0h4v-9h-4v9Zm-8 0v-9H4v9h4ZM3 3h18a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M2 22h20V2H2v20Zm9-18v4H4V4h7ZM4 14v-4h7v4H4Zm0 2h7v4H4v-4Zm9 0h7v4h-7v-4Zm7-2h-7v-4h7v4Zm0-10v4h-7V4h7Z"
+      clipRule="evenodd"
     />
   </svg>
 );
