@@ -1,0 +1,1967 @@
+scalar URI
+scalar HTML
+scalar DateTime
+
+"""
+Returns a boolean indicating whether the object has been closed or not.
+"""
+interface Closable {
+  """
+  Identifies the date and time when the object was closed.
+  """
+  closedAt: DateTime
+}
+
+"""
+A comment author association with repository.
+"""
+enum CommentAuthorAssociation {
+  """
+  Author has been invited to collaborate on the repository.
+  """
+  COLLABORATOR
+
+  """
+  Author has previously committed to the repository.
+  """
+  CONTRIBUTOR
+
+  """
+  Author has not previously committed to GitHub.
+  """
+  FIRST_TIMER
+
+  """
+  Author has not previously committed to the repository.
+  """
+  FIRST_TIME_CONTRIBUTOR
+
+  """
+  Author is a member of the organization that owns the repository.
+  """
+  MEMBER
+
+  """
+  Author has no association with the repository.
+  """
+  NONE
+
+  """
+  Author is the owner of the repository.
+  """
+  OWNER
+}
+
+interface Node {
+  """
+  ID of the object.
+  """
+  id: ID!
+}
+
+interface UniformResourceLocatable {
+  """
+  The HTTP URL for this resource.
+  """
+  url: URI!
+}
+
+interface Assignable {
+  """
+  A list of Users assigned to this object.
+  """
+  assignees(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+  ): UserConnection!
+}
+
+interface Comment {
+  """
+  The actor who authored the comment.
+  """
+  author: Actor
+
+  """
+  Author's association with the subject of the comment.
+  """
+  authorAssociation: CommentAuthorAssociation!
+
+  """
+  The body as Markdown.
+  """
+  body: String!
+
+  """
+  The body rendered to HTML.
+  """
+  bodyHTML: HTML!
+
+  """
+  The body rendered to text.
+  """
+  bodyText: String!
+
+  """
+  The comment this is a reply to.
+  """
+  replyTo: Comment
+
+  """
+  Identifies the date and time when the object was created.
+  """
+  createdAt: DateTime!
+
+  """
+  Check if this comment was created via an email reply.
+  """
+  createdViaEmail: Boolean!
+
+  """
+  The actor who edited the comment.
+  """
+  editor: Actor
+
+  """
+  Returns whether or not a comment has been minimized.
+  """
+  isMinimized: Boolean!
+
+  """
+  Identifies the date and time when the object was last updated.
+  """
+  updatedAt: DateTime!
+}
+
+interface Updatable {
+  """
+  Identifies the date and time when the object was last updated.
+  """
+  updatedAt: DateTime!
+}
+
+interface UpdatableComment {
+  """
+  The actor who edited the comment.
+  """
+  editor: Actor
+}
+
+interface Reactable {
+  """
+  Does the current viewer can react to this reactable.
+  """
+  viewerCanReact: Boolean!
+}
+
+interface RepositoryNode {
+  """
+  The repository associated with this node.
+  """
+  repository: Repository!
+}
+
+interface Subscribable {
+  """
+  Can the viewer subscribe to this object.
+  """
+  viewerCanSubscribe: Boolean!
+
+  """
+  Check if the viewer is subscribed to this object.
+  """
+  viewerSubscription: SubscriptionState
+}
+
+enum SubscriptionState {
+  """
+  The viewer is subscribed to conversation updates and receiving notifications.
+  """
+  SUBSCRIBED
+
+  """
+  The viewer is only notified when participating or mentioning.
+  """
+  UNSUBSCRIBED
+
+  """
+  The viewer is not receiving notifications.
+  """
+  IGNORED
+}
+
+interface Timeline {
+  """
+  A list of events associated with an Issue or PullRequest.
+  """
+  timeline(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Allows filtering timeline events by type.
+    """
+    since: DateTime
+  ): TimelineConnection!
+}
+
+enum IssueState {
+  """
+  An issue that has been closed
+  """
+  CLOSED
+
+  """
+  An issue that is still open
+  """
+  OPEN
+}
+
+interface Labelable {
+  """
+  A list of labels associated with the object.
+  """
+  labels(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Order for connection
+    """
+    orderBy: LabelOrder
+  ): LabelConnection
+}
+
+interface Lockable {
+  """
+  Reason that the conversation was locked.
+  """
+  activeLockReason: LockReason
+
+  """
+  Indicates whether the object is locked.
+  """
+  locked: Boolean!
+}
+
+interface ProjectV2Owner {
+  """
+  Projects v2 associated with this owner.
+  """
+  projectsV2(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Additional filters for project results.
+    """
+    filterBy: ProjectV2Filters
+
+    """
+    Ordering options for projects returned from the connection.
+    """
+    orderBy: ProjectV2Order = {field: TITLE, direction: ASC}
+
+    """
+    Find projects using the query syntax.
+    """
+    query: String
+  ): ProjectV2Connection!
+
+  """
+  Find a project by number.
+  """
+  projectV2(
+    """
+    The project number.
+    """
+    number: Int!
+  ): ProjectV2
+}
+
+"""
+An object that can be closed.
+"""
+type Issue implements Node & Assignable & Closable & Comment & Updatable & UpdatableComment & Labelable & Lockable & Reactable & RepositoryNode & Subscribable & Timeline & UniformResourceLocatable & ProjectV2Owner {
+  """
+  Reason that the conversation was locked.
+  """
+  activeLockReason: LockReason
+
+  """
+  A list of Users assigned to this object.
+  """
+  assignees(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+  ): UserConnection!
+
+  """
+  The actor who authored the comment.
+  """
+  author: Actor
+
+  """
+  Author's association with the subject of the comment.
+  """
+  authorAssociation: CommentAuthorAssociation!
+
+  """
+  The body as Markdown.
+  """
+  body: String!
+
+  """
+  The body rendered to HTML.
+  """
+  bodyHTML: HTML!
+
+  """
+  The body rendered to text.
+  """
+  bodyText: String!
+
+  """
+  The comment this is a reply to.
+  """
+  replyTo: Comment
+
+  """
+  Identifies the date and time when the object was closed.
+  """
+  closedAt: DateTime
+
+  """
+  A list of comments associated with the Issue.
+  """
+  comments(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter by object ordering.
+    """
+    orderBy: IssueCommentOrder
+  ): IssueCommentConnection!
+
+  """
+  Identifies the date and time when the object was created.
+  """
+  createdAt: DateTime!
+
+  """
+  Check if this comment was created via an email reply.
+  """
+  createdViaEmail: Boolean!
+
+  """
+  Identifies the primary key from the database.
+  """
+  databaseId: Int
+
+  """
+  The actor who edited the comment.
+  """
+  editor: Actor
+
+  """
+  Returns whether or not a comment has been minimized.
+  """
+  isMinimized: Boolean!
+
+  """
+  Indicates whether the object is locked.
+  """
+  locked: Boolean!
+
+  """
+  A list of labels associated with the object.
+  """
+  labels(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Order for connection
+    """
+    orderBy: LabelOrder
+  ): LabelConnection
+
+  """
+  The number of the issue.
+  """
+  number: Int!
+
+  """
+  Identifies the state of the issue.
+  """
+  state: IssueState!
+
+  """
+  Identifies the title of the issue.
+  """
+  title: String!
+
+  """
+  Identifies the date and time when the object was last updated.
+  """
+  updatedAt: DateTime!
+
+  """
+  The HTTP URL for this issue
+  """
+  url: URI!
+
+  """
+  The ID of the object.
+  """
+  id: ID!
+
+  """
+  A list of events associated with an Issue or PullRequest.
+  """
+  timeline(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Allows filtering timeline events by type.
+    """
+    since: DateTime
+  ): TimelineConnection!
+
+  """
+  The repository associated with this node.
+  """
+  repository: Repository!
+
+  """
+  Can the viewer subscribe to this object.
+  """
+  viewerCanSubscribe: Boolean!
+
+  """
+  Check if the viewer is subscribed to this object.
+  """
+  viewerSubscription: SubscriptionState
+
+  """
+  Does the current viewer can react to this reactable.
+  """
+  viewerCanReact: Boolean!
+
+  """
+  Projects v2 associated with this owner.
+  """
+  projectsV2(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Additional filters for project results.
+    """
+    filterBy: ProjectV2Filters
+
+    """
+    Ordering options for projects returned from the connection.
+    """
+    orderBy: ProjectV2Order = {field: TITLE, direction: ASC}
+
+    """
+    Find projects using the query syntax.
+    """
+    query: String
+  ): ProjectV2Connection!
+
+  """
+  Find a project by number.
+  """
+  projectV2(
+    """
+    The project number.
+    """
+    number: Int!
+  ): ProjectV2
+}
+
+"""
+An object that can take actions on GitHub.
+"""
+interface Actor {
+  """
+  A URL pointing to the actor's public avatar.
+  """
+  avatarUrl(
+    """
+    The size of the resulting square image.
+    """
+    size: Int
+  ): URI!
+
+  """
+  The username of the actor.
+  """
+  login: String!
+
+  """
+  The HTTP URL for this actor.
+  """
+  url: URI!
+}
+
+"""
+The connection type for User.
+"""
+type UserConnection {
+  """
+  A list of edges.
+  """
+  edges: [UserEdge]
+
+  """
+  A list of nodes.
+  """
+  nodes: [User]
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+
+"""
+Information about pagination in a connection.
+"""
+type PageInfo {
+  """
+  When paginating forwards, the cursor to continue.
+  """
+  endCursor: String
+
+  """
+  When paginating forwards, are there more items?
+  """
+  hasNextPage: Boolean!
+
+  """
+  When paginating backwards, are there more items?
+  """
+  hasPreviousPage: Boolean!
+
+  """
+  When paginating backwards, the cursor to continue.
+  """
+  startCursor: String
+}
+
+"""
+Represents a user on GitHub.
+"""
+type User implements Actor & Node & ProjectV2Owner & ProjectOwner & PackageOwner & ProfileOwner & RepositoryOwner & Sponsorable & EnterpriseUserAccount {
+  """
+  A URL pointing to the user's public avatar.
+  """
+  avatarUrl(
+    """
+    The size of the resulting square image.
+    """
+    size: Int
+  ): URI!
+
+  """
+  The username used to login.
+  """
+  login: String!
+
+  """
+  The HTTP URL for this user
+  """
+  url: URI!
+
+  """
+  The ID of the object.
+  """
+  id: ID!
+}
+
+"""
+The connection type for User.
+"""
+type TimelineConnection {
+  """
+  A list of edges.
+  """
+  edges: [TimelineItemEdge]
+
+  """
+  A list of nodes.
+  """
+  nodes: [TimelineItem]
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+
+"""
+An item in an issue timeline
+"""
+type TimelineItemEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: TimelineItem
+}
+
+interface TimelineItem {
+  """
+  The item's time.
+  """
+  timestamp: String
+}
+
+interface ProjectOwner {
+  """
+  Find a project by number.
+  """
+  project(
+    """
+    The project number.
+    """
+    number: Int!
+  ): Project
+
+  """
+  A list of projects associated with this owner.
+  """
+  projects(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Ordering options for projects returned from the connection
+    """
+    orderBy: ProjectOrder
+
+    """
+    Query to search projects by, currently only searching by name.
+    """
+    search: String
+
+    """
+    A list of states to filter the projects by.
+    """
+    states: [ProjectState!]
+  ): ProjectConnection!
+
+  """
+  The total number of projects owned by the owner that have been opted into for the new projects experience.
+  """
+  projectsResourcePath: URI!
+
+  """
+  The HTTP URL for accessing this owner's projects
+  """
+  projectsUrl: URI!
+
+  """
+  Can the current viewer create new projects on this owner.
+  """
+  viewerCanCreateProjects: Boolean!
+}
+
+type ProjectConnection {
+  """
+  A list of edges.
+  """
+  edges: [ProjectEdge]
+
+  """
+  A list of nodes.
+  """
+  nodes: [Project]
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+
+type ProjectEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: Project
+}
+
+"""
+Projects are a way to organize columns and cards of work.
+"""
+type Project implements Node & Closable & Updatable {
+  """
+  Identifies the date and time when the object was closed.
+  """
+  closedAt: DateTime
+
+  """
+  The project's description.
+  """
+  body: String
+
+  """
+  The project's description rendered to HTML.
+  """
+  bodyHTML: HTML
+
+  """
+  Identifies the date and time when the object was created.
+  """
+  createdAt: DateTime!
+
+  """
+  Identifies the primary key from the database.
+  """
+  databaseId: Int
+
+  """
+  The ID of the object.
+  """
+  id: ID!
+
+  """
+  The project's name.
+  """
+  name: String!
+
+  """
+  The project's number.
+  """
+  number: Int!
+
+  """
+  The project's progress cards.
+  """
+  pendingCards(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Whether to include "archived" projects
+    """
+    archivedStates: [ProjectCardArchivedState]
+  ): ProjectCardConnection!
+
+  """
+  The User who created this object.
+  """
+  creator: Actor
+
+  """
+  Identifies the date and time when the object was last updated.
+  """
+  updatedAt: DateTime!
+
+  """
+  The HTTP URL for this project
+  """
+  url: URI!
+
+  """
+  Check if the current viewer can update this object.
+  """
+  viewerCanUpdate: Boolean!
+}
+
+enum ProjectState {
+  """
+  The project is open.
+  """
+  OPEN
+
+  """
+  The project is closed.
+  """
+  CLOSED
+}
+
+type Repository implements Node & UniformResourceLocatable & ProjectV2Owner & ProjectOwner {
+  """
+  The ID of the object.
+  """
+  id: ID!
+
+  """
+  The HTTP URL for this repository
+  """
+  url: URI!
+
+  """
+  Projects v2 associated with this owner.
+  """
+  projectsV2(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Additional filters for project results.
+    """
+    filterBy: ProjectV2Filters
+
+    """
+    Ordering options for projects returned from the connection.
+    """
+    orderBy: ProjectV2Order = {field: TITLE, direction: ASC}
+
+    """
+    Find projects using the query syntax.
+    """
+    query: String
+  ): ProjectV2Connection!
+
+  """
+  Find a project by number.
+  """
+  projectV2(
+    """
+    The project number.
+    """
+    number: Int!
+  ): ProjectV2
+
+  """
+  Find a project by number.
+  """
+  project(
+    """
+    The project number.
+    """
+    number: Int!
+  ): Project
+
+  """
+  A list of projects associated with this owner.
+  """
+  projects(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Ordering options for projects returned from the connection
+    """
+    orderBy: ProjectOrder
+
+    """
+    Query to search projects by, currently only searching by name.
+    """
+    search: String
+
+    """
+    A list of states to filter the projects by.
+    """
+    states: [ProjectState!]
+  ): ProjectConnection!
+
+  """
+  The total number of projects owned by the owner that have been opted into for the new projects experience.
+  """
+  projectsResourcePath: URI!
+
+  """
+  The HTTP URL for accessing this owner's projects
+  """
+  projectsUrl: URI!
+
+  """
+  Can the current viewer create new projects on this owner.
+  """
+  viewerCanCreateProjects: Boolean!
+
+  """
+  A list of issues for this repository
+  """
+  issues(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+    
+    """
+    List issues filtered by states
+    """
+    states: [IssueState!]
+  ): IssueConnection!
+}
+
+"""
+The connection type for Issue.
+"""
+type IssueConnection {
+  """
+  A list of edges.
+  """
+  edges: [IssueEdge]
+
+  """
+  A list of nodes.
+  """
+  nodes: [Issue]
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+
+"""
+An edge in a connection.
+"""
+type IssueEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: Issue
+}
+
+"""
+Ways in which to order a list of issues.
+"""
+input IssueOrder {
+  """
+  The field to order issues by.
+  """
+  field: IssueOrderField!
+
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection!
+}
+
+"""
+Properties by which issue connections can be ordered.
+"""
+enum IssueOrderField {
+  """
+  Order issues by comment count
+  """
+  COMMENTS
+
+  """
+  Order issues by creation time
+  """
+  CREATED_AT
+
+  """
+  Order issues by update time
+  """
+  UPDATED_AT
+}
+
+"""
+Represents possible directions in which to order a list of items when provided an `orderBy` argument.
+"""
+enum OrderDirection {
+  """
+  Specifies an ascending order for a given `orderBy` argument.
+  """
+  ASC
+
+  """
+  Specifies a descending order for a given `orderBy` argument.
+  """
+  DESC
+}
+
+"""
+The connection type for IssueComment.
+"""
+type IssueCommentConnection {
+  """
+  A list of edges.
+  """
+  edges: [IssueCommentEdge]
+
+  """
+  A list of nodes.
+  """
+  nodes: [IssueComment]
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+
+"""
+An edge in a connection.
+"""
+type IssueCommentEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: IssueComment
+}
+
+"""
+Ways in which lists of issue comments can be ordered upon return.
+"""
+input IssueCommentOrder {
+  """
+  The field by which to order issue comments.
+  """
+  field: IssueCommentOrderField!
+
+  """
+  The direction in which to order issue comments by the specified field.
+  """
+  direction: OrderDirection!
+}
+
+"""
+Properties by which issue comment connections can be ordered.
+"""
+enum IssueCommentOrderField {
+  """
+  Order issue comments by update time
+  """
+  UPDATED_AT
+}
+
+"""
+A threaded comment on an Issue.
+"""
+type IssueComment implements Node & Comment {
+  """
+  The actor who authored the comment.
+  """
+  author: Actor
+
+  """
+  Author's association with the subject of the comment.
+  """
+  authorAssociation: CommentAuthorAssociation!
+
+  """
+  The body as Markdown.
+  """
+  body: String!
+
+  """
+  The body rendered to HTML.
+  """
+  bodyHTML: HTML!
+
+  """
+  The body rendered to text.
+  """
+  bodyText: String!
+
+  """
+  The comment this is a reply to.
+  """
+  replyTo: Comment
+
+  """
+  Identifies the date and time when the object was created.
+  """
+  createdAt: DateTime!
+
+  """
+  Check if this comment was created via an email reply.
+  """
+  createdViaEmail: Boolean!
+
+  """
+  The actor who edited the comment.
+  """
+  editor: Actor
+
+  """
+  Returns whether or not a comment has been minimized.
+  """
+  isMinimized: Boolean!
+
+  """
+  Identifies the date and time when the object was last updated.
+  """
+  updatedAt: DateTime!
+
+  """
+  The ID of the object.
+  """
+  id: ID!
+}
+
+"""
+A label for categorizing issues, pull-requests, milestones, or discussions with a given repository.
+"""
+type Label implements Node {
+  """
+  Identifies the label color.
+  """
+  color: String!
+
+  """
+  Identifies the date and time when the label was created.
+  """
+  createdAt: DateTime
+
+  """
+  A brief description of this label.
+  """
+  description: String
+
+  """
+  The ID of the object.
+  """
+  id: ID!
+
+  """
+  Indicates whether or not this is a default label.
+  """
+  isDefault: Boolean!
+
+  """
+  The name of the label.
+  """
+  name: String!
+
+  """
+  Identifies the date and time when the label was last updated.
+  """
+  updatedAt: DateTime
+}
+
+"""
+The connection type for Label.
+"""
+type LabelConnection {
+  """
+  A list of edges.
+  """
+  edges: [LabelEdge]
+
+  """
+  A list of nodes.
+  """
+  nodes: [Label]
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+
+"""
+An edge in a connection.
+"""
+type LabelEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: Label
+}
+
+"""
+Ways in which lists of labels can be ordered upon return.
+"""
+input LabelOrder {
+  """
+  The field in which to order labels by.
+  """
+  field: LabelOrderField!
+
+  """
+  The direction in which to order labels by the specified field.
+  """
+  direction: OrderDirection!
+}
+
+"""
+Properties by which label connections can be ordered.
+"""
+enum LabelOrderField {
+  """
+  Order labels by name
+  """
+  NAME
+
+  """
+  Order labels by creation time
+  """
+  CREATED_AT
+}
+
+"""
+The possible reasons that an issue or pull request was locked.
+"""
+enum LockReason {
+  """
+  The issue or pull request was locked because its conversation was off-topic.
+  """
+  OFF_TOPIC
+
+  """
+  The issue or pull request was locked because its conversation was too heated.
+  """
+  TOO_HEATED
+
+  """
+  The issue or pull request was locked because its conversation was resolved.
+  """
+  RESOLVED
+
+  """
+  The issue or pull request was locked because its conversation was spam.
+  """
+  SPAM
+}
+
+type UserEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: User
+}
+
+"""
+A package owner is an entity that owns a package.
+"""
+interface PackageOwner {
+  """
+  A URL for this package owner.
+  """
+  url: URI!
+}
+
+type ProjectV2 implements Node {
+  """
+  The ID of the object.
+  """
+  id: ID!
+}
+
+type ProjectV2Connection {
+  """
+  A list of edges.
+  """
+  edges: [ProjectV2Edge]
+
+  """
+  A list of nodes.
+  """
+  nodes: [ProjectV2]
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+
+"""
+An edge in a connection.
+"""
+type ProjectV2Edge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: ProjectV2
+}
+
+input ProjectV2Filters {
+  """
+  Whether to return projects where closed is true.
+  """
+  closed: Boolean
+}
+
+input ProjectV2Order {
+  """
+  The field to order the project items by.
+  """
+  field: ProjectV2OrderField!
+
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection!
+}
+
+"""
+Properties by which project v2 connections can be ordered.
+"""
+enum ProjectV2OrderField {
+  """
+  Order projects by creation time
+  """
+  CREATED_AT
+
+  """
+  Order projects by name
+  """
+  TITLE
+
+  """
+  Order projects by update time
+  """
+  UPDATED_AT
+
+  """
+  Order projects by number
+  """
+  NUMBER
+}
+
+"""
+A profile owner is an entity which owns a GitHub profile.
+"""
+interface ProfileOwner {
+  """
+  The public profile location.
+  """
+  location: String
+
+  """
+  The username used to login.
+  """
+  login: String!
+
+  """
+  The public profile name.
+  """
+  name: String
+}
+
+"""
+A user is an individual's account on GitHub that owns repositories and can make new content.
+"""
+interface RepositoryOwner {
+  """
+  A URL pointing to the owner's public avatar.
+  """
+  avatarUrl(
+    """
+    The size of the resulting square image.
+    """
+    size: Int
+  ): URI!
+
+  """
+  The username used to login.
+  """
+  login: String!
+
+  """
+  The HTTP URL for the owner.
+  """
+  url: URI!
+}
+
+"""
+The connection type for ProjectCard.
+"""
+type ProjectCardConnection {
+  """
+  A list of edges.
+  """
+  edges: [ProjectCardEdge]
+
+  """
+  A list of nodes.
+  """
+  nodes: [ProjectCard]
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+
+"""
+An edge in a connection.
+"""
+type ProjectCardEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: ProjectCard
+}
+
+"""
+A card in a project.
+"""
+type ProjectCard implements Node {
+  """
+  The ID of the object.
+  """
+  id: ID!
+}
+
+enum ProjectCardArchivedState {
+  """
+  Both archived and non-archived cards.
+  """
+  ARCHIVED_AND_NOT_ARCHIVED
+
+  """
+  Only archived cards.
+  """
+  ARCHIVED
+
+  """
+  Only non-archived cards.
+  """
+  NOT_ARCHIVED
+}
+
+input ProjectOrder {
+  """
+  The field in which to order projects by.
+  """
+  field: ProjectOrderField!
+
+  """
+  The direction in which to order projects by the specified field.
+  """
+  direction: OrderDirection!
+}
+
+"""
+Properties by which project connections can be ordered.
+"""
+enum ProjectOrderField {
+  """
+  Order projects by creation time
+  """
+  CREATED_AT
+
+  """
+  Order projects by name
+  """
+  NAME
+
+  """
+  Order projects by update time
+  """
+  UPDATED_AT
+}
+
+"""
+Represents an account to sponsor through GitHub Sponsors
+"""
+interface Sponsorable {
+  """
+  Whether this user/organization can be sponsored via GitHub Sponsors.
+  """
+  isSponsoring: Boolean!
+
+  """
+  The GitHub Sponsors listing for this user.
+  """
+  sponsorsListing: SponsorsListing
+
+  /**
+   * This object's sponsorships as the sponsor.
+   */
+  sponsorshipsAsSponsor(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Order to return sponsorships in.
+    """
+    orderBy: SponsorshipOrder
+
+    """
+    Whether to include private sponsorships in the result set
+    """
+    includePrivate: Boolean = false
+  ): SponsorshipConnection!
+
+  /**
+   * This object's sponsorships as the maintainer.
+   */
+  sponsorshipsAsMaintainer(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Order to return sponsorships in.
+    """
+    orderBy: SponsorshipOrder
+
+    """
+    Whether to include private sponsorships in the result set
+    """
+    includePrivate: Boolean = false
+  ): SponsorshipConnection!
+}
+
+"""
+GitHub Sponsors information about a user or organization who can be sponsored.
+"""
+type SponsorsListing implements Node {
+  """
+  The ID of the object.
+  """
+  id: ID!
+}
+
+"""
+The connection type for Sponsorship.
+"""
+type SponsorshipConnection {
+  """
+  A list of edges.
+  """
+  edges: [SponsorshipEdge]
+
+  """
+  A list of nodes.
+  """
+  nodes: [Sponsorship]
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+
+"""
+An edge in a connection.
+"""
+type SponsorshipEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: Sponsorship
+}
+
+"""
+Represents a sponsorship relationship between a sponsor and a maintainer
+"""
+type Sponsorship implements Node {
+  """
+  The ID of the object.
+  """
+  id: ID!
+}
+
+"""
+Ordering options for sponsorship connections.
+"""
+input SponsorshipOrder {
+  """
+  The field to order sponsorships by.
+  """
+  field: SponsorshipOrderField!
+
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection!
+}
+
+"""
+Properties by which sponsorship connections can be ordered.
+"""
+enum SponsorshipOrderField {
+  """
+  Order sponsorship by creation time.
+  """
+  CREATED_AT
+}
+
+"""
+Enterprise user account information.
+"""
+interface EnterpriseUserAccount {
+  """
+  The enterprise user's ID.
+  """
+  enterpriseUserLogin: String!
+}
+
+# Query
+type Query {
+  """
+  Look up a repository by its owner and name.
+  """
+  repository(
+    """
+    The name of the repository.
+    """
+    name: String!
+
+    """
+    The login of the repository owner.
+    """
+    owner: String!
+  ): Repository
+}
+
+# Define a schema
+schema {
+  query: Query
+}

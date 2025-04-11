@@ -76,6 +76,10 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.5",
+    "@graphql-codegen/typescript": "^4.1.6",
+    "@graphql-codegen/typescript-operations": "^4.6.0",
+    "@octokit/graphql-schema": "^15.26.0",
     "@types/eslint": "^8.56.10",
     "@types/fast-levenshtein": "^0.0.2",
     "@types/lodash": "^4.17.7",
@@ -91,6 +95,7 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "prettier": "^3.0",
+    "ts-node": "^10.9.2",
     "tsx": "^4.10.2",
     "typescript": "^5.4.5",
     "vite-tsconfig-paths": "^5.1.4",

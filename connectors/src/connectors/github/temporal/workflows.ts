@@ -177,15 +177,15 @@ export async function githubRepoIssuesSyncWorkflow({
   repoName,
   repoId,
   repoLogin,
-  pageNumber,
+  cursor,
 }: {
   dataSourceConfig: DataSourceConfig;
   connectorId: ModelId;
   repoName: string;
   repoId: number;
   repoLogin: string;
-  pageNumber: number;
-}): Promise<boolean> {
+  cursor: string | null;
+}): Promise<string | null> {
   // upserting the folder with all the issues
   await githubUpsertIssuesFolderActivity({
     connectorId,
@@ -199,19 +199,19 @@ export async function githubRepoIssuesSyncWorkflow({
   });
   const promises: Promise<void>[] = [];
 
-  const resultsPage = await githubGetRepoIssuesResultPageActivity(
+  const { cursor: nextCursor, issueNumbers } = await githubGetRepoIssuesResultPageActivity(
     connectorId,
     repoName,
     repoLogin,
-    pageNumber,
+    cursor,
     { repoId }
   );
 
-  if (!resultsPage.length) {
-    return false;
+  if (!issueNumbers.length) {
+    return null;
   }
 
-  for (const issueNumber of resultsPage) {
+  for (const issueNumber of issueNumbers) {
     promises.push(
       queue.add(() =>
         githubUpsertIssueActivity(
@@ -230,7 +230,7 @@ export async function githubRepoIssuesSyncWorkflow({
 
   await Promise.all(promises);
 
-  return true;
+  return nextCursor;
 }
 
 /**
@@ -326,15 +326,17 @@ export async function githubRepoSyncWorkflow({
   });
 
   if (!syncCodeOnly) {
-    let pageNumber = 1; // 1-indexed
+    // Issues sync with cursor-based pagination
+    let issuesNextCursor: string | null = null;
+    let issuesCursorIteration = 0;
     for (;;) {
       const childWorkflowId = `${
         isFullSync
           ? getFullSyncWorkflowId(connectorId)
           : getReposSyncWorkflowId(connectorId)
-      }-repo-${repoId}-issues-page-${pageNumber}`;
+      }-repo-${repoId}-issues-cursor-${issuesCursorIteration}`;
 
-      const shouldContinue = await executeChild(githubRepoIssuesSyncWorkflow, {
+      issuesNextCursor = await executeChild(githubRepoIssuesSyncWorkflow, {
         workflowId: childWorkflowId,
         searchAttributes: {
           connectorId: [connectorId],
@@ -346,19 +348,20 @@ export async function githubRepoSyncWorkflow({
             repoName,
             repoId,
             repoLogin,
-            pageNumber,
+            cursor: issuesNextCursor,
           },
         ],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
       });
 
-      if (!shouldContinue) {
+      if (!issuesNextCursor) {
         break;
       }
-      pageNumber += 1;
+      issuesCursorIteration += 1;
     }
 
+    // Discussions sync (already uses cursor-based pagination)
     let nextCursor: string | null = null;
     let cursorIteration = 0;
     for (;;) {
@@ -366,7 +369,7 @@ export async function githubRepoSyncWorkflow({
         isFullSync
           ? getFullSyncWorkflowId(connectorId)
           : getReposSyncWorkflowId(connectorId)
-      }-repo-${repoId}-issues-page-${cursorIteration}`;
+      }-repo-${repoId}-discussions-cursor-${cursorIteration}`;
 
       nextCursor = await executeChild(githubRepoDiscussionsSyncWorkflow, {
         workflowId: childWorkflowId,

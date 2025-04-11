@@ -105,12 +105,9 @@ export async function githubGetRepoIssuesResultPageActivity(
   connectorId: ModelId,
   repoName: string,
   repoLogin: string,
-  pageNumber: number, // 1-indexed
+  cursor: string | null,
   loggerArgs: Record<string, string | number>
-): Promise<number[]> {
-  if (pageNumber < 1) {
-    throw new Error("Page number must be greater than 0 (1-indexed)");
-  }
+): Promise<{ cursor: string | null; issueNumbers: number[] }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found (connectorId: ${connectorId})`);
@@ -118,19 +115,30 @@ export async function githubGetRepoIssuesResultPageActivity(
   const logger = getActivityLogger(connector, {
     repoName,
     repoLogin,
-    pageNumber,
+    cursor,
     ...loggerArgs,
   });
 
-  logger.info("Fetching GitHub repo issues result page.");
-  const page = await getRepoIssuesPage(
-    connector,
-    repoName,
-    repoLogin,
-    pageNumber
-  );
+  logger.info("Fetching GitHub repo issues result page with cursor-based pagination.");
+  try {
+    const { cursor: nextCursor, issues } = await getRepoIssuesPage(
+      connector,
+      repoName,
+      repoLogin,
+      cursor
+    );
 
-  return page.map((issue) => issue.number);
+    return {
+      cursor: nextCursor,
+      issueNumbers: issues.map((issue) => issue.number)
+    };
+  } catch (error) {
+    logger.error(
+      { error, cursor },
+      "Failed to fetch GitHub issues using cursor-based pagination"
+    );
+    throw error;
+  }
 }
 
 async function renderIssue(

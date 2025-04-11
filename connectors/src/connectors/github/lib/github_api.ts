@@ -191,43 +191,95 @@ export async function getRepo(
   }
 }
 
+import { GetIssuesQuery } from "./graphql/generated";
+
 export async function getRepoIssuesPage(
   connector: ConnectorResource,
   repoName: string,
   login: string,
-  page: number
-): Promise<GithubIssue[]> {
+  cursor: string | null = null
+): Promise<{ cursor: string | null; issues: GithubIssue[] }> {
   try {
     const octokit = await getOctokit(connector);
-
-    const issues = (
-      await octokit.rest.issues.listForRepo({
-        owner: login,
-        repo: repoName,
-        per_page: API_PAGE_SIZE,
-        page: page,
-        state: "all",
-      })
-    ).data;
-
-    return issues.map((i) => ({
-      id: i.id,
-      number: i.number,
-      title: i.title,
-      url: i.html_url,
-      creator: i.user
-        ? {
-            id: i.user.id,
-            login: i.user.login,
+    
+    // GraphQL query for issues with cursor-based pagination using our generated types
+    const result = await octokit.graphql<GetIssuesQuery>(`
+      query GetIssues($owner: String!, $repo: String!, $cursor: String, $perPage: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issues(first: $perPage, after: $cursor, states: [OPEN, CLOSED]) {
+            pageInfo {
+              endCursor
+              hasNextPage
+            }
+            nodes {
+              id
+              number
+              title
+              url
+              author {
+                login
+              }
+              createdAt
+              updatedAt
+              body
+              state
+              __typename
+              labels(first: 100) {
+                nodes {
+                  name
+                }
+              }
+            }
           }
+        }
+      }
+    `, {
+      owner: login,
+      repo: repoName,
+      cursor: cursor,
+      perPage: API_PAGE_SIZE
+    });
+
+    if (!result.repository || !result.repository.issues.nodes) {
+      return { cursor: null, issues: [] };
+    }
+
+    // Map GraphQL structure to our existing GithubIssue type
+    const issues = result.repository.issues.nodes
+      .filter((issue): issue is NonNullable<typeof issue> => issue !== null)
+      .map((issue) => {
+        return {
+          id: issue.number,
+          number: issue.number,
+          title: issue.title,
+          url: issue.url,
+          creator: issue.author ? {
+            // Generate a numeric ID from the login name
+            id: issue.author.login.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0),
+            login: issue.author.login
+          } : null,
+          createdAt: new Date(issue.createdAt),
+          updatedAt: new Date(issue.updatedAt),
+          body: issue.body,
+          labels: issue.labels?.nodes
+            ?.filter((label): label is NonNullable<typeof label> => label !== null)
+            ?.map(label => label.name) || [],
+          // In our API model, there's no direct way to check if an issue is a PR
+          // We can infer it from various properties or patterns in the title
+          isPullRequest: issue.title.toLowerCase().includes('pull request') || 
+                        issue.title.toLowerCase().includes('pr:') ||
+                        issue.state === 'MERGED' // Only PRs can be merged
+        };
+    });
+
+    return {
+      cursor: result.repository.issues.pageInfo.hasNextPage 
+        ? result.repository.issues.pageInfo.endCursor || null
         : null,
-      createdAt: new Date(i.created_at),
-      updatedAt: new Date(i.updated_at),
-      body: i.body,
-      labels: getIssueLabels(i.labels),
-      isPullRequest: !!i.pull_request,
-    }));
+      issues
+    };
   } catch (err) {
+    // Error handling (similar to current implementation)
     if (isBadCredentials(err)) {
       throw new ProviderWorkflowError(
         "github",
@@ -237,7 +289,7 @@ export async function getRepoIssuesPage(
     }
 
     if (isGithubRequestErrorNotFound(err)) {
-      return [];
+      return { cursor: null, issues: [] };
     }
 
     // Handle disabled issues case - GitHub returns 410 Gone when issues are disabled
@@ -246,7 +298,7 @@ export async function getRepoIssuesPage(
       err.status === 410 &&
       err.message === "Issues are disabled for this repo"
     ) {
-      return [];
+      return { cursor: null, issues: [] };
     }
     throw err;
   }
