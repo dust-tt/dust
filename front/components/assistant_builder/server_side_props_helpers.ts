@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
@@ -19,12 +21,16 @@ import type {
   DataSourceConfiguration,
   RetrievalConfigurationType,
 } from "@app/lib/actions/retrieval";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type {
+  TableDataSourceConfiguration,
+  TablesQueryConfigurationType,
+} from "@app/lib/actions/tables_query";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
+  isPlatformMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -231,6 +237,8 @@ async function getMCPServerActionConfiguration(
   action: MCPServerConfigurationType,
   dataSourceViews: DataSourceViewResource[]
 ): Promise<AssistantBuilderActionConfiguration> {
+  assert(isPlatformMCPServerConfiguration(action));
+
   const builderAction = getDefaultMCPServerActionConfiguration();
   if (builderAction.type !== "MCP") {
     throw new Error("MCP action configuration is not valid");
@@ -244,10 +252,22 @@ async function getMCPServerActionConfiguration(
 
   builderAction.configuration.dataSourceConfigurations = action.dataSources
     ? await renderDataSourcesConfigurations(
-        { ...action, dataSources: action.dataSources }, // overriding to satisfy the typing
+        { ...action, dataSources: action.dataSources }, // repeating action.dataSources to satisfy the typing
         dataSourceViews
       )
     : null;
+
+  builderAction.configuration.tablesConfigurations = action.tables
+    ? await renderTableDataSourcesConfigurations(
+        { ...action, tables: action.tables },
+        dataSourceViews
+      )
+    : null;
+
+  builderAction.configuration.childAgentId = action.childAgentId;
+
+  builderAction.configuration.additionalConfiguration =
+    action.additionalConfiguration;
 
   return builderAction;
 }
@@ -340,7 +360,9 @@ async function renderDataSourcesConfigurations(
 }
 
 async function renderTableDataSourcesConfigurations(
-  action: TablesQueryConfigurationType,
+  action:
+    | TablesQueryConfigurationType
+    | (MCPServerConfigurationType & { tables: TableDataSourceConfiguration[] }),
   dataSourceViews: DataSourceViewResource[]
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.tables.map((table) => ({

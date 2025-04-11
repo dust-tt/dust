@@ -314,7 +314,7 @@ function DropdownMenuSearchbarDemo() {
   const [selectedItem, setSelectedItem] = React.useState<string | null>(null);
 
   const items = [
-    "Automated Data Processing",
+    "Automated Data Processing Automated Data Processing Automated Data Processing Automated Data Processing",
     "Business Intelligence Dashboard",
     "Cloud Infrastructure Setup",
     "Data Migration Service",
@@ -379,6 +379,7 @@ function DropdownMenuSearchbarDemo() {
                   setSelectedItem(item);
                   setSearchText("");
                 }}
+                truncateText
               />
             );
           })}

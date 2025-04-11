@@ -24,6 +24,7 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
 import {
   useSpaces,
   useSpacesSearchWithInfiniteScroll,
@@ -182,10 +183,15 @@ export const InputBarAttachmentsPicker = ({
                         className: "min-w-4",
                       })
                     }
-                    extraIcon={getConnectorProviderLogoWithFallback({
-                      provider:
-                        item.dataSourceView.dataSource.connectorProvider,
-                    })}
+                    extraIcon={
+                      isWebsite(item.dataSourceView.dataSource) ||
+                      isFolder(item.dataSourceView.dataSource)
+                        ? undefined
+                        : getConnectorProviderLogoWithFallback({
+                            provider:
+                              item.dataSourceView.dataSource.connectorProvider,
+                          })
+                    }
                     disabled={attachedNodes.some(
                       (attachedNode) =>
                         attachedNode.internalId === item.internalId &&

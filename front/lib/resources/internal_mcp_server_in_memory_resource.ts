@@ -1,4 +1,4 @@
-import { assert } from "console";
+import assert from "assert";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -6,18 +6,19 @@ import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  isDefaultInternalMCPServer,
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
+  isDefaultInternalMCPServerByName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
   extractMetadataFromServerVersion,
   extractMetadataFromTools,
 } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
+import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -53,7 +54,7 @@ export class InternalMCPServerInMemoryResource {
         (await mcpClient.listTools()).tools
       ) as any,
       isDefault: isInternalMCPServerName(md.name)
-        ? isDefaultInternalMCPServer(md.name)
+        ? isDefaultInternalMCPServerByName(md.name)
         : false,
     };
 
@@ -82,7 +83,7 @@ export class InternalMCPServerInMemoryResource {
       })
     );
 
-    await MCPServerView.create(
+    await MCPServerViewModel.create(
       {
         workspaceId: auth.getNonNullableWorkspace().id,
         serverType: "internal",
@@ -98,7 +99,7 @@ export class InternalMCPServerInMemoryResource {
   }
 
   async delete(auth: Authenticator) {
-    const mcpServerViews = await MCPServerView.findAll({
+    const mcpServerViews = await MCPServerViewModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         internalMCPServerId: this.id,
@@ -115,19 +116,26 @@ export class InternalMCPServerInMemoryResource {
       { concurrency: 10 }
     );
 
-    await MCPServerView.destroy({
+    await MCPServerViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         internalMCPServerId: this.id,
       },
       hardDelete: true,
     });
+
+    await MCPServerConnection.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: this.id,
+      },
+    });
   }
 
   static async fetchById(auth: Authenticator, id: string) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    const server = await MCPServerView.findOne({
+    const server = await MCPServerViewModel.findOne({
       attributes: ["internalMCPServerId"],
       where: {
         serverType: "internal",
@@ -151,7 +159,7 @@ export class InternalMCPServerInMemoryResource {
     // Hide servers with flags that are not enabled for the workspace.
     const names: InternalMCPServerNameType[] = [];
 
-    for (const name of AVAILABLE_INTERNAL_MCPSERVER_NAMES) {
+    for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
       const isEnabled = await isEnabledForWorkspace(auth, name);
 
       if (isEnabled) {
@@ -179,7 +187,7 @@ export class InternalMCPServerInMemoryResource {
     // In case of internal MCP servers, we list the ones that have a view in the system space.
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    const servers = await MCPServerView.findAll({
+    const servers = await MCPServerViewModel.findAll({
       attributes: ["internalMCPServerId"],
       where: {
         serverType: "internal",

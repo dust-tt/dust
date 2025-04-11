@@ -41,7 +41,7 @@ const SocialMenuConfig: MenuConfig = {
   items: [
     {
       title: "X",
-      href: "https://x.com/dust4ai",
+      href: "https://x.com/DustHQ",
       isExternal: true,
     },
     {

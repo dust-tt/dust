@@ -10,7 +10,7 @@ export interface TagSearchProps {
   selectedTags: DataSourceTag[];
   onTagAdd: (tag: DataSourceTag) => void;
   onTagRemove: (tag: DataSourceTag) => void;
-  tagChipColor?: "slate" | "red";
+  tagChipColor?: "primary" | "warning";
   isLoading: boolean;
   disabled?: boolean;
 }
@@ -22,7 +22,7 @@ export const TagSearchInput = ({
   selectedTags,
   onTagAdd,
   onTagRemove,
-  tagChipColor = "slate",
+  tagChipColor = "primary",
   isLoading,
   disabled = false,
 }: TagSearchProps) => {

@@ -350,7 +350,7 @@ const InstructionsCharacterCount = ({
       className={classNames(
         "text-end text-xs",
         count >= maxCount
-          ? "text-red-500"
+          ? "text-warning"
           : "text-muted-foreground dark:text-muted-foreground-night"
       )}
     >
@@ -589,7 +589,7 @@ function Suggestions({
             if (error) {
               return (
                 <AnimatedSuggestion
-                  variant="red"
+                  variant="warning"
                   suggestion={`Error loading new suggestions:\n${error.message}`}
                 />
               );
@@ -597,7 +597,7 @@ function Suggestions({
             if (suggestionsStatus === "instructions_are_good") {
               return (
                 <AnimatedSuggestion
-                  variant="slate"
+                  variant="primary"
                   suggestion="Looking good! 🎉"
                 />
               );
@@ -622,7 +622,7 @@ function Suggestions({
 
 function AnimatedSuggestion({
   suggestion,
-  variant = "sky",
+  variant = "highlight",
   afterEnter,
 }: {
   suggestion: string;

@@ -77,7 +77,7 @@ export function SpaceWebsiteForm({
         <ContentMessage
           title="Ensure the website is public"
           icon={InformationCircleIcon}
-          variant="pink"
+          variant="warning"
         >
           Only public websites accessible without authentication will work.
         </ContentMessage>

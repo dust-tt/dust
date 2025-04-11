@@ -41,7 +41,10 @@ export async function generatePlainTextFile(
 
   await processAndStoreFile(auth, {
     file: plainTextFile,
-    reqOrString: content,
+    content: {
+      type: "string",
+      value: content,
+    },
   });
 
   return plainTextFile;
@@ -86,7 +89,13 @@ export async function generateCSVFileAndSnippet(
     totalRecords: results.length,
   });
 
-  await processAndStoreFile(auth, { file: csvFile, reqOrString: csvOutput });
+  await processAndStoreFile(auth, {
+    file: csvFile,
+    content: {
+      type: "string",
+      value: csvOutput,
+    },
+  });
 
   return { csvFile, csvSnippet };
 }
@@ -152,7 +161,10 @@ export async function generateSectionFile(
 
   await processAndStoreFile(auth, {
     file: sectionFile,
-    reqOrString: content,
+    content: {
+      type: "string",
+      value: content,
+    },
   });
 
   return sectionFile;

@@ -32,7 +32,7 @@ export default function ConnectorSyncingChip({
       );
     } else if (isConnectorLoading) {
       return (
-        <Chip color="amber" isBusy>
+        <Chip color="info" isBusy>
           Loading
         </Chip>
       );
@@ -98,7 +98,7 @@ export default function ConnectorSyncingChip({
               "The website synchronization reached the maximum page limit."
             }
             className="max-w-md"
-            trigger={<Chip color="amber">Limit reached</Chip>}
+            trigger={<Chip color="info">Limit reached</Chip>}
           />
         );
       case "webcrawling_error":
@@ -128,7 +128,7 @@ export default function ConnectorSyncingChip({
     }
   } else if (!connector.lastSyncSuccessfulTime) {
     return (
-      <Chip color="amber" isBusy>
+      <Chip color="info" isBusy>
         Synchronizing
         {connector.firstSyncProgress
           ? ` (${connector.firstSyncProgress})`
@@ -137,7 +137,7 @@ export default function ConnectorSyncingChip({
     );
   } else {
     return (
-      <Chip color="slate">
+      <Chip>
         Last Sync ~ {timeAgoFrom(connector.lastSyncSuccessfulTime)} ago
       </Chip>
     );

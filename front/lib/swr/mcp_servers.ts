@@ -2,6 +2,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import type { MCPServerType } from "@app/lib/api/mcp";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   CreateMCPServerResponseBody,
@@ -10,10 +11,11 @@ import type {
 import type {
   DeleteMCPServerResponseBody,
   GetMCPServerResponseBody,
-  GetRemoteMCPServerResponseBody,
   PatchMCPServerResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
+import type { GetMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
+import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools/[toolName]";
 import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
@@ -74,40 +76,6 @@ export function useAvailableMCPServers({
     availableMCPServers,
     isAvailableMCPServersLoading: !error && !data,
     isAvailableMCPServersError: error,
-  };
-}
-
-export function useRemoteMCPServer({
-  disabled,
-  owner,
-  serverId,
-}: {
-  disabled?: boolean;
-  owner: LightWorkspaceType;
-  serverId: string;
-}) {
-  const serverFetcher: Fetcher<GetRemoteMCPServerResponseBody> = fetcher;
-
-  const url = serverId ? `/api/w/${owner.sId}/mcp/${serverId}` : null;
-
-  const { data, error, mutate } = useSWRWithDefaults(url, serverFetcher, {
-    disabled,
-  });
-
-  if (!serverId) {
-    return {
-      server: null,
-      isServerLoading: false,
-      isServerError: true,
-      mutateMCPServer: () => {},
-    };
-  }
-
-  return {
-    server: data?.server || null,
-    isServerLoading: !error && !data,
-    isServerError: !!error,
-    mutateMCPServer: mutate,
   };
 }
 
@@ -234,6 +202,31 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
 }
 
 /**
+ * Hook to create a new MCP server from a URL
+ */
+export function useFetchRemoteMCPServer(owner: LightWorkspaceType) {
+  const fetchRemoteMCPServer = async (
+    url: string
+  ): Promise<{ server: Omit<MCPServerType, "id"> }> => {
+    const response = await fetch(`/api/w/${owner.sId}/mcp/fetch?url=${url}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.api_error?.message || "Failed to synchronize server"
+      );
+    }
+
+    return response.json();
+  };
+
+  return { fetchRemoteMCPServer };
+}
+
+/**
  * Hook to synchronize with a remote MCP server
  */
 export function useSyncRemoteMCPServer(
@@ -280,9 +273,8 @@ export function useUpdateRemoteMCPServer(
 
   const updateServer = async (data: {
     name: string;
-    url: string;
+    icon: string;
     description: string;
-    tools: { name: string; description: string }[];
   }): Promise<PatchMCPServerResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
       method: "PATCH",
@@ -321,7 +313,7 @@ export function useMCPServerConnections({
 
   return {
     connections: useMemo(() => (data ? data.connections : []), [data]),
-    isConnectionsLoading: !error && !data,
+    isConnectionsLoading: !error && !data && !disabled,
     isConnectionsError: error,
     mutateConnections: mutate,
   };
@@ -423,4 +415,81 @@ export function useDeleteMCPServerConnection({
   };
 
   return { deleteMCPServerConnection };
+}
+
+export function useMCPServerToolsPermissions({
+  owner,
+  serverId,
+}: {
+  owner: LightWorkspaceType;
+  serverId: string;
+}) {
+  const toolsFetcher: Fetcher<GetMCPServerToolsPermissionsResponseBody> =
+    fetcher;
+
+  const url = `/api/w/${owner.sId}/mcp/${serverId}/tools`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, toolsFetcher);
+
+  const toolsPermissions = useMemo(
+    () => (data ? data.permissions : {}),
+    [data]
+  );
+
+  return {
+    toolsPermissions,
+    isToolsPermissionsLoading: !error && !data,
+    isToolsPermissionsError: error,
+    mutateToolsPermissions: mutate,
+  };
+}
+
+export function useUpdateMCPServerToolsPermissions({
+  owner,
+  serverId,
+}: {
+  owner: LightWorkspaceType;
+  serverId: string;
+}) {
+  const { mutateToolsPermissions } = useMCPServerToolsPermissions({
+    owner,
+    serverId,
+  });
+
+  const sendNotification = useSendNotification();
+
+  const updateToolPermission = async ({
+    toolName,
+    permission,
+  }: {
+    toolName: string;
+    permission: string;
+  }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ permission }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.api_error?.message || "Failed to update permission"
+      );
+    }
+
+    sendNotification({
+      type: "success",
+      title: "Permission updated",
+      description: `The permission for ${toolName} has been updated.`,
+    });
+
+    await mutateToolsPermissions();
+    return response.json();
+  };
+
+  return { updateToolPermission };
 }

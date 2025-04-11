@@ -268,12 +268,7 @@ function ProPlanBillingNotice({
   perSeatPricing: SubscriptionPerSeatPricing;
 }) {
   return (
-    <ContentMessage
-      size="md"
-      variant="amber"
-      title="Note"
-      icon={InformationCircleIcon}
-    >
+    <ContentMessage size="md" title="Note" icon={InformationCircleIcon}>
       <p>
         New users will be charged a{" "}
         <span className="font-semibold">

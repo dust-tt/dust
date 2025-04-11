@@ -266,7 +266,10 @@ const upsertExcelToDatasource: ProcessingFunction = async (
 
     await processAndStoreFile(auth, {
       file: worksheetFile,
-      reqOrString: worksheetContent,
+      content: {
+        type: "string",
+        value: worksheetContent,
+      },
     });
 
     tableIds.push(tableId);
@@ -403,12 +406,13 @@ const getProcessingFunction = ({
   assertNever(contentType);
 };
 
-export const isUpsertSupported = (arg: {
+export const isFileTypeUpsertableForUseCase = (arg: {
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): boolean => {
-  const processing = getProcessingFunction(arg);
-  return !!processing;
+  const processingFunction = getProcessingFunction(arg);
+
+  return processingFunction !== undefined;
 };
 
 const maybeApplyProcessing: ProcessingFunction = async (
@@ -471,7 +475,7 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  if (!isUpsertSupported(file)) {
+  if (!isFileTypeUpsertableForUseCase(file)) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",

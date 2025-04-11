@@ -167,7 +167,7 @@ export default function DatasetsView({
                             {readOnly ? null : (
                               <div className="ml-2 flex flex-shrink-0">
                                 <TrashIcon
-                                  className="hidden h-4 w-4 text-gray-400 hover:text-red-600 group-hover:block dark:text-gray-400-night"
+                                  className="hidden h-4 w-4 text-gray-400 hover:text-warning group-hover:block dark:text-gray-400-night"
                                   onClick={async (e) => {
                                     e.preventDefault();
                                     await handleDelete(d.name);
@@ -200,9 +200,9 @@ export default function DatasetsView({
                 <div className="mt-2 max-w-4xl px-2">
                   <div className="py-2 text-sm text-gray-400 dark:text-gray-400-night">
                     Datasets are used as input data to apps (
-                    <Chip label="input" color="slate" /> block) or few-shot
-                    examples to prompt models (
-                    <Chip label="data" color="slate" /> block).
+                    <Chip label="input" /> block) or few-shot examples to prompt
+                    models (
+                    <Chip label="data" /> block).
                   </div>
                 </div>
               </div>

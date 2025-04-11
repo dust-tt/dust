@@ -261,22 +261,22 @@ function UpdateConnectionOAuthModal({
             />
           </div>
           {isDataSourceOwner && (
-            <div className="mb-4 mt-8 w-full rounded-lg bg-amber-50 p-3">
-              <div className="flex items-center gap-2 font-medium text-amber-800">
+            <div className="mb-4 mt-8 w-full rounded-lg bg-info-50 p-3">
+              <div className="flex items-center gap-2 font-medium text-info-800">
                 <Icon visual={InformationCircleIcon} />
                 Important
               </div>
-              <div className="p-4 text-sm text-amber-900">
+              <div className="copy-sm p-4 text-info-900">
                 <b>Editing</b> can break the existing data structure in Dust and
                 Agents using them.
               </div>
 
               {connectorConfiguration.guideLink && (
-                <div className="pl-4 text-sm text-amber-800">
+                <div className="copy-sm pl-4 text-info-800">
                   Read our{" "}
                   <a
                     href={connectorConfiguration.guideLink}
-                    className="text-blue-600"
+                    className="text-highlight-600"
                     target="_blank"
                   >
                     Playbook
@@ -317,7 +317,7 @@ function UpdateConnectionOAuthModal({
             <Page.SectionHeader title="Editing permissions" />
             <ContentMessage
               size="md"
-              variant="pink"
+              variant="warning"
               title="You are not the owner of this connection."
               icon={InformationCircleIcon}
             >
@@ -461,12 +461,12 @@ function DataSourceDeletionModal({
               title={`Deleting ${connectorConfiguration.name} connection`}
             />
           </div>
-          <div className="mb-4 mt-8 w-full rounded-lg bg-amber-50 p-3">
-            <div className="flex items-center gap-2 font-medium text-amber-800">
+          <div className="mb-4 mt-8 w-full rounded-lg bg-info-50 p-3">
+            <div className="flex items-center gap-2 font-medium text-info-800">
               <Icon visual={InformationCircleIcon} />
               Important
             </div>
-            <div className="p-4 text-sm text-amber-900">
+            <div className="p-4 text-sm text-info-900">
               <b>Deleting</b> will break Agents using this data.
             </div>
           </div>

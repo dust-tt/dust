@@ -1,7 +1,7 @@
 import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
-import { UserIcon } from "@sparkle/icons/solid";
+import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 
@@ -106,22 +106,14 @@ const getColor = (name: string) => {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   const colors = [
+    "s-bg-blue-300",
+    "s-bg-violet-300",
+    "s-bg-pink-300",
     "s-bg-red-300",
     "s-bg-orange-300",
-    "s-bg-amber-300",
-    "s-bg-yellow-300",
+    "s-bg-golden-300",
     "s-bg-lime-300",
-    "s-bg-green-300",
     "s-bg-emerald-300",
-    "s-bg-teal-300",
-    "s-bg-cyan-300",
-    "s-bg-sky-300",
-    "s-bg-blue-300",
-    "s-bg-indigo-300",
-    "s-bg-violet-300",
-    "s-bg-purple-300",
-    "s-bg-fuchsia-300",
-    "s-bg-rose-300",
   ];
   return colors[Math.abs(hash) % colors.length];
 };
@@ -135,22 +127,14 @@ const getTextVariant = (name: string) => {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   const txtColors = [
+    "s-text-blue-700",
+    "s-text-violet-700",
+    "s-text-pink-700",
     "s-text-red-700",
     "s-text-orange-700",
-    "s-text-amber-700",
-    "s-text-yellow-700",
+    "s-text-golden-700",
     "s-text-lime-700",
-    "s-text-green-700",
     "s-text-emerald-700",
-    "s-text-teal-700",
-    "s-text-cyan-700",
-    "s-text-sky-700",
-    "s-text-blue-700",
-    "s-text-indigo-700",
-    "s-text-violet-700",
-    "s-text-purple-700",
-    "s-text-fuchsia-700",
-    "s-text-rose-700",
   ];
   return txtColors[Math.abs(hash) % txtColors.length];
 };
@@ -167,6 +151,7 @@ interface AvatarProps {
   backgroundColor?: string;
   className?: string;
   disabled?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
 export function Avatar({
@@ -181,6 +166,7 @@ export function Avatar({
   backgroundColor,
   disabled = false,
   className,
+  icon,
 }: AvatarProps) {
   const emojiInfos =
     typeof visual === "string" && getEmojiAndBackgroundFromUrl(visual);
@@ -225,6 +211,11 @@ export function Avatar({
         />
       ) : visualToUse ? (
         visualToUse
+      ) : icon ? (
+        React.createElement(icon, {
+          className:
+            "s-h-1/2 s-w-1/2 s-text-foreground dark:s-text-foreground-night",
+        })
       ) : emojiToUse ? (
         <span className={textVariants({ size })}>{emojiToUse}</span>
       ) : name ? (

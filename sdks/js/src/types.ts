@@ -50,7 +50,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-1.5-flash-latest"
   | "gemini-2.0-flash"
   | "gemini-2.0-flash-lite"
-  | "gemini-2.5-pro-exp-03-25"
+  | "gemini-2.5-pro-preview-03-25"
   | "gemini-2.0-flash-exp" // DEPRECATED
   | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
   | "gemini-2.0-pro-exp-02-05" // DEPRECATED
@@ -898,9 +898,12 @@ export type WebsearchActionPublicType = z.infer<
 
 const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
+  functionCallName: z.string().nullable(),
   params: z.unknown(),
   type: z.literal("tool_action"),
 });
+
+export type MCPActionPublicType = z.infer<typeof MCPActionTypeSchema>;
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "active"
@@ -1041,6 +1044,7 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
+  localMCPServerIds: z.array(z.string()).optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -1877,7 +1881,9 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
         configurationId: z.string(),
       })
     ),
-    context: UserMessageContextSchema,
+    context: UserMessageContextSchema.extend({
+      localMCPServerIds: z.array(z.string()).optional().nullable(),
+    }),
   }),
   z
     .object({
@@ -2682,19 +2688,6 @@ export const GetSpacesResponseSchema = z.object({
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
-const ValidateActionResponseSchema = z.object({
-  success: z.boolean(),
-});
-
-export type ValidateActionResponseType = z.infer<
-  typeof ValidateActionResponseSchema
->;
-
-export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.number(),
-  approved: z.boolean(),
-});
-
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,
   spaceIds: z.array(z.string()),
@@ -2803,3 +2796,55 @@ export const ACTION_RUNNING_LABELS: Record<
   websearch_action: "Searching the web",
   tool_action: "Calling MCP Server",
 };
+
+// MCP Related.
+
+export const ValidateActionResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type ValidateActionResponseType = z.infer<
+  typeof ValidateActionResponseSchema
+>;
+
+export const ValidateActionRequestBodySchema = z.object({
+  actionId: z.number(),
+  approved: z.boolean(),
+});
+
+export type ValidateActionRequestBodyType = z.infer<
+  typeof ValidateActionRequestBodySchema
+>;
+
+export const RegisterMCPResponseSchema = z.object({
+  success: z.boolean(),
+  expiresAt: z.string(),
+});
+
+export type RegisterMCPResponseType = z.infer<typeof RegisterMCPResponseSchema>;
+
+export const HeartbeatMCPResponseSchema = z.object({
+  success: z.boolean(),
+  expiresAt: z.string(),
+});
+
+export type HeartbeatMCPResponseType = z.infer<
+  typeof HeartbeatMCPResponseSchema
+>;
+
+export const PublicPostMCPResultsRequestBodySchema = z.object({
+  requestId: z.string(),
+  result: z.unknown(),
+});
+
+export type PublicPostMCPResultsRequestBody = z.infer<
+  typeof PublicPostMCPResultsRequestBodySchema
+>;
+
+export const PostMCPResultsResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type PostMCPResultsResponseType = z.infer<
+  typeof PostMCPResultsResponseSchema
+>;

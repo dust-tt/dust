@@ -1,10 +1,13 @@
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import {
+  isFileTypeUpsertableForUseCase,
+  processAndUpsertToDataSource,
+} from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { ConversationType, Result } from "@app/types";
+import { Ok, removeNulls } from "@app/types";
 
 // When we send the attachments at the conversation creation, we are missing the useCaseMetadata
 // Therefore, we couldn't upsert them to the conversation datasource.
@@ -23,7 +26,7 @@ export async function maybeUpsertFileAttachment(
     )[];
     conversation: ConversationType;
   }
-) {
+): Promise<Result<undefined, Error>> {
   const filesIds = removeNulls(
     contentFragments.map((cf) => {
       if ("fileId" in cf) {
@@ -43,11 +46,18 @@ export async function maybeUpsertFileAttachment(
           await fileResource.setUseCaseMetadata({
             conversationId: conversation.sId,
           });
-          const jitDataSource = await getOrCreateConversationDataSourceFromFile(
-            auth,
-            fileResource
-          );
-          if (!jitDataSource.isErr()) {
+
+          // Only upsert if the file is upsertable.
+          if (isFileTypeUpsertableForUseCase(fileResource)) {
+            const jitDataSource =
+              await getOrCreateConversationDataSourceFromFile(
+                auth,
+                fileResource
+              );
+            if (jitDataSource.isErr()) {
+              return jitDataSource;
+            }
+
             const r = await processAndUpsertToDataSource(
               auth,
               jitDataSource.value,
@@ -56,8 +66,7 @@ export async function maybeUpsertFileAttachment(
               }
             );
             if (r.isErr()) {
-              // For now, silently log the error
-              logger.warn({
+              logger.error({
                 fileModelId: fileResource.id,
                 workspaceId: conversation.owner.sId,
                 contentType: fileResource.contentType,
@@ -66,10 +75,13 @@ export async function maybeUpsertFileAttachment(
                 message: "Failed to upsert the file.",
                 error: r.error,
               });
+
+              return r;
             }
           }
         }
       }),
     ]);
   }
+  return new Ok(undefined);
 }

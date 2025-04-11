@@ -2,12 +2,12 @@ import { Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
-import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
+import { AdminActionsList } from "@app/components/actions/mcp/AdminActionsList";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";

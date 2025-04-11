@@ -1,4 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   classNames,
   ContentMessage,
@@ -19,6 +18,7 @@ import React, {
   useState,
 } from "react";
 
+import { ChildAgentSelector } from "@app/components/assistant_builder/actions/configuration/ChildAgentSelector";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -27,9 +27,9 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
+import { useMCPServerRequiredConfiguration } from "@app/hooks/useMCPServerRequiredConfiguration";
 import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
-import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   DataSourceViewSelectionConfigurations,
@@ -59,6 +59,7 @@ export function ActionMCP({
   updateAction,
   setEdited,
 }: ActionMCPProps) {
+  // TODO(mcp): currently broken: we can save an action without having configured it.
   const actionConfiguration =
     action.configuration as AssistantBuilderMCPServerConfiguration;
 
@@ -91,7 +92,16 @@ export function ActionMCP({
           mcpServerView.id === actionConfiguration.mcpServerViewId
       ) ?? null
     );
+  const {
+    requiresChildAgentConfiguration,
+    requiresTableConfiguration,
+    requiresDataSourceConfiguration,
+  } = useMCPServerRequiredConfiguration({
+    mcpServerView: selectedMCPServerView,
+  });
+
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const [showTablesModal, setShowTablesModal] = useState(false);
 
   useEffect(() => {
     if (!selectedMCPServerView) {
@@ -109,14 +119,9 @@ export function ActionMCP({
           mcpServerViewId: selectedMCPServerView.id,
           // We control here the relationship between the field in AssistantBuilderMCPServerConfiguration
           // and the mimeType to look for in the server metadata.
-          dataSourceConfigurations:
-            selectedMCPServerView &&
-            serverRequiresInternalConfiguration({
-              serverMetadata: selectedMCPServerView.server,
-              mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
-            })
-              ? prevConfig.dataSourceConfigurations || {}
-              : null,
+          dataSourceConfigurations: prevConfig.dataSourceConfigurations,
+          tablesConfigurations: prevConfig.tablesConfigurations,
+          childAgentId: prevConfig.childAgentId,
         };
       },
     });
@@ -133,14 +138,10 @@ export function ActionMCP({
       updateAction({
         actionName: slugify(selectedMCPServerView.server.name ?? ""),
         actionDescription: selectedMCPServerView.server.description ?? "",
-        getNewActionConfig: (prev) => {
-          const prevConfig = prev as AssistantBuilderMCPServerConfiguration;
-
-          return {
-            ...prevConfig,
-            mcpServerViewId: serverView.id,
-          };
-        },
+        getNewActionConfig: (prev) => ({
+          ...(prev as AssistantBuilderMCPServerConfiguration),
+          mcpServerViewId: serverView.id,
+        }),
       });
     },
     [selectedMCPServerView, setEdited, updateAction]
@@ -151,20 +152,53 @@ export function ActionMCP({
       if (!selectedMCPServerView) {
         return;
       }
-
       setEdited(true);
       updateAction({
         actionName: slugify(selectedMCPServerView?.server.name ?? ""),
         actionDescription: selectedMCPServerView?.server.description ?? "",
-        getNewActionConfig: (prev) => {
-          const prevConfig = prev as AssistantBuilderMCPServerConfiguration;
+        getNewActionConfig: (prev) => ({
+          ...(prev as AssistantBuilderMCPServerConfiguration),
+          mcpServerViewId: selectedMCPServerView.id,
+          dataSourceConfigurations: dsConfigs,
+        }),
+      });
+    },
+    [selectedMCPServerView, setEdited, updateAction]
+  );
 
-          return {
-            ...prevConfig,
-            mcpServerViewId: selectedMCPServerView.id,
-            dataSourceConfigurations: dsConfigs,
-          };
-        },
+  const handleTableConfigUpdate = useCallback(
+    (tableConfigs: DataSourceViewSelectionConfigurations) => {
+      if (!selectedMCPServerView) {
+        return;
+      }
+      setEdited(true);
+      updateAction({
+        actionName: slugify(selectedMCPServerView?.server.name ?? ""),
+        actionDescription: selectedMCPServerView?.server.description ?? "",
+        getNewActionConfig: (prev) => ({
+          ...(prev as AssistantBuilderMCPServerConfiguration),
+          mcpServerViewId: selectedMCPServerView.id,
+          tablesConfigurations: tableConfigs,
+        }),
+      });
+    },
+    [selectedMCPServerView, setEdited, updateAction]
+  );
+
+  const handleChildAgentConfigUpdate = useCallback(
+    (newChildAgentId: string) => {
+      if (!selectedMCPServerView) {
+        return;
+      }
+      setEdited(true);
+      updateAction({
+        actionName: slugify(selectedMCPServerView?.server.name ?? ""),
+        actionDescription: selectedMCPServerView?.server.description ?? "",
+        getNewActionConfig: (prev) => ({
+          ...(prev as AssistantBuilderMCPServerConfiguration),
+          mcpServerViewId: selectedMCPServerView.id,
+          childAgentId: newChildAgentId,
+        }),
       });
     },
     [selectedMCPServerView, setEdited, updateAction]
@@ -176,17 +210,32 @@ export function ActionMCP({
 
   return (
     <>
-      {actionConfiguration.dataSourceConfigurations && (
+      {requiresDataSourceConfiguration && (
         <AssistantBuilderDataSourceModal
           isOpen={showDataSourcesModal}
           setOpen={setShowDataSourcesModal}
           owner={owner}
           onSave={handleDataSourceConfigUpdate}
           initialDataSourceConfigurations={
-            actionConfiguration.dataSourceConfigurations
+            actionConfiguration.dataSourceConfigurations ?? {}
           }
           allowedSpaces={allowedSpaces}
           viewType="document"
+        />
+      )}
+      {requiresTableConfiguration && (
+        <AssistantBuilderDataSourceModal
+          isOpen={showTablesModal}
+          setOpen={(isOpen) => {
+            setShowTablesModal(isOpen);
+          }}
+          owner={owner}
+          onSave={handleTableConfigUpdate}
+          initialDataSourceConfigurations={
+            actionConfiguration.tablesConfigurations ?? {}
+          }
+          allowedSpaces={allowedSpaces}
+          viewType="table"
         />
       )}
       <>
@@ -317,15 +366,33 @@ export function ActionMCP({
           </>
         )}
       </>
-      {actionConfiguration.dataSourceConfigurations && (
+      {requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
           owner={owner}
           dataSourceConfigurations={
-            actionConfiguration.dataSourceConfigurations
+            actionConfiguration.dataSourceConfigurations ?? {}
           }
           openDataSourceModal={() => setShowDataSourcesModal(true)}
           onSave={handleDataSourceConfigUpdate}
           viewType="document"
+        />
+      )}
+      {requiresTableConfiguration && (
+        <DataSourceSelectionSection
+          owner={owner}
+          dataSourceConfigurations={
+            actionConfiguration.tablesConfigurations ?? {}
+          }
+          openDataSourceModal={() => setShowTablesModal(true)}
+          onSave={handleTableConfigUpdate}
+          viewType="table"
+        />
+      )}
+      {requiresChildAgentConfiguration && (
+        <ChildAgentSelector
+          onAgentSelect={handleChildAgentConfigUpdate}
+          selectedAgentId={actionConfiguration.childAgentId}
+          owner={owner}
         />
       )}
     </>

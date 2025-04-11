@@ -449,7 +449,7 @@ export class ConfluenceClient {
         `Near rate limit: ${this.apiUrl}${endpoint}`,
         {
           type: "http_response_error",
-          status: response.status,
+          status: 429, // We fake a 429 here to make sure the error is caught in the cast_known_errors.
           data: { url: `${this.apiUrl}${endpoint}`, response },
         }
       );

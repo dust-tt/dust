@@ -10,6 +10,8 @@ export interface PendingUpdate {
 }
 
 export class ChromeCorePlatformService extends CorePlatformService {
+  readonly supportsMCP = false;
+
   constructor() {
     super(
       "chrome",

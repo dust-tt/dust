@@ -3,10 +3,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
-  isDefaultInternalMCPServer,
-  isInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import {
   augmentInputsWithConfiguration,
   hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -14,6 +10,7 @@ import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
+  ActionGeneratedFileType,
   BaseActionRunParams,
   ExtractActionBlob,
 } from "@app/lib/actions/types";
@@ -22,11 +19,15 @@ import {
   BaseActionConfigurationServerRunner,
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { isPlatformMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
@@ -34,31 +35,57 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { Ok } from "@app/types";
+import { isSupportedFileContentType, Ok, removeNulls } from "@app/types";
 
-export type MCPServerConfigurationType = {
+export type BaseMCPServerConfigurationType = {
   id: ModelId;
-  sId: string;
 
-  mcpServerViewId: string; // Hold the sId of the MCP server view.
+  sId: string;
 
   type: "mcp_server_configuration";
 
   name: string;
   description: string | null;
-
-  dataSources: DataSourceConfiguration[] | null;
-  tables: TableDataSourceConfiguration[] | null;
-  // TODO(mcp): add other kinds of configurations here.
 };
 
-export type MCPToolConfigurationType = Omit<
-  MCPServerConfigurationType,
+// Platform = Remote MCP Server OR our own MCP server.
+export type PlatformMCPServerConfigurationType =
+  BaseMCPServerConfigurationType & {
+    dataSources: DataSourceConfiguration[] | null;
+    tables: TableDataSourceConfiguration[] | null;
+    childAgentId: string | null;
+    additionalConfiguration: Record<string, boolean | number | string | null>;
+    mcpServerViewId: string; // Hold the sId of the MCP server view.
+  };
+
+export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType & {
+  localMcpServerId: string;
+};
+
+export type MCPServerConfigurationType =
+  | PlatformMCPServerConfigurationType
+  | LocalMCPServerConfigurationType;
+
+export type PlatformMCPToolConfigurationType = Omit<
+  PlatformMCPServerConfigurationType,
+  "type"
+> & {
+  type: "mcp_configuration";
+  inputSchema: JSONSchema;
+  isDefault: boolean;
+};
+
+export type LocalMCPToolConfigurationType = Omit<
+  LocalMCPServerConfigurationType,
   "type"
 > & {
   type: "mcp_configuration";
   inputSchema: JSONSchema;
 };
+
+export type MCPToolConfigurationType =
+  | PlatformMCPToolConfigurationType
+  | LocalMCPToolConfigurationType;
 
 type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
@@ -119,7 +146,7 @@ export class MCPActionType extends BaseAction {
   readonly type = "tool_action" as const;
 
   constructor(blob: MCPActionBlob) {
-    super(blob.id, blob.type);
+    super(blob.id, blob.type, blob.generatedFiles);
 
     this.agentMessageId = blob.agentMessageId;
     this.mcpServerConfigurationId = blob.mcpServerConfigurationId;
@@ -262,8 +289,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       | "pending"
       | "denied" = "pending";
     if (
-      isInternalMCPServerName(actionConfiguration.name) &&
-      isDefaultInternalMCPServer(actionConfiguration.name)
+      isPlatformMCPToolConfiguration(actionConfiguration) &&
+      actionConfiguration.isDefault
     ) {
       status = "allowed_implicitly";
     } else {
@@ -281,7 +308,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           actionId: mcpAction.id,
         });
 
-        localLogger.info("Waiting for action validation");
+        localLogger.info(
+          {
+            actionName: actionConfiguration.name,
+          },
+          "Waiting for action validation"
+        );
 
         // Start listening for action events
         for await (const event of actionEventGenerator) {
@@ -386,7 +418,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     // TODO(mcp): listen to sse events to provide live feedback to the user
     const r = await tryCallMCPTool(auth, {
+      messageId: agentMessage.sId,
       actionConfiguration,
+      conversationId: conversation.sId,
       inputs,
     });
 
@@ -414,14 +448,40 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     }
 
     const content = r.value;
+    const generatedFiles: ActionGeneratedFileType[] = [];
+    for (const c of content) {
+      let file: FileResource | null = null;
+      if (
+        c.type === "resource" &&
+        c.resource.mimeType &&
+        isSupportedFileContentType(c.resource.mimeType)
+      ) {
+        const r = await processAndStoreFromUrl(auth, {
+          url: c.resource.uri,
+          useCase: "conversation",
+          fileName: "generated-image.png",
+          contentType: c.resource.mimeType,
+        });
+        if (r.isErr()) {
+          localLogger.error({ error: r.error }, "Error upserting file");
+          continue;
+        }
+        file = r.value;
+        generatedFiles.push({
+          fileId: file.sId,
+          contentType: c.resource.mimeType,
+          title: file.fileName,
+          snippet: null,
+        });
+      }
 
-    await AgentMCPActionOutputItem.bulkCreate(
-      content.map((c) => ({
+      await AgentMCPActionOutputItem.create({
         workspaceId: owner.id,
         agentMCPActionId: action.id,
         content: c,
-      }))
-    );
+        fileId: file?.id,
+      });
+    }
 
     yield {
       type: "tool_success",
@@ -430,6 +490,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       messageId: agentMessage.sId,
       action: new MCPActionType({
         ...actionBaseParams,
+        generatedFiles,
         executionState: status,
         id: action.id,
         isError: false,
@@ -460,6 +521,13 @@ export async function mcpActionTypesFromAgentMessageIds(
         model: AgentMCPActionOutputItem,
         as: "outputItems",
         required: false,
+        include: [
+          {
+            model: FileModel,
+            as: "file",
+            required: false,
+          },
+        ],
       },
     ],
   });
@@ -468,7 +536,7 @@ export async function mcpActionTypesFromAgentMessageIds(
     return new MCPActionType({
       id: action.id,
       params: action.params,
-      output: action.outputItems.map((i) => i.content),
+      output: action.outputItems.map((o) => o.content),
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
@@ -477,7 +545,26 @@ export async function mcpActionTypesFromAgentMessageIds(
       executionState: action.executionState,
       isError: action.isError,
       type: "tool_action",
-      generatedFiles: [],
+      generatedFiles: removeNulls(
+        action.outputItems.map((o) => {
+          if (!o.file) {
+            return null;
+          }
+
+          const file = o.file;
+          const fileSid = FileResource.modelIdToSId({
+            id: file.id,
+            workspaceId: action.workspaceId,
+          });
+
+          return {
+            fileId: fileSid,
+            contentType: file.contentType,
+            title: file.fileName,
+            snippet: file.snippet,
+          };
+        })
+      ),
     });
   });
 }

@@ -4,12 +4,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type {
-  MCPServerType,
-  MCPServerTypeWithViews,
-} from "@app/lib/actions/mcp_metadata";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -71,13 +68,7 @@ async function handler(
             const server = r.toJSON();
             const views = (
               await MCPServerViewResource.listByMCPServer(auth, server.id)
-            ).map((v) => ({
-              id: v.sId,
-              createdAt: v.createdAt.getTime(),
-              updatedAt: v.updatedAt.getTime(),
-              spaceId: v.space.sId,
-              server,
-            }));
+            ).map((v) => v.toJSON());
             return { ...server, views };
           },
           {
@@ -132,9 +123,9 @@ async function handler(
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
-          name: metadata.name,
           url: url,
-          description: metadata.description,
+          cachedName: metadata.name,
+          cachedDescription: metadata.description,
           cachedTools: metadata.tools,
           icon: metadata.icon,
           version: metadata.version,
