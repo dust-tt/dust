@@ -28,10 +28,7 @@ import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetai
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  MCP_SERVER_ICONS,
-} from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServer,
@@ -39,6 +36,7 @@ import {
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 type MCPServerDetailsProps = {
   owner: WorkspaceType;
@@ -110,7 +108,7 @@ export function MCPServerDetails({
           </DialogHeader>
           <DialogContainer>
             Are you sure you want to remove the action "
-            {mcpServerToDelete?.name}"?
+            {asDisplayName(mcpServerToDelete?.name)}"?
             <div className="mt-2">
               <b>This action cannot be undone.</b>
             </div>
@@ -147,11 +145,9 @@ export function MCPServerDetails({
               <SheetTitle />
             </VisuallyHidden>
             <div className="flex flex-col items-center gap-3 sm:flex-row">
-              <Avatar
-                visual={React.createElement(
-                  MCP_SERVER_ICONS[mcpServer?.icon || DEFAULT_MCP_SERVER_ICON]
-                )}
-              />
+              {effectiveMCPServer && (
+                <Avatar visual={getVisual(effectiveMCPServer)} />
+              )}
               <div className="flex grow flex-col gap-1">
                 <div
                   className={classNames(
@@ -162,7 +158,7 @@ export function MCPServerDetails({
                       : "heading-lg"
                   )}
                 >
-                  {effectiveMCPServer?.name}
+                  {asDisplayName(effectiveMCPServer?.name)}
                 </div>
                 <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {effectiveMCPServer?.description}

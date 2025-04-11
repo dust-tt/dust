@@ -65,21 +65,47 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     this.editedByUser = editedByUser;
   }
 
-  private async init(auth: Authenticator) {
-    this.remoteMCPServer =
-      (this.remoteMCPServerId &&
-        (await RemoteMCPServerResource.findByPk(
-          auth,
-          this.remoteMCPServerId
-        ))) ||
-      undefined;
-    this.internalMCPServer =
-      (this.internalMCPServerId &&
-        (await InternalMCPServerInMemoryResource.fetchById(
-          auth,
-          this.internalMCPServerId
-        ))) ||
-      undefined;
+  private async init(auth: Authenticator): Promise<Result<void, DustError>> {
+    if (this.remoteMCPServerId) {
+      const remoteServer = await RemoteMCPServerResource.findByPk(
+        auth,
+        this.remoteMCPServerId
+      );
+      if (!remoteServer) {
+        return new Err(
+          new DustError(
+            "remote_server_not_found",
+            "Remote server not found, should never happen as we are suppose to clear the view when deleting a remote server."
+          )
+        );
+      }
+      this.remoteMCPServer = remoteServer;
+      return new Ok(undefined);
+    }
+
+    if (this.internalMCPServerId) {
+      const internalServer = await InternalMCPServerInMemoryResource.fetchById(
+        auth,
+        this.internalMCPServerId
+      );
+      if (!internalServer) {
+        return new Err(
+          new DustError(
+            "internal_server_not_found",
+            "Internal server not found, it might have been deleted from the list of internal servers. Action: clear the mcp server views of orphan internal servers."
+          )
+        );
+      }
+      this.internalMCPServer = internalServer;
+      return new Ok(undefined);
+    }
+
+    return new Err(
+      new DustError(
+        "internal_error",
+        "We could not find the server because it was of an unknown type, this should never happen."
+      )
+    );
   }
 
   private static async makeNew(
@@ -115,11 +141,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       { transaction }
     );
 
-    const res = new this(MCPServerViewResource.model, server.get(), space);
+    const resource = new this(MCPServerViewResource.model, server.get(), space);
 
-    await res.init(auth);
+    const r = await resource.init(auth);
+    if (r.isErr()) {
+      throw r.error;
+    }
 
-    return res;
+    return resource;
   }
 
   public static async create(
@@ -135,6 +164,15 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   ) {
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+
+    if (space.kind === "global") {
+      const mcpServerViews = await this.listByMCPServer(auth, mcpServerId);
+      for (const mcpServerView of mcpServerViews) {
+        if (mcpServerView.space.kind === "regular") {
+          await mcpServerView.delete(auth, { hardDelete: true });
+        }
+      }
+    }
 
     return this.makeNew(
       auth,
@@ -165,10 +203,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       ],
     });
 
+    const filteredViews: MCPServerViewResource[] = [];
     for (const view of views) {
-      await view.init(auth);
+      const r = await view.init(auth);
+      if (r.isOk()) {
+        filteredViews.push(view);
+      }
     }
-    return views;
+    return filteredViews;
   }
 
   static async fetchById(

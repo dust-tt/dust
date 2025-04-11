@@ -59,7 +59,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
         className
       )}
     >
-      <div className="flex aspect-video items-center justify-center bg-primary-800 p-4">
+      <div className="flex aspect-video w-full items-center justify-center bg-primary-800 p-4">
         <div className="max-w-lg">{children ? children : null}</div>
       </div>
       <div className="flex flex-col gap-3 px-6 pb-6 pt-4">
@@ -351,7 +351,7 @@ export const AllQuotes: QuoteProps[] = [
 // Single quote card component
 const QuoteCard = ({ quote, logo, name, title }: QuoteProps) => (
   <div className="flex h-full w-full flex-col rounded-lg bg-gray-50 p-4 sm:rounded-xl sm:p-5 md:p-6">
-    <div className="font-objektiv sm:line-clamp-7 mb-4 line-clamp-5 flex flex-col items-start text-left text-base font-normal text-gray-900 sm:text-base md:text-lg">
+    <div className="sm:line-clamp-7 mb-4 line-clamp-5 flex flex-col items-start text-left font-objektiv text-base font-normal text-gray-900 sm:text-base md:text-lg">
       "{quote}"
     </div>
     <div className="mt-auto flex items-center justify-between">

@@ -11,6 +11,7 @@ import {
   ContentMessage,
   ConversationMessage,
   DocumentDuplicateIcon,
+  DocumentIcon,
   EyeIcon,
   Markdown,
   Page,
@@ -40,6 +41,7 @@ import { useConversationsNavigation } from "@app/components/assistant/conversati
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { LabsSalesforceAuthenticationError } from "@app/components/assistant/conversation/LabsSalesforceErrorHandler";
 import {
   CitationsContext,
   CiteBlock,
@@ -265,6 +267,7 @@ export function AgentMessage({
             conversationId: conversationId,
             action: event.action,
             inputs: event.inputs,
+            stake: event.stake,
           });
           break;
 
@@ -607,6 +610,14 @@ export function AgentMessage({
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
     if (agentMessage.status === "failed") {
+      if (agentMessage.error?.code == "require_salesforce_authentication") {
+        return (
+          <LabsSalesforceAuthenticationError
+            owner={owner}
+            retryHandler={async () => retryHandler(agentMessage)}
+          />
+        );
+      }
       return (
         <ErrorMessage
           error={
@@ -619,6 +630,18 @@ export function AgentMessage({
         />
       );
     }
+
+    const generatedImages = agentMessage.actions.flatMap((action) =>
+      action.generatedFiles.filter((file) =>
+        isSupportedImageContentType(file.contentType)
+      )
+    );
+
+    const generatedFiles = agentMessage.actions.flatMap((action) =>
+      action.generatedFiles.filter(
+        (file) => !isSupportedImageContentType(file.contentType)
+      )
+    );
 
     return (
       <div className="flex flex-col gap-y-4">
@@ -641,32 +664,20 @@ export function AgentMessage({
             </ContentMessage>
           ) : null}
         </div>
-        {agentMessage.actions.some((action) =>
-          action.generatedFiles.some((file) =>
-            isSupportedImageContentType(file.contentType)
-          )
-        ) && (
+        {generatedImages.length > 0 && (
           <div className="mt-2 grid grid-cols-4 gap-2">
-            {agentMessage.actions.map((action) =>
-              action.generatedFiles
-                .filter((file) => isSupportedImageContentType(file.contentType))
-                .map((file) => {
-                  return (
-                    <div key={file.fileId}>
-                      <img
-                        className="cursor-zoom-in rounded-md"
-                        src={`/api/w/${owner.sId}/files/${file.fileId}`}
-                        alt={`${file.title}`}
-                        onClick={() => {
-                          setIsImageUrl(
-                            `/api/w/${owner.sId}/files/${file.fileId}`
-                          );
-                        }}
-                      />
-                    </div>
-                  );
-                })
-            )}
+            {generatedImages.map((image) => (
+              <div key={image.fileId}>
+                <img
+                  className="cursor-zoom-in rounded-md"
+                  src={`/api/w/${owner.sId}/files/${image.fileId}`}
+                  alt={`${image.title}`}
+                  onClick={() => {
+                    setIsImageUrl(`/api/w/${owner.sId}/files/${image.fileId}`);
+                  }}
+                />
+              </div>
+            ))}
           </div>
         )}
         {agentMessage.content !== null && (
@@ -694,6 +705,20 @@ export function AgentMessage({
                 />
               </CitationsContext.Provider>
             )}
+          </div>
+        )}
+        {generatedFiles.length > 0 && (
+          <div className="mt-2 grid grid-cols-5 gap-1">
+            {getCitations({
+              activeReferences: generatedFiles.map((file) => ({
+                index: -1,
+                document: {
+                  href: `/api/w/${owner.sId}/files/${file.fileId}`,
+                  title: file.title,
+                  icon: <DocumentIcon />,
+                },
+              })),
+            })}
           </div>
         )}
         {agentMessage.status === "cancelled" && (
@@ -762,7 +787,7 @@ function getCitations({
     return (
       <Citation key={index} href={document.href} tooltip={document.title}>
         <CitationIcons>
-          <CitationIndex>{index}</CitationIndex>
+          {index !== -1 && <CitationIndex>{index}</CitationIndex>}
           {document.icon}
         </CitationIcons>
         <CitationTitle>{document.title}</CitationTitle>

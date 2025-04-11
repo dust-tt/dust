@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
@@ -14,7 +15,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
-import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -45,7 +46,11 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
+import {
+  asDisplayName,
+  assertNever,
+  DATA_SOURCE_VIEW_CATEGORIES,
+} from "@app/types";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -650,8 +655,8 @@ const SpaceActionItem = ({
   return (
     <Tree.Item
       type="leaf"
-      label={action.server.name}
-      visual={MCP_SERVER_ICONS[action.server.icon]}
+      label={asDisplayName(action.server.name)}
+      visual={() => <Avatar visual={getVisual(action.server)} size="xs" />}
       areActionsFading={false}
     />
   );
@@ -764,7 +769,7 @@ const SpaceActionsSubMenu = ({
     >
       {isExpanded && (
         <Tree isLoading={isMCPServerViewsLoading}>
-          {sortBy(serverViews, "name").map((serverView) => (
+          {sortBy(serverViews, "server.name").map((serverView) => (
             <SpaceActionItem
               action={serverView}
               key={serverView.server.name}

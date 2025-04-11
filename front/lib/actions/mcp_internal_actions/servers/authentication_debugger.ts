@@ -7,14 +7,14 @@ import type { OAuthProvider } from "@app/types";
 
 const provider: OAuthProvider = "google_drive" as const;
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "hello_world",
+  name: "authentication_debugger",
   version: "1.0.0",
   description: "You are a helpful server that can say hello to the user.",
   authorization: {
     provider,
     use_case: "connection" as const,
   },
-  icon: "rocket",
+  visual: "https://dust.tt/static/droidavatar/Droid_Pink_1.jpg",
 };
 
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {

@@ -1,3 +1,4 @@
+import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { publishEvent } from "@app/lib/api/assistant/pubsub";
 import logger from "@app/logger/logger";
 
@@ -16,10 +17,9 @@ export async function validateAction({
   conversationId: string;
   messageId: string;
   actionId: number;
-  approved: boolean;
+  approved: MCPValidationOutputType;
 }): Promise<{ success: boolean }> {
   const actionChannel = getActionChannel(actionId);
-  const eventType = approved ? "action_approved" : "action_rejected";
 
   logger.info(
     {
@@ -37,7 +37,7 @@ export async function validateAction({
     origin: "action_validation",
     channel: actionChannel,
     event: JSON.stringify({
-      type: eventType,
+      type: approved,
       created: Date.now(),
       actionId: actionId,
       messageId: messageId,

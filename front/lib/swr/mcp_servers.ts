@@ -20,7 +20,7 @@ import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 /**
  * Hook to fetch a specific remote MCP server by ID
@@ -61,12 +61,16 @@ export function useMCPServer({
 
 export function useAvailableMCPServers({
   owner,
+  space,
 }: {
   owner: LightWorkspaceType;
+  space?: SpaceType;
 }) {
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
-  const url = `/api/w/${owner.sId}/mcp/available`;
+  const url = space
+    ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp/available`
+    : `/api/w/${owner.sId}/mcp/available`;
 
   const { data, error } = useSWRWithDefaults(url, configFetcher);
 

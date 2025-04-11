@@ -113,8 +113,11 @@ export function listFiles(
           canDoJIT &&
           isSearchableContentType(m.contentType) &&
           // Tables from knowledge are not materialized as raw content. As such, they cannot be
-          // searched.
-          !isContentNodeTable;
+          // searched--except for notion databases, that may have children.
+          !(
+            isContentNodeTable &&
+            m.contentType !== CONTENT_NODE_MIME_TYPES.NOTION.DATABASE
+          );
 
         const baseAttachment: BaseConversationAttachmentType = {
           title: m.title,

@@ -7,10 +7,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "image_generation_dalle",
+  name: "image_generator",
   version: "1.0.0",
-  description: "Generate images with the Dall-E v3 model from OpenAI.",
-  icon: "image",
+  description: "Generate images with Dall-E v3.",
+  visual: "image",
   authorization: null,
 };
 
@@ -70,7 +70,7 @@ const createServer = (auth: Authenticator): McpServer => {
         resource: {
           mimeType: "image/png",
           uri: image.url!,
-          text: `Here is the image's url: ${image.url}`,
+          text: `Your image was generated successfully.`,
         },
       }));
 

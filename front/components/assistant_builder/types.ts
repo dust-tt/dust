@@ -4,7 +4,6 @@ import type { SVGProps } from "react";
 import type React from "react";
 
 import {
-  DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
@@ -130,7 +129,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
-  additionalConfiguration: Record<string, boolean | number | string | null>;
+  additionalConfiguration: Record<string, boolean | number | string>;
 };
 
 // Builder State
@@ -372,8 +371,8 @@ export function getDefaultMCPServerActionConfiguration(): AssistantBuilderAction
       childAgentId: null,
       additionalConfiguration: {},
     },
-    name: DEFAULT_MCP_ACTION_NAME,
-    description: DEFAULT_MCP_ACTION_DESCRIPTION,
+    name: "",
+    description: "",
     noConfigurationRequired: false,
   };
 }
