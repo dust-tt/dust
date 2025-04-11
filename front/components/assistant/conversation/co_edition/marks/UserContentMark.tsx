@@ -1,13 +1,13 @@
 import { Mark, mergeAttributes } from "@tiptap/react";
 
-// Mark for user-typed conten.
+// Mark for user-typed content.
 export const UserContentMark = Mark.create({
   name: "userContent",
 
   addAttributes() {
     return {
       class: {
-        default: "text-purple-600", // Purple color.
+        default: "text-gray-600", // Gray color.
       },
     };
   },
