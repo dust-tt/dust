@@ -105,7 +105,8 @@ const getNodesFromConfig = (
 
 const updateSelection = (
   item: DataSourceViewContentNode,
-  prevState: DataSourceViewSelectionConfigurations
+  prevState: DataSourceViewSelectionConfigurations,
+  selectionMode: "checkbox" | "radio" = "checkbox"
 ): DataSourceViewSelectionConfigurations => {
   const { dataSourceView: dsv } = item;
   const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
@@ -125,8 +126,27 @@ const updateSelection = (
     };
   }
 
+  if (selectionMode === "radio" && !exists) {
+    return {
+      ...prevState,
+      [dsv.sId]: {
+        ...prevConfig,
+        selectedResources: [
+          {
+            ...item,
+            dataSourceView: dsv,
+            parentInternalIds: item.parentInternalIds || [],
+          },
+        ],
+        isSelectAll: false,
+      },
+    };
+  }
+
   const newResources = exists
-    ? prevConfig.selectedResources
+    ? prevConfig.selectedResources.filter(
+        (r) => r.internalId !== item.internalId
+      )
     : [
         ...prevConfig.selectedResources,
         {
@@ -163,6 +183,7 @@ interface DataSourceViewsSelectorProps {
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
   space: SpaceType;
+  selectionMode?: "checkbox" | "radio";
 }
 
 export function DataSourceViewsSelector({
@@ -174,6 +195,7 @@ export function DataSourceViewsSelector({
   viewType,
   isRootSelectable,
   space,
+  selectionMode = "checkbox",
 }: DataSourceViewsSelectorProps) {
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
@@ -298,7 +320,7 @@ export function DataSourceViewsSelector({
     // Update all selections in a single state update.
     setSelectionConfigurations((prevState) => {
       const newState = searchResultNodes.reduce(
-        (acc, item) => updateSelection(item, acc),
+        (acc, item) => updateSelection(item, acc, selectionMode),
         prevState
       );
       return newState;
@@ -308,7 +330,12 @@ export function DataSourceViewsSelector({
     if (searchResultNodes.length > 0) {
       setSearchResult(searchResultNodes[searchResultNodes.length - 1]);
     }
-  }, [setSearchSpaceText, setSelectionConfigurations, searchResultNodes]);
+  }, [
+    setSearchSpaceText,
+    setSelectionConfigurations,
+    searchResultNodes,
+    selectionMode,
+  ]);
 
   return (
     <div>
@@ -328,7 +355,7 @@ export function DataSourceViewsSelector({
           setSearchResult(item);
           setSearchSpaceText("");
           setSelectionConfigurations((prevState) =>
-            updateSelection(item, prevState)
+            updateSelection(item, prevState, selectionMode)
           );
         }}
         displayItemCount={useCase === "assistantBuilder"}
@@ -345,7 +372,7 @@ export function DataSourceViewsSelector({
                 setSearchResult(item);
                 setSearchSpaceText("");
                 setSelectionConfigurations((prevState) =>
-                  updateSelection(item, prevState)
+                  updateSelection(item, prevState, selectionMode)
                 );
               }}
             >
@@ -392,6 +419,7 @@ export function DataSourceViewsSelector({
                 defaultCollapsed={filteredGroups.managedDsv.length > 1}
                 useCase={useCase}
                 searchResult={searchResult}
+                selectionMode={selectionMode}
               />
             ))}
           </Tree.Item>
@@ -412,6 +440,7 @@ export function DataSourceViewsSelector({
               defaultCollapsed={filteredGroups.managedDsv.length > 1}
               useCase={useCase}
               searchResult={searchResult}
+              selectionMode={selectionMode}
             />
           ))}
         {filteredGroups.folders.length > 0 && (
@@ -438,6 +467,7 @@ export function DataSourceViewsSelector({
                 defaultCollapsed={filteredGroups.folders.length > 1}
                 useCase={useCase}
                 searchResult={searchResult}
+                selectionMode={selectionMode}
               />
             ))}
           </Tree.Item>
@@ -468,6 +498,7 @@ export function DataSourceViewsSelector({
                   defaultCollapsed={filteredGroups.websites.length > 1}
                   useCase={useCase}
                   searchResult={searchResult}
+                  selectionMode={selectionMode}
                 />
               ))}
             </Tree.Item>
@@ -510,6 +541,7 @@ interface DataSourceViewSelectorProps {
   defaultCollapsed?: boolean;
   useCase?: DataSourceViewsSelectorProps["useCase"];
   searchResult?: DataSourceViewContentNode;
+  selectionMode?: "checkbox" | "radio";
 }
 
 export function DataSourceViewSelector({
@@ -523,6 +555,7 @@ export function DataSourceViewSelector({
   defaultCollapsed = true,
   useCase,
   searchResult,
+  selectionMode = "checkbox",
 }: DataSourceViewSelectorProps) {
   const { isDark } = useTheme();
   const dataSourceView = selectionConfiguration.dataSourceView;
@@ -589,7 +622,12 @@ export function DataSourceViewSelector({
               isSelectAll: false,
             };
 
-        // Return a new object to trigger a re-render
+        if (selectionMode === "radio") {
+          return {
+            [dataSourceView.sId]: updatedConfig,
+          };
+        }
+
         return keepOnlyOneSpaceIfApplicable({
           ...prevState,
           [dataSourceView.sId]: updatedConfig,
@@ -620,12 +658,32 @@ export function DataSourceViewSelector({
         const prevSelectionConfiguration =
           prevState[dataSourceView.sId] ??
           defaultSelectionConfiguration(dataSourceView);
+
         const selectedNodes = updater(
           getNodesFromConfig(prevSelectionConfiguration)
         );
+
+        let updatedSelectedNodes = selectedNodes;
+        if (selectionMode === "radio") {
+          // Only keep the most recently selected node
+          const selectedNodeEntries = Object.entries(selectedNodes).filter(
+            ([, v]) => v.isSelected
+          );
+
+          if (selectedNodeEntries.length > 1) {
+            const [latestNodeId, latestNode] = selectedNodeEntries[0];
+
+            updatedSelectedNodes = {
+              [latestNodeId]: latestNode,
+            };
+          }
+        } else {
+          updatedSelectedNodes = selectedNodes;
+        }
+
         const updatedConfig = {
           ...prevSelectionConfiguration,
-          selectedResources: Object.values(selectedNodes)
+          selectedResources: Object.values(updatedSelectedNodes)
             .filter((v) => v.isSelected)
             .map((v) => ({
               ...v.node,
@@ -634,6 +692,7 @@ export function DataSourceViewSelector({
             })),
           isSelectAll: false,
         };
+
         if (updatedConfig.selectedResources.length === 0) {
           // Nothing is selected at all, remove from the list
           return _.omit(prevState, dataSourceView.sId);
@@ -646,7 +705,12 @@ export function DataSourceViewSelector({
         });
       });
     },
-    [dataSourceView, keepOnlyOneSpaceIfApplicable, setSelectionConfigurations]
+    [
+      dataSourceView,
+      keepOnlyOneSpaceIfApplicable,
+      setSelectionConfigurations,
+      selectionMode,
+    ]
   );
 
   const useResourcesHook = useCallback(
@@ -690,11 +754,18 @@ export function DataSourceViewSelector({
         checkbox={
           hideCheckbox || (!isRootSelectable && !hasActiveSelection)
             ? undefined
-            : {
-                checked: isChecked,
-                disabled: !isRootSelectable,
-                onCheckedChange: handleSelectAll,
-              }
+            : selectionMode === "radio"
+              ? {
+                  checked: isChecked === true,
+                  disabled: !isRootSelectable,
+                  onCheckedChange: handleSelectAll,
+                  className: "s-rounded-full",
+                }
+              : {
+                  checked: isChecked,
+                  disabled: !isRootSelectable,
+                  onCheckedChange: handleSelectAll,
+                }
         }
         actions={
           !isRootSelectable && (
@@ -724,6 +795,9 @@ export function DataSourceViewSelector({
               )
             }
             defaultExpandedIds={defaultExpandedIds}
+            {...(selectionMode === "radio"
+              ? { "data-selection-mode": "radio" }
+              : {})}
           />
         )}
       </Tree.Item>
