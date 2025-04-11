@@ -123,12 +123,15 @@ export const InputBarContainer = ({
           ...rest,
           dataSourceView: view,
           spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
+          spaceName: spacesMap[view.spaceId]?.name,
         }));
       });
 
       if (nodesWithViews.length > 0) {
         const sortedNodes = nodesWithViews.sort(
-          (a, b) => b.spacePriority - a.spacePriority
+          (a, b) =>
+            b.spacePriority - a.spacePriority ||
+            a.spaceName.localeCompare(b.spaceName)
         );
         const node = sortedNodes[0];
         onNodeSelect(node);

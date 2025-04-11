@@ -18,13 +18,13 @@ import { useMemo, useRef, useState } from "react";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { DataSourceContentNode } from "@app/lib/api/search";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { getSpaceAccessPriority } from "@app/lib/spaces";
 import {
   useSpaces,
   useSpacesSearchWithInfiniteScroll,
@@ -41,16 +41,6 @@ interface InputBarAttachmentsPickerProps {
 }
 
 const PAGE_SIZE = 25;
-
-function getUnfoldedNodes(resultNodes: DataSourceContentNode[]) {
-  return resultNodes.flatMap((node) => {
-    const { dataSourceViews, ...rest } = node;
-    return dataSourceViews.map((view) => ({
-      ...rest,
-      dataSourceView: view,
-    }));
-  });
-}
 
 export const InputBarAttachmentsPicker = ({
   owner,
@@ -93,14 +83,34 @@ export const InputBarAttachmentsPicker = ({
   });
 
   const spacesMap = useMemo(
-    () => Object.fromEntries(spaces.map((space) => [space.sId, space.name])),
+    () => Object.fromEntries(spaces.map((space) => [space.sId, space])),
     [spaces]
   );
 
-  const unfoldedNodes = useMemo(
-    () => getUnfoldedNodes(searchResultNodes),
-    [searchResultNodes]
-  );
+  /**
+   * Nodes can belong to multiple spaces. This is not of interest to the user,
+   * so we pick a space according to a priority order.
+   */
+  const pickedSpaceNodes: DataSourceViewContentNode[] = useMemo(() => {
+    return searchResultNodes.map((node) => {
+      const { dataSourceViews, ...rest } = node;
+      const dataSourceView = dataSourceViews
+        .map((view) => ({
+          ...view,
+          spaceName: spacesMap[view.spaceId]?.name,
+          spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
+        }))
+        .sort(
+          (a, b) =>
+            b.spacePriority - a.spacePriority ||
+            a.spaceName.localeCompare(b.spaceName)
+        )[0];
+      return {
+        ...rest,
+        dataSourceView,
+      };
+    });
+  }, [searchResultNodes, spacesMap]);
 
   const searchbarRef = (element: HTMLInputElement) => {
     if (element) {
@@ -174,7 +184,7 @@ export const InputBarAttachmentsPicker = ({
             <DropdownMenuSeparator />
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
               <div ref={itemsContainerRef}>
-                {unfoldedNodes.map((item, index) => (
+                {pickedSpaceNodes.map((item, index) => (
                   <DropdownMenuItem
                     key={index}
                     label={item.title}
@@ -198,7 +208,7 @@ export const InputBarAttachmentsPicker = ({
                         attachedNode.dataSourceView.dataSource.sId ===
                           item.dataSourceView.dataSource.sId
                     )}
-                    description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
+                    description={`${getLocationForDataSourceViewContentNode(item)}`}
                     onClick={() => {
                       setSearch("");
                       onNodeSelect(item);
@@ -206,7 +216,7 @@ export const InputBarAttachmentsPicker = ({
                     }}
                   />
                 ))}
-                {unfoldedNodes.length === 0 && !showLoader && (
+                {pickedSpaceNodes.length === 0 && !showLoader && (
                   <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     No results found
                   </div>

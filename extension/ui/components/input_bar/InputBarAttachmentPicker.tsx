@@ -3,6 +3,7 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/shared/lib/content_nodes";
+import { getSpaceAccessPriority } from "@app/shared/lib/spaces";
 import { useDebounce } from "@app/ui/hooks/useDebounce";
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import { useSpaces } from "@app/ui/hooks/useSpaces";
@@ -72,21 +73,34 @@ export const InputBarAttachmentsPicker = ({
   }, [attachedNodes]);
 
   const spacesMap = useMemo(
-    () => Object.fromEntries(spaces.map((space) => [space.sId, space.name])),
+    () => Object.fromEntries(spaces.map((space) => [space.sId, space])),
     [spaces]
   );
 
-  const unfoldedNodes: DataSourceViewContentNodeType[] = useMemo(
-    () =>
-      searchResultNodes.flatMap((node) => {
-        const { dataSourceViews, ...rest } = node;
-        return dataSourceViews.map((view) => ({
-          ...rest,
-          dataSourceView: view,
-        }));
-      }),
-    [searchResultNodes]
-  );
+  /**
+   * Nodes can belong to multiple spaces. This is not of interest to the user,
+   * so we pick a space according to a priority order.
+   */
+  const pickedSpaceNodes: DataSourceViewContentNodeType[] = useMemo(() => {
+    return searchResultNodes.map((node) => {
+      const { dataSourceViews, ...rest } = node;
+      const dataSourceView = dataSourceViews
+        .map((view) => ({
+          ...view,
+          spaceName: spacesMap[view.spaceId]?.name,
+          spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
+        }))
+        .sort(
+          (a, b) =>
+            b.spacePriority - a.spacePriority ||
+            a.spaceName.localeCompare(b.spaceName)
+        )[0];
+      return {
+        ...rest,
+        dataSourceView,
+      };
+    });
+  }, [searchResultNodes, spacesMap]);
 
   const showLoader = isSearchLoading || isDebouncing;
 
@@ -161,7 +175,7 @@ export const InputBarAttachmentsPicker = ({
             <DropdownMenuSeparator />
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
               <div ref={itemsContainerRef}>
-                {unfoldedNodes.map((item, index) => (
+                {pickedSpaceNodes.map((item, index) => (
                   <DropdownMenuItem
                     key={index}
                     label={item.title}
@@ -175,7 +189,7 @@ export const InputBarAttachmentsPicker = ({
                         item.dataSourceView.dataSource.connectorProvider,
                     })}
                     disabled={attachedNodeIds.includes(item.internalId)}
-                    description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
+                    description={`${getLocationForDataSourceViewContentNode(item)}`}
                     onClick={() => {
                       setSearch("");
                       onNodeSelect(item);
@@ -183,7 +197,7 @@ export const InputBarAttachmentsPicker = ({
                     }}
                   />
                 ))}
-                {unfoldedNodes.length === 0 && !showLoader && (
+                {pickedSpaceNodes.length === 0 && !showLoader && (
                   <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     No results found
                   </div>
