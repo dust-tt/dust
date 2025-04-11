@@ -26,13 +26,13 @@ export class CoEditionTransport implements Transport {
 
   constructor(
     private readonly owner: LightWorkspaceType,
-    private readonly serverId: string = this.generateUUID()
+    private readonly serverId: string = CoEditionTransport.generateUUID()
   ) {}
 
   /**
    * Generate a UUID v4 for use as a server ID
    */
-  private generateUUID(): string {
+  private static generateUUID(): string {
     // Simple UUID v4 generation.
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
       /[xy]/g,
