@@ -11,6 +11,7 @@ import type {
   BuilderFlow,
 } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
@@ -167,3 +168,7 @@ export default function EditAssistant({
     </AssistantBuilderProvider>
   );
 }
+
+EditAssistant.getLayout = (page: React.ReactElement) => {
+  return <AppHeadLayout>{page}</AppHeadLayout>;
+};

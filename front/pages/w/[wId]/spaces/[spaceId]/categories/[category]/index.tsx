@@ -6,6 +6,7 @@ import type { DataSourceIntegration } from "@app/components/spaces/AddConnection
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
@@ -186,8 +187,10 @@ export default function Space({
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
   return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch>
-      {page}
-    </SpaceLayout>
+    <AppHeadLayout>
+      <SpaceLayout pageProps={pageProps} useBackendSearch>
+        {page}
+      </SpaceLayout>
+    </AppHeadLayout>
   );
 };

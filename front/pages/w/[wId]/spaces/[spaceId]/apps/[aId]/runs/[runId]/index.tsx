@@ -8,13 +8,14 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import React, { useContext, useState } from "react";
 
 import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ConfirmContext } from "@app/components/Confirm";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { cleanSpecificationFromCore, getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -136,7 +137,7 @@ export default function AppRun({
   const router = useRouter();
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
@@ -248,6 +249,10 @@ export default function AppRun({
         </div>
         <div className="mt-4"></div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+AppRun.getLayout = (page: React.ReactElement) => {
+  return <AppHeadLayout>{page}</AppHeadLayout>;
+};

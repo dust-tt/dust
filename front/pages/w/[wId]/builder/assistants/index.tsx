@@ -22,7 +22,8 @@ import {
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -184,7 +185,7 @@ export default function WorkspaceAssistants({
 
   return (
     <ConversationsNavigationProvider>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         navChildren={<AssistantSidebarMenu owner={owner} />}
@@ -269,7 +270,11 @@ export default function WorkspaceAssistants({
             </div>
           </Page.Vertical>
         </Page.Vertical>
-      </AppLayout>
+      </AppContentLayout>
     </ConversationsNavigationProvider>
   );
 }
+
+WorkspaceAssistants.getLayout = (page: React.ReactElement) => {
+  return <AppHeadLayout>{page}</AppHeadLayout>;
+};

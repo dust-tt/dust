@@ -16,7 +16,10 @@ import { AssistantTemplateModal } from "@app/components/assistant_builder/Assist
 import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
-import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
+import AppContentLayout, {
+  appLayoutBack,
+} from "@app/components/sparkle/AppContentLayout";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
@@ -162,7 +165,7 @@ export default function CreateAssistant({
   };
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       hideSidebar
       owner={owner}
@@ -239,6 +242,10 @@ export default function CreateAssistant({
           onClose={() => closeTemplateModal()}
         />
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+CreateAssistant.getLayout = (page: React.ReactElement) => {
+  return <AppHeadLayout>{page}</AppHeadLayout>;
+};

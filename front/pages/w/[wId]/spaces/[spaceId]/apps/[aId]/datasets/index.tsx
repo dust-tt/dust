@@ -14,7 +14,8 @@ import { useContext } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -98,7 +99,7 @@ export default function DatasetsView({
   };
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
@@ -210,6 +211,10 @@ export default function DatasetsView({
           </div>
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+DatasetsView.getLayout = (page: React.ReactElement) => {
+  return <AppHeadLayout>{page}</AppHeadLayout>;
+};

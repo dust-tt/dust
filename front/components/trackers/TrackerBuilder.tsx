@@ -20,7 +20,7 @@ import { useContext, useMemo, useState } from "react";
 
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import { ConfirmContext } from "@app/components/Confirm";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
@@ -275,7 +275,7 @@ export const TrackerBuilder = ({
   );
 
   return (
-    <AppLayout
+    <AppContentLayout
       owner={owner}
       subscription={subscription}
       hideSidebar
@@ -640,6 +640,6 @@ export const TrackerBuilder = ({
           </div>
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 };

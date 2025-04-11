@@ -3,7 +3,8 @@ import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
@@ -191,7 +192,7 @@ export default function WorkspaceAdmin({
 
   return (
     <>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
@@ -254,7 +255,11 @@ export default function WorkspaceAdmin({
             </div>
           </Page.Vertical>
         </Page.Vertical>
-      </AppLayout>
+      </AppContentLayout>
     </>
   );
 }
+
+WorkspaceAdmin.getLayout = (page: React.ReactElement) => {
+  return <AppHeadLayout>{page}</AppHeadLayout>;
+};

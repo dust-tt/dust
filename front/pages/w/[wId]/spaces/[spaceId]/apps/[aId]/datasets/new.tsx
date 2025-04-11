@@ -7,7 +7,8 @@ import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getDatasets } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
@@ -122,7 +123,7 @@ export default function NewDatasetView({
   };
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
@@ -180,6 +181,10 @@ export default function NewDatasetView({
           </div>
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+NewDatasetView.getLayout = function getLayout(page: React.ReactElement) {
+  return <AppHeadLayout>{page}</AppHeadLayout>;
+};

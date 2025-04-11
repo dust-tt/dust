@@ -15,7 +15,8 @@ import {
   ProviderSetup,
   SERVICE_PROVIDER_CONFIGS,
 } from "@app/components/providers/ProviderSetup";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   APP_MODEL_PROVIDER_IDS,
@@ -233,7 +234,7 @@ export default function ProvidersPage({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "providers" })}
@@ -248,6 +249,10 @@ export default function ProvidersPage({
           <Providers owner={owner} />
         </Page.Vertical>
       </Page.Vertical>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+ProvidersPage.getLayout = (page: React.ReactElement) => {
+  return <AppHeadLayout>{page}</AppHeadLayout>;
+};

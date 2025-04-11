@@ -1,6 +1,5 @@
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
@@ -8,6 +7,7 @@ import type { ConversationLayoutProps } from "@app/components/assistant/conversa
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { UserType } from "@app/types";
@@ -121,8 +121,15 @@ export default function AssistantConversation({
   );
 }
 
-AssistantConversation.getLayout = (page: ReactElement, pageProps: any) => {
-  return <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>;
+AssistantConversation.getLayout = (
+  page: React.ReactElement,
+  pageProps: any
+) => {
+  return (
+    <AppHeadLayout>
+      <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
+    </AppHeadLayout>
+  );
 };
 
 function getValidConversationId(cId: unknown) {

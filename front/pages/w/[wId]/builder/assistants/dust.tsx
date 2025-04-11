@@ -11,7 +11,8 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -188,7 +189,7 @@ export default function EditDustAssistant({
   };
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       hideSidebar
       owner={owner}
@@ -299,6 +300,10 @@ export default function EditDustAssistant({
           ) : null}
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+DustAgentDataSourceVisual.getLayout = (page: React.ReactElement) => {
+  return <AppHeadLayout>{page}</AppHeadLayout>;
+};

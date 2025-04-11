@@ -5,7 +5,8 @@ import { useState } from "react";
 import { AdminActionsList } from "@app/components/actions/mcp/AdminActionsList";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -51,7 +52,7 @@ export default function AdminActions({
   const [isDetailsPanelOpened, setIsDetailsPanelOpened] = useState(false);
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "actions" })}
@@ -84,6 +85,10 @@ export default function AdminActions({
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+AdminActions.getLayout = (page: React.ReactElement) => {
+  return <AppHeadLayout>{page}</AppHeadLayout>;
+};
