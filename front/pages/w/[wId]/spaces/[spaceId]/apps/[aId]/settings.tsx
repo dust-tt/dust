@@ -14,8 +14,8 @@ import { useEffect } from "react";
 import { ConfirmContext } from "@app/components/Confirm";
 import { subNavigationApp } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
-import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
@@ -252,5 +252,5 @@ export default function SettingsView({
 }
 
 SettingsView.getLayout = (page: React.ReactElement) => {
-  return <AppHeadLayout>{page}</AppHeadLayout>;
+  return <AppRootLayout>{page}</AppRootLayout>;
 };

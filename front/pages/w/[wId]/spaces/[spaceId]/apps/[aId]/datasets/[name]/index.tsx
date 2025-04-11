@@ -8,8 +8,8 @@ import { useEffect, useState } from "react";
 import DatasetView from "@app/components/app/DatasetView";
 import { subNavigationApp } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
-import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -232,5 +232,5 @@ export default function ViewDatasetView({
 }
 
 ViewDatasetView.getLayout = (page: React.ReactElement) => {
-  return <AppHeadLayout>{page}</AppHeadLayout>;
+  return <AppRootLayout>{page}</AppRootLayout>;
 };

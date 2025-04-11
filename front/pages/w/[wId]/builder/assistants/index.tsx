@@ -23,7 +23,7 @@ import { ConversationsNavigationProvider } from "@app/components/assistant/conve
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
-import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -276,5 +276,5 @@ export default function WorkspaceAssistants({
 }
 
 WorkspaceAssistants.getLayout = (page: React.ReactElement) => {
-  return <AppHeadLayout>{page}</AppHeadLayout>;
+  return <AppRootLayout>{page}</AppRootLayout>;
 };

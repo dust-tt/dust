@@ -16,7 +16,7 @@ import {
   SERVICE_PROVIDER_CONFIGS,
 } from "@app/components/providers/ProviderSetup";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
-import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   APP_MODEL_PROVIDER_IDS,
@@ -254,5 +254,5 @@ export default function ProvidersPage({
 }
 
 ProvidersPage.getLayout = (page: React.ReactElement) => {
-  return <AppHeadLayout>{page}</AppHeadLayout>;
+  return <AppRootLayout>{page}</AppRootLayout>;
 };

@@ -19,8 +19,8 @@ import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppContentLayout, {
   appLayoutBack,
 } from "@app/components/sparkle/AppContentLayout";
-import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import type {
@@ -247,5 +247,5 @@ export default function CreateAssistant({
 }
 
 CreateAssistant.getLayout = (page: React.ReactElement) => {
-  return <AppHeadLayout>{page}</AppHeadLayout>;
+  return <AppRootLayout>{page}</AppRootLayout>;
 };

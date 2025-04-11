@@ -15,7 +15,7 @@ import { ConversationsNavigationProvider } from "@app/components/assistant/conve
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
-import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
@@ -213,5 +213,5 @@ export default function LabsTranscriptsIndex({
 }
 
 LabsTranscriptsIndex.getLayout = (page: React.ReactElement) => {
-  return <AppHeadLayout>{page}</AppHeadLayout>;
+  return <AppRootLayout>{page}</AppRootLayout>;
 };

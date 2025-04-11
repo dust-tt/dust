@@ -7,7 +7,7 @@ import type { ConversationLayoutProps } from "@app/components/assistant/conversa
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { UserType } from "@app/types";
@@ -126,9 +126,9 @@ AssistantConversation.getLayout = (
   pageProps: any
 ) => {
   return (
-    <AppHeadLayout>
+    <AppRootLayout>
       <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
-    </AppHeadLayout>
+    </AppRootLayout>
   );
 };
 

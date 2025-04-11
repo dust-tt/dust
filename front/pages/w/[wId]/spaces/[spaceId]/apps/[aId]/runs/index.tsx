@@ -2,13 +2,12 @@ import { Button, cn, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import { subNavigationApp } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
-import AppHeadLayout from "@app/components/sparkle/AppHeadLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
@@ -287,6 +286,6 @@ export default function RunsView({
   );
 }
 
-RunsView.getLayout = (page: ReactElement) => {
-  return <AppHeadLayout>{page}</AppHeadLayout>;
+RunsView.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
 };

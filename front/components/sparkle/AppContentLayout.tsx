@@ -27,8 +27,8 @@ export const appLayoutBack = async (
 };
 
 // TODO(2025-04-11 yuka) We need to refactor AppLayout to avoid re-mounting on every page navigation.
-// Until then, AppLayout has been split into AppHeadLayout and AppContentLayout.
-// When you need to use AppContentLayout, add `getLayout` function to your page and wrap the page with AppHeadLayout.
+// Until then, AppLayout has been split into AppRootLayout and AppContentLayout.
+// When you need to use AppContentLayout, add `getLayout` function to your page and wrap the page with AppRootLayout.
 export default function AppContentLayout({
   owner,
   subscription,
