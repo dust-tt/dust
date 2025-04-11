@@ -5,6 +5,7 @@ import type { ReactElement } from "react";
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { ActionApp } from "@app/lib/registry";
@@ -90,5 +91,9 @@ export default function Space({
 }
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
-  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
+  return (
+    <AppRootLayout>
+      <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>
+    </AppRootLayout>
+  );
 };

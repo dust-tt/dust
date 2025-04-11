@@ -1,5 +1,7 @@
 import type { InferGetServerSidePropsType } from "next";
+import React from "react";
 
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { TrackerBuilder } from "@app/components/trackers/TrackerBuilder";
 import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -75,3 +77,7 @@ export default function DocumentTracker({
     />
   );
 }
+
+DocumentTracker.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

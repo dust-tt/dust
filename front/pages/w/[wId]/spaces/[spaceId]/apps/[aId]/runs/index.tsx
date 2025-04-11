@@ -5,8 +5,9 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
@@ -114,7 +115,7 @@ export default function RunsView({
   const router = useRouter();
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
@@ -281,6 +282,10 @@ export default function RunsView({
           </ul>
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+RunsView.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

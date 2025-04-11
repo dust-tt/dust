@@ -13,7 +13,7 @@ import React, { useCallback, useState } from "react";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
@@ -89,7 +89,7 @@ export function SpaceLayout({
   );
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       navChildren={
@@ -157,6 +157,6 @@ export function SpaceLayout({
           </DialogContent>
         </Dialog>
       )}
-    </AppLayout>
+    </AppContentLayout>
   );
 }
