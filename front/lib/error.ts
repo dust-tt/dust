@@ -23,6 +23,9 @@ export type DustErrorCode =
   | "user_already_member"
   | "user_not_found"
   | "user_not_member"
+  // MCP Server errors
+  | "remote_server_not_found"
+  | "internal_server_not_found"
   // Space errors
   | "space_already_exists";
 

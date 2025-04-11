@@ -11,7 +11,7 @@ import type { SupportedFileContentType } from "@app/types";
 import { assertNever, normalizeError, validateUrl } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "generate_file",
+  name: "file_generator",
   version: "1.0.0",
   description: "Generate and convert files on demand.",
   authorization: null,

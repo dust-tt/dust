@@ -7,9 +7,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "generate_image",
+  name: "image_generator",
   version: "1.0.0",
-  description: "Generate images with the Dall-E v3 model from OpenAI.",
+  description: "Generate images with Dall-E v3.",
   visual: "image",
   authorization: null,
 };
