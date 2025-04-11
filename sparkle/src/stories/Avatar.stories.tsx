@@ -2,10 +2,10 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  AppBeerIcon,
-  AppFlagIcon,
-  AppShirtIcon,
-  AppUmbrellaIcon,
+  ActionBeerIcon,
+  ActionFlagIcon,
+  ActionShirtIcon,
+  ActionUmbrellaIcon,
 } from "@sparkle/icons/actions";
 import SvgHome from "@sparkle/icons/actions/Home";
 import { StarStrokeIcon } from "@sparkle/icons/app";
@@ -116,12 +116,12 @@ export const AvatarExample = () => (
     <div className="s-flex s-gap-4">
       <Avatar size="xs" icon={SvgHome} />
       <Avatar size="xs" icon={DriveLogo} />
-      <Avatar size="sm" icon={AppBeerIcon} />
+      <Avatar size="sm" icon={ActionBeerIcon} />
       <Avatar size="sm" icon={NotionLogo} backgroundColor="s-bg-blue-50" />
-      <Avatar size="md" icon={AppUmbrellaIcon} />
-      <Avatar size="lg" icon={AppFlagIcon} />
+      <Avatar size="md" icon={ActionUmbrellaIcon} />
+      <Avatar size="lg" icon={ActionFlagIcon} />
       <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
-      <Avatar size="xl" icon={AppShirtIcon} />
+      <Avatar size="xl" icon={ActionShirtIcon} />
       <Avatar size="xxl" icon={StarStrokeIcon} />
     </div>
   </div>
