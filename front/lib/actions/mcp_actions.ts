@@ -28,12 +28,13 @@ import {
 import type { MCPToolType, MCPToolWithStakeLevelType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
 
@@ -334,21 +335,44 @@ async function listMCPServerTools(
       const { serverType, id } = getServerTypeAndIdFromSId(
         connectionParams.mcpServerId
       );
-      if (serverType === "remote") {
-        const toolMetadata =
-          await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
-        const metadataMap = toolMetadata.reduce<
-          Record<string, MCPToolStakeLevelType>
-        >((acc, metadata) => {
-          acc[metadata.toolName] = metadata.permission;
-          return acc;
-        }, {});
 
-        allTools = allTools.map((tool) => ({
-          ...tool,
-          stakeLevel: metadataMap[tool.name] || DEFAULT_MCP_TOOL_STAKE_LEVEL,
-          toolServerId: connectionParams.mcpServerId,
-        }));
+      switch (serverType) {
+        case "internal":
+          const toolsConfig =
+            InternalMCPServerInMemoryResource.getToolsConfigByServerId(
+              connectionParams.mcpServerId
+            );
+          allTools = allTools.map((tool) => {
+            const toolConfig =
+              toolsConfig &&
+              toolsConfig.find((config) => config.name === tool.name);
+            return {
+              ...tool,
+              stakeLevel:
+                toolConfig?.stakeLevel || DEFAULT_MCP_TOOL_STAKE_LEVEL,
+              toolServerId: connectionParams.mcpServerId,
+            };
+          });
+          break;
+
+        case "remote":
+          const toolMetadata =
+            await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
+          const metadataMap = toolMetadata.reduce<
+            Record<string, MCPToolStakeLevelType>
+          >((acc, metadata) => {
+            acc[metadata.toolName] = metadata.permission;
+            return acc;
+          }, {});
+
+          allTools = allTools.map((tool) => ({
+            ...tool,
+            stakeLevel: metadataMap[tool.name] || DEFAULT_MCP_TOOL_STAKE_LEVEL,
+            toolServerId: connectionParams.mcpServerId,
+          }));
+          break;
+        default:
+          assertNever(serverType);
       }
     }
 

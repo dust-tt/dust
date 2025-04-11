@@ -21,6 +21,11 @@ export type MCPToolWithStakeLevelType = MCPToolWithIsDefaultType & {
   toolServerId?: string;
 };
 
+export type MCPToolNameWithStakeLevelType = {
+  name: string;
+  stakeLevel: MCPToolStakeLevelType;
+};
+
 export type MCPServerType = {
   id: string;
   name: string;
