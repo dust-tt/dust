@@ -29,7 +29,7 @@ export function useCoEditionServer({ owner }: UseCoEditionServerProps) {
     const setup = async () => {
       try {
         // Create server.
-        const server = new CoEditionServer(owner);
+        const server = new CoEditionServer();
 
         // Listen for state changes.
         server.onStateUpdate((newState) => {

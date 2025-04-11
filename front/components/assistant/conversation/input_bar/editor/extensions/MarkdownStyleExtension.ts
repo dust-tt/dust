@@ -62,22 +62,6 @@ export const MarkdownStyleExtension = Extension.create({
           },
         },
       },
-      {
-        types: ["heading"],
-        attributes: {
-          class: {
-            default: "text-2xl font-bold",
-          },
-        },
-      },
-      {
-        types: ["paragraph"],
-        attributes: {
-          class: {
-            default: "m-2",
-          },
-        },
-      },
     ];
   },
 });

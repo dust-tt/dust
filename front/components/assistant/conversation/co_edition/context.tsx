@@ -23,7 +23,9 @@ export const CoEditionContext = createContext<CoEditionContextType>({
 export const useCoEditionContext = () => {
   const context = React.useContext(CoEditionContext);
   if (!context) {
-    throw new Error("useCoEdition must be used within CoEditionProvider");
+    throw new Error(
+      "useCoEditionContext must be used within CoEditionProvider"
+    );
   }
 
   return context;

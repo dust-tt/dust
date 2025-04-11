@@ -6,12 +6,20 @@ import {
   findDuplicates,
   getChangedRanges,
 } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Fragment, Slice } from "@tiptap/pm/model";
+import type { Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 
-// Extension that adds IDs to all block nodes
+interface BlockIdOptions {
+  attributeName: string;
+  types: string[];
+  createId: () => string;
+}
 
-export const BlockIdExtension = new Extension({
+// Extension that adds IDs to all block nodes.
+export const BlockIdExtension = new Extension<BlockIdOptions>({
   name: "block-id",
   priority: 99999,
   addOptions: () => ({
@@ -43,7 +51,7 @@ export const BlockIdExtension = new Extension({
       },
     ];
   },
-  // On creation, add the attribute to all nodes that should have an ID but don't have it yet
+  // On creation, add the attribute to all nodes that should have an ID but don't have it yet.
   onCreate() {
     const { tr, doc } = this.editor.state;
     const { types, attributeName, createId } = this.options;
@@ -62,7 +70,7 @@ export const BlockIdExtension = new Extension({
     this.editor.view.dispatch(tr);
   },
   addProseMirrorPlugins() {
-    let dragSourceElement = null;
+    let dragSourceElement: HTMLElement | null = null;
     let transformPasted = false;
 
     return [
@@ -70,7 +78,7 @@ export const BlockIdExtension = new Extension({
         key: new PluginKey("unique-id"),
 
         appendTransaction: (
-          transactions,
+          transactions: readonly Transaction[],
           { doc: oldDoc },
           { doc: newDoc, tr }
         ) => {
@@ -82,9 +90,12 @@ export const BlockIdExtension = new Extension({
           }
 
           const { types, attributeName, createId } = this.options;
-          const transform = combineTransactionSteps(oldDoc, transactions);
+          const transform = combineTransactionSteps(
+            oldDoc,
+            transactions as Transaction[]
+          );
 
-          // get changed ranges based on the old state
+          // Get changed ranges based on the old state.
           getChangedRanges(transform).forEach(({ newRange }) => {
             const newNodes = findChildrenInRange(newDoc, newRange, (node) =>
               types.includes(node.type.name)
@@ -95,7 +106,7 @@ export const BlockIdExtension = new Extension({
               .filter((id) => id !== null);
 
             newNodes.forEach(({ node, pos }) => {
-              // Get state from document, not from node, because the node might be outdated
+              // Get state from document, not from node, because the node might be outdated.
               const id = tr.doc.nodeAt(pos)?.attrs[attributeName];
 
               if (id === null) {
@@ -107,7 +118,7 @@ export const BlockIdExtension = new Extension({
                 return;
               }
 
-              // check if the node doesn’t exist in the old state
+              // Check if the node doesn't exist in the old state.
               if (
                 transform.mapping.invert().mapResult(pos) &&
                 findDuplicates(newIds).includes(id)
@@ -126,10 +137,12 @@ export const BlockIdExtension = new Extension({
           return tr;
         },
 
-        // we register a global drag handler to track the current drag source element
-        view(view) {
-          const handleDragstart = (e) => {
-            dragSourceElement = view.dom.parentElement?.contains(e.target)
+        // We register a global drag handler to track the current drag source element.
+        view(view: EditorView) {
+          const handleDragstart = (e: DragEvent) => {
+            dragSourceElement = view.dom.parentElement?.contains(
+              e.target as Node
+            )
               ? view.dom.parentElement
               : null;
           };
@@ -147,8 +160,7 @@ export const BlockIdExtension = new Extension({
           // `handleDOMEvents` is called before `transformPasted`
           // so we can do some checks before
           handleDOMEvents: {
-            // only create new ids for dropped content while holding `alt`
-            // or content is dragged from another editor
+            // Only create new ids for dropped content while holding `alt` or content is dragged from another editor.
             drop: (view, event) => {
               if (
                 dragSourceElement !== view.dom.parentElement ||
@@ -160,38 +172,37 @@ export const BlockIdExtension = new Extension({
 
               return false;
             },
-            // always create new ids on pasted content
+            // Always create new ids on pasted content.
             paste: () => {
               transformPasted = true;
               return false;
             },
           },
 
-          // we’ll remove ids for every pasted node
-          // so we can create a new one within `appendTransaction`
-          transformPasted: (slice) => {
+          // We'll remove ids for every pasted node so we can create a new one within `appendTransaction`.
+          transformPasted: (slice: Slice) => {
             if (!transformPasted) {
               return slice;
             }
 
             const { types, attributeName } = this.options;
-            const removeId = (fragment) => {
-              const list = [];
+            const removeId = (fragment: Fragment) => {
+              const list: ProseMirrorNode[] = [];
 
-              fragment.forEach((node) => {
-                // don’t touch text nodes
+              fragment.forEach((node: ProseMirrorNode) => {
+                // Don't touch text nodes.
                 if (node.isText) {
                   list.push(node);
                   return;
                 }
 
-                // check for any other child nodes
+                // Check for any other child nodes.
                 if (!types.includes(node.type.name)) {
                   list.push(node.copy(removeId(node.content)));
                   return;
                 }
 
-                // remove id
+                // Remove id.
                 list.push(
                   node.type.create(
                     {
@@ -207,7 +218,7 @@ export const BlockIdExtension = new Extension({
               return Fragment.from(list);
             };
 
-            // reset check
+            // Reset check.
             transformPasted = false;
 
             return new Slice(

@@ -50,7 +50,7 @@ export function registerToggleTool(
   onToggle: (enabled: boolean, initialNodes?: InitialNode[]) => Promise<void>
 ): void {
   server.tool(
-    "toggleCoEdition",
+    "toggle_co_edition",
     "Enable or disable co-edition mode and optionally add initial content",
     { params: ToggleCoEditionSchema },
     async ({ params }) => {

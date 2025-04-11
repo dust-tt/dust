@@ -1,18 +1,14 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Editor } from "@tiptap/react";
 
-import {
-  insertNodes,
-  registerTipTapTools,
-} from "@app/components/assistant/conversation/co_edition/tools/tip_tap";
+import { registerEditorTools } from "@app/components/assistant/conversation/co_edition/tools/editor";
 import type { InitialNode } from "@app/components/assistant/conversation/co_edition/tools/toggle_co_edition";
 import { registerToggleTool } from "@app/components/assistant/conversation/co_edition/tools/toggle_co_edition";
 import type { CoEditionTransport } from "@app/components/assistant/conversation/co_edition/transport";
 
 export interface CoEditionState {
   isEnabled: boolean;
-  pendingInitialNodes?: InitialNode[];
+  initialNodes?: InitialNode[];
 }
 
 export class CoEditionServer {
@@ -23,33 +19,17 @@ export class CoEditionServer {
   };
   private editor: Editor | null = null;
   private onStateChange?: (state: CoEditionState) => void;
-  private owner: LightWorkspaceType;
 
-  constructor(owner: LightWorkspaceType) {
-    this.owner = owner;
+  constructor() {
     this.server = this.createServer();
   }
 
   setEditor(editor: Editor) {
     this.editor = editor;
 
-    // Apply any pending initial content if co-edition is enabled
-    if (this.state.isEnabled && this.state.pendingInitialNodes) {
-      this.state.pendingInitialNodes.forEach((node, idx) => {
-        insertNodes(this.editor, {
-          position: idx,
-          content: node.content,
-        });
-      });
-
-      // Clear the pending content after applying it
-      this.state.pendingInitialNodes = undefined;
-      this.onStateChange?.(this.state);
-    }
-
-    // Recreate server to register TipTap tools with editor.
+    // Register TipTap editor tools if co-edition is enabled.
     if (this.state.isEnabled) {
-      registerTipTapTools(this.server, this.editor);
+      registerEditorTools(this.server, this.editor);
     }
   }
 
@@ -62,9 +42,9 @@ export class CoEditionServer {
     // Always register toggle tool.
     registerToggleTool(server, this.handleToggle);
 
-    // Register TipTap tools only if enabled and editor is available
+    // Register TipTap tools only if enabled and editor is available.
     if (this.state.isEnabled && this.editor) {
-      registerTipTapTools(server, this.editor);
+      registerEditorTools(server, this.editor);
     }
 
     return server;
@@ -81,32 +61,23 @@ export class CoEditionServer {
     this.state = {
       ...this.state,
       isEnabled: enabled,
-      // Store initial content in state if provided
-      pendingInitialNodes: enabled ? initialNodes : undefined,
+      // Store initial content in state if provided.
+      initialNodes: enabled ? initialNodes : undefined,
     };
 
-    console.log("initialNodes", initialNodes);
-
-    // Register TipTap tools with editor.
+    // Register edition tools with editor if available.
     if (this.editor) {
-      registerTipTapTools(this.server, this.editor);
-
-      // If initial content is provided and we're enabling co-edition, set it in the editor
-      if (enabled && initialNodes && this.editor) {
-        initialNodes.map((node, idx) => {
-          insertNodes(this.editor, {
-            position: idx,
-            content: node.content,
-          });
-        });
-
-        // Clear the pending content after applying it
-        this.state.pendingInitialNodes = undefined;
-      }
+      registerEditorTools(this.server, this.editor);
     }
 
     this.onStateChange?.(this.state);
   };
+
+  // Method to clear initial nodes after they've been applied.
+  clearInitialNodes() {
+    this.state.initialNodes = undefined;
+    this.onStateChange?.(this.state);
+  }
 
   async connect(transport: CoEditionTransport): Promise<void> {
     if (this.transport) {

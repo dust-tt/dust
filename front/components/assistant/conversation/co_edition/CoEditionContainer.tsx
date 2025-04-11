@@ -1,33 +1,52 @@
-import { Button } from "@dust-tt/sparkle";
+import { cn } from "@dust-tt/sparkle";
 import Placeholder from "@tiptap/extension-placeholder";
-import { EditorContent, Mark, mergeAttributes, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import React from "react";
 
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { BlockIdExtension } from "@app/components/assistant/conversation/co_edition/extensions/BlockIdExtension";
-import { getEditorContentForModel } from "@app/components/assistant/conversation/co_edition/tools/tip_tap";
-import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
+import { CoEditionParagraphExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionParagraphExtension";
+import { CoEditionStyleExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionStyleExtension";
+import { AgentContentMark } from "@app/components/assistant/conversation/co_edition/marks/AgentContentMark";
+import { UserContentMark } from "@app/components/assistant/conversation/co_edition/marks/UserContentMark";
+import { getEditorContentForModelFromDom } from "@app/components/assistant/conversation/co_edition/tools/editor/get_editor_content_for_model";
+import { insertNodes } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
 
 interface CoEditionContainerProps {}
 
 export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
-  const { serverId, isConnected, server } = useCoEditionContext();
+  const { serverId, isConnected, server, state } = useCoEditionContext();
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure(),
-      LLMContentMark,
+      StarterKit.configure({
+        paragraph: false,
+      }),
+      CoEditionParagraphExtension,
+      AgentContentMark,
       UserContentMark,
-      MarkdownStyleExtension,
+      CoEditionStyleExtension,
       BlockIdExtension.configure({
-        types: ["heading", "paragraph", "bulletList", "orderedList"],
+        types: [
+          "blockquote",
+          "bulletList",
+          "codeBlock",
+          "heading",
+          "listItem",
+          "orderedList",
+          "paragraph",
+          "pre",
+        ],
         attributeName: "data-id",
       }),
       Placeholder.configure({
-        placeholder: "Write something amazing...",
-        emptyNodeClass:
-          "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+        placeholder: "Write something...",
+        emptyNodeClass: cn(
+          "first:before:text-gray-400 first:before:float-left",
+          "first:before:content-[attr(data-placeholder)]",
+          "first:before:pointer-events-none first:before:h-0"
+        ),
       }),
     ],
   });
@@ -38,18 +57,47 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
         class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
       },
       handleKeyDown: () => {
-        // On any user input, wrap the current selection in UserContentMark
-        editor.commands.unsetMark("llmContent");
+        // On any user input, wrap the current selection in UserContentMark.
+        // TODO(2025-04-10, flav): Narrow down to only changes.
+        editor.commands.unsetMark("agentContent");
         editor.commands.setMark("userContent");
       },
     },
   });
 
+  // Set the editor in the server when it's ready.
   React.useEffect(() => {
     if (editor && server) {
       server.setEditor(editor);
     }
   }, [editor, server]);
+
+  // Apply initial nodes when they're available and co-edition is enabled.
+  React.useEffect(() => {
+    if (
+      editor &&
+      state.isEnabled &&
+      state.initialNodes &&
+      state.initialNodes.length > 0
+    ) {
+      // Apply initial nodes with agent marking.
+      state.initialNodes.forEach((node, idx) => {
+        // Set the agent mark before inserting content.
+        editor.commands.setMark("agentContent");
+
+        // Use the existing insertNodes utility.
+        insertNodes(editor, {
+          position: idx,
+          content: node.content,
+        });
+      });
+
+      // Clear the initial nodes from state.
+      if (server) {
+        server.clearInitialNodes();
+      }
+    }
+  }, [editor, state.isEnabled, state.initialNodes, server]);
 
   return (
     <div className="flex h-full flex-col">
@@ -68,81 +116,12 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
         <EditorContent editor={editor} />
       </div>
 
-      <div className="h-[20%] p-4">
+      <div className="h-96 p-4">
         <pre className="h-full overflow-auto">
-          {editor && JSON.stringify(getEditorContentForModel(editor), null, 2)}
+          {editor &&
+            JSON.stringify(getEditorContentForModelFromDom(editor), null, 2)}
         </pre>
       </div>
     </div>
   );
 };
-
-// Mark for LLM-generated content
-export const LLMContentMark = Mark.create({
-  name: "llmContent",
-
-  addAttributes() {
-    return {
-      class: {
-        default: "text-gray-400", // Light gray color
-      },
-    };
-  },
-
-  parseHTML() {
-    return [
-      {
-        tag: "span",
-        getAttrs: (element) => {
-          return (
-            element.hasAttribute("data-author") &&
-            element.getAttribute("data-author") === "llm"
-          );
-        },
-      },
-    ];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "span",
-      mergeAttributes(HTMLAttributes, { "data-author": "llm" }),
-      0,
-    ];
-  },
-});
-
-// Mark for user-typed content
-export const UserContentMark = Mark.create({
-  name: "userContent",
-
-  addAttributes() {
-    return {
-      class: {
-        default: "text-purple-600", // Purple color
-      },
-    };
-  },
-
-  parseHTML() {
-    return [
-      {
-        tag: "span",
-        getAttrs: (element) => {
-          return (
-            element.hasAttribute("data-author") &&
-            element.getAttribute("data-author") === "user"
-          );
-        },
-      },
-    ];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "span",
-      mergeAttributes(HTMLAttributes, { "data-author": "user" }),
-      0,
-    ];
-  },
-});

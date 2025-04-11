@@ -7,21 +7,12 @@ import type { LightWorkspaceType } from "@app/types";
 interface CoEditionProviderProps {
   owner: LightWorkspaceType;
   children: React.ReactNode;
-  onServerIdChange?: (serverId: string | null) => void;
 }
 
-export function CoEditionProvider({
-  owner,
-  children,
-  onServerIdChange,
-}: CoEditionProviderProps) {
+export function CoEditionProvider({ owner, children }: CoEditionProviderProps) {
   const { server, state, isConnected, serverId } = useCoEditionServer({
     owner,
   });
-
-  React.useEffect(() => {
-    onServerIdChange?.(serverId);
-  }, [serverId, onServerIdChange]);
 
   return (
     <CoEditionContext.Provider value={{ server, serverId, state, isConnected }}>
