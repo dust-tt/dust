@@ -16,6 +16,7 @@ import type {
   MCPValidationOutputType,
 } from "@app/lib/actions/constants";
 import type { MCPActionType } from "@app/lib/actions/mcp";
+import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: {
@@ -94,6 +95,8 @@ export function ActionValidationProvider({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useNavigationLock(isDialogOpen);
 
   const sendCurrentValidation = useCallback(
     async (approved: MCPValidationOutputType) => {

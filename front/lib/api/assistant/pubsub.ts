@@ -38,6 +38,7 @@ import {
   postUserMessage,
   retryAgentMessage,
 } from "./conversation";
+import { MCPActionRunningEvents } from "@app/lib/actions/mcp";
 
 export async function postUserMessageWithPubSub(
   auth: Authenticator,
@@ -587,7 +588,7 @@ export async function* getMessagesEvents(
   try {
     for (const event of history) {
       const data = JSON.parse(event.message.payload);
-      if (data.type === "tool_approve_execution") {
+      if (data satisfies MCPActionRunningEvents) {
         continue;
       }
 
