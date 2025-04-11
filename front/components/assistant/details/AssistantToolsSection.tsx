@@ -30,15 +30,15 @@ import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
 import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
-interface AssistantCapabilitiesSectionProps {
+interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;
   owner: LightWorkspaceType;
 }
 
-export function AssistantCapabilitiesSection({
+export function AssistantToolsSection({
   agentConfiguration,
   owner,
-}: AssistantCapabilitiesSectionProps) {
+}: AssistantToolsSectionProps) {
   const { isDark } = useTheme();
   const { mcpServers } = useMCPServers({ owner });
 
@@ -85,7 +85,7 @@ export function AssistantCapabilitiesSection({
     <div className="flex flex-row gap-2">
       <div className="flex flex-[1_0_0] flex-col gap-5">
         <div className="heading-lg text-foreground dark:text-foreground-night">
-          Capabilities
+          Tools
         </div>
         <div className="flex flex-col gap-2">
           {sortedActions.map((action) => (
