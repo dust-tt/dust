@@ -263,11 +263,6 @@ class RedisHybridManager {
       await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
     }
 
-    const history: EventPayload[] = await this.getHistory(
-      streamClient,
-      streamName,
-      lastEventId || "0-0"
-    );
     const eventsDuringHistoryFetch: EventPayload[] = [];
     const eventsDuringHistoryFetchCallback: EventCallback = (
       event: EventPayload | "close"
@@ -281,6 +276,12 @@ class RedisHybridManager {
     this.subscribers
       .get(pubSubChannelName)!
       .add(eventsDuringHistoryFetchCallback);
+
+    const history: EventPayload[] = await this.getHistory(
+      streamClient,
+      streamName,
+      lastEventId || "0-0"
+    );
 
     // Remove the temporary callback from the subscribers map
     this.subscribers
@@ -337,7 +338,7 @@ class RedisHybridManager {
   }
 
   public async removeEvent(
-    callback: (event: EventPayload) => boolean,
+    predicate: (event: EventPayload) => boolean,
     channel: string
   ): Promise<void> {
     const streamClient = await this.getStreamAndPublishClient();
@@ -347,16 +348,12 @@ class RedisHybridManager {
       streamName
     );
 
-    await concurrentExecutor(
-      history,
-      async (event) => {
-        if (callback(event)) {
-          await streamClient.xDel(streamName, event.id);
-          logger.debug({ channel }, "Deleted event from Redis stream");
-        }
-      },
-      { concurrency: 10 }
-    );
+    for (const event of history) {
+      if (predicate(event)) {
+        await streamClient.xDel(streamName, event.id);
+        logger.debug({ channel }, "Deleted event from Redis stream");
+      }
+    }
   }
 
   private async getHistory(
