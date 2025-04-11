@@ -100,9 +100,11 @@ export type ProvidersWithWorkspaceConfigurations =
 
 export const CREDENTIALS_PROVIDERS = [
   "snowflake",
-  "modjo",
   "bigquery",
   "salesforce",
+  // LABS
+  "hubspot",
+  "modjo",
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
@@ -170,6 +172,7 @@ export const ApiKeyCredentialsSchema = t.type({
   api_key: t.string,
 });
 export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
+export type HubspotCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
 
 export const SalesforceCredentialsSchema = t.type({
   client_id: t.string,
@@ -181,9 +184,10 @@ export type SalesforceCredentials = t.TypeOf<
 
 export type ConnectionCredentials =
   | SnowflakeCredentials
-  | ModjoCredentials
   | BigQueryCredentialsWithLocation
-  | SalesforceCredentials;
+  | SalesforceCredentials
+  | ModjoCredentials
+  | HubspotCredentials;
 
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
@@ -194,6 +198,12 @@ export function isSnowflakeCredentials(
 export function isModjoCredentials(
   credentials: ConnectionCredentials
 ): credentials is ModjoCredentials {
+  return "api_key" in credentials;
+}
+
+export function isHubspotCredentials(
+  credentials: ConnectionCredentials
+): credentials is HubspotCredentials {
   return "api_key" in credentials;
 }
 
