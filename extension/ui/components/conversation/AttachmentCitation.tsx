@@ -86,7 +86,7 @@ export function AttachmentCitation({
         <div className="font-bold">{attachmentCitation.title}</div>
         <div className="flex gap-1 pt-1 text-sm">
           <Icon visual={attachmentCitation.spaceIcon} />
-          <p>{attachmentCitation.path}</p>
+          <p>{attachmentCitation.spaceName}</p>
         </div>
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           {attachmentCitation.path}
@@ -123,7 +123,9 @@ export function AttachmentCitation({
           </CitationTitle>
           {attachmentCitation.type === "node" && (
             <CitationDescription className="truncate text-ellipsis">
-              <span>{attachmentCitation.path}</span>
+              <span>
+                {attachmentCitation.path || attachmentCitation.spaceName}
+              </span>
             </CitationDescription>
           )}
         </Citation>
