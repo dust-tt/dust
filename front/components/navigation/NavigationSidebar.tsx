@@ -15,7 +15,7 @@ import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
-import { useTopNavigationTabs } from "@app/components/navigation/config";
+import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { UserMenu } from "@app/components/UserMenu";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -61,7 +61,7 @@ export const NavigationSidebar = React.forwardRef<
   }, [router.route, router.isReady]);
 
   // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
-  const navs = useTopNavigationTabs(owner);
+  const navs = useMemo(() => getTopNavigationTabs(owner), [owner]);
   const currentTab = useMemo(
     () => navs.find((n) => n.isCurrent(activePath)),
     [navs, activePath]

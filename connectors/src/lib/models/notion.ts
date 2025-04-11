@@ -126,6 +126,7 @@ NotionPage.init(
   {
     sequelize: sequelizeConnection,
     indexes: [
+      { fields: ["connectorId"], concurrently: true },
       { fields: ["notionPageId", "connectorId"], unique: true },
       { fields: ["connectorId", "lastSeenTs"], concurrently: true },
       { fields: ["parentId"] },
@@ -227,6 +228,7 @@ NotionDatabase.init(
   {
     sequelize: sequelizeConnection,
     indexes: [
+      { fields: ["connectorId"], concurrently: true },
       { fields: ["notionDatabaseId", "connectorId"], unique: true },
       { fields: ["connectorId", "skipReason"] },
       { fields: ["lastSeenTs"] },

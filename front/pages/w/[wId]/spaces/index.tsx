@@ -19,12 +19,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements(
       auth.getNonNullableUser()
     );
     if (selection.lastSpaceId) {
-      return {
-        redirect: {
-          destination: `/w/${owner.sId}/spaces/${selection.lastSpaceId}`,
-          permanent: false,
-        },
-      };
+      const space = await SpaceResource.fetchById(auth, selection.lastSpaceId);
+      if (space && space.canReadOrAdministrate(auth)) {
+        return {
+          redirect: {
+            destination: `/w/${owner.sId}/spaces/${space.sId}`,
+            permanent: false,
+          },
+        };
+      }
     }
 
     // Fall back to the global space.

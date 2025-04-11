@@ -16,14 +16,16 @@ import {
   LightModeIcon,
   LogoutIcon,
   StarIcon,
+  TrashIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import { BugIcon, TestTubeIcon } from "lucide-react";
+import { BugIcon, TestTubeIcon, UserCogIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { forceUserRole, showDebugTools } from "@app/lib/development";
+import { useDeleteMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { UserType, WorkspaceType } from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
@@ -36,7 +38,11 @@ export function UserMenu({
   owner: WorkspaceType;
 }) {
   const router = useRouter();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags, hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const { deleteMetadata: deleteServerValidationMetadata } =
+    useDeleteMetadata("toolsValidations");
 
   const sendNotification = useSendNotification();
 
@@ -168,6 +174,25 @@ export function UserMenu({
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
+        {hasFeature("mcp_actions") && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Metadata" icon={UserCogIcon} />
+            <DropdownMenuSubContent>
+              <DropdownMenuItem
+                label="Delete tool approbation history"
+                onClick={() => {
+                  void deleteServerValidationMetadata();
+                  sendNotification({
+                    title: "Success !",
+                    description: "Tool approbation history deleted.",
+                    type: "success",
+                  });
+                }}
+                icon={TrashIcon}
+              />
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
         <DropdownMenuLabel label="Account" />
         <DropdownMenuItem
           onClick={() => {

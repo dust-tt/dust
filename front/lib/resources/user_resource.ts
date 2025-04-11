@@ -1,4 +1,9 @@
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import type {
+  Attributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -252,6 +257,15 @@ export class UserResource extends BaseResource<UserModel> {
     }
 
     await metadata.update({ value });
+  }
+
+  async deleteMetadata(where: WhereOptions<UserMetadataModel>) {
+    return UserMetadataModel.destroy({
+      where: {
+        ...where,
+        userId: this.id,
+      },
+    });
   }
 
   async appendToMetadata(key: string, value: string) {
