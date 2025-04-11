@@ -31,7 +31,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
-import { AssistantToolsSection } from "@app/components/assistant/details/AssistantCapabilitiesSection";
+import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
