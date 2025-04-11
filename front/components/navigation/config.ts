@@ -13,7 +13,6 @@ import {
 } from "@dust-tt/sparkle";
 
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
-import { useLastSpaceViewed } from "@app/lib/swr/spaces";
 import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 
@@ -105,10 +104,8 @@ export type SidebarNavigation = {
   menus: AppLayoutNavigation[];
 };
 
-export const useTopNavigationTabs = (owner: WorkspaceType) => {
+export const getTopNavigationTabs = (owner: WorkspaceType) => {
   const nav: TabAppLayoutNavigation[] = [];
-
-  const { lastViewedSpace } = useLastSpaceViewed({ owner });
 
   nav.push({
     id: "conversations",
@@ -128,9 +125,7 @@ export const useTopNavigationTabs = (owner: WorkspaceType) => {
     id: "data_sources",
     label: "Knowledge",
     icon: BookOpenIcon,
-    href: lastViewedSpace
-      ? `/w/${owner.sId}/spaces/${lastViewedSpace}`
-      : `/w/${owner.sId}/spaces`,
+    href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces/"),
     sizing: "hug",
