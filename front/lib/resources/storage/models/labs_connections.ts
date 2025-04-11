@@ -98,7 +98,7 @@ LabsConnectionsConfigurationModel.init(
       { fields: ["userId"] },
       { fields: ["userId", "workspaceId", "provider"], unique: true },
       { fields: ["dataSourceViewId"] },
-      { fields: ["provider", "connectionStatus"] },
+      { fields: ["provider"] },
       { fields: ["syncStatus"] },
     ],
   }

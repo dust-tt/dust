@@ -3,3 +3,4 @@ CREATE TABLE IF NOT EXISTS "labs_connections_configurations" ("createdAt" TIMEST
 CREATE INDEX "labs_connections_configurations_user_id" ON "labs_connections_configurations" ("userId");
 CREATE UNIQUE INDEX "labs_connections_configurations_user_id_workspace_id_provider" ON "labs_connections_configurations" ("userId", "workspaceId", "provider");
 CREATE INDEX "labs_connections_configurations_data_source_view_id" ON "labs_connections_configurations" ("dataSourceViewId");
+CREATE INDEX "labs_connections_configurations_provider" ON "labs_connections_configurations" ("provider");
