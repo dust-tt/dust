@@ -57,7 +57,7 @@ const LABS_CONNECTIONS: LabsConnectionItemType[] = [
     id: "salesforce_personal_connections",
     label: "Salesforce Personal Connections",
     featureFlag: "labs_salesforce_personal_connections",
-    visibleWithoutAccess: true,
+    visibleWithoutAccess: false,
     logo: SalesforceLogo,
     description:
       "Connect your Salesforce personal accounts to Dust. We'll use your credentials to fetch data from Salesforce connector.",

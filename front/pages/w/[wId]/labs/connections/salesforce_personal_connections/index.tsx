@@ -1,11 +1,20 @@
-import { Page, SalesforceLogo } from "@dust-tt/sparkle";
+import {
+  Button,
+  CloudArrowLeftRightIcon,
+  Page,
+  SalesforceLogo,
+} from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { LabsSalesforcePersonalConnectionsList } from "@app/components/data_source/LabsSalesforcePersonalConnectionsList";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import {
+  useLabsCreateSalesforcePersonalConnection,
+  useLabsDeleteSalesforcePersonalConnection,
+  useLabsSalesforceDataSourcesWithPersonalConnection,
+} from "@app/lib/swr/labs";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -41,6 +50,17 @@ export default function PersonalConnections({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { dataSources } = useLabsSalesforceDataSourcesWithPersonalConnection({
+    owner,
+  });
+  const { createPersonalConnection } =
+    useLabsCreateSalesforcePersonalConnection(owner);
+  const { deletePersonalConnection } =
+    useLabsDeleteSalesforcePersonalConnection(owner);
+
+  const dataSource = dataSources[0];
+  const isConnected = dataSource?.personalConnection !== null;
+
   return (
     <ConversationsNavigationProvider>
       <AppLayout
@@ -54,7 +74,49 @@ export default function PersonalConnections({
             icon={SalesforceLogo}
             description="Connect your personal accounts on your Salesforce connector."
           />
-          <LabsSalesforcePersonalConnectionsList owner={owner} />
+          {dataSource ? (
+            <>
+              <Page.SectionHeader title="Connect your personal Salesforce account." />
+              <div className="flex flex-row gap-2">
+                {!isConnected && (
+                  <Button
+                    label={`Connect Salesforce`}
+                    variant="outline"
+                    size="sm"
+                    icon={CloudArrowLeftRightIcon}
+                    onClick={async () => {
+                      await createPersonalConnection(dataSource);
+                    }}
+                  />
+                )}
+                {isConnected && (
+                  <>
+                    <Button
+                      label="Salesforce connected"
+                      size="sm"
+                      icon={CloudArrowLeftRightIcon}
+                      disabled={true}
+                    />
+
+                    <Button
+                      label="Disconnect"
+                      variant="outline"
+                      size="sm"
+                      icon={CloudArrowLeftRightIcon}
+                      onClick={async () => {
+                        await deletePersonalConnection(dataSource);
+                      }}
+                    />
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <Page.SectionHeader
+              title="No Salesforce connector found. Please connect a Salesforce
+              connector first."
+            />
+          )}
         </Page.Vertical>
       </AppLayout>
     </ConversationsNavigationProvider>
