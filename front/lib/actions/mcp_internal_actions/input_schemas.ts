@@ -105,34 +105,18 @@ export function generateConfiguredInput({
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
       return (
-        actionConfiguration.dataSources?.map((config) => {
-          if (!config.sId) {
-            // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
-            // TODO(mcp): improve typing wrt this.
-            throw new Error(
-              "Unreachable: data source configuration without an sId."
-            );
-          }
-          return {
-            uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
-            mimeType,
-          };
-        }) || []
+        actionConfiguration.dataSources?.map((config) => ({
+          uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
+          mimeType,
+        })) || []
       );
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.TABLE:
       return (
-        actionConfiguration.tables?.map((config) => {
-          if (!config.sId) {
-            // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
-            // TODO(mcp): improve typing wrt this.
-            throw new Error("Unreachable: table configuration without an sId.");
-          }
-          return {
-            uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
-            mimeType,
-          };
-        }) || []
+        actionConfiguration.tables?.map((config) => ({
+          uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
+          mimeType,
+        })) || []
       );
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT: {
