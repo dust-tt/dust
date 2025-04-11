@@ -7,6 +7,7 @@ import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
+  getInternalMCPServerNameAndWorkspaceId,
   isDefaultInternalMCPServerByName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -17,6 +18,7 @@ import {
 } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
@@ -39,6 +41,11 @@ export class InternalMCPServerInMemoryResource {
   }
 
   private static async init(auth: Authenticator, id: string) {
+    const r = getInternalMCPServerNameAndWorkspaceId(id);
+    if (r.isErr()) {
+      return null;
+    }
+
     const server = new InternalMCPServerInMemoryResource(id);
 
     const mcpClient = await connectToMCPServer(auth, {
@@ -82,6 +89,13 @@ export class InternalMCPServerInMemoryResource {
         workspaceId: auth.getNonNullableWorkspace().id,
       })
     );
+
+    if (!server) {
+      throw new DustError(
+        "internal_server_not_found",
+        "Failed to create internal MCP server, the id is probably invalid."
+      );
+    }
 
     await MCPServerViewModel.create(
       {
@@ -174,13 +188,15 @@ export class InternalMCPServerInMemoryResource {
       })
     );
 
-    return concurrentExecutor(
+    const resources = await concurrentExecutor(
       ids,
       (id) => InternalMCPServerInMemoryResource.init(auth, id),
       {
         concurrency: 10,
       }
     );
+
+    return removeNulls(resources);
   }
 
   static async listByWorkspace(auth: Authenticator) {
@@ -199,7 +215,7 @@ export class InternalMCPServerInMemoryResource {
       },
     });
 
-    return concurrentExecutor(
+    const resources = await concurrentExecutor(
       removeNulls(servers.map((server) => server.internalMCPServerId)),
       async (internalMCPServerId) =>
         // This does not create them in the workspace, only in memory, we need to call "makeNew" to create them in the workspace.
@@ -208,6 +224,8 @@ export class InternalMCPServerInMemoryResource {
         concurrency: 10,
       }
     );
+
+    return removeNulls(resources);
   }
 
   // Serialization.
