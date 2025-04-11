@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { SupportedFileContentType } from "@app/types";
-import { assertNever, validateUrl } from "@app/types";
+import { assertNever, normalizeError, validateUrl } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "generate_file",
@@ -39,8 +39,8 @@ const OUTPUT_FORMATS = [
 const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
   server.tool(
-    "get_source_format_to_convert_to",
-    "Get the source format to convert to a given format.",
+    "get_supported_source_formats_for_output_format",
+    "Get a list of source formats supported for a target output format.",
     {
       output_format: z.enum(OUTPUT_FORMATS).describe("The format to check."),
     },
@@ -199,18 +199,15 @@ const createServer = (): McpServer => {
           content,
         };
       } catch (e) {
-        if (typeof e === "object" && e !== null && "message" in e) {
-          return {
-            isError: false,
-            content: [
-              {
-                type: "text",
-                text: `There was an error generating your file: ${e.message}, maybe you can chain multiple conversions to get the result you want, pay attention to the source format you use.`,
-              },
-            ],
-          };
-        }
-        throw e;
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text: `There was an error generating your file: ${normalizeError(e)}, maybe you can chain multiple conversions to get the result you want, pay attention to the source format you use.`,
+            },
+          ],
+        };
       }
     }
   );
