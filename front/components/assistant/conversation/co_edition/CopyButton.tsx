@@ -16,15 +16,15 @@ export function CoEditionCopyButton({ editor }: CoEditionCopyButtonProps) {
 
   const handleCopy = React.useCallback(async () => {
     const htmlContent = editor?.getHTML();
-    const rawTextContet = editor?.getText();
+    const rawTextContent = editor?.getText();
 
-    if (!rawTextContet || !htmlContent) {
+    if (!rawTextContent || !htmlContent) {
       return;
     }
 
     await copy(
       new ClipboardItem({
-        "text/plain": new Blob([rawTextContet], {
+        "text/plain": new Blob([rawTextContent], {
           type: "text/plain",
         }),
         "text/html": new Blob([htmlContent], { type: "text/html" }),
@@ -36,8 +36,8 @@ export function CoEditionCopyButton({ editor }: CoEditionCopyButtonProps) {
     <Button
       key="copy-msg-button"
       tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-      variant="outline"
-      size="xs"
+      variant="ghost"
+      size="sm"
       onClick={handleCopy}
       icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
       className="text-muted-foreground"

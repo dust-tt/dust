@@ -11,13 +11,12 @@ import StarterKit from "@tiptap/starter-kit";
 import React from "react";
 
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
+import { CoEditionCopyButton } from "@app/components/assistant/conversation/co_edition/CopyButton";
 import { BlockIdExtension } from "@app/components/assistant/conversation/co_edition/extensions/BlockIdExtension";
 import { CoEditionParagraphExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionParagraphExtension";
 import { CoEditionStyleExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionStyleExtension";
 import { UserContentMark } from "@app/components/assistant/conversation/co_edition/marks/UserContentMark";
 import { insertNodes } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
-
-import { CoEditionCopyButton } from "./CopyButton";
 
 interface CoEditionContainerProps {}
 
