@@ -1,20 +1,17 @@
 import {
   BracesIcon,
   Button,
-  ChatBubbleThoughtIcon,
   Chip,
-  CommandIcon,
-  CommandLineIcon,
+  DocumentIcon,
   ExternalLinkIcon,
   FolderIcon,
-  Icon,
   IconButton,
   Label,
-  PlanetIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
   SparklesIcon,
+  TableIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import _ from "lodash";
@@ -24,22 +21,12 @@ import { useMemo, useState } from "react";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
-import type {
-  DataSourceConfiguration,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import {
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isMCPServerConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
+  isPlatformMCPServerConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
-  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -63,30 +50,25 @@ import type {
   LightWorkspaceType,
   TagsFilter,
 } from "@app/types";
-import {
-  assertNever,
-  DocumentViewRawContentKey,
-  GLOBAL_AGENTS_SID,
-} from "@app/types";
+import { DocumentViewRawContentKey, GLOBAL_AGENTS_SID } from "@app/types";
 
-interface AssistantActionsSectionProps {
+interface AssistantKnowledgeSectionProps {
   agentConfiguration: AgentConfigurationType;
   owner: LightWorkspaceType;
 }
 
-export function AssistantActionsSection({
+export function AssistantKnowledgeSection({
   agentConfiguration,
   owner,
-}: AssistantActionsSectionProps) {
+}: AssistantKnowledgeSectionProps) {
   const { dataSourceViews } = useDataSourceViews(owner, {
     disabled: agentConfiguration.actions.length === 0,
   });
 
   const categorizedActions = useMemo(() => {
     const initial = {
-      retrieval: [] as RetrievalConfigurationType[],
-      queryTables: [] as TablesQueryConfigurationType[],
-      other: [] as AgentActionConfigurationType[],
+      retrieval: [] as { dataSources: DataSourceConfiguration[] }[],
+      queryTables: [] as { tables: TableDataSourceConfiguration[] }[],
     };
 
     const isDustGlobalAgent = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
@@ -102,8 +84,14 @@ export function AssistantActionsSection({
         acc.retrieval.push(action);
       } else if (isTablesQueryConfiguration(action)) {
         acc.queryTables.push(action);
-      } else {
-        acc.other.push(action);
+      } else if (isPlatformMCPServerConfiguration(action)) {
+        const { tables, dataSources } = action;
+        if (dataSources) {
+          acc.retrieval.push({ dataSources });
+        }
+        if (tables) {
+          acc.queryTables.push({ tables });
+        }
       }
       return acc;
     }, initial);
@@ -179,51 +167,64 @@ export function AssistantActionsSection({
     return acc;
   }, [categorizedActions.queryTables, dataSourceViews]);
 
-  if (agentConfiguration.actions.length === 0) {
+  if (
+    categorizedActions.retrieval.length === 0 &&
+    categorizedActions.queryTables.length === 0
+  ) {
     return null;
   }
 
   return (
-    <>
-      {Object.values(retrievalByDataSources).length > 0 && (
-        <ActionSection title="Retrieve from Documents">
-          {Object.values(retrievalByDataSources).map((dataSources, index) => (
-            <div className="flex flex-col gap-2" key={`retrieval-${index}`}>
-              <DataSourceViewsSection
-                owner={owner}
-                dataSourceViews={dataSourceViews}
-                dataSourceConfigurations={[dataSources]}
-                viewType="document"
-              />
-            </div>
-          ))}
-        </ActionSection>
-      )}
-
-      {Object.values(queryTableByDataSources).length > 0 && (
-        <ActionSection title="Query Tables">
-          {Object.values(queryTableByDataSources).map((dataSources, index) => (
-            <div className="flex flex-col gap-2" key={`query-tables-${index}`}>
-              <DataSourceViewsSection
-                owner={owner}
-                dataSourceViews={dataSourceViews}
-                dataSourceConfigurations={[dataSources]}
-                viewType="table"
-              />
-            </div>
-          ))}
-        </ActionSection>
-      )}
-
-      {categorizedActions.other.map((action, index) =>
-        renderOtherAction(action, index, owner, dataSourceViews)
-      )}
-    </>
+    <div className="flex flex-col gap-5">
+      <div className="heading-lg text-foreground dark:text-foreground-night">
+        Knowledge
+      </div>
+      <div className="rounded-xl border bg-muted-background p-2 dark:bg-muted-background-night">
+        <Tree>
+          <Tree.Item label="Documents" visual={DocumentIcon}>
+            {Object.values(retrievalByDataSources).length > 0 &&
+              Object.values(retrievalByDataSources).map(
+                (dataSources, index) => (
+                  <div
+                    className="flex flex-col gap-2"
+                    key={`retrieval-${index}`}
+                  >
+                    <DataSourceViewsSection
+                      owner={owner}
+                      dataSourceViews={dataSourceViews}
+                      dataSourceConfigurations={[dataSources]}
+                      viewType="document"
+                    />
+                  </div>
+                )
+              )}
+          </Tree.Item>
+          <Tree.Item label="Tables" visual={TableIcon}>
+            {Object.values(queryTableByDataSources).length > 0 &&
+              Object.values(queryTableByDataSources).map(
+                (dataSources, index) => (
+                  <div
+                    className="flex flex-col gap-2"
+                    key={`query-tables-${index}`}
+                  >
+                    <DataSourceViewsSection
+                      owner={owner}
+                      dataSourceViews={dataSourceViews}
+                      dataSourceConfigurations={[dataSources]}
+                      viewType="table"
+                    />
+                  </div>
+                )
+              )}
+          </Tree.Item>
+        </Tree>
+      </div>
+    </div>
   );
 }
 
 function getDataSourceConfigurationsForTableAction(
-  action: TablesQueryConfigurationType,
+  action: { tables: TableDataSourceConfiguration[] },
   dataSourceViews: DataSourceViewType[]
 ) {
   return Object.values(
@@ -257,84 +258,6 @@ function getDataSourceConfigurationsForTableAction(
       },
       {} as Record<string, DataSourceConfiguration>
     )
-  );
-}
-
-function renderOtherAction(
-  action: AgentActionConfigurationType,
-  index: number,
-  owner: LightWorkspaceType,
-  dataSourceViews: DataSourceViewType[]
-) {
-  if (isDustAppRunConfiguration(action)) {
-    return (
-      <ActionSection title="Run Actions" key={`other-${index}`}>
-        <DustAppSection dustApp={action} />
-      </ActionSection>
-    );
-  } else if (isProcessConfiguration(action)) {
-    return (
-      <ActionSection title="Extract from documents" key={`other-${index}`}>
-        <DataSourceViewsSection
-          owner={owner}
-          dataSourceViews={dataSourceViews}
-          dataSourceConfigurations={action.dataSources}
-          viewType="document"
-        />
-      </ActionSection>
-    );
-  } else if (isWebsearchConfiguration(action)) {
-    return (
-      <ActionSection title="Web navigation" key={`other-${index}`}>
-        <div className="flex gap-2 text-muted-foreground">
-          <Icon visual={PlanetIcon} size="sm" />
-          <div>
-            Agent can navigate the web (browse any provided links, make a google
-            search, etc.) to answer.
-          </div>
-        </div>
-      </ActionSection>
-    );
-  } else if (isReasoningConfiguration(action)) {
-    return (
-      <ActionSection title="Reasoning" key={`other-${index}`}>
-        <Icon visual={ChatBubbleThoughtIcon} size="sm" />
-        <div>
-          Agent can perform step by step reasoning to solve complex problems.
-          Slow but powerful.
-        </div>
-      </ActionSection>
-    );
-  } else if (isMCPServerConfiguration(action)) {
-    return (
-      <ActionSection title={action.name} key={`other-${index}`}>
-        <Icon visual={CommandIcon} size="sm" />
-        <div>{action.description}</div>
-      </ActionSection>
-    );
-  } else if (isBrowseConfiguration(action)) {
-    return null;
-  } else if (
-    !isRetrievalConfiguration(action) &&
-    !isTablesQueryConfiguration(action)
-  ) {
-    return assertNever(action);
-  }
-}
-
-interface ActionSectionProps {
-  title: string;
-  children: React.ReactNode;
-}
-
-function ActionSection({ title, children }: ActionSectionProps) {
-  return (
-    <div>
-      <div className="text-text-foreground dark:text-text-foreground-night heading-lg pb-2">
-        {title}
-      </div>
-      {children}
-    </div>
   );
 }
 
@@ -607,23 +530,5 @@ function DataSourceViewSelectedNodes({
         </Tree.Item>
       ))}
     </>
-  );
-}
-
-interface DustAppSectionProps {
-  dustApp: DustAppRunConfigurationType;
-}
-
-function DustAppSection({ dustApp }: DustAppSectionProps) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div>The following tool is run before answering:</div>
-      <div className="flex gap-2 capitalize text-muted-foreground">
-        <div>
-          <CommandLineIcon />
-        </div>
-        <div>{dustApp.name}</div>
-      </div>
-    </div>
   );
 }
