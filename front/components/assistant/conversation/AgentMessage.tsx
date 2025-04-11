@@ -41,6 +41,7 @@ import { useConversationsNavigation } from "@app/components/assistant/conversati
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { LabsSalesforceAuthenticationError } from "@app/components/assistant/conversation/LabsSalesforceErrorHandler";
 import {
   CitationsContext,
   CiteBlock,
@@ -609,6 +610,14 @@ export function AgentMessage({
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
     if (agentMessage.status === "failed") {
+      if (agentMessage.error?.code == "require_salesforce_authentication") {
+        return (
+          <LabsSalesforceAuthenticationError
+            owner={owner}
+            retryHandler={async () => retryHandler(agentMessage)}
+          />
+        );
+      }
       return (
         <ErrorMessage
           error={
