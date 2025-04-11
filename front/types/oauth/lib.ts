@@ -173,7 +173,12 @@ export const ApiKeyCredentialsSchema = t.type({
   api_key: t.string,
 });
 export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
-export type HubspotCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
+
+export const HubspotCredentialsSchema = t.type({
+  accessToken: t.string,
+  portalId: t.string,
+});
+export type HubspotCredentials = t.TypeOf<typeof HubspotCredentialsSchema>;
 
 export const SalesforceCredentialsSchema = t.type({
   client_id: t.string,
