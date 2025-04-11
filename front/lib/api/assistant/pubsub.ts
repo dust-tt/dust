@@ -1,4 +1,3 @@
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -587,14 +586,9 @@ export async function* getMessagesEvents(
 
   try {
     for (const event of history) {
-      const data = JSON.parse(event.message.payload);
-      if (data satisfies MCPApproveExecutionEvent) {
-        continue;
-      }
-
       yield {
         eventId: event.id,
-        data,
+        data: JSON.parse(event.message.payload),
       };
     }
 
@@ -635,7 +629,7 @@ function getConversationChannelId(channelId: string) {
   return `conversation-${channelId}`;
 }
 
-function getMessageChannelId(messageId: string) {
+export function getMessageChannelId(messageId: string) {
   return `message-${messageId}`;
 }
 

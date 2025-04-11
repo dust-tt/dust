@@ -360,6 +360,28 @@ class RedisHybridManager {
     };
   }
 
+  public async removeEvent(
+    callback: (event: EventPayload) => boolean,
+    channel: string
+  ): Promise<void> {
+    const { history, unsubscribe } = await getRedisHybridManager().subscribe(
+      channel,
+      () => {},
+      null,
+      "message_events"
+    );
+
+    history.forEach(async (event) => {
+      if (callback(event)) {
+        const streamClient = await this.getStreamAndPublishClient();
+        const streamName = this.getStreamName(channel);
+        await streamClient.xDel(streamName, event.id);
+        logger.debug({ channel }, "Deleted event from Redis stream");
+      }
+    });
+    unsubscribe();
+  }
+
   private onMessage = (message: string, channel: string) => {
     const subscribers = this.subscribers.get(channel);
     if (subscribers && subscribers.size > 0) {
