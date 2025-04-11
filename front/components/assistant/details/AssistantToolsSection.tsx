@@ -42,10 +42,6 @@ export function AssistantToolsSection({
   const { isDark } = useTheme();
   const { mcpServers } = useMCPServers({ owner });
 
-  if (agentConfiguration.actions.length === 0) {
-    return null;
-  }
-
   const actions = removeNulls(
     agentConfiguration.actions.map((action) =>
       renderOtherAction(action, mcpServers)
@@ -83,43 +79,47 @@ export function AssistantToolsSection({
   const filteredModels = removeNulls(models);
   return (
     <div className="flex flex-row gap-2">
-      <div className="flex flex-[1_0_0] flex-col gap-5">
-        <div className="heading-lg text-foreground dark:text-foreground-night">
-          Tools
+      {sortedActions.length > 0 && (
+        <div className="flex flex-[1_0_0] flex-col gap-5">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Tools
+          </div>
+          <div className="flex flex-col gap-2">
+            {sortedActions.map((action) => (
+              <div
+                className="flex flex-row items-center gap-2"
+                key={action.title}
+              >
+                <Avatar visual={action.visual} size="xs" />
+                <div>{action.title}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          {sortedActions.map((action) => (
-            <div
-              className="flex flex-row items-center gap-2"
-              key={action.title}
-            >
-              <Avatar visual={action.visual} size="xs" />
-              <div>{action.title}</div>
-            </div>
-          ))}
+      )}
+      {filteredModels.length > 0 && (
+        <div className="flex flex-[1_0_0] flex-col gap-5">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Models
+          </div>
+          <div className="flex flex-col gap-2">
+            {filteredModels.map((model) => (
+              <div
+                className="flex flex-row items-center gap-2"
+                key={model.modelId}
+              >
+                <Avatar
+                  visual={React.createElement(
+                    getModelProviderLogo(model.providerId, isDark)
+                  )}
+                  size="xs"
+                />
+                <div>{model.displayName}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="flex flex-[1_0_0] flex-col gap-5">
-        <div className="heading-lg text-foreground dark:text-foreground-night">
-          Models
-        </div>
-        <div className="flex flex-col gap-2">
-          {filteredModels.map((model) => (
-            <div
-              className="flex flex-row items-center gap-2"
-              key={model.modelId}
-            >
-              <Avatar
-                visual={React.createElement(
-                  getModelProviderLogo(model.providerId, isDark)
-                )}
-                size="xs"
-              />
-              <div>{model.displayName}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
