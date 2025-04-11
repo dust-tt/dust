@@ -92,13 +92,11 @@ export default function Security() {
         <Grid>
           <div
             className={classNames(
-              "flex flex-col justify-end gap-4 pt-12 sm:pt-12 lg:pt-24",
+              "flex flex-col justify-end gap-4 pt-24",
               "col-span-10"
             )}
           >
-            <H3 className="text-muted-foreground" style={{ fontWeight: 400 }}>
-              Designed for enterprises
-            </H3>
+            <H3 className="text-muted-foreground">Designed for enterprises</H3>
             <H1
               mono
               className="text-5xl font-medium leading-tight md:text-6xl lg:text-7xl"

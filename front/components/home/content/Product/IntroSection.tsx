@@ -86,8 +86,8 @@ const HeroVisual = () => {
 export function IntroSection() {
   return (
     <section className="w-full">
-      <div className="sm:pt-18 flex flex-col gap-6 pt-6 md:gap-4 lg:gap-8 lg:pt-8">
-        <div className="flex flex-col gap-16 pt-16">
+      <div className="flex flex-col gap-6 pt-24 md:gap-4 lg:gap-8">
+        <div className="flex flex-col gap-16">
           <HeroContent />
           <HeroVisual />
         </div>

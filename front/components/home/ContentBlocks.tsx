@@ -60,7 +60,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
       )}
     >
       <div className="flex aspect-video items-center justify-center bg-primary-800 p-4">
-        <div className="max-w-[400px]">{children ? children : null}</div>
+        <div className="max-w-lg">{children ? children : null}</div>
       </div>
       <div className="flex flex-col gap-3 px-6 pb-6 pt-4">
         <H3 className="text-foreground" mono>
@@ -153,7 +153,7 @@ export const HeaderContentBlock = ({
   <Grid>
     <div
       className={classNames(
-        "sm:pt-18 flex flex-col justify-end gap-6 pt-12 lg:pt-36",
+        "flex flex-col justify-end gap-6 pt-24",
         "col-span-12",
         "sm:col-span-12 md:col-span-12",
         "lg:col-span-8 lg:col-start-2",
@@ -249,7 +249,7 @@ export const MetricSection = ({
         <div key={index} className="h-full flex-1 lg:flex-1">
           <div
             className={classNames(
-              "flex h-[220px] w-[220px] flex-col items-center justify-center rounded-full",
+              "flex h-56 w-56 flex-col items-center justify-center rounded-full",
               "mx-auto",
               colors.bg
             )}
@@ -394,7 +394,7 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => {
             <CarouselNext className="h-8 w-8 sm:h-10 sm:w-10" />
           </div>
         </div>
-        <CarouselContent className="h-[280px] sm:h-[300px]">
+        <CarouselContent className="h-72 sm:h-80">
           {quotes.map((q, index) => (
             <CarouselItem
               key={index}
@@ -591,14 +591,14 @@ interface ImgContentProps {
 export const ImgContent: React.FC<ImgContentProps> = ({ images }) => {
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <div className="relative flex h-full w-full max-w-[240px] items-center justify-center">
+      <div className="relative flex h-full w-full max-w-md items-center justify-center">
         {images.map((image, index) => (
           <img
             key={index}
             src={image.src}
             alt={image.alt || `Image ${index + 1}`}
             className={classNames(
-              "max-h-[120px] max-w-[160px] object-contain",
+              "max-w-40 max-h-32 object-contain",
               index === 0
                 ? ""
                 : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform"

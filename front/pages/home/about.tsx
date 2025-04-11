@@ -351,9 +351,7 @@ export default function About() {
     <>
       <div className="container flex w-full flex-col gap-16 px-6 md:gap-24">
         <div
-          className={classNames(
-            "sm:pt-18 flex w-full flex-col justify-end gap-4 pt-12 lg:pt-36"
-          )}
+          className={classNames("flex w-full flex-col justify-end gap-4 pt-24")}
         >
           <H3 className="text-center text-muted-foreground">About us</H3>
           <div className="flex flex-row justify-center">
