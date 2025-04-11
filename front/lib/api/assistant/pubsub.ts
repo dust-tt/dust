@@ -586,9 +586,14 @@ export async function* getMessagesEvents(
 
   try {
     for (const event of history) {
+      const data = JSON.parse(event.message.payload);
+      if (data.type === "tool_approve_execution") {
+        continue;
+      }
+
       yield {
         eventId: event.id,
-        data: JSON.parse(event.message.payload),
+        data,
       };
     }
 
