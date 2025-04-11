@@ -1,8 +1,16 @@
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { CoEditionContainer } from "@app/components/assistant/conversation/co_edition/CoEditionContainer";
+import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
+import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   ConversationsNavigationProvider,
@@ -16,6 +24,7 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export interface ConversationLayoutProps {
@@ -66,6 +75,15 @@ const ConversationLayoutContent = ({
     workspaceId: owner.sId,
   });
 
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const hasCoEditionFeatureFlag = useMemo(
+    () => hasFeature("mcp_actions") && hasFeature("co_edition"),
+    [hasFeature]
+  );
+
   const assistantSId = useMemo(() => {
     const sid = router.query.assistantDetails ?? [];
     if (sid && typeof sid === "string") {
@@ -101,12 +119,48 @@ const ConversationLayoutContent = ({
               assistantId={assistantSId}
               onClose={() => onOpenChangeAssistantModal(false)}
             />
-            <FileDropProvider>
-              <GenerationContextProvider>{children}</GenerationContextProvider>
-            </FileDropProvider>
+            <CoEditionProvider
+              owner={owner}
+              hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+            >
+              <ConversationInnerLayout>{children}</ConversationInnerLayout>
+            </CoEditionProvider>
           </>
         )}
       </AppLayout>
     </InputBarProvider>
   );
 };
+
+interface ConversationInnerLayoutProps {
+  children: React.ReactNode;
+}
+
+function ConversationInnerLayout({ children }: ConversationInnerLayoutProps) {
+  const { isCoEditionOpen } = useCoEditionContext();
+
+  return (
+    <div className="flex h-full w-full flex-col">
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="flex h-full w-full flex-1"
+      >
+        <ResizablePanel defaultSize={100}>
+          <FileDropProvider>
+            <GenerationContextProvider>
+              <div className="h-full overflow-y-auto">{children}</div>
+            </GenerationContextProvider>
+          </FileDropProvider>
+        </ResizablePanel>
+        {isCoEditionOpen && <ResizableHandle />}
+        <ResizablePanel
+          minSize={20}
+          defaultSize={50}
+          className={isCoEditionOpen ? "" : "hidden"}
+        >
+          {isCoEditionOpen && <CoEditionContainer />}
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
+  );
+}

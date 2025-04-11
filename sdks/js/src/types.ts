@@ -791,6 +791,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
   | "labs_features"
+  | "co_edition"
   | "labs_transcripts"
   | "labs_connection_hubspot"
   | "labs_trackers"
