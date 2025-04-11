@@ -22,7 +22,7 @@ export function PlatformIntroSection() {
       </H1>
       <P size="lg" className="text-muted-foreground">
         Push the boundaries by building custom actions and integrations
-        to&nbsp;fit your team's exact&nbsp;needs.
+        to&nbsp;fit your team’s exact&nbsp;needs.
       </P>
       <div className="flex flex-col gap-4 xs:flex-row sm:flex-row md:flex-row">
         <Button

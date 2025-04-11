@@ -36,7 +36,7 @@ export function ScrollTextDemo() {
           Dust creates core building blocks
         </h2>
         <ScrollFadeInText
-          text="for AI to connect your team's knowledge and workflows."
+          text="for AI to connect your team’s knowledge and workflows."
           startColor="text-gray-300"
           endColor="text-gray-900"
           className="text-xl font-medium"

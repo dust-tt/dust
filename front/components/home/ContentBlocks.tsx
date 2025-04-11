@@ -292,7 +292,7 @@ interface QuoteProps {
 export const AllQuotes: QuoteProps[] = [
   {
     quote:
-      "Thanks to what we've implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
+      "Thanks to what we’ve implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
     name: "Vincent Delagabbe",
     title: "Software Engineer at Alan",
     logo: "/static/landing/logos/color/alan.png",
@@ -306,35 +306,35 @@ export const AllQuotes: QuoteProps[] = [
   },
   {
     quote:
-      "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
+      "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you’re newly onboarded or a veteran team member.",
     name: "Boris Lipiainen",
     title: "Chief Product and Technology Officer at Kyriba",
     logo: "/static/landing/logos/color/kyriba.png",
   },
   {
     quote:
-      "Dust is not just a tool - it's like having an extra team member who knows your brand voice, can handle recurring tasks, and helps you tackle new challenges. I couldn't do half of my job without it, especially with tight deadlines and a small team.",
+      "Dust is not just a tool - it’s like having an extra team member who knows your brand voice, can handle recurring tasks, and helps you tackle new challenges. I couldn’t do half of my job without it, especially with tight deadlines and a small team.",
     name: "Valentine Chelius",
     title: "Head of Marketing at Fleet",
     logo: "/static/landing/logos/color/fleet.png",
   },
   {
     quote:
-      "The Dust platform is more than just a tool for post-ideation; it's a catalyst for innovation, stimulating idea generation as employees engage with it.",
+      "The Dust platform is more than just a tool for post-ideation; it’s a catalyst for innovation, stimulating idea generation as employees engage with it.",
     name: "Boris Lipiainen",
     title: "Chief Product and Technology Officer at Kyriba",
     logo: "/static/landing/logos/color/kyriba.png",
   },
   {
     quote:
-      "It's really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
+      "It’s really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
     name: "Vincent Delagabbe",
     title: "Software Engineer at Alan",
     logo: "/static/landing/logos/color/alan.png",
   },
   {
     quote:
-      "We're managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
+      "We’re managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
     name: "Anaïs Ghelfi",
     title: "Head of Data Platform at Malt",
     logo: "/static/landing/logos/color/malt.png",
@@ -351,7 +351,7 @@ export const AllQuotes: QuoteProps[] = [
 // Single quote card component
 const QuoteCard = ({ quote, logo, name, title }: QuoteProps) => (
   <div className="flex h-full w-full flex-col rounded-lg bg-gray-50 p-4 sm:rounded-xl sm:p-5 md:p-6">
-    <div className="sm:line-clamp-7 mb-4 line-clamp-5 flex flex-col items-start text-left font-objektiv text-base font-normal text-gray-900 sm:text-base md:text-lg">
+    <div className="sm:line-clamp-7 mb-4 line-clamp-5 flex flex-col items-start text-left text-base font-normal text-gray-900 sm:text-base md:text-lg">
       "{quote}"
     </div>
     <div className="mt-auto flex items-center justify-between">

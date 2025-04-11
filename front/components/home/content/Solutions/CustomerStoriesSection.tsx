@@ -34,12 +34,12 @@ export const defaultCustomerStories: CustomerStory[] = [
   {
     title: "Malt cuts support ticket closing time by 50% with Dust",
     content:
-      "Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses.",
+      "Malt streamlines customer support using Dust’s AI platform for rapid, consistent multilingual responses.",
     href: "https://blog.dust.tt/malt-customer-support/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg",
   },
   {
-    title: "Pennylane's journey to deploy Dust for Customer Care teams",
+    title: "Pennylane’s journey to deploy Dust for Customer Care teams",
     content:
       "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
     href: "https://blog.dust.tt/pennylane-dust-customer-support-journey/",
