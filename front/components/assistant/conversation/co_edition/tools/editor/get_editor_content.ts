@@ -19,9 +19,7 @@ export interface EditorContentForModel {
   }[];
 }
 
-export function getEditorContentForModelFromDom(
-  editor: Editor
-): EditorContentForModel {
+export function getEditorContentFromDom(editor: Editor): EditorContentForModel {
   const nodes: EditorContentForModel["nodes"] = [];
 
   let currentNodeIndex = 0;
@@ -32,9 +30,25 @@ export function getEditorContentForModelFromDom(
       const id = node.attrs["data-id"];
       const segments: Array<EditorContentForModelNodeContent> = [];
 
-      // Get the DOM node and its HTML.
+      // Get the DOM node and clean its HTML.
       const domNode = editor.view.nodeDOM(pos);
-      const html = domNode instanceof HTMLElement ? domNode.outerHTML : "";
+      let html = "";
+
+      if (domNode instanceof HTMLElement) {
+        // Create a temporary container to manipulate the HTML.
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = domNode.outerHTML;
+
+        // Remove the specified attributes from all elements in the temporary container.
+        const elements = tempDiv.getElementsByTagName("*");
+        for (let i = 0; i < elements.length; i++) {
+          elements[i].removeAttribute("data-id");
+          elements[i].removeAttribute("data-author");
+          elements[i].removeAttribute("class");
+        }
+
+        html = tempDiv.innerHTML;
+      }
 
       // Use ProseMirror's native position mapping.
       node.descendants((textNode, textPos) => {
@@ -129,12 +143,12 @@ export function getEditorContentForModel(
   };
 }
 
-export function registerGetEditorContentForModelTool(
+export function registerGetEditorContentTool(
   server: McpServer,
   editor: Editor
 ) {
   server.tool(
-    "get_editor_content_for_model",
+    "get_editor_content",
     "Retrieve the current content of the editor in a structured format. This tool returns a " +
       "document with nodes, where each node has a unique ID, position, and content " +
       "array. The content array contains text segments with author information (agent or user) " +
@@ -148,11 +162,7 @@ export function registerGetEditorContentForModelTool(
         content: [
           {
             type: "text",
-            text: JSON.stringify(
-              getEditorContentForModelFromDom(editor),
-              null,
-              2
-            ),
+            text: JSON.stringify(getEditorContentForModel(editor), null, 2),
           },
         ],
       };

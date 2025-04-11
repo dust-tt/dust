@@ -1,23 +1,27 @@
-import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  cn,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import Placeholder from "@tiptap/extension-placeholder";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import React from "react";
 
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
+import { CoEditionCopyButton } from "@app/components/assistant/conversation/co_edition/CopyButton";
 import { BlockIdExtension } from "@app/components/assistant/conversation/co_edition/extensions/BlockIdExtension";
 import { CoEditionParagraphExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionParagraphExtension";
 import { CoEditionStyleExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionStyleExtension";
-import { AgentContentMark } from "@app/components/assistant/conversation/co_edition/marks/AgentContentMark";
 import { UserContentMark } from "@app/components/assistant/conversation/co_edition/marks/UserContentMark";
-import { getEditorContentForModelFromDom } from "@app/components/assistant/conversation/co_edition/tools/editor/get_editor_content_for_model";
 import { insertNodes } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
 
 interface CoEditionContainerProps {}
 
 export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
-  const { closeCoEdition, isConnected, server, serverId } =
-    useCoEditionContext();
+  const { closeCoEdition, server } = useCoEditionContext();
 
   const editor = useEditor({
     extensions: [
@@ -25,7 +29,6 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
         paragraph: false,
       }),
       CoEditionParagraphExtension,
-      AgentContentMark,
       UserContentMark,
       CoEditionStyleExtension,
       BlockIdExtension.configure({
@@ -44,13 +47,25 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
       Placeholder.configure({
         placeholder: "Write something...",
         emptyNodeClass: cn(
-          "first:before:text-gray-400 first:before:float-left",
+          "first:before:text-muted-foreground first:before:float-left",
           "first:before:content-[attr(data-placeholder)]",
           "first:before:pointer-events-none first:before:h-0"
         ),
       }),
     ],
   });
+
+  const undo = React.useCallback(() => {
+    if (editor) {
+      editor.chain().focus().undo().run();
+    }
+  }, [editor]);
+
+  const redo = React.useCallback(() => {
+    if (editor) {
+      editor.chain().focus().redo().run();
+    }
+  }, [editor]);
 
   editor?.setOptions({
     editorProps: {
@@ -60,7 +75,6 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
       handleKeyDown: () => {
         // On any user input, wrap the current selection in UserContentMark.
         // TODO(2025-04-10, flav): Narrow down to only changes.
-        editor.commands.unsetMark("agentContent");
         editor.commands.setMark("userContent");
       },
     },
@@ -100,16 +114,24 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
   }, [editor, server]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex flex-row items-center justify-between border-b p-2">
-        <div className="text-sm text-gray-500">
-          {isConnected ? (
-            <span className="text-green-500">
-              Connected to MCP Server: {serverId}
-            </span>
-          ) : (
-            <span className="text-red-500">Disconnected</span>
-          )}
+    <div className="flex h-full flex-col bg-muted-background dark:bg-muted-background-night">
+      <div className="flex flex-row justify-between p-2">
+        <div className="flex flex-row gap-2">
+          <Button
+            icon={ChevronLeftIcon}
+            variant="ghost"
+            size="sm"
+            onClick={undo}
+            disabled={!editor?.can().undo()}
+          />
+          <Button
+            icon={ChevronRightIcon}
+            variant="ghost"
+            size="sm"
+            onClick={redo}
+            disabled={!editor?.can().redo()}
+          />
+          <CoEditionCopyButton editor={editor} />
         </div>
         <Button
           icon={XMarkIcon}
@@ -120,13 +142,6 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
       </div>
       <div className="flex-1 overflow-auto p-4">
         <EditorContent editor={editor} />
-      </div>
-
-      <div className="h-96 p-4">
-        <pre className="h-full overflow-auto">
-          {editor &&
-            JSON.stringify(getEditorContentForModelFromDom(editor), null, 2)}
-        </pre>
       </div>
     </div>
   );

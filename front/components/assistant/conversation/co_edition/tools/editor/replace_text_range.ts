@@ -36,40 +36,54 @@ export function registerReplaceTextRangeTool(
     - You have the exact character offsets from getEditorContentForModel`,
     { params: ReplaceTextRangeSchema },
     async ({ params }) => {
-      editor
-        .chain()
-        .focus()
-        .command(({ chain, tr }) => {
-          // Find the node and replace the range.
-          const doc = tr.doc;
-          let found = false;
-          doc.descendants((node) => {
-            if (node.attrs["data-id"] === params.nodeId) {
-              chain()
-                // First delete the content range. This position the cursor at the end of the range.
-                .deleteRange({
-                  from: params.startOffset,
-                  to: params.endOffset,
-                })
-                // Then insert the new content with agentContent mark.
-                .setMark("agentContent")
-                .insertContent(params.content, {
-                  parseOptions: { preserveWhitespace: "full" },
-                });
+      let isRangeValid = false;
+      const availableRanges: { from: number; to: number }[] = [];
 
-              found = true;
-              return false;
+      editor.state.doc.descendants((node, nodePos) => {
+        // Check if this node has the matching data-id.
+        if (node.attrs["data-id"] === params.nodeId) {
+          // If the node is matching, traverse the descendants to find the range.
+          node.descendants((childNode, relativePos) => {
+            availableRanges.push({
+              from: relativePos,
+              to: relativePos + childNode.nodeSize,
+            });
+
+            if (
+              relativePos === params.startOffset &&
+              relativePos + childNode.nodeSize === params.endOffset
+            ) {
+              isRangeValid = true;
+
+              // Convert relative positions to absolute document positions.
+              const absoluteFrom = nodePos + 1 + relativePos;
+              const absoluteTo = nodePos + 1 + relativePos + childNode.nodeSize;
+
+              // Replace using absolute positions.
+              editor.commands.insertContentAt(
+                { from: absoluteFrom, to: absoluteTo },
+                params.content
+              );
+
+              return false; // Stop traversal once found.
             }
+
+            return true; // Continue traversal.
           });
-          return found;
-        })
-        .run();
+
+          return false; // Stop traversal once found.
+        }
+        return true; // Continue traversal.
+      });
 
       return {
         content: [
           {
             type: "text",
-            text: `Successfully replaced text range in node ${params.nodeId}`,
+            text: isRangeValid
+              ? `Successfully replaced text range in node ${params.nodeId}`
+              : `Failed to find text range in node ${params.nodeId}. ` +
+                `Available ranges: ${JSON.stringify(availableRanges)}`,
           },
         ],
       };
