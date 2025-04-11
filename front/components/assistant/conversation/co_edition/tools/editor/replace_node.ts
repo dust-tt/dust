@@ -26,7 +26,8 @@ export function registerReplaceNodeTool(server: McpServer, editor: Editor) {
     - You need to completely rewrite a node
     - The node's content needs to be restructured entirely
 
-    DO NOT use this tool to delete a node - use the delete_node tool instead.`,
+    DO NOT use this tool to delete a node - use the delete_node tool instead.
+    DO NOT use this tool to insert a node - use the insert_node tool instead.`,
     { params: ReplaceNodeSchema },
     async ({ params }) => {
       editor
