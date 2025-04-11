@@ -1,4 +1,10 @@
-import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  cn,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import Placeholder from "@tiptap/extension-placeholder";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -10,6 +16,8 @@ import { CoEditionParagraphExtension } from "@app/components/assistant/conversat
 import { CoEditionStyleExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionStyleExtension";
 import { UserContentMark } from "@app/components/assistant/conversation/co_edition/marks/UserContentMark";
 import { insertNodes } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
+
+import { CoEditionCopyButton } from "./CopyButton";
 
 interface CoEditionContainerProps {}
 
@@ -47,6 +55,18 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
       }),
     ],
   });
+
+  const undo = React.useCallback(() => {
+    if (editor) {
+      editor.chain().focus().undo().run();
+    }
+  }, [editor]);
+
+  const redo = React.useCallback(() => {
+    if (editor) {
+      editor.chain().focus().redo().run();
+    }
+  }, [editor]);
 
   editor?.setOptions({
     editorProps: {
@@ -96,7 +116,24 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
 
   return (
     <div className="flex h-full flex-col bg-muted-background dark:bg-muted-background-night">
-      <div className="flex flex-row justify-end p-2">
+      <div className="flex flex-row justify-between p-2">
+        <div className="flex flex-row gap-2">
+          <Button
+            icon={ChevronLeftIcon}
+            variant="ghost"
+            size="sm"
+            onClick={undo}
+            disabled={!editor?.can().undo()}
+          />
+          <Button
+            icon={ChevronRightIcon}
+            variant="ghost"
+            size="sm"
+            onClick={redo}
+            disabled={!editor?.can().redo()}
+          />
+          <CoEditionCopyButton editor={editor} />
+        </div>
         <Button
           icon={XMarkIcon}
           variant="ghost"
