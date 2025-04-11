@@ -13,20 +13,9 @@ const ToggleCoEditionSchema = z.object({
   enabled: z
     .boolean()
     .describe(
-      "Toggle co-edition mode. When enabled, provides a shared rich text editor for " +
-        "real-time collaborative document editing. This tool should ALWAYS be used when: " +
-        "1) The user wants to write, edit, or collaborate on any document " +
-        "2) The user mentions creating content together " +
-        "3) The user asks about writing something " +
-        "4) The user wants to work on text collaboratively " +
-        "5) The user needs to draft, revise, or finalize any written content " +
-        "Enable this tool proactively for any writing or collaboration task, even if not explicitly requested. " +
-        "IMPORTANT: Once co-edition is enabled, additional tools become available: " +
-        "- You can insert content into the editor for the user to review " +
-        "- You can retrieve content wri tten by the user " +
-        "- You can format text, add headings, lists, and other elements " +
-        "- You can collaborate in real-time with the user on the same document " +
-        "Always enable co-edition first before attempting to use any of these collaboration features."
+      "Set to true to enable co-edition mode, false to disable it. " +
+        "When enabled, a shared editor becomes available for collaborative editing. " +
+        "When disabled, the editor is closed and collaboration ends."
     ),
   initialNodes: z
     .array(InitialNodeSchema)
@@ -39,8 +28,8 @@ const ToggleCoEditionSchema = z.object({
         "Markdown formatting is NOT supported and will be displayed as plain text. " +
         "\nExample:" +
         "\n[" +
-        "\n  { type: 'text', content: '<h1>Welcome to the document!</h1>' }," +
-        "\n  { type: 'text', content: 'Let's start collaborating.' }" +
+        "\n  { type: 'text', content: '<h1>Project Proposal: AI Integration</h1>' }," +
+        "\n  { type: 'text', content: 'Let's start collaborating on this proposal.' }" +
         "\n]"
     ),
 });
@@ -51,7 +40,18 @@ export function registerToggleTool(
 ): void {
   server.tool(
     "toggle_co_edition",
-    "Enable or disable co-edition mode and optionally add initial content",
+    "Enable or disable the co-edition mode, which provides a shared rich text editor " +
+      "for real-time collaborative document editing. When enabled, this creates a " +
+      "collaborative workspace where both the agent and user can edit the same " +
+      "document. The tool supports setting an initial content to start " +
+      "the collaboration.\n\n" +
+      "This tool should be used when:\n" +
+      "1) The user wants to write, edit, or collaborate on any document\n" +
+      "2) The user mentions creating content together\n" +
+      "3) The user asks about writing something\n" +
+      "4) The user wants to work on text collaboratively\n" +
+      "5) The user needs to draft, revise, or finalize any written content\n\n" +
+      "Enable this tool proactively for any writing or collaboration task, even if not explicitly requested.",
     { params: ToggleCoEditionSchema },
     async ({ params }) => {
       await onToggle(params.enabled, params.initialNodes);
