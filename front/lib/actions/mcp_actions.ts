@@ -393,44 +393,31 @@ async function listMCPServerTools(
         connectionParams.mcpServerId
       );
 
+      let toolsMetadata: Record<string, MCPToolStakeLevelType> = {};
       switch (serverType) {
         case "internal":
-          const toolsConfig =
+          toolsMetadata =
             InternalMCPServerInMemoryResource.getToolsConfigByServerId(
               connectionParams.mcpServerId
             );
-          allTools = allTools.map((tool) => {
-            const toolConfig =
-              toolsConfig &&
-              toolsConfig.find((config) => config.name === tool.name);
-            return {
-              ...tool,
-              stakeLevel:
-                toolConfig?.stakeLevel || DEFAULT_MCP_TOOL_STAKE_LEVEL,
-              toolServerId: connectionParams.mcpServerId,
-            };
-          });
           break;
-
         case "remote":
-          const toolMetadata =
-            await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
-          const metadataMap = toolMetadata.reduce<
-            Record<string, MCPToolStakeLevelType>
-          >((acc, metadata) => {
+          toolsMetadata = (
+            await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id)
+          ).reduce<Record<string, MCPToolStakeLevelType>>((acc, metadata) => {
             acc[metadata.toolName] = metadata.permission;
             return acc;
           }, {});
-
-          allTools = allTools.map((tool) => ({
-            ...tool,
-            stakeLevel: metadataMap[tool.name] || DEFAULT_MCP_TOOL_STAKE_LEVEL,
-            toolServerId: connectionParams.mcpServerId,
-          }));
           break;
         default:
           assertNever(serverType);
       }
+
+      allTools = allTools.map((tool) => ({
+        ...tool,
+        stakeLevel: toolsMetadata[tool.name] || DEFAULT_MCP_TOOL_STAKE_LEVEL,
+        toolServerId: connectionParams.mcpServerId,
+      }));
     }
 
     logger.debug(

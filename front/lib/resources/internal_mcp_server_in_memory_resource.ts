@@ -2,6 +2,7 @@ import assert from "assert";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -17,10 +18,7 @@ import {
   extractMetadataFromServerVersion,
   extractMetadataFromTools,
 } from "@app/lib/actions/mcp_metadata";
-import type {
-  MCPServerType,
-  MCPToolNameWithStakeLevelType,
-} from "@app/lib/api/mcp";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
@@ -234,13 +232,13 @@ export class InternalMCPServerInMemoryResource {
 
   static getToolsConfigByServerId(
     serverId: string
-  ): MCPToolNameWithStakeLevelType[] | undefined {
+  ): Record<string, MCPToolStakeLevelType> {
     const r = getInternalMCPServerNameAndWorkspaceId(serverId);
     if (r.isErr()) {
       throw new Error(`Internal MCP server not found for id ${serverId}`);
     }
     const server = r.value.name;
-    return INTERNAL_TOOLS_STAKE_LEVEL[server];
+    return INTERNAL_TOOLS_STAKE_LEVEL[server] || {};
   }
 
   // Serialization.

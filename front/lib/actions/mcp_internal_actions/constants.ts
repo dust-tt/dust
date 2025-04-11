@@ -1,4 +1,4 @@
-import type { MCPToolNameWithStakeLevelType } from "@app/lib/api/mcp";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { ModelId, Result, WhitelistableFeature } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -72,14 +72,11 @@ export const INTERNAL_MCP_SERVERS: Record<
 };
 
 export const INTERNAL_TOOLS_STAKE_LEVEL: Partial<
-  Record<InternalMCPServerNameType, MCPToolNameWithStakeLevelType[]>
+  Record<InternalMCPServerNameType, Record<string, MCPToolStakeLevelType>>
 > = {
-  authentication_debugger: [
-    {
-      name: "hello_world",
-      stakeLevel: "low",
-    },
-  ],
+  authentication_debugger: {
+    hello_world: "low",
+  },
 };
 
 export type InternalMCPServerNameType =
