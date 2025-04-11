@@ -24,6 +24,7 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export interface ConversationLayoutProps {
@@ -74,6 +75,15 @@ const ConversationLayoutContent = ({
     workspaceId: owner.sId,
   });
 
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const hasCoEditionFeatureFlag = useMemo(
+    () => hasFeature("mcp_actions") && hasFeature("co_edition"),
+    [hasFeature]
+  );
+
   const assistantSId = useMemo(() => {
     const sid = router.query.assistantDetails ?? [];
     if (sid && typeof sid === "string") {
@@ -109,7 +119,10 @@ const ConversationLayoutContent = ({
               assistantId={assistantSId}
               onClose={() => onOpenChangeAssistantModal(false)}
             />
-            <CoEditionProvider owner={owner}>
+            <CoEditionProvider
+              owner={owner}
+              hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+            >
               <ConversationInnerLayout>{children}</ConversationInnerLayout>
             </CoEditionProvider>
           </>

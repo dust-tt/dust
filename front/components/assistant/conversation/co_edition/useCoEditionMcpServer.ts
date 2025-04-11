@@ -5,10 +5,14 @@ import { CoEditionServer } from "@app/components/assistant/conversation/co_editi
 import { CoEditionTransport } from "@app/components/assistant/conversation/co_edition/transport";
 
 interface UseCoEditionServerProps {
+  hasCoEditionFeatureFlag?: boolean;
   owner: LightWorkspaceType;
 }
 
-export function useCoEditionServer({ owner }: UseCoEditionServerProps) {
+export function useCoEditionServer({
+  hasCoEditionFeatureFlag = true,
+  owner,
+}: UseCoEditionServerProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isCoEditionOpen, setIsCoEditionOpen] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -30,6 +34,11 @@ export function useCoEditionServer({ owner }: UseCoEditionServerProps) {
     let isMounted = true;
 
     const setup = async () => {
+      // If hasCoEditionFeatureFlag is false, don't initialize the server.
+      if (!hasCoEditionFeatureFlag) {
+        return;
+      }
+
       try {
         // Create server.
         const server = new CoEditionServer();
@@ -66,7 +75,7 @@ export function useCoEditionServer({ owner }: UseCoEditionServerProps) {
       isMounted = false;
       void disconnect();
     };
-  }, [disconnect, owner]);
+  }, [disconnect, hasCoEditionFeatureFlag, owner]);
 
   return {
     closeCoEdition,
