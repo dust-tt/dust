@@ -151,7 +151,7 @@ export function findSchemaAtPath(
   schema: JSONSchema,
   path: string[]
 ): JSONSchema | null {
-  if (!path.length) {
+  if (path.length === 0) {
     return schema;
   }
 
