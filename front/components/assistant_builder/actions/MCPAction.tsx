@@ -368,7 +368,7 @@ export function hasErrorActionMCP(
         mcpServerView.id === action.configuration.mcpServerViewId
     );
     if (!mcpServerView) {
-      return "Please select a MCP configuration.";
+      return "Please select a tool.";
     }
 
     const requirements = getRequirements(mcpServerView);
@@ -393,5 +393,5 @@ export function hasErrorActionMCP(
 
     return null;
   }
-  return "Please select a MCP configuration.";
+  return "Please select a tool.";
 }
