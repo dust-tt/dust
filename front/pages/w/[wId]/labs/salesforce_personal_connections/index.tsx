@@ -7,6 +7,7 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
+import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -67,8 +68,9 @@ export default function PersonalConnections({
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Salesforce personal connections"
+        navChildren={<AssistantSidebarMenu owner={owner} />}
       >
-        <Page.Vertical gap="xl" align="stretch">
+        <Page>
           <Page.Header
             title="Salesforce personal connections"
             icon={SalesforceLogo}
@@ -117,7 +119,7 @@ export default function PersonalConnections({
               connector first."
             />
           )}
-        </Page.Vertical>
+        </Page>
       </AppLayout>
     </ConversationsNavigationProvider>
   );

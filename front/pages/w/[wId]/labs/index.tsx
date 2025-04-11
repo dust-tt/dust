@@ -47,6 +47,15 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
   },
+  {
+    id: "salesforce_personal_connections",
+    label: "Salesforce Personal Connections",
+    featureFlag: "labs_salesforce_personal_connections",
+    visibleWithoutAccess: false,
+    icon: SalesforceLogo,
+    description:
+      "Connect your Salesforce personal accounts to Dust. We'll use your credentials to fetch data from Salesforce connector.",
+  },
 ];
 const LABS_CONNECTIONS: LabsConnectionItemType[] = [
   {
@@ -57,16 +66,6 @@ const LABS_CONNECTIONS: LabsConnectionItemType[] = [
     logo: HubspotLogo,
     description: "Import your Hubspot data into Dust.",
     authType: "apiKey",
-  },
-  {
-    id: "salesforce_personal_connections",
-    label: "Salesforce Personal Connections",
-    featureFlag: "labs_salesforce_personal_connections",
-    visibleWithoutAccess: false,
-    logo: SalesforceLogo,
-    description:
-      "Connect your Salesforce personal accounts to Dust. We'll use your credentials to fetch data from Salesforce connector.",
-    authType: "oauth",
   },
 ];
 
