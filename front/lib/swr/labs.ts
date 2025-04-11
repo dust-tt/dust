@@ -11,7 +11,7 @@ import { getPKCEConfig } from "@app/lib/utils/pkce";
 import type { GetLabsConnectionsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/connections";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
-import type { DataSourceType } from "@app/types";
+import type { ConnectionCredentials, DataSourceType } from "@app/types";
 import type { LightWorkspaceType, ModelId } from "@app/types";
 import { isOAuthProvider, setupOAuthConnection } from "@app/types";
 
@@ -314,12 +314,12 @@ export function useCreateLabsConnectionConfiguration({
 
   const createConnectionConfiguration = async ({
     provider,
-    apiKey,
     connectionId,
+    credentials,
   }: {
     provider: string;
-    apiKey?: string;
     connectionId?: string;
+    credentials: ConnectionCredentials;
   }) => {
     const res = await fetch(`/api/w/${workspaceId}/labs/connections`, {
       method: "POST",
@@ -328,8 +328,8 @@ export function useCreateLabsConnectionConfiguration({
       },
       body: JSON.stringify({
         provider,
-        ...(apiKey ? { apiKey } : {}),
-        ...(connectionId ? { connectionId } : {}),
+        connectionId,
+        credentials,
       }),
     });
 
