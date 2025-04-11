@@ -21,9 +21,12 @@ const FileUploadUrlRequestSchema = t.union([
     fileName: t.string,
     fileSize: t.number,
     useCase: t.literal("conversation"),
-    useCaseMetadata: t.type({
-      conversationId: t.string,
-    }),
+    useCaseMetadata: t.union([
+      t.type({
+        conversationId: t.string,
+      }),
+      t.undefined,
+    ]),
   }),
   t.type({
     contentType: t.string,
