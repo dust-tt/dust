@@ -263,7 +263,11 @@ class RedisHybridManager {
       await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
     }
 
-    const history: EventPayload[] = [];
+    const history: EventPayload[] = await this.getHistory(
+      streamClient,
+      streamName,
+      lastEventId || "0-0"
+    );
     const eventsDuringHistoryFetch: EventPayload[] = [];
     const eventsDuringHistoryFetchCallback: EventCallback = (
       event: EventPayload | "close"
@@ -277,35 +281,6 @@ class RedisHybridManager {
     this.subscribers
       .get(pubSubChannelName)!
       .add(eventsDuringHistoryFetchCallback);
-
-    try {
-      // Non-blocking read from stream to get history
-      const events = await streamClient.xRead(
-        { key: streamName, id: lastEventId ?? "0-0" },
-        { COUNT: 100 } // No BLOCK parameter for non-blocking read
-      );
-
-      if (events) {
-        history.push(
-          ...events.flatMap((event) =>
-            event.messages.map((message) => ({
-              id: message.id,
-              message: { payload: message.message["payload"] },
-            }))
-          )
-        );
-      }
-    } catch (error) {
-      logger.error(
-        {
-          error,
-          pubSubChannelName,
-          streamName,
-          lastEventId,
-        },
-        "Error fetching history from stream"
-      );
-    }
 
     // Remove the temporary callback from the subscribers map
     this.subscribers
@@ -365,27 +340,55 @@ class RedisHybridManager {
     callback: (event: EventPayload) => boolean,
     channel: string
   ): Promise<void> {
-    const { history, unsubscribe } = await getRedisHybridManager().subscribe(
-      channel,
-      () => {},
-      null,
-      "message_events"
+    const streamClient = await this.getStreamAndPublishClient();
+    const streamName = this.getStreamName(channel);
+    const history: EventPayload[] = await this.getHistory(
+      streamClient,
+      streamName
     );
 
     await concurrentExecutor(
       history,
       async (event) => {
         if (callback(event)) {
-          const streamClient = await this.getStreamAndPublishClient();
-          const streamName = this.getStreamName(channel);
           await streamClient.xDel(streamName, event.id);
           logger.debug({ channel }, "Deleted event from Redis stream");
         }
       },
       { concurrency: 10 }
     );
+  }
 
-    unsubscribe();
+  private async getHistory(
+    streamClient: RedisClientType,
+    streamName: string,
+    lastEventId: string = "0-0"
+  ): Promise<EventPayload[]> {
+    try {
+      return await streamClient
+        .xRead({ key: streamName, id: lastEventId }, { COUNT: 100 })
+        .then((events) => {
+          if (events) {
+            return events.flatMap((event) =>
+              event.messages.map((message) => ({
+                id: message.id,
+                message: { payload: message.message["payload"] },
+              }))
+            );
+          }
+          return [];
+        });
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          streamName,
+          lastEventId,
+        },
+        "Error fetching history from stream"
+      );
+      return Promise.resolve([]);
+    }
   }
 
   private onMessage = (message: string, channel: string) => {
