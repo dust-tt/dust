@@ -892,12 +892,12 @@ export async function createAgentConfiguration(
           }
 
           // Associate the group with the agent configuration.
-          const groupAgentResult = await addGroupToAgentConfiguration(
+          const groupAgentResult = await addGroupToAgentConfiguration({
             auth,
-            defaultGroup,
-            agentConfigurationInstance,
-            t
-          );
+            group: defaultGroup,
+            agentConfiguration: agentConfigurationInstance,
+            transaction: t,
+          });
           // If association fails, the transaction will automatically rollback.
           if (groupAgentResult.isErr()) {
             // Explicitly throw error to ensure rollback
@@ -1540,12 +1540,17 @@ export async function unsafeHardDeleteAgentConfiguration(
 /**
  * Associates a group with an agent configuration.
  */
-export async function addGroupToAgentConfiguration(
-  auth: Authenticator,
-  group: GroupResource,
-  agentConfiguration: AgentConfiguration,
-  transaction?: Transaction
-): Promise<Result<void, Error>> {
+export async function addGroupToAgentConfiguration({
+  auth,
+  group,
+  agentConfiguration,
+  transaction,
+}: {
+  auth: Authenticator;
+  group: GroupResource;
+  agentConfiguration: AgentConfiguration;
+  transaction?: Transaction;
+}): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
   if (
     owner.id !== group.workspaceId ||
@@ -1579,12 +1584,17 @@ export async function addGroupToAgentConfiguration(
 /**
  * Removes the association between a group and an agent configuration.
  */
-export async function removeGroupFromAgentConfiguration(
-  auth: Authenticator,
-  group: GroupResource,
-  agentConfiguration: AgentConfiguration,
-  transaction?: Transaction
-): Promise<Result<void, Error>> {
+export async function removeGroupFromAgentConfiguration({
+  auth,
+  group,
+  agentConfiguration,
+  transaction,
+}: {
+  auth: Authenticator;
+  group: GroupResource;
+  agentConfiguration: AgentConfiguration;
+  transaction?: Transaction;
+}): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
   if (
     owner.id !== group.workspaceId ||
