@@ -8,8 +8,8 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 
 export class GroupAgentModel extends Model<
   InferAttributes<GroupAgentModel>,

@@ -57,10 +57,13 @@ import {
   AgentConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import type {
@@ -82,10 +85,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { Membership } from "@app/lib/models/membership";
-import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -798,8 +797,9 @@ export async function createAgentConfiguration(
     if (templateId) {
       template = await TemplateResource.fetchByExternalId(templateId);
     }
-    const agent = await frontSequelize.transaction(
-      async (t): Promise<AgentConfiguration> => {
+    const [agent, created] = await frontSequelize.transaction(
+      async (t): Promise<[AgentConfiguration, boolean]> => {
+        let created = false;
         if (agentConfigurationId) {
           const [existing, userRelation] = await Promise.all([
             AgentConfiguration.findOne({
@@ -838,12 +838,15 @@ export async function createAgentConfiguration(
             }
           );
           userFavorite = userRelation?.favorite ?? false;
+        } else {
+          // Only set created to true if we are not updating an existing agent
+          created = true;
         }
 
         const sId = agentConfigurationId || generateRandomModelSId();
 
         // Create Agent config.
-        return AgentConfiguration.create(
+        const agentConfigurationInstance = await AgentConfiguration.create(
           {
             sId,
             version,
@@ -869,45 +872,44 @@ export async function createAgentConfiguration(
             transaction: t,
           }
         );
+
+        if (created) {
+          const user = auth.getNonNullableUser();
+          // Create a default group for the agent and add the author to it.
+          const defaultGroup = await GroupResource.makeNew({
+            workspaceId: owner.id,
+            name: `${agentConfigurationInstance.name} group`,
+            kind: "regular",
+          });
+
+          // Add user to the newly created group
+          const addMemberResult = await defaultGroup.addMember(
+            auth,
+            user.toJSON()
+            // Transaction is handled internally by addMember if needed via auth
+          );
+          if (addMemberResult.isErr()) {
+            // Throw error to trigger transaction rollback
+            throw addMemberResult.error;
+          }
+
+          // Associate the group with the agent configuration.
+          const groupAgentResult = await addGroupToAgentConfiguration(
+            auth,
+            defaultGroup,
+            agentConfigurationInstance,
+            t
+          );
+          // If association fails, the transaction will automatically rollback.
+          if (groupAgentResult.isErr()) {
+            // Explicitly throw error to ensure rollback
+            throw groupAgentResult.error;
+          }
+        }
+
+        return [agentConfigurationInstance, created];
       }
     );
-
-    if (created) {
-      const user = auth.getNonNullableUser();
-
-      // Create a default group for the agent and add the author to it.
-      const defaultGroup = await GroupResource.createRegularGroup(
-        owner,
-        `${agentConfiguration.name} group`,
-        []
-      );
-      if (defaultGroup.isErr()) {
-        await t.rollback();
-        return defaultGroup;
-      }
-
-      const membership = await MembershipResource.createMembership({
-        user: user,
-        workspace: owner,
-        group: defaultGroup.value,
-      });
-      if (membership.isErr()) {
-        await t.rollback();
-        return membership;
-      }
-
-      // Associate the group with the agent configuration.
-      const groupAgentResult = await addGroupToAgentConfiguration(
-        auth,
-        defaultGroup.value,
-        agentConfiguration,
-        t
-      );
-      if (groupAgentResult.isErr()) {
-        await t.rollback();
-        return groupAgentResult;
-      }
-    }
 
     /*
      * Final rendering.
