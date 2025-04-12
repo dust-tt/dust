@@ -82,6 +82,10 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { Membership } from "@app/lib/models/membership";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -868,6 +872,43 @@ export async function createAgentConfiguration(
       }
     );
 
+    if (created) {
+      const user = auth.getNonNullableUser();
+
+      // Create a default group for the agent and add the author to it.
+      const defaultGroup = await GroupResource.createRegularGroup(
+        owner,
+        `${agentConfiguration.name} group`,
+        []
+      );
+      if (defaultGroup.isErr()) {
+        await t.rollback();
+        return defaultGroup;
+      }
+
+      const membership = await MembershipResource.createMembership({
+        user: user,
+        workspace: owner,
+        group: defaultGroup.value,
+      });
+      if (membership.isErr()) {
+        await t.rollback();
+        return membership;
+      }
+
+      // Associate the group with the agent configuration.
+      const groupAgentResult = await addGroupToAgentConfiguration(
+        auth,
+        defaultGroup.value,
+        agentConfiguration,
+        t
+      );
+      if (groupAgentResult.isErr()) {
+        await t.rollback();
+        return groupAgentResult;
+      }
+    }
+
     /*
      * Final rendering.
      */
@@ -1494,4 +1535,84 @@ export async function unsafeHardDeleteAgentConfiguration(
       id: agentConfiguration.id,
     },
   });
+}
+
+/**
+ * Associates a group with an agent configuration.
+ */
+export async function addGroupToAgentConfiguration(
+  auth: Authenticator,
+  group: GroupResource,
+  agentConfiguration: AgentConfiguration,
+  transaction?: Transaction
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  if (
+    owner.id !== group.workspaceId ||
+    owner.id !== agentConfiguration.workspaceId
+  ) {
+    return new Err(
+      new Error(
+        "Group and agent configuration must belong to the same workspace."
+      )
+    );
+  }
+
+  try {
+    await GroupAgentModel.create(
+      {
+        groupId: group.id,
+        agentConfigurationId: agentConfiguration.id,
+      },
+      { transaction }
+    );
+    return new Ok(undefined);
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      // Association already exists, which is fine.
+      return new Ok(undefined);
+    }
+    return new Err(error as Error);
+  }
+}
+
+/**
+ * Removes the association between a group and an agent configuration.
+ */
+export async function removeGroupFromAgentConfiguration(
+  auth: Authenticator,
+  group: GroupResource,
+  agentConfiguration: AgentConfiguration,
+  transaction?: Transaction
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  if (
+    owner.id !== group.workspaceId ||
+    owner.id !== agentConfiguration.workspaceId
+  ) {
+    return new Err(
+      new Error(
+        "Group and agent configuration must belong to the same workspace."
+      )
+    );
+  }
+
+  try {
+    const deletedCount = await GroupAgentModel.destroy({
+      where: {
+        groupId: group.id,
+        agentConfigurationId: agentConfiguration.id,
+      },
+      transaction,
+    });
+
+    if (deletedCount === 0) {
+      // Association did not exist, which is fine.
+      return new Ok(undefined);
+    }
+
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(error as Error);
+  }
 }
