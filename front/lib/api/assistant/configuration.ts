@@ -795,8 +795,8 @@ export async function createAgentConfiguration(
     if (templateId) {
       template = await TemplateResource.fetchByExternalId(templateId);
     }
-    const [agent, created] = await frontSequelize.transaction(
-      async (t): Promise<[AgentConfiguration, boolean]> => {
+    const agent = await frontSequelize.transaction(
+      async (t): Promise<AgentConfiguration> => {
         let created = false;
         if (agentConfigurationId) {
           const [existing, userRelation] = await Promise.all([
@@ -905,7 +905,7 @@ export async function createAgentConfiguration(
           }
         }
 
-        return [agentConfigurationInstance, created];
+        return agentConfigurationInstance;
       }
     );
 
