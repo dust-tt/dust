@@ -876,7 +876,7 @@ export async function createAgentConfiguration(
           // Create a default group for the agent and add the author to it.
           const defaultGroup = await GroupResource.makeNew({
             workspaceId: owner.id,
-            name: `${agentConfigurationInstance.name} group`,
+            name: `Group for Agent ${agentConfigurationInstance.name}`,
             kind: "regular",
           });
 
