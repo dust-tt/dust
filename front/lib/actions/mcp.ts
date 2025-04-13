@@ -486,7 +486,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         {
           error: toolCallResult.error.message,
         },
-        `Error calling MCP tool.`
+        `Error calling MCP tool in run().`
       );
       await action.update({
         isError: true,

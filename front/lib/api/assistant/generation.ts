@@ -1,6 +1,7 @@
 import moment from "moment-timezone";
 
 import {
+  isMCPActionConfiguration,
   isRetrievalConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -95,7 +96,10 @@ export async function constructPromptMultiActions(
 
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
-      isRetrievalConfiguration(action) || isWebsearchConfiguration(action)
+      isRetrievalConfiguration(action) ||
+      isWebsearchConfiguration(action) ||
+      // TODO(mcp): this is potentially too wide, can we move it to present it after we have run the action ?
+      isMCPActionConfiguration(action)
   );
   if (canRetrieveDocuments) {
     additionalInstructions += `\n${citationMetaPrompt()}\n`;

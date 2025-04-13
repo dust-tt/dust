@@ -59,9 +59,11 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
+import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import {
+  isMCPActionType,
   isRetrievalActionType,
   isWebsearchActionType,
 } from "@app/lib/actions/types/guards";
@@ -538,8 +540,34 @@ export function AgentMessage({
       return acc;
     }, {});
 
+    // MCP actions with search results
+    const searchResultsWithDocs = removeNulls(
+      agentMessageToRender.actions.filter(isMCPActionType).flatMap((action) =>
+        action.output?.map((o) => {
+          if (o.type === "resource" && isSearchResultResourceType(o.resource)) {
+            return o.resource;
+          }
+          return null;
+        })
+      )
+    );
+    const allMCPReferences = searchResultsWithDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.ref] = {
+        href: d.uri,
+        title: d.text,
+        icon: <DocumentIcon />,
+      };
+      return acc;
+    }, {});
+
     // Merge all references
-    setReferences({ ...allDocsReferences, ...allWebReferences });
+    setReferences({
+      ...allDocsReferences,
+      ...allWebReferences,
+      ...allMCPReferences,
+    });
   }, [
     agentMessageToRender.actions,
     agentMessageToRender.status,

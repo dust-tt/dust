@@ -2,14 +2,15 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { default as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/servers/authentication_debugger";
-import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/child_agent_debugger";
-import { default as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_debugger";
+import { default as authDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/authentication_debugger";
+import { default as childAgentDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/child_agent_debugger";
+import { default as dataSourceDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_debugger";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
-import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
+import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
+import { default as tableDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
@@ -41,11 +42,11 @@ export function getInternalMCPServer(
 ): McpServer {
   switch (internalMCPServerName) {
     case "authentication_debugger":
-      return helloWorldServer(auth, mcpServerId);
+      return authDebuggerServer(auth, mcpServerId);
     case "data_sources_debugger":
-      return dataSourceUtilsServer();
+      return dataSourceDebuggerServer();
     case "tables_debugger":
-      return tableUtilsServer();
+      return tableDebuggerServer();
     case "github":
       return githubServer(auth, mcpServerId);
     case "image_generation":
@@ -53,7 +54,7 @@ export function getInternalMCPServer(
     case "file_generation":
       return generateFileServer(auth);
     case "child_agent_debugger":
-      return askAgentServer();
+      return childAgentDebuggerServer();
     case "tables_query":
       return tablesQueryServer(auth, {
         agentConfiguration,
@@ -67,6 +68,9 @@ export function getInternalMCPServer(
       return thinkServer();
     case "web_search_&_browse_v2":
       return webtoolsServer();
+    case "search":
+      // TODO(mcp): refsOffset and topK should be computed based on the number of actions working on data sources
+      return searchServer(auth, 256, 32);
     default:
       assertNever(internalMCPServerName);
   }

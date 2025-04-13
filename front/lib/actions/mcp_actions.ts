@@ -256,9 +256,9 @@ export async function tryCallMCPTool(
           workspaceId: auth.getNonNullableWorkspace().sId,
           conversationId: conversation.sId,
           messageId,
-          error: toolCallResult.error,
+          error: toolCallResult.content,
         },
-        `Error calling MCP tool`
+        `Error calling MCP tool in tryCallMCPTool().`
       );
     }
     // Type inference is not working here because of them using passthrough in the zod schema.

@@ -11,6 +11,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "image_generation",
   "file_generation",
   "github",
+  "search",
   "data_sources_debugger",
   "authentication_debugger",
   "tables_debugger",
@@ -57,7 +58,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
   },
   "web_search_&_browse_v2": {
-    id: 1005,
+    id: 4,
     isDefault: true,
     flag: "mcp_actions",
   },
@@ -91,6 +92,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   primitive_types_debugger: {
     id: 1004,
     isDefault: false,
+    flag: "dev_mcp_actions",
+  },
+  search: {
+    id: 1005,
+    isDefault: true,
     flag: "dev_mcp_actions",
   },
 };
