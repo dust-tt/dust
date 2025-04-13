@@ -1,5 +1,6 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
+import { BelongsToManyGetAssociationsMixin } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
@@ -13,6 +14,7 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 
 /**
  * Agent configuration
@@ -49,6 +51,7 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
   declare requestedGroupIds: number[][];
 
   declare author: NonAttribute<UserModel>;
+  declare getGroups: BelongsToManyGetAssociationsMixin<GroupModel>;
 }
 
 AgentConfiguration.init(

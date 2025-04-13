@@ -774,62 +774,50 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     agentConfiguration: AgentConfiguration
   ): Promise<Result<GroupResource, Error>> {
-    const owner = await Workspace.findByPk(agentConfiguration.workspaceId);
-    if (!owner) {
+    const owner = auth.getNonNullableWorkspace();
+    if (owner.id !== agentConfiguration.workspaceId) {
       return new Err(
-        new Error(
-          `Invariant violation: Workspace not found for ID ${agentConfiguration.workspaceId}.`
-        )
+        new Error("Agent configuration and authenticator workspace mismatch.")
       );
     }
 
-    const groupAgentModels = await GroupAgentModel.findAll({
-      where: {
-        agentConfigurationId: agentConfiguration.id,
-      },
-      include: [
-        {
-          model: GroupModel,
-          where: { kind: "regular" }, // Ensure we only get the regular group
-          required: true,
-        },
-      ],
-    });
+    let groups: GroupModel[];
+    try {
+      groups = await agentConfiguration.getGroups({
+        where: { kind: "regular" },
+      });
+    } catch (error) {
+      // Catch potential Sequelize errors during association fetching
+      return new Err(error as Error);
+    }
 
-    if (groupAgentModels.length === 0) {
+    if (groups.length === 0) {
       // This should not happen for agents created after the migration/feature introduction
       // due to the logic in createAgentConfiguration.
       return new Err(
         new Error(
-          `Invariant violation: No editor group found for agent ${agentConfiguration.sId}.`
+          `Unreachable: No editor group found for agent ${agentConfiguration.sId}.`
         )
       );
     }
-    if (groupAgentModels.length > 1) {
+    if (groups.length > 1) {
       // This should not happen based on the design constraint of one group per agent.
       return new Err(
         new Error(
-          `Invariant violation: Multiple editor groups found for agent ${agentConfiguration.sId}.`
+          `Unreachable: Multiple editor groups found for agent ${agentConfiguration.sId}.`
         )
       );
     }
 
-    const groupRes = await GroupResource.fetchById(
-      auth,
-      GroupResource.modelIdToSId({
-        id: groupAgentModels[0].groupId,
-        workspaceId: owner.id,
-      })
-    );
+    // We have the GroupModel, now wrap it in GroupResource
+    // No need to fetch again, but we need to ensure the fetched group
+    // is accessible by the current auth context (should be, as it's the agent's group)
+    const groupResource = new GroupResource(GroupModel, groups[0].get());
 
-    if (groupRes.isErr()) {
-      // Propagate the error (could be not_found, etc.)
-      return groupRes;
-    }
+    // Optional: Add a permission check if necessary, though access to the agent
+    // generally implies ability to see its associated editor group.
+    // if (!groupResource.canRead(auth)) { ... }
 
-    // Type assertion needed because fetchBySId returns Result<GroupResource, DustError>
-    // but we promised Result<GroupResource, Error>.
-    // This is safe as DustError extends Error.
-    return new Ok(groupRes.value) as Result<GroupResource, Error>;
+    return new Ok(groupResource);
   }
 }

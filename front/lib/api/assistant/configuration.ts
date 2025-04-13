@@ -1635,21 +1635,6 @@ export async function removeGroupFromAgentConfiguration({
 }
 
 /**
- * Retrieves the editor group associated with an agent configuration.
- * As per design, there should always be exactly one regular group associated.
- */
-export async function getAgentConfigurationEditorGroup(
-  auth: Authenticator,
-  agentConfiguration: AgentConfiguration
-): Promise<Result<GroupResource, Error>> {
-  // Delegate fetching logic to the GroupResource static method
-  return GroupResource.fetchEditorGroupForAgentConfiguration(
-    auth,
-    agentConfiguration
-  );
-}
-
-/**
  * Updates the permissions (editors) for an agent configuration by setting
  * the members of its associated editor group.
  */
@@ -1658,10 +1643,11 @@ export async function updatePermissions(
   agentConfiguration: AgentConfiguration,
   newUserIds: string[]
 ): Promise<Result<void, Error>> {
-  const editorGroupRes = await getAgentConfigurationEditorGroup(
-    auth,
-    agentConfiguration
-  );
+  const editorGroupRes =
+    await GroupResource.fetchEditorGroupForAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
   if (editorGroupRes.isErr()) {
     return editorGroupRes;
   }
@@ -1679,6 +1665,70 @@ export async function updatePermissions(
   );
   if (setMembersRes.isErr()) {
     return setMembersRes;
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * Adds a single user as an editor to an agent configuration.
+ */
+export async function addAgentEditor(
+  auth: Authenticator,
+  agentConfiguration: AgentConfiguration,
+  userId: string
+): Promise<Result<void, Error>> {
+  const editorGroupRes =
+    await GroupResource.fetchEditorGroupForAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
+  if (editorGroupRes.isErr()) {
+    return editorGroupRes;
+  }
+  const editorGroup = editorGroupRes.value;
+
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    return new Err(new Error(`User with ID ${userId} not found.`));
+  }
+
+  const addMemberRes = await editorGroup.addMember(auth, user.toJSON());
+  if (addMemberRes.isErr()) {
+    // Propagate DustError (e.g., user_already_member)
+    return addMemberRes;
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * Removes a single user as an editor from an agent configuration.
+ */
+export async function removeAgentEditor(
+  auth: Authenticator,
+  agentConfiguration: AgentConfiguration,
+  userId: string
+): Promise<Result<void, Error>> {
+  const editorGroupRes =
+    await GroupResource.fetchEditorGroupForAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
+  if (editorGroupRes.isErr()) {
+    return editorGroupRes;
+  }
+  const editorGroup = editorGroupRes.value;
+
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    return new Err(new Error(`User with ID ${userId} not found.`));
+  }
+
+  const removeMemberRes = await editorGroup.removeMember(auth, user.toJSON());
+  if (removeMemberRes.isErr()) {
+    // Propagate DustError (e.g., user_not_member)
+    return removeMemberRes;
   }
 
   return new Ok(undefined);
