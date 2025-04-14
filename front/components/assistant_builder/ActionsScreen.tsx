@@ -1513,6 +1513,28 @@ function Capabilities({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <Capability
+          name="Web search & browse"
+          description="Agent can search (Google) and retrieve information from specific websites."
+          enabled={isWebNavigationEnabled}
+          onEnable={() => {
+            setEdited(true);
+            const defaultWebNavigationAction =
+              getDefaultActionConfiguration("WEB_NAVIGATION");
+            assert(defaultWebNavigationAction);
+            setAction({
+              type: "insert",
+              action: defaultWebNavigationAction,
+            });
+          }}
+          onDisable={() => {
+            const defaultWebNavigationAction =
+              getDefaultActionConfiguration("WEB_NAVIGATION");
+            assert(defaultWebNavigationAction);
+            deleteAction(defaultWebNavigationAction.name);
+          }}
+        />
+
+        <Capability
           name="Data visualization"
           description="Agent can generate charts and graphs."
           enabled={builderState.visualizationEnabled}
