@@ -8,6 +8,7 @@ import {
   Label,
   PlusCircleIcon,
   PlusIcon,
+  Tooltip,
   useSendNotification,
   XCircleIcon,
 } from "@dust-tt/sparkle";
@@ -609,21 +610,41 @@ export default function DatasetView({
                         {!readOnly ? (
                           <div className="flex space-x-1 px-1">
                             {datasetKeys.length > 1 ? (
-                              <Button
-                                size="mini"
-                                icon={XCircleIcon}
-                                onClick={() => {
-                                  handleDeleteKey(j);
-                                }}
-                              />
+                              <>
+                                <Tooltip
+                                  trigger={
+                                    <Button
+                                      size="mini"
+                                      variant="ghost"
+                                      className="text-muted-foreground"
+                                      icon={XCircleIcon}
+                                    />
+                                  }
+                                  content="Delete property"
+                                  side="top"
+                                  align="center"
+                                  label="Delete property"
+                                />
+
+                                <Tooltip
+                                  trigger={
+                                    <Button
+                                      size="mini"
+                                      variant="ghost"
+                                      className="text-muted-foreground"
+                                      icon={PlusCircleIcon}
+                                      onClick={() => {
+                                        handleNewKey(j);
+                                      }}
+                                    />
+                                  }
+                                  content="Add property after"
+                                  side="top"
+                                  align="center"
+                                  label="Add property after"
+                                />
+                              </>
                             ) : null}
-                            <Button
-                              size="mini"
-                              icon={PlusCircleIcon}
-                              onClick={() => {
-                                handleNewKey(j);
-                              }}
-                            />
                           </div>
                         ) : null}
                       </div>
@@ -783,6 +804,7 @@ export default function DatasetView({
                           <Button
                             icon={XCircleIcon}
                             size="mini"
+                            variant="ghost"
                             onClick={() => {
                               handleDeleteEntry(i);
                             }}
@@ -791,6 +813,7 @@ export default function DatasetView({
                         <Button
                           icon={PlusCircleIcon}
                           size="mini"
+                          variant="ghost"
                           onClick={() => {
                             handleNewEntry(i);
                           }}
