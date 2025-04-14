@@ -114,7 +114,8 @@ export function MCPAction({
           dataSourceConfigurations: null,
           tablesConfigurations: null,
           childAgentId: null,
-          additionalConfiguration: {},
+          // We initialize with the default values for required booleans since these can be left unset.
+          additionalConfiguration: requirements.requiredBooleans,
         }),
       });
     },
