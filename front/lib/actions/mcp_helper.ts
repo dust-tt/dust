@@ -69,3 +69,10 @@ export const mcpServersSortingFn = (
   }
   return aServerType < bServerType ? -1 : 1;
 };
+
+export const capitalizeMCPToolName = (name: string) => {
+  const words = name.split("_");
+  return words
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}

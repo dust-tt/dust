@@ -1,7 +1,5 @@
 import {
-  BookOpenIcon,
   Button,
-  CheckCircleIcon,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +19,7 @@ import {
   useUpdateMCPServerToolsPermissions,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
+import { capitalizeMCPToolName } from "@app/lib/actions/mcp_helper";
 
 export function ToolsList({
   owner,
@@ -50,22 +49,25 @@ export function ToolsList({
     });
   };
 
+  const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
+    "high": "High (Update data, or sends information)",
+    "low": "Low (Retrieve data, or generates content)",
+  }
+
   return (
     <div className="mb-2 flex w-full flex-col gap-y-2 pt-2">
       <Page.SectionHeader title="Available Tools" />
       {serverType === "remote" && (
-        <ContentMessage icon={BookOpenIcon} title="Tools">
+        <ContentMessage className="mb-8" icon={ExclamationCircleIcon} title="User Approval Settings">
           <p className="text-sm">
-            Please set the tool permissions for this action.
+            <b>High stake</b> tools needs explicit user approval.
           </p>
           <p>
-            A Low stake operation will allow the model to use the tool directly,
-            while a High stake operation needs particular attention, and asks
-            the user for confirmation before letting the model use the tool.
+            Users can disable confirmations for <b>low</b> stake tools.
           </p>
         </ContentMessage>
       )}
-      <div className="space-y-4 rounded-md border p-4">
+      <div className="space-y-4">
         {tools && tools.length > 0 ? (
           tools.map(
             (tool: { name: string; description: string }, index: number) => {
@@ -77,50 +79,41 @@ export function ToolsList({
                   key={index}
                   className="border-b pb-4 last:border-b-0 last:pb-0"
                 >
-                  <div className="flex items-center">
-                    <h4 className="flex-grow text-sm font-medium">
-                      {tool.name}
-                    </h4>
-                    {serverType === "remote" && (
+                  <h4 className="flex-grow text-sm font-semibold">
+                    {capitalizeMCPToolName(tool.name)}
+                  </h4>
+                  {tool.description && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {tool.description}
+                    </p>
+                  )}
+                  {serverType === "remote" && (
+                    <div className="mt-2">
+                      <h5 className="pb-2 font-semibold">Tool stake setting</h5>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
-                            className="capitalize"
                             variant="outline"
-                            label={`${toolPermission} stake`}
-                            icon={
-                              toolPermission === DEFAULT_MCP_TOOL_STAKE_LEVEL
-                                ? ExclamationCircleIcon
-                                : CheckCircleIcon
-                            }
+                            label={toolPermissionLabel[toolPermission]}
                             isSelect
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                           {MCP_TOOL_STAKE_LEVELS.map((permission) => (
                             <DropdownMenuItem
+                              className="font-medium"
                               key={permission}
-                              className="capitalize"
-                              label={`${permission} stake`}
-                              icon={
-                                permission === DEFAULT_MCP_TOOL_STAKE_LEVEL
-                                  ? ExclamationCircleIcon
-                                  : CheckCircleIcon
-                              }
                               onClick={() => {
                                 handleClick(tool.name, permission);
                               }}
+                              label={toolPermissionLabel[permission]}
                             />
                           ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    )}
-                  </div>
-                  {tool.description && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      {tool.description}
-                    </p>
+                    </div>
                   )}
+
                 </div>
               );
             }
