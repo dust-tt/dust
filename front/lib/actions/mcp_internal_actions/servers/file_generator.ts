@@ -15,7 +15,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description: "Generate and convert files on demand.",
   authorization: null,
-  visual: "https://dust.tt/static/droidavatar/Droid_Green_1.jpg",
+  visual: "ActionFolderAddIcon",
 };
 
 const OUTPUT_FORMATS = [

@@ -10,7 +10,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "Demo server showing a basic interaction with a table configuration.",
-  visual: "https://dust.tt/static/droidavatar/Droid_Green_1.jpg",
+  visual: "ActionTableIcon",
   authorization: null,
 };
 

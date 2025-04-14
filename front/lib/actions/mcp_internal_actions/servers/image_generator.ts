@@ -10,7 +10,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "image_generator",
   version: "1.0.0",
   description: "Generate images with Dall-E v3.",
-  visual: "https://dust.tt/static/droidavatar/Droid_Green_1.jpg",
+  visual: "ActionImageIcon",
   authorization: null,
 };
 
