@@ -1,6 +1,6 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { MCPServerType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   getResourceNameAndIdFromSId,
   makeSId,
@@ -69,3 +69,10 @@ export const mcpServersSortingFn = (
   }
   return aServerType < bServerType ? -1 : 1;
 };
+
+export function mcpServerIsRemote(
+  server: MCPServerType
+): server is RemoteMCPServerType {
+  const serverType = getServerTypeAndIdFromSId(server.id).serverType;
+  return serverType === "remote";
+}
