@@ -129,9 +129,8 @@ const serperSearch = async (
 };
 
 /**
- * Make a google search using SerpAPI
- * @param {string} query - Google search query
- * @param {SearchParams} options - To override the default serpapi search options
+ * Make a google search using SerpAPI or Serper
+ * @param {SearchParams} params
  */
 export const webSearch = async (
   params: SearchParams
