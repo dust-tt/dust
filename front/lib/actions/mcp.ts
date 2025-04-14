@@ -1,7 +1,7 @@
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-import type { 
+import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
@@ -331,7 +331,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           toolName: actionConfiguration.originalName,
           mcpServerName: actionConfiguration.mcpServerName,
           agentName: agentConfiguration.name,
-        }
+        },
       };
 
       try {
