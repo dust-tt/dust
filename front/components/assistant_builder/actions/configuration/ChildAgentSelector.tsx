@@ -88,7 +88,6 @@ export function ChildAgentSelector({
             }}
             pickerButton={
               <Button
-                variant="secondary"
                 size="sm"
                 label="Select another agent"
                 isLoading={isAgentConfigurationsLoading}
@@ -108,7 +107,6 @@ export function ChildAgentSelector({
           }}
           pickerButton={
             <Button
-              variant="secondary"
               size="sm"
               label="Select Agent"
               isLoading={isAgentConfigurationsLoading}
