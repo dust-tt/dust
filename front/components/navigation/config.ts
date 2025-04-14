@@ -12,7 +12,6 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 
-import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 
@@ -186,16 +185,6 @@ export const subNavigationAdmin = ({
           current: current === "members",
           subMenuLabel: current === "members" ? subMenuLabel : undefined,
           subMenu: current === "members" ? subMenu : undefined,
-        },
-        {
-          id: "actions",
-          label: "Actions",
-          icon: ACTION_SPECIFICATIONS["MCP"].cardIcon,
-          href: `/w/${owner.sId}/actions`,
-          current: current === "actions",
-          subMenuLabel: current === "actions" ? subMenuLabel : undefined,
-          subMenu: current === "actions" ? subMenu : undefined,
-          featureFlag: "mcp_actions",
         },
         {
           id: "workspace",

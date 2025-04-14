@@ -1,8 +1,12 @@
-import { Breadcrumbs, CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
+import {
+  Breadcrumbs,
+  CloudArrowLeftRightIcon,
+  SuitcaseIcon,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
-import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
+import { CATEGORY_DETAILS, getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type {
   DataSourceViewCategory,
@@ -48,7 +52,7 @@ export function SpaceBreadCrumbs({
       return [
         {
           icon: getSpaceIcon(space),
-          label: space.kind === "global" ? "Company Data" : space.name,
+          label: getSpaceName(space),
         },
       ];
     }
@@ -71,11 +75,18 @@ export function SpaceBreadCrumbs({
 
     if (space.kind === "system") {
       // Root managed connection in system space.
-      if (!dataSourceView) {
+      if (category === "managed" && !dataSourceView) {
         return [
           {
             icon: CloudArrowLeftRightIcon,
-            label: "Connection Admin",
+            label: "Connections Admin",
+          },
+        ];
+      } else if (category === "actions") {
+        return [
+          {
+            icon: SuitcaseIcon,
+            label: "Tools Admin",
           },
         ];
       }
