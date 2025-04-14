@@ -3,16 +3,14 @@ import { dustManagedCredentials, Err, Ok } from "@app/types";
 
 const credentials = dustManagedCredentials();
 
-const BROWSERLESS_BASE_URL = "https://chrome.browserless.io";
+const BROWSERLESS_BASE_URL =
+  "https://production-sfo.browserless.io/chromium/bql";
 
 export type BrowseScrapeResponse = {
   data: Record<string, any>;
   response: {
-    code: string | null;
     status: string | null;
     url: string | null;
-    ip: string | null;
-    port: string | null;
   };
 };
 
@@ -28,7 +26,7 @@ export const browseUrl = async (
   }
 
   const res = await fetch(
-    `${BROWSERLESS_BASE_URL}/scrape?token=${credentials.BROWSERLESS_API_KEY}`,
+    `${BROWSERLESS_BASE_URL}?token=${credentials.BROWSERLESS_API_KEY}&proxy=residential&proxyCountry=us`,
     {
       method: "POST",
       headers: {
@@ -36,15 +34,17 @@ export const browseUrl = async (
         "Cache-Control": "no-cache",
       },
       body: JSON.stringify({
-        url,
-        gotoOptions: {
-          timeout: 5000,
-        },
-        elements: [
-          {
-            selector: "body",
-          },
-        ],
+        query: `
+mutation ScrapeWebsite {
+  goto(url: "${url}", waitUntil: firstMeaningfulPaint) {
+    status
+    time
+  }
+  body: html(selector: "body") {
+    html
+  }
+}
+`,
       }),
     }
   );
@@ -56,13 +56,10 @@ export const browseUrl = async (
   const json = await res.json();
 
   return new Ok({
-    data: json.data as Record<string, any>,
+    data: json.data.body.html as Record<string, any>,
     response: {
-      code: res.headers.get("x-response-code"),
-      status: res.headers.get("x-response-status"),
-      url: res.headers.get("x-response-url"),
-      ip: res.headers.get("x-response-ip"),
-      port: res.headers.get("x-response-port"),
+      status: json.data.goto.status ?? null,
+      url: json.data.goto.url ?? null,
     },
   });
 };
