@@ -18,7 +18,7 @@ export function MCPActionDetails({
       defaultOpen={defaultOpen}
       visual={ACTION_SPECIFICATIONS["MCP"].cardIcon}
     >
-      <div className="flex flex-col gap-1 gap-4 py-4 pl-6">
+      <div className="flex flex-col gap-4 py-4 pl-6">
         <CollapsibleComponent
           rootProps={{ defaultOpen: !action.generatedFiles.length }}
           triggerChildren={
