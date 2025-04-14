@@ -16,6 +16,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "tables_debugger",
   "child_agent_debugger",
   "primitive_types_debugger",
+  "webtools",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -45,6 +46,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   file_generator: {
     id: 3,
+    isDefault: true,
+    flag: "mcp_actions",
+  },
+  webtools: {
+    id: 4,
     isDefault: true,
     flag: "mcp_actions",
   },

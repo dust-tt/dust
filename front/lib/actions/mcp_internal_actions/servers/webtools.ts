@@ -1,55 +1,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import type { MCPServerDefinitionType } from "@app/lib/api/mcp";
+import { webSearch } from "@app/lib/utils/webtools";
 import logger from "@app/logger/logger";
 import type { OAuthProvider } from "@app/types";
 
-import type { MCPServerDefinitionType } from "../mcp_metadata";
-import { runAction } from "../server";
-
-const htmlPage = `
-<div style="font-family: Arial, sans-serif;">
-    <div style="padding: 20px;">
-        <div style="margin-bottom: 20px;">
-            <span style="color: #4285f4; font-size: 24px;">G</span>
-            <span style="color: #ea4335; font-size: 24px;">o</span>
-            <span style="color: #fbbc05; font-size: 24px;">o</span>
-            <span style="color: #4285f4; font-size: 24px;">g</span>
-            <span style="color: #34a853; font-size: 24px;">l</span>
-            <span style="color: #ea4335; font-size: 24px;">e</span>
-        </div>
-        
-        <div style="border: 1px solid #dfe1e5; border-radius: 24px; padding: 8px 16px; width: 600px;">
-            <span>reddit</span>
-            <span style="float: right;">🔍</span>
-        </div>
-        
-        <div style="margin-top: 20px;">
-            <p style="color: #666;">About 4,170,000,000 results (0.45 seconds)</p>
-            
-            <div style="margin: 20px 0;">
-                <a href="https://reddit.com" style="color: #1a0dab; text-decoration: none; font-size: 20px;">Reddit - Dive into anything</a>
-                <p style="color: #006621; font-size: 14px;">https://www.reddit.com</p>
-                <p style="color: #333; font-size: 14px;">Reddit is a network of communities where people can dive into their interests, hobbies and passions. There's a community for whatever you're interested in.</p>
-            </div>
-            
-            <div style="margin: 20px 0;">
-                <a href="https://wikipedia.com/reddit" style="color: #1a0dab; text-decoration: none; font-size: 20px;">Reddit - Wikipedia</a>
-                <p style="color: #006621; font-size: 14px;">https://en.wikipedia.org › wiki › Reddit</p>
-                <p style="color: #333; font-size: 14px;">Reddit is an American social news aggregation, content rating, and discussion website. Registered users submit content to the site such as links, text posts, ...</p>
-            </div>
-            
-            <div style="margin: 20px 0;">
-                <a href="https://reddit.com/r/populat" style="color: #1a0dab; text-decoration: none; font-size: 20px;">r/popular - Reddit</a>
-                <p style="color: #006621; font-size: 14px;">https://www.reddit.com/r/popular</p>
-                <p style="color: #333; font-size: 14px;">Reddit's largest communities. Trending posts and discussions from across the site.</p>
-            </div>
-        </div>
-    </div>
-</div>
-     `;
+const webLogger = logger.child(
+  {},
+  { msgPrefix: "[webtools] ", module: "mcp/webtools" }
+);
 
 const redditHtml = `
 <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #DAE0E6; padding: 20px;">
@@ -192,14 +152,14 @@ export const serverInfo: MCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "You are a helpful server that search google and browser the web for the user.",
-  icon: "command",
+  visual: "command",
   authorization: {
     provider,
     use_case: "connection" as const,
   },
 };
 
-const createServer = (auth: Authenticator): McpServer => {
+const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -209,17 +169,9 @@ const createServer = (auth: Authenticator): McpServer => {
       query: z.string().describe("The google query that will be send."),
     },
     async ({ query }) => {
-      logger.debug({ query }, "[webtools/websearch]");
-      const config = cloneBaseConfig(
-        getDustProdAction("assistant-v2-websearch").config
-      );
+      webLogger.debug({ query }, "[websearch]");
 
-      const websearchRes = await runAction(
-        auth,
-        "assistant-v2-websearch",
-        config,
-        [{ query }]
-      );
+      const websearchRes = await webSearch({ provider: "serpapi", query });
 
       if (websearchRes.isErr()) {
         return {
@@ -227,22 +179,22 @@ const createServer = (auth: Authenticator): McpServer => {
           content: [
             {
               type: "text",
-              text: websearchRes.error.message,
+              text: `Failed to search: ${websearchRes.error.message}`,
             },
           ],
         };
       }
 
-      const { results } = websearchRes.value;
+      const results = websearchRes.value;
 
-      logger.debug({ results }, "RESULTS");
+      webLogger.debug({ results }, "[websearch]: RESULTS");
 
       return {
         isError: false,
         content: [
           {
             type: "text",
-            text: htmlPage,
+            text: JSON.stringify(results),
           },
         ],
       };
@@ -257,7 +209,7 @@ const createServer = (auth: Authenticator): McpServer => {
       url: z.string(),
     },
     async ({ query, url }) => {
-      logger.debug({ query, url }, "[webtools/webbrowser]");
+      webLogger.debug({ query, url }, "[webbrowser]");
       return {
         isError: false,
         content: [
