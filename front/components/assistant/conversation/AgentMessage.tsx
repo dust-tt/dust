@@ -10,8 +10,8 @@ import {
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
-  DocumentDuplicateIcon,
   DocumentIcon,
+  DocumentPileIcon,
   EyeIcon,
   Markdown,
   Page,
@@ -836,7 +836,7 @@ function ErrorMessage({
                 <Button
                   variant="ghost"
                   size="xs"
-                  icon={DocumentDuplicateIcon}
+                  icon={DocumentPileIcon}
                   label={"Copy"}
                   onClick={() =>
                     void navigator.clipboard.writeText(fullMessage)

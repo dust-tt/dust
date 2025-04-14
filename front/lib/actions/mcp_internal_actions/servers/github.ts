@@ -17,7 +17,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     provider: "github" as const,
     use_case: "platform_actions" as const,
   },
-  visual: "github",
+  visual: "https://dust.tt/static/droidavatar/Droid_Green_1.jpg",
 };
 
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {

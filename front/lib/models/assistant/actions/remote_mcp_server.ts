@@ -3,7 +3,6 @@ import { DataTypes } from "sequelize";
 
 import { DEFAULT_MCP_ACTION_VERSION } from "@app/lib/actions/constants";
 import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
-import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -91,12 +90,12 @@ RemoteMCPServerModel.init(
   {
     sequelize: frontSequelize,
     modelName: "remote_mcp_server",
-    hooks: {
-      beforeValidate: (server: RemoteMCPServerModel) => {
-        if (server.icon && !isAllowedIconType(server.icon)) {
-          throw new Error(`Invalid icon type: ${server.icon}`);
-        }
-      },
-    },
+    // hooks: {
+    //   beforeValidate: (server: RemoteMCPServerModel) => {
+    //     if (server.icon && !Object.keys(ActionIcons).includes(server.icon)) {
+    //       throw new Error(`Invalid icon type: ${server.icon}`);
+    //     }
+    //   },
+    // },
   }
 );
