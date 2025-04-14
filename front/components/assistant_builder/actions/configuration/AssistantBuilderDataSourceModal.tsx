@@ -123,7 +123,6 @@ export default function AssistantBuilderDataSourceModal({
               selectionConfigurations={selectionConfigurations}
               setSelectionConfigurations={setSelectionConfigurationsCallback}
               viewType={viewType}
-              isRootSelectable={true}
             />
           </div>
         </SheetContainer>
