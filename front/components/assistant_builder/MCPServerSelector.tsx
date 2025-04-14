@@ -8,33 +8,49 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { sortBy } from "lodash";
-import React from "react";
+import React, { useMemo } from "react";
 
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { SpaceType } from "@app/types";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
+import { useSpaces } from "@app/lib/swr/spaces";
 
 interface MCPServerSelectorProps {
-  isSpacesLoading: boolean;
-  filteredSpaces: SpaceType[];
   allowedSpaces: SpaceType[];
-  mcpServerViews: MCPServerViewType[];
-  selectedMCPServerView: MCPServerViewType | null;
-  hasNoMCPServerViewsInAllowedSpaces: boolean;
   handleServerSelection: (mcpServerView: MCPServerViewType) => void;
+  mcpServerViews: MCPServerViewType[];
+  owner: LightWorkspaceType;
+  selectedMCPServerView: MCPServerViewType | null;
 }
 
 export function MCPServerSelector({
-  isSpacesLoading,
-  filteredSpaces,
+  owner,
   allowedSpaces,
   mcpServerViews,
   selectedMCPServerView,
-  hasNoMCPServerViewsInAllowedSpaces,
   handleServerSelection,
 }: MCPServerSelectorProps) {
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  const filteredSpaces = useMemo(
+    () =>
+      spaces.filter((space) =>
+        mcpServerViews.some(
+          (mcpServerView) => mcpServerView.spaceId === space.sId
+        )
+      ),
+    [spaces, mcpServerViews]
+  );
+
+  const hasNoMCPServerViewsInAllowedSpaces = useMemo(() => {
+    // No n^2 complexity.
+    const allowedSet = new Set(allowedSpaces.map((space) => space.sId));
+    return mcpServerViews.every(
+      (mcpServerView) => !allowedSet.has(mcpServerView.spaceId)
+    );
+  }, [mcpServerViews, allowedSpaces]);
+
   return (
     <>
       <div className="text-sm text-foreground dark:text-foreground-night">
@@ -92,11 +108,9 @@ export function MCPServerSelector({
                               }}
                             >
                               <div className="flex flex-row items-center gap-2">
-                                <div>
-                                  <Avatar
-                                    visual={getVisual(mcpServerView.server)}
-                                  />
-                                </div>
+                                <Avatar
+                                  visual={getVisual(mcpServerView.server)}
+                                />
                                 <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
                                   <div className="flex flex-col gap-1">
                                     <div className="text-sm font-semibold text-foreground dark:text-foreground-night">

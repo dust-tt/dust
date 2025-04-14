@@ -14,7 +14,6 @@ import type {
 
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
@@ -88,26 +87,8 @@ export function MCPAction({
     action.configuration as AssistantBuilderMCPServerConfiguration;
 
   const { mcpServerViews } = useContext(AssistantBuilderContext);
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-  const filteredSpaces = useMemo(
-    () =>
-      spaces.filter((space) =>
-        mcpServerViews.some(
-          (mcpServerView) => mcpServerView.spaceId === space.sId
-        )
-      ),
-    [spaces, mcpServerViews]
-  );
 
   const noMCPServerView = mcpServerViews.length === 0;
-
-  const hasNoMCPServerViewsInAllowedSpaces = useMemo(() => {
-    // No n^2 complexity.
-    const allowedSet = new Set(allowedSpaces.map((space) => space.sId));
-    return mcpServerViews.every(
-      (mcpServerView) => !allowedSet.has(mcpServerView.spaceId)
-    );
-  }, [mcpServerViews, allowedSpaces]);
 
   const [selectedMCPServerView, setSelectedMCPServerView] =
     useState<MCPServerViewType | null>(
@@ -271,14 +252,10 @@ export function MCPAction({
               </div>
             ) : (
               <MCPServerSelector
-                isSpacesLoading={isSpacesLoading}
-                filteredSpaces={filteredSpaces}
+                owner={owner}
                 allowedSpaces={allowedSpaces}
                 mcpServerViews={mcpServerViews}
                 selectedMCPServerView={selectedMCPServerView}
-                hasNoMCPServerViewsInAllowedSpaces={
-                  hasNoMCPServerViewsInAllowedSpaces
-                }
                 handleServerSelection={handleServerSelection}
               />
             )}
