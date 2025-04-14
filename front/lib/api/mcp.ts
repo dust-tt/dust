@@ -38,7 +38,6 @@ export type RemoteMCPServerType = MCPServerType & {
   cachedDescription?: string | null;
   sharedSecret?: string;
   lastSyncAt?: Date | null;
-  visual: AllowedIconType; // We enforce that we pass an icon here (among the ones we allow).
 };
 
 export interface MCPServerViewType {
