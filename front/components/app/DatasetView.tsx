@@ -634,7 +634,7 @@ export default function DatasetView({
                           {datasetTypes[j] ? datasetTypes[j] : "string"}
                         </span>
                       ) : (
-                        <div className="inline-flex" role="group">
+                        <div className="inline-flex px-1" role="group">
                           {DATASET_DATA_TYPES.map((type) => (
                             <Button
                               key={type}
@@ -778,25 +778,23 @@ export default function DatasetView({
                       </div>
                     ))}
                     {!readOnly ? (
-                      <div className="flex items-center justify-end text-xs">
+                      <div className="flex items-center justify-end gap-1 p-1 text-xs">
                         {datasetData.length > 1 ? (
-                          <div className="flex-initial">
-                            <XCircleIcon
-                              className="h-5 w-5 cursor-pointer text-gray-300 hover:text-red-500 dark:text-gray-300-night"
-                              onClick={() => {
-                                handleDeleteEntry(i);
-                              }}
-                            />
-                          </div>
-                        ) : null}
-                        <div className="flex-initial">
-                          <PlusCircleIcon
-                            className="h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500 dark:text-gray-300-night"
+                          <Button
+                            icon={XCircleIcon}
+                            size="mini"
                             onClick={() => {
-                              handleNewEntry(i);
+                              handleDeleteEntry(i);
                             }}
                           />
-                        </div>
+                        ) : null}
+                        <Button
+                          icon={PlusCircleIcon}
+                          size="mini"
+                          onClick={() => {
+                            handleNewEntry(i);
+                          }}
+                        />
                       </div>
                     ) : null}
                   </li>
