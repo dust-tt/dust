@@ -1,3 +1,4 @@
+import { removeNulls } from "@dust-tt/client";
 import {
   Button,
   ChevronLeftIcon,
@@ -20,15 +21,31 @@ import { FileImageExtension } from "@app/components/assistant/conversation/co_ed
 import { makeLinkExtension } from "@app/components/assistant/conversation/co_edition/extensions/LinkExtension";
 import { UserContentMark } from "@app/components/assistant/conversation/co_edition/marks/UserContentMark";
 import { insertNodes } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
-import type { LightWorkspaceType } from "@app/types";
+import { submitMessage } from "@app/components/assistant/conversation/lib";
+import { useConversationParticipants } from "@app/lib/swr/conversations";
+import type {
+  ConversationType,
+  LightWorkspaceType,
+  UserType,
+} from "@app/types";
 
 interface CoEditionContainerProps {
+  conversation: ConversationType | null;
   owner: LightWorkspaceType;
+  user: UserType;
 }
 
-export function CoEditionContainer({ owner }: CoEditionContainerProps) {
-  const { closeCoEdition, server } = useCoEditionContext();
+export function CoEditionContainer({
+  conversation,
+  owner,
+  user,
+}: CoEditionContainerProps) {
+  const { closeCoEdition, server, serverId } = useCoEditionContext();
 
+  const { conversationParticipants } = useConversationParticipants({
+    conversationId: conversation?.sId ?? "",
+    workspaceId: owner.sId,
+  });
   const editor = useEditor(
     {
       extensions: [
@@ -79,6 +96,38 @@ export function CoEditionContainer({ owner }: CoEditionContainerProps) {
       editor.chain().focus().redo().run();
     }
   }, [editor]);
+
+  const postMessage = React.useCallback(
+    async (text: string) => {
+      if (conversation) {
+        const messageData = {
+          contentFragments: {
+            contentNodes: [],
+            uploaded: [],
+          },
+          input: text,
+          localMCPServerIds: removeNulls([serverId]),
+          mentions:
+            // This is best-effort, we mentions all agents participating in the conversation.
+            conversationParticipants?.agents.map((a) => ({
+              configurationId: a.configurationId,
+            })) ?? [],
+        };
+
+        const result = await submitMessage({
+          owner,
+          user,
+          conversationId: conversation.sId,
+          messageData,
+        });
+
+        if (result.isErr()) {
+          console.error(result.error);
+        }
+      }
+    },
+    [conversation, conversationParticipants, serverId, owner, user]
+  );
 
   editor?.setOptions({
     editorProps: {
@@ -148,7 +197,9 @@ export function CoEditionContainer({ owner }: CoEditionContainerProps) {
         />
       </div>
       <div className="flex-1 overflow-auto p-4">
-        {editor && <CoEditionBubbleMenu editor={editor} />}
+        {editor && (
+          <CoEditionBubbleMenu editor={editor} onAskAgentClick={postMessage} />
+        )}
         <EditorContent editor={editor} />
       </div>
     </div>

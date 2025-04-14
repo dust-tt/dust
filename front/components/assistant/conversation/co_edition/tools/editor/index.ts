@@ -5,6 +5,7 @@ import { registerDeleteNodeTool } from "@app/components/assistant/conversation/c
 import { registerGetEditorContentTool } from "@app/components/assistant/conversation/co_edition/tools/editor/get_editor_content";
 import { registerInsertNodeTool } from "@app/components/assistant/conversation/co_edition/tools/editor/insert_node";
 import { registerReplaceNodeTool } from "@app/components/assistant/conversation/co_edition/tools/editor/replace_node";
+import { registerReplaceSelectionTool } from "@app/components/assistant/conversation/co_edition/tools/editor/replace_selection";
 import { registerReplaceTextRangeTool } from "@app/components/assistant/conversation/co_edition/tools/editor/replace_text_range";
 
 export function registerEditorTools(server: McpServer, editor: Editor) {
@@ -13,5 +14,6 @@ export function registerEditorTools(server: McpServer, editor: Editor) {
   registerDeleteNodeTool(server, editor);
   registerInsertNodeTool(server, editor);
   registerReplaceNodeTool(server, editor);
+  registerReplaceSelectionTool(server, editor);
   registerReplaceTextRangeTool(server, editor);
 }
