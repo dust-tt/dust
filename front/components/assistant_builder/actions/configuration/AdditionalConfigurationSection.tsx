@@ -13,7 +13,7 @@ function getKeyPrefix(key: string): string {
   return segments.length > 1 ? segments[0] : "";
 }
 
-function groupKeysByPrefix<T extends string | number | boolean>(
+function groupKeysByPrefix<T extends string | number | boolean | null>(
   keys: Record<string, T>
 ): Record<string, Record<string, T>> {
   const groups: Record<string, Record<string, T>> = {};
@@ -64,7 +64,7 @@ function BooleanConfigurationSection({
 }
 
 interface NumberConfigurationSectionProps {
-  requiredNumbers: Record<string, number>;
+  requiredNumbers: Record<string, number | null>;
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: number) => void;
 }
@@ -88,8 +88,13 @@ function NumberConfigurationSection({
         <Input
           id={`number-${key}`}
           type="number"
-          value={value.toString()}
-          onChange={(e) => onConfigUpdate(key, parseFloat(e.target.value))}
+          value={value?.toString() || ""}
+          onChange={(e) => {
+            const parsed = parseFloat(e.target.value);
+            if (!isNaN(parsed)) {
+              onConfigUpdate(key, parsed);
+            }
+          }}
           placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
         />
       </div>
@@ -134,7 +139,7 @@ function StringConfigurationSection({
 interface GroupedConfigurationSectionProps {
   prefix: string;
   requiredStrings: Record<string, string>;
-  requiredNumbers: Record<string, number>;
+  requiredNumbers: Record<string, number | null>;
   requiredBooleans: Record<string, boolean>;
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: string | number | boolean) => void;
@@ -187,7 +192,7 @@ function GroupedConfigurationSection({
 
 interface AdditionalConfigurationSectionProps {
   requiredStrings: Record<string, string>;
-  requiredNumbers: Record<string, number>;
+  requiredNumbers: Record<string, number | null>;
   requiredBooleans: Record<string, boolean>;
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: string | number | boolean) => void;
