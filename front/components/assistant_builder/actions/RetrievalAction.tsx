@@ -1,9 +1,9 @@
 import { Checkbox, Input } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
-import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderRetrievalConfiguration,

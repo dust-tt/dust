@@ -1,8 +1,8 @@
 import { Hoverable } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
-import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderTableConfiguration,
