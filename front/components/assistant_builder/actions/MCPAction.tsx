@@ -211,6 +211,10 @@ export function MCPAction({
 
   const requirements = getMCPServerRequirements(selectedMCPServerView);
 
+  if (noMCPServerView) {
+    return <NoActionAvailable owner={owner} />;
+  }
+
   return (
     <>
       {requirements.requiresDataSourceConfiguration && (
@@ -241,27 +245,19 @@ export function MCPAction({
           viewType="table"
         />
       )}
-      <>
-        {noMCPServerView ? (
-          <NoActionAvailable owner={owner} />
-        ) : (
-          <>
-            {isDefaultMCPServer ? (
-              <div className="text-sm text-foreground dark:text-foreground-night">
-                {selectedMCPServerView?.server.description}
-              </div>
-            ) : (
-              <MCPServerSelector
-                owner={owner}
-                allowedSpaces={allowedSpaces}
-                mcpServerViews={mcpServerViews}
-                selectedMCPServerView={selectedMCPServerView}
-                handleServerSelection={handleServerSelection}
-              />
-            )}
-          </>
-        )}
-      </>
+      {isDefaultMCPServer ? (
+        <div className="text-sm text-foreground dark:text-foreground-night">
+          {selectedMCPServerView?.server.description}
+        </div>
+      ) : (
+        <MCPServerSelector
+          owner={owner}
+          allowedSpaces={allowedSpaces}
+          mcpServerViews={mcpServerViews}
+          selectedMCPServerView={selectedMCPServerView}
+          handleServerSelection={handleServerSelection}
+        />
+      )}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
           owner={owner}
