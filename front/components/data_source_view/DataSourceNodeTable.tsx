@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type {
   ContentNodesViewType,
@@ -21,7 +22,6 @@ import type {
   DataSourceViewType,
   WorkspaceType,
 } from "@app/types";
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
 
 const PAGE_SIZE = 25;
 
