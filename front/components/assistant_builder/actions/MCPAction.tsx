@@ -114,7 +114,8 @@ export function MCPAction({
           dataSourceConfigurations: null,
           tablesConfigurations: null,
           childAgentId: null,
-          additionalConfiguration: {},
+          // We initialize with the default values for required booleans since these can be left unset.
+          additionalConfiguration: requirements.requiredBooleans,
         }),
       });
     },
@@ -451,18 +452,13 @@ export function hasErrorActionMCP(
       return "Please select a child agent.";
     }
     for (const key in requirements.requiredStrings) {
-      if (!action.configuration.additionalConfiguration[key]) {
-        return `Please fill in the required string field "${key}".`;
+      if (!(key in action.configuration.additionalConfiguration)) {
+        return `Please fill in all fields.`;
       }
     }
     for (const key in requirements.requiredNumbers) {
-      if (!action.configuration.additionalConfiguration[key]) {
-        return `Please fill in the required number field "${key}".`;
-      }
-    }
-    for (const key in requirements.requiredBooleans) {
-      if (!action.configuration.additionalConfiguration[key]) {
-        return `Please fill in the required boolean field "${key}".`;
+      if (!(key in action.configuration.additionalConfiguration)) {
+        return `Please fill in all required numeric fields.`;
       }
     }
 

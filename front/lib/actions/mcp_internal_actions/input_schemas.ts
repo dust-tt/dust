@@ -16,6 +16,7 @@ import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   findMatchingSchemaKeys,
   findSchemaAtPath,
+  followInternalRef,
   isJSONSchemaObject,
   schemasAreEqual,
   setValueAtPath,
@@ -206,9 +207,18 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
       let shouldInclude = true;
 
       if (isJSONSchemaObject(property)) {
-        // Check if this property has a matching mimeType.
         for (const schema of Object.values(ConfigurableToolInputJSONSchemas)) {
-          if (schemasAreEqual(property, schema)) {
+          // Check if the property matches the schema, following references if $ref points to a schema internally.
+          let schemasMatch = schemasAreEqual(property, schema);
+
+          if (!schemasMatch && property.$ref) {
+            const refSchema = followInternalRef(inputSchema, property.$ref);
+            if (refSchema) {
+              schemasMatch = schemasAreEqual(refSchema, schema);
+            }
+          }
+
+          if (schemasMatch) {
             shouldInclude = false;
             // Track removed properties that were in the required array.
             if (resultingSchema.required?.includes(key)) {
@@ -301,7 +311,11 @@ export function augmentInputsWithConfiguration({
         : [];
 
       const fullPath = [...parentPath, missingProp];
-      const propSchema = findSchemaAtPath(inputSchema, fullPath);
+      let propSchema = findSchemaAtPath(inputSchema, fullPath);
+      // If the schema we found is a reference, follow it.
+      if (propSchema?.$ref) {
+        propSchema = followInternalRef(inputSchema, propSchema.$ref);
+      }
 
       // If we found a schema and it has a matching MIME type, inject the value
       if (propSchema) {
