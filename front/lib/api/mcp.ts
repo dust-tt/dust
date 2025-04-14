@@ -26,7 +26,7 @@ export type MCPServerType = {
   name: string;
   version: string;
   description: string;
-  visual: AllowedIconType | string;
+  visual: AllowedIconType | `https://${string}`;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   isDefault: boolean;
@@ -38,6 +38,7 @@ export type RemoteMCPServerType = MCPServerType & {
   cachedDescription?: string | null;
   sharedSecret?: string;
   lastSyncAt?: Date | null;
+  visual: AllowedIconType; // We enforce that we pass an icon here (among the ones we allow).
 };
 
 export interface MCPServerViewType {
@@ -56,6 +57,7 @@ export type MCPServerDefinitionType = Omit<
 
 type InternalMCPServerType = MCPServerType & {
   name: InternalMCPServerNameType;
+  visual: `https://${string}`; // We enforce that we pass a URL here.
 };
 
 export type InternalMCPServerDefinitionType = Omit<

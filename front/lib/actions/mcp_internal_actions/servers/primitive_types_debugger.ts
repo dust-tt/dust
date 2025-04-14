@@ -10,7 +10,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "Demo server showing a basic interaction with various configurable blocks.",
-  visual: "table",
+  visual: "https://dust.tt/static/spiritavatar/Spirit_Green_2.jpg",
   authorization: null,
 };
 

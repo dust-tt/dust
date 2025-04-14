@@ -16,9 +16,9 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useEffect, useState } from "react";
 
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
+import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
-import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
-import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
@@ -334,14 +334,14 @@ export function ActionProcess({
           sendNotification({
             title: "Failed to generate schema.",
             type: "error",
-            description: `An error occured while generating the schema: ${res.error.message}`,
+            description: `An error occurred while generating the schema: ${res.error.message}`,
           });
         }
       } catch (e) {
         sendNotification({
           title: "Failed to generate schema.",
           type: "error",
-          description: `An error occured while generating the schema. Please contact us if the error persists.`,
+          description: `An error occurred while generating the schema. Please contact us if the error persists.`,
         });
       } finally {
         setIsGeneratingSchema(false);
