@@ -45,16 +45,6 @@ export function ChildAgentConfigurationSection({
     );
   }
 
-  if (isAgentConfigurationsLoading) {
-    return (
-      <Card size="sm" className="h-36 w-full">
-        <div className="flex h-full w-full items-center justify-center">
-          <Spinner />
-        </div>
-      </Card>
-    );
-  }
-
   if (agentConfigurations.length === 0) {
     return (
       <ContentMessage
@@ -77,7 +67,13 @@ export function ChildAgentConfigurationSection({
       <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
         Selected Agent
       </div>
-      {selectedAgent ? (
+      {isAgentConfigurationsLoading ? (
+        <Card size="sm" className="h-36 w-full">
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner />
+          </div>
+        </Card>
+      ) : selectedAgent ? (
         <Card size="sm" className="w-full">
           <div className="flex w-full p-3">
             <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
