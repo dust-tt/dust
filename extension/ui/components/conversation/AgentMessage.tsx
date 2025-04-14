@@ -303,28 +303,15 @@ export function AgentMessage({
         break;
       }
       case "tool_approve_execution":
-        if (platform.supportsMCP) {
-          // Show the validation dialog when this event is received
-          showValidationDialog({
-            workspaceId: owner.sId,
-            messageId: message.sId,
-            conversationId: conversationId,
-            action: event.action,
-            inputs: event.inputs,
-          });
-        } else {
-          setStreamedAgentMessage((m) => {
-            return {
-              ...m,
-              status: "failed",
-              error: {
-                message: "Tools are not available in the extension",
-                code: "tool_not_available",
-              },
-            };
-          });
-          setLastAgentStateClassification("done");
-        }
+        // Show the validation dialog when this event is received.
+        showValidationDialog({
+          action: event.action,
+          conversationId: conversationId,
+          inputs: event.inputs,
+          messageId: message.sId,
+          stake: event.stake,
+          workspaceId: owner.sId,
+        });
         break;
 
       case "generation_tokens": {
