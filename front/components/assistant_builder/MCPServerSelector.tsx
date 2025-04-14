@@ -13,9 +13,9 @@ import React, { useMemo } from "react";
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
-import { useSpaces } from "@app/lib/swr/spaces";
 
 interface MCPServerSelectorProps {
   allowedSpaces: SpaceType[];
