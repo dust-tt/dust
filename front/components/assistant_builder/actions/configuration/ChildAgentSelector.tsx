@@ -90,7 +90,7 @@ export function ChildAgentSelector({
               <Button
                 variant="secondary"
                 size="sm"
-                label="Change Agent"
+                label="Select another agent"
                 isLoading={isAgentConfigurationsLoading}
               />
             }
