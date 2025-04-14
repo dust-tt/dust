@@ -1,18 +1,9 @@
-import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { dustManagedCredentials, Err, Ok } from "@app/types";
 
 const credentials = dustManagedCredentials();
 
 const BROWSERLESS_BASE_URL = "https://chrome.browserless.io";
-
-const webLogger = logger.child(
-  {},
-  {
-    msgPrefix: "[webbrowse] ",
-    module: "utils/webbrowse",
-  }
-);
 
 export type BrowseScrapeResponse = {
   data: Record<string, any>;
@@ -35,8 +26,6 @@ export const browseUrl = async (
       )
     );
   }
-
-  webLogger.debug({ url }, "will scrape");
 
   const res = await fetch(
     `${BROWSERLESS_BASE_URL}/scrape?token=${credentials.BROWSERLESS_API_KEY}`,
@@ -61,13 +50,10 @@ export const browseUrl = async (
   );
 
   if (!res.ok) {
-    webLogger.error({ status: res.status }, "bad request BrowserlessAPIError");
     return new Err(new Error("Bad request scraping url"));
   }
 
   const json = await res.json();
-
-  webLogger.debug({ json }, "results");
 
   return new Ok({
     data: json.data as Record<string, any>,

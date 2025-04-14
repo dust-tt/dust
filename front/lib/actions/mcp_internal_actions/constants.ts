@@ -49,11 +49,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     isDefault: true,
     flag: "mcp_actions",
   },
-  "web_search_&_browse": {
-    id: 4,
-    isDefault: true,
-    flag: "mcp_actions",
-  },
 
   // Dev
   data_sources_debugger: {
@@ -79,6 +74,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   primitive_types_debugger: {
     id: 1004,
     isDefault: false,
+    flag: "dev_mcp_actions",
+  },
+  "web_search_&_browse": {
+    id: 1005,
+    isDefault: true,
     flag: "dev_mcp_actions",
   },
 };

@@ -1,23 +1,19 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import type { MCPServerDefinitionType } from "@app/lib/api/mcp";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { browseUrl } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
-import logger from "@app/logger/logger";
 import type { OAuthProvider } from "@app/types";
-
-const webLogger = logger.child(
-  {},
-  { msgPrefix: "[webtools] ", module: "mcp/webtools" }
-);
 
 export const provider: OAuthProvider = "google_drive" as const;
 export const serverInfo: MCPServerDefinitionType = {
   name: "web_search_&_browse",
   version: "1.0.0",
   description:
-    "You are a helpful server that search google and browse the web for the user.",
+    "Agent can search (Google) and retrieve information from specific websites.",
   visual: "command",
   authorization: {
     provider,
@@ -32,16 +28,18 @@ const createServer = (): McpServer => {
     "websearch",
     "A google search tool",
     {
-      query: z.string().describe("The google query that will be send."),
+      query: z
+        .string()
+        .describe(
+          "The query used to perform the google search. If requested by the user, use the google syntax `site:` to restrict the the search to a particular website or domain."
+        ),
     },
     async ({ query }) => {
-      webLogger.debug({ query }, "[websearch]");
-
       const websearchRes = await webSearch({ provider: "serpapi", query });
 
       if (websearchRes.isErr()) {
         return {
-          isError: true,
+          isError: false,
           content: [
             {
               type: "text",
@@ -51,16 +49,12 @@ const createServer = (): McpServer => {
         };
       }
 
-      const results = websearchRes.value;
-
-      webLogger.debug({ results }, "[websearch]: RESULTS");
-
       return {
         isError: false,
         content: [
           {
             type: "text",
-            text: JSON.stringify(results),
+            text: JSON.stringify(websearchRes.value),
           },
         ],
       };
@@ -71,35 +65,32 @@ const createServer = (): McpServer => {
     "webbrowser",
     "A tool to browse website",
     {
-      url: z.string().describe("URL of the website to be fetch"),
+      urls: z.string().array().describe("List of urls to browse"),
     },
-    async ({ url }) => {
-      webLogger.debug({ url }, "[webbrowser]");
+    async ({ urls }) => {
+      const content: CallToolResult["content"] = await concurrentExecutor(
+        urls,
+        async (url) => {
+          const res = await browseUrl(url);
 
-      const result = await browseUrl(url);
-
-      if (result.isErr()) {
-        return {
-          isError: true,
-          content: [
-            {
+          if (res.isErr()) {
+            return {
               type: "text",
-              text: `Failed to fetch url: ${result.error.message}`,
-            },
-          ],
-        };
-      }
+              text: `Failed to fetch url "${url}": ${res.error.message}`,
+            };
+          }
 
-      webLogger.debug({ result }, "[webbrowser]: RESULTS");
+          return {
+            type: "text",
+            text: JSON.stringify(res.value),
+          };
+        },
+        { concurrency: 4 }
+      );
 
       return {
         isError: false,
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(result.value),
-          },
-        ],
+        content,
       };
     }
   );
