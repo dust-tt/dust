@@ -1571,6 +1571,7 @@ export async function addGroupToAgentConfiguration({
       {
         groupId: group.id,
         agentConfigurationId: agentConfiguration.id,
+        workspaceId: owner.id,
       },
       { transaction }
     );
