@@ -453,12 +453,12 @@ export function hasErrorActionMCP(
     }
     for (const key in requirements.requiredStrings) {
       if (!(key in action.configuration.additionalConfiguration)) {
-        return `Please fill in the required string field.`;
+        return `Please fill in all fields.`;
       }
     }
     for (const key in requirements.requiredNumbers) {
       if (!(key in action.configuration.additionalConfiguration)) {
-        return `Please fill in the required numeric fields.`;
+        return `Please fill in all required numeric fields.`;
       }
     }
 
