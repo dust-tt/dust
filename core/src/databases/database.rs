@@ -113,7 +113,8 @@ pub async fn get_tables_schema(
                 .iter()
                 .zip(schemas.iter())
                 .map(|(table, schema)| {
-                    schema.render_dbml(table.table_id_for_dbml(), table.description())
+                    let table_id = table.table_id_for_dbml().replace("__DUST_DOT__", ".");
+                    schema.render_dbml(&table_id, table.description())
                 })
                 .collect::<Vec<_>>();
 
