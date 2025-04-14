@@ -874,17 +874,20 @@ export async function createAgentConfiguration(
         if (created) {
           const user = auth.getNonNullableUser();
           // Create a default group for the agent and add the author to it.
-          const defaultGroup = await GroupResource.makeNew({
-            workspaceId: owner.id,
-            name: `Group for Agent ${agentConfigurationInstance.name}`,
-            kind: "regular",
-          });
+          const defaultGroup = await GroupResource.makeNew(
+            {
+              workspaceId: owner.id,
+              name: `Group for Agent ${agentConfigurationInstance.name}`,
+              kind: "regular",
+            },
+            { transaction: t }
+          );
 
           // Add user to the newly created group
           const addMemberResult = await defaultGroup.addMember(
             auth,
-            user.toJSON()
-            // Transaction is handled internally by addMember if needed via auth
+            user.toJSON(),
+            { transaction: t }
           );
           if (addMemberResult.isErr()) {
             // Throw error to trigger transaction rollback
