@@ -311,7 +311,11 @@ export function augmentInputsWithConfiguration({
         : [];
 
       const fullPath = [...parentPath, missingProp];
-      const propSchema = findSchemaAtPath(inputSchema, fullPath);
+      let propSchema = findSchemaAtPath(inputSchema, fullPath);
+      // If the schema we found is a reference, follow it.
+      if (propSchema?.$ref) {
+        propSchema = followInternalRef(inputSchema, propSchema.$ref);
+      }
 
       // If we found a schema and it has a matching MIME type, inject the value
       if (propSchema) {
