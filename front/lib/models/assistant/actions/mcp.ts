@@ -178,7 +178,13 @@ AgentMCPAction.init(
       allowNull: false,
       validate: {
         isIn: [
-          ["pending", "timeout", "allowed_explicitly", "allowed_implicitly", "denied"],
+          [
+            "pending",
+            "timeout",
+            "allowed_explicitly",
+            "allowed_implicitly",
+            "denied",
+          ],
         ],
       },
     },
