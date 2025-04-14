@@ -17,32 +17,35 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import type { DataSourceViewContentNode } from "@app/types";
+import {
+  useCurrentChat,
+  useCurrentChatActions,
+} from "@app/lib/stores/ChatStoreProvider";
 
 interface FileAttachmentsProps {
   service: FileUploaderService;
 }
 
 interface NodeAttachmentsProps {
-  items: DataSourceViewContentNode[];
   spacesMap: {
     [k: string]: {
       name: string;
       icon: React.ComponentType;
     };
   };
-  onRemove: (node: DataSourceViewContentNode) => void;
 }
 
 interface InputBarAttachmentsProps {
   files?: FileAttachmentsProps;
-  nodes?: NodeAttachmentsProps;
+  nodes: NodeAttachmentsProps;
 }
 
 export function InputBarAttachments({
   files,
   nodes,
 }: InputBarAttachmentsProps) {
+  const { attachedNodes } = useCurrentChat();
+  const { removeAttachedNode } = useCurrentChatActions();
   // Convert file blobs to FileAttachment objects
   const fileAttachments: FileAttachment[] = useMemo(() => {
     return (
@@ -60,7 +63,7 @@ export function InputBarAttachments({
   // Convert content nodes to NodeAttachment objects
   const nodeAttachments: NodeAttachment[] = useMemo(() => {
     return (
-      nodes?.items.map((node) => {
+      attachedNodes.map((node) => {
         const logo = getConnectorProviderLogoWithFallback({
           provider: node.dataSourceView.dataSource.connectorProvider,
         });
@@ -93,11 +96,11 @@ export function InputBarAttachments({
           spaceIcon: nodes.spacesMap[node.dataSourceView.spaceId].icon,
           path: getLocationForDataSourceViewContentNode(node),
           visual,
-          onRemove: () => nodes.onRemove(node),
+          onRemove: () => removeAttachedNode(node),
         };
       }) || []
     );
-  }, [nodes]);
+  }, [nodes, attachedNodes, removeAttachedNode]);
 
   const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 

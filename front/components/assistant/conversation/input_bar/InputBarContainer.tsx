@@ -27,6 +27,10 @@ import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
+import {
+  useCurrentChat,
+  useCurrentChatActions,
+} from "@app/lib/stores/ChatStoreProvider";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type {
@@ -58,7 +62,6 @@ export interface InputBarContainerProps {
   disableSendButton: boolean;
   fileUploaderService: FileUploaderService;
   onNodeSelect?: (node: DataSourceViewContentNode) => void;
-  attachedNodes: DataSourceViewContentNode[];
 }
 
 const InputBarContainer = ({
@@ -73,9 +76,10 @@ const InputBarContainer = ({
   disableSendButton,
   fileUploaderService,
   onNodeSelect,
-  attachedNodes,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
+  const chat = useCurrentChat();
+  const { resetChat, saveContent } = useCurrentChatActions();
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -99,6 +103,9 @@ const InputBarContainer = ({
     resetEditorContainerSize,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
+    resetChat,
+    saveContent,
+    draftContent: chat?.content,
   });
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
@@ -267,7 +274,7 @@ const InputBarContainer = ({
                   onNodeSelect ||
                   ((node) => console.log(`Selected ${node.title}`))
                 }
-                attachedNodes={attachedNodes}
+                attachedNodes={chat.attachedNodes}
               />
             </>
           )}
@@ -309,6 +316,7 @@ const InputBarContainer = ({
               () => {
                 editorService.clearEditor();
                 resetEditorContainerSize();
+                resetChat();
               },
               editorService.setLoading
             );

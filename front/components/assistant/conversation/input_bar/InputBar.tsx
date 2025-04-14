@@ -12,6 +12,10 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DustError } from "@app/lib/error";
 import { getSpaceIcon } from "@app/lib/spaces";
+import {
+  useCurrentChat,
+  useCurrentChatActions,
+} from "@app/lib/stores/ChatStoreProvider";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -63,9 +67,8 @@ export function AssistantInputBar({
   const [isFocused, setIsFocused] = useState(false);
   const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
-  const [attachedNodes, setAttachedNodes] = useState<
-    DataSourceViewContentNode[]
-  >([]);
+  const chat = useCurrentChat();
+  const { setAttachedNode, resetAttachedNodes } = useCurrentChatActions();
 
   const { spaces } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
@@ -206,7 +209,7 @@ export function AssistantInputBar({
             fileId: cf.fileId,
           };
         }),
-        contentNodes: attachedNodes,
+        contentNodes: chat.attachedNodes,
       });
 
       setLoading(false);
@@ -223,31 +226,25 @@ export function AssistantInputBar({
             fileId: cf.fileId,
           };
         }),
-        contentNodes: attachedNodes,
+        contentNodes: chat.attachedNodes,
       });
 
       resetEditorText();
       fileUploaderService.resetUpload();
-      setAttachedNodes([]);
+      resetAttachedNodes();
     }
   };
 
   const handleNodesAttachmentSelect = (node: DataSourceViewContentNode) => {
-    const isNodeAlreadyAttached = attachedNodes.some(
+    const isNodeAlreadyAttached = chat.attachedNodes.some(
       (attachedNode) =>
         attachedNode.internalId === node.internalId &&
         attachedNode.dataSourceView.dataSource.sId ===
           node.dataSourceView.dataSource.sId
     );
     if (!isNodeAlreadyAttached) {
-      setAttachedNodes((prev) => [...prev, node]);
+      setAttachedNode(node);
     }
-  };
-
-  const handleNodesAttachmentRemove = (node: DataSourceViewContentNode) => {
-    setAttachedNodes((prev) =>
-      prev.filter((n) => n.internalId !== node.internalId)
-    );
   };
 
   const [isStopping, setIsStopping] = useState<boolean>(false);
@@ -344,9 +341,7 @@ export function AssistantInputBar({
               <InputBarAttachments
                 files={{ service: fileUploaderService }}
                 nodes={{
-                  items: attachedNodes,
                   spacesMap,
-                  onRemove: handleNodesAttachmentRemove,
                 }}
               />
               <InputBarContainer
@@ -363,7 +358,6 @@ export function AssistantInputBar({
                   disableSendButton || fileUploaderService.isProcessingFiles
                 }
                 onNodeSelect={handleNodesAttachmentSelect}
-                attachedNodes={attachedNodes}
               />
             </div>
           </div>

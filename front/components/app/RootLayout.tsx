@@ -9,6 +9,7 @@ import type { UrlObject } from "url";
 
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
+import { ChatStoreProvider } from "@app/lib/stores/ChatStoreProvider";
 import { isAPIErrorResponse } from "@app/types";
 
 function NextLinkWrapper({
@@ -87,13 +88,15 @@ export default function RootLayout({
           },
         }}
       >
-        <UserProvider>
-          <SidebarProvider>
-            <ConfirmPopupArea>
-              <Notification.Area>{children}</Notification.Area>
-            </ConfirmPopupArea>
-          </SidebarProvider>
-        </UserProvider>
+        <ChatStoreProvider>
+          <UserProvider>
+            <SidebarProvider>
+              <ConfirmPopupArea>
+                <Notification.Area>{children}</Notification.Area>
+              </ConfirmPopupArea>
+            </SidebarProvider>
+          </UserProvider>
+        </ChatStoreProvider>
       </SWRConfig>
     </SparkleContext.Provider>
   );

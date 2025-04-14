@@ -197,6 +197,9 @@ export interface CustomEditorProps {
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  resetChat: () => void;
+  saveContent: (content: JSONContent) => void;
+  draftContent: JSONContent;
 }
 
 const useCustomEditor = ({
@@ -205,6 +208,9 @@ const useCustomEditor = ({
   suggestions,
   disableAutoFocus,
   onUrlDetected,
+  resetChat,
+  saveContent,
+  draftContent,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -237,10 +243,15 @@ const useCustomEditor = ({
       })
     );
   }
-
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,
+    content: draftContent,
+    onUpdate: ({ editor }) => {
+      if (editor) {
+        saveContent(editor.getJSON());
+      }
+    },
   });
 
   // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
@@ -280,6 +291,7 @@ const useCustomEditor = ({
           const clearEditor = () => {
             editor.commands.clearContent();
             resetEditorContainerSize();
+            resetChat();
           };
 
           const setLoading = (loading: boolean) => {

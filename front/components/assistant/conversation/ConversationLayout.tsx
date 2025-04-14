@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
@@ -14,7 +14,9 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { useActiveConversationIdSync } from "@app/hooks/useActiveConversationIdSync";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useChatsActions } from "@app/lib/stores/ChatStoreProvider";
 import { useConversation } from "@app/lib/swr/conversations";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
@@ -32,7 +34,13 @@ export default function ConversationLayout({
   children: React.ReactNode;
   pageProps: ConversationLayoutProps;
 }) {
+  useActiveConversationIdSync();
   const { baseUrl, owner, subscription } = pageProps;
+  const { setInitialConversationId } = useChatsActions();
+
+  useEffect(() => {
+    setInitialConversationId(pageProps.conversationId);
+  }, [pageProps.conversationId, setInitialConversationId]);
 
   return (
     <ConversationsNavigationProvider
@@ -52,10 +60,10 @@ export default function ConversationLayout({
 }
 
 const ConversationLayoutContent = ({
+  children,
   owner,
   subscription,
   baseUrl,
-  children,
 }: any) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
