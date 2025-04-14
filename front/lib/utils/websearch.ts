@@ -1,3 +1,6 @@
+import _ from "lodash";
+
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { assertNever, dustManagedCredentials, Err, Ok } from "@app/types";
 
@@ -30,7 +33,7 @@ const serpapiDefaultOptions: Omit<
 > = {
   provider: "serpapi",
   engine: "google",
-  api_key: credentials.SERPER_API_KEY,
+  api_key: credentials.SERP_API_KEY,
 };
 
 export type SearchParams = BaseWebSearchParams & (SerpapiParams | SerperParams);
@@ -43,19 +46,28 @@ export type SearchResultItem = {
 export type SearchResponse = SearchResultItem[];
 
 const serpapiSearch = async (
-  options: BaseWebSearchParams & SerpapiParams
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  { provider, query, ...options }: BaseWebSearchParams & SerpapiParams
 ): Promise<Result<SearchResponse, Error>> => {
-  if (options.api_key == null && serpapiDefaultOptions.api_key == null) {
+  if (options.api_key == null) {
     return new Err(
       new Error("util/webtools: a DUST_MANAGED_SERP_API_KEY is required")
     );
   }
 
   const urlParams = new URLSearchParams(
-    JSON.stringify({
-      ...options,
-    })
+    _.omitBy(
+      {
+        q: query,
+        ...options,
+      },
+      _.isNil
+    ) as Record<string, any>
   );
+
+  const prm = urlParams.toString();
+
+  logger.debug({ prm }, "URL params");
 
   const res = await fetch(
     `${SERPAPI_BASE_URL}/search?${urlParams.toString()}`,
@@ -64,24 +76,29 @@ const serpapiSearch = async (
     }
   );
 
+  logger.debug({ ok: res.ok, status: res.status }, "get serpapi");
+
   if (res.ok) {
     const json = await res.json();
 
-    const results = json.organic_results.reduce(
-      (acc: SearchResultItem[], item: any) => {
-        if (item.title && item.link) {
-          acc.push({
-            title: item.title,
-            link: item.link,
-            snippet: item.snippet ?? "",
-          });
-        }
-        return acc;
-      },
-      [] as SearchResultItem[]
-    );
+    if ("organic_results" in json && Array.isArray(json.organic_results)) {
+      const results = json.organic_results.reduce(
+        (acc: SearchResultItem[], item: any) => {
+          if (item.title && item.link) {
+            acc.push({
+              title: item.title,
+              link: item.link,
+              snippet: item.snippet ?? "",
+            });
+          }
+          return acc;
+        },
+        [] as SearchResultItem[]
+      );
+      return new Ok(results);
+    }
 
-    return new Ok(results);
+    return new Ok([]);
   }
 
   return new Err(new Error("Bad request on SerpAPI"));
@@ -123,8 +140,8 @@ export const webSearch = async (
   switch (provider) {
     case "serpapi": {
       return serpapiSearch({
-        ...params,
         ...serpapiDefaultOptions,
+        ...params,
       });
     }
     case "serper": {
