@@ -4,8 +4,8 @@ import React from "react";
 import { asDisplayName } from "@app/types";
 
 const formatKeyForDisplay = (key: string): string => {
-  const lastPart = key.split(".").pop() || key;
-  return asDisplayName(lastPart);
+  const segments = key.split(".").map(asDisplayName);
+  return segments.join(" > ");
 };
 
 interface BooleanConfigurationSectionProps {
