@@ -23,7 +23,7 @@ import type {
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getVisual } from "@app/lib/actions/mcp_icons";
-import { getRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
@@ -101,7 +101,7 @@ export function MCPAction({
       setEdited(true);
       setSelectedMCPServerView(serverView);
 
-      const requirements = getRequirements(serverView);
+      const requirements = getMCPServerRequirements(serverView);
       updateAction({
         actionName: slugify(serverView.server.name),
         actionDescription:
@@ -197,7 +197,7 @@ export function MCPAction({
     return null;
   }
 
-  const requirements = getRequirements(selectedMCPServerView);
+  const requirements = getMCPServerRequirements(selectedMCPServerView);
 
   return (
     <>
@@ -431,7 +431,7 @@ export function hasErrorActionMCP(
       return "Please select a tool.";
     }
 
-    const requirements = getRequirements(mcpServerView);
+    const requirements = getMCPServerRequirements(mcpServerView);
     if (
       requirements.requiresDataSourceConfiguration &&
       !action.configuration.dataSourceConfigurations

@@ -334,7 +334,7 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
-export function getRequirements(
+export function getMCPServerRequirements(
   mcpServerView: MCPServerViewType | null | undefined
 ): {
   requiresDataSourceConfiguration: boolean;
