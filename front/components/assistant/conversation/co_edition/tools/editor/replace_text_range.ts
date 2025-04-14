@@ -2,6 +2,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Editor } from "@tiptap/react";
 import { z } from "zod";
 
+import { CoEditionContentSchema } from "@app/components/assistant/conversation/co_edition/tools/editor/types";
+import { contentToHtml } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
+
 const ReplaceTextRangeSchema = z.object({
   nodeId: z
     .string()
@@ -10,12 +13,7 @@ const ReplaceTextRangeSchema = z.object({
     .number()
     .describe("The starting character offset within the node"),
   endOffset: z.number().describe("The ending character offset within the node"),
-  content: z
-    .string()
-    .describe(
-      "The new content to insert. Supports plain text or HTML (e.g. '<p>Some " +
-        "<strong>bold</strong> text</p>'). Markdown is not supported."
-    ),
+  node: CoEditionContentSchema,
 });
 
 export function registerReplaceTextRangeTool(
@@ -60,9 +58,10 @@ export function registerReplaceTextRangeTool(
               const absoluteTo = nodePos + 1 + relativePos + childNode.nodeSize;
 
               // Replace using absolute positions.
+              const content = contentToHtml(params.node);
               editor.commands.insertContentAt(
                 { from: absoluteFrom, to: absoluteTo },
-                params.content
+                content
               );
 
               return false; // Stop traversal once found.

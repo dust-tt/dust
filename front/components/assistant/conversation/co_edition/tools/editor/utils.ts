@@ -1,5 +1,9 @@
 import type { Editor } from "@tiptap/react";
 
+import { imageContentToNode } from "@app/components/assistant/conversation/co_edition/extensions/FileImageExtension";
+
+import type { CoEditionContent } from "./types";
+
 // Simple utility function that works with all nodes.
 export function getDocumentPositions(doc: any) {
   // Just get all top-level nodes and their positions.
@@ -13,7 +17,15 @@ export function getDocumentPositions(doc: any) {
   return positions;
 }
 
-export function insertNodes(
+export function contentToHtml(content: CoEditionContent) {
+  if (content.type === "text") {
+    return content.content;
+  } else {
+    return imageContentToNode(content);
+  }
+}
+
+export function insertNode(
   editor: Editor,
   params: { position: number; content: string }
 ) {
@@ -29,6 +41,25 @@ export function insertNodes(
 
       chain().insertContentAt(insertPos, params.content).run();
 
+      return true;
+    })
+    .run();
+}
+
+// Best-effort implementation of inserting multiple nodes. Order might be broken with custom node types.
+export function insertNodes(editor: Editor, nodes: Array<CoEditionContent>) {
+  return editor
+    .chain()
+    .focus()
+    .command(({ tr, commands }) => {
+      let pos = tr.selection.from;
+
+      nodes.forEach((node) => {
+        commands.insertContentAt(pos, contentToHtml(node));
+
+        // Update position for next insertion.
+        pos = tr.selection.from;
+      });
       return true;
     })
     .run();
