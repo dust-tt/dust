@@ -349,6 +349,7 @@ export async function tryListMCPTools(
         return {
           ...toolConfig,
           originalName: toolConfig.name,
+          mcpServerName: action.name,
           name: prefixedName,
           description: toolConfig.description + extraDescription,
         };

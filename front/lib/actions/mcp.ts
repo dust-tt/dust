@@ -1,7 +1,10 @@
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { 
+  MCPToolStakeLevelType,
+  MCPValidationMetadataType,
+} from "@app/lib/actions/constants";
 import { DEFAULT_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
@@ -94,6 +97,7 @@ export type MCPToolConfigurationType = (
   | LocalMCPToolConfigurationType
 ) & {
   originalName: string;
+  mcpServerName: string;
 };
 
 type MCPApproveExecutionEvent = {
@@ -104,6 +108,7 @@ type MCPApproveExecutionEvent = {
   action: MCPActionType;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
+  meta: MCPValidationMetadataType;
 };
 
 export function isMCPApproveExecutionEvent(
@@ -322,6 +327,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         stake: isPlatformMCPToolConfiguration(actionConfiguration)
           ? actionConfiguration.permission
           : DEFAULT_MCP_TOOL_STAKE_LEVEL,
+        meta: {
+          toolName: actionConfiguration.originalName,
+          mcpServerName: actionConfiguration.mcpServerName,
+          agentName: agentConfiguration.name,
+        }
       };
 
       try {
