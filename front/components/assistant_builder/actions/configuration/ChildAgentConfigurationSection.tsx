@@ -16,7 +16,7 @@ interface ChildAgentSelectorProps {
   onAgentSelect: (agentId: string) => void;
 }
 
-export function ChildAgentSelector({
+export function ChildAgentConfigurationSection({
   owner,
   selectedAgentId,
   onAgentSelect,
