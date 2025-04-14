@@ -52,10 +52,8 @@ export const Basic: Story = {
           }}
           permanentValidation={{
             label: "Don't ask again",
-            checked: true,
-            onChange: (check) => {
-              console.log(check);
-            },
+            checked: false,
+            onChange: () => { },
           }}
         />
       </DialogContent>
