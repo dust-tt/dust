@@ -451,18 +451,13 @@ export function hasErrorActionMCP(
       return "Please select a child agent.";
     }
     for (const key in requirements.requiredStrings) {
-      if (key in action.configuration.additionalConfiguration) {
-        return `Please fill in the required string field "${key}".`;
+      if (!(key in action.configuration.additionalConfiguration)) {
+        return `Please fill in the required string field.`;
       }
     }
     for (const key in requirements.requiredNumbers) {
-      if (key in action.configuration.additionalConfiguration) {
-        return `Please fill in the required number field "${key}".`;
-      }
-    }
-    for (const key in requirements.requiredBooleans) {
-      if (key in action.configuration.additionalConfiguration) {
-        return `Please fill in the required boolean field "${key}".`;
+      if (!(key in action.configuration.additionalConfiguration)) {
+        return `Please fill in the required numeric fields.`;
       }
     }
 
