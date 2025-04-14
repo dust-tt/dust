@@ -69,9 +69,8 @@ export function useMCPServerViewsNotActivated({
 
 export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
-  const { mutateMCPServers } = useMCPServers({
+  const { mutateMCPServers, mcpServers } = useMCPServers({
     owner,
-    disabled: true,
   });
 
   const createView = useCallback(
@@ -88,6 +87,8 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
         }
       );
 
+      const mcpServerWithViews = mcpServers.find((s) => s.id === server.id);
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.api_error?.message || "Unknown error");
@@ -100,7 +101,26 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
           description:
             "Your actions have been added to the space successfully.",
         });
-        void mutateMCPServers();
+        await mutateMCPServers({
+          success: true,
+          servers: [
+            ...mcpServers.filter((v) => v.id !== server.id),
+            {
+              ...(mcpServerWithViews || server),
+              views: [
+                ...(mcpServerWithViews?.views || []),
+                {
+                  id: "global",
+                  createdAt: Date.now(),
+                  updatedAt: Date.now(),
+                  server,
+                  editedByUser: null,
+                  spaceId: space.sId,
+                },
+              ],
+            },
+          ],
+        });
       } else {
         sendNotification({
           type: "error",
@@ -111,7 +131,7 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
 
       return response.json();
     },
-    [sendNotification, owner, mutateMCPServers]
+    [sendNotification, owner, mutateMCPServers, mcpServers]
   );
 
   return { addToSpace: createView };
@@ -119,9 +139,8 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
 
 export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
-  const { mutateMCPServers } = useMCPServers({
+  const { mutateMCPServers, mcpServers } = useMCPServers({
     owner,
-    disabled: true,
   });
 
   const deleteView = useCallback(
@@ -136,6 +155,10 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
         }
       );
 
+      const mcpServerWithViews = mcpServers.find(
+        (s) => s.id === serverView.server.id
+      );
+
       if (response.ok) {
         sendNotification({
           type: "success",
@@ -146,7 +169,20 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
           description:
             "Your actions have been removed from the space successfully.",
         });
-        void mutateMCPServers();
+        if (mcpServerWithViews) {
+          await mutateMCPServers({
+            success: true,
+            servers: [
+              ...mcpServers.filter((v) => v.id !== serverView.server.id),
+              {
+                ...mcpServerWithViews,
+                views: mcpServerWithViews.views.filter(
+                  (v) => v.id !== serverView.id
+                ),
+              },
+            ],
+          });
+        }
       } else {
         sendNotification({
           type: "error",
@@ -157,7 +193,7 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
 
       return response.json();
     },
-    [sendNotification, owner, mutateMCPServers]
+    [sendNotification, owner, mutateMCPServers, mcpServers]
   );
 
   return { removeFromSpace: deleteView };
