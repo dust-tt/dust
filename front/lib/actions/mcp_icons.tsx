@@ -12,6 +12,9 @@ export type AllowedIconType = keyof typeof ActionIcons;
 export const isAllowedIconType = (icon: string): icon is AllowedIconType =>
   ALLOWED_ICONS.includes(icon as AllowedIconType);
 
+export const isValidIconUrl = (icon: string): icon is `https://${string}` =>
+  icon.startsWith("https://");
+
 export const getVisual = (mcpServer: MCPServerType) => {
   if (isAllowedIconType(mcpServer.visual)) {
     return React.createElement(ActionIcons[mcpServer.visual]);
