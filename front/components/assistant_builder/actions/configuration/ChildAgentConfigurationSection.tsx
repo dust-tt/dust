@@ -74,6 +74,9 @@ export function ChildAgentConfigurationSection({
 
   return (
     <div className="flex flex-col gap-2">
+      <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
+        Selected Agent
+      </div>
       {selectedAgent ? (
         <Card size="sm" className="w-full">
           <div className="flex w-full p-3">
