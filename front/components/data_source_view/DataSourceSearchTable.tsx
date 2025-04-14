@@ -5,14 +5,12 @@ import {
   DoubleIcon,
   Icon,
   ScrollableDataTable,
-  SearchInput,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import type { Dispatch, SetStateAction } from "react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
-import { useDebounce } from "@app/hooks/useDebounce";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { useSpaceSearch } from "@app/lib/swr/spaces";
@@ -24,7 +22,6 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 interface TableRowData {
   id: string;
@@ -68,7 +65,7 @@ export function getTableRows(
   });
 }
 
-interface DataSourceTableSelectorProps {
+interface DataSourceSearchTableProps {
   owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
@@ -76,26 +73,25 @@ interface DataSourceTableSelectorProps {
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
   viewType: ContentNodesViewType;
-  isRootSelectable: boolean;
   space: SpaceType;
   updateBreadcrumbs: (label: string, onClick: () => void) => void;
-  traversedNode: DataSourceViewContentNode | undefined;
   setTraversedNode: Dispatch<
     SetStateAction<DataSourceViewContentNode | undefined>
   >;
+  searchQuery: string;
 }
 
 const PAGE_SIZE = 25;
 
-export function DataSourceTableSelector({
+export function DataSourceSearchTable({
   owner,
   dataSourceViews,
   viewType,
   space,
   updateBreadcrumbs,
-  traversedNode,
   setTraversedNode,
-}: DataSourceTableSelectorProps) {
+  searchQuery,
+}: DataSourceSearchTableProps) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [searchResults, setSearchResults] = useState<TableRowData[]>([]);
 
@@ -106,19 +102,9 @@ export function DataSourceTableSelector({
     tablePagination,
   } = useCursorPaginationForDataTable(PAGE_SIZE);
 
-  const {
-    inputValue: searchSpaceText,
-    debouncedValue: debouncedSearch,
-    isDebouncing,
-    setValue: setSearchSpaceText,
-  } = useDebounce("", {
-    delay: 300,
-    minLength: MIN_SEARCH_QUERY_SIZE,
-  });
-
   useEffect(() => {
     resetPagination();
-  }, [debouncedSearch, resetPagination]);
+  }, [searchQuery, resetPagination]);
 
   const {
     searchResultNodes,
@@ -126,19 +112,16 @@ export function DataSourceTableSelector({
     isSearchValidating,
     nextPageCursor,
   } = useSpaceSearch({
-    dataSourceViews: traversedNode
-      ? [traversedNode.dataSourceView]
-      : dataSourceViews,
+    dataSourceViews: dataSourceViews.filter((dsv) => dsv.spaceId === space.sId),
     includeDataSources: true,
     owner,
-    search: debouncedSearch,
+    search: searchQuery,
     viewType,
     space,
     pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
-    parentId: traversedNode ? traversedNode.internalId : undefined,
   });
 
-  const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
+  const isLoading = isSearchLoading || isSearchValidating;
 
   const handleLoadMore = useCallback(() => {
     if (nextPageCursor && !isSearchValidating) {
@@ -162,10 +145,10 @@ export function DataSourceTableSelector({
       searchResultNodes,
       (node: DataSourceViewContentNode) => {
         setTraversedNode(node);
-        setSearchSpaceText("");
         updateBreadcrumbs(node.title, () => setTraversedNode(node));
       }
     );
+
     if (tablePagination.pageIndex === 0) {
       setSearchResults(tableRows);
     } else if (searchResultNodes.length > 0) {
@@ -173,9 +156,9 @@ export function DataSourceTableSelector({
     }
   }, [
     searchResultNodes,
-    setSearchSpaceText,
     tablePagination.pageIndex,
     updateBreadcrumbs,
+    setTraversedNode,
   ]);
 
   const columns: ColumnDef<TableRowData>[] = useMemo(
@@ -257,24 +240,16 @@ export function DataSourceTableSelector({
   );
 
   return (
-    <div>
-      <SearchInput
-        name="search"
-        placeholder="Search (Name)"
-        value={searchSpaceText}
-        onChange={setSearchSpaceText}
-      />
-      <ScrollableDataTable
-        data={searchResults}
-        columns={columns}
-        onLoadMore={handleLoadMore}
-        isLoading={isLoading}
-        maxHeight="max-h-[600px]"
-        rowSelection={rowSelection}
-        setRowSelection={setRowSelection}
-        enableRowSelection={true}
-        getRowId={(row) => row.id}
-      />
-    </div>
+    <ScrollableDataTable
+      data={searchResults}
+      columns={columns}
+      onLoadMore={handleLoadMore}
+      isLoading={isLoading}
+      maxHeight="max-h-[600px]"
+      rowSelection={rowSelection}
+      setRowSelection={setRowSelection}
+      enableRowSelection={true}
+      getRowId={(row) => row.id}
+    />
   );
 }
