@@ -222,7 +222,7 @@ export function ActionRetrievalExhaustive({
               updateAction((previousAction) => ({
                 ...previousAction,
                 timeFrame: {
-                  value,
+                  value: e.target.value,
                   unit: timeFrame.unit,
                 },
               }));
