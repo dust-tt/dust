@@ -90,12 +90,5 @@ RemoteMCPServerModel.init(
   {
     sequelize: frontSequelize,
     modelName: "remote_mcp_server",
-    // hooks: {
-    //   beforeValidate: (server: RemoteMCPServerModel) => {
-    //     if (server.icon && !Object.keys(ActionIcons).includes(server.icon)) {
-    //       throw new Error(`Invalid icon type: ${server.icon}`);
-    //     }
-    //   },
-    // },
   }
 );
