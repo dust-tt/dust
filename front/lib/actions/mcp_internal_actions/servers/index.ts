@@ -7,6 +7,7 @@ import { default as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generator";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generator";
+import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
@@ -36,6 +37,8 @@ export function getInternalMCPServer(
       return generateFileServer();
     case "child_agent_debugger":
       return askAgentServer();
+    case "primitive_types_debugger":
+      return primitiveTypesDebuggerServer();
     default:
       assertNever(internalMCPServerName);
   }
