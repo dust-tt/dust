@@ -6,6 +6,7 @@ import * as React from "react";
 import { Button, Checkbox, ScrollArea } from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { CheckedState } from "@radix-ui/react-checkbox";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -136,7 +137,7 @@ interface DialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   permanentValidation?: {
     label: string;
     checked: boolean;
-    onChange: (event: React.FormEvent<HTMLButtonElement>) => void;
+    onChange: (event: CheckedState) => void;
   };
 }
 
@@ -154,7 +155,7 @@ const DialogFooter = ({
       <div className="s-flex s-flex-row s-items-center s-gap-2 s-px-5 s-pt-3">
         <Checkbox
           checked={permanentValidation.checked}
-          onChange={permanentValidation.onChange}
+          onCheckedChange={permanentValidation.onChange}
         />
         <label className="s-copy-sm s-text-foreground dark:s-text-foreground-night">
           <strong>{permanentValidation.label}</strong>

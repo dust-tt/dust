@@ -52,8 +52,10 @@ export const Basic: Story = {
           }}
           permanentValidation={{
             label: "Don't ask again",
-            checked: false,
-            onChange: () => {},
+            checked: true,
+            onChange: (check) => {
+              console.log(check);
+            },
           }}
         />
       </DialogContent>
@@ -100,7 +102,7 @@ export const ToolValidation: Story = {
           permanentValidation={{
             label: "Always allow",
             checked: false,
-            onChange: () => {},
+            onChange: () => { },
           }}
         />
       </DialogContent>
@@ -136,7 +138,7 @@ export const WithForm: Story = {
           permanentValidation={{
             label: "Don't ask again",
             checked: false,
-            onChange: () => {},
+            onChange: () => { },
           }}
         />
       </DialogContent>
@@ -170,7 +172,7 @@ export const AlertDialog: Story = {
           permanentValidation={{
             label: "Don't ask again",
             checked: false,
-            onChange: () => {},
+            onChange: () => { },
           }}
         />
       </DialogContent>
