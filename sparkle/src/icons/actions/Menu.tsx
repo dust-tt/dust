@@ -9,7 +9,10 @@ const SvgMenu = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="#111418" d="M3 5h18v2H3V5Zm0 6h18v2H3v-2Zm0 6h18v2H3v-2Z" />
+    <path
+      fill="currentColor"
+      d="M3 5h18v2H3V5Zm0 6h18v2H3v-2Zm0 6h18v2H3v-2Z"
+    />
   </svg>
 );
 export default SvgMenu;

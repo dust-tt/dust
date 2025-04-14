@@ -124,7 +124,9 @@ export function AttachmentCitation({
           </CitationTitle>
           {attachmentCitation.type === "node" && (
             <CitationDescription className="truncate text-ellipsis">
-              <span>{attachmentCitation.spaceName}</span>
+              <span>
+                {attachmentCitation.path || attachmentCitation.spaceName}
+              </span>
             </CitationDescription>
           )}
         </Citation>

@@ -27,11 +27,7 @@ export function insertNodes(
         ? targetPosition.pos
         : tr.doc.content.size;
 
-      chain()
-        .setMark("agentContent")
-        .insertContentAt(insertPos, params.content)
-        .unsetMark("agentContent")
-        .run();
+      chain().insertContentAt(insertPos, params.content).run();
 
       return true;
     })

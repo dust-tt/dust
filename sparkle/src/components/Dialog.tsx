@@ -1,9 +1,10 @@
+import { CheckedState } from "@radix-ui/react-checkbox";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { FocusScope } from "@radix-ui/react-focus-scope";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Button, ScrollArea } from "@sparkle/components";
+import { Button, Checkbox, Label, ScrollArea } from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -39,7 +40,8 @@ const sizeClasses: Record<DialogSizeType, string> = {
 
 const dialogVariants = cva(
   cn(
-    "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-grid s-w-full s-overflow-hidden s-rounded-2xl s-border s-translate-x-[-50%] s-translate-y-[-50%] s-border s-p-2 s-shadow-lg s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%] s-sm:rounded-lg",
+    "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-overflow-hidden s-translate-x-[-50%] s-translate-y-[-50%] s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%]",
+    "s-rounded-2xl s-grid s-w-full s-border s-border s-shadow-lg s-sm:rounded-lg",
     "s-bg-background dark:s-bg-background-night",
     "s-border-border dark:s-border-border-night"
   ),
@@ -99,14 +101,14 @@ const DialogHeader = ({
 }: NewDialogHeaderProps) => (
   <div
     className={cn(
-      "s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-p-5 s-text-left",
+      "s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-px-5 s-py-4 s-text-left",
       className
     )}
     {...props}
   >
     {children}
     <DialogClose asChild className="s-absolute s-right-3 s-top-3">
-      {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
+      {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="mini" />}
     </DialogClose>
   </div>
 );
@@ -118,7 +120,7 @@ const DialogContainer = ({
   <ScrollArea className="s-w-full s-flex-grow">
     <div
       className={cn(
-        "s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm",
+        "s-copy-base s-relative s-flex s-flex-col s-gap-2 s-px-5 s-py-4 s-text-left",
         "s-text-foreground dark:s-text-foreground-night"
       )}
     >
@@ -132,6 +134,12 @@ interface DialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   leftButtonProps?: React.ComponentProps<typeof Button>;
   rightButtonProps?: React.ComponentProps<typeof Button>;
   dialogCloseClassName?: string;
+  permanentValidation?: {
+    label: string;
+    checked: boolean;
+    onChange: (event: CheckedState) => void;
+    props?: React.ComponentProps<typeof Checkbox>;
+  };
 }
 
 const DialogFooter = ({
@@ -140,49 +148,71 @@ const DialogFooter = ({
   leftButtonProps,
   rightButtonProps,
   dialogCloseClassName,
+  permanentValidation,
   ...props
 }: DialogFooterProps) => (
-  <div
-    className={cn(
-      "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-py-3",
-      className
+  <div className="s-flex s-flex-col s-gap-0">
+    {permanentValidation && (
+      <div className="s-flex s-flex-row s-items-center s-gap-2 s-px-5 s-pt-3">
+        <Checkbox
+          checked={permanentValidation.checked}
+          onCheckedChange={permanentValidation.onChange}
+          {...permanentValidation.props}
+        />
+        <Label className="s-copy-sm s-text-foreground dark:s-text-foreground-night">
+          <span>{permanentValidation.label}</span>
+        </Label>
+      </div>
     )}
-    {...props}
-  >
-    {leftButtonProps &&
-      (leftButtonProps.disabled ? (
-        <Button {...leftButtonProps} />
-      ) : (
-        <DialogClose className={dialogCloseClassName} asChild>
+    <div
+      className={cn(
+        "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-py-3",
+        className
+      )}
+      {...props}
+    >
+      {leftButtonProps &&
+        (leftButtonProps.disabled ? (
           <Button {...leftButtonProps} />
-        </DialogClose>
-      ))}
-    {rightButtonProps &&
-      (rightButtonProps.disabled ? (
-        <Button {...rightButtonProps} />
-      ) : (
-        <DialogClose className={dialogCloseClassName} asChild>
+        ) : (
+          <DialogClose className={dialogCloseClassName} asChild>
+            <Button {...leftButtonProps} />
+          </DialogClose>
+        ))}
+      {rightButtonProps &&
+        (rightButtonProps.disabled ? (
           <Button {...rightButtonProps} />
-        </DialogClose>
-      ))}
-    {children}
+        ) : (
+          <DialogClose className={dialogCloseClassName} asChild>
+            <Button {...rightButtonProps} />
+          </DialogClose>
+        ))}
+      {children}
+    </div>
   </div>
 );
 DialogFooter.displayName = "DialogFooter";
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
-    ref={ref}
-    className={cn(
-      "s-heading-lg",
-      "s-text-foreground dark:s-text-foreground-night",
-      className
-    )}
-    {...props}
-  />
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title> & {
+    visual?: React.ReactNode;
+  }
+>(({ className, visual, children, ...props }, ref) => (
+  <div className="s-flex s-flex-row s-items-center s-gap-2 s-pt-1">
+    {visual}
+    <DialogPrimitive.Title
+      ref={ref}
+      className={cn(
+        "s-heading-lg",
+        "s-text-foreground dark:s-text-foreground-night",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </DialogPrimitive.Title>
+  </div>
 ));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
@@ -193,7 +223,7 @@ const DialogDescription = React.forwardRef<
   <DialogPrimitive.Description
     ref={ref}
     className={cn(
-      "s-text-sm",
+      "s-copy-sm",
       "s-text-muted-foreground dark:s-text-muted-foreground-night",
       className
     )}

@@ -26,13 +26,14 @@ export function registerReplaceNodeTool(server: McpServer, editor: Editor) {
     - You need to completely rewrite a node
     - The node's content needs to be restructured entirely
 
-    DO NOT use this tool to delete a node - use the delete_node tool instead.`,
+    DO NOT use this tool to delete a node - use the delete_node tool instead.
+    DO NOT use this tool to insert a node - use the insert_node tool instead.`,
     { params: ReplaceNodeSchema },
     async ({ params }) => {
       editor
         .chain()
         .focus()
-        .command(({ tr, chain }) => {
+        .command(({ tr, commands }) => {
           // Find the node.
           const doc = tr.doc;
           let found = false;
@@ -40,12 +41,10 @@ export function registerReplaceNodeTool(server: McpServer, editor: Editor) {
           doc.descendants((node, pos) => {
             if (node.attrs["data-id"] === params.nodeId) {
               // Replace content using insertContentAt.
-              chain()
-                .setMark("agentContent")
-                .insertContentAt(
-                  { from: pos, to: pos + node.nodeSize },
-                  params.content
-                );
+              commands.insertContentAt(
+                { from: pos, to: pos + node.nodeSize },
+                params.content
+              );
               found = true;
 
               return false;

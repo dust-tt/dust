@@ -1,14 +1,17 @@
 import {
+  ActionBookOpenIcon,
+  ActionIcons,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  ChevronDownIcon,
   EyeIcon,
   EyeSlashIcon,
+  IconPicker,
   Input,
   Label,
   Page,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   Separator,
   useSendNotification,
   XMarkIcon,
@@ -19,12 +22,6 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import {
-  ALLOWED_ICONS,
-  DEFAULT_MCP_SERVER_ICON,
-  isAllowedIconType,
-  MCP_SERVER_ICONS,
-} from "@app/lib/actions/mcp_icons";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useMCPServers,
@@ -37,36 +34,30 @@ import { asDisplayName } from "@app/types";
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
   mcpServer: RemoteMCPServerType;
-  onSave: () => void;
 }
 
 const MCPFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
   description: z.string().min(1, "Description is required."),
-  icon: z.enum(ALLOWED_ICONS, { required_error: "Icon is required." }),
+  icon: z.string({ required_error: "Icon is required." }),
 });
 
 export type MCPFormType = z.infer<typeof MCPFormSchema>;
 
-export function RemoteMCPForm({
-  owner,
-  mcpServer,
-  onSave,
-}: RemoteMCPFormProps) {
+export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const sendNotification = useSendNotification();
 
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isSecretVisible, setIsSecretVisible] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
     defaultValues: {
       name: asDisplayName(mcpServer.name),
       description: mcpServer.description,
-      icon: isAllowedIconType(mcpServer.visual)
-        ? mcpServer.visual
-        : DEFAULT_MCP_SERVER_ICON,
+      icon: mcpServer.visual,
     },
   });
 
@@ -158,6 +149,10 @@ export function RemoteMCPForm({
     setIsSecretVisible(!isSecretVisible);
   };
 
+  const closePopover = () => {
+    setIsPopoverOpen(false);
+  };
+
   return (
     <div className="space-y-6">
       {syncError && (
@@ -225,30 +220,40 @@ export function RemoteMCPForm({
             name="icon"
             render={({ field }) => {
               const currentIcon = field.value;
-              const Icon = MCP_SERVER_ICONS[currentIcon];
+              const CurrentIconComponent =
+                ActionIcons[currentIcon as keyof typeof ActionIcons] ||
+                ActionBookOpenIcon;
+
               return (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                <PopoverRoot open={isPopoverOpen}>
+                  <PopoverTrigger asChild>
                     <Button
-                      className="capitalize"
                       variant="outline"
-                      label={currentIcon}
-                      icon={Icon}
-                      isSelect
+                      size="sm"
+                      icon={() => (
+                        <>
+                          <CurrentIconComponent />
+                          <ChevronDownIcon />
+                        </>
+                      )}
+                      onClick={() => setIsPopoverOpen(true)}
                     />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {Object.entries(MCP_SERVER_ICONS).map(([value, Icon]) => (
-                      <DropdownMenuItem
-                        key={value}
-                        className="capitalize"
-                        label={value}
-                        icon={Icon}
-                        onClick={() => field.onChange(value)}
-                      />
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-fit py-0"
+                    onInteractOutside={closePopover}
+                    onEscapeKeyDown={closePopover}
+                  >
+                    <IconPicker
+                      icons={ActionIcons}
+                      selectedIcon={currentIcon}
+                      onIconSelect={(iconName: string) => {
+                        field.onChange(iconName);
+                        closePopover();
+                      }}
+                    />
+                  </PopoverContent>
+                </PopoverRoot>
               );
             }}
           />
@@ -278,20 +283,28 @@ export function RemoteMCPForm({
           )}
         />
       </div>
+      {form.formState.isDirty && (
+        <div className="flex flex-row items-end justify-end gap-2">
+          <Button
+            variant="outline"
+            label={"Cancel"}
+            disabled={form.formState.isSubmitting}
+            onClick={() => {
+              form.reset();
+            }}
+          />
 
-      <div className="flex flex-col items-end gap-2">
-        <Button
-          label={form.formState.isSubmitting ? "Saving..." : "Save"}
-          disabled={!form.formState.isDirty || form.formState.isSubmitting}
-          onClick={async (event: Event) => {
-            event.preventDefault();
-            void form.handleSubmit(onSubmit)();
-            if (form.formState.isValid) {
-              onSave();
-            }
-          }}
-        />
-      </div>
+          <Button
+            variant="highlight"
+            label={form.formState.isSubmitting ? "Saving..." : "Save"}
+            disabled={form.formState.isSubmitting}
+            onClick={async (event: Event) => {
+              event.preventDefault();
+              void form.handleSubmit(onSubmit)();
+            }}
+          />
+        </div>
+      )}
 
       <Separator className="my-4" />
 

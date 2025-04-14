@@ -246,7 +246,27 @@ function getPrefixedToolName(
   config: MCPServerConfigurationType,
   originalName: string
 ): string {
-  return slugify(config.name) + "___" + slugify(originalName);
+  const slugifiedConfigName = slugify(config.name);
+  const slugifiedOriginalName = slugify(originalName);
+  const separator = "___";
+  const MAX_SIZE = 64;
+
+  const prefixedName = `${slugifiedConfigName}${separator}${slugifiedOriginalName}`;
+
+  // If the prefixed name is too long, we try to shorten the config name
+  if (prefixedName.length > MAX_SIZE) {
+    const maxLength =
+      MAX_SIZE - separator.length - slugifiedOriginalName.length;
+    // with a minimum of 4 characters.
+    if (maxLength > 4) {
+      return `${slugifiedConfigName.slice(0, maxLength)}${separator}${slugifiedOriginalName}`;
+    } else {
+      // Otherwise, we just use the original name.
+      return slugifiedOriginalName;
+    }
+  }
+
+  return prefixedName;
 }
 
 /**

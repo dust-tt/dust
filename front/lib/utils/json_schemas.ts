@@ -50,13 +50,6 @@ export function findMatchingSchemaKeys(
     return matchingKeys;
   }
 
-  // Direct schema equality check
-  if (schemasAreEqual(inputSchema, targetSubSchema)) {
-    // For the root schema, we use an empty string as the key
-    matchingKeys.push("");
-    return matchingKeys;
-  }
-
   // Check properties in object schemas
   if (inputSchema.properties) {
     for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
@@ -64,6 +57,15 @@ export function findMatchingSchemaKeys(
         // Check if this property's schema matches the target
         if (schemasAreEqual(propSchema, targetSubSchema)) {
           matchingKeys.push(key);
+        }
+
+        // Following references within the main schema.
+        // zodToJsonSchema generates references if the same subSchema is repeated.
+        if (propSchema.$ref) {
+          const refSchema = followInternalRef(inputSchema, propSchema.$ref);
+          if (refSchema && schemasAreEqual(refSchema, targetSubSchema)) {
+            matchingKeys.push(key);
+          }
         }
 
         // Recursively check this property's schema
@@ -151,6 +153,22 @@ export function findMatchingSchemaKeys(
 }
 
 /**
+ * Finds the schema for a property given a $ref to it.
+ */
+export function followInternalRef(
+  schema: JSONSchema,
+  ref: string
+): JSONSchema | null {
+  return findSchemaAtPath(
+    schema,
+    ref
+      .replace("#/", "")
+      .split("/")
+      .filter((key) => key != "properties")
+  );
+}
+
+/**
  * Finds the schema for a property at a specific path in a JSON schema.
  * Handles both object properties and array items.
  */
@@ -158,7 +176,7 @@ export function findSchemaAtPath(
   schema: JSONSchema,
   path: string[]
 ): JSONSchema | null {
-  if (!path.length) {
+  if (path.length === 0) {
     return schema;
   }
 

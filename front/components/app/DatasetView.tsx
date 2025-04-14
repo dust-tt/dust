@@ -607,26 +607,33 @@ export default function DatasetView({
                           />
                         </div>
                         {!readOnly ? (
-                          <>
+                          <div className="flex space-x-1 px-1">
                             {datasetKeys.length > 1 ? (
-                              <div className="flex w-4 flex-initial">
-                                <XCircleIcon
-                                  className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
+                              <>
+                                <Button
+                                  size="mini"
+                                  variant="ghost"
+                                  className="text-muted-foreground"
+                                  icon={XCircleIcon}
+                                  tooltip="Delete property"
                                   onClick={() => {
                                     handleDeleteKey(j);
                                   }}
                                 />
-                              </div>
+
+                                <Button
+                                  size="mini"
+                                  variant="ghost"
+                                  className="text-muted-foreground"
+                                  icon={PlusCircleIcon}
+                                  onClick={() => {
+                                    handleNewKey(j);
+                                  }}
+                                  tooltip="Add property after"
+                                />
+                              </>
                             ) : null}
-                            <div className="mr-2 flex w-4 flex-initial">
-                              <PlusCircleIcon
-                                className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
-                                onClick={() => {
-                                  handleNewKey(j);
-                                }}
-                              />
-                            </div>
-                          </>
+                          </div>
                         ) : null}
                       </div>
                     </div>
@@ -636,7 +643,7 @@ export default function DatasetView({
                           {datasetTypes[j] ? datasetTypes[j] : "string"}
                         </span>
                       ) : (
-                        <div className="inline-flex" role="group">
+                        <div className="inline-flex px-1" role="group">
                           {DATASET_DATA_TYPES.map((type) => (
                             <Button
                               key={type}
@@ -780,25 +787,25 @@ export default function DatasetView({
                       </div>
                     ))}
                     {!readOnly ? (
-                      <div className="flex items-center justify-end text-xs">
+                      <div className="flex items-center justify-end gap-1 p-1 text-xs">
                         {datasetData.length > 1 ? (
-                          <div className="flex-initial">
-                            <XCircleIcon
-                              className="h-5 w-5 cursor-pointer text-gray-300 hover:text-red-500 dark:text-gray-300-night"
-                              onClick={() => {
-                                handleDeleteEntry(i);
-                              }}
-                            />
-                          </div>
-                        ) : null}
-                        <div className="flex-initial">
-                          <PlusCircleIcon
-                            className="h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500 dark:text-gray-300-night"
+                          <Button
+                            icon={XCircleIcon}
+                            size="mini"
+                            variant="ghost"
                             onClick={() => {
-                              handleNewEntry(i);
+                              handleDeleteEntry(i);
                             }}
                           />
-                        </div>
+                        ) : null}
+                        <Button
+                          icon={PlusCircleIcon}
+                          size="mini"
+                          variant="ghost"
+                          onClick={() => {
+                            handleNewEntry(i);
+                          }}
+                        />
                       </div>
                     ) : null}
                   </li>
