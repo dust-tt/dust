@@ -217,6 +217,7 @@ export function MCPAction({
 
   return (
     <>
+      {/* Additional modals for selecting data sources */}
       {requirements.requiresDataSourceConfiguration && (
         <AssistantBuilderDataSourceModal
           isOpen={showDataSourcesModal}
@@ -245,6 +246,7 @@ export function MCPAction({
           viewType="table"
         />
       )}
+      {/* Server selection */}
       {isDefaultMCPServer ? (
         <div className="text-sm text-foreground dark:text-foreground-night">
           {selectedMCPServerView?.server.description}
@@ -258,6 +260,7 @@ export function MCPAction({
           handleServerSelection={handleServerSelection}
         />
       )}
+      {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
           owner={owner}
