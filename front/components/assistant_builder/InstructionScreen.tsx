@@ -30,6 +30,10 @@ import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
+import {
+  useAssistantBuilderActions,
+  useBuilderState,
+} from "@app/lib/stores/assistant-builder-provider";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
@@ -41,7 +45,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
-import { Err, isSupportingResponseFormat, md5, Ok } from "@app/types";
+import { Err, md5, Ok } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -59,9 +63,7 @@ const useInstructionEditorService = (editor: Editor | null) => {
 
 export function InstructionScreen({
   owner,
-  builderState,
   setBuilderState,
-  setEdited,
   resetAt,
   isUsingTemplate,
   instructionsError,
@@ -75,7 +77,6 @@ export function InstructionScreen({
   setBuilderState: (
     statefn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
-  setEdited: (edited: boolean) => void;
   resetAt: number | null;
   isUsingTemplate: boolean;
   instructionsError: string | null;
@@ -84,6 +85,10 @@ export function InstructionScreen({
   agentConfigurationId: string | null;
   models: ModelConfigurationType[];
 }) {
+  const builderState = useBuilderState();
+  const { updateGenerationSettings, updateInstruction } =
+    useAssistantBuilderActions();
+
   const editor = useEditor({
     extensions: [
       Document,
@@ -102,11 +107,7 @@ export function InstructionScreen({
       if (!doTypewriterEffect) {
         const json = editor.getJSON();
         const plainText = plainTextFromTipTapContent(json);
-        setEdited(true);
-        setBuilderState((state) => ({
-          ...state,
-          instructions: plainText,
-        }));
+        updateInstruction(plainText);
       }
     },
   });
@@ -285,21 +286,10 @@ export function InstructionScreen({
           )}
         <div className="mt-2 self-end">
           <AdvancedSettings
-            generationSettings={builderState.generationSettings}
             setGenerationSettings={(generationSettings) => {
-              setEdited(true);
-              setBuilderState((state) => ({
-                ...state,
-                generationSettings: {
-                  ...generationSettings,
-                  responseFormat: isSupportingResponseFormat(
-                    generationSettings.modelSettings.modelId
-                  )
-                    ? generationSettings.responseFormat
-                    : undefined,
-                },
-              }));
+              updateGenerationSettings(generationSettings);
             }}
+            generationSettings={builderState.generationSettings}
             models={models}
           />
         </div>

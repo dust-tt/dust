@@ -29,6 +29,7 @@ import type {
   TemplateAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
+import { AssistantBuilderStoreProvider } from "@app/lib/stores/assistant-builder-provider";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;
@@ -161,54 +162,57 @@ export default function CreateAssistant({
     return null;
   }
 
+  const initialBuilderState = agentConfiguration
+    ? {
+        actions,
+        scope:
+          agentConfiguration.scope !== "global"
+            ? agentConfiguration.scope
+            : "private",
+        handle: `${agentConfiguration.name}${
+          "isTemplate" in agentConfiguration ? "" : "_Copy"
+        }`,
+        description: agentConfiguration.description,
+        instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
+        avatarUrl:
+          "pictureUrl" in agentConfiguration
+            ? agentConfiguration.pictureUrl
+            : null,
+        generationSettings: {
+          modelSettings: {
+            providerId: agentConfiguration.model.providerId,
+            modelId: agentConfiguration.model.modelId,
+          },
+          temperature: agentConfiguration.model.temperature,
+          responseFormat: agentConfiguration.model.responseFormat,
+        },
+        maxStepsPerRun: agentConfiguration.maxStepsPerRun ?? null,
+        visualizationEnabled: agentConfiguration.visualizationEnabled,
+        templateId: templateId,
+      }
+    : null;
+
   return (
-    <AssistantBuilderProvider
-      spaces={spaces}
-      dustApps={dustApps}
-      dataSourceViews={dataSourceViews}
-      mcpServerViews={mcpServerViews}
+    <AssistantBuilderStoreProvider
+      initialState={{
+        initialBuilderState,
+        plan,
+        flow,
+        agentConfigurationId: null,
+      }}
     >
-      <AssistantBuilder
-        owner={owner}
-        subscription={subscription}
-        plan={plan}
-        flow={flow}
-        initialBuilderState={
-          agentConfiguration
-            ? {
-                actions,
-                scope:
-                  agentConfiguration.scope !== "global"
-                    ? agentConfiguration.scope
-                    : "private",
-                handle: `${agentConfiguration.name}${
-                  "isTemplate" in agentConfiguration ? "" : "_Copy"
-                }`,
-                description: agentConfiguration.description,
-                instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
-                avatarUrl:
-                  "pictureUrl" in agentConfiguration
-                    ? agentConfiguration.pictureUrl
-                    : null,
-                generationSettings: {
-                  modelSettings: {
-                    providerId: agentConfiguration.model.providerId,
-                    modelId: agentConfiguration.model.modelId,
-                  },
-                  temperature: agentConfiguration.model.temperature,
-                  responseFormat: agentConfiguration.model.responseFormat,
-                },
-                maxStepsPerRun: agentConfiguration.maxStepsPerRun ?? null,
-                visualizationEnabled: agentConfiguration.visualizationEnabled,
-                templateId: templateId,
-              }
-            : null
-        }
-        agentConfigurationId={null}
-        defaultIsEdited={assistantTemplate !== null}
-        baseUrl={baseUrl}
-        defaultTemplate={assistantTemplate}
-      />
-    </AssistantBuilderProvider>
+      <AssistantBuilderProvider
+        spaces={spaces}
+        dustApps={dustApps}
+        dataSourceViews={dataSourceViews}
+        mcpServerViews={mcpServerViews}
+      >
+        <AssistantBuilder
+          owner={owner}
+          subscription={subscription}
+          baseUrl={baseUrl}
+        />
+      </AssistantBuilderProvider>
+    </AssistantBuilderStoreProvider>
   );
 }

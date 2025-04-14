@@ -418,14 +418,8 @@ export const BUILDER_FLOWS = [
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export type AssistantBuilderProps = {
-  agentConfigurationId: string | null;
   baseUrl: string;
-  defaultIsEdited?: boolean;
-  defaultTemplate: FetchAssistantTemplateResponse | null;
-  flow: BuilderFlow;
-  initialBuilderState: AssistantBuilderInitialState | null;
   owner: WorkspaceType;
-  plan: PlanType;
   subscription: SubscriptionType;
 };
 

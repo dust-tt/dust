@@ -357,9 +357,6 @@ export const TrackerBuilder = ({
                   providerId: g.modelSettings.providerId,
                   temperature: g.temperature,
                 }));
-                if (!edited) {
-                  setEdited(true);
-                }
               }}
               models={[]}
             />

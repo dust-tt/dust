@@ -68,6 +68,17 @@ import {
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import {
+  useAgentConfigurationId,
+  useAssistantBuilderActions,
+  useAssistantBuilderStore,
+  useBuilderState,
+  useDefaultScope,
+  useDefaultTemplate,
+  useFlow,
+  useIsEdited,
+  useIsSavingOrDeleting,
+} from "@app/lib/stores/assistant-builder-provider";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -76,31 +87,41 @@ function isValidTab(tab: string): tab is BuilderScreen {
 export default function AssistantBuilder({
   owner,
   subscription,
-  plan,
-  initialBuilderState,
-  agentConfigurationId,
-  flow,
-  defaultIsEdited,
   baseUrl,
-  defaultTemplate,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
+
+  const builderState = useBuilderState();
+  const agentConfigurationId = useAgentConfigurationId();
+  const defaultTemplate = useDefaultTemplate();
+  const edited = useIsEdited();
+  const flow = useFlow();
+  const isSavingOrDeleting = useIsSavingOrDeleting();
+  const screen = useAssistantBuilderStore((state) => state.screen);
+  const instructionsError = useAssistantBuilderStore(
+    (state) => state.instructionsError
+  );
+
+  const {
+    setScreen,
+    setBuilderState,
+    setEdited,
+    setIsSavingOrDeleting,
+    updateActions,
+    setInstructionsError,
+    updateScope,
+  } = useAssistantBuilderActions();
 
   const { killSwitches } = useKillSwitches();
   const { models, reasoningModels } = useModels({ owner });
 
   const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
-  const defaultScope =
-    flow === "workspace_assistants" ? "workspace" : "private";
   const [currentTab, setCurrentTab] = useHashParam(
     "selectedTab",
     "instructions"
   );
-  const [screen, setScreen] = useState<BuilderScreen>("instructions");
-  const [edited, setEdited] = useState(defaultIsEdited ?? false);
-  const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
     useState(false);
 
@@ -108,44 +129,8 @@ export default function AssistantBuilder({
   const [assistantHandleError, setAssistantHandleError] = useState<
     string | null
   >(null);
-  const [instructionsError, setInstructionsError] = useState<string | null>(
-    null
-  );
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [hasAnyActionsError, setHasAnyActionsError] = useState<boolean>(false);
-
-  const [builderState, setBuilderState] = useState<AssistantBuilderState>(
-    initialBuilderState
-      ? {
-          handle: initialBuilderState.handle,
-          description: initialBuilderState.description,
-          scope: initialBuilderState.scope,
-          instructions: initialBuilderState.instructions,
-          avatarUrl: initialBuilderState.avatarUrl,
-          generationSettings: initialBuilderState.generationSettings ?? {
-            ...getDefaultAssistantState().generationSettings,
-          },
-          actions: initialBuilderState.actions.map((action) => ({
-            id: uniqueId(),
-            ...action,
-          })),
-          maxStepsPerRun:
-            initialBuilderState.maxStepsPerRun ??
-            getDefaultAssistantState().maxStepsPerRun,
-          visualizationEnabled: initialBuilderState.visualizationEnabled,
-          templateId: initialBuilderState.templateId,
-        }
-      : {
-          ...getDefaultAssistantState(),
-          scope: defaultScope,
-          generationSettings: {
-            ...getDefaultAssistantState().generationSettings,
-            modelSettings: !isUpgraded(plan)
-              ? GPT_4O_MINI_MODEL_CONFIG
-              : CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-          },
-        }
-  );
 
   const [pendingAction, setPendingAction] =
     useState<AssistantBuilderPendingAction>({
@@ -236,7 +221,8 @@ export default function AssistantBuilder({
     const { handleErrorMessage } = await validateHandle({
       owner,
       handle: builderState.handle,
-      initialHandle: initialBuilderState?.handle,
+      initialHandle: undefined,
+      // initialHandle: initialBuilderState?.handle,
       checkUsernameTimeout,
     });
     setAssistantHandleError(handleErrorMessage);
@@ -270,7 +256,12 @@ export default function AssistantBuilder({
     const anyActionError = builderState.actions.some(hasActionError);
 
     setHasAnyActionsError(anyActionError);
-  }, [builderState, owner, initialBuilderState?.handle]);
+  }, [
+    builderState,
+    owner,
+    setInstructionsError,
+    //  initialBuilderState?.handle
+  ]);
 
   useEffect(() => {
     if (edited) {
@@ -303,12 +294,7 @@ export default function AssistantBuilder({
         }
 
         setEdited(true);
-        setBuilderState((state) => {
-          return {
-            ...state,
-            actions: [...state.actions, p.action],
-          };
-        });
+        updateActions([...builderState.actions, p.action]);
       }
     },
     [builderState, setBuilderState, setEdited]
@@ -429,20 +415,11 @@ export default function AssistantBuilder({
                     <div className="flex w-full items-center justify-end">
                       <SharingButton
                         agentConfigurationId={agentConfigurationId}
-                        initialScope={
-                          initialBuilderState?.scope ?? defaultScope
-                        }
                         newScope={builderState.scope}
                         owner={owner}
                         showSlackIntegration={showSlackIntegration}
                         slackChannelSelected={selectedSlackChannels || []}
                         slackDataSource={slackDataSource}
-                        setNewScope={(
-                          scope: Exclude<AgentConfigurationScope, "global">
-                        ) => {
-                          setEdited(scope !== initialBuilderState?.scope);
-                          setBuilderState((state) => ({ ...state, scope }));
-                        }}
                         baseUrl={baseUrl}
                         setNewLinkedSlackChannels={(channels) => {
                           setSelectedSlackChannels(channels);
@@ -461,7 +438,6 @@ export default function AssistantBuilder({
                         owner={owner}
                         builderState={builderState}
                         setBuilderState={setBuilderState}
-                        setEdited={setEdited}
                         resetAt={instructionsResetAt}
                         isUsingTemplate={template !== null}
                         instructionsError={instructionsError}

@@ -317,10 +317,8 @@ export function AssistantDetails({
             <SharingDropdown
               owner={owner}
               agentConfiguration={agentConfiguration}
-              initialScope={agentConfiguration.scope}
               newScope={agentConfiguration.scope}
               disabled={isUpdatingScope}
-              setNewScope={(scope) => updateScope(scope)}
               origin="modal"
             />
           )}

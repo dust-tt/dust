@@ -38,6 +38,10 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
+import {
+  useAssistantBuilderActions,
+  useAssistantBuilderStore,
+} from "@app/lib/stores/assistant-builder-provider";
 
 type ConfirmationModalDataType = {
   title: string;
@@ -113,11 +117,9 @@ type NonGlobalScope = Exclude<AgentConfigurationScope, "global">;
 interface SharingButtonProps {
   agentConfigurationId: string | null;
   baseUrl: string;
-  initialScope: NonGlobalScope;
   newScope: NonGlobalScope;
   owner: WorkspaceType;
   setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
-  setNewScope: (scope: NonGlobalScope) => void;
   showSlackIntegration: boolean;
   slackChannelSelected: SlackChannel[];
   slackDataSource: DataSourceType | undefined;
@@ -126,11 +128,9 @@ interface SharingButtonProps {
 export function SharingButton({
   agentConfigurationId,
   baseUrl,
-  initialScope,
   newScope,
   owner,
   setNewLinkedSlackChannels,
-  setNewScope,
   showSlackIntegration,
   slackChannelSelected,
   slackDataSource,
@@ -194,9 +194,7 @@ export function SharingButton({
               <SharingDropdown
                 owner={owner}
                 agentConfiguration={agentConfiguration}
-                initialScope={initialScope}
                 newScope={newScope}
-                setNewScope={setNewScope}
                 origin="page"
               />
               <div className="text-sm text-muted-foreground">
@@ -302,9 +300,7 @@ interface SharingDropdownProps {
   owner: LightWorkspaceType;
   agentConfiguration: AgentConfigurationType | null;
   disabled?: boolean;
-  initialScope: AgentConfigurationScope;
   newScope: AgentConfigurationScope;
-  setNewScope: (scope: NonGlobalScope) => void;
   origin: "page" | "modal";
 }
 
@@ -315,11 +311,11 @@ export function SharingDropdown({
   owner,
   agentConfiguration,
   disabled,
-  initialScope,
   newScope,
-  setNewScope,
   origin,
 }: SharingDropdownProps) {
+  const { updateScope } = useAssistantBuilderActions();
+  const initialScope = useAssistantBuilderStore((state) => state.initialScope);
   const [requestNewScope, setModalNewScope] = useState<NonGlobalScope | null>(
     null
   );
@@ -381,7 +377,7 @@ export function SharingDropdown({
           usageText={confirmationModalData.showUsage ? usageText : undefined}
           onClose={() => setModalNewScope(null)}
           setSharingScope={() =>
-            requestNewScope && setNewScope(requestNewScope)
+            requestNewScope && updateScope(requestNewScope)
           }
         />
       )}
@@ -420,7 +416,7 @@ export function SharingDropdown({
                     entryScope === initialScope;
 
                   if (shouldSkipModal) {
-                    setNewScope(entryScope as NonGlobalScope);
+                    updateScope(entryScope as NonGlobalScope);
                     return;
                   }
 
