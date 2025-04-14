@@ -80,7 +80,7 @@ export function ChildAgentConfigurationSection({
       {selectedAgent ? (
         <Card size="sm" className="w-full">
           <div className="flex w-full p-3">
-            <div className="flex w-full flex-grow flex-col gap-2">
+            <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
               <div className="flex items-center gap-2">
                 <Avatar
                   size="sm"
@@ -89,11 +89,11 @@ export function ChildAgentConfigurationSection({
                 />
                 <div className="text-md font-medium">{selectedAgent.name}</div>
               </div>
-              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
                 {selectedAgent.description || "No description available"}
               </div>
             </div>
-            <div className="ml-4 flex items-center">
+            <div className="ml-4 flex-shrink-0 self-start">
               <AssistantPicker
                 owner={owner}
                 assistants={agentConfigurations.filter(
