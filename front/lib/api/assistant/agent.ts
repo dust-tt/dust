@@ -710,36 +710,27 @@ async function* runMultiActionsAgent(
   yield* contentParser.flushTokens();
 
   if (!output.actions.length) {
-    if (typeof output.generation === "string" && contentParser.getContent()) {
-      yield {
-        type: "agent_message_content",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        content: rawContent,
-        processedContent: contentParser.getContent() ?? "",
-      } satisfies AgentContentEvent;
-      yield {
-        type: "generation_success",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        text: contentParser.getContent() ?? "",
-        runId: await dustRunId,
-        chainOfThought: contentParser.getChainOfThought() ?? "",
-      } satisfies GenerationSuccessEvent;
-    } else {
-      yield {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "no_action_or_generation_found",
-          message: "No action or generation found",
-        },
-      } satisfies AgentErrorEvent;
-    }
+    const processedContent = contentParser.getContent() ?? "";
+    const chainOfThought = contentParser.getChainOfThought() ?? "";
+
+    yield {
+      type: "agent_message_content",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      content: rawContent,
+      processedContent,
+    } satisfies AgentContentEvent;
+    yield {
+      type: "generation_success",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      text: processedContent,
+      runId: await dustRunId,
+      chainOfThought,
+    } satisfies GenerationSuccessEvent;
+
     return;
   }
 
