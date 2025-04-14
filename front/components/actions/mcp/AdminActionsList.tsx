@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { CreateMCPServerModal } from "@app/components/actions/mcp/CreateMCPServerModal";
+import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
 import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
@@ -208,7 +209,8 @@ export const AdminActionsList = ({
           }
         },
       };
-    });
+    })
+    .sort(mcpServersSortingFn);
   const columns = getTableColumns();
 
   const [filter, setFilter] = useState("");
@@ -257,7 +259,6 @@ export const AdminActionsList = ({
         </div>
       ) : (
         <DataTable
-          sorting={[{ id: "name", desc: false }]}
           data={rows}
           columns={columns}
           className="pb-4"

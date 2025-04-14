@@ -7,6 +7,7 @@ import {
   CardGrid,
   Chip,
   classNames,
+  CommandIcon,
   ContentMessage,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -88,7 +89,7 @@ import {
   getDefaultMCPServerActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
-import { getVisual, MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import { getVisual } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -1117,7 +1118,7 @@ function ActionEditor({
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
           <Page.Header
-            title={actionDisplayName(action)}
+            title={actionDisplayName(action) || "Select an action"}
             icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
           />
           {shouldDisplayAdvancedSettings && (
@@ -1365,7 +1366,7 @@ function AddAction({
               return (
                 <DropdownMenuItem
                   key={view.id}
-                  icon={MCP_SERVER_ICONS["command"]}
+                  icon={CommandIcon}
                   label={asDisplayName(view.server.name)}
                   description={view.server.description}
                   onClick={() =>

@@ -7,12 +7,15 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
-  DEFAULT_MCP_ACTION_ICON,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  DEFAULT_MCP_SERVER_ICON,
+  isAllowedIconType,
+} from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_local";
 import apiConfig from "@app/lib/api/config";
@@ -182,9 +185,11 @@ export function extractMetadataFromServerVersion(
           ? r.description
           : DEFAULT_MCP_ACTION_DESCRIPTION,
       visual:
-        "visual" in r && typeof r.visual === "string"
+        "visual" in r &&
+        typeof r.visual === "string" &&
+        isAllowedIconType(r.visual)
           ? r.visual
-          : DEFAULT_MCP_ACTION_ICON,
+          : DEFAULT_MCP_SERVER_ICON,
     };
   }
 
@@ -192,7 +197,7 @@ export function extractMetadataFromServerVersion(
     name: DEFAULT_MCP_ACTION_NAME,
     version: DEFAULT_MCP_ACTION_VERSION,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
-    visual: DEFAULT_MCP_ACTION_ICON,
+    visual: DEFAULT_MCP_SERVER_ICON,
     authorization: null,
   };
 }

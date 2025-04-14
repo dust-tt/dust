@@ -148,6 +148,7 @@ export class MCPActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly executionState:
     | "pending"
+    | "timeout"
     | "allowed_explicitly"
     | "allowed_implicitly"
     | "denied" = "pending";
@@ -307,6 +308,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       | "allowed_implicitly"
       | "allowed_explicitly"
       | "pending"
+      | "timeout"
       | "denied" = s;
 
     if (status === "pending") {
@@ -380,8 +382,17 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       }
     }
 
-    // The action timed-out, status was not updated
+    // The status was not updated by the event, or no event was received.
+    // In this case, we set the status to timeout.
     if (status === "pending") {
+      status = "timeout";
+    }
+
+    await action.update({
+      executionState: status,
+    });
+
+    if (status === "timeout") {
       localLogger.info("Action validation timed out");
       // Yield a tool success, with a message that the action timed out
       yield {
