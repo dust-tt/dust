@@ -607,7 +607,7 @@ export default function DatasetView({
                           />
                         </div>
                         {!readOnly ? (
-                          <div className="flex flex-initial space-x-1 pr-1">
+                          <div className="flex space-x-1 px-1">
                             {datasetKeys.length > 1 ? (
                               <Button
                                 size="mini"
