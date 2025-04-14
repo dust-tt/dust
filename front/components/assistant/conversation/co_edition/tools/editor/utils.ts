@@ -1,8 +1,7 @@
 import type { Editor } from "@tiptap/react";
 
 import { imageContentToNode } from "@app/components/assistant/conversation/co_edition/extensions/FileImageExtension";
-
-import type { CoEditionContent } from "./types";
+import type { CoEditionContent } from "@app/components/assistant/conversation/co_edition/tools/editor/types";
 
 // Simple utility function that works with all nodes.
 export function getDocumentPositions(doc: any) {

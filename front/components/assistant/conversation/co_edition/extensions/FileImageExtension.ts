@@ -27,7 +27,6 @@ export const FileImageExtension = Node.create<FileImageOptions>({
       alt: {
         default: "",
       },
-      // We can compute the src here using the options.
       src: {
         default: null,
         // This gets called when the node is rendered.

@@ -11,7 +11,7 @@ import {
 const InsertNodeSchema = z.object({
   position: z
     .number()
-    .describe("The position where to insert the new nodes (0-based index)"),
+    .describe("The position where to insert the new node (0-based index)"),
   node: CoEditionContentSchema,
 });
 

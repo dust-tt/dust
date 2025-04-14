@@ -12,7 +12,7 @@ export function makeLinkExtension() {
     },
     isAllowedUri: (url, ctx) => {
       try {
-        // construct URL.
+        // Construct URL.
         const parsedUrl = url.includes(":")
           ? new URL(url)
           : new URL(`${ctx.defaultProtocol}://${url}`);
@@ -39,7 +39,6 @@ export function makeLinkExtension() {
           return false;
         }
 
-        // All checks have passed.
         return true;
       } catch {
         return false;
