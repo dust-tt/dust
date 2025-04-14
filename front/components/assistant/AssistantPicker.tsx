@@ -17,14 +17,7 @@ import { useEffect, useState } from "react";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
-export function AssistantPicker({
-  owner,
-  assistants,
-  onItemClick,
-  pickerButton,
-  showFooterButtons = true,
-  size = "md",
-}: {
+interface AssistantPickerProps {
   owner: WorkspaceType;
   assistants: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
@@ -32,7 +25,16 @@ export function AssistantPicker({
   showMoreDetailsButtons?: boolean;
   showFooterButtons?: boolean;
   size?: "xs" | "sm" | "md";
-}) {
+}
+
+export function AssistantPicker({
+  owner,
+  assistants,
+  onItemClick,
+  pickerButton,
+  showFooterButtons = true,
+  size = "md",
+}: AssistantPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [searchedAssistants, setSearchedAssistants] = useState<
     LightAgentConfigurationType[]

@@ -3,7 +3,7 @@ import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
-import { ChildAgentSelector } from "@app/components/assistant_builder/actions/configuration/ChildAgentSelector";
+import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
@@ -283,7 +283,7 @@ export function MCPAction({
         />
       )}
       {requirements.requiresChildAgentConfiguration && (
-        <ChildAgentSelector
+        <ChildAgentConfigurationSection
           onAgentSelect={handleChildAgentConfigUpdate}
           selectedAgentId={actionConfiguration.childAgentId}
           owner={owner}
