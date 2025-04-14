@@ -59,6 +59,15 @@ export function findMatchingSchemaKeys(
           matchingKeys.push(key);
         }
 
+        // Following references within the main schema.
+        // zodToJsonSchema generates references if the same subSchema is repeated.
+        if (propSchema.$ref) {
+          const refSchema = followInternalRef(inputSchema, propSchema.$ref);
+          if (refSchema && schemasAreEqual(refSchema, targetSubSchema)) {
+            matchingKeys.push(key);
+          }
+        }
+
         // Recursively check this property's schema
         const nestedMatches = findMatchingSchemaKeys(
           propSchema,
@@ -141,6 +150,22 @@ export function findMatchingSchemaKeys(
   // since we entirely hide the configuration from the agent.
 
   return matchingKeys;
+}
+
+/**
+ * Finds the schema for a property given a $ref to it.
+ */
+export function followInternalRef(
+  schema: JSONSchema,
+  ref: string
+): JSONSchema | null {
+  return findSchemaAtPath(
+    schema,
+    ref
+      .replace("#/", "")
+      .split("/")
+      .filter((key) => key != "properties")
+  );
 }
 
 /**
