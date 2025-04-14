@@ -26,7 +26,7 @@ export type MCPServerType = {
   name: string;
   version: string;
   description: string;
-  visual: AllowedIconType | `https://${string}`;
+  visual: AllowedIconType | string;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   isDefault: boolean;
