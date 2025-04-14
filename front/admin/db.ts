@@ -136,7 +136,7 @@ async function main() {
   await GroupSpaceModel.sync({ alter: true });
 
   await ConversationModel.sync({ alter: true });
-  await ConversationParticipantModel.sync({ match: /xxx/, alter: true });
+  await ConversationParticipantModel.sync({ alter: true });
 
   await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });
