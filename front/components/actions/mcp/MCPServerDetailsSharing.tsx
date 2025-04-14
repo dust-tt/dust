@@ -75,7 +75,6 @@ export function MCPServerDetailsSharing({
     owner,
   });
   const mcpServerWithViews = mcpServers.find((s) => s.id === mcpServer.id);
-  console.log(mcpServerWithViews);
   const [loading, setLoading] = useState(false);
 
   const views =
