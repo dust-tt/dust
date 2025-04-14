@@ -10,7 +10,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "The agent will generate a SQL query from your request, execute it on the tables selected and use the results to generate an answer.",
-  visual: "table", // TODO(mcp): add a fancier icon here.
+  visual: "https://dust.tt/static/droidavatar/Droid_Sky_5.jpg",
   authorization: null,
 };
 
