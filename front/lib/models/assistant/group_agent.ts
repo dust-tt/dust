@@ -27,7 +27,7 @@ export class GroupAgentModel extends WorkspaceAwareModel<GroupAgentModel> {
 GroupAgentModel.init(
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       autoIncrement: true,
       primaryKey: true,
     },
@@ -42,11 +42,11 @@ GroupAgentModel.init(
       defaultValue: DataTypes.NOW,
     },
     groupId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     agentConfigurationId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     // workspaceId is automatically added by WorkspaceAwareModel.init
