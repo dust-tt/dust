@@ -22,6 +22,9 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - working-directory: sparkle
-        run: npm ci && npm run build && npm publish
+        run: npm whoami && npm access list packages
+
+      - working-directory: sparkle
+        run: npm ci && npm run build && npm publish --verbose
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
