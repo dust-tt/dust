@@ -119,7 +119,7 @@ describe("JSON Schema Utilities", () => {
                       uri: {
                         type: "string",
                         pattern:
-                          "^data_source_configuration://dust/w/(w+)/data_source_configurations/(w+)$",
+                          "^data_source_configuration:\\/\\/dust\\/w\\/(\\w+)\\/data_source_configurations\\/(\\w+)$",
                       },
                       mimeType: {
                         type: "string",
@@ -142,7 +142,7 @@ describe("JSON Schema Utilities", () => {
                           uri: {
                             type: "string",
                             pattern:
-                              "^table_configuration://dust/w/(w+)/table_configurations/(w+)$",
+                              "^table_configuration:\\/\\/dust\\/w\\/(\\w+)\\/table_configurations\\/(\\w+)$",
                           },
                           mimeType: {
                             type: "string",
@@ -193,7 +193,8 @@ describe("JSON Schema Utilities", () => {
                           properties: {
                             uri: {
                               type: "string",
-                              pattern: "^agent://dust/w/(w+)/agents/(w+)$",
+                              pattern:
+                                "^agent:\\/\\/dust\\/w\\/(\\w+)\\/agents\\/(\\w+)$",
                             },
                             mimeType: {
                               type: "string",
