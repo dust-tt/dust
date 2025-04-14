@@ -211,20 +211,20 @@ export const Strong = ({ children, className = "" }: ContentProps) => (
 
 export function CloudConnectorsSection() {
   return (
-    <div className="rounded-2xl bg-gray-50 px-6 py-8 sm:py-10 md:px-12 md:py-12">
-      <div className="flex flex-col items-center gap-6 sm:gap-8 md:flex-row md:space-x-16">
-        <div className="mb-4 text-left sm:mb-6 md:mb-0 md:w-1/2">
-          <H3>It’s not ChatGPT. It’s Dust</H3>
-          <P size="md" className="mt-4 text-muted-foreground">
+    <div className="rounded-2xl bg-gray-50 px-6 py-8 sm:px-8 sm:py-10 md:px-10 md:py-12 lg:px-12 lg:py-16">
+      <div className="flex flex-col items-center gap-6 sm:gap-8 md:gap-10 lg:flex-row lg:gap-16">
+        <div className="mb-2 w-full text-left sm:mb-4 md:mb-0 lg:w-1/2">
+          <H3 className="mb-4 sm:mb-6">It's not ChatGPT. It's Dust</H3>
+          <P size="md" className="text-muted-foreground">
             Dust is your future-proof AI platform: we are model-agnostic and let
             you connect all your existing systems
           </P>
         </div>
-        <div className="flex justify-center md:w-1/2 md:justify-end">
+        <div className="flex w-full justify-center lg:w-1/2 lg:justify-end">
           <img
             src="/static/landing/connectors/cloud_Connectors.png"
             alt="Cloud Connectors"
-            className="h-60 w-auto object-contain sm:h-72 md:h-80"
+            className="h-auto w-full max-w-[400px] object-contain sm:max-w-[480px] md:max-w-[560px] lg:h-[360px] lg:max-w-none"
           />
         </div>
       </div>
