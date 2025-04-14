@@ -11,6 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import { createContext, useCallback, useEffect, useState } from "react";
 
+import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type {
   MCPToolStakeLevelType,
   MCPValidationOutputType,
@@ -94,6 +95,8 @@ export function ActionValidationProvider({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useNavigationLock(isDialogOpen);
 
   const sendCurrentValidation = useCallback(
     async (approved: MCPValidationOutputType) => {
@@ -184,9 +187,11 @@ export function ActionValidationProvider({
                 Object.keys(currentValidation.inputs).length > 0 && (
                   <div>
                     <span className="font-medium">Inputs:</span>
-                    <CodeBlock className="language-json">
-                      {JSON.stringify(currentValidation?.inputs, null, 2)}
-                    </CodeBlock>
+                    <div className="max-h-80 overflow-auto">
+                      <CodeBlock className="language-json">
+                        {JSON.stringify(currentValidation?.inputs, null, 2)}
+                      </CodeBlock>
+                    </div>
                   </div>
                 )}
               <div>Do you want to allow this action to proceed?</div>

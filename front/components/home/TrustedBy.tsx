@@ -4,16 +4,16 @@ import { H3 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 const LOGOS = [
-  { name: "alan", src: "/static/landing/logos/gray/alan.png" },
-  { name: "watershed", src: "/static/landing/logos/gray/watershed.png" },
-  { name: "qonto", src: "/static/landing/logos/gray/qonto.png" },
-  { name: "pennylane", src: "/static/landing/logos/gray/pennylane.png" },
-  { name: "payfit", src: "/static/landing/logos/gray/payfit.png" },
-  { name: "malt", src: "/static/landing/logos/gray/malt.png" },
-  { name: "doctolib", src: "/static/landing/logos/gray/doctolib.png" },
-  { name: "blueground", src: "/static/landing/logos/gray/blueground.png" },
-  { name: "clay", src: "/static/landing/logos/gray/clay.png" },
-  { name: "photoroom", src: "/static/landing/logos/gray/photoroom.png" },
+  { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+  { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+  { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+  { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+  { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+  { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+  { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+  { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+  { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+  { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
 ];
 
 export default function TrustedBy() {

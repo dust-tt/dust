@@ -89,9 +89,12 @@ export type LocalMCPToolConfigurationType = Omit<
   inputSchema: JSONSchema;
 };
 
-export type MCPToolConfigurationType =
+export type MCPToolConfigurationType = (
   | PlatformMCPToolConfigurationType
-  | LocalMCPToolConfigurationType;
+  | LocalMCPToolConfigurationType
+) & {
+  originalName: string;
+};
 
 type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
@@ -102,6 +105,12 @@ type MCPApproveExecutionEvent = {
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
 };
+
+export function isMCPApproveExecutionEvent(
+  event: MCPActionRunningEvents
+): event is MCPApproveExecutionEvent {
+  return event.type === "tool_approve_execution";
+}
 
 type MCPParamsEvent = {
   type: "tool_params";

@@ -1,3 +1,4 @@
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { ModelId, Result, WhitelistableFeature } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -50,7 +51,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   // Dev
   data_sources_debugger: {
     id: 1000,
-    isDefault: false,
+    isDefault: true,
     flag: "dev_mcp_actions",
   },
   child_agent_debugger: {
@@ -67,6 +68,14 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1003,
     isDefault: false,
     flag: "dev_mcp_actions",
+  },
+};
+
+export const INTERNAL_TOOLS_STAKE_LEVEL: Partial<
+  Record<InternalMCPServerNameType, Record<string, MCPToolStakeLevelType>>
+> = {
+  authentication_debugger: {
+    hello_world: "low",
   },
 };
 

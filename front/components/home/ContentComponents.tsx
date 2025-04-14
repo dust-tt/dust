@@ -1,8 +1,14 @@
 import {
+  CheckCircleIcon,
   CircleIcon,
+  EyeIcon,
   HexagonIcon,
   Icon,
+  LinkIcon,
+  LockIcon,
+  PlanetIcon,
   RectangleIcon,
+  RobotIcon,
   SquareIcon,
   TriangleIcon,
 } from "@dust-tt/sparkle";
@@ -54,6 +60,7 @@ interface HContentProps {
   children: React.ReactNode;
   className?: string;
   mono?: boolean;
+  style?: React.CSSProperties;
 }
 
 type TagName = "h1" | "h2" | "h3" | "h4" | "h5";
@@ -63,6 +70,7 @@ const createHeadingComponent = (Tag: TagName) => {
     children,
     className = "",
     mono = false,
+    style,
   }) => {
     const baseClasses = mono
       ? classNames(
@@ -70,7 +78,11 @@ const createHeadingComponent = (Tag: TagName) => {
           "font-mono"
         )
       : classNames(hClasses[Tag], "font-sans");
-    return <Tag className={classNames(className, baseClasses)}>{children}</Tag>;
+    return (
+      <Tag className={classNames(className, baseClasses)} style={style}>
+        {children}
+      </Tag>
+    );
   };
   Component.displayName = Tag.toUpperCase();
   return Component;
@@ -196,3 +208,102 @@ export const Strong = ({ children, className = "" }: ContentProps) => (
     {children}
   </strong>
 );
+
+export function CloudConnectorsSection() {
+  return (
+    <div className="rounded-2xl bg-gray-50 px-6 py-8 sm:px-8 sm:py-10 md:px-10 md:py-12 lg:px-12 lg:py-16">
+      <div className="flex flex-col items-center gap-6 sm:gap-8 md:gap-10 lg:flex-row lg:gap-16">
+        <div className="mb-2 w-full text-left sm:mb-4 md:mb-0 lg:w-1/2">
+          <H3 className="mb-4 sm:mb-6">It's not ChatGPT. It's Dust</H3>
+          <P size="md" className="text-muted-foreground">
+            Dust is your future-proof AI platform: we are model-agnostic and let
+            you connect all your existing systems
+          </P>
+        </div>
+        <div className="flex w-full justify-center lg:w-1/2 lg:justify-end">
+          <img
+            src="/static/landing/connectors/cloud_Connectors.png"
+            alt="Cloud Connectors"
+            className="h-auto w-full max-w-md object-contain sm:max-w-lg md:max-w-xl lg:h-96 lg:max-w-none"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SecurityComplianceSection() {
+  return (
+    <div>
+      <H2 className="mb-6 text-left">Security & compliance</H2>
+      <div className="flex w-full flex-col justify-between gap-8 sm:gap-10 md:flex-row md:gap-6">
+        <div className="flex flex-col text-left md:w-1/4">
+          <div className="flex items-center">
+            <Icon visual={LockIcon} className="mr-2 h-6" />
+            <h4 className="text-lg font-semibold">Data-privacy</h4>
+          </div>
+          <P size="sm" className="mt-3 text-muted-foreground">
+            Your data is your data. Never used for model training.
+          </P>
+        </div>
+        <div className="flex flex-col text-left md:w-1/4">
+          <div className="flex items-center">
+            <Icon visual={EyeIcon} className="mr-2 h-6" />
+            <h4 className="text-lg font-semibold">Access-control</h4>
+          </div>
+          <P size="sm" className="mt-3 text-muted-foreground">
+            Fine-grained permissions with Spaces for sensitive information.
+          </P>
+        </div>
+        <div className="flex flex-col text-left md:w-1/4">
+          <div className="flex items-center">
+            <Icon visual={CheckCircleIcon} className="mr-2 h-6" />
+            <h4 className="text-lg font-semibold">Compliance</h4>
+          </div>
+          <P size="sm" className="mt-3 text-muted-foreground">
+            SOC2 Type II certified, HIPAA and GDPR compliant.
+          </P>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function TeamFeatureSection() {
+  return (
+    <div>
+      <div className="flex w-full flex-col justify-between gap-8 sm:gap-10 md:flex-row md:gap-6">
+        <div className="flex flex-col text-left md:w-1/4">
+          <div className="flex items-center">
+            <Icon visual={RobotIcon} className="mr-2 h-6" />
+            <h4 className="text-lg font-semibold">Team orchestration</h4>
+          </div>
+          <P size="sm" className="mt-3 text-muted-foreground">
+            Build and manage teams of specialized agents that collaborate with
+            humans
+          </P>
+        </div>
+        <div className="flex flex-col text-left md:w-1/4">
+          <div className="flex items-center">
+            <Icon visual={LinkIcon} className="mr-2 h-6" />
+            <h4 className="text-lg font-semibold">
+              Context-aware infrastructure
+            </h4>
+          </div>
+          <P size="sm" className="mt-3 text-muted-foreground">
+            Connect agents to your company data and break down silos
+          </P>
+        </div>
+        <div className="flex flex-col text-left md:w-1/4">
+          <div className="flex items-center">
+            <Icon visual={PlanetIcon} className="mr-2 h-6" />
+            <h4 className="text-lg font-semibold">Universal access layer</h4>
+          </div>
+          <P size="sm" className="mt-3 text-muted-foreground">
+            Seamlessly integrate with your existing tools and systems
+          </P>
+        </div>
+      </div>
+    </div>
+  );
+}

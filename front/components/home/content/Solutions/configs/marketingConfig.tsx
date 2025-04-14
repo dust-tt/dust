@@ -158,7 +158,7 @@ export const ROI: ROIProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "Dust is not just a tool - it's like having an extra team member who knows your brand voice, can handle recurring tasks, and helps you tackle new challenges. I couldn't do half of my job without it, especially with tight deadlines and a small team.",
+    "Dust is not just a tool - it’s like having an extra team member who knows your brand voice, can handle recurring tasks, and helps you tackle new challenges. I couldn’t do half of my job without it, especially with tight deadlines and a small team.",
   name: "Valentine Chelius",
   title: "Head of Marketing at Fleet",
   logo: "/static/landing/logos/color/fleet.png",
@@ -174,14 +174,14 @@ export const Stories: CustomerStory[] = [
   {
     title: "How Qonto Achieved 70% Faster Localization with Dust",
     content:
-      "Qonto's Tolki assistant serves as a virtual polyglot, helping the content team localize content while maintaining brand voice and regional standards.",
+      "Qonto’s Tolki assistant serves as a virtual polyglot, helping the content team localize content while maintaining brand voice and regional standards.",
     href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
   },
   {
     title: "Building a Marketing Engine from Scratch at Fleet",
     content:
-      "With just two interns, Valentine created a scalable marketing operation using Dust's AI capabilities for content and brand management.",
+      "With just two interns, Valentine created a scalable marketing operation using Dust’s AI capabilities for content and brand management.",
     href: "https://blog.dust.tt/how-valentine-head-of-marketing-at-fleet-uses-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_fleet.png",
   },

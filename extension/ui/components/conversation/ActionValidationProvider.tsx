@@ -1,5 +1,9 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
-import type { MCPActionPublicType } from "@dust-tt/client";
+import type {
+  MCPActionPublicType,
+  MCPToolStakeLevelPublicType,
+  MCPValidationOutputPublicType,
+} from "@dust-tt/client";
 import {
   Button,
   CodeBlock,
@@ -15,21 +19,23 @@ import { createContext, useCallback, useEffect, useState } from "react";
 
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: {
-    workspaceId: string;
-    messageId: string;
-    conversationId: string;
     action: MCPActionPublicType;
+    conversationId: string;
     inputs: Record<string, unknown>;
+    messageId: string;
+    stake?: MCPToolStakeLevelPublicType;
+    workspaceId: string;
   }) => void;
 };
 
 // Pending validation requests, keyed by message ID
 export type PendingValidationRequestType = {
-  workspaceId: string;
-  messageId: string;
-  conversationId: string;
   action: MCPActionPublicType;
+  conversationId: string;
   inputs: Record<string, unknown>;
+  messageId: string;
+  stake?: MCPToolStakeLevelPublicType;
+  workspaceId: string;
 };
 
 export const ActionValidationContext =
@@ -92,7 +98,7 @@ export function ActionValidationProvider({
   const dustAPI = useDustAPI();
 
   const sendCurrentValidation = useCallback(
-    async (approved: boolean) => {
+    async (approved: MCPValidationOutputPublicType) => {
       if (!currentValidation) {
         return;
       }
@@ -108,17 +114,15 @@ export function ActionValidationProvider({
       });
 
       if (response.isErr()) {
-        setErrorMessage(
-          `Failed to ${approved ? "approve" : "reject"} action. Please try again.`
-        );
+        setErrorMessage("Failed to assess action approval. Please try again.");
         return;
       }
     },
-    [currentValidation]
+    [currentValidation, dustAPI]
   );
 
   const handleSubmit = useCallback(
-    async (approved: boolean) => {
+    (approved: MCPValidationOutputPublicType) => {
       void sendCurrentValidation(approved);
       setIsProcessing(false);
       const foundItem = takeNextFromQueue();
@@ -141,6 +145,7 @@ export function ActionValidationProvider({
     conversationId: string;
     action: MCPActionPublicType;
     inputs: Record<string, unknown>;
+    stake?: MCPToolStakeLevelPublicType;
   }) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
@@ -155,12 +160,12 @@ export function ActionValidationProvider({
         onOpenChange={(open) => {
           if (open === false && !isProcessing) {
             if (currentValidation) {
-              void handleSubmit(false);
+              void handleSubmit("rejected");
             }
           }
         }}
       >
-        <DialogContent>
+        <DialogContent isAlertDialog>
           <DialogHeader>
             <DialogTitle>Action Validation Required</DialogTitle>
           </DialogHeader>
@@ -174,11 +179,11 @@ export function ActionValidationProvider({
                 Object.keys(currentValidation.inputs).length > 0 && (
                   <div>
                     <span className="font-medium">Inputs:</span>
-                    <pre className="mt-2 whitespace-pre-wrap rounded bg-primary-50 p-2 text-sm dark:bg-primary-50-night">
+                    <div className="max-h-80 overflow-auto">
                       <CodeBlock className="language-json">
                         {JSON.stringify(currentValidation?.inputs, null, 2)}
                       </CodeBlock>
-                    </pre>
+                    </div>
                   </div>
                 )}
               <div>Do you want to allow this action to proceed?</div>
@@ -201,7 +206,7 @@ export function ActionValidationProvider({
             <Button
               label="Decline"
               variant="outline"
-              onClick={() => handleSubmit(false)}
+              onClick={() => handleSubmit("rejected")}
               disabled={isProcessing}
             >
               {isProcessing && (
@@ -211,10 +216,27 @@ export function ActionValidationProvider({
                 </div>
               )}
             </Button>
+            {currentValidation?.stake === "low" && (
+              <Button
+                label="Approve and never ask again"
+                variant="ghost"
+                onClick={() => {
+                  handleSubmit("always_approved");
+                }}
+                disabled={isProcessing}
+              >
+                {isProcessing && (
+                  <div className="flex items-center">
+                    <span className="mr-2">Approving</span>
+                    <Spinner size="xs" variant="dark" />
+                  </div>
+                )}
+              </Button>
+            )}
             <Button
               label="Approve"
               variant="primary"
-              onClick={() => handleSubmit(true)}
+              onClick={() => handleSubmit("approved")}
               disabled={isProcessing}
             >
               {isProcessing && (

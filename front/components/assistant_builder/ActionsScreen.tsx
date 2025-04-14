@@ -5,11 +5,11 @@ import {
   Card,
   CardActionButton,
   CardGrid,
-  Checkbox,
   Chip,
   classNames,
   ContentMessage,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -33,6 +33,7 @@ import {
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
+import { uniqueId } from "lodash";
 import type { ReactNode } from "react";
 import React, {
   useCallback,
@@ -47,8 +48,8 @@ import {
   isActionDustAppRunValid as hasErrorActionDustAppRun,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
-  ActionMCP,
   hasErrorActionMCP,
+  MCPAction,
 } from "@app/components/assistant_builder/actions/MCPAction";
 import {
   ActionProcess,
@@ -84,10 +85,11 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   getDefaultActionConfiguration,
+  getDefaultMCPServerActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
-import { getVisual } from "@app/lib/actions/mcp_icons";
-import { getRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getVisual, MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -122,6 +124,36 @@ const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
   "REASONING",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
+
+const isUsableAsCapability = (
+  id: string,
+  mcpServerViews: MCPServerViewType[]
+) => {
+  const view = mcpServerViews.find((v) => v.id === id);
+  if (!view) {
+    return false;
+  }
+  const requirements = getMCPServerRequirements(view);
+  return view.server.isDefault && requirements.noRequirement;
+};
+
+const isUsableInKnowledge = (
+  id: string,
+  mcpServerViews: MCPServerViewType[]
+) => {
+  const view = mcpServerViews.find((v) => v.id === id);
+  if (!view) {
+    return false;
+  }
+  return view.server.isDefault && !isUsableAsCapability(id, mcpServerViews);
+};
+
+// We reserve the name we use for capability actions, as these aren't
+// configurable via the "add tool" menu.
+const isReservedName = (name: string) =>
+  CAPABILITIES_ACTION_CATEGORIES.some(
+    (c) => getDefaultActionConfiguration(c)?.name === name
+  );
 
 function ActionModeSection({
   children,
@@ -217,8 +249,22 @@ export default function ActionsScreen({
     workspaceId: owner.sId,
   });
 
+  const isCapabilityAction = useCallback(
+    (action: AssistantBuilderActionConfiguration) => {
+      if (action.type === "MCP") {
+        return isUsableAsCapability(
+          action.configuration.mcpServerViewId,
+          mcpServerViews
+        );
+      }
+
+      return (CAPABILITIES_ACTION_CATEGORIES as string[]).includes(action.type);
+    },
+    [mcpServerViews]
+  );
+
   const configurableActions = builderState.actions.filter(
-    (a) => !(CAPABILITIES_ACTION_CATEGORIES as string[]).includes(a.type)
+    (a) => !isCapabilityAction(a)
   );
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
@@ -264,12 +310,23 @@ export default function ActionsScreen({
               addActionToSpace(config.dataSourceView.spaceId);
             });
           }
-          if (action.configuration.mcpServerViewId) {
-            addActionToSpace(
-              mcpServerViews.find(
-                (v) => v.id === action.configuration.mcpServerViewId
-              )?.spaceId
+
+          if (action.configuration.tablesConfigurations) {
+            Object.values(action.configuration.tablesConfigurations).forEach(
+              (config) => {
+                addActionToSpace(config.dataSourceView.spaceId);
+              }
             );
+          }
+
+          if (action.configuration.mcpServerViewId) {
+            const mcpServerView = mcpServerViews.find(
+              (v) => v.id === action.configuration.mcpServerViewId
+            );
+            // Default MCP server themselves are not accounted for in the space restriction.
+            if (mcpServerView && !mcpServerView.server.isDefault) {
+              addActionToSpace(mcpServerView.spaceId);
+            }
           }
           break;
 
@@ -434,20 +491,25 @@ export default function ActionsScreen({
           </div>
           <div className="flex flex-row gap-2">
             {configurableActions.length > 0 && !isLegacyConfig && (
-              <div>
-                <AddAction
-                  onAddAction={(action) => {
-                    setAction({
-                      type: action.noConfigurationRequired
-                        ? "insert"
-                        : "pending",
-                      action,
-                    });
-                  }}
-                  hasFeature={hasFeature}
-                />
-              </div>
+              <AddAction
+                mcpServerViews={mcpServerViews}
+                onAddAction={(action) => {
+                  setAction({
+                    type: action.noConfigurationRequired ? "insert" : "pending",
+                    action,
+                  });
+                }}
+                hasFeature={hasFeature}
+              />
             )}
+            <Capabilities
+              builderState={builderState}
+              setBuilderState={setBuilderState}
+              setEdited={setEdited}
+              setAction={setAction}
+              deleteAction={deleteAction}
+              enableReasoningTool={enableReasoningTool}
+            />
 
             {!isLegacyConfig && (
               <>
@@ -520,6 +582,7 @@ export default function ActionsScreen({
               )}
             >
               <AddAction
+                mcpServerViews={mcpServerViews}
                 onAddAction={(action) => {
                   setAction({
                     type: action.noConfigurationRequired ? "insert" : "pending",
@@ -549,15 +612,6 @@ export default function ActionsScreen({
             ))}
           </CardGrid>
         </div>
-
-        <Capabilities
-          builderState={builderState}
-          setBuilderState={setBuilderState}
-          setEdited={setEdited}
-          setAction={setAction}
-          deleteAction={deleteAction}
-          enableReasoningTool={enableReasoningTool}
-        />
       </div>
     </>
   );
@@ -630,12 +684,8 @@ function NewActionModal({
     if (!/^[a-z0-9_]+$/.test(name)) {
       return "The name can only contain lowercase letters, numbers, and underscores (no spaces).";
     }
-    // We reserve the name we use for capability actions, as these aren't
-    // configurable via the "add tool" menu.
-    const isReservedName = CAPABILITIES_ACTION_CATEGORIES.some(
-      (c) => getDefaultActionConfiguration(c)?.name === name
-    );
-    if (isReservedName) {
+
+    if (isReservedName(name)) {
       return "This name is reserved for a system tool. Please use a different name.";
     }
 
@@ -937,7 +987,7 @@ function ActionConfigEditor({
 
     case "MCP":
       return (
-        <ActionMCP
+        <MCPAction
           owner={owner}
           action={action}
           allowedSpaces={allowedSpaces}
@@ -1050,7 +1100,7 @@ function ActionEditor({
             : false
         );
 
-        const requirements = getRequirements(selectedMCPServerView);
+        const requirements = getMCPServerRequirements(selectedMCPServerView);
         return (
           requirements.requiresDataSourceConfiguration ||
           requirements.requiresTableConfiguration
@@ -1264,11 +1314,16 @@ function AdvancedSettings({
 }
 
 interface AddActionProps {
+  mcpServerViews: MCPServerViewType[];
   onAddAction: (action: AssistantBuilderActionConfigurationWithId) => void;
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
 }
 
-function AddAction({ onAddAction, hasFeature }: AddActionProps) {
+function AddAction({
+  mcpServerViews,
+  onAddAction,
+  hasFeature,
+}: AddActionProps) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -1283,7 +1338,7 @@ function AddAction({ onAddAction, hasFeature }: AddActionProps) {
 
       <DropdownMenuContent>
         <DropdownMenuGroup>
-          <DropdownMenuLabel label="Default" />
+          <DropdownMenuLabel label="Knowledge" />
           {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
             if (!hasFeature(spec.flag)) {
@@ -1304,6 +1359,24 @@ function AddAction({ onAddAction, hasFeature }: AddActionProps) {
               />
             );
           })}
+          {mcpServerViews
+            .filter((view) => isUsableInKnowledge(view.id, mcpServerViews))
+            .map((view) => {
+              return (
+                <DropdownMenuItem
+                  key={view.id}
+                  icon={MCP_SERVER_ICONS["command"]}
+                  label={asDisplayName(view.server.name)}
+                  description={view.server.description}
+                  onClick={() =>
+                    onAddAction({
+                      ...getDefaultMCPServerActionConfiguration(view),
+                      id: uniqueId(),
+                    })
+                  }
+                />
+              );
+            })}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
@@ -1351,6 +1424,8 @@ function Capabilities({
   deleteAction: (name: string) => void;
   enableReasoningTool: boolean;
 }) {
+  const { mcpServerViews } = useContext(AssistantBuilderContext);
+
   const Capability = ({
     name,
     description,
@@ -1365,30 +1440,81 @@ function Capabilities({
     onDisable: () => void;
   }) => {
     return (
-      <div className="flex flex-row gap-2">
-        <Checkbox
-          checked={enabled}
-          onCheckedChange={enabled ? onDisable : onEnable}
-        />
-        <div>
-          <div className="flex text-sm font-semibold text-foreground dark:text-foreground-night">
-            {name}
-          </div>
-          <div className="text-sm text-muted-foreground">{description}</div>
-        </div>
-      </div>
+      <DropdownMenuCheckboxItem
+        checked={enabled}
+        onCheckedChange={enabled ? onDisable : onEnable}
+        className="mb-0 mt-0 pb-0 pr-0 pt-0"
+      >
+        <DropdownMenuItem label={name} description={description} />
+      </DropdownMenuCheckboxItem>
     );
   };
 
+  // Default servers with no configuration requirements are usable as capabilities
+  const mcpServerViewsCapabilities = useMemo(() => {
+    return mcpServerViews.filter((view) =>
+      isUsableAsCapability(view.id, mcpServerViews)
+    );
+  }, [mcpServerViews]);
+
+  const isWebNavigationEnabled = useMemo(() => {
+    return !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION");
+  }, [builderState.actions]);
+
+  const isReasoningEnabled = useMemo(() => {
+    return !!builderState.actions.find((a) => a.type === "REASONING");
+  }, [builderState.actions]);
+
+  const totalCapabilities = useMemo(() => {
+    let total = 0;
+    if (isWebNavigationEnabled) {
+      total++;
+    }
+    if (isReasoningEnabled) {
+      total++;
+    }
+    if (builderState.visualizationEnabled) {
+      total++;
+    }
+
+    for (const view of mcpServerViewsCapabilities) {
+      if (
+        builderState.actions.find(
+          (a) => a.type === "MCP" && a.configuration.mcpServerViewId === view.id
+        )
+      ) {
+        total++;
+      }
+    }
+
+    return total;
+  }, [
+    isWebNavigationEnabled,
+    isReasoningEnabled,
+    builderState.visualizationEnabled,
+    mcpServerViewsCapabilities,
+    builderState.actions,
+  ]);
+
   return (
-    <>
-      <div className="mx-auto grid w-full grid-cols-1 gap-y-4 md:grid-cols-2">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          label={
+            totalCapabilities
+              ? `Capabilities (${totalCapabilities})`
+              : "Capabilities"
+          }
+          size="sm"
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
         <Capability
           name="Web search & browse"
           description="Agent can search (Google) and retrieve information from specific websites."
-          enabled={
-            !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION")
-          }
+          enabled={isWebNavigationEnabled}
           onEnable={() => {
             setEdited(true);
             const defaultWebNavigationAction =
@@ -1431,7 +1557,7 @@ function Capabilities({
           <Capability
             name="Reasoning"
             description="Agent can decide to trigger a reasoning model for complex tasks"
-            enabled={!!builderState.actions.find((a) => a.type === "REASONING")}
+            enabled={isReasoningEnabled}
             onEnable={() => {
               setEdited(true);
               const defaultReasoningAction =
@@ -1450,7 +1576,41 @@ function Capabilities({
             }}
           />
         )}
-      </div>
-    </>
+
+        {mcpServerViewsCapabilities.map((view) => {
+          return (
+            <Capability
+              key={view.id}
+              name={asDisplayName(view.server.name)}
+              description={view.server.description}
+              enabled={
+                !!builderState.actions.find(
+                  (a) =>
+                    a.type === "MCP" &&
+                    a.configuration.mcpServerViewId === view.id
+                )
+              }
+              onEnable={() => {
+                setEdited(true);
+                const action = getDefaultMCPServerActionConfiguration(view);
+                assert(action);
+                setAction({
+                  type: "insert",
+                  action: {
+                    ...action,
+                    id: uniqueId(),
+                  },
+                });
+              }}
+              onDisable={() => {
+                const action = getDefaultMCPServerActionConfiguration(view);
+                assert(action);
+                deleteAction(action.name);
+              }}
+            />
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
