@@ -3,6 +3,7 @@ import {
   Checkbox,
   DataTable,
   DoubleIcon,
+  Hoverable,
   Icon,
   ScrollableDataTable,
   Spinner,
@@ -20,6 +21,7 @@ import type {
   DataSourceViewType,
   WorkspaceType,
 } from "@app/types";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 
 const PAGE_SIZE = 25;
 
@@ -130,7 +132,7 @@ export function DataSourceNodeTable({
             onClick: () => {
               const contentNode: DataSourceViewContentNode = {
                 internalId: dsv.sId,
-                title: dsv.dataSource.name,
+                title: getDataSourceNameFromView(dsv),
                 dataSourceView: dsv,
                 expandable: true,
                 parentInternalIds: null,
@@ -187,6 +189,7 @@ export function DataSourceNodeTable({
                   ? "partial"
                   : false
             }
+            onClick={(event) => event.stopPropagation()}
             onCheckedChange={(state) => {
               if (state === "indeterminate") {
                 return;
@@ -201,6 +204,7 @@ export function DataSourceNodeTable({
               size="xs"
               checked={row.getIsSelected()}
               disabled={!row.getCanSelect()}
+              onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 if (state === "indeterminate") {
                   return;
@@ -222,7 +226,7 @@ export function DataSourceNodeTable({
           <DataTable.CellContent>
             <span className="flex items-center gap-2 truncate text-ellipsis py-1 font-semibold">
               {row.original.icon}
-              {row.original.title}
+              <Hoverable>{row.original.title}</Hoverable>
             </span>
           </DataTable.CellContent>
         ),

@@ -15,8 +15,8 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { ComponentType, Dispatch, SetStateAction } from "react";
-import { useEffect, useMemo, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
@@ -33,12 +33,12 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 
-type ButtonBreadcrumbItem = {
-  label: string;
-  icon?: ComponentType<{ className?: string }>;
-  onClick: () => void;
-};
+type NavigationHistoryEntry =
+  | { type: "root" }
+  | { type: "category"; category: DataSourceViewCategoryWithoutApps }
+  | { type: "node"; node: DataSourceViewContentNode };
 
 interface DataSourceBuilderSelectorProps {
   allowedSpaces?: SpaceType[];
@@ -67,7 +67,10 @@ export const DataSourceBuilderSelector = ({
   const [selectedCategory, setSelectedCategory] =
     useState<DataSourceViewCategoryWithoutApps | null>(null);
 
-  // Add search state
+  const [navigationHistory, setNavigationHistory] = useState<
+    NavigationHistoryEntry[]
+  >([{ type: "root" }]);
+
   const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch category data when a category is selected
@@ -81,28 +84,61 @@ export const DataSourceBuilderSelector = ({
     disabled: !selectedSpaceId || !selectedCategory,
   });
 
-  const handleGoToRoot = () => {
-    setBreadcrumbItems([rootBreadcrumb]);
-    setTraversedNode(undefined);
-    setSelectedCategory(null);
-    setSearchQuery(""); // Clear search when going to root
-  };
+  // Helper function to update UI state from history entry
+  const updateStateFromHistoryEntry = useCallback(
+    (entry: NavigationHistoryEntry) => {
+      if (entry.type === "root") {
+        setTraversedNode(undefined);
+        setSelectedCategory(null);
+      } else if (entry.type === "category") {
+        setTraversedNode(undefined);
+        setSelectedCategory(entry.category);
+      } else {
+        setTraversedNode(entry.node);
+        setSelectedCategory(null);
+      }
+    },
+    []
+  );
 
-  const rootBreadcrumb = {
-    icon: HomeIcon,
-    onClick: handleGoToRoot,
-    label: "Home",
-  };
+  const handleBreadcrumbClick = useCallback(
+    (index: number) => {
+      const newHistory = navigationHistory.slice(0, index + 1);
+      const currentEntry = newHistory[newHistory.length - 1];
+      updateStateFromHistoryEntry(currentEntry);
+      setNavigationHistory(newHistory);
+    },
+    [navigationHistory, updateStateFromHistoryEntry]
+  );
 
-  const [breadcrumbItems, setBreadcrumbItems] = useState<
-    ButtonBreadcrumbItem[]
-  >([rootBreadcrumb]);
+  const getBreadcrumbConfig = useCallback((entry: NavigationHistoryEntry) => {
+    switch (entry.type) {
+      case "root":
+        return {
+          label: "Home",
+          icon: HomeIcon,
+        };
+      case "category":
+        return {
+          label: CATEGORY_DETAILS[entry.category].label,
+          icon: CATEGORY_DETAILS[entry.category].icon,
+        };
+      case "node":
+        return {
+          label: entry.node.title,
+          icon: getVisualForDataSourceViewContentNode(entry.node),
+        };
+    }
+  }, []);
 
-  const handleBreadcrumbClick = (index: number) => {
-    // Keep breadcrumbs up to the clicked one and remove the rest
-    setBreadcrumbItems(breadcrumbItems.slice(0, index + 1));
-  };
-
+  const breadcrumbItems = useMemo(
+    () =>
+      navigationHistory.map((entry, index) => ({
+        ...getBreadcrumbConfig(entry),
+        onClick: () => handleBreadcrumbClick(index),
+      })),
+    [navigationHistory, getBreadcrumbConfig, handleBreadcrumbClick]
+  );
   // Filter spaces to only those with data source views
   const filteredSpaces = useMemo(() => {
     const spaceIds = new Set(dataSourceViews.map((dsv) => dsv.spaceId));
@@ -128,24 +164,12 @@ export const DataSourceBuilderSelector = ({
     category: DataSourceViewCategoryWithoutApps
   ) => {
     setSelectedCategory(category);
-    updateBreadcrumbs(CATEGORY_DETAILS[category].label, () => {
-      setSelectedCategory(category);
-    });
+    setNavigationHistory((prev) => [...prev, { type: "category", category }]);
   };
 
   const handleNavigateNode = (node: DataSourceViewContentNode) => {
     setTraversedNode(node);
-    updateBreadcrumbs(node.title, () => setTraversedNode(node));
-  };
-
-  const updateBreadcrumbs = (label: string, onClick: () => void) => {
-    setBreadcrumbItems([
-      ...breadcrumbItems,
-      {
-        label,
-        onClick,
-      },
-    ]);
+    setNavigationHistory((prev) => [...prev, { type: "node", node }]);
   };
 
   if (isSpacesLoading) {
@@ -176,7 +200,7 @@ export const DataSourceBuilderSelector = ({
               value={selectedSpaceId || ""}
               onValueChange={(newSpaceId) => {
                 setSelectedSpaceId(newSpaceId);
-                setBreadcrumbItems([rootBreadcrumb]);
+                setNavigationHistory([{ type: "root" }]);
                 setTraversedNode(undefined);
                 setSelectedCategory(null);
                 setSearchQuery(""); // Clear search when changing space
@@ -195,17 +219,7 @@ export const DataSourceBuilderSelector = ({
         </DropdownMenu>
       </div>
 
-      {breadcrumbItems?.length > 0 && (
-        <Breadcrumbs
-          items={breadcrumbItems.map((item, index) => ({
-            ...item,
-            onClick: () => {
-              handleBreadcrumbClick(index);
-              item.onClick();
-            },
-          }))}
-        />
-      )}
+      {breadcrumbItems?.length > 0 && <Breadcrumbs items={breadcrumbItems} />}
 
       {selectedSpace && (
         <>
@@ -226,7 +240,13 @@ export const DataSourceBuilderSelector = ({
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
               space={selectedSpace}
-              updateBreadcrumbs={updateBreadcrumbs}
+              onNavigate={(node) => {
+                setTraversedNode(node);
+                setNavigationHistory((prev) => [
+                  ...prev,
+                  { type: "node", node },
+                ]);
+              }}
               setTraversedNode={setTraversedNode}
               searchQuery={searchQuery}
             />
