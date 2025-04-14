@@ -1329,7 +1329,7 @@ const MCPApproveExecutionEventSchema = z.object({
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
   stake: z.optional(z.enum(["low", "high"])),
-  meta: MCPValidationMetadataSchema,
+  meta: z.optional(MCPValidationMetadataSchema),
 });
 
 const AgentErrorEventSchema = z.object({
