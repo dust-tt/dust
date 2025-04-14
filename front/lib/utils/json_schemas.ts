@@ -64,10 +64,14 @@ export function findMatchingSchemaKeys(
         if (propSchema.$ref) {
           const refSchema = findSchemaAtPath(
             inputSchema,
-            propSchema.$ref
-              .replace("#/", "")
-              .split("/")
-              .filter((key) => key != "properties")
+            propSchema.$ref.replace("#/properties/", "").split("/")
+          );
+          logger.info(
+            {
+              refSchema,
+              path: propSchema.$ref.replace("#/properties/", "").split("/"),
+            },
+            "refSchema"
           );
           if (refSchema && schemasAreEqual(refSchema, targetSubSchema)) {
             matchingKeys.push(key);
