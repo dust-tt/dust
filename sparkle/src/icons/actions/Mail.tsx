@@ -10,8 +10,8 @@ const SvgMail = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="#111418"
-      d="M3 3h18a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm17 4.238-7.928 7.1L4 7.216V19h16V7.238ZM4.511 5l7.55 6.662L19.502 5H4.511Z"
+      fill="currentColor"
+      d="M22 4v16H2V4h20Zm-2 4.238-7.928 7.1L4 8.216V18h16V8.238ZM4.511 6l7.55 6.662L19.502 6H4.511Z"
     />
   </svg>
 );
