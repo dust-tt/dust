@@ -629,7 +629,7 @@ function getConversationChannelId(channelId: string) {
   return `conversation-${channelId}`;
 }
 
-function getMessageChannelId(messageId: string) {
+export function getMessageChannelId(messageId: string) {
   return `message-${messageId}`;
 }
 

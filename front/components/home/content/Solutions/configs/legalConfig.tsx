@@ -167,9 +167,9 @@ export const DemoVideo: DemoVideoProps = {
 export const Stories: CustomerStory[] = [
   {
     title:
-      "50% Time Savings in Legal: How Didomi's CPO Transformed Privacy Compliance",
+      "50% Time Savings in Legal: How Didomi’s CPO Transformed Privacy Compliance",
     content:
-      "Dust AI agents cut their legal team's workload in half, enabling them to scale operations across multiple countries without additional headcount.",
+      "Dust AI agents cut their legal team’s workload in half, enabling them to scale operations across multiple countries without additional headcount.",
     href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
   },
@@ -177,7 +177,7 @@ export const Stories: CustomerStory[] = [
     title:
       "50,000 Hours Saved: How Qonto Revolutionized Compliance and Risk Assessment with AI",
     content:
-      "Germi, Qonto's AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
+      "Germi, Qonto’s AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
     href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
   },

@@ -2,7 +2,7 @@ import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { FC } from "react";
 
-import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
+import { Grid, H1, H3, P } from "@app/components/home/ContentComponents";
 
 interface Visual {
   src: string;
@@ -51,13 +51,16 @@ export const HeroSection: FC<HeroSectionProps> = ({
   );
 
   return (
-    <div className="container flex w-full flex-col py-6">
+    <div className="container flex w-full flex-col pt-24">
       <Grid>
         <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%] lg:col-span-6 lg:col-start-1 lg:h-[100%] lg:max-w-[100%] 2xl:col-span-6">
-          <H2 className={accentColor} mono>
-            Dust for {uptitle}
-          </H2>
-          <H1>{title}</H1>
+          <H3 className={accentColor}>Dust for {uptitle}</H3>
+          <H1
+            mono
+            className="text-5xl font-medium leading-tight md:text-6xl lg:text-7xl"
+          >
+            {title}
+          </H1>
           <P size="lg" className="pb-6">
             {description}
           </P>

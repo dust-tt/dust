@@ -1,7 +1,7 @@
 use super::error::SoqlError;
 use super::structured_query::{
-    Filter, GroupBy, LogicalOperator, NullsPosition, OrderBy, OrderDirection, StructuredQuery,
-    Validator, WhereClause,
+    FieldExpression, Filter, GroupBy, LogicalOperator, NullsPosition, OrderBy, OrderDirection,
+    StructuredQuery, TypedValue, Validator, WhereClause,
 };
 
 /// Convert a JSON query to a SOQL string with detailed error handling and suggestions
@@ -27,21 +27,40 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
     // Add fields and/or aggregates
     let mut select_parts: Vec<String> = Vec::new();
 
-    // Add regular fields
+    // Add regular fields and function calls
     if !query.fields.is_empty() {
-        select_parts.extend(query.fields.iter().cloned());
+        select_parts.extend(query.fields.iter().map(|f| f.format()));
     }
 
     // Add parent fields if present
     if !query.parent_fields.is_empty() {
+        // First, validate that no parent field is a function
+        for parent in &query.parent_fields {
+            for field in &parent.fields {
+                if let FieldExpression::Function { .. } = field {
+                    return Err(SoqlError::unsupported_feature(
+                        "Function calls are not supported on parent fields. Use simple field references only."
+                    ));
+                }
+            }
+        }
+
+        // Then, process the fields (which we know are now all FieldExpression::Field variants)
         let parent_fields: Vec<String> = query
             .parent_fields
             .iter()
             .flat_map(|parent| {
-                parent
-                    .fields
-                    .iter()
-                    .map(move |field| format!("{}.{}", parent.relationship, field))
+                parent.fields.iter().map(move |field| {
+                    // We've validated above that this is a Field variant
+                    if let FieldExpression::Field(field_str) = field {
+                        format!("{}.{}", parent.relationship, field_str)
+                    } else {
+                        // This should never happen due to the validation above
+                        unreachable!(
+                            "Function in parent fields should have been caught by validation"
+                        )
+                    }
+                })
             })
             .collect();
 
@@ -94,10 +113,15 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
             .iter()
             .map(|rel| {
                 // Start the subquery but don't close the parenthesis yet
+                let formatted_fields = rel
+                    .fields
+                    .iter()
+                    .map(|f| f.format())
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 let mut subquery = format!(
                     "(SELECT {} FROM {}",
-                    rel.fields.join(", "),
-                    rel.relationship_name
+                    formatted_fields, rel.relationship_name
                 );
 
                 // Add WHERE clause if present - inside the parentheses
@@ -160,7 +184,7 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
                     filter.function.as_str(),
                     filter.field,
                     filter.operator,
-                    format_value(&filter.value)
+                    format_typed_value(&filter.value)
                 )
             })
             .collect();
@@ -204,7 +228,12 @@ fn build_where_clause(where_clause: &WhereClause) -> Result<String, SoqlError> {
                 field,
                 operator,
                 value,
-            } => Ok(format!("{} {} {}", field, operator, format_value(value))),
+            } => Ok(format!(
+                "{} {} {}",
+                field.format(),
+                operator,
+                format_typed_value(value)
+            )),
             Filter::NestedCondition(nested) => {
                 let nested_str = build_nested_condition(nested)?;
                 Ok(format!("({})", nested_str))
@@ -236,7 +265,12 @@ fn build_nested_condition(where_clause: &WhereClause) -> Result<String, SoqlErro
                 field,
                 operator,
                 value,
-            } => Ok(format!("{} {} {}", field, operator, format_value(value))),
+            } => Ok(format!(
+                "{} {} {}",
+                field.format(),
+                operator,
+                format_typed_value(value)
+            )),
             Filter::NestedCondition(nested) => {
                 let nested_str = build_nested_condition(nested)?;
                 Ok(format!("({})", nested_str))
@@ -263,7 +297,7 @@ fn build_order_by(order_by: &[OrderBy]) -> String {
     let order_strings: Vec<String> = order_by
         .iter()
         .map(|order| {
-            let mut order_str = order.field.clone();
+            let mut order_str = order.field.format();
 
             // Add direction
             match order.direction {
@@ -287,7 +321,26 @@ fn build_order_by(order_by: &[OrderBy]) -> String {
 }
 
 /// Formats a value for use in a SOQL query.
-fn format_value(value: &serde_json::Value) -> String {
+fn format_typed_value(value: &TypedValue) -> String {
+    match value {
+        TypedValue::DateTime { value, .. } => {
+            // For datetime objects, just return the value without quotes
+            value.clone()
+        }
+        TypedValue::Function {
+            function,
+            arguments,
+            ..
+        } => {
+            // Format function call: FUNCTION(arg1, arg2, ...)
+            format!("{}({})", function, arguments.join(", "))
+        }
+        TypedValue::Regular(json_value) => format_json_value(json_value),
+    }
+}
+
+/// Formats a JSON value for use in a SOQL query.
+fn format_json_value(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::Null => String::from("NULL"),
         serde_json::Value::Bool(b) => b.to_string(),
@@ -300,7 +353,7 @@ fn format_value(value: &serde_json::Value) -> String {
             format!("'{}'", escaped)
         }
         serde_json::Value::Array(arr) => {
-            let values: Vec<String> = arr.iter().map(format_value).collect();
+            let values: Vec<String> = arr.iter().map(format_json_value).collect();
             format!("({})", values.join(", "))
         }
         serde_json::Value::Object(_) => {
@@ -315,42 +368,110 @@ fn format_value(value: &serde_json::Value) -> String {
 mod tests {
     use super::*;
 
-    // Test for the format_value function
+    // Test for function support in SOQL queries
     #[test]
-    fn test_format_value_escaping() {
+    fn test_json_to_soql_with_functions() {
+        let json = r#"{
+            "object": "Account",
+            "fields": [
+                "Id", 
+                "Name", 
+                {"function": "DAY_ONLY", "arguments": ["CreatedDate"]},
+                {"function": "CALENDAR_MONTH", "arguments": ["LastModifiedDate"]}
+            ],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    {
+                        "field": {"function": "DAY_ONLY", "arguments": ["CreatedDate"]},
+                        "operator": "=",
+                        "value": {"type": "datetime", "value": "2023-01-01"}
+                    },
+                    {
+                        "field": "LastModifiedDate",
+                        "operator": "=",
+                        "value": {
+                            "type": "function",
+                            "function": "DAY_ONLY",
+                            "arguments": ["CreatedDate"]
+                        }
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, DAY_ONLY(CreatedDate), CALENDAR_MONTH(LastModifiedDate) FROM Account WHERE DAY_ONLY(CreatedDate) = 2023-01-01 AND LastModifiedDate = DAY_ONLY(CreatedDate)"
+        );
+    }
+
+    // Test for the format_json_value function
+    #[test]
+    fn test_format_json_value_escaping() {
         // Test null value
-        assert_eq!(format_value(&serde_json::Value::Null), "NULL");
+        assert_eq!(format_json_value(&serde_json::Value::Null), "NULL");
 
         // Test boolean value
-        assert_eq!(format_value(&serde_json::json!(true)), "true");
-        assert_eq!(format_value(&serde_json::json!(false)), "false");
+        assert_eq!(format_json_value(&serde_json::json!(true)), "true");
+        assert_eq!(format_json_value(&serde_json::json!(false)), "false");
 
         // Test number value
-        assert_eq!(format_value(&serde_json::json!(42)), "42");
-        assert_eq!(format_value(&serde_json::json!(3.14)), "3.14");
+        assert_eq!(format_json_value(&serde_json::json!(42)), "42");
+        assert_eq!(format_json_value(&serde_json::json!(3.14)), "3.14");
 
         // Test string value with special characters
-        assert_eq!(format_value(&serde_json::json!("hello")), "'hello'");
-        assert_eq!(format_value(&serde_json::json!("O'Reilly")), "'O''Reilly'"); // Single quotes are doubled
+        assert_eq!(format_json_value(&serde_json::json!("hello")), "'hello'");
         assert_eq!(
-            format_value(&serde_json::json!("Line1\nLine2")),
+            format_json_value(&serde_json::json!("O'Reilly")),
+            "'O''Reilly'"
+        ); // Single quotes are doubled
+        assert_eq!(
+            format_json_value(&serde_json::json!("Line1\nLine2")),
             "'Line1\nLine2'"
         ); // Newlines preserved
 
         // Test array value
         assert_eq!(
-            format_value(&serde_json::json!(["a", "b", "c"])),
+            format_json_value(&serde_json::json!(["a", "b", "c"])),
             "('a', 'b', 'c')"
         );
 
         // Test mixed array
         assert_eq!(
-            format_value(&serde_json::json!(["a", 1, true, null])),
+            format_json_value(&serde_json::json!(["a", 1, true, null])),
             "('a', 1, true, NULL)"
         );
 
         // Test object (not supported)
-        assert_eq!(format_value(&serde_json::json!({"key": "value"})), "NULL");
+        assert_eq!(
+            format_json_value(&serde_json::json!({"key": "value"})),
+            "NULL"
+        );
+    }
+
+    #[test]
+    fn test_format_typed_value() {
+        use crate::databases::remote_databases::salesforce::sandbox::structured_query::{
+            DateTimeType, TypedValue,
+        };
+
+        // Test datetime value (unquoted)
+        let datetime_value = TypedValue::DateTime {
+            value_type: DateTimeType::DateTime,
+            value: "2023-01-01T00:00:00Z".to_string(),
+        };
+        assert_eq!(format_typed_value(&datetime_value), "2023-01-01T00:00:00Z");
+
+        // Test regular string value (quoted)
+        let string_value = TypedValue::Regular(serde_json::json!("hello"));
+        assert_eq!(format_typed_value(&string_value), "'hello'");
+
+        // Test regular number value
+        let number_value = TypedValue::Regular(serde_json::json!(42));
+        assert_eq!(format_typed_value(&number_value), "42");
     }
 
     #[test]
@@ -729,6 +850,65 @@ mod tests {
     }
 
     #[test]
+    fn test_json_to_soql_date_functions() {
+        let json = r#"{
+            "object": "Account",
+            "fields": [
+                "Id", 
+                "Name", 
+                {"function": "DAY_ONLY", "arguments": ["CreatedDate"]},
+                {"function": "CALENDAR_MONTH", "arguments": ["LastModifiedDate"]}
+            ],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    {
+                        "field": {"function": "DAY_ONLY", "arguments": ["CreatedDate"]},
+                        "operator": "=",
+                        "value": "2023-01-01"
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, DAY_ONLY(CreatedDate), CALENDAR_MONTH(LastModifiedDate) FROM Account WHERE DAY_ONLY(CreatedDate) = '2023-01-01'"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_function_as_value() {
+        let json = r#"{
+            "object": "Account",
+            "fields": ["Id", "Name"],
+            "where": {
+                "condition": "AND", 
+                "filters": [
+                    {
+                        "field": "LastModifiedDate",
+                        "operator": ">",
+                        "value": {
+                            "type": "function",
+                            "function": "DAY_ONLY",
+                            "arguments": ["CreatedDate"]
+                        }
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name FROM Account WHERE LastModifiedDate > DAY_ONLY(CreatedDate)"
+        );
+    }
+
+    #[test]
     fn test_json_to_soql_multiple_complex_features() {
         let json = r#"{
             "object": "Opportunity",
@@ -867,8 +1047,22 @@ mod tests {
             "where": {
                 "condition": "AND",
                 "filters": [
-                    {"field": "CreatedDate", "operator": ">", "value": "2023-01-01T00:00:00Z"},
-                    {"field": "CloseDate", "operator": "<", "value": "2023-12-31"}
+                    {
+                        "field": "CreatedDate", 
+                        "operator": ">", 
+                        "value": {
+                            "type": "datetime",
+                            "value": "2023-01-01T00:00:00Z"
+                        }
+                    },
+                    {
+                        "field": "CloseDate", 
+                        "operator": "<", 
+                        "value": {
+                            "type": "datetime",
+                            "value": "2023-12-31"
+                        }
+                    }
                 ]
             }
         }"#;
@@ -877,8 +1071,63 @@ mod tests {
         let soql = convert_to_soql(&query).unwrap();
         assert_eq!(
             soql,
-            "SELECT Id, Name, CloseDate FROM Opportunity WHERE CreatedDate > '2023-01-01T00:00:00Z' AND CloseDate < '2023-12-31'"
+            "SELECT Id, Name, CloseDate FROM Opportunity WHERE CreatedDate > 2023-01-01T00:00:00Z AND CloseDate < 2023-12-31"
         );
+    }
+
+    #[test]
+    fn test_invalid_datetime_format() {
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["Id", "Name"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    {
+                        "field": "CreatedDate", 
+                        "operator": ">", 
+                        "value": {
+                            "type": "datetime",
+                            "value": "01/01/2023"
+                        }
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let result = convert_to_soql(&query);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_function_on_parent_field_fails() {
+        let json = r#"{
+            "object": "Contact",
+            "fields": ["Id", "FirstName", "LastName"],
+            "parentFields": [
+                {
+                    "relationship": "Account",
+                    "fields": [
+                        "Name", 
+                        {"function": "DAY_ONLY", "arguments": ["CreatedDate"]}
+                    ]
+                }
+            ]
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let result = convert_to_soql(&query);
+        assert!(result.is_err());
+
+        // Verify the error message is about function calls on parent fields
+        let error = result.unwrap_err();
+        match error {
+            SoqlError::UnsupportedFeature(msg) => {
+                assert!(msg.contains("Function calls are not supported on parent fields"));
+            }
+            _ => panic!("Expected UnsupportedFeature error, got {:?}", error),
+        }
     }
 
     #[test]

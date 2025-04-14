@@ -15,7 +15,7 @@ import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "data_source_utils",
+  name: "data_sources_debugger",
   version: "1.0.0",
   description:
     "Demo server showing a basic interaction with a data source configuration.",

@@ -16,7 +16,7 @@ interface TimeUnitDropdownProps<
   timeFrame: AssistantBuilderTimeFrame;
   disabled?: boolean;
   onEdit: () => void;
-  updateAction: (setNewAction: (previousAction: T) => T) => void;
+  updateAction: (setNewActionConfig: (previousAction: T) => T) => void;
 }
 
 export function TimeUnitDropdown<

@@ -1,135 +1,93 @@
-import { Div3D, Hover3D } from "@dust-tt/sparkle";
+"use client";
 
-import { ImgBlock } from "@app/components/home/ContentBlocks";
-import { classNames } from "@app/lib/utils";
-
-import { H2 } from "../../ContentComponents";
+import { H3, P } from "../../ContentComponents";
 
 export function ValuePropSection() {
   return (
-    <div className="w-full rounded-2xl">
+    <div className="w-full">
       <div className="mb-8">
-        <H2>Amplify your team's performance</H2>
+        {/* <H2>Amplify your team's performance</H2>*/}
         {/* <P size="lg" className="mt-6 text-muted-foreground">
           Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P> */}
       </div>
 
-      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:gap-8">
-        <ImgBlock
-          title={<>Answer any question, instantly</>}
-          content={
-            <>
-              Dust searches and synthesizes info from all your tools.&nbsp;
-              <br></br>Enjoy summarization, targeted extractions, and crisp
-              insights from relevant docs.
-            </>
-          }
-        >
-          <Hover3D
-            depth={0}
-            perspective={1000}
-            className={classNames("relative rounded-xl")}
-          >
-            <Div3D depth={-10}>
-              <img src="/static/landing/docexpert/docexpert1.png" />
-            </Div3D>
-            <Div3D depth={30} className="absolute top-0">
-              <img src="/static/landing/docexpert/docexpert2.png" />
-            </Div3D>
-            <Div3D depth={50} className="absolute top-0">
-              <img src="/static/landing/docexpert/docexpert3.png" />
-            </Div3D>
-            <Div3D depth={60} className="absolute top-0">
-              <img src="/static/landing/docexpert/docexpert4.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
-        <ImgBlock
-          title={<>Unlock any skills</>}
-          content={
-            <>
-              Go from marketer to coder in one step, Dust AI agents cover skill
-              gaps so you can focus on vision. Your imagination is the only
-              limit.
-            </>
-          }
-        >
-          <Hover3D
-            depth={0}
-            perspective={1000}
-            className={classNames("relative rounded-xl")}
-          >
-            <Div3D depth={-10}>
-              <img src="/static/landing/code/code1.png" />
-            </Div3D>
-            <Div3D depth={30} className="absolute top-0">
-              <img src="/static/landing/code/code2.png" />
-            </Div3D>
-            <Div3D depth={50} className="absolute top-0">
-              <img src="/static/landing/code/code3.png" />
-            </Div3D>
-            <Div3D depth={60} className="absolute top-0">
-              <img src="/static/landing/code/code4.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
-        <ImgBlock
-          title={<>Analyze anything</>}
-          content={
-            <>
-              From spreadsheets to data warehouses, Dust analyzes and visualize
-              any datasets to reveal patterns and speed up decisions.
-            </>
-          }
-        >
-          <Hover3D
-            depth={0}
-            perspective={1000}
-            className={classNames("relative rounded-xl")}
-          >
-            <Div3D depth={-10}>
-              <img src="/static/landing/analysis/analysis1.png" />
-            </Div3D>
-            <Div3D depth={30} className="absolute top-0">
-              <img src="/static/landing/analysis/analysis2.png" />
-            </Div3D>
-            <Div3D depth={60} className="absolute top-0">
-              <img src="/static/landing/analysis/analysis3.png" />
-            </Div3D>
-            <Div3D depth={50} className="absolute top-0">
-              <img src="/static/landing/analysis/analysis4.png" />
-            </Div3D>
-            <Div3D depth={60} className="absolute top-0">
-              <img src="/static/landing/analysis/analysis5.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
-        <ImgBlock
-          title={<>Automate work beyond limits</>}
-          content={
-            <>
-              From data entry to CRM updates, let AI agents handle repetitive
-              tasks so you can focus on driving impact.
-            </>
-          }
-        >
-          <Hover3D
-            depth={0}
-            perspective={1000}
-            className={classNames("relative rounded-xl")}
-          >
-            <Div3D depth={-20}>
-              <img src="/static/landing/crm/crm1.png" />
-            </Div3D>
-            <Div3D depth={30} className="absolute top-0">
-              <img src="/static/landing/crm/crm2.png" />
-            </Div3D>
-            <Div3D depth={50} className="absolute top-0">
-              <img src="/static/landing/crm/crm3.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
+      <div className="flex flex-col gap-16">
+        <div className="flex flex-col items-center gap-8 md:flex-row">
+          <div className="order-1 w-full md:order-1 md:w-1/2">
+            <div className="flex aspect-video items-center justify-center rounded-2xl bg-golden-50">
+              <img
+                src="/static/landing/docexpert/docexpert.png"
+                alt="DocExpert"
+                className="h-full w-full object-contain"
+              />
+            </div>
+          </div>
+          <div className="order-2 w-full md:order-2 md:w-1/2">
+            <div className="flex flex-col gap-3">
+              <H3 className="text-foreground">
+                Create AI Agents in seconds,<br></br> no consultants needed
+              </H3>
+              <P size="md" className="text-muted-foreground">
+                Build powerful AI agents without code. Connect them to your
+                <br></br>
+                company data, customize their capabilities, and deploy them in
+                <br></br>
+                minutes.
+              </P>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center gap-8 md:flex-row">
+          <div className="order-1 w-full md:order-2 md:w-1/2">
+            <div className="flex aspect-video items-center justify-center rounded-2xl bg-blue-50">
+              <img
+                src="/static/landing/code/code.png"
+                alt="Platform Integration"
+                className="h-full w-full object-contain"
+              />
+            </div>
+          </div>
+          <div className="order-2 w-full md:order-1 md:w-1/2">
+            <div className="flex flex-col gap-3">
+              <H3 className="text-foreground">
+                Connect all your data easily and<br></br> securely
+              </H3>
+              <P size="md" className="text-muted-foreground">
+                Bring your company knowledge together from Slack, Google Drive,
+                <br></br>
+                Notion, Confluence, GitHub and more. Your data stays private and
+                <br></br>
+                secure.
+              </P>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center gap-8 md:flex-row">
+          <div className="order-1 w-full md:order-1 md:w-1/2">
+            <div className="flex aspect-video items-center justify-center rounded-2xl bg-rose-50">
+              <img
+                src="/static/landing/analysis/analysis.png"
+                alt="Analysis"
+                className="h-full w-full object-contain"
+              />
+            </div>
+          </div>
+          <div className="order-2 w-full md:order-2 md:w-1/2">
+            <div className="flex flex-col gap-3">
+              <H3 className="text-foreground">Go beyond search and chat</H3>
+              <P size="md" className="text-muted-foreground">
+                Dust agents can use multiple tools to solve complex problems:
+                <br></br>
+                semantic search, data analysis, web navigation, and more - all
+                <br></br>
+                in one workspace.
+              </P>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

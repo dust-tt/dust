@@ -15,6 +15,7 @@ import {
   Grid,
   H1,
   H2,
+  H3,
   P,
   Strong,
 } from "@app/components/home/ContentComponents";
@@ -350,15 +351,14 @@ export default function About() {
     <>
       <div className="container flex w-full flex-col gap-16 px-6 md:gap-24">
         <div
-          className={classNames(
-            "flex w-full flex-col justify-end gap-4 pt-12 sm:pt-12 lg:pt-24"
-          )}
+          className={classNames("flex w-full flex-col justify-end gap-4 pt-24")}
         >
-          <P size="lg" className="text-center text-muted-foreground">
-            About us
-          </P>
+          <H3 className="text-center text-muted-foreground">About us</H3>
           <div className="flex flex-row justify-center">
-            <H1 className="max-w-2xl text-center" mono>
+            <H1
+              mono
+              className="max-w-2xl text-center text-5xl font-medium md:text-6xl lg:text-7xl"
+            >
               Our mission is to transform how work gets done
             </H1>
           </div>

@@ -4,6 +4,8 @@ export function isLegacyAssistantBuilderConfiguration(
   builderState: AssistantBuilderState
 ): boolean {
   return (
-    builderState.actions.length === 1 && !builderState.actions[0].description
+    builderState.actions.length === 1 &&
+    builderState.actions[0].type !== "MCP" &&
+    !builderState.actions[0].description
   );
 }

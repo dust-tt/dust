@@ -5,6 +5,8 @@ import {
   HubspotLogo,
   Icon,
   Page,
+  SalesforceLogo,
+  Spinner,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
@@ -15,6 +17,9 @@ import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useDataSourceViews } from "@app/lib/swr/data_source_views";
+import { useLabsConnectionConfigurations } from "@app/lib/swr/labs";
+import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   LabsConnectionItemType,
   LabsFeatureItemType,
@@ -42,6 +47,15 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
   },
+  {
+    id: "salesforce_personal_connections",
+    label: "Salesforce Personal Connections",
+    featureFlag: "labs_salesforce_personal_connections",
+    visibleWithoutAccess: false,
+    icon: SalesforceLogo,
+    description:
+      "Connect your Salesforce personal accounts to Dust. We'll use your credentials to fetch data from Salesforce connector.",
+  },
 ];
 const LABS_CONNECTIONS: LabsConnectionItemType[] = [
   {
@@ -51,6 +65,7 @@ const LABS_CONNECTIONS: LabsConnectionItemType[] = [
     visibleWithoutAccess: false,
     logo: HubspotLogo,
     description: "Import your Hubspot data into Dust.",
+    authType: "apiKey",
   },
 ];
 
@@ -104,12 +119,21 @@ export default function LabsTranscriptsIndex({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const visibleConnections = getVisibleConnections(featureFlags);
   const visibleFeatures = getVisibleFeatures(featureFlags);
+  const { spaces, isSpacesLoading } = useSpaces({
+    workspaceId: owner.sId,
+  });
+  const { dataSourceViews } = useDataSourceViews(owner);
+  const { configurations, isConfigurationsLoading } =
+    useLabsConnectionConfigurations({
+      workspaceId: owner.sId,
+    });
+
   return (
     <ConversationsNavigationProvider>
       <AppLayout
         subscription={subscription}
         owner={owner}
-        pageTitle="Dust - Transcripts processing"
+        pageTitle="Dust - Exploratory features"
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         <Page>
@@ -156,13 +180,21 @@ export default function LabsTranscriptsIndex({
                       key={item.id}
                       title={item.label}
                       action={
-                        <FeatureAccessButton
-                          accessible={featureFlags.includes(item.featureFlag)}
-                          featureName={`${item.label} connection`}
-                          managePath={`/w/${owner.sId}/labs/connections/${item.id}`}
-                          owner={owner}
-                          canRequestAccess={isAdmin}
-                        />
+                        isConfigurationsLoading ? (
+                          <Spinner />
+                        ) : (
+                          <FeatureAccessButton
+                            accessible={featureFlags.includes(item.featureFlag)}
+                            featureName={`${item.label} connection`}
+                            owner={owner}
+                            canRequestAccess={isAdmin}
+                            connection={item}
+                            dataSourcesViews={dataSourceViews}
+                            spaces={spaces}
+                            isSpacesLoading={isSpacesLoading}
+                            existingConfigurations={configurations}
+                          />
+                        )
                       }
                       visual={<ContextItem.Visual visual={item.logo} />}
                     >

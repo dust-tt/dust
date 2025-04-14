@@ -19,11 +19,16 @@ const VideoPlayer = () => {
 
 export function ProductIntroSection() {
   return (
-    <div className="w-full pt-[6vh] sm:pt-[8vh] xl:pt-[12vh] 2xl:pt-[18vh]">
+    <div className="sm:pt-18 w-full pt-12 lg:pt-36">
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
-            <H1>Build your team of&nbsp;AI&nbsp;agents</H1>
+            <H1
+              mono
+              className="text-5xl font-medium leading-tight md:text-6xl lg:text-7xl"
+            >
+              Build your team of&nbsp;AI&nbsp;agents
+            </H1>
             <div className="w-full md:hidden">
               <VideoPlayer />
             </div>
