@@ -3,11 +3,13 @@ import {
   Button,
   ContentMessage,
   InformationCircleIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 
 interface ChildAgentSelectorProps {
@@ -97,23 +99,30 @@ export function ChildAgentConfigurationSection({
           />
         </div>
       ) : (
-        <AssistantPicker
-          owner={owner}
-          assistants={agentConfigurations.filter(
-            (agent) => agent.sId !== selectedAgentId
+        <div
+          className={classNames(
+            "flex h-36 w-full items-center justify-center rounded-xl",
+            "bg-muted-background dark:bg-muted-background-night"
           )}
-          onItemClick={(agent) => {
-            onAgentSelect(agent.sId);
-          }}
-          pickerButton={
-            <Button
-              size="sm"
-              label="Select Agent"
-              isLoading={isAgentConfigurationsLoading}
-            />
-          }
-          showFooterButtons={false}
-        />
+        >
+          <AssistantPicker
+            owner={owner}
+            assistants={agentConfigurations.filter(
+              (agent) => agent.sId !== selectedAgentId
+            )}
+            onItemClick={(agent) => {
+              onAgentSelect(agent.sId);
+            }}
+            pickerButton={
+              <Button
+                size="sm"
+                label="Select Agent"
+                isLoading={isAgentConfigurationsLoading}
+              />
+            }
+            showFooterButtons={false}
+          />
+        </div>
       )}
 
       {selectedAgent && (
