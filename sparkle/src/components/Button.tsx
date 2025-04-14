@@ -136,6 +136,15 @@ const spinnerVariantsMapIsLoading: Record<ButtonVariantType, SpinnerVariant> = {
   "ghost-secondary": "dark",
 };
 
+const chevronVariantMap = {
+  primary: "s-text-white/70",
+  outline: "s-text-foreground/70 dark:s-text-foreground-night/70",
+  ghost: "s-text-foreground/70 dark:s-text-foreground-night/70",
+  "ghost-secondary": "s-text-foreground/70 dark:s-text-foreground-night/70",
+  highlight: "s-text-white/70",
+  warning: "s-text-white/70",
+} as const;
+
 export interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
@@ -209,7 +218,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       : (variant && spinnerVariantsMap[variant]) || "slate400";
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
-      <Icon visual={visual} size={iconsSize} className={extraClass} />
+      <Icon visual={visual} size={iconsSize} className={cn(extraClass)} />
+    );
+    const renderChevron = (visual: React.ComponentType, extraClass = "") => (
+      <Icon
+        visual={visual}
+        size={iconsSize}
+        className={cn(variant ? chevronVariantMap[variant] : "", extraClass)}
+      />
     );
 
     const showCounter = isCounter && counterValue != null;
@@ -240,7 +256,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             )}
           </div>
         )}
-        {isSelect && renderIcon(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
+        {isSelect && renderChevron(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
       </>
     );
 
