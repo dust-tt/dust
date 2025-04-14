@@ -607,26 +607,24 @@ export default function DatasetView({
                           />
                         </div>
                         {!readOnly ? (
-                          <>
+                          <div className="flex flex-initial space-x-1 pr-1">
                             {datasetKeys.length > 1 ? (
-                              <div className="flex w-4 flex-initial">
-                                <XCircleIcon
-                                  className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-red-500 group-hover:block"
-                                  onClick={() => {
-                                    handleDeleteKey(j);
-                                  }}
-                                />
-                              </div>
-                            ) : null}
-                            <div className="mr-2 flex w-4 flex-initial">
-                              <PlusCircleIcon
-                                className="hidden h-4 w-4 cursor-pointer text-gray-400 hover:text-emerald-500 group-hover:block"
+                              <Button
+                                size="mini"
+                                icon={XCircleIcon}
                                 onClick={() => {
-                                  handleNewKey(j);
+                                  handleDeleteKey(j);
                                 }}
                               />
-                            </div>
-                          </>
+                            ) : null}
+                            <Button
+                              size="mini"
+                              icon={PlusCircleIcon}
+                              onClick={() => {
+                                handleNewKey(j);
+                              }}
+                            />
+                          </div>
                         ) : null}
                       </div>
                     </div>
