@@ -90,7 +90,6 @@ export function ChildAgentConfigurationSection({
                 <div className="text-md font-medium">{selectedAgent.name}</div>
               </div>
               <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                <span className="font-medium">Description:</span>{" "}
                 {selectedAgent.description || "No description available"}
               </div>
             </div>
