@@ -214,7 +214,7 @@ export function CloudConnectorsSection() {
     <div className="rounded-2xl bg-gray-50 px-6 py-8 sm:px-8 sm:py-10 md:px-10 md:py-12 lg:px-12 lg:py-16">
       <div className="flex flex-col items-center gap-6 sm:gap-8 md:gap-10 lg:flex-row lg:gap-16">
         <div className="mb-2 w-full text-left sm:mb-4 md:mb-0 lg:w-1/2">
-          <H3 className="mb-4 sm:mb-6">It's not ChatGPT. It's Dust</H3>
+          <H3 className="mb-4 sm:mb-6">It’s not ChatGPT. It’s Dust</H3>
           <P size="md" className="text-muted-foreground">
             Dust is your future-proof AI platform: we are model-agnostic and let
             you connect all your existing systems
