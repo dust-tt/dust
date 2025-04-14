@@ -11,7 +11,6 @@ import {
 } from "@sparkle/components/Dropdown";
 import { Icon } from "@sparkle/components/Icon";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { SparkleContext, SparkleContextLinkType } from "@sparkle/context";
 import { ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
 
@@ -65,10 +64,6 @@ const isButtonItem = (
   "onClick" in item && typeof item.onClick === "function";
 
 export function Breadcrumbs({ items, className }: BreadcrumbProps) {
-  const { components } = React.useContext(SparkleContext);
-
-  const Link: SparkleContextLinkType = components.link;
-
   const { itemsShown, itemsHidden } = items.reduce(
     (acc: BreadcrumbsAccumulator, item, index) => {
       if (items.length <= 5 || index < 2 || index >= items.length - 2) {
@@ -92,14 +87,14 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
             key={`breadcrumbs-${index}`}
             className="s-flex s-flex-row s-items-center s-gap-1"
           >
-            <Icon
-              visual={item.icon}
-              className="s-text-muted-foreground dark:s-text-muted-foreground-night"
-            />
             {item.label === ELLIPSIS_STRING ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" label={ELLIPSIS_STRING} />
+                  <Button
+                    variant="ghost"
+                    label={ELLIPSIS_STRING}
+                    icon={item.icon}
+                  />
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent align="start">
@@ -117,25 +112,33 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : isLinkItem(item) ? (
-              <Link
+              <Button
                 href={item.href}
+                icon={item.icon}
                 className={
                   index === itemsShown.length - 1
                     ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
                     : "s-text-muted-foreground dark:s-text-muted-foreground-night"
                 }
-              >
-                {index === itemsShown.length - 1
-                  ? truncateWithTooltip(item.label, LABEL_TRUNCATE_LENGTH_END)
-                  : truncateWithTooltip(
-                      item.label,
-                      LABEL_TRUNCATE_LENGTH_MIDDLE
-                    )}
-              </Link>
+                variant="ghost"
+                label={
+                  index === itemsShown.length - 1
+                    ? truncateTextToLength(
+                        item.label,
+                        LABEL_TRUNCATE_LENGTH_END
+                      )
+                    : truncateTextToLength(
+                        item.label,
+                        LABEL_TRUNCATE_LENGTH_MIDDLE
+                      )
+                }
+                tooltip={item.label}
+              />
             ) : isButtonItem(item) ? (
               <Button
                 variant="ghost"
                 onClick={item.onClick}
+                icon={item.icon}
                 className={
                   index === itemsShown.length - 1
                     ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
@@ -171,7 +174,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
               </div>
             )}
             {index === itemsShown.length - 1 ? null : (
-              <ChevronRightIcon className="s-text-primary-300 dark:s-text-primary-700" />
+              <Icon visual={ChevronRightIcon} />
             )}
           </div>
         );
