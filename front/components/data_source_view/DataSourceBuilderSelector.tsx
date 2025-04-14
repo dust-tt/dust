@@ -1,3 +1,8 @@
+import type {
+  ContentNodesViewType,
+  DataSourceViewType,
+  SpaceType,
+} from "@dust-tt/client";
 import {
   Breadcrumbs,
   Button,
@@ -7,21 +12,27 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   HomeIcon,
+  SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ComponentType, Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-import { DataSourceTableSelector } from "@app/components/data_source_view/DataSourceTableSelector";
-import { useSpaces } from "@app/lib/swr/spaces";
+import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
+import { CATEGORY_DETAILS } from "@app/lib/spaces";
+import {
+  useSpaceDataSourceViewsWithDetails,
+  useSpaces,
+} from "@app/lib/swr/spaces";
 import type {
-  ContentNodesViewType,
+  DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
   DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
   LightWorkspaceType,
-  SpaceType,
 } from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import { DataSourceSearchTable } from "@app/components/data_source_view/DataSourceSearchTable";
+import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
 
 type ButtonBreadcrumbItem = {
   label: string;
@@ -38,7 +49,6 @@ interface DataSourceBuilderSelectorProps {
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
   viewType: ContentNodesViewType;
-  isRootSelectable: boolean;
 }
 
 export const DataSourceBuilderSelector = ({
@@ -48,18 +58,36 @@ export const DataSourceBuilderSelector = ({
   selectionConfigurations,
   setSelectionConfigurations,
   viewType,
-  isRootSelectable,
 }: DataSourceBuilderSelectorProps) => {
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [traversedNode, setTraversedNode] = useState<
     DataSourceViewContentNode | undefined
   >(undefined);
+  const [selectedCategory, setSelectedCategory] =
+    useState<DataSourceViewCategoryWithoutApps | null>(null);
+
+  // Add search state
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Fetch category data when a category is selected
+  const {
+    spaceDataSourceViews: categoryDataSourceViews,
+    isSpaceDataSourceViewsLoading: isCategoryLoading,
+  } = useSpaceDataSourceViewsWithDetails({
+    workspaceId: owner.sId,
+    spaceId: selectedSpaceId || "",
+    category: selectedCategory || "managed",
+    disabled: !selectedSpaceId || !selectedCategory,
+  });
 
   const handleGoToRoot = () => {
     setBreadcrumbItems([rootBreadcrumb]);
     setTraversedNode(undefined);
+    setSelectedCategory(null);
+    setSearchQuery(""); // Clear search when going to root
   };
+
   const rootBreadcrumb = {
     icon: HomeIcon,
     onClick: handleGoToRoot,
@@ -96,14 +124,40 @@ export const DataSourceBuilderSelector = ({
     return filteredSpaces.find((s) => s.sId === selectedSpaceId);
   }, [filteredSpaces, selectedSpaceId]);
 
+  const handleSelectCategory = (
+    category: DataSourceViewCategoryWithoutApps
+  ) => {
+    setSelectedCategory(category);
+    updateBreadcrumbs(CATEGORY_DETAILS[category].label, () => {
+      setSelectedCategory(category);
+    });
+  };
+
+  const handleNavigateNode = (node: DataSourceViewContentNode) => {
+    setTraversedNode(node);
+    updateBreadcrumbs(node.title, () => setTraversedNode(node));
+  };
+
+  const updateBreadcrumbs = (label: string, onClick: () => void) => {
+    setBreadcrumbItems([
+      ...breadcrumbItems,
+      {
+        label,
+        onClick,
+      },
+    ]);
+  };
+
   if (isSpacesLoading) {
     return <Spinner />;
   }
 
-  // Handle case with no spaces or data sources
   if (filteredSpaces.length === 0) {
     return <div>No spaces with data sources available.</div>;
   }
+
+  // Determine whether to show search results or node navigation
+  const isSearchActive = searchQuery.length >= MIN_SEARCH_QUERY_SIZE;
 
   return (
     <div className="flex flex-col gap-4">
@@ -124,6 +178,8 @@ export const DataSourceBuilderSelector = ({
                 setSelectedSpaceId(newSpaceId);
                 setBreadcrumbItems([rootBreadcrumb]);
                 setTraversedNode(undefined);
+                setSelectedCategory(null);
+                setSearchQuery(""); // Clear search when changing space
               }}
             >
               {filteredSpaces.map((space) => (
@@ -152,28 +208,50 @@ export const DataSourceBuilderSelector = ({
       )}
 
       {selectedSpace && (
-        <DataSourceTableSelector
-          owner={owner}
-          dataSourceViews={dataSourceViews.filter(
-            (dsv) => dsv.spaceId === selectedSpace.sId
+        <>
+          <SearchInput
+            name="search"
+            placeholder="Search (Name)"
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+
+          {isSearchActive ? (
+            <DataSourceSearchTable
+              owner={owner}
+              dataSourceViews={dataSourceViews.filter(
+                (dsv) => dsv.spaceId === selectedSpace.sId
+              )}
+              selectionConfigurations={selectionConfigurations}
+              setSelectionConfigurations={setSelectionConfigurations}
+              viewType={viewType}
+              space={selectedSpace}
+              updateBreadcrumbs={updateBreadcrumbs}
+              setTraversedNode={setTraversedNode}
+              searchQuery={searchQuery}
+            />
+          ) : (
+            <>
+              {!selectedCategory && !traversedNode ? (
+                <DataSourceCategoryBrowser
+                  owner={owner}
+                  space={selectedSpace}
+                  onSelectCategory={handleSelectCategory}
+                />
+              ) : (
+                <DataSourceNodeTable
+                  owner={owner}
+                  viewType={viewType}
+                  categoryDataSourceViews={categoryDataSourceViews}
+                  selectedCategory={selectedCategory || undefined}
+                  traversedNode={traversedNode}
+                  onNavigate={handleNavigateNode}
+                  isCategoryLoading={isCategoryLoading}
+                />
+              )}
+            </>
           )}
-          selectionConfigurations={selectionConfigurations}
-          setSelectionConfigurations={setSelectionConfigurations}
-          viewType={viewType}
-          isRootSelectable={isRootSelectable}
-          space={selectedSpace}
-          updateBreadcrumbs={(label: string, onClick: () => void) => {
-            setBreadcrumbItems([
-              ...breadcrumbItems,
-              {
-                label,
-                onClick,
-              },
-            ]);
-          }}
-          traversedNode={traversedNode}
-          setTraversedNode={setTraversedNode}
-        />
+        </>
       )}
     </div>
   );
