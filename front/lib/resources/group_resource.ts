@@ -43,8 +43,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     super(GroupModel, blob);
   }
 
-  static async makeNew(blob: CreationAttributes<GroupModel>) {
-    const group = await GroupModel.create(blob);
+  static async makeNew(
+    blob: CreationAttributes<GroupModel>,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    const group = await GroupModel.create(blob, { transaction });
 
     return new this(GroupModel, group.get());
   }
@@ -413,7 +416,8 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMembers(
     auth: Authenticator,
-    users: UserType[]
+    users: UserType[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
     if (!this.canWrite(auth)) {
       return new Err(
@@ -489,7 +493,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         userId: user.id,
         workspaceId: owner.id,
         startAt: new Date(),
-      }))
+      })),
+      { transaction }
     );
 
     return new Ok(undefined);
@@ -497,14 +502,16 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMember(
     auth: Authenticator,
-    user: UserType
+    user: UserType,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
-    return this.addMembers(auth, [user]);
+    return this.addMembers(auth, [user], { transaction });
   }
 
   async removeMembers(
     auth: Authenticator,
-    users: UserType[]
+    users: UserType[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
     if (!this.canWrite(auth)) {
       return new Err(
@@ -580,6 +587,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
         },
+        transaction,
       }
     );
 
@@ -588,14 +596,16 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async removeMember(
     auth: Authenticator,
-    users: UserType
+    users: UserType,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
-    return this.removeMembers(auth, [users]);
+    return this.removeMembers(auth, [users], { transaction });
   }
 
   async setMembers(
     auth: Authenticator,
-    users: UserType[]
+    users: UserType[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
     if (!this.canWrite(auth)) {
       return new Err(
@@ -615,7 +625,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(auth, usersToAdd);
+      const addResult = await this.addMembers(auth, usersToAdd, {
+        transaction,
+      });
       if (addResult.isErr()) {
         return addResult;
       }
@@ -626,7 +638,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(auth, usersToRemove);
+      const removeResult = await this.removeMembers(auth, usersToRemove, {
+        transaction,
+      });
       if (removeResult.isErr()) {
         return removeResult;
       }
