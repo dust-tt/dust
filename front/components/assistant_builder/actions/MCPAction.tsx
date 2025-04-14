@@ -22,6 +22,47 @@ import type {
 } from "@app/types";
 import { assertNever, slugify } from "@app/types";
 
+interface NoActionAvailableProps {
+  owner: LightWorkspaceType;
+}
+
+function NoActionAvailable({ owner }: NoActionAvailableProps) {
+  return (
+    <ContentMessage
+      title="You don't have any Actions available"
+      icon={InformationCircleIcon}
+      variant="warning"
+    >
+      <div className="flex flex-col gap-y-3">
+        {(() => {
+          switch (owner.role) {
+            case "admin":
+              return (
+                <div>
+                  <strong>
+                    Visit the "Actions" section in the Admins panel to add an
+                    Action.
+                  </strong>
+                </div>
+              );
+            case "builder":
+            case "user":
+              return (
+                <div>
+                  <strong>Ask your Admins to add an Action.</strong>
+                </div>
+              );
+            case "none":
+              return <></>;
+            default:
+              assertNever(owner.role);
+          }
+        })()}
+      </div>
+    </ContentMessage>
+  );
+}
+
 interface MCPActionProps {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
@@ -221,38 +262,7 @@ export function MCPAction({
       )}
       <>
         {noMCPServerView ? (
-          <ContentMessage
-            title="You don't have any Actions available"
-            icon={InformationCircleIcon}
-            variant="warning"
-          >
-            <div className="flex flex-col gap-y-3">
-              {(() => {
-                switch (owner.role) {
-                  case "admin":
-                    return (
-                      <div>
-                        <strong>
-                          Visit the "Actions" section in the Admins panel to add
-                          an Action.
-                        </strong>
-                      </div>
-                    );
-                  case "builder":
-                  case "user":
-                    return (
-                      <div>
-                        <strong>Ask your Admins to add an Action.</strong>
-                      </div>
-                    );
-                  case "none":
-                    return <></>;
-                  default:
-                    assertNever(owner.role);
-                }
-              })()}
-            </div>
-          </ContentMessage>
+          <NoActionAvailable owner={owner} />
         ) : (
           <>
             {isDefaultMCPServer ? (
