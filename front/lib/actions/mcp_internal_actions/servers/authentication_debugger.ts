@@ -14,7 +14,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     provider,
     use_case: "connection" as const,
   },
-  visual: "ActionLockIcon",
+  visual: "https://dust.tt/static/droidavatar/Droid_Green_1.jpg",
 };
 
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
