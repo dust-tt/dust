@@ -11,6 +11,7 @@ import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_in
 import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
+import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
@@ -39,6 +40,8 @@ export function getInternalMCPServer(
       return generateFileServer(auth);
     case "child_agent_debugger":
       return askAgentServer();
+    case "tables_query":
+      return tablesQueryServer();
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
     case "think":
