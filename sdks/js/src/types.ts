@@ -2852,3 +2852,15 @@ export const PostMCPResultsResponseSchema = z.object({
 export type PostMCPResultsResponseType = z.infer<
   typeof PostMCPResultsResponseSchema
 >;
+
+const MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export type MCPToolStakeLevelPublicType =
+  (typeof MCP_TOOL_STAKE_LEVELS)[number];
+
+const MCP_VALIDATION_OUTPUTS = [
+  "approved",
+  "rejected",
+  "always_approved",
+] as const;
+export type MCPValidationOutputPublicType =
+  (typeof MCP_VALIDATION_OUTPUTS)[number];
