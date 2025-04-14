@@ -1,12 +1,33 @@
 import { Checkbox, Input, Label } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useMemo } from "react";
 
 import { asDisplayName } from "@app/types";
 
-const formatKeyForDisplay = (key: string): string => {
-  const segments = key.split(".").map(asDisplayName);
-  return segments.join(" > ");
-};
+function formatKeyForDisplay(key: string): string {
+  const segments = key.split(".");
+  return asDisplayName(segments[segments.length - 1]);
+}
+
+function getKeyPrefix(key: string): string {
+  const segments = key.split(".");
+  return segments.length > 1 ? segments[0] : "";
+}
+
+function groupKeysByPrefix<T extends string | number | boolean>(
+  keys: Record<string, T>
+): Record<string, Record<string, T>> {
+  const groups: Record<string, Record<string, T>> = {};
+
+  Object.entries(keys).forEach(([key, value]) => {
+    const prefix = getKeyPrefix(key);
+    if (!groups[prefix]) {
+      groups[prefix] = {};
+    }
+    groups[prefix][key] = value;
+  });
+
+  return groups;
+}
 
 interface BooleanConfigurationSectionProps {
   requiredBooleans: Record<string, boolean>;
@@ -108,6 +129,60 @@ function StringConfigurationSection({
   });
 }
 
+interface GroupedConfigurationSectionProps {
+  prefix: string;
+  requiredStrings: Record<string, string>;
+  requiredNumbers: Record<string, number>;
+  requiredBooleans: Record<string, boolean>;
+  additionalConfiguration: Record<string, string | number | boolean>;
+  onConfigUpdate: (key: string, value: string | number | boolean) => void;
+}
+
+function GroupedConfigurationSection({
+  prefix,
+  requiredStrings,
+  requiredNumbers,
+  requiredBooleans,
+  additionalConfiguration,
+  onConfigUpdate,
+}: GroupedConfigurationSectionProps) {
+  const hasConfiguration =
+    Object.keys(requiredStrings).length > 0 ||
+    Object.keys(requiredNumbers).length > 0 ||
+    Object.keys(requiredBooleans).length > 0;
+
+  if (!hasConfiguration) {
+    return null;
+  }
+
+  return (
+    <div className="mb-6">
+      {prefix && (
+        <Label className="mb-4 block text-lg font-medium text-foreground dark:text-foreground-night">
+          {asDisplayName(prefix)}
+        </Label>
+      )}
+      <div className="space-y-4">
+        <StringConfigurationSection
+          requiredStrings={requiredStrings}
+          additionalConfiguration={additionalConfiguration}
+          onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
+        />
+        <NumberConfigurationSection
+          requiredNumbers={requiredNumbers}
+          additionalConfiguration={additionalConfiguration}
+          onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
+        />
+        <BooleanConfigurationSection
+          requiredBooleans={requiredBooleans}
+          additionalConfiguration={additionalConfiguration}
+          onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
+        />
+      </div>
+    </div>
+  );
+}
+
 interface AdditionalConfigurationSectionProps {
   requiredStrings: Record<string, string>;
   requiredNumbers: Record<string, number>;
@@ -125,6 +200,31 @@ export const AdditionalConfigurationSection: React.FC<
   additionalConfiguration,
   onConfigUpdate,
 }) => {
+  // Group configuration fields by prefix.
+  const groupedStrings = useMemo(
+    () => groupKeysByPrefix(requiredStrings),
+    [requiredStrings]
+  );
+  const groupedNumbers = useMemo(
+    () => groupKeysByPrefix(requiredNumbers),
+    [requiredNumbers]
+  );
+  const groupedBooleans = useMemo(
+    () => groupKeysByPrefix(requiredBooleans),
+    [requiredBooleans]
+  );
+
+  // Get all unique prefixes
+  const allPrefixes = useMemo(() => {
+    const prefixSet = new Set<string>();
+
+    Object.keys(groupedStrings).forEach((prefix) => prefixSet.add(prefix));
+    Object.keys(groupedNumbers).forEach((prefix) => prefixSet.add(prefix));
+    Object.keys(groupedBooleans).forEach((prefix) => prefixSet.add(prefix));
+
+    return Array.from(prefixSet).sort();
+  }, [groupedStrings, groupedNumbers, groupedBooleans]);
+
   const hasConfiguration =
     Object.keys(requiredStrings).length > 0 ||
     Object.keys(requiredNumbers).length > 0 ||
@@ -146,23 +246,17 @@ export const AdditionalConfigurationSection: React.FC<
         </Label>
       </div>
 
-      <StringConfigurationSection
-        requiredStrings={requiredStrings}
-        additionalConfiguration={additionalConfiguration}
-        onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
-      />
-
-      <NumberConfigurationSection
-        requiredNumbers={requiredNumbers}
-        additionalConfiguration={additionalConfiguration}
-        onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
-      />
-
-      <BooleanConfigurationSection
-        requiredBooleans={requiredBooleans}
-        additionalConfiguration={additionalConfiguration}
-        onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
-      />
+      {allPrefixes.map((prefix) => (
+        <GroupedConfigurationSection
+          key={prefix || "general"}
+          prefix={prefix}
+          requiredStrings={groupedStrings[prefix] || {}}
+          requiredNumbers={groupedNumbers[prefix] || {}}
+          requiredBooleans={groupedBooleans[prefix] || {}}
+          additionalConfiguration={additionalConfiguration}
+          onConfigUpdate={onConfigUpdate}
+        />
+      ))}
     </>
   );
 };
