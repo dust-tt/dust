@@ -1,13 +1,11 @@
 import { faker } from "@faker-js/faker";
 
+import { DEFAULT_MCP_ACTION_VERSION } from "@app/lib/actions/constants";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { WorkspaceType } from "@app/types";
-import {
-  DEFAULT_MCP_ACTION_ICON,
-  DEFAULT_MCP_ACTION_VERSION,
-} from "@app/lib/actions/constants";
 
 export class RemoteMCPServerFactory {
   static async create(
@@ -33,7 +31,7 @@ export class RemoteMCPServerFactory {
       url,
       cachedDescription,
       cachedTools: tools,
-      icon: DEFAULT_MCP_ACTION_ICON,
+      icon: DEFAULT_MCP_SERVER_ICON,
       version: DEFAULT_MCP_ACTION_VERSION,
       authorization: null,
     });

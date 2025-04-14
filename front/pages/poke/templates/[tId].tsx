@@ -698,6 +698,7 @@ function TemplatesPage({
               title="Background Color"
               picker={(handleSelect) => (
                 <ColorPicker
+                  selectedColor={form.getValues("backgroundColor")}
                   colors={generateTailwindBackgroundColors()}
                   onColorSelect={(color) => {
                     handleSelect(color);

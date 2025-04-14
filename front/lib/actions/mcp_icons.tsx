@@ -1,44 +1,20 @@
-import {
-  CommandIcon,
-  FolderTableIcon,
-  GithubIcon,
-  ImageIcon,
-  RobotIcon,
-  RocketIcon,
-} from "@dust-tt/sparkle";
+import { ActionIcons } from "@dust-tt/sparkle";
 import React from "react";
 
 import type { MCPServerType } from "@app/lib/api/mcp";
 
-export const MCP_SERVER_ICONS: Record<AllowedIconType, React.ComponentType> = {
-  command: CommandIcon,
-  github: GithubIcon,
-  image: ImageIcon,
-  robot: RobotIcon,
-  rocket: RocketIcon,
-  table: FolderTableIcon,
-} as const;
+export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
 
-export const DEFAULT_MCP_SERVER_ICON = "rocket" as const;
+export const ALLOWED_ICONS = Object.keys(ActionIcons);
 
-export const ALLOWED_ICONS = [
-  "command",
-  "github",
-  "image",
-  "robot",
-  "rocket",
-  "table",
-] as const;
-export type AllowedIconType = (typeof ALLOWED_ICONS)[number];
+export type AllowedIconType = keyof typeof ActionIcons;
 
 export const isAllowedIconType = (icon: string): icon is AllowedIconType =>
   ALLOWED_ICONS.includes(icon as AllowedIconType);
 
 export const getVisual = (mcpServer: MCPServerType) => {
   if (isAllowedIconType(mcpServer.visual)) {
-    return React.createElement(
-      MCP_SERVER_ICONS[mcpServer.visual || DEFAULT_MCP_SERVER_ICON]
-    );
+    return React.createElement(ActionIcons[mcpServer.visual]);
   }
 
   return mcpServer.visual;
