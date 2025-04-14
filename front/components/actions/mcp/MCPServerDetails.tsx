@@ -247,7 +247,6 @@ export function MCPServerDetails({
                   <MCPServerDetailsInfo
                     mcpServer={effectiveMCPServer}
                     owner={owner}
-                    onClose={onClose}
                   />
                 )}
                 {selectedTab === "sharing" && (
