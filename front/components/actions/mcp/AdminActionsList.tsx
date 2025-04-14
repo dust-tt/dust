@@ -1,20 +1,16 @@
-import {
-  Avatar,
-  Chip,
-  classNames,
-  DataTable,
-  SearchInput,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Avatar, Chip, classNames, DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { CreateMCPServerModal } from "@app/components/actions/mcp/CreateMCPServerModal";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
 import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
+import { getSpaceIcon } from "@app/lib/spaces";
 import {
   useCreateInternalMCPServer,
   useMCPServerConnections,
@@ -69,11 +65,15 @@ const NameCell = ({ row }: { row: RowData }) => {
 
 type AdminActionsListProps = {
   owner: LightWorkspaceType;
+  filter: string;
+  systemSpace: SpaceType;
   setMcpServer: (mcpServer: MCPServerType) => void;
 };
 
 export const AdminActionsList = ({
   owner,
+  filter,
+  systemSpace,
   setMcpServer,
 }: AdminActionsListProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -84,10 +84,6 @@ export const AdminActionsList = ({
     workspaceId: owner.sId,
     disabled: false,
   });
-
-  const systemSpace = useMemo(() => {
-    return spaces.find((space) => space.kind === "system");
-  }, [spaces]);
 
   const { mcpServers, isMCPServersLoading } = useMCPServers({
     owner,
@@ -100,6 +96,10 @@ export const AdminActionsList = ({
   });
 
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
+
+  const { portalToHeader } = useActionButtonsPortal({
+    containerId: ACTION_BUTTONS_CONTAINER_ID,
+  });
 
   const getTableColumns = (): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -124,19 +124,23 @@ export const AdminActionsList = ({
         id: "access",
         accessorKey: "spaces",
         header: "Access",
-        cell: (info: CellContext<RowData, SpaceType[]>) => (
-          <DataTable.BasicCellContent
-            label={
-              !info.getValue().find((s) => s.kind === "global")
-                ? info
-                    .getValue()
-                    .filter((s) => s.kind === "regular")
-                    .map((s) => s.name)
-                    .join(", ")
-                : "Everybody"
-            }
-          />
-        ),
+        cell: (info: CellContext<RowData, SpaceType[]>) => {
+          const globalSpace = info.getValue().find((s) => s.kind === "global");
+          return (
+            <DataTable.CellContent>
+              <div className="flex items-center gap-2">
+                {globalSpace ? getSpaceIcon(globalSpace)({}) : null}
+                {globalSpace
+                  ? "Everybody"
+                  : info
+                      .getValue()
+                      .filter((s) => s.kind === "regular")
+                      .map((s) => s.name)
+                      .join(", ")}
+              </div>
+            </DataTable.CellContent>
+          );
+        },
         sortingFn: (rowA, rowB) => {
           return rowA.original.mcpServer.name.localeCompare(
             rowB.original.mcpServer.name
@@ -213,25 +217,17 @@ export const AdminActionsList = ({
     .sort(mcpServersSortingFn);
   const columns = getTableColumns();
 
-  const [filter, setFilter] = useState("");
-
   return (
     <>
-      <div className="flex flex-row gap-2">
-        <CreateMCPServerModal
-          isOpen={isCreateOpen}
-          internalMCPServer={internalMCPServerToCreate}
-          setIsOpen={setIsCreateOpen}
-          setIsLoading={setIsLoading}
-          owner={owner}
-          setMCPServer={setMcpServer}
-        />
-        <SearchInput
-          name="filter"
-          placeholder="Filter"
-          value={filter}
-          onChange={(e) => setFilter(e)}
-        />
+      <CreateMCPServerModal
+        isOpen={isCreateOpen}
+        internalMCPServer={internalMCPServerToCreate}
+        setIsOpen={setIsCreateOpen}
+        setIsLoading={setIsLoading}
+        owner={owner}
+        setMCPServer={setMcpServer}
+      />
+      {portalToHeader(
         <AddActionMenu
           owner={owner}
           enabledMCPServers={mcpServers.map((s) => s.id)}
@@ -251,7 +247,7 @@ export const AdminActionsList = ({
             }
           }}
         />
-      </div>
+      )}
 
       {isMCPServersLoading || isLoading ? (
         <div className="mt-16 flex justify-center">

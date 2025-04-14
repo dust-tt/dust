@@ -27,24 +27,45 @@ export function SpacePageHeader({
   space,
 }: SpacePageToolsProps) {
   const description = React.useMemo(() => {
-    if (category === "managed" && space.kind === "system" && !dataSourceView) {
-      return (
-        <>
-          Here you can authorize Connections and control what data Dust can
-          access. Once connected, data can be distributed to Open Spaces
-          (accessible to all workspace members) or Restricted Spaces (limited
-          access). <br />
-          Need help? Check out our{" "}
-          <Link
-            href="https://docs.dust.tt/docs/data"
-            className="text-highlight"
-            target="_blank"
-          >
-            guide
-          </Link>
-          .
-        </>
-      );
+    if (space.kind === "system") {
+      if (category === "managed" && !dataSourceView) {
+        return (
+          <>
+            Here you can authorize Connections and control what data Dust can
+            access. Once connected, data can be distributed to Open Spaces
+            (accessible to all workspace members) or Restricted Spaces (limited
+            access). <br />
+            Need help? Check out our{" "}
+            <Link
+              href="https://docs.dust.tt/docs/data"
+              className="text-highlight"
+              target="_blank"
+            >
+              guide
+            </Link>
+            .
+          </>
+        );
+      } else if (category === "actions") {
+        return (
+          <>
+            Here you can enable your agents with <b>additional capabilities</b>{" "}
+            and define who can use them. Find all available tools here and set
+            up new ones. You can also setup remote <b>MCP Servers</b>{" "}
+            connections here.
+            <br />
+            Need help? Check out our{" "}
+            <Link
+              href="https://docs.dust.tt/docs/tools"
+              className="text-highlight"
+              target="_blank"
+            >
+              guide
+            </Link>
+            .
+          </>
+        );
+      }
     }
 
     return null;
