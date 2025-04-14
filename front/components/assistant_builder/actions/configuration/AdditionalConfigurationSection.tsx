@@ -1,10 +1,11 @@
 import { Checkbox, Input, Label } from "@dust-tt/sparkle";
 import React from "react";
 
+import { asDisplayName } from "@app/types";
+
 const formatKeyForDisplay = (key: string): string => {
   const lastPart = key.split(".").pop() || key;
-  const withSpaces = lastPart.replace("_", " ").replace("-", " ");
-  return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
+  return asDisplayName(lastPart);
 };
 
 interface BooleanConfigurationSectionProps {
