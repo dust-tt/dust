@@ -12,6 +12,7 @@ import {
 import { sortBy } from "lodash";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
+import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
 import { ChildAgentSelector } from "@app/components/assistant_builder/actions/configuration/ChildAgentSelector";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -22,7 +23,7 @@ import type {
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getVisual } from "@app/lib/actions/mcp_icons";
-import { getRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
@@ -100,7 +101,7 @@ export function MCPAction({
       setEdited(true);
       setSelectedMCPServerView(serverView);
 
-      const requirements = getRequirements(serverView);
+      const requirements = getMCPServerRequirements(serverView);
       updateAction({
         actionName: slugify(serverView.server.name),
         actionDescription:
@@ -167,11 +168,36 @@ export function MCPAction({
     [action.description, action.name, setEdited, updateAction]
   );
 
+  const handleAdditionalConfigUpdate = useCallback(
+    (key: string, value: string | number | boolean) => {
+      if (!selectedMCPServerView) {
+        return;
+      }
+      setEdited(true);
+      updateAction({
+        actionName: slugify(selectedMCPServerView?.server.name ?? ""),
+        actionDescription: selectedMCPServerView?.server.description ?? "",
+        getNewActionConfig: (prev) => {
+          const prevConfig = prev as AssistantBuilderMCPServerConfiguration;
+          return {
+            ...prevConfig,
+            mcpServerViewId: selectedMCPServerView.id,
+            additionalConfiguration: {
+              ...prevConfig.additionalConfiguration,
+              [key]: value,
+            },
+          };
+        },
+      });
+    },
+    [selectedMCPServerView, setEdited, updateAction]
+  );
+
   if (action.type !== "MCP") {
     return null;
   }
 
-  const requirements = getRequirements(selectedMCPServerView);
+  const requirements = getMCPServerRequirements(selectedMCPServerView);
 
   return (
     <>
@@ -381,6 +407,13 @@ export function MCPAction({
           owner={owner}
         />
       )}
+      <AdditionalConfigurationSection
+        requiredStrings={requirements.requiredStrings}
+        requiredNumbers={requirements.requiredNumbers}
+        requiredBooleans={requirements.requiredBooleans}
+        additionalConfiguration={actionConfiguration.additionalConfiguration}
+        onConfigUpdate={handleAdditionalConfigUpdate}
+      />
     </>
   );
 }
@@ -398,7 +431,7 @@ export function hasErrorActionMCP(
       return "Please select a tool.";
     }
 
-    const requirements = getRequirements(mcpServerView);
+    const requirements = getMCPServerRequirements(mcpServerView);
     if (
       requirements.requiresDataSourceConfiguration &&
       !action.configuration.dataSourceConfigurations
@@ -416,6 +449,21 @@ export function hasErrorActionMCP(
       !action.configuration.childAgentId
     ) {
       return "Please select a child agent.";
+    }
+    for (const key in requirements.requiredStrings) {
+      if (!action.configuration.additionalConfiguration[key]) {
+        return `Please fill in the required string field "${key}".`;
+      }
+    }
+    for (const key in requirements.requiredNumbers) {
+      if (!action.configuration.additionalConfiguration[key]) {
+        return `Please fill in the required number field "${key}".`;
+      }
+    }
+    for (const key in requirements.requiredBooleans) {
+      if (!action.configuration.additionalConfiguration[key]) {
+        return `Please fill in the required boolean field "${key}".`;
+      }
     }
 
     return null;
