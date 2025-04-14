@@ -47,15 +47,17 @@ function BooleanConfigurationSection({
   return Object.entries(requiredBooleans).map(([key, defaultValue]) => {
     const value = (additionalConfiguration[key] as boolean) ?? defaultValue;
     return (
-      <div key={key} className="flex items-center gap-2">
-        <Checkbox
-          id={`boolean-${key}`}
-          checked={value}
-          onCheckedChange={(checked) => onConfigUpdate(key, !!checked)}
-        />
-        <Label htmlFor={`boolean-${key}`} className="text-sm font-medium">
+      <div key={key} className="mb-2 flex items-center gap-1">
+        <Label htmlFor={`boolean-${key}`} className="w-1/5 text-sm font-medium">
           {formatKeyForDisplay(key)}
         </Label>
+        <div className="w-full flex-1">
+          <Checkbox
+            id={`boolean-${key}`}
+            checked={value}
+            onCheckedChange={(checked) => onConfigUpdate(key, !!checked)}
+          />
+        </div>
       </div>
     );
   });
@@ -79,8 +81,8 @@ function NumberConfigurationSection({
   return Object.entries(requiredNumbers).map(([key, defaultValue]) => {
     const value = additionalConfiguration[key] ?? defaultValue;
     return (
-      <div key={key} className="flex flex-col gap-2">
-        <Label htmlFor={`number-${key}`} className="text-sm font-medium">
+      <div key={key} className="mb-2 flex items-center gap-1">
+        <Label htmlFor={`number-${key}`} className="w-1/5 text-sm font-medium">
           {formatKeyForDisplay(key)}
         </Label>
         <Input
@@ -113,8 +115,8 @@ function StringConfigurationSection({
   return Object.entries(requiredStrings).map(([key, defaultValue]) => {
     const value = additionalConfiguration[key] ?? defaultValue;
     return (
-      <div key={key} className="flex flex-col gap-2">
-        <Label htmlFor={`string-${key}`} className="text-sm font-medium">
+      <div key={key} className="mb-2 flex items-center gap-1">
+        <Label htmlFor={`string-${key}`} className="w-1/5 text-sm font-medium">
           {formatKeyForDisplay(key)}
         </Label>
         <Input
@@ -156,13 +158,13 @@ function GroupedConfigurationSection({
   }
 
   return (
-    <div className="mb-6">
+    <div className="mb-6 w-full">
       {prefix && (
         <Label className="mb-4 block text-lg font-medium text-foreground dark:text-foreground-night">
           {asDisplayName(prefix)}
         </Label>
       )}
-      <div className="space-y-4">
+      <div className="w-full space-y-4">
         <StringConfigurationSection
           requiredStrings={requiredStrings}
           additionalConfiguration={additionalConfiguration}
@@ -236,7 +238,7 @@ export const AdditionalConfigurationSection: React.FC<
 
   return (
     <>
-      <div className="mt-6">
+      <div className="mt-6 w-full">
         <Label className="text-lg font-medium text-foreground dark:text-foreground-night">
           Additional configuration
         </Label>
