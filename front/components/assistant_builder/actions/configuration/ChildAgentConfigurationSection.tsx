@@ -47,7 +47,7 @@ export function ChildAgentConfigurationSection({
 
   if (isAgentConfigurationsLoading) {
     return (
-      <Card variant="secondary" size="sm" className="h-36 w-full">
+      <Card size="sm" className="h-36 w-full">
         <div className="flex h-full w-full items-center justify-center">
           <Spinner />
         </div>
