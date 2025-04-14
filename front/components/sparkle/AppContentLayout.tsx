@@ -26,6 +26,19 @@ export const appLayoutBack = async (
   }
 };
 
+interface AppContentLayoutProps {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  isWideMode?: boolean;
+  hideSidebar?: boolean;
+  subNavigation?: SidebarNavigation[] | null;
+  pageTitle?: string;
+  navChildren?: React.ReactNode;
+  titleChildren?: React.ReactNode;
+  children: React.ReactNode;
+  hasTopPadding?: boolean;
+}
+
 // TODO(2025-04-11 yuka) We need to refactor AppLayout to avoid re-mounting on every page navigation.
 // Until then, AppLayout has been split into AppRootLayout and AppContentLayout.
 // When you need to use AppContentLayout, add `getLayout` function to your page and wrap the page with AppRootLayout.
@@ -40,18 +53,7 @@ export default function AppContentLayout({
   titleChildren,
   hasTopPadding,
   children,
-}: {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  isWideMode?: boolean;
-  hideSidebar?: boolean;
-  subNavigation?: SidebarNavigation[] | null;
-  pageTitle?: string;
-  navChildren?: React.ReactNode;
-  titleChildren?: React.ReactNode;
-  children: React.ReactNode;
-  hasTopPadding?: boolean;
-}) {
+}: AppContentLayoutProps) {
   const [loaded, setLoaded] = useState(false);
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useAppKeyboardShortcuts(owner);
