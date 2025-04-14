@@ -2,10 +2,10 @@ import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentSelector } from "@app/components/assistant_builder/actions/configuration/ChildAgentSelector";
+import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
-import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
 import type {
   AssistantBuilderActionConfiguration,
