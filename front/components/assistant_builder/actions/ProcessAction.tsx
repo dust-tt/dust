@@ -334,14 +334,14 @@ export function ActionProcess({
           sendNotification({
             title: "Failed to generate schema.",
             type: "error",
-            description: `An error occured while generating the schema: ${res.error.message}`,
+            description: `An error occurred while generating the schema: ${res.error.message}`,
           });
         }
       } catch (e) {
         sendNotification({
           title: "Failed to generate schema.",
           type: "error",
-          description: `An error occured while generating the schema. Please contact us if the error persists.`,
+          description: `An error occurred while generating the schema. Please contact us if the error persists.`,
         });
       } finally {
         setIsGeneratingSchema(false);
