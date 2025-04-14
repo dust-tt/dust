@@ -220,7 +220,7 @@ export function DataSourceNodeTable({
         header: "Name",
         cell: ({ row }) => (
           <DataTable.CellContent>
-            <span className="flex items-center gap-2 truncate text-ellipsis font-semibold">
+            <span className="flex items-center gap-2 truncate text-ellipsis py-1 font-semibold">
               {row.original.icon}
               {row.original.title}
             </span>
