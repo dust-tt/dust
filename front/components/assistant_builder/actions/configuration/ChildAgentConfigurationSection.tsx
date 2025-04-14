@@ -1,6 +1,7 @@
 import {
   Avatar,
   Button,
+  Card,
   ContentMessage,
   InformationCircleIcon,
   Spinner,
@@ -9,7 +10,6 @@ import React from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 
 interface ChildAgentSelectorProps {
@@ -47,14 +47,11 @@ export function ChildAgentConfigurationSection({
 
   if (isAgentConfigurationsLoading) {
     return (
-      <div
-        className={classNames(
-          "flex h-36 w-full items-center justify-center rounded-xl",
-          "bg-muted-background dark:bg-muted-background-night"
-        )}
-      >
-        <Spinner />
-      </div>
+      <Card variant="secondary" size="sm" className="h-36 w-full">
+        <div className="flex h-full w-full items-center justify-center">
+          <Spinner />
+        </div>
+      </Card>
     );
   }
 
@@ -78,63 +75,61 @@ export function ChildAgentConfigurationSection({
   return (
     <div className="flex flex-col gap-2">
       {selectedAgent ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Avatar
-              size="xs"
-              name={selectedAgent.name}
-              visual={selectedAgent.pictureUrl}
-            />
-            <div className="text-sm font-medium">{selectedAgent.name}</div>
+        <Card size="sm" className="w-full">
+          <div className="flex flex-col gap-2 p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Avatar
+                  size="sm"
+                  name={selectedAgent.name}
+                  visual={selectedAgent.pictureUrl}
+                />
+                <div className="text-md font-medium">{selectedAgent.name}</div>
+              </div>
+              <AssistantPicker
+                owner={owner}
+                assistants={agentConfigurations.filter(
+                  (agent) => agent.sId !== selectedAgentId
+                )}
+                onItemClick={(agent) => {
+                  onAgentSelect(agent.sId);
+                }}
+                pickerButton={
+                  <Button
+                    size="sm"
+                    label="Select another agent"
+                    isLoading={isAgentConfigurationsLoading}
+                  />
+                }
+                showFooterButtons={false}
+              />
+            </div>
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <span className="font-medium">Description:</span>{" "}
+              {selectedAgent.description || "No description available"}
+            </div>
           </div>
-          <AssistantPicker
-            owner={owner}
-            assistants={agentConfigurations.filter(
-              (agent) => agent.sId !== selectedAgentId
-            )}
-            onItemClick={(agent) => {
-              onAgentSelect(agent.sId);
-            }}
-            pickerButton={
-              <Button
-                size="sm"
-                label="Select another agent"
-                isLoading={isAgentConfigurationsLoading}
-              />
-            }
-            showFooterButtons={false}
-          />
-        </div>
+        </Card>
       ) : (
-        <div
-          className={classNames(
-            "flex h-36 w-full items-center justify-center rounded-xl",
-            "bg-muted-background dark:bg-muted-background-night"
-          )}
-        >
-          <AssistantPicker
-            owner={owner}
-            assistants={agentConfigurations}
-            onItemClick={(agent) => {
-              onAgentSelect(agent.sId);
-            }}
-            pickerButton={
-              <Button
-                size="sm"
-                label="Select Agent"
-                isLoading={isAgentConfigurationsLoading}
-              />
-            }
-            showFooterButtons={false}
-          />
-        </div>
-      )}
-
-      {selectedAgent && (
-        <div className="text-element-600 mt-2 text-xs">
-          <span className="font-medium">Description:</span>{" "}
-          {selectedAgent.description || "No description available"}
-        </div>
+        <Card size="sm" className="h-36 w-full">
+          <div className="flex h-full w-full items-center justify-center">
+            <AssistantPicker
+              owner={owner}
+              assistants={agentConfigurations}
+              onItemClick={(agent) => {
+                onAgentSelect(agent.sId);
+              }}
+              pickerButton={
+                <Button
+                  size="sm"
+                  label="Select Agent"
+                  isLoading={isAgentConfigurationsLoading}
+                />
+              }
+              showFooterButtons={false}
+            />
+          </div>
+        </Card>
       )}
     </div>
   );
