@@ -10,7 +10,11 @@ export const labsTranscriptsProviders = [
 export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
 
-export const labsFeatures = ["transcripts", "trackers"] as const;
+export const labsFeatures = [
+  "transcripts",
+  "trackers",
+  "salesforce_personal_connections",
+] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 
 export const labsConnections = ["hubspot"] as const;
@@ -31,6 +35,8 @@ export type LabsTranscriptsConfigurationType = {
   useConnectorConnection: boolean;
 };
 
+export type LabsConnectionAuthType = "apiKey" | "oauth" | "email_password";
+
 export type LabsConnectionItemType = {
   id: LabsConnectionType;
   featureFlag: WhitelistableFeature;
@@ -38,6 +44,7 @@ export type LabsConnectionItemType = {
   logo: React.ComponentType;
   label: string;
   description: string;
+  authType: LabsConnectionAuthType;
 };
 
 export type LabsFeatureItemType = {
@@ -48,3 +55,10 @@ export type LabsFeatureItemType = {
   label: string;
   description: string;
 };
+
+export enum SyncStatus {
+  IDLE = "idle",
+  IN_PROGRESS = "running",
+  COMPLETED = "completed",
+  FAILED = "failed",
+}

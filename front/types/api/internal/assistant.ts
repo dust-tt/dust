@@ -10,10 +10,15 @@ export const InternalPostMessagesRequestBodySchema = t.type({
     "NonEmptyString"
   ),
   mentions: t.array(t.type({ configurationId: t.string })),
-  context: t.type({
-    timezone: t.string,
-    profilePictureUrl: t.union([t.string, t.null]),
-  }),
+  context: t.intersection([
+    t.type({
+      timezone: t.string,
+      profilePictureUrl: t.union([t.string, t.null]),
+    }),
+    t.partial({
+      localMCPServerIds: t.array(t.string),
+    }),
+  ]),
 });
 
 const ContentFragmentBaseSchema = t.intersection([

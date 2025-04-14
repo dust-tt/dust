@@ -66,6 +66,7 @@ import {
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
@@ -84,6 +85,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
+import { LabsConnectionsConfigurationModel } from "@app/lib/resources/storage/models/labs_connections";
 // Labs - Can be removed at all times if a solution is dropped
 import {
   LabsTranscriptsConfigurationModel,
@@ -199,9 +201,10 @@ async function main() {
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
 
-  // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
   await LabsTranscriptsHistoryModel.sync({ alter: true });
+  await LabsConnectionsConfigurationModel.sync({ alter: true });
+  await LabsPersonalSalesforceConnection.sync({ alter: true });
 
   await PluginRunModel.sync({ alter: true });
 

@@ -791,9 +791,11 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
   | "labs_features"
+  | "co_edition"
   | "labs_transcripts"
   | "labs_connection_hubspot"
   | "labs_trackers"
+  | "labs_salesforce_personal_connections"
   | "document_tracker"
   | "openai_o1_feature"
   | "openai_o1_mini_feature"
@@ -813,6 +815,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "force_gdrive_labels_scope"
   | "claude_3_7_reasoning"
   | "mcp_actions"
+  | "dev_mcp_actions"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1315,6 +1318,7 @@ const MCPApproveExecutionEventSchema = z.object({
   messageId: z.string(),
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
+  stake: z.optional(z.enum(["low", "high"])),
 });
 
 const AgentErrorEventSchema = z.object({
@@ -2809,7 +2813,7 @@ export type ValidateActionResponseType = z.infer<
 
 export const ValidateActionRequestBodySchema = z.object({
   actionId: z.number(),
-  approved: z.boolean(),
+  approved: z.enum(["approved", "rejected", "always_approved"]),
 });
 
 export type ValidateActionRequestBodyType = z.infer<

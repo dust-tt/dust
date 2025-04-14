@@ -12,11 +12,14 @@ import {
 import assert from "assert";
 
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import { isPlatformMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
+import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType, WhitelistableFeature } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -271,4 +274,43 @@ export function getMCPApprovalKey({
   actionId: number;
 }): string {
   return `conversation:${conversationId}:message:${messageId}:action:${actionId}`;
+}
+
+export async function getExecutionStatusFromConfig(
+  auth: Authenticator,
+  actionConfiguration: MCPToolConfigurationType
+): Promise<{
+  stake?: MCPToolStakeLevelType;
+  status: "allowed_implicitly" | "pending";
+  serverId?: string;
+}> {
+  if (!isPlatformMCPToolConfiguration(actionConfiguration)) {
+    return { status: "pending" };
+  }
+
+  if (actionConfiguration.isDefault) {
+    return { status: "allowed_implicitly" };
+  }
+
+  if (
+    !actionConfiguration.permission ||
+    actionConfiguration.permission === "high"
+  ) {
+    return { status: "pending" };
+  }
+
+  const user = auth.getNonNullableUser();
+  const neverAskSetting = await user.getMetadata(
+    `toolsValidations:${actionConfiguration.toolServerId}`
+  );
+  if (
+    neverAskSetting &&
+    neverAskSetting.value.includes(`${actionConfiguration.name}`)
+  ) {
+    return { status: "allowed_implicitly" };
+  }
+
+  return {
+    status: "pending",
+  };
 }

@@ -12,7 +12,7 @@ import {
   isMCPActionConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   findMatchingSchemaKeys,
   findSchemaAtPath,
@@ -52,9 +52,18 @@ export const ConfigurableToolInputSchemas = {
     uri: z.string().regex(CHILD_AGENT_CONFIGURATION_URI_PATTERN),
     mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT),
   }),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.STRING]: z.string(),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER]: z.number(),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN]: z.boolean(),
+  [INTERNAL_MIME_TYPES.CONFIGURATION.STRING]: z.object({
+    value: z.string(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.STRING),
+  }),
+  [INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER]: z.object({
+    value: z.number(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER),
+  }),
+  [INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN]: z.object({
+    value: z.boolean(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN),
+  }),
   // We use a satisfies here to ensure that all the InternalConfigurationMimeType are covered whilst preserving the type
   // inference in tools definitions (server.tool is templated).
 } as const satisfies Record<InternalConfigurationMimeType, z.ZodSchema>;
@@ -81,12 +90,12 @@ export function generateConfiguredInput({
   actionConfiguration,
   owner,
   mimeType,
-  keyPath = [],
+  keyPath,
 }: {
   owner: WorkspaceType;
   actionConfiguration: MCPToolConfigurationType;
   mimeType: InternalConfigurationMimeType;
-  keyPath?: string[];
+  keyPath: string;
 }): ConfigurableToolInputType {
   assert(
     isPlatformMCPToolConfiguration(actionConfiguration),
@@ -96,34 +105,18 @@ export function generateConfiguredInput({
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
       return (
-        actionConfiguration.dataSources?.map((config) => {
-          if (!config.sId) {
-            // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
-            // TODO(mcp): improve typing wrt this.
-            throw new Error(
-              "Unreachable: data source configuration without an sId."
-            );
-          }
-          return {
-            uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
-            mimeType,
-          };
-        }) || []
+        actionConfiguration.dataSources?.map((config) => ({
+          uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
+          mimeType,
+        })) || []
       );
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.TABLE:
       return (
-        actionConfiguration.tables?.map((config) => {
-          if (!config.sId) {
-            // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
-            // TODO(mcp): improve typing wrt this.
-            throw new Error("Unreachable: table configuration without an sId.");
-          }
-          return {
-            uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
-            mimeType,
-          };
-        }) || []
+        actionConfiguration.tables?.map((config) => ({
+          uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
+          mimeType,
+        })) || []
       );
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT: {
@@ -141,47 +134,34 @@ export function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.STRING: {
-      // For simple types, we extract the last key from the path and use it to look up the value
-      // in additionalConfiguration
-      if (keyPath.length === 0) {
-        throw new Error("Key path is required for STRING configuration");
-      }
-      const lastKey = keyPath[keyPath.length - 1];
-      const value = actionConfiguration.additionalConfiguration[lastKey];
+      // For primitive types, we have rendered the key from the path and use it to look up the value.
+      const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "string") {
         throw new Error(
-          `Expected string value for key ${lastKey}, got ${typeof value}`
+          `Expected string value for key ${keyPath}, got ${typeof value}`
         );
       }
-      return value;
+      return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER: {
-      if (keyPath.length === 0) {
-        throw new Error("Key path is required for NUMBER configuration");
-      }
-      const lastKey = keyPath[keyPath.length - 1];
-      const value = actionConfiguration.additionalConfiguration[lastKey];
+      const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "number") {
         throw new Error(
-          `Expected number value for key ${lastKey}, got ${typeof value}`
+          `Expected number value for key ${keyPath}, got ${typeof value}`
         );
       }
-      return value;
+      return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN: {
-      if (keyPath.length === 0) {
-        throw new Error("Key path is required for BOOLEAN configuration");
-      }
-      const lastKey = keyPath[keyPath.length - 1];
-      const value = actionConfiguration.additionalConfiguration[lastKey];
+      const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "boolean") {
         throw new Error(
-          `Expected boolean value for key ${lastKey}, got ${typeof value}`
+          `Expected boolean value for key ${keyPath}, got ${typeof value}`
         );
       }
-      return value;
+      return { value, mimeType };
     }
 
     default:
@@ -190,25 +170,23 @@ export function generateConfiguredInput({
 }
 
 /**
- * Checks if a server requires internal configuration by examining if any tool's inputSchema
- * contains the specified mimeType.
+ * Returns all paths in a server's tools' inputSchemas that match the schema for the specified mimeType.
+ * @returns An array of paths where the schema matches the specified mimeType
  */
-export function serverRequiresInternalConfiguration({
+export function findPathsToConfiguration({
   mcpServer,
   mimeType,
 }: {
   mcpServer: MCPServerType;
   mimeType: InternalConfigurationMimeType;
-}): boolean {
-  return (
-    mcpServer?.tools?.some(
-      (tool) =>
-        tool?.inputSchema &&
-        findMatchingSchemaKeys(
+}): string[] {
+  return mcpServer.tools.flatMap((tool) =>
+    tool.inputSchema
+      ? findMatchingSchemaKeys(
           tool.inputSchema,
           ConfigurableToolInputJSONSchemas[mimeType]
-        ).length > 0
-    ) ?? false
+        )
+      : []
   );
 }
 
@@ -344,7 +322,7 @@ export function augmentInputsWithConfiguration({
                 owner,
                 actionConfiguration,
                 mimeType,
-                keyPath: fullPath,
+                keyPath: fullPath.join("."),
               })
             );
           }
@@ -354,4 +332,79 @@ export function augmentInputsWithConfiguration({
   }
 
   return inputs;
+}
+
+export function getMCPServerRequirements(
+  mcpServerView: MCPServerViewType | null | undefined
+): {
+  requiresDataSourceConfiguration: boolean;
+  requiresTableConfiguration: boolean;
+  requiresChildAgentConfiguration: boolean;
+  requiredStrings: Record<string, string>;
+  requiredNumbers: Record<string, number>;
+  requiredBooleans: Record<string, boolean>;
+  noRequirement: boolean;
+} {
+  if (!mcpServerView) {
+    return {
+      requiresDataSourceConfiguration: false,
+      requiresTableConfiguration: false,
+      requiresChildAgentConfiguration: false,
+      requiredStrings: {},
+      requiredNumbers: {},
+      requiredBooleans: {},
+      noRequirement: false,
+    };
+  }
+  const { server } = mcpServerView;
+  const requiresDataSourceConfiguration =
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
+    }).length > 0;
+  const requiresTableConfiguration =
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
+    }).length > 0;
+  const requiresChildAgentConfiguration =
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
+    }).length > 0;
+  const requiredStrings = Object.fromEntries(
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.STRING,
+    }).map((path) => [path, ""])
+  );
+  const requiredNumbers = Object.fromEntries(
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER,
+    }).map((path) => [path, 0])
+  );
+  const requiredBooleans = Object.fromEntries(
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN,
+    }).map((path) => [path, false])
+  );
+
+  return {
+    requiresDataSourceConfiguration,
+    requiresTableConfiguration,
+    requiresChildAgentConfiguration,
+    requiredStrings,
+    requiredNumbers,
+    requiredBooleans,
+
+    noRequirement:
+      !requiresDataSourceConfiguration &&
+      !requiresTableConfiguration &&
+      !requiresChildAgentConfiguration &&
+      Object.keys(requiredStrings).length === 0 &&
+      Object.keys(requiredNumbers).length === 0 &&
+      Object.keys(requiredBooleans).length === 0,
+  };
 }

@@ -22,10 +22,12 @@ import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import type { CSVRecord } from "@app/lib/api/csv";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -100,7 +102,10 @@ type TablesQueryErrorEvent = {
   configurationId: string;
   messageId: string;
   error: {
-    code: "tables_query_error" | "too_many_result_rows";
+    code:
+      | "tables_query_error"
+      | "too_many_result_rows"
+      | "require_salesforce_authentication";
     message: string;
   };
 };
@@ -260,6 +265,21 @@ export class TablesQueryActionType extends BaseAction {
     };
   }
 }
+
+const getTablesQueryError = (error: string) => {
+  switch (error) {
+    case "too_many_result_rows":
+      return {
+        code: "too_many_result_rows" as const,
+        message: `The query returned too many rows. Please refine your query.`,
+      };
+    default:
+      return {
+        code: "tables_query_error" as const,
+        message: `Error running TablesQuery app: ${error}`,
+      };
+  }
+};
 
 // Internal interface for the retrieval and rendering of a TableQuery action. This should not be
 // used outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
@@ -487,12 +507,53 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const config = cloneBaseConfig(
       getDustProdAction("assistant-v2-query-tables").config
     );
+
+    const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+      ...new Set(actionConfiguration.tables.map((t) => t.dataSourceViewId)),
+    ]);
+
+    const personalConnectionIds: Record<string, string> = {};
+
+    // This is for salesforce personal connections.
+    const flags = await getFeatureFlags(owner);
+    if (flags.includes("labs_salesforce_personal_connections")) {
+      for (const dataSourceView of dataSourceViews) {
+        if (dataSourceView.dataSource.connectorProvider === "salesforce") {
+          const personalConnection =
+            await LabsSalesforcePersonalConnectionResource.fetchByDataSource(
+              auth,
+              {
+                dataSource: dataSourceView.dataSource.toJSON(),
+              }
+            );
+          if (personalConnection) {
+            personalConnectionIds[dataSourceView.sId] =
+              personalConnection.connectionId;
+          } else {
+            yield {
+              type: "tables_query_error",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              error: {
+                code: "require_salesforce_authentication" as const,
+                message: `The query requires authentication. Please connect to Salesforce.`,
+              },
+            };
+            return;
+          }
+        }
+      }
+    }
+    // End salesforce specific
+
     const tables = actionConfiguration.tables.map((t) => ({
       workspace_id: t.workspaceId,
       table_id: t.tableId,
       // Note: This value is passed to the registry for lookup. The registry will return the
       // associated data source's dustAPIDataSourceId.
       data_source_id: t.dataSourceViewId,
+      remote_database_secret_id: personalConnectionIds[t.dataSourceViewId],
     }));
     if (tables.length === 0) {
       yield {
@@ -593,23 +654,12 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
             "Error running query_tables app"
           );
 
-          const error =
-            e.error === "too_many_result_rows"
-              ? {
-                  code: "too_many_result_rows" as const,
-                  message: `The query returned too many rows. Please refine your query.`,
-                }
-              : {
-                  code: "tables_query_error" as const,
-                  message: `Error running TablesQuery app: ${e.error}`,
-                };
-
           yield {
             type: "tables_query_error",
             created: Date.now(),
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            error,
+            error: getTablesQueryError(e.error),
           };
           return;
         }

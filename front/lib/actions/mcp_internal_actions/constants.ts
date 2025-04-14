@@ -1,14 +1,20 @@
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { ModelId, Result, WhitelistableFeature } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
-  "data_source_utils",
-  "hello_world",
-  "table_utils",
+  // Note:
+  // Names should reflect the purpose of the server, but not directly the tools it contains.
+  // We'll prefix all tools with the server name to avoid conflicts.
+  // It's okay to change the name of the server as we don't refer to it directly.
+  "image_generator",
+  "file_generator",
   "github",
-  "ask_agent",
-  "image_generation_dalle",
+  "data_sources_debugger",
+  "authentication_debugger",
+  "tables_debugger",
+  "child_agent_debugger",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -19,35 +25,57 @@ export const INTERNAL_MCP_SERVERS: Record<
     flag: WhitelistableFeature | null;
   }
 > = {
-  hello_world: {
+  // Notes:
+  // ids should be stable, do not change them for production internal servers as it would break existing agents.
+  // Let's start dev actions at 1000 to avoid conflicts with production actions.
+  // flag "mcp_actions" for actions that are part of the MCP actions feature.
+  // flag "dev_mcp_actions" for actions that are only used internally for dev and testing.
+
+  // Production
+  github: {
     id: 1,
     isDefault: false,
     flag: "mcp_actions",
   },
-  data_source_utils: {
+  image_generator: {
     id: 2,
-    isDefault: false,
-    flag: "mcp_actions",
-  },
-  table_utils: {
-    id: 3,
-    isDefault: false,
-    flag: "mcp_actions",
-  },
-  github: {
-    id: 4,
-    isDefault: false,
-    flag: "mcp_actions",
-  },
-  image_generation_dalle: {
-    id: 5,
     isDefault: true,
     flag: "mcp_actions",
   },
-  ask_agent: {
-    id: 6,
-    isDefault: false,
+  file_generator: {
+    id: 3,
+    isDefault: true,
     flag: "mcp_actions",
+  },
+
+  // Dev
+  data_sources_debugger: {
+    id: 1000,
+    isDefault: true,
+    flag: "dev_mcp_actions",
+  },
+  child_agent_debugger: {
+    id: 1001,
+    isDefault: false,
+    flag: "dev_mcp_actions",
+  },
+  authentication_debugger: {
+    id: 1002,
+    isDefault: false,
+    flag: "dev_mcp_actions",
+  },
+  tables_debugger: {
+    id: 1003,
+    isDefault: false,
+    flag: "dev_mcp_actions",
+  },
+};
+
+export const INTERNAL_TOOLS_STAKE_LEVEL: Partial<
+  Record<InternalMCPServerNameType, Record<string, MCPToolStakeLevelType>>
+> = {
+  authentication_debugger: {
+    hello_world: "low",
   },
 };
 

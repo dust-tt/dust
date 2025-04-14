@@ -33,7 +33,6 @@ export const acceptableTranscriptProvidersCodec = t.union([
 export const acceptableTranscriptsWithConnectorProvidersCodec =
   t.literal("gong");
 
-// Simplify the schema definitions to avoid duplications
 const OAuthConfigSchema = t.type({
   provider: acceptableTranscriptProvidersCodec,
   connectionId: t.string,
@@ -129,24 +128,9 @@ async function handler(
 
     // Create.
     case "POST":
-      let bodyToParse = req.body;
-
-      if (typeof req.body === "string") {
-        try {
-          bodyToParse = JSON.parse(req.body);
-        } catch (e) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Invalid JSON in request body",
-            },
-          });
-        }
-      }
-
-      const bodyValidation =
-        PostLabsTranscriptsConfigurationBodySchema.decode(bodyToParse);
+      const bodyValidation = PostLabsTranscriptsConfigurationBodySchema.decode(
+        req.body
+      );
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
 

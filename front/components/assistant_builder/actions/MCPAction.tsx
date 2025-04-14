@@ -1,6 +1,6 @@
 import {
   Avatar,
-  classNames,
+  Card,
   ContentMessage,
   InformationCircleIcon,
   Label,
@@ -10,14 +10,9 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { sortBy } from "lodash";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 
+import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
 import { ChildAgentSelector } from "@app/components/assistant_builder/actions/configuration/ChildAgentSelector";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -27,8 +22,8 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
-import { useMCPServerRequiredConfiguration } from "@app/hooks/useMCPServerRequiredConfiguration";
 import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
@@ -36,9 +31,9 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { assertNever, slugify } from "@app/types";
+import { asDisplayName, assertNever, slugify } from "@app/types";
 
-interface ActionMCPProps {
+interface MCPActionProps {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
   action: AssistantBuilderActionConfiguration;
@@ -52,14 +47,13 @@ interface ActionMCPProps {
   setEdited: (edited: boolean) => void;
 }
 
-export function ActionMCP({
+export function MCPAction({
   owner,
   allowedSpaces,
   action,
   updateAction,
   setEdited,
-}: ActionMCPProps) {
-  // TODO(mcp): currently broken: we can save an action without having configured it.
+}: MCPActionProps) {
   const actionConfiguration =
     action.configuration as AssistantBuilderMCPServerConfiguration;
 
@@ -92,101 +86,90 @@ export function ActionMCP({
           mcpServerView.id === actionConfiguration.mcpServerViewId
       ) ?? null
     );
-  const {
-    requiresChildAgentConfiguration,
-    requiresTableConfiguration,
-    requiresDataSourceConfiguration,
-  } = useMCPServerRequiredConfiguration({
-    mcpServerView: selectedMCPServerView,
-  });
+
+  // MCPServerView on default MCP server will not allow switching to another one.
+  const isDefaultMCPServer = useMemo(
+    () => !!selectedMCPServerView?.server.isDefault,
+    [selectedMCPServerView]
+  );
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showTablesModal, setShowTablesModal] = useState(false);
-
-  useEffect(() => {
-    if (!selectedMCPServerView) {
-      return;
-    }
-
-    updateAction({
-      actionName: slugify(selectedMCPServerView.server.name ?? ""),
-      actionDescription: selectedMCPServerView.server.description ?? "",
-      getNewActionConfig: (prev) => {
-        const prevConfig = prev as AssistantBuilderMCPServerConfiguration;
-
-        return {
-          ...prevConfig,
-          mcpServerViewId: selectedMCPServerView.id,
-          // We control here the relationship between the field in AssistantBuilderMCPServerConfiguration
-          // and the mimeType to look for in the server metadata.
-          dataSourceConfigurations: prevConfig.dataSourceConfigurations,
-          tablesConfigurations: prevConfig.tablesConfigurations,
-          childAgentId: prevConfig.childAgentId,
-        };
-      },
-    });
-  }, [selectedMCPServerView, updateAction]);
 
   const handleServerSelection = useCallback(
     (serverView: MCPServerViewType) => {
       setEdited(true);
       setSelectedMCPServerView(serverView);
 
-      if (!selectedMCPServerView) {
-        return;
-      }
+      const requirements = getMCPServerRequirements(serverView);
       updateAction({
-        actionName: slugify(selectedMCPServerView.server.name ?? ""),
-        actionDescription: selectedMCPServerView.server.description ?? "",
-        getNewActionConfig: (prev) => ({
-          ...(prev as AssistantBuilderMCPServerConfiguration),
+        actionName: slugify(serverView.server.name),
+        actionDescription:
+          requirements.requiresDataSourceConfiguration ||
+          requirements.requiresTableConfiguration
+            ? ""
+            : serverView.server.description,
+        getNewActionConfig: () => ({
           mcpServerViewId: serverView.id,
+          dataSourceConfigurations: null,
+          tablesConfigurations: null,
+          childAgentId: null,
+          additionalConfiguration: {},
         }),
       });
     },
-    [selectedMCPServerView, setEdited, updateAction]
+    [setEdited, updateAction]
   );
 
   const handleDataSourceConfigUpdate = useCallback(
     (dsConfigs: DataSourceViewSelectionConfigurations) => {
-      if (!selectedMCPServerView) {
-        return;
-      }
       setEdited(true);
       updateAction({
-        actionName: slugify(selectedMCPServerView?.server.name ?? ""),
-        actionDescription: selectedMCPServerView?.server.description ?? "",
-        getNewActionConfig: (prev) => ({
-          ...(prev as AssistantBuilderMCPServerConfiguration),
-          mcpServerViewId: selectedMCPServerView.id,
+        actionName: action.name,
+        actionDescription: action.description,
+        getNewActionConfig: (old) => ({
+          ...(old as AssistantBuilderMCPServerConfiguration),
           dataSourceConfigurations: dsConfigs,
         }),
       });
     },
-    [selectedMCPServerView, setEdited, updateAction]
+    [action.description, action.name, setEdited, updateAction]
   );
 
   const handleTableConfigUpdate = useCallback(
     (tableConfigs: DataSourceViewSelectionConfigurations) => {
-      if (!selectedMCPServerView) {
-        return;
-      }
       setEdited(true);
+
       updateAction({
-        actionName: slugify(selectedMCPServerView?.server.name ?? ""),
-        actionDescription: selectedMCPServerView?.server.description ?? "",
-        getNewActionConfig: (prev) => ({
-          ...(prev as AssistantBuilderMCPServerConfiguration),
-          mcpServerViewId: selectedMCPServerView.id,
+        actionName: action.name,
+        actionDescription: action.description,
+        getNewActionConfig: (old) => ({
+          ...(old as AssistantBuilderMCPServerConfiguration),
           tablesConfigurations: tableConfigs,
         }),
       });
     },
-    [selectedMCPServerView, setEdited, updateAction]
+    [action.description, action.name, setEdited, updateAction]
   );
 
   const handleChildAgentConfigUpdate = useCallback(
     (newChildAgentId: string) => {
+      setEdited(true);
+
+      updateAction({
+        actionName: action.name,
+        actionDescription: action.description,
+        getNewActionConfig: (old) => ({
+          ...(old as AssistantBuilderMCPServerConfiguration),
+          childAgentId: newChildAgentId,
+        }),
+      });
+    },
+    [action.description, action.name, setEdited, updateAction]
+  );
+
+  const handleAdditionalConfigUpdate = useCallback(
+    (key: string, value: string | number | boolean) => {
       if (!selectedMCPServerView) {
         return;
       }
@@ -194,11 +177,17 @@ export function ActionMCP({
       updateAction({
         actionName: slugify(selectedMCPServerView?.server.name ?? ""),
         actionDescription: selectedMCPServerView?.server.description ?? "",
-        getNewActionConfig: (prev) => ({
-          ...(prev as AssistantBuilderMCPServerConfiguration),
-          mcpServerViewId: selectedMCPServerView.id,
-          childAgentId: newChildAgentId,
-        }),
+        getNewActionConfig: (prev) => {
+          const prevConfig = prev as AssistantBuilderMCPServerConfiguration;
+          return {
+            ...prevConfig,
+            mcpServerViewId: selectedMCPServerView.id,
+            additionalConfiguration: {
+              ...prevConfig.additionalConfiguration,
+              [key]: value,
+            },
+          };
+        },
       });
     },
     [selectedMCPServerView, setEdited, updateAction]
@@ -208,9 +197,11 @@ export function ActionMCP({
     return null;
   }
 
+  const requirements = getMCPServerRequirements(selectedMCPServerView);
+
   return (
     <>
-      {requiresDataSourceConfiguration && (
+      {requirements.requiresDataSourceConfiguration && (
         <AssistantBuilderDataSourceModal
           isOpen={showDataSourcesModal}
           setOpen={setShowDataSourcesModal}
@@ -223,7 +214,7 @@ export function ActionMCP({
           viewType="document"
         />
       )}
-      {requiresTableConfiguration && (
+      {requirements.requiresTableConfiguration && (
         <AssistantBuilderDataSourceModal
           isOpen={showTablesModal}
           setOpen={(isOpen) => {
@@ -274,98 +265,120 @@ export function ActionMCP({
           </ContentMessage>
         ) : (
           <>
-            <div className="text-element-700 text-sm">
-              The agent will execute an{" "}
-              <a
-                className="font-bold"
-                href="https://docs.dust.tt"
-                target="_blank"
-              >
-                Action
-              </a>{" "}
-              made available to you.
-            </div>
-
-            {isSpacesLoading ? (
-              <Spinner />
+            {isDefaultMCPServer ? (
+              <div className="text-element-700 text-sm">
+                {selectedMCPServerView?.server.description}
+              </div>
             ) : (
-              <SpaceSelector
-                spaces={filteredSpaces}
-                allowedSpaces={allowedSpaces}
-                defaultSpace={
-                  selectedMCPServerView
-                    ? selectedMCPServerView.spaceId
-                    : allowedSpaces[0].sId
-                }
-                renderChildren={(space) => {
-                  const mcpServerViewsInSpace = space
-                    ? mcpServerViews.filter(
-                        (mcpServerView) => mcpServerView.spaceId === space.sId
-                      )
-                    : mcpServerViews;
-                  if (
-                    mcpServerViewsInSpace.length === 0 ||
-                    hasNoMCPServerViewsInAllowedSpaces
-                  ) {
-                    return <>No Actions available.</>;
-                  }
+              <>
+                <div className="text-element-700 text-sm">
+                  The agent will execute an{" "}
+                  <a
+                    className="font-bold"
+                    href="https://docs.dust.tt"
+                    target="_blank"
+                  >
+                    Action
+                  </a>{" "}
+                  made available to you.
+                </div>
+                {isSpacesLoading ? (
+                  <Spinner />
+                ) : (
+                  <SpaceSelector
+                    spaces={filteredSpaces}
+                    allowedSpaces={allowedSpaces}
+                    defaultSpace={
+                      selectedMCPServerView
+                        ? selectedMCPServerView.spaceId
+                        : allowedSpaces[0].sId
+                    }
+                    renderChildren={(space) => {
+                      const mcpServerViewsInSpace = space
+                        ? mcpServerViews.filter(
+                            (mcpServerView) =>
+                              mcpServerView.spaceId === space.sId
+                          )
+                        : mcpServerViews;
+                      if (
+                        mcpServerViewsInSpace.length === 0 ||
+                        hasNoMCPServerViewsInAllowedSpaces
+                      ) {
+                        return <>No Actions available.</>;
+                      }
 
-                  return (
-                    <RadioGroup defaultValue={selectedMCPServerView?.id}>
-                      {sortBy(mcpServerViewsInSpace, "server.name").map(
-                        (mcpServerView, idx, arr) => {
-                          return (
-                            <React.Fragment key={mcpServerView.id}>
-                              <RadioGroupCustomItem
-                                value={mcpServerView.id}
-                                id={mcpServerView.id}
-                                iconPosition="start"
-                                customItem={
-                                  <div className="flex flex-row items-center gap-2">
-                                    <div>
-                                      <Avatar
-                                        visual={getVisual(mcpServerView.server)}
-                                      />
-                                    </div>
-                                    <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
-                                      <div className="flex flex-col gap-1">
-                                        <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                                          <Label
-                                            className={classNames(
-                                              "font-bold",
-                                              "align-middle",
-                                              "text-foreground dark:text-foreground-night"
-                                            )}
-                                            htmlFor={mcpServerView.id}
-                                          >
-                                            {mcpServerView.server.name}
-                                          </Label>
-                                        </div>
-                                        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                                          {mcpServerView.server.description}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                }
-                                onClick={() => {
-                                  handleServerSelection(mcpServerView);
-                                }}
-                              ></RadioGroupCustomItem>
-                              {idx !== arr.length - 1 && <Separator />}
-                            </React.Fragment>
-                          );
-                        }
-                      )}
-                    </RadioGroup>
-                  );
-                }}
-              />
+                      return (
+                        <RadioGroup defaultValue={selectedMCPServerView?.id}>
+                          {sortBy(mcpServerViewsInSpace, "server.name")
+                            // Default servers can be added as capabilities or in the first level of the Add actions list
+                            .filter((view) => !view.server.isDefault)
+                            .map((mcpServerView, idx, arr) => {
+                              return (
+                                <React.Fragment key={mcpServerView.id}>
+                                  <RadioGroupCustomItem
+                                    value={mcpServerView.id}
+                                    id={mcpServerView.id}
+                                    iconPosition="start"
+                                    customItem={
+                                      <Label
+                                        htmlFor={mcpServerView.id}
+                                        className="font-normal"
+                                      >
+                                        <Card
+                                          variant="tertiary"
+                                          size="sm"
+                                          onClick={() => {
+                                            handleServerSelection(
+                                              mcpServerView
+                                            );
+                                          }}
+                                        >
+                                          <div className="flex flex-row items-center gap-2">
+                                            <div>
+                                              <Avatar
+                                                visual={getVisual(
+                                                  mcpServerView.server
+                                                )}
+                                              />
+                                            </div>
+                                            <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
+                                              <div className="flex flex-col gap-1">
+                                                <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                                                  {asDisplayName(
+                                                    mcpServerView.server.name
+                                                  )}
+                                                </div>
+                                                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                                                  {
+                                                    mcpServerView.server
+                                                      .description
+                                                  }
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </Card>
+                                      </Label>
+                                    }
+                                    onClick={() => {
+                                      handleServerSelection(mcpServerView);
+                                    }}
+                                  ></RadioGroupCustomItem>
+                                  {idx !== arr.length - 1 && <Separator />}
+                                </React.Fragment>
+                              );
+                            })}
+                        </RadioGroup>
+                      );
+                    }}
+                  />
+                )}
+              </>
             )}
           </>
         )}
       </>
-      {requiresDataSourceConfiguration && (
+      {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
           owner={owner}
           dataSourceConfigurations={
@@ -376,7 +389,7 @@ export function ActionMCP({
           viewType="document"
         />
       )}
-      {requiresTableConfiguration && (
+      {requirements.requiresTableConfiguration && (
         <DataSourceSelectionSection
           owner={owner}
           dataSourceConfigurations={
@@ -387,19 +400,73 @@ export function ActionMCP({
           viewType="table"
         />
       )}
-      {requiresChildAgentConfiguration && (
+      {requirements.requiresChildAgentConfiguration && (
         <ChildAgentSelector
           onAgentSelect={handleChildAgentConfigUpdate}
           selectedAgentId={actionConfiguration.childAgentId}
           owner={owner}
         />
       )}
+      <AdditionalConfigurationSection
+        requiredStrings={requirements.requiredStrings}
+        requiredNumbers={requirements.requiredNumbers}
+        requiredBooleans={requirements.requiredBooleans}
+        additionalConfiguration={actionConfiguration.additionalConfiguration}
+        onConfigUpdate={handleAdditionalConfigUpdate}
+      />
     </>
   );
 }
 
 export function hasErrorActionMCP(
-  action: AssistantBuilderActionConfiguration
+  action: AssistantBuilderActionConfiguration,
+  mcpServerViews: MCPServerViewType[]
 ): string | null {
-  return action.type === "MCP" ? null : "Please select a MCP configuration.";
+  if (action.type === "MCP") {
+    const mcpServerView = mcpServerViews.find(
+      (mcpServerView) =>
+        mcpServerView.id === action.configuration.mcpServerViewId
+    );
+    if (!mcpServerView) {
+      return "Please select a tool.";
+    }
+
+    const requirements = getMCPServerRequirements(mcpServerView);
+    if (
+      requirements.requiresDataSourceConfiguration &&
+      !action.configuration.dataSourceConfigurations
+    ) {
+      return "Please select data source(s).";
+    }
+    if (
+      requirements.requiresTableConfiguration &&
+      !action.configuration.tablesConfigurations
+    ) {
+      return "Please select table(s).";
+    }
+    if (
+      requirements.requiresChildAgentConfiguration &&
+      !action.configuration.childAgentId
+    ) {
+      return "Please select a child agent.";
+    }
+    for (const key in requirements.requiredStrings) {
+      if (!action.configuration.additionalConfiguration[key]) {
+        return `Please fill in the required string field "${key}".`;
+      }
+    }
+    for (const key in requirements.requiredNumbers) {
+      if (!action.configuration.additionalConfiguration[key]) {
+        return `Please fill in the required number field "${key}".`;
+      }
+    }
+    for (const key in requirements.requiredBooleans) {
+      if (!action.configuration.additionalConfiguration[key]) {
+        return `Please fill in the required boolean field "${key}".`;
+      }
+    }
+
+    return null;
+  }
+  return "Please select a tool.";
 }

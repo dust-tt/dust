@@ -1,17 +1,15 @@
-import { Button, RocketIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
-import { FutureSection } from "@app/components/home/content/Product/FutureSection";
+import { CallToActionSection } from "@app/components/home/content/Product/CallToActionSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { QuoteSection } from "@app/components/home/ContentBlocks";
-import { FunctionsSection } from "@app/components/home/FunctionsSection";
+import { SecurityComplianceSection } from "@app/components/home/ContentComponents";
+import { CloudConnectorsSection } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {
   return {
@@ -32,38 +30,18 @@ export function Landing() {
   return (
     <>
       <IntroSection />
+      <CloudConnectorsSection />
+      <SecurityComplianceSection />
       <QuoteSection
         quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
         name="Everett Berry"
         title="Head of GTM Engineering at Clay"
         logo="/static/landing/logos/color/clay.png"
       />
-      <FunctionsSection />
-      <FutureSection />
-      <DemoVideoSection demoVideo={DemoVideo} />
+      {/* <FutureSection /> */}
+      <DemoVideoSection demoVideo={DemoVideo} id="demo-video" />
       <BlogSection />
-      <div
-        className={classNames(
-          "col-span-12 flex flex-col items-center",
-          "lg:col-span-12 lg:col-start-1",
-          "xl:col-span-10 xl:col-start-2"
-        )}
-      >
-        <div className="mt-4 flex justify-center gap-4">
-          <Link href="home/contact" shallow={true}>
-            <Button variant="outline" size="md" label="Request a demo" />
-          </Link>
-
-          <Link href="home/pricing" shallow={true}>
-            <Button
-              variant="highlight"
-              size="md"
-              label="Try Dust now"
-              icon={RocketIcon}
-            />
-          </Link>
-        </div>
-      </div>
+      <CallToActionSection />
     </>
   );
 }

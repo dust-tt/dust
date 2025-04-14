@@ -1,24 +1,27 @@
 import {
   Avatar,
-  Button,
   DataTable,
-  PlusIcon,
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { sortBy } from "lodash";
-import { useRouter } from "next/router";
 import * as React from "react";
 
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { getVisual } from "@app/lib/actions/mcp_icons";
-import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
+import type { MCPServerType } from "@app/lib/api/mcp";
+import {
+  useAddMCPServerToSpace,
+  useMCPServerViews,
+} from "@app/lib/swr/mcp_server_views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 import { RequestActionsModal } from "./mcp/RequestActionsModal";
+import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";
 
 type RowData = {
   name: string;
@@ -41,7 +44,7 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
           </div>
         </DataTable.CellContent>
       ),
-      accessorFn: (row: RowData) => row.name,
+      accessorFn: (row: RowData) => asDisplayName(row.name),
       meta: {
         className: "w-80",
       },
@@ -70,15 +73,15 @@ export const SpaceActionsList = ({
   isAdmin,
   space,
 }: SpaceActionsListProps) => {
-  const router = useRouter();
-
   const { q: searchParam } = useQueryParams(["q"]);
   const searchTerm = searchParam.value || "";
 
-  const { serverViews, isMCPServerViewsLoading } = useMCPServerViews({
-    owner,
-    space,
-  });
+  const { serverViews, isMCPServerViewsLoading, mutateMCPServerViews } =
+    useMCPServerViews({
+      owner,
+      space,
+    });
+  const { addToSpace } = useAddMCPServerToSpace(owner);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
@@ -98,6 +101,11 @@ export const SpaceActionsList = ({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
 
+  const onAddServer = async (server: MCPServerType) => {
+    await addToSpace(server, space);
+    await mutateMCPServerViews();
+  };
+
   if (isMCPServerViewsLoading) {
     return (
       <div className="mt-8 flex justify-center">
@@ -113,15 +121,13 @@ export const SpaceActionsList = ({
   const actionButton = (
     <>
       {isAdmin ? (
-        <Button
-          label="Add Action"
-          variant="primary"
-          icon={PlusIcon}
-          size="sm"
-          onClick={() => {
-            void router.push(`/w/${owner.sId}/actions/`);
-          }}
-        />
+        <>
+          <SpaceManagedActionsViewsModel
+            space={space}
+            owner={owner}
+            onAddServer={onAddServer}
+          />
+        </>
       ) : (
         <RequestActionsModal owner={owner} space={space} />
       )}
