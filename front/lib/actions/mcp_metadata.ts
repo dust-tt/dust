@@ -15,6 +15,7 @@ import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   DEFAULT_MCP_SERVER_ICON,
   isAllowedIconType,
+  isValidIconUrl,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_local";
@@ -187,7 +188,7 @@ export function extractMetadataFromServerVersion(
       visual:
         "visual" in r &&
         typeof r.visual === "string" &&
-        isAllowedIconType(r.visual)
+        (isAllowedIconType(r.visual) || isValidIconUrl(r.visual))
           ? r.visual
           : DEFAULT_MCP_SERVER_ICON,
     };
