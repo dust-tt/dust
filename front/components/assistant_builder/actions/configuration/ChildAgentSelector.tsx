@@ -94,6 +94,7 @@ export function ChildAgentSelector({
                 isLoading={isAgentConfigurationsLoading}
               />
             }
+            showFooterButtons={false}
           />
         </div>
       ) : (
@@ -111,6 +112,7 @@ export function ChildAgentSelector({
               isLoading={isAgentConfigurationsLoading}
             />
           }
+          showFooterButtons={false}
         />
       )}
 
