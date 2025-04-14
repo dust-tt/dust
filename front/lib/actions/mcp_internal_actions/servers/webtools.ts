@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import type { MCPServerDefinitionType } from "@app/lib/api/mcp";
-import { webSearch } from "@app/lib/utils/webtools";
+import { webSearch } from "@app/lib/utils/websearch";
 import logger from "@app/logger/logger";
 import type { OAuthProvider } from "@app/types";
 
