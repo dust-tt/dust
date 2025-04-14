@@ -11,7 +11,7 @@ import { useMemo, useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { CreateMCPServerModal } from "@app/components/actions/mcp/CreateMCPServerModal";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
 import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
@@ -210,18 +210,7 @@ export const AdminActionsList = ({
         },
       };
     })
-    .sort((a, b) => {
-      const { serverType: aServerType } = getServerTypeAndIdFromSId(
-        a.mcpServer.id
-      );
-      const { serverType: bServerType } = getServerTypeAndIdFromSId(
-        b.mcpServer.id
-      );
-      if (aServerType === bServerType) {
-        return a.mcpServer.name.localeCompare(b.mcpServer.name);
-      }
-      return aServerType < bServerType ? -1 : 1;
-    });
+    .sort(mcpServersSortingFn);
   const columns = getTableColumns();
 
   const [filter, setFilter] = useState("");
