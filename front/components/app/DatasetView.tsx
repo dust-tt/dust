@@ -8,7 +8,6 @@ import {
   Label,
   PlusCircleIcon,
   PlusIcon,
-  Tooltip,
   useSendNotification,
   XCircleIcon,
 } from "@dust-tt/sparkle";
@@ -611,37 +610,26 @@ export default function DatasetView({
                           <div className="flex space-x-1 px-1">
                             {datasetKeys.length > 1 ? (
                               <>
-                                <Tooltip
-                                  trigger={
-                                    <Button
-                                      size="mini"
-                                      variant="ghost"
-                                      className="text-muted-foreground"
-                                      icon={XCircleIcon}
-                                    />
-                                  }
-                                  content="Delete property"
-                                  side="top"
-                                  align="center"
-                                  label="Delete property"
+                                <Button
+                                  size="mini"
+                                  variant="ghost"
+                                  className="text-muted-foreground"
+                                  icon={XCircleIcon}
+                                  tooltip="Delete property"
+                                  onClick={() => {
+                                    handleDeleteKey(j);
+                                  }}
                                 />
 
-                                <Tooltip
-                                  trigger={
-                                    <Button
-                                      size="mini"
-                                      variant="ghost"
-                                      className="text-muted-foreground"
-                                      icon={PlusCircleIcon}
-                                      onClick={() => {
-                                        handleNewKey(j);
-                                      }}
-                                    />
-                                  }
-                                  content="Add property after"
-                                  side="top"
-                                  align="center"
-                                  label="Add property after"
+                                <Button
+                                  size="mini"
+                                  variant="ghost"
+                                  className="text-muted-foreground"
+                                  icon={PlusCircleIcon}
+                                  onClick={() => {
+                                    handleNewKey(j);
+                                  }}
+                                  tooltip="Add property after"
                                 />
                               </>
                             ) : null}
