@@ -119,21 +119,12 @@ const buttonVariants = cva(
 type SpinnerVariant = NonNullable<SpinnerProps["variant"]>;
 
 const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
-  primary: "light",
-  highlight: "light",
-  warning: "light",
-  outline: "dark",
-  ghost: "dark",
-  "ghost-secondary": "dark",
-};
-
-const spinnerVariantsMapIsLoading: Record<ButtonVariantType, SpinnerVariant> = {
-  primary: "light",
-  highlight: "light",
-  warning: "light",
-  outline: "slate400",
-  ghost: "slate400",
-  "ghost-secondary": "dark",
+  primary: "gray50",
+  highlight: "gray50",
+  warning: "gray50",
+  outline: "gray500",
+  ghost: "gray500",
+  "ghost-secondary": "gray400",
 };
 
 export interface MetaButtonProps
@@ -204,9 +195,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const iconsSize = size === "mini" ? "sm" : size;
-    const spinnerVariant = isLoading
-      ? (variant && spinnerVariantsMapIsLoading[variant]) || "slate400"
-      : (variant && spinnerVariantsMap[variant]) || "slate400";
+    const spinnerVariant =
+      (variant && spinnerVariantsMap[variant]) || "gray400";
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={iconsSize} className={extraClass} />
