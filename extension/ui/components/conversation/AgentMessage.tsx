@@ -57,7 +57,7 @@ import {
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
-  DocumentDuplicateIcon,
+  DocumentPileIcon,
   DocumentTextIcon,
   EyeIcon,
   Markdown,
@@ -311,6 +311,7 @@ export function AgentMessage({
           messageId: message.sId,
           stake: event.stake,
           workspaceId: owner.sId,
+          meta: event.meta,
         });
         break;
 
@@ -756,7 +757,7 @@ function ErrorMessage({
                 <Button
                   variant="ghost"
                   size="xs"
-                  icon={DocumentDuplicateIcon}
+                  icon={DocumentPileIcon}
                   label={"Copy"}
                   onClick={() =>
                     void navigator.clipboard.writeText(fullMessage)
