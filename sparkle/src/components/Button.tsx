@@ -32,76 +32,7 @@ export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 export const BUTTON_SIZES = ["mini", "xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
-const styleVariants: Record<ButtonVariantType, string> = {
-  primary: cn(
-    "s-bg-primary-800 dark:s-bg-primary-800-night",
-    "s-text-primary-50 dark:s-text-primary-50-night",
-    "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
-    "active:s-bg-primary-dark dark:active:s-bg-primary-light-night",
-    "disabled:s-bg-primary-muted  disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
-  ),
-  highlight: cn(
-    "s-bg-highlight",
-    "s-text-highlight-50",
-    "hover:s-bg-highlight-light",
-    "active:s-bg-highlight-dark",
-    "disabled:s-bg-highlight-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-highlight-muted-night"
-  ),
-  warning: cn(
-    "s-bg-warning",
-    "s-text-warning-50",
-    "hover:s-bg-warning-light",
-    "active:s-bg-warning-dark",
-    "disabled:s-bg-warning-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-warning-muted-night"
-  ),
-  outline: cn(
-    "s-border",
-    "s-border-border dark:s-border-border-night",
-    "s-text-primary dark:s-text-primary-night",
-    "s-bg-background dark:s-bg-background-night",
-    "hover:s-text-primary dark:hover:s-text-primary-night",
-    "hover:s-bg-primary-100 dark:hover:s-bg-primary-900",
-    "hover:s-border-primary-150 dark:hover:s-border-border-night",
-    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-    "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-    "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night"
-  ),
-  ghost: cn(
-    "s-border",
-    "s-border-border/0 dark:s-border-border-night/0",
-    "s-text-foreground dark:s-text-white",
-    "hover:s-bg-primary-100 dark:hover:s-bg-primary-900",
-    "hover:s-text-primary-900 dark:hover:s-text-white",
-    "hover:s-border-border-dark dark:hover:s-border-border-night",
-    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
-  ),
-  "ghost-secondary": cn(
-    "s-border",
-    "s-border-border/0 dark:s-border-border-night/0",
-    "s-text-muted-foreground dark:s-text-muted-foreground-night",
-    "hover:s-bg-primary-100 dark:hover:s-bg-primary-900",
-    "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
-    "hover:s-border-border-dark dark:hover:s-border-border-night",
-    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
-  ),
-};
-
-const sizeVariants: Record<ButtonSizeType, string> = {
-  mini: "s-h-7 s-p-1.5 s-rounded-lg s-label-xs s-gap-1.5",
-  xs: "s-h-7 s-px-2.5 s-rounded-lg s-label-xs s-gap-1.5",
-  sm: "s-h-9 s-px-3 s-rounded-xl s-label-sm s-gap-2",
-  md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-label-base s-gap-2.5",
-};
-
-const labelVariants: Record<ButtonSizeType, string> = {
-  mini: "s-label-xs",
-  xs: "s-label-xs",
-  sm: "s-label-sm",
-  md: "s-label-base",
-};
-
+// Define button styling with cva
 const buttonVariants = cva(
   cn(
     "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors",
@@ -110,11 +41,88 @@ const buttonVariants = cva(
   ),
   {
     variants: {
-      variant: styleVariants,
-      size: sizeVariants,
+      variant: {
+        primary: cn(
+          "s-bg-primary-800 dark:s-bg-primary-800-night",
+          "s-text-primary-50 dark:s-text-primary-50-night",
+          "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
+          "active:s-bg-primary-dark dark:active:s-bg-primary-light-night",
+          "disabled:s-bg-primary-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
+        ),
+        highlight: cn(
+          "s-bg-highlight",
+          "s-text-highlight-50",
+          "hover:s-bg-highlight-light",
+          "active:s-bg-highlight-dark",
+          "disabled:s-bg-highlight-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-highlight-muted-night"
+        ),
+        warning: cn(
+          "s-bg-warning",
+          "s-text-warning-50",
+          "hover:s-bg-warning-light",
+          "active:s-bg-warning-dark",
+          "disabled:s-bg-warning-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-warning-muted-night"
+        ),
+        outline: cn(
+          "s-border",
+          "s-border-border dark:s-border-border-night",
+          "s-text-primary dark:s-text-primary-night",
+          "s-bg-background dark:s-bg-background-night",
+          "hover:s-text-primary dark:hover:s-text-primary-night",
+          "hover:s-bg-primary-100 dark:hover:s-bg-primary-900",
+          "hover:s-border-primary-150 dark:hover:s-border-border-night",
+          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
+          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night"
+        ),
+        ghost: cn(
+          "s-border",
+          "s-border-border/0 dark:s-border-border-night/0",
+          "s-text-foreground dark:s-text-white",
+          "hover:s-bg-primary-100 dark:hover:s-bg-primary-900",
+          "hover:s-text-primary-900 dark:hover:s-text-white",
+          "hover:s-border-border-dark dark:hover:s-border-border-night",
+          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+        ),
+        "ghost-secondary": cn(
+          "s-border",
+          "s-border-border/0 dark:s-border-border-night/0",
+          "s-text-muted-foreground dark:s-text-muted-foreground-night",
+          "hover:s-bg-primary-100 dark:hover:s-bg-primary-900",
+          "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
+          "hover:s-border-border-dark dark:hover:s-border-border-night",
+          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+        ),
+      },
+      size: {
+        mini: "s-h-7 s-p-1.5 s-rounded-lg s-label-xs s-gap-1.5",
+        xs: "s-h-7 s-px-2.5 s-rounded-lg s-label-xs s-gap-1.5",
+        sm: "s-h-9 s-px-3 s-rounded-xl s-label-sm s-gap-2",
+        md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-label-base s-gap-2.5",
+      },
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "sm",
     },
   }
 );
+
+const labelVariants = cva("", {
+  variants: {
+    size: {
+      mini: "s-label-xs",
+      xs: "s-label-xs",
+      sm: "s-label-sm",
+      md: "s-label-base",
+    },
+  },
+  defaultVariants: {
+    size: "sm",
+  },
+});
 
 type SpinnerVariant = NonNullable<SpinnerProps["variant"]>;
 
@@ -149,14 +157,17 @@ export interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  variant?: ButtonVariantType | null;
 }
 
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
-  ({ className, asChild = false, children, ...props }, ref) => {
+  ({ className, asChild = false, variant, size, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
-      <Comp className={className} ref={ref} {...props}>
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      >
         {children}
       </Comp>
     );
@@ -243,7 +254,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
         {showContainer && (
           <div
-            className={cn("s-flex s-items-center s-gap-2", labelVariants[size])}
+            className={cn(
+              "s-flex s-items-center s-gap-2",
+              labelVariants({ size })
+            )}
           >
             {label}
             {showCounter && (
@@ -264,12 +278,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <MetaButton
         ref={ref}
         size={size}
+        variant={variant}
         disabled={isLoading || props.disabled}
-        className={cn(
-          buttonVariants({ variant, size }),
-          isPulsing && "s-animate-pulse",
-          className
-        )}
+        className={cn(isPulsing && "s-animate-pulse", className)}
         aria-label={ariaLabel || tooltip || label}
         style={
           {
