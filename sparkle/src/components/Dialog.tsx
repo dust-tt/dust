@@ -1,9 +1,10 @@
+import { CheckedState } from "@radix-ui/react-checkbox";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { FocusScope } from "@radix-ui/react-focus-scope";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Button, Checkbox, ScrollArea } from "@sparkle/components";
+import { Button, Checkbox, Label, ScrollArea } from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -136,7 +137,8 @@ interface DialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   permanentValidation?: {
     label: string;
     checked: boolean;
-    onChange: (event: React.FormEvent<HTMLButtonElement>) => void;
+    onChange: (event: CheckedState) => void;
+    props?: React.ComponentProps<typeof Checkbox>;
   };
 }
 
@@ -154,11 +156,12 @@ const DialogFooter = ({
       <div className="s-flex s-flex-row s-items-center s-gap-2 s-px-5 s-pt-3">
         <Checkbox
           checked={permanentValidation.checked}
-          onChange={permanentValidation.onChange}
+          onCheckedChange={permanentValidation.onChange}
+          {...permanentValidation.props}
         />
-        <label className="s-copy-sm s-text-foreground dark:s-text-foreground-night">
-          <strong>{permanentValidation.label}</strong>
-        </label>
+        <Label className="s-copy-sm s-text-foreground dark:s-text-foreground-night">
+          <span>{permanentValidation.label}</span>
+        </Label>
       </div>
     )}
     <div
