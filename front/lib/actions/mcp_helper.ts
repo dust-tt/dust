@@ -75,4 +75,4 @@ export const capitalizeMCPToolName = (name: string) => {
   return words
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
-}
+};

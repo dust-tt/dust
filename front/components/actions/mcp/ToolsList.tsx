@@ -14,12 +14,12 @@ import {
   DEFAULT_MCP_TOOL_STAKE_LEVEL,
   MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
+import { capitalizeMCPToolName } from "@app/lib/actions/mcp_helper";
 import {
   useMCPServerToolsPermissions,
   useUpdateMCPServerToolsPermissions,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
-import { capitalizeMCPToolName } from "@app/lib/actions/mcp_helper";
 
 export function ToolsList({
   owner,
@@ -50,15 +50,19 @@ export function ToolsList({
   };
 
   const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
-    "high": "High (Update data, or sends information)",
-    "low": "Low (Retrieve data, or generates content)",
-  }
+    high: "High (Update data, or sends information)",
+    low: "Low (Retrieve data, or generates content)",
+  };
 
   return (
     <div className="mb-2 flex w-full flex-col gap-y-2 pt-2">
       <Page.SectionHeader title="Available Tools" />
       {serverType === "remote" && (
-        <ContentMessage className="mb-8" icon={ExclamationCircleIcon} title="User Approval Settings">
+        <ContentMessage
+          className="mb-8"
+          icon={ExclamationCircleIcon}
+          title="User Approval Settings"
+        >
           <p className="text-sm">
             <b>High stake</b> tools needs explicit user approval.
           </p>
@@ -113,7 +117,6 @@ export function ToolsList({
                       </DropdownMenu>
                     </div>
                   )}
-
                 </div>
               );
             }
