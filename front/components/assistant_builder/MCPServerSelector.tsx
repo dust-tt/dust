@@ -37,13 +37,9 @@ export function MCPServerSelector({
 }: MCPServerSelectorProps) {
   return (
     <>
-      <div className="text-element-700 text-sm">
+      <div className="text-sm text-foreground dark:text-foreground-night">
         The agent will execute an{" "}
-        <a
-          className="font-bold"
-          href="https://docs.dust.tt"
-          target="_blank"
-        >
+        <a className="font-bold" href="https://docs.dust.tt" target="_blank">
           Action
         </a>{" "}
         made available to you.
@@ -62,8 +58,7 @@ export function MCPServerSelector({
           renderChildren={(space) => {
             const mcpServerViewsInSpace = space
               ? mcpServerViews.filter(
-                  (mcpServerView) =>
-                    mcpServerView.spaceId === space.sId
+                  (mcpServerView) => mcpServerView.spaceId === space.sId
                 )
               : mcpServerViews;
             if (
@@ -78,62 +73,51 @@ export function MCPServerSelector({
                 {sortBy(mcpServerViewsInSpace, "server.name")
                   // Default servers can be added as capabilities or in the first level of the Add actions list
                   .filter((view) => !view.server.isDefault)
-                  .map((mcpServerView, idx, arr) => {
-                    return (
-                      <React.Fragment key={mcpServerView.id}>
-                        <RadioGroupCustomItem
-                          value={mcpServerView.id}
-                          id={mcpServerView.id}
-                          iconPosition="start"
-                          customItem={
-                            <Label
-                              htmlFor={mcpServerView.id}
-                              className="font-normal"
+                  .map((mcpServerView, idx, arr) => (
+                    <React.Fragment key={mcpServerView.id}>
+                      <RadioGroupCustomItem
+                        value={mcpServerView.id}
+                        id={mcpServerView.id}
+                        iconPosition="start"
+                        customItem={
+                          <Label
+                            htmlFor={mcpServerView.id}
+                            className="font-normal"
+                          >
+                            <Card
+                              variant="tertiary"
+                              size="sm"
+                              onClick={() => {
+                                handleServerSelection(mcpServerView);
+                              }}
                             >
-                              <Card
-                                variant="tertiary"
-                                size="sm"
-                                onClick={() => {
-                                  handleServerSelection(
-                                    mcpServerView
-                                  );
-                                }}
-                              >
-                                <div className="flex flex-row items-center gap-2">
-                                  <div>
-                                    <Avatar
-                                      visual={getVisual(
-                                        mcpServerView.server
-                                      )}
-                                    />
-                                  </div>
-                                  <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
-                                    <div className="flex flex-col gap-1">
-                                      <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                                        {asDisplayName(
-                                          mcpServerView.server.name
-                                        )}
-                                      </div>
-                                      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                                        {
-                                          mcpServerView.server
-                                            .description
-                                        }
-                                      </div>
+                              <div className="flex flex-row items-center gap-2">
+                                <div>
+                                  <Avatar
+                                    visual={getVisual(mcpServerView.server)}
+                                  />
+                                </div>
+                                <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
+                                  <div className="flex flex-col gap-1">
+                                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                                      {asDisplayName(mcpServerView.server.name)}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                                      {mcpServerView.server.description}
                                     </div>
                                   </div>
                                 </div>
-                              </Card>
-                            </Label>
-                          }
-                          onClick={() => {
-                            handleServerSelection(mcpServerView);
-                          }}
-                        ></RadioGroupCustomItem>
-                        {idx !== arr.length - 1 && <Separator />}
-                      </React.Fragment>
-                    );
-                  })}
+                              </div>
+                            </Card>
+                          </Label>
+                        }
+                        onClick={() => {
+                          handleServerSelection(mcpServerView);
+                        }}
+                      ></RadioGroupCustomItem>
+                      {idx !== arr.length - 1 && <Separator />}
+                    </React.Fragment>
+                  ))}
               </RadioGroup>
             );
           }}
