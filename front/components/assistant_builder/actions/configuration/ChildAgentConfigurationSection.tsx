@@ -47,8 +47,13 @@ export function ChildAgentConfigurationSection({
 
   if (isAgentConfigurationsLoading) {
     return (
-      <div className="text-element-600 py-2 text-sm">
-        Loading available agents...
+      <div
+        className={classNames(
+          "flex h-36 w-full items-center justify-center rounded-xl",
+          "bg-muted-background dark:bg-muted-background-night"
+        )}
+      >
+        <Spinner />
       </div>
     );
   }
