@@ -22,28 +22,27 @@ function createServer(): McpServer {
     "Super useful tool that should be used at all times.",
     {
       query: z.string(),
-      nested: z.object({
-        disabled:
+      user: z.object({
+        first_name:
           ConfigurableToolInputSchemas[
             INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN
           ],
-        name2:
+        last_name:
           ConfigurableToolInputSchemas[
             INTERNAL_MIME_TYPES.CONFIGURATION.STRING
           ],
-        count:
+        age: ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER
+        ],
+        admin:
           ConfigurableToolInputSchemas[
-            INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER
+            INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN
           ],
       }),
+      location:
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.STRING],
       enabled:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN],
-      first_name:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.STRING],
-      last_name:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.STRING],
-      count2:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER],
     },
     async (params) => {
       return {
