@@ -89,7 +89,9 @@ export function ChildAgentConfigurationSection({
           </div>
           <AssistantPicker
             owner={owner}
-            assistants={agentConfigurations}
+            assistants={agentConfigurations.filter(
+              (agent) => agent.sId !== selectedAgentId
+            )}
             onItemClick={(agent) => {
               onAgentSelect(agent.sId);
             }}
@@ -112,9 +114,7 @@ export function ChildAgentConfigurationSection({
         >
           <AssistantPicker
             owner={owner}
-            assistants={agentConfigurations.filter(
-              (agent) => agent.sId !== selectedAgentId
-            )}
+            assistants={agentConfigurations}
             onItemClick={(agent) => {
               onAgentSelect(agent.sId);
             }}
