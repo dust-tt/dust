@@ -8,8 +8,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "tables_query",
   version: "1.0.0",
-  description:
-    "The agent will generate a SQL query from your request, execute it on the tables selected and use the results to generate an answer.",
+  description: "Tables, Spreadsheets, Notion DBs (quantitative).",
   visual: "https://dust.tt/static/droidavatar/Droid_Sky_5.jpg",
   authorization: null,
 };
