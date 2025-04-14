@@ -74,6 +74,7 @@ GroupAgentModel.belongsTo(GroupModel, {
 GroupModel.hasMany(GroupAgentModel, {
   foreignKey: { name: "groupId", allowNull: false },
   sourceKey: "id",
+  as: "groupAgentLinks",
 });
 
 // Association with AgentConfiguration
@@ -84,6 +85,7 @@ GroupAgentModel.belongsTo(AgentConfiguration, {
 AgentConfiguration.hasMany(GroupAgentModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   sourceKey: "id",
+  as: "agentGroupLinks",
 });
 
 // Many-to-Many between Group and AgentConfiguration (ensure FKs match)
