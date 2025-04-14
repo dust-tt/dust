@@ -3,15 +3,14 @@ import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
 import { ChildAgentSelector } from "@app/components/assistant_builder/actions/configuration/ChildAgentSelector";
-import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
+import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
-
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -116,12 +115,6 @@ export function MCPAction({
           mcpServerView.id === actionConfiguration.mcpServerViewId
       ) ?? null
     );
-
-  // MCPServerView on default MCP server will not allow switching to another one.
-  const isDefaultMCPServer = useMemo(
-    () => !!selectedMCPServerView?.server.isDefault,
-    [selectedMCPServerView]
-  );
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showTablesModal, setShowTablesModal] = useState(false);
@@ -264,25 +257,17 @@ export function MCPAction({
         {noMCPServerView ? (
           <NoActionAvailable owner={owner} />
         ) : (
-          <>
-            {isDefaultMCPServer ? (
-              <div className="text-element-700 text-sm">
-                {selectedMCPServerView?.server.description}
-              </div>
-            ) : (
-              <MCPServerSelector
-                isSpacesLoading={isSpacesLoading}
-                filteredSpaces={filteredSpaces}
-                allowedSpaces={allowedSpaces}
-                mcpServerViews={mcpServerViews}
-                selectedMCPServerView={selectedMCPServerView}
-                hasNoMCPServerViewsInAllowedSpaces={
-                  hasNoMCPServerViewsInAllowedSpaces
-                }
-                handleServerSelection={handleServerSelection}
-              />
-            )}
-          </>
+          <MCPServerSelector
+            isSpacesLoading={isSpacesLoading}
+            filteredSpaces={filteredSpaces}
+            allowedSpaces={allowedSpaces}
+            mcpServerViews={mcpServerViews}
+            selectedMCPServerView={selectedMCPServerView}
+            hasNoMCPServerViewsInAllowedSpaces={
+              hasNoMCPServerViewsInAllowedSpaces
+            }
+            handleServerSelection={handleServerSelection}
+          />
         )}
       </>
       {requirements.requiresDataSourceConfiguration && (
