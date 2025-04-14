@@ -450,6 +450,21 @@ export function hasErrorActionMCP(
     ) {
       return "Please select a child agent.";
     }
+    for (const key in requirements.requiredStrings) {
+      if (!action.configuration.additionalConfiguration[key]) {
+        return `Please fill in the required string field "${key}".`;
+      }
+    }
+    for (const key in requirements.requiredNumbers) {
+      if (!action.configuration.additionalConfiguration[key]) {
+        return `Please fill in the required number field "${key}".`;
+      }
+    }
+    for (const key in requirements.requiredBooleans) {
+      if (!action.configuration.additionalConfiguration[key]) {
+        return `Please fill in the required boolean field "${key}".`;
+      }
+    }
 
     return null;
   }

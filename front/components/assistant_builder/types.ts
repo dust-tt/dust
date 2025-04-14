@@ -383,7 +383,7 @@ export function getDefaultMCPServerActionConfiguration(
       requirements.requiresTableConfiguration
         ? ""
         : mcpServerView?.server.description ?? "",
-    noConfigurationRequired: requirements.noRequirements,
+    noConfigurationRequired: requirements.noRequirement,
   };
 }
 export function getDefaultActionConfiguration(

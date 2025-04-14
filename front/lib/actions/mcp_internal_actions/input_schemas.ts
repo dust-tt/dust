@@ -336,39 +336,75 @@ export function augmentInputsWithConfiguration({
 
 export function getRequirements(
   mcpServerView: MCPServerViewType | null | undefined
-) {
+): {
+  requiresDataSourceConfiguration: boolean;
+  requiresTableConfiguration: boolean;
+  requiresChildAgentConfiguration: boolean;
+  requiredStrings: Record<string, string>;
+  requiredNumbers: Record<string, number>;
+  requiredBooleans: Record<string, boolean>;
+  noRequirement: boolean;
+} {
   if (!mcpServerView) {
     return {
       requiresDataSourceConfiguration: false,
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
-      noRequirements: false,
+      requiredStrings: {},
+      requiredNumbers: {},
+      requiredBooleans: {},
+      noRequirement: false,
     };
   }
   const { server } = mcpServerView;
-
-  const requiresDataSourceConfiguration = serverRequiresInternalConfiguration({
-    mcpServer: server,
-    mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
-  });
-  const requiresTableConfiguration = serverRequiresInternalConfiguration({
-    mcpServer: server,
-    mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
-  });
-  const requiresChildAgentConfiguration = serverRequiresInternalConfiguration({
-    mcpServer: server,
-    mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
-  });
+  const requiresDataSourceConfiguration =
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
+    }).length > 0;
+  const requiresTableConfiguration =
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
+    }).length > 0;
+  const requiresChildAgentConfiguration =
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
+    }).length > 0;
+  const requiredStrings = Object.fromEntries(
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.STRING,
+    }).map((path) => [path, ""])
+  );
+  const requiredNumbers = Object.fromEntries(
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER,
+    }).map((path) => [path, 0])
+  );
+  const requiredBooleans = Object.fromEntries(
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN,
+    }).map((path) => [path, false])
+  );
 
   return {
     requiresDataSourceConfiguration,
     requiresTableConfiguration,
     requiresChildAgentConfiguration,
+    requiredStrings,
+    requiredNumbers,
+    requiredBooleans,
 
-    // Useful shortcut
-    noRequirements:
+    noRequirement:
       !requiresDataSourceConfiguration &&
       !requiresTableConfiguration &&
-      !requiresChildAgentConfiguration,
+      !requiresChildAgentConfiguration &&
+      Object.keys(requiredStrings).length === 0 &&
+      Object.keys(requiredNumbers).length === 0 &&
+      Object.keys(requiredBooleans).length === 0,
   };
 }

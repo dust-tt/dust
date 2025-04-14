@@ -134,7 +134,7 @@ const isUsableAsCapability = (
     return false;
   }
   const requirements = getRequirements(view);
-  return view.server.isDefault && requirements.noRequirements;
+  return view.server.isDefault && requirements.noRequirement;
 };
 
 const isUsableInKnowledge = (
