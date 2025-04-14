@@ -266,7 +266,7 @@ export function MCPAction({
         ) : (
           <>
             {isDefaultMCPServer ? (
-              <div className="text-element-700 text-sm">
+              <div className="text-sm text-foreground dark:text-foreground-night">
                 {selectedMCPServerView?.server.description}
               </div>
             ) : (
