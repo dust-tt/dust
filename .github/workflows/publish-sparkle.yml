@@ -21,6 +21,8 @@ jobs:
 
       - working-directory: sparkle
         run: npm whoami && npm access list packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - working-directory: sparkle
         run: npm ci && npm run build && npm publish --verbose
