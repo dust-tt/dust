@@ -13,7 +13,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { getRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
@@ -366,7 +366,7 @@ export function getDefaultReasoningActionConfiguration(): AssistantBuilderAction
 export function getDefaultMCPServerActionConfiguration(
   mcpServerView?: MCPServerViewType
 ): AssistantBuilderActionConfiguration {
-  const requirements = getRequirements(mcpServerView);
+  const requirements = getMCPServerRequirements(mcpServerView);
 
   return {
     type: "MCP",
@@ -383,7 +383,7 @@ export function getDefaultMCPServerActionConfiguration(
       requirements.requiresTableConfiguration
         ? ""
         : mcpServerView?.server.description ?? "",
-    noConfigurationRequired: requirements.noRequirements,
+    noConfigurationRequired: requirements.noRequirement,
   };
 }
 export function getDefaultActionConfiguration(

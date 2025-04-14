@@ -89,7 +89,7 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { getVisual, MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
-import { getRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -133,8 +133,8 @@ const isUsableAsCapability = (
   if (!view) {
     return false;
   }
-  const requirements = getRequirements(view);
-  return view.server.isDefault && requirements.noRequirements;
+  const requirements = getMCPServerRequirements(view);
+  return view.server.isDefault && requirements.noRequirement;
 };
 
 const isUsableInKnowledge = (
@@ -1100,7 +1100,7 @@ function ActionEditor({
             : false
         );
 
-        const requirements = getRequirements(selectedMCPServerView);
+        const requirements = getMCPServerRequirements(selectedMCPServerView);
         return (
           requirements.requiresDataSourceConfiguration ||
           requirements.requiresTableConfiguration
