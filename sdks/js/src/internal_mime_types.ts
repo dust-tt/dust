@@ -189,7 +189,7 @@ function generateConfigurableResourcesMimeTypes<T extends Uppercase<string>[]>({
     (acc, s) => ({
       ...acc,
       [s]: `application/vnd.dust.configuration.${s
-        .replace("_", "-")
+        .replace(/_/g, "-")
         .toLowerCase()}`,
     }),
     {} as {
