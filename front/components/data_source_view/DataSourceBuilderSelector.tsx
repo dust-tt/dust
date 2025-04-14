@@ -19,6 +19,8 @@ import type { ComponentType, Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
+import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
+import { DataSourceSearchTable } from "@app/components/data_source_view/DataSourceSearchTable";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import {
   useSpaceDataSourceViewsWithDetails,
@@ -31,8 +33,6 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
-import { DataSourceSearchTable } from "@app/components/data_source_view/DataSourceSearchTable";
-import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
 
 type ButtonBreadcrumbItem = {
   label: string;
