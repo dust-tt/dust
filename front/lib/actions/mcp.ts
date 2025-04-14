@@ -380,6 +380,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       }
     }
 
+    await action.update({
+      executionState: status === "pending" ? "denied" : status,
+    });
+
     // The action timed-out, status was not updated
     if (status === "pending") {
       localLogger.info("Action validation timed out");
