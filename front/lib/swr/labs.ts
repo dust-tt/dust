@@ -11,9 +11,14 @@ import { getPKCEConfig } from "@app/lib/utils/pkce";
 import type { GetLabsConnectionsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/connections";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
-import type { ConnectionCredentials, DataSourceType } from "@app/types";
+import { testHubspotCredentials } from "@app/temporal/labs/connections/utils/hubspot";
+import type {
+  ConnectionCredentials,
+  DataSourceType,
+  LabsConnectionProvider,
+} from "@app/types";
 import type { LightWorkspaceType, ModelId } from "@app/types";
-import { isOAuthProvider, setupOAuthConnection } from "@app/types";
+import { assertNever, isOAuthProvider, setupOAuthConnection } from "@app/types";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
@@ -317,10 +322,33 @@ export function useCreateLabsConnectionConfiguration({
     connectionId,
     credentials,
   }: {
-    provider: string;
+    provider: LabsConnectionProvider;
     connectionId?: string;
     credentials: ConnectionCredentials;
   }) => {
+    switch (provider) {
+      case "hubspot":
+        const testRes = await testHubspotCredentials(credentials);
+        if (testRes.isErr()) {
+          sendNotification({
+            type: "error",
+            title: "Credentials are invalid",
+            description: "Please check your Hubspot credentials and try again.",
+          });
+          return false;
+        }
+        break;
+      case "linear":
+        sendNotification({
+          type: "error",
+          title: "Failed to create connection",
+          description: "Linear is not supported yet.",
+        });
+        return false;
+      default:
+        assertNever(provider);
+    }
+
     const res = await fetch(`/api/w/${workspaceId}/labs/connections`, {
       method: "POST",
       headers: {
