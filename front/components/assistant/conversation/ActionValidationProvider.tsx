@@ -198,9 +198,14 @@ export function ActionValidationProvider({
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <div>
-                Allow <b>{currentValidation?.metadata.agentName}</b> to use the tool{" "}
-                <b>{asDisplayName(currentValidation?.metadata.toolName)}</b> from{" "}
-                <b>{asDisplayName(currentValidation?.metadata.mcpServerName)}</b>?
+                Allow <b>{currentValidation?.metadata.agentName}</b> to use the
+                tool{" "}
+                <b>{asDisplayName(currentValidation?.metadata.toolName)}</b>{" "}
+                from{" "}
+                <b>
+                  {asDisplayName(currentValidation?.metadata.mcpServerName)}
+                </b>
+                ?
               </div>
               {currentValidation?.inputs &&
                 Object.keys(currentValidation.inputs).length > 0 && (
