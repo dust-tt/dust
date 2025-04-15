@@ -1,6 +1,7 @@
 import {
   CloudArrowLeftRightIcon,
   CommandLineIcon,
+  CompanyIcon,
   FolderIcon,
   GlobeAltIcon,
   LockIcon,
@@ -40,11 +41,15 @@ export function getSpaceIcon(
     return LockIcon;
   }
 
+  if (space.kind === "global") {
+    return CompanyIcon;
+  }
+
   return ServerIcon;
 }
 
 export const getSpaceName = (space: SpaceType) => {
-  return space.kind === "global" ? "Company Data" : space.name;
+  return space.kind === "global" ? "Company Space" : space.name;
 };
 
 export const dustAppsListUrl = (
@@ -123,7 +128,7 @@ export const CATEGORY_DETAILS: {
     icon: CommandLineIcon,
   },
   actions: {
-    label: "Actions",
+    label: "Tools",
     icon: ACTION_SPECIFICATIONS["MCP"].cardIcon,
     flag: "mcp_actions",
   },

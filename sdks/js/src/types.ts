@@ -1311,6 +1311,16 @@ const MCPParamsEventSchema = z.object({
   action: MCPActionTypeSchema,
 });
 
+const MCPValidationMetadataSchema = z.object({
+  mcpServerName: z.string(),
+  toolName: z.string(),
+  agentName: z.string(),
+});
+
+export type MCPValidationMetadataPublicType = z.infer<
+  typeof MCPValidationMetadataSchema
+>;
+
 const MCPApproveExecutionEventSchema = z.object({
   type: z.literal("tool_approve_execution"),
   created: z.number(),
@@ -1319,6 +1329,7 @@ const MCPApproveExecutionEventSchema = z.object({
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
   stake: z.optional(z.enum(["low", "high"])),
+  metadata: MCPValidationMetadataSchema,
 });
 
 const AgentErrorEventSchema = z.object({
@@ -1532,6 +1543,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "table_not_found"
   | "template_not_found"
   | "template_not_found"
+  | "labs_connection_configuration_already_exists"
   | "transcripts_configuration_already_exists"
   | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_not_found"

@@ -2,18 +2,16 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Editor } from "@tiptap/react";
 import { z } from "zod";
 
+import { CoEditionContentSchema } from "@app/components/assistant/conversation/co_edition/tools/editor/types";
+import { contentToHtml } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
+
 const ReplaceNodeSchema = z.object({
   nodeId: z
     .string()
     .describe(
       "The ID of the node to replace (found in getEditorContentForModel response)"
     ),
-  content: z
-    .string()
-    .describe(
-      "The new content for the node. Supports plain text or HTML " +
-        "(e.g. '<p>Some <strong>bold</strong> text</p>'). Markdown is not supported."
-    ),
+  node: CoEditionContentSchema,
 });
 
 export function registerReplaceNodeTool(server: McpServer, editor: Editor) {
@@ -25,9 +23,11 @@ export function registerReplaceNodeTool(server: McpServer, editor: Editor) {
     Best used when:
     - You need to completely rewrite a node
     - The node's content needs to be restructured entirely
+    - You want to replace content with an image
 
     DO NOT use this tool to delete a node - use the delete_node tool instead.
-    DO NOT use this tool to insert a node - use the insert_node tool instead.`,
+    DO NOT use this tool to insert a node - use the insert_node tool instead.
+    DO NOT use invalid file IDs for images.`,
     { params: ReplaceNodeSchema },
     async ({ params }) => {
       editor
@@ -40,10 +40,13 @@ export function registerReplaceNodeTool(server: McpServer, editor: Editor) {
 
           doc.descendants((node, pos) => {
             if (node.attrs["data-id"] === params.nodeId) {
+              // Convert content to HTML.
+              const content = contentToHtml(params.node);
+
               // Replace content using insertContentAt.
               commands.insertContentAt(
                 { from: pos, to: pos + node.nodeSize },
-                params.content
+                content
               );
               found = true;
 

@@ -173,7 +173,12 @@ export const ApiKeyCredentialsSchema = t.type({
   api_key: t.string,
 });
 export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
-export type HubspotCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
+
+export const HubspotCredentialsSchema = t.type({
+  accessToken: t.string,
+  portalId: t.string,
+});
+export type HubspotCredentials = t.TypeOf<typeof HubspotCredentialsSchema>;
 
 export const SalesforceCredentialsSchema = t.type({
   client_id: t.string,
@@ -205,7 +210,7 @@ export function isModjoCredentials(
 export function isHubspotCredentials(
   credentials: ConnectionCredentials
 ): credentials is HubspotCredentials {
-  return "api_key" in credentials;
+  return "accessToken" in credentials && "portalId" in credentials;
 }
 
 export function isBigQueryWithLocationCredentials(

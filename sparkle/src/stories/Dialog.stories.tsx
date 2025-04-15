@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Button } from "@sparkle/components";
+import { Avatar, Button, Input } from "@sparkle/components";
 
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  SlackLogo,
 } from "../index_with_tw_base";
 
 const meta: Meta<typeof Dialog> = {
@@ -49,6 +50,58 @@ export const Basic: Story = {
             label: "Save Changes",
             variant: "highlight",
           }}
+          permanentValidation={{
+            label: "Don't ask again",
+            checked: false,
+            onChange: () => {},
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  ),
+};
+
+export const ToolValidation: Story = {
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button label="Open Dialog" />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle
+            visual={<Avatar size="xs" icon={SlackLogo} hexBgColor="#421D51" />}
+          >
+            Confirm tool usage
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          <div>
+            Allow [Agent_name] to use the tool (
+            <span className="s-mono s-text-muted-foreground dark:s-text-muted-foreground-night">
+              [toolset_name]
+            </span>
+            ,
+            <span className="s-mono s-text-muted-foreground dark:s-text-muted-foreground-night">
+              [tool_name]
+            </span>
+            )?
+          </div>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save Changes",
+            variant: "highlight",
+          }}
+          permanentValidation={{
+            label: "Always allow",
+            checked: false,
+            onChange: () => {},
+          }}
         />
       </DialogContent>
     </Dialog>
@@ -61,37 +114,29 @@ export const WithForm: Story = {
       <DialogTrigger asChild>
         <Button label="Edit User" />
       </DialogTrigger>
-      <DialogContent size="lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit User Settings</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          <div className="s-grid s-gap-4 s-py-4">
-            <div className="s-grid s-gap-2">
-              <label className="s-text-sm s-font-semibold">Name</label>
-              <input
-                className="s-border-input s-rounded-md s-border s-bg-transparent s-px-3 s-py-1 s-text-sm"
-                placeholder="Enter name..."
-              />
-            </div>
-            <div className="s-grid s-gap-2">
-              <label className="s-text-sm s-font-semibold">Email</label>
-              <input
-                className="s-border-input s-rounded-md s-border s-bg-transparent s-px-3 s-py-1 s-text-sm"
-                placeholder="Enter email..."
-                type="email"
-              />
-            </div>
+          <div className="s-grid s-gap-4">
+            <Input label="Email" placeholder="Email" />
+            <Input label="Username" placeholder="Username" />
           </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
-            variant: "ghost",
+            variant: "outline",
           }}
           rightButtonProps={{
             label: "Save",
-            variant: "primary",
+            variant: "highlight",
+          }}
+          permanentValidation={{
+            label: "Don't ask again",
+            checked: false,
+            onChange: () => {},
           }}
         />
       </DialogContent>
@@ -108,19 +153,24 @@ export const AlertDialog: Story = {
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Are you absolutely sure?</DialogTitle>
-          <DialogDescription>
-            This action cannot be undone. This will permanently delete your
-            account and remove your data from our servers.
-          </DialogDescription>
         </DialogHeader>
+        <DialogContainer>
+          This action cannot be undone. This will permanently delete your
+          account and remove your data from our servers.
+        </DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
-            variant: "ghost",
+            variant: "outline",
           }}
           rightButtonProps={{
             label: "Delete Account",
             variant: "warning",
+          }}
+          permanentValidation={{
+            label: "Don't ask again",
+            checked: false,
+            onChange: () => {},
           }}
         />
       </DialogContent>
