@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  getStripeClient,
+  cancelSubscriptionAtPeriodEnd,
   skipSubscriptionFreeTrial,
 } from "@app/lib/plans/stripe";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -160,9 +160,8 @@ async function handler(
             });
           }
 
-          const stripe = getStripeClient();
-          await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-            cancel_at_period_end: true,
+          await cancelSubscriptionAtPeriodEnd({
+            stripeSubscriptionId: subscription.stripeSubscriptionId,
           });
           break;
         case "pay_now":

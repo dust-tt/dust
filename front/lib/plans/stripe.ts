@@ -359,6 +359,23 @@ export async function cancelSubscriptionImmediately({
 }
 
 /**
+ * Cancel a subscription at the end of the current period,
+ * allowing users to retain access until that time.
+ */
+export async function cancelSubscriptionAtPeriodEnd({
+  stripeSubscriptionId,
+}: {
+  stripeSubscriptionId: string;
+}) {
+  const stripe = getStripeClient();
+  await stripe.subscriptions.update(stripeSubscriptionId, {
+    cancel_at_period_end: true,
+  });
+
+  return true;
+}
+
+/**
  * Checks that a subscription created in Stripe is usable by Dust, returns an
  * error otherwise.
  */
