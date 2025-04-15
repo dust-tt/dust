@@ -7,6 +7,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import { apiError } from "@app/logger/withlogging";
+import {
+  launchLabsConnectionWorkflow,
+  stopLabsConnectionWorkflow,
+} from "@app/temporal/labs/connections/client";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { LabsConnectionType } from "@app/types";
 
@@ -90,6 +94,9 @@ async function handler(
           await patchConfiguration.setDataSourceViewId(
             validatedBody.dataSourceViewId
           );
+          await launchLabsConnectionWorkflow(patchConfiguration);
+        } else {
+          await stopLabsConnectionWorkflow(patchConfiguration);
         }
 
         return res.status(200).json(patchConfiguration);
@@ -130,6 +137,8 @@ async function handler(
           },
         });
       }
+
+      await stopLabsConnectionWorkflow(deleteConfiguration);
 
       res.status(200).json(null);
       return;

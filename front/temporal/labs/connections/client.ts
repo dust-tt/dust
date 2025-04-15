@@ -1,7 +1,7 @@
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
-import type { LabsConnectionConfigurationResource } from "@app/lib/resources/labs_connections_resource";
+import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { CONNECTIONS_QUEUE_NAME } from "@app/temporal/labs/connections/config";
@@ -11,21 +11,20 @@ import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export async function launchLabsConnectionWorkflow(
-  connectionConfiguration: LabsConnectionConfigurationResource
+  connectionConfiguration: LabsConnectionsConfigurationResource
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
   const workflowId = makeLabsConnectionWorkflowId(connectionConfiguration);
 
   try {
     await client.workflow.start(syncLabsConnectionWorkflow, {
-      args: [connectionConfiguration.id],
+      args: [connectionConfiguration.id.toString()],
       taskQueue: CONNECTIONS_QUEUE_NAME,
       workflowId: workflowId,
       cronSchedule: "*/5 * * * *",
       memo: {
         configurationId: connectionConfiguration.id,
-        isActive: connectionConfiguration.isActive,
-        dataSourceId: connectionConfiguration.dataSourceId,
+        dataSourceId: connectionConfiguration.dataSourceViewId,
       },
     });
     logger.info(
@@ -48,8 +47,8 @@ export async function launchLabsConnectionWorkflow(
 }
 
 export async function stopLabsConnectionWorkflow(
-  connectionConfiguration: LabsConnectionConfigurationResource,
-  setIsActiveToFalse: boolean = true
+  connectionConfiguration: LabsConnectionsConfigurationResource,
+  setInactive: boolean = true
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
   const workflowId = makeLabsConnectionWorkflowId(connectionConfiguration);
@@ -64,8 +63,8 @@ export async function stopLabsConnectionWorkflow(
         throw e;
       }
     }
-    if (setIsActiveToFalse) {
-      await connectionConfiguration.setIsActive(false);
+    if (setInactive) {
+      await connectionConfiguration.setIsEnabled(false);
     }
     return new Ok(undefined);
   } catch (e) {
