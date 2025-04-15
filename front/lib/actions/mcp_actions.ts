@@ -84,6 +84,11 @@ const Schema = z.union([
 
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
+export type MCPToolResult = {
+  isError: boolean;
+  content: MCPToolResultContent[];
+};
+
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
   tools: MCPToolWithStakeLevelType[]
