@@ -17,15 +17,22 @@ export function registerReplaceSelectionTool(
 ) {
   server.tool(
     "replace_selection",
-    `Replace a selection in the document using absolute positions. This tool is designed for
-    cases where:
-    - The selection spans multiple nodes in the document
-    - You have received a user's selection range (from/to positions)
-    - You need to make a single atomic replacement operation across node boundaries
+    `Replace a selection in the document using absolute positions.
 
-    This tool is simpler than replace_text_range as it works directly with document
-    positions rather than node-specific offsets. It's particularly useful when working with
-    user selections or when the exact document positions are known.`,
+    USE this tool ONLY when:
+    - The user has explicitly provided a selection range (from/to positions) to work on
+    - You have received a user's selection range through the UI or explicit user input
+    - The selection spans multiple nodes in the document and needs atomic replacement
+    - NO node IDs are provided
+
+    DO NOT use for replacing text at arbitrary positions
+    DO NOT use without explicit user selection coordinates
+    DO NOT use for simpler node-specific replacements
+    DO NOT use when you have or need node IDs for the operation
+
+    For all other text replacement needs, use the replace_range tool instead.
+
+    This tool is designed for atomic replacement of user-selected content across node boundaries.`,
     { params: ReplaceSelectionSchema },
     async ({ params }) => {
       try {
