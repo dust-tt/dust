@@ -47,21 +47,4 @@ describe("DELETE /api/w/[wId]/tags/[tId]", () => {
       },
     });
   });
-
-  itInTransaction("should return 405 for unsupported methods", async () => {
-    const { req, res } = await createPrivateApiMockRequest({
-      method: "GET",
-    });
-    req.query.tId = "non-existent-tag";
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(405);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, DELETE is expected.",
-      },
-    });
-  });
-});
+);

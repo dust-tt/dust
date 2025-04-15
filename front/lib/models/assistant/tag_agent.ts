@@ -69,22 +69,26 @@ TagAgentModel.init(
 TagAgentModel.belongsTo(TagModel, {
   foreignKey: { name: "tagId", allowNull: false },
   targetKey: "id",
+  onDelete: "RESTRICT",
 });
 TagModel.hasMany(TagAgentModel, {
   foreignKey: { name: "tagId", allowNull: false },
   sourceKey: "id",
   as: "tagAgentLinks",
+  onDelete: "RESTRICT",
 });
 
 // Association with AgentConfiguration
 TagAgentModel.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   targetKey: "id",
+  onDelete: "RESTRICT",
 });
 AgentConfiguration.hasMany(TagAgentModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   sourceKey: "id",
   as: "agentTagLinks",
+  onDelete: "RESTRICT",
 });
 
 // Many-to-Many between Tags and AgentConfiguration (ensure FKs match)
@@ -93,12 +97,14 @@ TagModel.belongsToMany(AgentConfiguration, {
   foreignKey: "tagId",
   otherKey: "agentConfigurationId",
   as: "agentConfigurations",
+  onDelete: "RESTRICT",
 });
 AgentConfiguration.belongsToMany(TagModel, {
   through: TagAgentModel,
   foreignKey: "agentConfigurationId",
   otherKey: "tagId",
   as: "tags",
+  onDelete: "RESTRICT",
 });
 
 // Workspace association is handled by WorkspaceAwareModel.init

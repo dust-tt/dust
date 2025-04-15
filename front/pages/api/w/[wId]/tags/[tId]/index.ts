@@ -11,8 +11,10 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<Record<string, never>>>,
   auth: Authenticator
 ): Promise<void> {
-  const { method } = req;
-  const { tId } = req.query;
+  const {
+    method,
+    query: { tId },
+  } = req;
 
   if (!tId || typeof tId !== "string") {
     return apiError(req, res, {
