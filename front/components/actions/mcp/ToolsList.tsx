@@ -18,8 +18,8 @@ import {
   useMCPServerToolsPermissions,
   useUpdateMCPServerToolsPermissions,
 } from "@app/lib/swr/mcp_servers";
-import type {LightWorkspaceType} from "@app/types";
-import { asDisplayName  } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 export function ToolsList({
   owner,
