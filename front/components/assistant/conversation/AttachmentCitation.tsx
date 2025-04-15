@@ -152,7 +152,7 @@ export function contentFragmentToAttachmentCitation(
       ),
     };
   }
-  
+
   if (contentFragment.contentNodeData) {
     const { provider, nodeType } = contentFragment.contentNodeData;
     const logo = getConnectorProviderLogoWithFallback({ provider });

@@ -107,7 +107,14 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
   await concurrentExecutor(
     views,
     async (view) => {
-      await view.delete(auth, { transaction, hardDelete: false });
+      const r = await view.delete(auth, { transaction, hardDelete: false });
+      if (r.isErr()) {
+        logger.error(
+          { viewId: view.id, error: r.error },
+          "Error deleting data source view"
+        );
+        throw r.error;
+      }
     },
     {
       concurrency: 8,
