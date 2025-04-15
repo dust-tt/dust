@@ -471,17 +471,17 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     });
 
     // TODO(mcp): listen to sse events to provide live feedback to the user
-    const r = await tryCallMCPTool(auth, {
+    const toolCallResult = await tryCallMCPTool(auth, {
       messageId: agentMessage.sId,
       actionConfiguration,
       conversationId: conversation.sId,
       inputs,
     });
 
-    if (r.isErr()) {
+    if (toolCallResult.isErr()) {
       localLogger.error(
         {
-          error: r.error.message,
+          error: toolCallResult.error.message,
         },
         `Error calling MCP tool.`
       );
@@ -501,7 +501,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       return;
     }
 
-    const content = r.value;
+    const content = toolCallResult.value;
     const generatedFiles: ActionGeneratedFileType[] = [];
     const outputItems: AgentMCPActionOutputItem[] = [];
     for (const c of content) {
