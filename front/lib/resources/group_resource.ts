@@ -386,7 +386,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       ],
       where: {
         kind: {
-          // as is tautological but required by TS who does not understand
+          // The 'as' clause is tautological but required by TS who does not
+          // understand that groupKinds.filter() returns a GroupKind[]
           [Op.in]: groupKinds.filter((k) => k !== "global") as GroupKind[],
         },
       },
