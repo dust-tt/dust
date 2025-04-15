@@ -1,5 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { Op } from "sequelize";
 
 import { getTablesQueryResultsFileTitle } from "@app/components/actions/tables_query/utils";
 import {
@@ -28,17 +29,16 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { sanitizeJSONOutput } from "@app/lib/utils";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentMessageType,
   ConnectorProvider,
   ConversationType,
+  LightWorkspaceType,
   Result,
 } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
-import { removeNulls } from "@app/types/shared/utils/general";
 
 // We need a model with at least 32k tokens to run tables_query.
 const TABLES_QUERY_MIN_TOKEN = 28_000;
@@ -91,43 +91,49 @@ function getSectionColumnsPrefix(
   }
 }
 
-async function fetchAgentTableConfiguration(
-  uri: string
-): Promise<Result<AgentTablesQueryConfigurationTable | null, Error>> {
-  const match = uri.match(TABLE_CONFIGURATION_URI_PATTERN);
-  if (!match) {
-    return new Err(new Error(`Invalid URI for a table configuration: ${uri}`));
+async function fetchAgentTableConfigurations(
+  owner: LightWorkspaceType,
+  uris: string[]
+): Promise<Result<AgentTablesQueryConfigurationTable[], Error>> {
+  const configurationIds = [];
+  for (const uri of uris) {
+    const match = uri.match(TABLE_CONFIGURATION_URI_PATTERN);
+    if (!match) {
+      return new Err(
+        new Error(`Invalid URI for a table configuration: ${uri}`)
+      );
+    }
+    // Safe to do because the inputs are already checked against the zod schema here.
+    const [, , tableConfigId] = match;
+    const sIdParts = getResourceNameAndIdFromSId(tableConfigId);
+    if (!sIdParts) {
+      return new Err(
+        new Error(`Invalid table configuration ID: ${tableConfigId}`)
+      );
+    }
+    if (sIdParts.resourceName !== "table_configuration") {
+      return new Err(
+        new Error(`ID is not a table configuration ID: ${tableConfigId}`)
+      );
+    }
+    if (sIdParts.workspaceId !== owner.id) {
+      return new Err(
+        new Error(
+          `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceId}`
+        )
+      );
+    }
+    configurationIds.push(sIdParts.resourceId);
   }
 
-  // It's safe to do this because the inputs are already checked against the zod schema here.
-  const [, , tableConfigId] = match;
-  const sIdParts = getResourceNameAndIdFromSId(tableConfigId);
-  if (!sIdParts) {
-    return new Err(
-      new Error(`Invalid table configuration ID: ${tableConfigId}`)
-    );
-  }
-  if (sIdParts.resourceName !== "table_configuration") {
-    return new Err(
-      new Error(`ID is not a table configuration ID: ${tableConfigId}`)
-    );
-  }
+  const agentTableConfigurations =
+    await AgentTablesQueryConfigurationTable.findAll({
+      where: {
+        id: { [Op.in]: configurationIds },
+      },
+    });
 
-  const agentTableConfiguration =
-    await AgentTablesQueryConfigurationTable.findByPk(sIdParts.resourceId);
-
-  if (
-    agentTableConfiguration &&
-    agentTableConfiguration.workspaceId !== sIdParts.workspaceId
-  ) {
-    return new Err(
-      new Error(
-        `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceId}`
-      )
-    );
-  }
-
-  return new Ok(agentTableConfiguration);
+  return new Ok(agentTableConfigurations);
 }
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -218,28 +224,17 @@ function createServer(
         getDustProdAction("assistant-v2-query-tables").config
       );
 
-      const agentTableConfigurationsRes = await concurrentExecutor(
-        tables,
-        async ({ uri }) => fetchAgentTableConfiguration(uri),
-        { concurrency: 10 }
+      const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
+        auth.getNonNullableWorkspace(),
+        tables.map(({ uri }) => uri)
       );
-      if (agentTableConfigurationsRes.some((res) => res.isErr())) {
-        return {
-          isError: true,
-          content: agentTableConfigurationsRes
-            .filter((res) => res.isErr())
-            .map((res) => ({
-              type: "text",
-              text: res.isErr() ? res.error.message : "unknown error",
-            })),
-        };
+      if (agentTableConfigurationsRes.isErr()) {
+        return makeMCPToolTextError(
+          `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
+        );
       }
-      const agentTableConfigurations = removeNulls(
-        agentTableConfigurationsRes.map((res) =>
-          res.isOk() ? res.value : null
-        )
-      );
 
+      const agentTableConfigurations = agentTableConfigurationsRes.value;
       const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
         auth,
         [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
@@ -326,7 +321,7 @@ function createServer(
 
       let output: Record<string, string | boolean | number> = {};
 
-      const { eventStream, dustRunId } = res.value;
+      const { eventStream } = res.value;
       for await (const event of eventStream) {
         if (event.type === "error") {
           logger.error(
