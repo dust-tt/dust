@@ -160,6 +160,7 @@ export async function driveObjectToDustType(
         canDownload: file.capabilities.canDownload,
       },
       labels: labels,
+      sharedWithMeTime: file.sharedWithMeTime,
     };
   } else if (file.driveId == file.id) {
     // We are dealing with a Google Drive object. We need a query to the Drive API to get the actual Drive name.
@@ -186,6 +187,7 @@ export async function driveObjectToDustType(
         canDownload: false,
       },
       labels: labels,
+      sharedWithMeTime: file.sharedWithMeTime,
     };
   } else {
     // We are dealing with a file in a shared drive.
@@ -210,6 +212,7 @@ export async function driveObjectToDustType(
         canDownload: file.capabilities.canDownload,
       },
       labels: labels,
+      sharedWithMeTime: file.sharedWithMeTime,
     };
   }
 }
@@ -295,4 +298,85 @@ export async function _getLabels(
     );
   }
   return [];
+}
+
+export async function isInSharedWithMeHierarchy(
+  authCredentials: OAuth2Client,
+  driveFile: GoogleDriveObjectType
+): Promise<string | undefined> {
+  try {
+    const drive = await getDriveClient(authCredentials);
+    const res = await drive.files.get({
+      fileId: driveFile.id,
+      fields: "sharedWithMeTime,parents", // Also fetch parents to check if file is in a shared subfolder
+    });
+
+    if (res.status !== 200) {
+      throw new Error(
+        `Error getting drives. status_code: ${res.status}. status_text: ${res.statusText}`
+      );
+    }
+
+    // If sharedWithMeTime exists, it means the file is directly shared with the user
+    if (res.data.sharedWithMeTime) {
+      return driveFile.id;
+    }
+
+    // If not directly shared, check if any parent folder is shared
+    // This handles the case of files inside shared folders
+    if (res.data.parents && res.data.parents.length > 0) {
+      // Check if any parent folder in the chain is shared
+      let currentParentId = res.data.parents[0];
+      let depth = 0;
+      const MAX_DEPTH = 10; // Prevent infinite loops
+
+      while (currentParentId && depth < MAX_DEPTH) {
+        try {
+          const parentRes = await drive.files.get({
+            fileId: currentParentId,
+            fields: "sharedWithMeTime,parents",
+            supportsAllDrives: true,
+          });
+
+          if (parentRes.status !== 200) {
+            throw new Error(
+              `Error getting drives. status_code: ${res.status}. status_text: ${res.statusText}`
+            );
+          }
+
+          // If we found a shared parent, this file should be included
+          if (parentRes.data.sharedWithMeTime) {
+            return currentParentId;
+          }
+
+          // Move up to the next parent
+          if (parentRes.data.parents && parentRes.data.parents.length > 0) {
+            currentParentId = parentRes.data.parents[0];
+          } else {
+            break;
+          }
+        } catch (parentError) {
+          // If we can't access a parent, stop climbing the tree
+          logger.warn(
+            {
+              driveFileId: driveFile.id,
+              parentId: currentParentId,
+              error: parentError,
+            },
+            "Failed to check parent in shared folder chain"
+          );
+          break;
+        }
+        depth++;
+      }
+    }
+  } catch (error) {
+    logger.warn(
+      {
+        driveFileId: driveFile.id,
+        error,
+      },
+      "Failed to check if file is shared with me"
+    );
+  }
 }

@@ -17,6 +17,7 @@ export type GoogleDriveObjectType = {
   driveId: string;
   isInSharedDrive: boolean;
   labels: string[];
+  sharedWithMeTime?: string | null; // TODO: can potentially remove.
 };
 
 export const FILE_ATTRIBUTES_TO_FETCH = [
@@ -33,6 +34,7 @@ export const FILE_ATTRIBUTES_TO_FETCH = [
   "trashed",
   "webViewLink",
   "labelInfo",
+  "sharedWithMeTime",
 ] as const;
 
 // Get the Table ID for a sheet within a Google Spreadsheet from the

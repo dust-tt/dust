@@ -278,6 +278,28 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
 
           const nodes = removeNulls(folderAsContentNodes);
 
+          // Add the "Shared with me" folder to the list of nodes only if it exists
+          // This must be handled separately because it's a virtual folder.
+          const sharedWithMeFolder = await GoogleDriveFolders.findOne({
+            where: {
+              connectorId: this.connectorId,
+              folderId: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+            },
+          });
+          if (sharedWithMeFolder) {
+            nodes.push({
+              internalId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
+              parentInternalId: null,
+              type: "folder",
+              title: "Shared with me",
+              sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
+              lastUpdatedAt: null,
+              expandable: true,
+              permission: "read",
+              mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+            });
+          }
+
           nodes.sort((a, b) => {
             return a.title.localeCompare(b.title);
           });
@@ -417,12 +439,18 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             internalId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
             parentInternalId: null,
             type: "folder" as const,
-            preventSelection: true,
             title: "Shared with me",
             sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
             lastUpdatedAt: null,
             expandable: true,
-            permission: "none",
+            permission: (await GoogleDriveFolders.findOne({
+              where: {
+                connectorId: this.connectorId,
+                folderId: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+              },
+            }))
+              ? "read"
+              : "none",
             mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
           });
 
@@ -550,7 +578,10 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     const addedFolderIds: string[] = [];
     const removedFolderIds: string[] = [];
     for (const [internalId, permission] of Object.entries(permissions)) {
-      const id = getDriveFileId(internalId);
+      const id =
+        internalId === getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID)
+          ? GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID
+          : getDriveFileId(internalId);
       if (permission === "none") {
         removedFolderIds.push(id);
         await GoogleDriveFolders.destroy({

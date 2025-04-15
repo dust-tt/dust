@@ -2,12 +2,17 @@ import type { OAuth2Client } from "googleapis-common";
 import type { GaxiosError } from "googleapis-common";
 
 import {
+  GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+  GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
+  GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+} from "@connectors/connectors/google_drive/lib/consts";
+import {
   driveObjectToDustType,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
-import { cacheWithRedis } from "@connectors/types";
+import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
 
 interface CacheKey {
@@ -80,6 +85,11 @@ export async function getGoogleDriveObject({
   driveObjectId: string;
   cacheKey?: CacheKey;
 }): Promise<GoogleDriveObjectType | null> {
+  // Special handling for the virtual "Shared with me" folder
+  if (driveObjectId === GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID) {
+    return getSharedWithMeVirtualFolder();
+  }
+
   if (cacheKey) {
     return cachedGetGoogleDriveObject({
       connectorId,
@@ -89,4 +99,23 @@ export async function getGoogleDriveObject({
     });
   }
   return _getGoogleDriveObject({ connectorId, authCredentials, driveObjectId });
+}
+
+function getSharedWithMeVirtualFolder(): GoogleDriveObjectType {
+  return {
+    id: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+    name: "Shared with me",
+    parent: null,
+    mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
+    webViewLink: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
+    createdAtMs: Date.now(),
+    trashed: false,
+    size: null,
+    driveId: GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+    isInSharedDrive: false,
+    capabilities: {
+      canDownload: false,
+    },
+    labels: [],
+  };
 }

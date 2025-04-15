@@ -1,7 +1,9 @@
 import type { OAuth2Client } from "googleapis-common";
 import { Op } from "sequelize";
 
+import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
+import { isInSharedWithMeHierarchy } from "@connectors/connectors/google_drive/temporal/utils";
 import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
 import mainLogger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
@@ -28,6 +30,11 @@ async function getFileParents(
     connectorId: connectorId,
   });
 
+  if (driveFile.id === GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID) {
+    return [GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID];
+  }
+
+  // Start building the parents array with the current file
   const parents: string[] = [driveFile.id];
   let currentObject = driveFile;
   while (currentObject.parent) {
@@ -49,6 +56,12 @@ async function getFileParents(
     currentObject = parent;
   }
 
+  const hasParents = parents.length > 1;
+  // Adding the shared with me virtual folder if the file is directly shared with the user and has no other parents.
+  if (driveFile.sharedWithMeTime && !hasParents) {
+    parents.push(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID);
+  }
+
   if (includeAllRemoteParents) {
     return parents;
   }
@@ -67,20 +80,28 @@ async function getFileParents(
   // e.g. parents = [node_itself, A, B, C, D, E] and user selected C for sync:
   // we should return [node_itself, A, B, C]
   const syncedFolderIds = syncedFolders.map((folder) => folder.folderId);
+  const sharedParent = await isInSharedWithMeHierarchy(
+    authCredentials,
+    driveFile
+  );
+
+  // Find the index of the first parent that is either synced or shared
   const sliceIndex = [...parents]
     .reverse()
-    .findIndex((parent) => syncedFolderIds.includes(parent));
-
-  if (sliceIndex === -1) {
-    logger.info(
-      {
-        parents: parents.join(", "),
-      },
-      "Node outside of selected sync folders"
+    .findIndex(
+      (parent) => syncedFolderIds.includes(parent) || sharedParent === parent
     );
-    return [driveFile.id, GOOGLE_OUTSIDE_SYNC_PARENT_ID];
+  if (sliceIndex !== -1) {
+    return parents.slice(0, parents.length - sliceIndex);
   }
-  return parents.slice(0, parents.length - sliceIndex);
+
+  logger.info(
+    {
+      parents: parents.join(", "),
+    },
+    "Node outside of selected sync folders"
+  );
+  return [driveFile.id, GOOGLE_OUTSIDE_SYNC_PARENT_ID];
 }
 
 /**

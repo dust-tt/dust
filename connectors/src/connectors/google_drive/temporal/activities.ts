@@ -29,6 +29,7 @@ import {
   getDriveFileId,
   getInternalId,
   getMyDriveIdCached,
+  isInSharedWithMeHierarchy,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -222,8 +223,20 @@ export async function syncFiles(
       subfolders: [],
     };
   }
-  if (nextPageToken === undefined) {
+
+  const isSharedWithMe =
+    driveFolderId === GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID;
+  if (nextPageToken === undefined && !isSharedWithMe) {
     // On the first page of a folder id, we can check if we already visited it
+
+    // add log statement here
+    logger.info(
+      {
+        connectorId,
+        folderId: driveFolderId,
+      },
+      "Checking if folder has been visited"
+    );
     const visitedFolder = await GoogleDriveFiles.findOne({
       where: {
         connectorId: connectorId,
@@ -249,16 +262,29 @@ export async function syncFiles(
     .map((mimeType) => `mimeType='${mimeType}'`)
     .join(" or ");
 
-  const res = await drive.files.list({
+  let driveParams: drive_v3.Params$Resource$Files$List = {
     corpora: "allDrives",
     pageSize: 200,
-    includeItemsFromAllDrives: true,
-    supportsAllDrives: true,
+    includeItemsFromAllDrives:
+      driveFolderId !== GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+    supportsAllDrives: driveFolderId !== GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
     includeLabels: labels.map((l) => l.id).join(","),
     fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
     q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
     pageToken: nextPageToken,
-  });
+  };
+  // If we are syncing the shared with me folder, we need to change the query to get all shared with me files.
+  if (isSharedWithMe) {
+    driveParams = {
+      q: `sharedWithMe=true and (${mimeTypesSearchString}) and trashed=false`,
+      pageSize: 200,
+      fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
+      pageToken: nextPageToken,
+      includeLabels: labels.map((l) => l.id).join(","),
+    };
+  }
+
+  const res = await drive.files.list(driveParams);
   if (res.status !== 200) {
     throw new Error(
       `Error getting files. status_code: ${res.status}. status_text: ${res.statusText}`
@@ -341,6 +367,15 @@ export async function objectIsInFolderSelection(
     return true;
   }
 
+  // Check if sharedWithMe folder is selected and this is a shared item
+  const isSharedWithMeSelected = foldersIds.includes(
+    GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID
+  );
+  if (isSharedWithMeSelected) {
+    return !!(await isInSharedWithMeHierarchy(authCredentials, driveFile));
+  }
+
+  // Check parents as usual
   const parents = await getFileParentsMemoized(
     connectorId,
     authCredentials,
@@ -941,14 +976,23 @@ export async function markFolderAsVisited(
 
   const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
+  // For the special "Shared with me" virtual folder, we need different mime type
+  const mimeType =
+    file.id === GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID
+      ? INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME
+      : INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER;
+
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: getInternalId(file.id),
     parents,
     parentId: parents[1] || null,
     title: file.name ?? "",
-    mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
-    sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+    mimeType,
+    sourceUrl:
+      file.id === GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID
+        ? GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL
+        : getSourceUrlForGoogleDriveFiles(file),
   });
 
   await GoogleDriveFiles.upsert({
@@ -958,7 +1002,7 @@ export async function markFolderAsVisited(
     name: file.name,
     mimeType: file.mimeType,
     parentId: parents[1] ? getDriveFileId(parents[1]) : null,
-    lastSeenTs: new Date(),
+    lastSeenTs: new Date(startSyncTs || Date.now()),
   });
 }
 
