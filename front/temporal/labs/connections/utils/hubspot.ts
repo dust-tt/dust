@@ -4,7 +4,7 @@ import Bottleneck from "bottleneck";
 import config from "@app/lib/api/config";
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { ConnectionCredentials, Result } from "@app/types";
 import { Err, isHubspotCredentials, OAuthAPI, Ok } from "@app/types";
 import { CoreAPI, dustManagedCredentials } from "@app/types";
 
@@ -567,4 +567,35 @@ export async function syncHubspotConnection(
   }
 
   return new Ok(undefined);
+}
+
+export async function testHubspotCredentials(
+  credentials: ConnectionCredentials
+): Promise<Result<void, Error>> {
+  if (!isHubspotCredentials(credentials)) {
+    return new Err(
+      new Error("Invalid credentials type - expected hubspot credentials")
+    );
+  }
+
+  const hubspotApi = axios.create({
+    baseURL: "https://api.hubapi.com",
+    headers: {
+      Authorization: `Bearer ${credentials.accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  try {
+    // Make a simple API call to test the credentials
+    await hubspotLimiter.schedule(() =>
+      hubspotApi.get("/crm/v3/objects/companies", {
+        params: { limit: 1 },
+      })
+    );
+    return new Ok(undefined);
+  } catch (error) {
+    logger.error({ error }, "Error testing HubSpot credentials");
+    return new Err(new Error("Invalid or expired HubSpot credentials"));
+  }
 }
