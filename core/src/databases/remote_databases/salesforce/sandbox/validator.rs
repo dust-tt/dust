@@ -1,501 +1,16 @@
-use super::error::SoqlError;
+use super::to_soql::ToSoql;
+use super::{
+    error::SoqlError,
+    models::{
+        Aggregate, FieldExpression, Filter, FunctionArgument, GroupBy, HavingClause, ParentField,
+        Relationship, StructuredQuery, TypedValue, WhereClause,
+    },
+};
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 
 const MAX_DOT_NOTATION_TRAVERSAL_DEPTH: usize = 1;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StructuredQuery {
-    /// The main Salesforce object to query (required).
-    pub object: String,
-
-    /// Fields to retrieve (optional if aggregates are present).
-    #[serde(default)]
-    pub fields: Vec<FieldExpression>,
-
-    /// Aggregate functions (optional if fields are present).
-    #[serde(default)]
-    pub aggregates: Vec<Aggregate>,
-
-    /// Filter conditions (optional).
-    #[serde(rename = "where")]
-    pub where_clause: Option<WhereClause>,
-
-    /// Sorting criteria (optional).
-    #[serde(default, rename = "orderBy")]
-    pub order_by: Vec<OrderBy>,
-
-    /// Result limit (optional).
-    pub limit: Option<u32>,
-
-    /// Result offset (optional).
-    pub offset: Option<u32>,
-
-    /// Parent-to-child relationships (optional).
-    #[serde(default)]
-    pub relationships: Vec<Relationship>,
-
-    /// Child-to-parent relationships (optional).
-    #[serde(default, rename = "parentFields")]
-    pub parent_fields: Vec<ParentField>,
-
-    /// Group by fields or structure (optional).
-    #[serde(rename = "groupBy")]
-    pub group_by: Option<GroupBy>,
-
-    /// Having clause for filtering aggregates (optional).
-    pub having: Option<HavingClause>,
-}
-
-/// Represents a where clause in a SOQL query.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WhereClause {
-    /// The logical condition for combining filters ("AND" or "OR").
-    #[serde(default = "default_logical_operator")]
-    pub condition: LogicalOperator,
-
-    /// The list of filters to apply.
-    pub filters: Vec<Filter>,
-}
-
-/// Default function for logical operator.
-fn default_logical_operator() -> LogicalOperator {
-    LogicalOperator::And
-}
-
-/// Represents a logical operator for combining filters.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum LogicalOperator {
-    /// Logical AND operator.
-    And,
-
-    /// Logical OR operator.
-    Or,
-}
-
-/// Represents a strongly-typed value for use in SOQL queries
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum TypedValue {
-    /// A datetime value
-    DateTime {
-        #[serde(rename = "type")]
-        value_type: DateTimeType,
-        value: String,
-    },
-    /// A function call
-    Function {
-        #[serde(rename = "type")]
-        value_type: FunctionType,
-        function: String,
-        arguments: Vec<String>,
-    },
-    /// A regular JSON value
-    Regular(serde_json::Value),
-}
-
-/// Represents the type of a datetime value
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum DateTimeType {
-    /// A datetime value
-    DateTime,
-}
-
-/// Represents the type of a function
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum FunctionType {
-    /// A function call
-    Function,
-}
-
-/// Represents a field reference or function call in a SOQL query.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum FieldExpression {
-    /// A simple field reference.
-    Field(String),
-
-    /// A function call.
-    Function {
-        function: String,
-        arguments: Vec<String>,
-    },
-}
-
-/// Represents a filter in a where clause.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum Filter {
-    /// A simple field comparison.
-    Condition {
-        /// The field to filter on.
-        field: FieldExpression,
-
-        /// The comparison operator.
-        operator: String,
-
-        /// The value to compare against.
-        value: TypedValue,
-    },
-
-    /// A nested condition with its own logical operator and filters.
-    NestedCondition(WhereClause),
-}
-
-/// Represents an order by clause in a SOQL query.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OrderBy {
-    /// The field to sort by.
-    pub field: FieldExpression,
-
-    /// The sort direction (optional, defaults to "ASC").
-    #[serde(default = "default_order_direction")]
-    pub direction: OrderDirection,
-
-    /// Whether to put nulls first or last (optional).
-    pub nulls: Option<NullsPosition>,
-}
-
-/// Represents the sort direction in an order by clause.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum OrderDirection {
-    /// Ascending order.
-    Asc,
-
-    /// Descending order.
-    Desc,
-}
-
-/// Represents the position of nulls in an order by clause.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum NullsPosition {
-    /// Nulls first.
-    First,
-
-    /// Nulls last.
-    Last,
-}
-
-/// Represents a parent-to-child relationship in a SOQL query.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Relationship {
-    /// The name of the relationship.
-    #[serde(rename = "relationshipName")]
-    pub relationship_name: String,
-
-    /// The fields to retrieve from the related object.
-    pub fields: Vec<FieldExpression>,
-
-    /// Filter conditions for the related object (optional).
-    #[serde(rename = "where")]
-    pub where_clause: Option<WhereClause>,
-
-    /// Sorting criteria for the related object (optional).
-    #[serde(default, rename = "orderBy")]
-    pub order_by: Vec<OrderBy>,
-
-    /// Result limit for the related object (optional).
-    pub limit: Option<u32>,
-}
-
-/// Represents a child-to-parent relationship in a SOQL query.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ParentField {
-    /// The name of the relationship.
-    pub relationship: String,
-
-    /// The fields to retrieve from the parent object.
-    pub fields: Vec<FieldExpression>,
-}
-
-/// Represents an aggregate function in a SOQL query.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Aggregate {
-    /// The aggregate function to apply.
-    pub function: AggregateFunction,
-
-    /// The field to aggregate.
-    pub field: String,
-
-    /// The alias for the aggregate result (optional).
-    pub alias: String,
-}
-
-/// Represents an aggregate function.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum AggregateFunction {
-    /// Count function.
-    Count,
-
-    /// Sum function.
-    Sum,
-
-    /// Average function.
-    Avg,
-
-    /// Minimum function.
-    Min,
-
-    /// Maximum function.
-    Max,
-}
-
-/// Represents a group by clause in a SOQL query.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum GroupBy {
-    /// A simple list of fields to group by.
-    Simple(Vec<String>),
-
-    /// An advanced grouping structure (ROLLUP or CUBE).
-    Advanced {
-        /// The type of advanced grouping.
-        #[serde(rename = "type")]
-        group_type: GroupType,
-
-        /// The fields to group by.
-        fields: Vec<String>,
-    },
-}
-
-/// Represents the type of advanced grouping.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum GroupType {
-    /// ROLLUP grouping.
-    Rollup,
-
-    /// CUBE grouping.
-    Cube,
-}
-
-/// Represents a having clause in a SOQL query.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HavingClause {
-    /// The logical condition for combining filters ("AND" or "OR").
-    #[serde(default = "default_logical_operator")]
-    pub condition: LogicalOperator,
-
-    /// The list of aggregate filters to apply.
-    pub filters: Vec<AggregateFilter>,
-}
-
-/// Represents a filter in a having clause.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AggregateFilter {
-    /// The aggregate function to filter on.
-    pub function: AggregateFunction,
-
-    /// The field to aggregate.
-    pub field: String,
-
-    /// The comparison operator.
-    pub operator: String,
-
-    /// The value to compare against.
-    pub value: TypedValue,
-}
-
-/// Default function for order direction.
-fn default_order_direction() -> OrderDirection {
-    OrderDirection::Asc
-}
-
-// Checks that a path (dot notation) does not traverse more than `MAX_DOT_NOTATION_TRAVERSAL_DEPTH` level deep.
-fn validate_max_depth(path: &str, allowed_depth: usize) -> Result<(), SoqlError> {
-    let dot_count = path.chars().filter(|c| *c == '.').count();
-    if dot_count > allowed_depth {
-        return Err(SoqlError::field_validation_error(
-            path,
-            format!(
-                "Exceeds maximum dot notation depth of {} level(s)",
-                allowed_depth
-            ),
-        ));
-    }
-    Ok(())
-}
-
-fn is_valid_iso8601_datetime(value: &str) -> bool {
-    lazy_static! {
-        static ref ISO8601_REGEX: Regex =
-            Regex::new(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$")
-                .unwrap();
-    }
-
-    ISO8601_REGEX.is_match(value)
-}
-
-fn is_valid_date_literal(value: &str) -> bool {
-    // Check for simple literals
-    if matches!(
-        value,
-        "TODAY"
-            | "YESTERDAY"
-            | "TOMORROW"
-            | "THIS_WEEK"
-            | "LAST_WEEK"
-            | "NEXT_WEEK"
-            | "THIS_MONTH"
-            | "LAST_MONTH"
-            | "NEXT_MONTH"
-            | "THIS_QUARTER"
-            | "LAST_QUARTER"
-            | "NEXT_QUARTER"
-            | "THIS_YEAR"
-            | "LAST_YEAR"
-            | "NEXT_YEAR"
-            | "LAST_90_DAYS"
-            | "NEXT_90_DAYS"
-    ) {
-        return true;
-    }
-
-    // Check for parameterized literals with regex
-    lazy_static! {
-        static ref N_PATTERN: Regex =
-            Regex::new(r"^(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS):\d+$").unwrap();
-        static ref FISCAL_PATTERN: Regex =
-            Regex::new(r"^(THIS|LAST|NEXT)_FISCAL_(QUARTER|YEAR)$").unwrap();
-        static ref FISCAL_N_PATTERN: Regex =
-            Regex::new(r"^(LAST|NEXT)_N_FISCAL_(QUARTERS|YEARS):\d+$").unwrap();
-    }
-
-    N_PATTERN.is_match(value) || FISCAL_PATTERN.is_match(value) || FISCAL_N_PATTERN.is_match(value)
-}
-
-fn is_valid_function_name(function: &str) -> bool {
-    matches!(
-        function,
-        // Date functions
-        "DAY_ONLY" | "CALENDAR_MONTH" | "CALENDAR_QUARTER" | "CALENDAR_YEAR" |
-        "DAY_IN_MONTH" | "DAY_IN_WEEK" | "DAY_IN_YEAR" |
-        "FISCAL_MONTH" | "FISCAL_QUARTER" | "FISCAL_YEAR" |
-        "HOUR_IN_DAY" | "WEEK_IN_MONTH" | "WEEK_IN_YEAR" |
-        // Formatting functions
-        "FORMAT" | "CONVERT_TIMEZONE" |
-        // Math functions
-        "ABS" | "CEILING" | "FLOOR" | "ROUND" |
-        // Geolocation functions
-        "DISTANCE" | "GEOLOCATION" |
-        // Logical functions
-        "CASE" | "NULLVALUE" | "ISBLANK" |
-        // Other supported functions
-        "CONVERTCURRENCY" | "TOLABEL"
-    )
-}
-
-impl FieldExpression {
-    pub fn format(&self) -> String {
-        match self {
-            FieldExpression::Field(field) => field.clone(),
-            FieldExpression::Function {
-                function,
-                arguments,
-            } => {
-                format!("{}({})", function, arguments.join(", "))
-            }
-        }
-    }
-}
-
-impl Validator for FieldExpression {
-    fn validate(&self) -> Result<(), SoqlError> {
-        match self {
-            FieldExpression::Field(field) => {
-                // Check that field is not empty
-                if field.is_empty() {
-                    return Err(SoqlError::field_validation_error(
-                        "<empty>",
-                        "Field name cannot be empty",
-                    ));
-                }
-
-                // Validate field dot notation depth
-                validate_max_depth(field, MAX_DOT_NOTATION_TRAVERSAL_DEPTH)?;
-
-                Ok(())
-            }
-            FieldExpression::Function {
-                function,
-                arguments,
-            } => {
-                // Validate function name
-                if !is_valid_function_name(function) {
-                    return Err(SoqlError::field_validation_error(
-                        &format!("{}()", function),
-                        format!("Unsupported function: {}. Must be one of the supported Salesforce functions.", function),
-                    ));
-                }
-
-                // Validate that function has arguments
-                if arguments.is_empty() {
-                    return Err(SoqlError::field_validation_error(
-                        &format!("{}()", function),
-                        format!("Function {} requires at least one argument", function),
-                    ));
-                }
-
-                // Validate each argument
-                for (i, arg) in arguments.iter().enumerate() {
-                    if arg.is_empty() {
-                        return Err(SoqlError::field_validation_error(
-                            &format!("{}(...)", function),
-                            format!(
-                                "Argument {} for function {} cannot be empty",
-                                i + 1,
-                                function
-                            ),
-                        ));
-                    }
-
-                    // Check for nested function calls (not allowed)
-                    if arg.contains('(') && arg.contains(')') {
-                        return Err(SoqlError::field_validation_error(
-                            arg,
-                            "Nested function calls are not supported in SOQL queries".to_string(),
-                        ));
-                    }
-
-                    // Check for dot notation in arguments
-                    if arg.contains('.') {
-                        validate_max_depth(arg, MAX_DOT_NOTATION_TRAVERSAL_DEPTH)?;
-                    }
-                }
-
-                // Check specific argument requirements for different functions
-                match function.as_str() {
-                    // Date functions generally require exactly one date/datetime field
-                    "DAY_ONLY" | "CALENDAR_MONTH" | "CALENDAR_QUARTER" | "CALENDAR_YEAR"
-                    | "DAY_IN_MONTH" | "DAY_IN_WEEK" | "DAY_IN_YEAR" | "FISCAL_MONTH"
-                    | "FISCAL_QUARTER" | "FISCAL_YEAR" | "HOUR_IN_DAY" | "WEEK_IN_MONTH"
-                    | "WEEK_IN_YEAR" => {
-                        if arguments.len() != 1 {
-                            return Err(SoqlError::field_validation_error(
-                                &format!("{}({})", function, arguments.join(", ")),
-                                format!(
-                                    "{} function requires exactly one date/datetime field argument",
-                                    function
-                                ),
-                            ));
-                        }
-                    }
-                    // Other functions have varying requirements, add specific validations as needed
-                    _ => {}
-                }
-
-                Ok(())
-            }
-        }
-    }
-}
+const MAX_FUNCTION_NESTING_DEPTH: usize = 3; // Allow up to 3 levels of nesting
 
 pub trait Validator {
     fn validate(&self) -> Result<(), SoqlError>;
@@ -578,6 +93,114 @@ impl Validator for StructuredQuery {
     }
 }
 
+impl FunctionArgument {
+    fn validate_recursive(&self, depth: usize) -> Result<(), SoqlError> {
+        // Check for maximum nesting depth
+        if depth > MAX_FUNCTION_NESTING_DEPTH {
+            return Err(SoqlError::field_validation_error(
+                "function",
+                format!(
+                    "Function nesting depth exceeds maximum of {}",
+                    MAX_FUNCTION_NESTING_DEPTH
+                ),
+            ));
+        }
+
+        match self {
+            FunctionArgument::Expression(expr) => {
+                match expr {
+                    FieldExpression::Field(field) => {
+                        // Field validation is already handled in FieldExpression::validate
+                        // but we need to ensure we don't hit the depth check again
+                        if field.is_empty() {
+                            return Err(SoqlError::field_validation_error(
+                                "<empty>",
+                                "Field name cannot be empty",
+                            ));
+                        }
+
+                        // Validate field dot notation depth
+                        validate_max_depth(field, MAX_DOT_NOTATION_TRAVERSAL_DEPTH)?;
+
+                        Ok(())
+                    }
+                    FieldExpression::Function {
+                        function,
+                        arguments,
+                    } => {
+                        // Validate function name
+                        if !is_valid_function_name(function) {
+                            return Err(SoqlError::field_validation_error(
+                                &format!("{}()", function),
+                                format!("Unsupported function: {}. Must be one of the supported Salesforce functions.", function),
+                            ));
+                        }
+
+                        // Validate that function has arguments
+                        if arguments.is_empty() {
+                            return Err(SoqlError::field_validation_error(
+                                &format!("{}()", function),
+                                format!("Function {} requires at least one argument", function),
+                            ));
+                        }
+
+                        // Validate each argument recursively with increased depth
+                        for (i, arg) in arguments.iter().enumerate() {
+                            if let Err(err) = arg.validate_recursive(depth + 1) {
+                                return Err(SoqlError::field_validation_error(
+                                    &format!("{}(...)", function),
+                                    format!(
+                                        "Argument {} for function {} is invalid: {}",
+                                        i + 1,
+                                        function,
+                                        err
+                                    ),
+                                ));
+                            }
+                        }
+
+                        // Check specific argument requirements for different functions
+                        match function.as_str() {
+                            // Date functions generally require exactly one date/datetime field
+                            "DAY_ONLY" | "CALENDAR_MONTH" | "CALENDAR_QUARTER"
+                            | "CALENDAR_YEAR" | "DAY_IN_MONTH" | "DAY_IN_WEEK" | "DAY_IN_YEAR"
+                            | "FISCAL_MONTH" | "FISCAL_QUARTER" | "FISCAL_YEAR" | "HOUR_IN_DAY"
+                            | "WEEK_IN_MONTH" | "WEEK_IN_YEAR" => {
+                                if arguments.len() != 1 {
+                                    return Err(SoqlError::field_validation_error(
+                                        &format!("{}(...)", function),
+                                        format!(
+                                            "{} function requires exactly one date/datetime field argument",
+                                            function
+                                        ),
+                                    ));
+                                }
+                            }
+                            // FORMAT function requires exactly two arguments (datetime field and format string)
+                            "FORMAT" => {
+                                if arguments.len() != 2 {
+                                    return Err(SoqlError::field_validation_error(
+                                        &format!("{}(...)", function),
+                                        "FORMAT function requires exactly two arguments: a date/datetime field and a format string",
+                                    ));
+                                }
+                            }
+                            // Other functions have varying requirements, add specific validations as needed
+                            _ => {}
+                        }
+
+                        Ok(())
+                    }
+                }
+            }
+            FunctionArgument::Literal(_) => {
+                // Literal values don't need special validation
+                Ok(())
+            }
+        }
+    }
+}
+
 impl Validator for TypedValue {
     fn validate(&self) -> Result<(), SoqlError> {
         match self {
@@ -617,18 +240,18 @@ impl Validator for TypedValue {
                     ));
                 }
 
-                // Check for nested function calls (not allowed)
-                for arg in arguments {
-                    if arg.contains('(') && arg.contains(')') {
+                // Validate each argument
+                for (i, arg) in arguments.iter().enumerate() {
+                    if let Err(err) = arg.validate_recursive(0) {
                         return Err(SoqlError::value_error(
                             "function",
-                            "Nested function calls are not supported in SOQL queries".to_string(),
+                            format!(
+                                "Argument {} for function {} is invalid: {}",
+                                i + 1,
+                                function,
+                                err
+                            ),
                         ));
-                    }
-
-                    // Check for dot notation depth
-                    if arg.contains('.') {
-                        validate_max_depth(arg, MAX_DOT_NOTATION_TRAVERSAL_DEPTH)?;
                     }
                 }
 
@@ -689,7 +312,7 @@ impl Validator for WhereClause {
                     // Validate value
                     value.validate()?;
 
-                    let field_name = field.format();
+                    let field_name = field.to_soql();
 
                     // Get the underlying value for operator validation
                     let json_value = match value {
@@ -818,6 +441,14 @@ impl Validator for ParentField {
         // Validate field expressions
         for field in &self.fields {
             field.validate()?;
+            match field {
+                FieldExpression::Field(_) => {}
+                FieldExpression::Function { .. } => {
+                    return Err(SoqlError::unsupported_feature(
+                        "Function calls are not supported on parent fields",
+                    ));
+                }
+            }
         }
 
         Ok(())
@@ -827,7 +458,7 @@ impl Validator for ParentField {
 impl Validator for GroupBy {
     fn validate(&self) -> Result<(), SoqlError> {
         match self {
-            GroupBy::Simple(fields) => {
+            GroupBy::Simple(fields) | GroupBy::Advanced { fields, .. } => {
                 if fields.is_empty() {
                     return Err(SoqlError::aggregation_error(
                         "GROUP BY clause must contain at least one field",
@@ -835,46 +466,7 @@ impl Validator for GroupBy {
                 }
 
                 for field in fields {
-                    if field.is_empty() {
-                        return Err(SoqlError::field_validation_error(
-                            "<empty>",
-                            "GROUP BY field cannot be empty",
-                        ));
-                    }
-
-                    validate_max_depth(field, 1).map_err(|_| {
-                        SoqlError::field_validation_error(
-                            field,
-                            "GROUP BY fields can only include one level of dot notation (e.g. 'Account.Name' is allowed, but 'Account.Owner.Name' is not)"
-                        )
-                    })?;
-                }
-            }
-            GroupBy::Advanced { group_type, fields } => {
-                if fields.is_empty() {
-                    return Err(SoqlError::aggregation_error(format!(
-                        "{} grouping requires at least one field",
-                        group_type.as_str()
-                    )));
-                }
-
-                for field in fields {
-                    if field.is_empty() {
-                        return Err(SoqlError::field_validation_error(
-                            "<empty>",
-                            format!("{} grouping field cannot be empty", group_type.as_str()),
-                        ));
-                    }
-
-                    validate_max_depth(field, 1).map_err(|_| {
-                        SoqlError::field_validation_error(
-                            field,
-                            format!(
-                                "{} grouping fields can only include one level of dot notation",
-                                group_type.as_str()
-                            ),
-                        )
-                    })?;
+                    field.validate()?;
                 }
             }
         }
@@ -914,62 +506,197 @@ impl Validator for HavingClause {
 
 impl Validator for Aggregate {
     fn validate(&self) -> Result<(), SoqlError> {
-        if self.field.is_empty() {
-            return Err(SoqlError::field_validation_error(
-                "<empty>",
-                format!(
-                    "Field for {} aggregate function cannot be empty",
-                    self.function.as_str()
-                ),
-            ));
-        }
-
+        self.field.validate()?;
+        let field_str = self.field.to_soql();
         if self.alias.is_empty() {
             return Err(SoqlError::field_validation_error(
-                format!("{}({})", self.function.as_str(), self.field),
+                format!("{}({})", self.function.to_soql(), field_str),
                 "Aggregate function must have a non-empty alias",
             ));
         }
-
-        validate_max_depth(&self.field, 1).map_err(|_| {
-            SoqlError::field_validation_error(
-                &self.field,
-                format!(
-                    "Fields in {} aggregate function can only include one level of dot notation",
-                    self.function.as_str()
-                ),
-            )
-        })?;
 
         Ok(())
     }
 }
 
-// Helper method to get string representation of AggregateFunction
-impl AggregateFunction {
-    pub fn as_str(&self) -> &'static str {
+impl Validator for FieldExpression {
+    fn validate(&self) -> Result<(), SoqlError> {
         match self {
-            AggregateFunction::Count => "COUNT",
-            AggregateFunction::Sum => "SUM",
-            AggregateFunction::Avg => "AVG",
-            AggregateFunction::Min => "MIN",
-            AggregateFunction::Max => "MAX",
+            FieldExpression::Field(field) => {
+                // Check that field is not empty
+                if field.is_empty() {
+                    return Err(SoqlError::field_validation_error(
+                        "<empty>",
+                        "Field name cannot be empty",
+                    ));
+                }
+
+                // Validate field dot notation depth
+                validate_max_depth(field, MAX_DOT_NOTATION_TRAVERSAL_DEPTH)?;
+
+                Ok(())
+            }
+            FieldExpression::Function {
+                function,
+                arguments,
+            } => {
+                // Validate function name
+                if !is_valid_function_name(function) {
+                    return Err(SoqlError::field_validation_error(
+                        &format!("{}()", function),
+                        format!("Unsupported function: {}. Must be one of the supported Salesforce functions.", function),
+                    ));
+                }
+
+                // Validate that function has arguments
+                if arguments.is_empty() {
+                    return Err(SoqlError::field_validation_error(
+                        &format!("{}()", function),
+                        format!("Function {} requires at least one argument", function),
+                    ));
+                }
+
+                // Validate each argument with initial depth of 1
+                for (i, arg) in arguments.iter().enumerate() {
+                    if let Err(err) = arg.validate_recursive(1) {
+                        return Err(SoqlError::field_validation_error(
+                            &format!("{}(...)", function),
+                            format!(
+                                "Argument {} for function {} is invalid: {}",
+                                i + 1,
+                                function,
+                                err
+                            ),
+                        ));
+                    }
+                }
+
+                // Check specific argument requirements for different functions
+                match function.as_str() {
+                    // Date functions generally require exactly one date/datetime field
+                    "DAY_ONLY" | "CALENDAR_MONTH" | "CALENDAR_QUARTER" | "CALENDAR_YEAR"
+                    | "DAY_IN_MONTH" | "DAY_IN_WEEK" | "DAY_IN_YEAR" | "FISCAL_MONTH"
+                    | "FISCAL_QUARTER" | "FISCAL_YEAR" | "HOUR_IN_DAY" | "WEEK_IN_MONTH"
+                    | "WEEK_IN_YEAR" => {
+                        if arguments.len() != 1 {
+                            return Err(SoqlError::field_validation_error(
+                                &format!("{}(...)", function),
+                                format!(
+                                    "{} function requires exactly one date/datetime field argument",
+                                    function
+                                ),
+                            ));
+                        }
+                    }
+                    // FORMAT function requires exactly two arguments
+                    "FORMAT" => {
+                        if arguments.len() != 2 {
+                            return Err(SoqlError::field_validation_error(
+                                &format!("{}(...)", function),
+                                "FORMAT function requires exactly two arguments: a date/datetime field and a format string",
+                            ));
+                        }
+                    }
+                    // Other functions have varying requirements, add specific validations as needed
+                    _ => {}
+                }
+
+                Ok(())
+            }
         }
     }
 }
 
-// Helper method to get string representation of GroupType
-impl GroupType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            GroupType::Rollup => "ROLLUP",
-            GroupType::Cube => "CUBE",
-        }
+// Checks that a path (dot notation) does not traverse more than `MAX_DOT_NOTATION_TRAVERSAL_DEPTH` level deep.
+fn validate_max_depth(path: &str, allowed_depth: usize) -> Result<(), SoqlError> {
+    let dot_count = path.chars().filter(|c| *c == '.').count();
+    if dot_count > allowed_depth {
+        return Err(SoqlError::field_validation_error(
+            path,
+            format!(
+                "Exceeds maximum dot notation depth of {} level(s)",
+                allowed_depth
+            ),
+        ));
     }
+    Ok(())
+}
+
+fn is_valid_iso8601_datetime(value: &str) -> bool {
+    lazy_static! {
+        static ref ISO8601_REGEX: Regex =
+            Regex::new(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$")
+                .unwrap();
+    }
+
+    ISO8601_REGEX.is_match(value)
+}
+
+fn is_valid_date_literal(value: &str) -> bool {
+    // Check for simple literals
+    if matches!(
+        value,
+        "TODAY"
+            | "YESTERDAY"
+            | "TOMORROW"
+            | "THIS_WEEK"
+            | "LAST_WEEK"
+            | "NEXT_WEEK"
+            | "THIS_MONTH"
+            | "LAST_MONTH"
+            | "NEXT_MONTH"
+            | "THIS_QUARTER"
+            | "LAST_QUARTER"
+            | "NEXT_QUARTER"
+            | "THIS_YEAR"
+            | "LAST_YEAR"
+            | "NEXT_YEAR"
+            | "LAST_90_DAYS"
+            | "NEXT_90_DAYS"
+    ) {
+        return true;
+    }
+
+    // Check for parameterized literals with regex
+    lazy_static! {
+        static ref N_PATTERN: Regex =
+            Regex::new(r"^(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS):\d+$").unwrap();
+        static ref FISCAL_PATTERN: Regex =
+            Regex::new(r"^(THIS|LAST|NEXT)_FISCAL_(QUARTER|YEAR)$").unwrap();
+        static ref FISCAL_N_PATTERN: Regex =
+            Regex::new(r"^(LAST|NEXT)_N_FISCAL_(QUARTERS|YEARS):\d+$").unwrap();
+    }
+
+    N_PATTERN.is_match(value) || FISCAL_PATTERN.is_match(value) || FISCAL_N_PATTERN.is_match(value)
+}
+
+fn is_valid_function_name(function: &str) -> bool {
+    matches!(
+        function,
+        // Date functions
+        "DAY_ONLY" | "CALENDAR_MONTH" | "CALENDAR_QUARTER" | "CALENDAR_YEAR" |
+        "DAY_IN_MONTH" | "DAY_IN_WEEK" | "DAY_IN_YEAR" |
+        "FISCAL_MONTH" | "FISCAL_QUARTER" | "FISCAL_YEAR" |
+        "HOUR_IN_DAY" | "WEEK_IN_MONTH" | "WEEK_IN_YEAR" |
+        // Formatting functions
+        "FORMAT" | "CONVERT_TIMEZONE" |
+        // Math functions
+        "ABS" | "CEILING" | "FLOOR" | "ROUND" |
+        // Geolocation functions
+        "DISTANCE" | "GEOLOCATION" |
+        // Logical functions
+        "CASE" | "NULLVALUE" | "ISBLANK" |
+        // Other supported functions
+        "CONVERTCURRENCY" | "TOLABEL"
+    )
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::databases::remote_databases::salesforce::sandbox::models::{
+        AggregateFilter, AggregateFunction, DateTimeType, LogicalOperator,
+    };
+
     use super::*;
 
     #[test]
@@ -1187,12 +914,12 @@ mod tests {
             aggregates: vec![
                 Aggregate {
                     function: AggregateFunction::Count,
-                    field: "Id".to_string(),
+                    field: FieldExpression::Field("Id".to_string()),
                     alias: "CountId".to_string(),
                 },
                 Aggregate {
                     function: AggregateFunction::Sum,
-                    field: "Amount".to_string(),
+                    field: FieldExpression::Field("Amount".to_string()),
                     alias: "TotalAmount".to_string(),
                 },
             ],
@@ -1449,7 +1176,7 @@ mod tests {
     fn test_aggregate_validation_empty_alias_fails() {
         let aggregate = Aggregate {
             function: AggregateFunction::Count,
-            field: "Id".to_string(),
+            field: FieldExpression::Field("Id".to_string()),
             alias: "".to_string(),
         };
 
@@ -1470,49 +1197,75 @@ mod tests {
         // Valid field expression without nesting
         let valid_expr = FieldExpression::Function {
             function: "DAY_ONLY".to_string(),
-            arguments: vec!["Contact.CreatedDate".to_string()],
+            arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                "Contact.CreatedDate".to_string(),
+            ))],
         };
         assert!(
             valid_expr.validate().is_ok(),
             "Valid function with dot notation should pass"
         );
 
-        // Nested functions are not allowed
+        // Now nested functions are allowed
         let nested_function = FieldExpression::Function {
             function: "CALENDAR_MONTH".to_string(),
-            arguments: vec!["DAY_ONLY(Contact.CreatedDate)".to_string()],
+            arguments: vec![FunctionArgument::Expression(FieldExpression::Function {
+                function: "DAY_ONLY".to_string(),
+                arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                    "Contact.CreatedDate".to_string(),
+                ))],
+            })],
         };
 
         assert!(
-            nested_function.validate().is_err(),
-            "Nested functions should not be allowed"
+            nested_function.validate().is_ok(),
+            "Nested functions should be allowed"
         );
 
         // Invalid field expression with deep dot notation
         let invalid_expr = FieldExpression::Function {
             function: "DAY_ONLY".to_string(),
-            arguments: vec!["Contact.Owner.Manager.Department".to_string()],
+            arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                "Contact.Owner.Manager.Department".to_string(),
+            ))],
         };
         assert!(
             invalid_expr.validate().is_err(),
             "Deep dot notation should fail validation"
         );
 
-        // Nested function with invalid depth should fail (nested function rule takes precedence)
-        let nested_with_invalid_depth = FieldExpression::Function {
-            function: "CALENDAR_MONTH".to_string(),
-            arguments: vec!["FORMAT(Contact.Owner.Manager.Department)".to_string()],
+        // Test excessive nesting depth
+        let deep_nesting = FieldExpression::Function {
+            function: "FORMAT".to_string(),
+            arguments: vec![
+                FunctionArgument::Expression(FieldExpression::Function {
+                    function: "CALENDAR_MONTH".to_string(),
+                    arguments: vec![FunctionArgument::Expression(FieldExpression::Function {
+                        function: "CALENDAR_YEAR".to_string(),
+                        arguments: vec![FunctionArgument::Expression(FieldExpression::Function {
+                            function: "DAY_ONLY".to_string(),
+                            arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                                "CreatedDate".to_string(),
+                            ))],
+                        })],
+                    })],
+                }),
+                FunctionArgument::Literal(serde_json::json!("MMMM")),
+            ],
         };
 
-        let result = nested_with_invalid_depth.validate();
-        assert!(result.is_err(), "Nested functions should not be allowed");
+        let result = deep_nesting.validate();
+
+        assert!(result.is_err(), "Excessive nesting should not be allowed");
+
         if let Err(SoqlError::FieldValidationError { reason, .. }) = result {
             assert!(
-                reason.contains("Nested function calls are not supported"),
-                "Error message should mention that nested functions are not supported"
+                reason.contains("Function nesting depth exceeds maximum"),
+                "Error message should mention that maximum nesting depth is exceeded: {}",
+                reason
             );
         } else {
-            panic!("Expected a field validation error about nested functions not being supported");
+            panic!("Expected a field validation error about maximum nesting depth");
         }
     }
 }

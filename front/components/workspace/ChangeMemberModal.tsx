@@ -77,7 +77,7 @@ export function ChangeMemberModal({
               <SheetTitle>{member.fullName || "Unreachable"}</SheetTitle>
             </SheetHeader>
             <SheetContainer>
-              <div className="flex flex-col gap-9 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <div className="flex flex-col gap-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 <div className="flex items-center gap-4">
                   <Avatar
                     size="lg"
@@ -85,7 +85,7 @@ export function ChangeMemberModal({
                     name={member.fullName}
                   />
                   <div className="flex grow flex-col">
-                    <div className="font-semibold text-foreground dark:text-foreground-night">
+                    <div className="heading-base text-foreground dark:text-foreground-night">
                       {member.fullName}
                     </div>
                     <div className="font-normal">{member.email}</div>
@@ -94,7 +94,7 @@ export function ChangeMemberModal({
 
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="font-bold text-foreground dark:text-foreground-night">
+                    <div className="heading-base text-foreground dark:text-foreground-night">
                       Role:
                     </div>
                     <RoleDropDown

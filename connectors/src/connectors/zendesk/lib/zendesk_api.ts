@@ -23,8 +23,15 @@ import type { ModelId } from "@connectors/types";
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 
-function getEndpointFromZendeskUrl(url: string): string {
-  return url.replace(/^https?:\/\/(.*)\.zendesk\.com(.*)/, "$2");
+function extractMetadataFromZendeskUrl(url: string): {
+  subdomain: string;
+  endpoint: string;
+} {
+  const regex = /^https?:\/\/(.*)\.zendesk\.com(.*)\??.*/;
+  return {
+    subdomain: url.replace(regex, "$1"),
+    endpoint: url.replace(regex, "$2"),
+  };
 }
 
 export function createZendeskClient({
@@ -95,8 +102,12 @@ export async function getZendeskBrandSubdomain({
  * https://developer.zendesk.com/api-reference/introduction/rate-limits/
  * @returns true if the rate limit was handled and the request should be retried, false otherwise.
  */
-async function handleZendeskRateLimit(response: Response): Promise<boolean> {
+async function handleZendeskRateLimit(
+  response: Response,
+  url: string
+): Promise<boolean> {
   if (response.status === 429) {
+    const { subdomain, endpoint } = extractMetadataFromZendeskUrl(url);
     let retryAfter = 1;
 
     const headerValue = response.headers.get("retry-after"); // https://developer.zendesk.com/api-reference/introduction/rate-limits/
@@ -108,7 +119,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
     }
     if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
-        { retryAfter },
+        { subdomain, endpoint, response, retryAfter },
         `[Zendesk] Attempting to wait more than ${ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
       );
       throw new Error(
@@ -116,7 +127,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
       );
     }
     logger.info(
-      { response, retryAfter },
+      { subdomain, endpoint, response, retryAfter },
       "[Zendesk] Rate limit hit, waiting before retrying."
     );
     await setTimeoutAsync(retryAfter * 1000);
@@ -148,7 +159,7 @@ async function fetchFromZendeskWithRetries({
   let rawResponse = await runFetch();
 
   let retryCount = 0;
-  while (await handleZendeskRateLimit(rawResponse)) {
+  while (await handleZendeskRateLimit(rawResponse, url)) {
     rawResponse = await runFetch();
     retryCount++;
     if (retryCount >= ZENDESK_RATE_LIMIT_MAX_RETRIES) {
@@ -168,14 +179,14 @@ async function fetchFromZendeskWithRetries({
     throw new ZendeskApiError(
       "Error parsing Zendesk API response",
       rawResponse.status,
-      { rawResponse, endpoint: getEndpointFromZendeskUrl(url) }
+      { rawResponse, ...extractMetadataFromZendeskUrl(url) }
     );
   }
   if (!rawResponse.ok) {
     throw new ZendeskApiError("Zendesk API error.", rawResponse.status, {
       response,
       rawResponse,
-      endpoint: getEndpointFromZendeskUrl(url),
+      ...extractMetadataFromZendeskUrl(url),
     });
   }
 
