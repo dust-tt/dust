@@ -1,3 +1,4 @@
+import { assert } from "console";
 import type {
   Attributes,
   CreationAttributes,
@@ -10,6 +11,8 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -51,6 +54,50 @@ export class GroupResource extends BaseResource<GroupModel> {
     const group = await GroupModel.create(blob, { transaction });
 
     return new this(GroupModel, group.get());
+  }
+
+  /**
+   * Creates a new agent editors group for the given agent and adds the creating
+   * user to it.
+   */
+  static async makeNewAgentEditorsGroup(
+    auth: Authenticator,
+    agent: AgentConfiguration,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    const user = auth.getNonNullableUser();
+    // Create a default group for the agent and add the author to it.
+    const defaultGroup = await GroupResource.makeNew(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name: `Group for Agent ${agent.name}`,
+        kind: "agent_editors",
+      },
+      { transaction }
+    );
+
+    // Add user to the newly created group
+    const addMemberResult = await defaultGroup.addMember(auth, user.toJSON(), {
+      transaction,
+    });
+    if (addMemberResult.isErr()) {
+      // Throw error to trigger transaction rollback
+      throw addMemberResult.error;
+    }
+
+    // Associate the group with the agent configuration.
+    const groupAgentResult = await defaultGroup.addGroupToAgentConfiguration({
+      auth,
+      agentConfiguration: agent,
+      transaction,
+    });
+    // If association fails, the transaction will automatically rollback.
+    if (groupAgentResult.isErr()) {
+      // Explicitly throw error to ensure rollback
+      throw groupAgentResult.error;
+    }
+
+    return defaultGroup;
   }
 
   static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
@@ -779,6 +826,48 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isRegular(): boolean {
     return this.kind === "regular";
+  }
+  /**
+   * Associates a group with an agent configuration.
+   */
+  async addGroupToAgentConfiguration({
+    auth,
+    agentConfiguration,
+    transaction,
+  }: {
+    auth: Authenticator;
+    agentConfiguration: AgentConfiguration;
+    transaction?: Transaction;
+  }): Promise<Result<void, Error>> {
+    assert(
+      this.kind === "agent_editors",
+      "Group must be an agent editors group"
+    );
+    const owner = auth.getNonNullableWorkspace();
+    if (
+      owner.id !== this.workspaceId ||
+      owner.id !== agentConfiguration.workspaceId
+    ) {
+      return new Err(
+        new Error(
+          "Group and agent configuration must belong to the same workspace."
+        )
+      );
+    }
+
+    try {
+      await GroupAgentModel.create(
+        {
+          groupId: this.id,
+          agentConfigurationId: agentConfiguration.id,
+          workspaceId: owner.id,
+        },
+        { transaction }
+      );
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(error as Error);
+    }
   }
 
   // JSON Serialization

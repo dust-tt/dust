@@ -872,40 +872,11 @@ export async function createAgentConfiguration(
         );
 
         if (created) {
-          const user = auth.getNonNullableUser();
-          // Create a default group for the agent and add the author to it.
-          const defaultGroup = await GroupResource.makeNew(
-            {
-              workspaceId: owner.id,
-              name: `Group for Agent ${agentConfigurationInstance.name}`,
-              kind: "regular",
-            },
+          await GroupResource.makeNewAgentEditorsGroup(
+            auth,
+            agentConfigurationInstance,
             { transaction: t }
           );
-
-          // Add user to the newly created group
-          const addMemberResult = await defaultGroup.addMember(
-            auth,
-            user.toJSON(),
-            { transaction: t }
-          );
-          if (addMemberResult.isErr()) {
-            // Throw error to trigger transaction rollback
-            throw addMemberResult.error;
-          }
-
-          // Associate the group with the agent configuration.
-          const groupAgentResult = await addGroupToAgentConfiguration({
-            auth,
-            group: defaultGroup,
-            agentConfiguration: agentConfigurationInstance,
-            transaction: t,
-          });
-          // If association fails, the transaction will automatically rollback.
-          if (groupAgentResult.isErr()) {
-            // Explicitly throw error to ensure rollback
-            throw groupAgentResult.error;
-          }
         }
 
         return agentConfigurationInstance;
@@ -1538,51 +1509,6 @@ export async function unsafeHardDeleteAgentConfiguration(
       id: agentConfiguration.id,
     },
   });
-}
-
-/**
- * Associates a group with an agent configuration.
- */
-export async function addGroupToAgentConfiguration({
-  auth,
-  group,
-  agentConfiguration,
-  transaction,
-}: {
-  auth: Authenticator;
-  group: GroupResource;
-  agentConfiguration: AgentConfiguration;
-  transaction?: Transaction;
-}): Promise<Result<void, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-  if (
-    owner.id !== group.workspaceId ||
-    owner.id !== agentConfiguration.workspaceId
-  ) {
-    return new Err(
-      new Error(
-        "Group and agent configuration must belong to the same workspace."
-      )
-    );
-  }
-
-  try {
-    await GroupAgentModel.create(
-      {
-        groupId: group.id,
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: owner.id,
-      },
-      { transaction }
-    );
-    return new Ok(undefined);
-  } catch (error) {
-    if (error instanceof UniqueConstraintError) {
-      // Association already exists, which is fine.
-      return new Ok(undefined);
-    }
-    return new Err(error as Error);
-  }
 }
 
 /**
