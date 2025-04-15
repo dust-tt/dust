@@ -509,25 +509,28 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       if (
         c.type === "resource" &&
         c.resource.mimeType &&
-        isSupportedFileContentType(c.resource.mimeType)
+        isSupportedFileContentType(block.resource.mimeType)
       ) {
-        let fileName = c.resource.uri.split("/").pop() ?? "generated-file";
+        let fileName = block.resource.uri.split("/").pop() ?? "generated-file";
 
         if (isResourceWithName(c.resource)) {
           fileName = c.resource.name;
         }
 
-        const r = await processAndStoreFromUrl(auth, {
-          url: c.resource.uri,
+        const fileUpsertResult = await processAndStoreFromUrl(auth, {
+          url: blockblock.resource.uri,
           useCase: "conversation",
           fileName,
           contentType: c.resource.mimeType,
         });
-        if (r.isErr()) {
-          localLogger.error({ error: r.error }, "Error upserting file");
+        if (fileUpsertResult.isErr()) {
+          localLogger.error(
+            { error: fileUpsertResult.error },
+            "Error upserting file"
+          );
           continue;
         }
-        file = r.value;
+        file = fileUpsertResult.value;
         generatedFiles.push({
           fileId: file.sId,
           contentType: c.resource.mimeType,
