@@ -11,13 +11,13 @@ import { getPKCEConfig } from "@app/lib/utils/pkce";
 import type { GetLabsConnectionsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/connections";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
-import { testHubspotCredentials } from "@app/temporal/labs/connections/utils/hubspot";
 import type {
   ConnectionCredentials,
   DataSourceType,
   LabsConnectionProvider,
+  LightWorkspaceType,
+  ModelId,
 } from "@app/types";
-import type { LightWorkspaceType, ModelId } from "@app/types";
 import { assertNever, isOAuthProvider, setupOAuthConnection } from "@app/types";
 
 // Transcripts
@@ -328,12 +328,38 @@ export function useCreateLabsConnectionConfiguration({
   }) => {
     switch (provider) {
       case "hubspot":
-        const testRes = await testHubspotCredentials(credentials);
-        if (testRes.isErr()) {
+        const testRes = await fetch(
+          `/api/w/${workspaceId}/labs/connections/test-credentials`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              provider: "hubspot",
+              credentials,
+            }),
+          }
+        );
+
+        if (!testRes.ok) {
+          const error = await testRes.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to test credentials",
+            description: error.error.message,
+          });
+          return false;
+        }
+
+        const testResult = await testRes.json();
+        if (!testResult.success) {
           sendNotification({
             type: "error",
             title: "Credentials are invalid",
-            description: "Please check your Hubspot credentials and try again.",
+            description:
+              testResult.error ||
+              "Please check your Hubspot credentials and try again.",
           });
           return false;
         }
