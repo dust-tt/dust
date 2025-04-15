@@ -1,3 +1,4 @@
+import { assert } from "console";
 import type {
   Attributes,
   CreationAttributes,
@@ -10,6 +11,8 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -44,10 +47,71 @@ export class GroupResource extends BaseResource<GroupModel> {
     super(GroupModel, blob);
   }
 
-  static async makeNew(blob: CreationAttributes<GroupModel>) {
-    const group = await GroupModel.create(blob);
+  static async makeNew(
+    blob: CreationAttributes<GroupModel>,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    const group = await GroupModel.create(blob, { transaction });
 
     return new this(GroupModel, group.get());
+  }
+
+  /**
+   * Creates a new agent editors group for the given agent and adds the creating
+   * user to it.
+   */
+  static async makeNewAgentEditorsGroup(
+    auth: Authenticator,
+    agent: AgentConfiguration,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    const user = auth.getNonNullableUser();
+    const workspace = auth.getNonNullableWorkspace();
+
+    if (agent.workspaceId !== workspace.id) {
+      throw new DustError(
+        "internal_error",
+        "Unexpected: agent and workspace mismatch"
+      );
+    }
+
+    // Create a default group for the agent and add the author to it.
+    const defaultGroup = await GroupResource.makeNew(
+      {
+        workspaceId: workspace.id,
+        name: `Group for Agent ${agent.name}`,
+        kind: "agent_editors",
+      },
+      { transaction }
+    );
+
+    // Add user to the newly created group. For the specific purpose of
+    // agent_editors group creation, we don't use addMembers, since admins or
+    // existing members of the group can add/remove members this way. We create
+    // the relation directly.
+    await GroupMembershipModel.create(
+      {
+        groupId: defaultGroup.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: new Date(),
+      },
+      { transaction }
+    );
+
+    // Associate the group with the agent configuration.
+    const groupAgentResult = await defaultGroup.addGroupToAgentConfiguration({
+      auth,
+      agentConfiguration: agent,
+      transaction,
+    });
+    // If association fails, the transaction will automatically rollback.
+    if (groupAgentResult.isErr()) {
+      // Explicitly throw error to ensure rollback
+      throw groupAgentResult.error;
+    }
+
+    return defaultGroup;
   }
 
   static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
@@ -438,7 +502,8 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMembers(
     auth: Authenticator,
-    users: UserType[]
+    users: UserType[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
     if (!this.canWrite(auth)) {
       return new Err(
@@ -480,12 +545,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular groups.
-    if (this.kind !== "regular") {
+    // Users can only be added to regular or agent_editors groups.
+    if (this.kind !== "regular" && this.kind !== "agent_editors") {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be added to regular groups."
+          "Users can only be added to regular or agent_editors groups."
         )
       );
     }
@@ -514,7 +579,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         userId: user.id,
         workspaceId: owner.id,
         startAt: new Date(),
-      }))
+      })),
+      { transaction }
     );
 
     return new Ok(undefined);
@@ -522,14 +588,16 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMember(
     auth: Authenticator,
-    user: UserType
+    user: UserType,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
-    return this.addMembers(auth, [user]);
+    return this.addMembers(auth, [user], { transaction });
   }
 
   async removeMembers(
     auth: Authenticator,
-    users: UserType[]
+    users: UserType[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
     if (!this.canWrite(auth)) {
       return new Err(
@@ -605,6 +673,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
         },
+        transaction,
       }
     );
 
@@ -613,14 +682,16 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async removeMember(
     auth: Authenticator,
-    users: UserType
+    users: UserType,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
-    return this.removeMembers(auth, [users]);
+    return this.removeMembers(auth, [users], { transaction });
   }
 
   async setMembers(
     auth: Authenticator,
-    users: UserType[]
+    users: UserType[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
     if (!this.canWrite(auth)) {
       return new Err(
@@ -640,7 +711,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(auth, usersToAdd);
+      const addResult = await this.addMembers(auth, usersToAdd, {
+        transaction,
+      });
       if (addResult.isErr()) {
         return addResult;
       }
@@ -651,7 +724,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(auth, usersToRemove);
+      const removeResult = await this.removeMembers(auth, usersToRemove, {
+        transaction,
+      });
       if (removeResult.isErr()) {
         return removeResult;
       }
@@ -765,6 +840,48 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isRegular(): boolean {
     return this.kind === "regular";
+  }
+  /**
+   * Associates a group with an agent configuration.
+   */
+  async addGroupToAgentConfiguration({
+    auth,
+    agentConfiguration,
+    transaction,
+  }: {
+    auth: Authenticator;
+    agentConfiguration: AgentConfiguration;
+    transaction?: Transaction;
+  }): Promise<Result<void, Error>> {
+    assert(
+      this.kind === "agent_editors",
+      "Group must be an agent editors group"
+    );
+    const owner = auth.getNonNullableWorkspace();
+    if (
+      owner.id !== this.workspaceId ||
+      owner.id !== agentConfiguration.workspaceId
+    ) {
+      return new Err(
+        new Error(
+          "Group and agent configuration must belong to the same workspace."
+        )
+      );
+    }
+
+    try {
+      await GroupAgentModel.create(
+        {
+          groupId: this.id,
+          agentConfigurationId: agentConfiguration.id,
+          workspaceId: owner.id,
+        },
+        { transaction }
+      );
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(error as Error);
+    }
   }
 
   // JSON Serialization
