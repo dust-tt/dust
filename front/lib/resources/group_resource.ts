@@ -9,7 +9,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
@@ -66,20 +66,28 @@ export class GroupResource extends BaseResource<GroupModel> {
     { transaction }: { transaction?: Transaction } = {}
   ) {
     const user = auth.getNonNullableUser();
+    const workspace = auth.getNonNullableWorkspace();
     // Create a default group for the agent and add the author to it.
     const defaultGroup = await GroupResource.makeNew(
       {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: workspace.id,
         name: `Group for Agent ${agent.name}`,
         kind: "agent_editors",
       },
       { transaction }
     );
 
-    // Add user to the newly created group
-    const addMemberResult = await defaultGroup.addMember(auth, user.toJSON(), {
-      transaction,
-    });
+    // Add user to the newly created group. For the specific purpose of
+    // agent_editors group creation, we need admin rights since only admins or
+    // existing members of the group can add/remove members.
+    // Do not copy this pattern elsewhere.
+    const addMemberResult = await defaultGroup.addMember(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      user.toJSON(),
+      {
+        transaction,
+      }
+    );
     if (addMemberResult.isErr()) {
       // Throw error to trigger transaction rollback
       throw addMemberResult.error;
@@ -531,12 +539,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular groups.
-    if (this.kind !== "regular") {
+    // Users can only be added to regular or agent_editors groups.
+    if (this.kind !== "regular" && this.kind !== "agent_editors") {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be added to regular groups."
+          "Users can only be added to regular or agent_editors groups."
         )
       );
     }
