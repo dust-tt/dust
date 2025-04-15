@@ -84,6 +84,8 @@ import {
 
 export * from "./internal_mime_types";
 export * from "./types";
+export * from "./tool_inputs";
+
 interface DustResponse {
   status: number;
   ok: boolean;
