@@ -149,27 +149,47 @@ impl Block for Browser {
             },
         }?;
 
+        let query = r#"
+mutation ScrapeWebsite($url: String!, $timeout: Float, $selector: String = "body") {
+    goto(url: $url, waitUntil: firstContentfulPaint, timeout: $timeout) {
+        status
+        time
+        url
+        status
+    }
+    body: html(selector: $selector) {
+        html
+    }
+    text: text(selector: $selector) {
+        text
+    }
+}
+"#;
+
         let mut body_json = json!({
-            "url": url,
-            "elements": [ { "selector": self.selector } ],
-            "gotoOptions": {
-                "timeout": self.timeout,
-            },
+            "query": query,
+            "variables": {
+                "url": url,
+                "selector": self.selector,
+                "timeout": self.timeout
+            }
         });
 
+        // WARN: not sure what to do with it. There is no waitFor in the current /scrape route, could be
+        // waitForTimeout or waitForNavigation (or else?)
         if let Some(wait_for) = &self.wait_for {
             match wait_for.parse::<usize>() {
                 Ok(t) => {
-                    body_json["waitFor"] = Value::Number(serde_json::Number::from(t));
+                    body_json["variables"]["waitFor"] = Value::Number(serde_json::Number::from(t));
                 }
                 _ => {
-                    body_json["waitFor"] = Value::String(wait_for.clone());
+                    body_json["variables"]["waitFor"] = Value::String(wait_for.clone());
                 }
             }
         }
 
         if let Some(wait_until) = &self.wait_until {
-            body_json["gotoOptions"]["waitUntil"] = Value::String(wait_until.clone());
+            body_json["variables"]["waitUntil"] = Value::String(wait_until.clone());
         }
 
         // println!(
@@ -182,7 +202,7 @@ impl Block for Browser {
         let request = HttpRequest::new(
             "POST",
             format!(
-                "https://chrome.browserless.io/scrape?token={}",
+                "https://production-sfo.browserless.io/chromium/bql?token={}",
                 browserless_api_key,
             )
             .as_str(),
@@ -200,13 +220,21 @@ impl Block for Browser {
         match response.status {
             200 => {
                 let result = json!({
-                    "data": response.body["data"],
+                    "data": [
+                        {
+                            "selector": self.selector,
+                            "results": [
+                                {
+                                    "html": response.body["data"]["body"]["html"],
+                                    "text": response.body["data"]["text"]["text"],
+                                },
+                            ],
+                        },
+                    ],
                     "response": {
-                        "code": response.headers["x-response-code"],
-                        "status": response.headers["x-response-status"],
-                        "url": response.headers["x-response-url"],
-                        "ip": response.headers["x-response-ip"],
-                        "port": response.headers["x-response-port"],
+                        "code": response.body["data"]["goto"]["status"],
+                        "status": response.body["data"]["goto"]["status"],
+                        "url": response.body["data"]["goto"]["url"],
                     }
                 });
                 Ok(BlockResult {
