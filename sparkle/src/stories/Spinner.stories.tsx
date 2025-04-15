@@ -29,7 +29,7 @@ export const SpinnerExample = () => {
           <Spinner variant="dark" size="xs" />
         </div>
         <div className="s-p-20">
-          <Spinner variant="rose900" size="xs" />
+          <Spinner variant="rose300" size="xs" />
         </div>
       </div>
       Size = SM
@@ -47,7 +47,7 @@ export const SpinnerExample = () => {
           <Spinner variant="dark" size="sm" />
         </div>
         <div className="s-p-20">
-          <Spinner variant="rose900" size="sm" />
+          <Spinner variant="rose300" size="sm" />
         </div>
       </div>
       Size = MD
