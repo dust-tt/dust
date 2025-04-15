@@ -86,7 +86,7 @@ export function MCPServerSelector({
             return (
               <RadioGroup defaultValue={selectedMCPServerView?.id}>
                 {mcpServerViewsInSpace
-                  // Default servers can be added as capabilities or in the first level of the Add actions list
+                  // Default servers can be added as capabilities or in the first level of the "Add tools" list
                   .filter((view) => !view.server.isDefault)
                   .map((mcpServerView, idx, arr) => (
                     <React.Fragment key={mcpServerView.id}>
