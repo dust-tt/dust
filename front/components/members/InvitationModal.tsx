@@ -270,7 +270,8 @@ function ProPlanBillingNotice({
           {getPriceAsString({
             currency: perSeatPricing.seatCurrency,
             priceInCents: perSeatPricing.seatPrice,
-          })}
+          })}{" "}
+          at the end of the trial period
         </span>
         .{" "}
       </p>
