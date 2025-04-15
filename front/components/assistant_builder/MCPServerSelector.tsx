@@ -10,7 +10,7 @@ import {
 import React, { useMemo } from "react";
 
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -107,9 +107,7 @@ export function MCPServerSelector({
                               }}
                             >
                               <div className="flex flex-row items-center gap-2">
-                                <Avatar
-                                  visual={getVisual(mcpServerView.server)}
-                                />
+                                <Avatar icon={getIcon(mcpServerView.server)} />
                                 <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
                                   <div className="flex flex-col gap-1">
                                     <div className="text-sm font-semibold text-foreground dark:text-foreground-night">

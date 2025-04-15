@@ -7,7 +7,7 @@ import { CreateMCPServerModal } from "@app/components/actions/mcp/CreateMCPServe
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { getSpaceIcon } from "@app/lib/spaces";
@@ -40,7 +40,7 @@ const NameCell = ({ row }: { row: RowData }) => {
         )}
       >
         <div>
-          <Avatar visual={getVisual(mcpServer)} />
+          <Avatar icon={getIcon(mcpServer)} />
         </div>
         <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
           <div className="flex flex-col gap-1">

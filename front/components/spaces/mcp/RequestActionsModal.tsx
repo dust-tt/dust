@@ -20,7 +20,7 @@ import {
 import _ from "lodash";
 import { useState } from "react";
 
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { sendRequestActionsAccessEmail } from "@app/lib/email";
 import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_server_views";
@@ -126,7 +126,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                             label={asDisplayName(selectedMcpServer.server.name)}
                             icon={() => (
                               <Avatar
-                                visual={getVisual(selectedMcpServer.server)}
+                                icon={getIcon(selectedMcpServer.server)}
                                 size="xs"
                               />
                             )}
@@ -146,7 +146,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                             key={v.id}
                             label={asDisplayName(v.server.name)}
                             icon={() => (
-                              <Avatar visual={getVisual(v.server)} size="xs" />
+                              <Avatar icon={getIcon(v.server)} size="xs" />
                             )}
                             onClick={() => setSelectedMcpServer(v)}
                           />

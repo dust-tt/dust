@@ -12,7 +12,7 @@ import React from "react";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isBrowseConfiguration,
@@ -55,7 +55,7 @@ export function AssistantToolsSection({
   if (agentConfiguration.visualizationEnabled) {
     actions.push({
       title: "Visualize",
-      visual: <BarChartIcon />,
+      icon: BarChartIcon,
       order: 0,
     });
   }
@@ -95,7 +95,7 @@ export function AssistantToolsSection({
                 className="flex flex-row items-center gap-2"
                 key={action.title}
               >
-                <Avatar visual={action.visual} size="xs" />
+                <Avatar icon={action.icon} size="xs" />
                 <div>{asDisplayName(action.title)}</div>
               </div>
             ))}
@@ -114,9 +114,7 @@ export function AssistantToolsSection({
                 key={model.modelId}
               >
                 <Avatar
-                  visual={React.createElement(
-                    getModelProviderLogo(model.providerId, isDark)
-                  )}
+                  icon={getModelProviderLogo(model.providerId, isDark)}
                   size="xs"
                 />
                 <div>{model.displayName}</div>
@@ -134,21 +132,21 @@ function renderOtherAction(
   mcpServers: MCPServerTypeWithViews[]
 ) {
   if (isDustAppRunConfiguration(action)) {
-    return { title: action.name, visual: <CommandIcon />, order: 2 };
+    return { title: action.name, icon: CommandIcon, order: 2 };
   } else if (isProcessConfiguration(action)) {
     return {
       title: "Extract from documents",
-      visual: <ScanIcon />,
+      icon: ScanIcon,
       order: 0,
     };
   } else if (isWebsearchConfiguration(action)) {
     return {
       title: "Web Search & Navigation",
-      visual: <GlobeAltIcon />,
+      icon: GlobeAltIcon,
       order: 0,
     };
   } else if (isReasoningConfiguration(action)) {
-    return { title: "Reasoning", visual: <ChatBubbleThoughtIcon />, order: 0 };
+    return { title: "Reasoning", icon: ChatBubbleThoughtIcon, order: 0 };
   } else if (isPlatformMCPServerConfiguration(action)) {
     const mcpServer = mcpServers.find((s) =>
       s.views.some((v) => v.id === action.mcpServerViewId)
@@ -157,14 +155,14 @@ function renderOtherAction(
       return null;
     }
     const { serverType } = getServerTypeAndIdFromSId(mcpServer.id);
-    const visual = getVisual(mcpServer);
+    const icon = getIcon(mcpServer);
     return {
       title: action.name,
-      visual,
+      icon,
       order: serverType === "internal" ? 1 : 3,
     };
   } else if (isMCPServerConfiguration(action)) {
-    return { title: action.name, visual: <CommandIcon />, order: 3 };
+    return { title: action.name, icon: CommandIcon, order: 3 };
   } else if (isBrowseConfiguration(action)) {
     return null;
   } else if (isRetrievalConfiguration(action)) {

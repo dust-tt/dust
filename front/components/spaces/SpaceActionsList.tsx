@@ -10,7 +10,7 @@ import * as React from "react";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useAddMCPServerToSpace,
@@ -25,7 +25,7 @@ import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";
 type RowData = {
   name: string;
   description: string;
-  visual: string | React.ReactNode;
+  icon: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
 };
 
@@ -37,7 +37,7 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
         <DataTable.CellContent>
           <div className="flex flex-row items-center gap-2 py-3">
             <div>
-              <Avatar visual={info.row.original.visual} />
+              <Avatar icon={info.row.original.icon} />
             </div>
             <div className="flex-grow truncate">{info.getValue()}</div>
           </div>
@@ -91,7 +91,7 @@ export const SpaceActionsList = ({
       serverViews.map((serverView) => ({
         name: serverView.server.name,
         description: serverView.server.description,
-        visual: getVisual(serverView.server),
+        icon: getIcon(serverView.server),
       })) || [],
     [serverViews]
   );

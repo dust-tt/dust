@@ -1,7 +1,10 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
+import type {
+  InternalAllowedIconType,
+  RemoteAllowedIconType,
+} from "@app/lib/actions/mcp_icons";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { EditedByUser } from "@app/types";
@@ -26,7 +29,7 @@ export type MCPServerType = {
   name: string;
   version: string;
   description: string;
-  visual: AllowedIconType | `https://${string}`;
+  icon: RemoteAllowedIconType | InternalAllowedIconType;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   isDefault: boolean;
@@ -38,7 +41,7 @@ export type RemoteMCPServerType = MCPServerType & {
   cachedDescription?: string | null;
   sharedSecret?: string;
   lastSyncAt?: Date | null;
-  visual: AllowedIconType; // We enforce that we pass an icon here (among the ones we allow).
+  icon: RemoteAllowedIconType; // We enforce that we pass an icon here (among the ones we allow).
 };
 
 export interface MCPServerViewType {
@@ -57,7 +60,7 @@ export type MCPServerDefinitionType = Omit<
 
 type InternalMCPServerType = MCPServerType & {
   name: InternalMCPServerNameType;
-  visual: `https://${string}`; // We enforce that we pass a URL here.
+  icon: InternalAllowedIconType; // We enforce that we pass an icon here.
 };
 
 export type InternalMCPServerDefinitionType = Omit<

@@ -14,8 +14,8 @@ import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   DEFAULT_MCP_SERVER_ICON,
-  isAllowedIconType,
-  isValidIconUrl,
+  isInternalAllowedIcon,
+  isRemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_local";
@@ -185,11 +185,11 @@ export function extractMetadataFromServerVersion(
         "description" in r && typeof r.description === "string" && r.description
           ? r.description
           : DEFAULT_MCP_ACTION_DESCRIPTION,
-      visual:
-        "visual" in r &&
-        typeof r.visual === "string" &&
-        (isAllowedIconType(r.visual) || isValidIconUrl(r.visual))
-          ? r.visual
+      icon:
+        "icon" in r &&
+        typeof r.icon === "string" &&
+        (isRemoteAllowedIconType(r.icon) || isInternalAllowedIcon(r.icon))
+          ? r.icon
           : DEFAULT_MCP_SERVER_ICON,
     };
   }
@@ -198,7 +198,7 @@ export function extractMetadataFromServerVersion(
     name: DEFAULT_MCP_ACTION_NAME,
     version: DEFAULT_MCP_ACTION_VERSION,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
-    visual: DEFAULT_MCP_SERVER_ICON,
+    icon: DEFAULT_MCP_SERVER_ICON,
     authorization: null,
   };
 }

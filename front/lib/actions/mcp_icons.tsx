@@ -1,24 +1,40 @@
-import { ActionIcons } from "@dust-tt/sparkle";
-import React from "react";
+import { ActionIcons, GithubLogo } from "@dust-tt/sparkle";
+import type React from "react";
 
 import type { MCPServerType } from "@app/lib/api/mcp";
 
 export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
 
-export const ALLOWED_ICONS = Object.keys(ActionIcons);
+export const REMOTE_ALLOWED_ICONS = Object.keys(ActionIcons);
 
-export type AllowedIconType = keyof typeof ActionIcons;
+export const InternalActionIcons = {
+  GithubLogo,
+};
 
-export const isAllowedIconType = (icon: string): icon is AllowedIconType =>
-  ALLOWED_ICONS.includes(icon as AllowedIconType);
+export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
 
-export const isValidIconUrl = (icon: string): icon is `https://${string}` =>
-  icon.startsWith("https://");
+export type RemoteAllowedIconType = keyof typeof ActionIcons;
 
-export const getVisual = (mcpServer: MCPServerType) => {
-  if (isAllowedIconType(mcpServer.visual)) {
-    return React.createElement(ActionIcons[mcpServer.visual]);
+export const isRemoteAllowedIconType = (
+  icon: string
+): icon is RemoteAllowedIconType =>
+  typeof icon === "string" &&
+  REMOTE_ALLOWED_ICONS.includes(icon as RemoteAllowedIconType);
+
+export type InternalAllowedIconType = keyof typeof InternalActionIcons;
+
+export const isInternalAllowedIcon = (
+  icon: string
+): icon is InternalAllowedIconType =>
+  typeof icon === "string" &&
+  INTERNAL_ALLOWED_ICONS.includes(icon as InternalAllowedIconType);
+
+export const getIcon = (
+  mcpServer: MCPServerType
+): React.ComponentType<{ className?: string }> => {
+  if (isRemoteAllowedIconType(mcpServer.icon)) {
+    return ActionIcons[mcpServer.icon];
   }
 
-  return mcpServer.visual;
+  return InternalActionIcons[mcpServer.icon];
 };

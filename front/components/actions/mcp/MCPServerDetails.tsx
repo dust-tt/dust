@@ -28,7 +28,7 @@ import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetai
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServer,
@@ -146,7 +146,7 @@ export function MCPServerDetails({
             </VisuallyHidden>
             <div className="flex flex-col items-center gap-3 sm:flex-row">
               {effectiveMCPServer && (
-                <Avatar visual={getVisual(effectiveMCPServer)} />
+                <Avatar icon={getIcon(effectiveMCPServer)} />
               )}
               <div className="flex grow flex-col gap-1">
                 <div

@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
@@ -61,7 +61,7 @@ export default function SpaceManagedActionsViewsModel({
               <DropdownMenuItem
                 key={server.id}
                 label={asDisplayName(server.name)}
-                icon={() => <Avatar visual={getVisual(server)} size="xs" />}
+                icon={() => <Avatar icon={getIcon(server)} size="xs" />}
                 description={server.description}
                 onClick={() => {
                   onAddServer(server);
