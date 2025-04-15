@@ -360,7 +360,7 @@ export function getMCPServerRequirements(
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
   requiredStrings: Record<string, string>;
-  requiredNumbers: Record<string, number>;
+  requiredNumbers: Record<string, number | null>;
   requiredBooleans: Record<string, boolean>;
   noRequirement: boolean;
 } {
@@ -401,7 +401,7 @@ export function getMCPServerRequirements(
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER,
-    }).map((path) => [path, 0])
+    }).map((path) => [path, null])
   );
   const requiredBooleans = Object.fromEntries(
     findPathsToConfiguration({
