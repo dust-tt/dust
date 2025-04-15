@@ -58,7 +58,6 @@ import {
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
-import { TagModel } from "@app/lib/models/tags";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -565,16 +564,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       model.reasoningEffort = agent.reasoningEffort;
     }
 
-    const tags = await TagAgentModel.findAll({
-      where: {
-        agentConfigurationId: agent.id,
-      },
-      include: [
-        {
-          model: TagModel,
-        },
-      ],
-    });
+    const tags = await TagResource.listForAgent(auth, agent.id);
 
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
@@ -601,10 +591,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
-      tags: tags.map((t) => ({
-        sId: TagResource.modelIdToSId({ id: t.tag.id, workspaceId: owner.id }),
-        name: t.tag.name,
-      })),
+      tags: tags.map((t) => t.toJSON()),
     };
 
     agentConfigurationTypes.push(agentConfigurationType);

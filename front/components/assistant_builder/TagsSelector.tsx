@@ -19,13 +19,14 @@ import {
   PlusIcon,
   ScrollArea,
   ScrollBar,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { useCreateTag, useTags } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
+
+const MAX_TAG_LENGTH = 100;
 
 const TagCreationDialog = ({
   owner,
@@ -44,30 +45,25 @@ const TagCreationDialog = ({
   setEdited: (edited: boolean) => void;
 }) => {
   const [name, setName] = useState("");
-  // const [error, setError] = useState<string | null>(null);
-  const { mutateTags } = useTags({ owner, disabled: true });
-  const { addTag } = useCreateTag({ owner });
+  const { createTag } = useCreateTag({ owner });
 
-  const sendNotification = useSendNotification();
+  // const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setName("");
+    }
+  }, [isOpen]);
 
   const handleCreateTag = async () => {
-    try {
-      setName("");
-      const response = await addTag(name);
-      void mutateTags();
+    const tag = await createTag(name);
+    if (tag) {
       setBuilderState((state) => ({
         ...state,
-        tags: [...state.tags, response.tag],
+        tags: [...state.tags, tag],
       }));
       setEdited(true);
-    } catch (error) {
-      // Handle error
-      sendNotification({
-        title: "Can't create tag",
-        description:
-          error instanceof Error ? error.message : "An unknown error occurred",
-        type: "error",
-      });
+      setIsOpen(false);
     }
   };
 
@@ -86,6 +82,7 @@ const TagCreationDialog = ({
             <div className="flex space-x-2">
               <div className="flex-grow">
                 <Input
+                  maxLength={MAX_TAG_LENGTH}
                   id="name"
                   placeholder="Tag name"
                   value={name}
@@ -95,7 +92,6 @@ const TagCreationDialog = ({
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && name.length > 0) {
                       void handleCreateTag();
-                      setIsOpen(false);
                     }
                   }}
                   autoFocus
@@ -108,14 +104,12 @@ const TagCreationDialog = ({
           leftButtonProps={{
             label: "Cancel",
             variant: "ghost",
-            onClick: () => {
-              setName("");
-            },
           }}
           rightButtonProps={{
             label: "Save",
             variant: "primary",
             onClick: handleCreateTag,
+            disabled: name.length === 0,
           }}
         />
       </DialogContent>
@@ -160,7 +154,9 @@ export const TagsSelector = ({
     );
   }, [tags, builderState.tags, searchText]);
 
-  const assistantTags = builderState.tags || [];
+  const assistantTags = [...(builderState.tags || [])].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
   return (
     <>
       <TagCreationDialog
@@ -189,7 +185,11 @@ export const TagsSelector = ({
       </div>
 
       <div className="mb-2 flex flex-row gap-2">
-        <DropdownMenu open={isMenuOpen} onOpenChange={onMenuOpenChange}>
+        <DropdownMenu
+          open={isMenuOpen}
+          onOpenChange={onMenuOpenChange}
+          modal={false}
+        >
           <DropdownMenuTrigger asChild>
             <Button
               size="xs"
