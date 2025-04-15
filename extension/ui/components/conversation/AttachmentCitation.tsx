@@ -98,7 +98,6 @@ export function AttachmentCitation({
     <Tooltip
       trigger={
         <Citation
-          className="w-40"
           href={attachmentCitation.sourceUrl ?? undefined}
           isLoading={
             attachmentCitation.type === "file" && attachmentCitation.isUploading
