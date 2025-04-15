@@ -25,6 +25,7 @@ import {
   useUpdateLabsConnectionConfiguration,
 } from "@app/lib/swr/labs";
 import type {
+  ConnectionCredentials,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LabsConnectionItemType,
@@ -173,22 +174,15 @@ export function ConfigureLabsConnectionModal({
 
     let success = false;
 
-    if (configuration) {
-      success = await updateConnectionConfiguration({
-        credentials,
-        dataSourceViewId: pendingDataSourceView?.id ?? null,
-      });
-    } else {
-      success = await createConnectionConfiguration({
-        provider: connection.id,
-        credentials,
-      });
+    success = await createConnectionConfiguration({
+      provider: connection.id,
+      credentials: credentials as ConnectionCredentials,
+    });
 
-      if (success && pendingDataSourceView) {
-        success = await updateConnectionConfiguration({
-          dataSourceViewId: pendingDataSourceView.id,
-        });
-      }
+    if (success && pendingDataSourceView) {
+      success = await updateConnectionConfiguration({
+        dataSourceViewId: pendingDataSourceView.id,
+      });
     }
 
     if (success) {
