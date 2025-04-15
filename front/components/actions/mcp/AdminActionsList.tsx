@@ -44,7 +44,7 @@ const NameCell = ({ row }: { row: RowData }) => {
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
             {asDisplayName(mcpServer.name)}
           </div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
             {mcpServer.description}
           </div>
         </div>
