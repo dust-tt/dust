@@ -7,7 +7,6 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import { sortBy } from "lodash";
 import React, { useMemo } from "react";
 
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
@@ -86,7 +85,7 @@ export function MCPServerSelector({
 
             return (
               <RadioGroup defaultValue={selectedMCPServerView?.id}>
-                {sortBy(mcpServerViewsInSpace, "server.name")
+                {mcpServerViewsInSpace
                   // Default servers can be added as capabilities or in the first level of the Add actions list
                   .filter((view) => !view.server.isDefault)
                   .map((mcpServerView, idx, arr) => (

@@ -2,6 +2,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -28,7 +29,10 @@ export function useMCPServerViews({
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled,
   });
-  const serverViews = useMemo(() => (data ? data.serverViews : []), [data]);
+  const serverViews = useMemo(
+    () => (data ? data.serverViews.sort(mcpServerViewSortingFn) : []),
+    [data]
+  );
   return {
     serverViews,
     isMCPServerViewsLoading: !error && !data && !disabled,
