@@ -119,6 +119,13 @@ export class TagResource extends BaseResource<TagModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
+      await TagAgentModel.destroy({
+        where: {
+          tagId: this.id,
+        },
+        transaction,
+      });
+
       await this.model.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
