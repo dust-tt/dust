@@ -22,6 +22,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -584,6 +585,9 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
+    // Mark all content fragments that reference this data source view as expired.
+    await this.expireContentFragments(auth, transaction);
+
     const deletedCount = await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -594,6 +598,27 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
 
     return new Ok(deletedCount);
+  }
+
+  async expireContentFragments(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<void> {
+    // Mark all content fragments that reference this data source view as expired.
+    await ContentFragmentModel.update(
+      {
+        nodeId: null,
+        nodeDataSourceViewId: null,
+        expiredReason: "data_source_deleted",
+      },
+      {
+        where: {
+          nodeDataSourceViewId: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      }
+    );
   }
 
   async hardDelete(
