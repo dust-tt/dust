@@ -1,8 +1,10 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import {
+  ConfigurableToolInputSchemas,
+  INTERNAL_MIME_TYPES,
+} from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
 const serverInfo: InternalMCPServerDefinitionType = {
