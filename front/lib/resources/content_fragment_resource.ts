@@ -351,6 +351,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       contentFragmentId: this.sId,
       contentFragmentVersion: this.version,
       contentNodeData,
+      expiredReason: this.expiredReason,
     };
   }
 }

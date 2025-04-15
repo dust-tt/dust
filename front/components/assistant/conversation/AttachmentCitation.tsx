@@ -138,6 +138,21 @@ export function AttachmentCitation({
 export function contentFragmentToAttachmentCitation(
   contentFragment: ContentFragmentType
 ): AttachmentCitation {
+  // Handle expired content fragments
+  if (contentFragment.expiredReason) {
+    return {
+      type: "file",
+      id: contentFragment.sId,
+      title: `${contentFragment.title} (no longer available)`,
+      sourceUrl: null,
+      visual: (
+        <span className="flex items-center justify-center">
+          <Icon visual={DocumentIcon} size="md" className="text-gray-400" />
+        </span>
+      ),
+    };
+  }
+  
   if (contentFragment.contentNodeData) {
     const { provider, nodeType } = contentFragment.contentNodeData;
     const logo = getConnectorProviderLogoWithFallback({ provider });
