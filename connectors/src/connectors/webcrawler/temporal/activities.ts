@@ -1,6 +1,6 @@
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
-import { CheerioCrawler, Configuration, LogLevel } from "crawlee";
+import { Configuration, LogLevel, PlaywrightCrawler } from "crawlee";
 import { Op } from "sequelize";
 import turndown from "turndown";
 
@@ -124,7 +124,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const maxRequestsPerCrawl =
     webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES;
 
-  const crawler = new CheerioCrawler(
+  const crawler = new PlaywrightCrawler(
     {
       navigationTimeoutSecs: 10,
       preNavigationHooks: [
@@ -167,7 +167,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       maxConcurrency: CONCURRENCY,
       maxRequestsPerMinute: 20, // 1 request every 3 seconds average, to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
-      async requestHandler({ $, request, enqueueLinks }) {
+      async requestHandler({ page, request, enqueueLinks }) {
         Context.current().heartbeat({
           type: "http_request",
         });
@@ -260,10 +260,10 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             "meta",
             "img",
           ])
-          .turndown($.html());
+          .turndown(page.content());
 
         totalExtracted += extracted.length;
-        const pageTitle = $("title").text();
+        const pageTitle = await page.title();
 
         // note that parentFolderUrls.length === parentFolderIds.length -1
         // since parentFolderIds includes the page as first element
