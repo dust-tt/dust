@@ -10,7 +10,11 @@ interface AccountSettingsProps {
   mutateUser: () => void;
 }
 
-export function AccountSettings({ user, isUserLoading, mutateUser }: AccountSettingsProps) {
+export function AccountSettings({
+  user,
+  isUserLoading,
+  mutateUser,
+}: AccountSettingsProps) {
   const sendNotification = useSendNotification();
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
@@ -112,4 +116,4 @@ export function AccountSettings({ user, isUserLoading, mutateUser }: AccountSett
       </Page.Horizontal>
     </>
   );
-} 
+}

@@ -9,7 +9,6 @@ import {
   SheetTrigger,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useRouter } from "next/router";
 import React, { useContext } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
@@ -43,7 +42,6 @@ export function Navigation({
 }: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
-  const router = useRouter();
   const { user } = useUser();
 
   if (hideSidebar) {

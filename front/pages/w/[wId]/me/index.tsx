@@ -1,6 +1,5 @@
 import { Page, UserIcon } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -38,7 +37,6 @@ export default function ProfilePage({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -57,10 +55,10 @@ export default function ProfilePage({
           <Page.Header title="Profile Settings" icon={UserIcon} />
           <Page.Layout direction="vertical">
             <Page.SectionHeader title="Account Settings" />
-            <AccountSettings 
-              user={user} 
-              isUserLoading={isUserLoading} 
-              mutateUser={mutateUser} 
+            <AccountSettings
+              user={user}
+              isUserLoading={isUserLoading}
+              mutateUser={mutateUser}
             />
 
             {hasFeature("mcp_actions") && (
@@ -69,9 +67,9 @@ export default function ProfilePage({
                   title="Tools Confirmation Preferences"
                   description="Manage your tool approbation history per action"
                 />
-                <UserToolsTable 
+                <UserToolsTable
                   mcpServers={mcpServers}
-                  isMCPServersLoading={isMCPServersLoading} 
+                  isMCPServersLoading={isMCPServersLoading}
                 />
               </>
             )}
