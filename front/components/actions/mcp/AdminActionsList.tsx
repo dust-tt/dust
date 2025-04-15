@@ -10,7 +10,6 @@ import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
 import { getVisual } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
-import { getSpaceIcon } from "@app/lib/spaces";
 import {
   useCreateInternalMCPServer,
   useMCPServerConnections,
