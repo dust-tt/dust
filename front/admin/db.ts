@@ -58,7 +58,6 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import {
   TrackerConfigurationModel,
   TrackerDataSourceConfigurationModel,
@@ -67,8 +66,8 @@ import {
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
+import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
@@ -154,7 +153,6 @@ async function main() {
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
   await GlobalAgentSettings.sync({ alter: true });
-  await GroupAgentModel.sync({ alter: true });
 
   await RemoteMCPServerModel.sync({ alter: true });
   await MCPServerViewModel.sync({ alter: true });

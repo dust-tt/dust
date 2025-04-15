@@ -12,8 +12,9 @@ export function makeLinkExtension() {
     },
     isAllowedUri: (url, ctx) => {
       try {
-        // Construct URL.
-        const parsedUrl = url.includes(":")
+        // Check if the URL has a protocol.
+        const hasProtocol = url.includes("://");
+        const parsedUrl = hasProtocol
           ? new URL(url)
           : new URL(`${ctx.defaultProtocol}://${url}`);
 

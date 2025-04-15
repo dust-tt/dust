@@ -18,7 +18,7 @@ export const CoEditionTextNodeSchema = BaseNodeSchema.extend({
         "IMPORTANT:\n" +
         "- Markdown is NOT supported\n" +
         "- The HTML must be valid and properly closed\n" +
-        "- Multiple blocks should be properly separated"
+        "- Subsequent/Successive blocks should be properly separated"
     ),
 });
 
@@ -27,6 +27,7 @@ export const CoEditionImageNodeSchema = BaseNodeSchema.extend({
   type: z.literal("image"),
   fileId: z
     .string()
+    .startsWith("fil_", { message: "File ID must start with 'fil_'" })
     .describe("The file ID of the image to insert (starts with 'fil_')"),
   alt: z.string().optional().describe("Optional alt text for the image"),
 });
