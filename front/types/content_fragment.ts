@@ -6,6 +6,8 @@ import type { DataSourceViewContentNode } from "./data_source_view";
 import type { SupportedFileContentType } from "./files";
 import type { ModelId } from "./shared/model_id";
 
+export type ContentFragmentExpiredReason = "data_source_deleted";
+
 export type ContentFragmentContextType = {
   username: string | null;
   fullName: string | null;
@@ -50,6 +52,7 @@ export type ContentFragmentType = {
   contentFragmentId: string;
   contentFragmentVersion: ContentFragmentVersion;
   contentNodeData: ContentFragmentNodeData | null;
+  expiredReason: ContentFragmentExpiredReason | null;
 };
 
 export type UploadedContentFragment = {

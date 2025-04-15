@@ -58,6 +58,7 @@ import {
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -807,6 +808,7 @@ export async function createAgentConfiguration(
     }
     const agent = await frontSequelize.transaction(
       async (t): Promise<AgentConfiguration> => {
+        let created = false;
         if (agentConfigurationId) {
           const [existing, userRelation] = await Promise.all([
             AgentConfiguration.findOne({
@@ -845,12 +847,15 @@ export async function createAgentConfiguration(
             }
           );
           userFavorite = userRelation?.favorite ?? false;
+        } else {
+          // Only set created to true if we are not updating an existing agent
+          created = true;
         }
 
         const sId = agentConfigurationId || generateRandomModelSId();
 
         // Create Agent config.
-        const agent = await AgentConfiguration.create(
+        const agentConfigurationInstance = await AgentConfiguration.create(
           {
             sId,
             version,
@@ -884,14 +889,22 @@ export async function createAgentConfiguration(
               {
                 workspaceId: owner.id,
                 tagId: id,
-                agentConfigurationId: agent.id,
+                agentConfigurationId: agentConfigurationInstance.id,
               },
               { transaction: t }
             );
           }
         }
 
-        return agent;
+        if (created) {
+          await GroupResource.makeNewAgentEditorsGroup(
+            auth,
+            agentConfigurationInstance,
+            { transaction: t }
+          );
+        }
+
+        return agentConfigurationInstance;
       }
     );
 
@@ -1522,4 +1535,50 @@ export async function unsafeHardDeleteAgentConfiguration(
       id: agentConfiguration.id,
     },
   });
+}
+
+/**
+ * Removes the association between a group and an agent configuration.
+ */
+export async function removeGroupFromAgentConfiguration({
+  auth,
+  group,
+  agentConfiguration,
+  transaction,
+}: {
+  auth: Authenticator;
+  group: GroupResource;
+  agentConfiguration: AgentConfiguration;
+  transaction?: Transaction;
+}): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  if (
+    owner.id !== group.workspaceId ||
+    owner.id !== agentConfiguration.workspaceId
+  ) {
+    return new Err(
+      new Error(
+        "Group and agent configuration must belong to the same workspace."
+      )
+    );
+  }
+
+  try {
+    const deletedCount = await GroupAgentModel.destroy({
+      where: {
+        groupId: group.id,
+        agentConfigurationId: agentConfiguration.id,
+      },
+      transaction,
+    });
+
+    if (deletedCount === 0) {
+      // Association did not exist, which is fine.
+      return new Ok(undefined);
+    }
+
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(error as Error);
+  }
 }
