@@ -59,3 +59,9 @@ export const MCP_VALIDATION_OUTPUTS = [
   "always_approved",
 ] as const;
 export type MCPValidationOutputType = (typeof MCP_VALIDATION_OUTPUTS)[number];
+
+export type MCPValidationMetadataType = {
+  toolName: string;
+  mcpServerName: string;
+  agentName: string;
+};
