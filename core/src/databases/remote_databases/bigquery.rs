@@ -328,7 +328,10 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             .map(|table| table.as_str())
             .collect();
 
-        let allowed_tables: HashSet<&str> = tables.iter().map(|table| table.name()).collect();
+        let allowed_tables: HashSet<String> = tables
+            .iter()
+            .map(|table| table.name().replace("__DUST_DOT__", "."))
+            .collect();
 
         let used_forbidden_tables = used_tables
             .into_iter()
