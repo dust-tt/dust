@@ -22,6 +22,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  GroupKind,
   GroupType,
   LightWorkspaceType,
   ModelId,
@@ -103,11 +104,15 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups(
-    workspaceId: ModelId
+    workspaceId: ModelId,
+    groupKinds: GroupKind[] = ["global", "regular", "system"]
   ): Promise<GroupResource[]> {
     const groups = await this.model.findAll({
       where: {
         workspaceId,
+        kind: {
+          [Op.in]: groupKinds,
+        },
       },
     });
 
@@ -115,12 +120,16 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async listWorkspaceGroupsFromKey(
-    key: KeyResource
+    key: KeyResource,
+    groupKinds: GroupKind[] = ["global", "regular", "system"]
   ): Promise<GroupResource[]> {
     const whereCondition: WhereOptions<GroupModel> = key.isSystem
       ? // If the key is a system key, we include all groups in the workspace.
         {
           workspaceId: key.workspaceId,
+          kind: {
+            [Op.in]: groupKinds,
+          },
         }
       : // If it's not a system key, we only fetch the associated group.
         {
@@ -313,22 +322,28 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async listAllWorkspaceGroups(
     auth: Authenticator,
-    options: { includeSystem?: boolean } = {}
+    options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    const { includeSystem } = options;
-    const groups = await this.baseFetch(auth, {});
+    const { groupKinds = ["global", "regular"] } = options;
+    const groups = await this.baseFetch(auth, {
+      where: {
+        kind: {
+          [Op.in]: groupKinds,
+        },
+      },
+    });
 
-    return groups
-      .filter((group) => group.canRead(auth))
-      .filter((group) => includeSystem || !group.isSystem());
+    return groups.filter((group) => group.canRead(auth));
   }
 
   static async listUserGroupsInWorkspace({
     user,
     workspace,
+    groupKinds = ["global", "regular"],
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
+    groupKinds?: Omit<GroupKind, "system">[];
   }): Promise<GroupResource[]> {
     // First we need to check if the user is a member of the workspace.
     const workspaceMembership =
@@ -342,18 +357,21 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // If yes, we can fetch the groups the user is a member of.
     // First the global group which has no db entries and is always present.
-    const globalGroup = await this.model.findOne({
-      where: {
-        workspaceId: workspace.id,
-        kind: "global",
-      },
-    });
+    let globalGroup = null;
+    if (groupKinds.includes("global")) {
+      globalGroup = await this.model.findOne({
+        where: {
+          workspaceId: workspace.id,
+          kind: "global",
+        },
+      });
 
-    if (!globalGroup) {
-      throw new Error("Global group not found.");
+      if (!globalGroup) {
+        throw new Error("Global group not found.");
+      }
     }
 
-    const regularGroups = await GroupModel.findAll({
+    const userGroups = await GroupModel.findAll({
       include: [
         {
           model: GroupMembershipModel,
@@ -366,9 +384,15 @@ export class GroupResource extends BaseResource<GroupModel> {
           required: true,
         },
       ],
+      where: {
+        kind: {
+          // as is tautological but required by TS who does not understand
+          [Op.in]: groupKinds.filter((k) => k !== "global") as GroupKind[],
+        },
+      },
     });
 
-    const groups = [globalGroup, ...regularGroups];
+    const groups = [...(globalGroup ? [globalGroup] : []), ...userGroups];
 
     return groups.map((group) => new this(GroupModel, group.get()));
   }
@@ -700,6 +724,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * 1. Group-based: The group's members get read access
    * 2. Role-based: Workspace admins get read and write access
    *
+   * For agent_editors groups, the permissions are:
+   * 1. Group-based: The group's members get read and write access
+   * 2. Role-based: Workspace admins get read and write access
+   *
    * @returns Array of ResourcePermission objects defining the default access configuration
    */
   requestedPermissions(): ResourcePermission[] {
@@ -708,7 +736,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         groups: [
           {
             id: this.id,
-            permissions: ["read"],
+            permissions:
+              this.kind === "agent_editors" ? ["read", "write"] : ["read"],
           },
         ],
         roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
