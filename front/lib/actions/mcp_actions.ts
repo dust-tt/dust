@@ -179,13 +179,13 @@ export async function tryCallMCPTool(
       messageId,
     }
   );
-
   if (connectionParamsRes.isErr()) {
     return connectionParamsRes;
   }
 
+  let mcpClient;
   try {
-    const mcpClient = await connectToMCPServer(auth, connectionParamsRes.value);
+    mcpClient = await connectToMCPServer(auth, connectionParamsRes.value);
 
     const toolCallResult = await mcpClient.callTool(
       {
@@ -195,8 +195,6 @@ export async function tryCallMCPTool(
       undefined,
       { timeout: DEFAULT_MCP_REQUEST_TIMEOUT_MS }
     );
-
-    await mcpClient.close();
 
     // Do not raise an error here as it will break the conversation.
     // Let the model decide what to do.
@@ -215,6 +213,8 @@ export async function tryCallMCPTool(
     return new Ok((toolCallResult.content ?? []) as MCPToolResultContent[]);
   } catch (error) {
     return new Err(normalizeError(error));
+  } finally {
+    await mcpClient?.close();
   }
 }
 
