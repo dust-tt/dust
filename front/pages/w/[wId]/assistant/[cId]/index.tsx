@@ -10,13 +10,11 @@ import { useConversationsNavigation } from "@app/components/assistant/conversati
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import type { UserType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
     // Here, override conversationId.
     conversationId: string | null;
-    user: UserType;
     isBuilder: boolean;
   }
 >(async (context, auth) => {

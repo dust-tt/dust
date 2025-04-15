@@ -1,4 +1,4 @@
-import { Node } from "@tiptap/core";
+import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { FileImageComponent } from "@app/components/assistant/conversation/co_edition/components/FileImageComponent";
@@ -61,6 +61,10 @@ export const FileImageExtension = Node.create<FileImageOptions>({
         },
       },
     ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ["img", mergeAttributes(this.options, HTMLAttributes)];
   },
 
   addNodeView() {

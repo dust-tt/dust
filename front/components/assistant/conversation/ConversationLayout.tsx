@@ -26,8 +26,10 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
+  ConversationType,
   LightWorkspaceType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -36,6 +38,7 @@ export interface ConversationLayoutProps {
   conversationId: string | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  user: UserType;
 }
 
 export default function ConversationLayout({
@@ -45,7 +48,7 @@ export default function ConversationLayout({
   children: React.ReactNode;
   pageProps: ConversationLayoutProps;
 }) {
-  const { baseUrl, owner, subscription } = pageProps;
+  const { baseUrl, owner, subscription, user } = pageProps;
 
   return (
     <ConversationsNavigationProvider
@@ -53,9 +56,10 @@ export default function ConversationLayout({
     >
       <ActionValidationProvider>
         <ConversationLayoutContent
+          baseUrl={baseUrl}
           owner={owner}
           subscription={subscription}
-          baseUrl={baseUrl}
+          user={user}
         >
           {children}
         </ConversationLayoutContent>
@@ -69,13 +73,15 @@ interface ConversationLayoutContentProps {
   children: React.ReactNode;
   owner: LightWorkspaceType;
   subscription: SubscriptionType;
+  user: UserType;
 }
 
 const ConversationLayoutContent = ({
-  owner,
-  subscription,
   baseUrl,
   children,
+  owner,
+  subscription,
+  user,
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
@@ -134,7 +140,11 @@ const ConversationLayoutContent = ({
               owner={owner}
               hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
             >
-              <ConversationInnerLayout owner={owner}>
+              <ConversationInnerLayout
+                conversation={conversation}
+                owner={owner}
+                user={user}
+              >
                 {children}
               </ConversationInnerLayout>
             </CoEditionProvider>
@@ -147,12 +157,16 @@ const ConversationLayoutContent = ({
 
 interface ConversationInnerLayoutProps {
   children: React.ReactNode;
+  conversation: ConversationType | null;
   owner: LightWorkspaceType;
+  user: UserType;
 }
 
 function ConversationInnerLayout({
   children,
+  conversation,
   owner,
+  user,
 }: ConversationInnerLayoutProps) {
   const { isCoEditionOpen } = useCoEditionContext();
 
@@ -175,7 +189,13 @@ function ConversationInnerLayout({
           defaultSize={50}
           className={isCoEditionOpen ? "" : "hidden"}
         >
-          {isCoEditionOpen && <CoEditionContainer owner={owner} />}
+          {isCoEditionOpen && (
+            <CoEditionContainer
+              conversation={conversation}
+              owner={owner}
+              user={user}
+            />
+          )}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
