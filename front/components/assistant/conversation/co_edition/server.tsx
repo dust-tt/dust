@@ -2,13 +2,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Editor } from "@tiptap/react";
 
 import { registerEditorTools } from "@app/components/assistant/conversation/co_edition/tools/editor";
-import type { InitialNode } from "@app/components/assistant/conversation/co_edition/tools/toggle_co_edition";
+import type { CoEditionContent } from "@app/components/assistant/conversation/co_edition/tools/editor/types";
 import { registerToggleTool } from "@app/components/assistant/conversation/co_edition/tools/toggle_co_edition";
 import type { CoEditionTransport } from "@app/components/assistant/conversation/co_edition/transport";
 
 export interface CoEditionState {
   isEnabled: boolean;
-  initialNodes?: InitialNode[];
+  initialNodes?: CoEditionContent[];
 }
 
 export class CoEditionServer {
@@ -52,7 +52,7 @@ export class CoEditionServer {
 
   private handleToggle = async (
     enabled: boolean,
-    initialNodes?: InitialNode[]
+    initialNodes?: CoEditionContent[]
   ) => {
     if (this.state.isEnabled === enabled) {
       return;

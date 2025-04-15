@@ -25,7 +25,11 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type {
+  LightWorkspaceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
@@ -60,12 +64,19 @@ export default function ConversationLayout({
   );
 }
 
+interface ConversationLayoutContentProps {
+  baseUrl: string;
+  children: React.ReactNode;
+  owner: LightWorkspaceType;
+  subscription: SubscriptionType;
+}
+
 const ConversationLayoutContent = ({
   owner,
   subscription,
   baseUrl,
   children,
-}: any) => {
+}: ConversationLayoutContentProps) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
     useURLSheet("assistantDetails");
@@ -123,7 +134,9 @@ const ConversationLayoutContent = ({
               owner={owner}
               hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
             >
-              <ConversationInnerLayout>{children}</ConversationInnerLayout>
+              <ConversationInnerLayout owner={owner}>
+                {children}
+              </ConversationInnerLayout>
             </CoEditionProvider>
           </>
         )}
@@ -134,9 +147,13 @@ const ConversationLayoutContent = ({
 
 interface ConversationInnerLayoutProps {
   children: React.ReactNode;
+  owner: LightWorkspaceType;
 }
 
-function ConversationInnerLayout({ children }: ConversationInnerLayoutProps) {
+function ConversationInnerLayout({
+  children,
+  owner,
+}: ConversationInnerLayoutProps) {
   const { isCoEditionOpen } = useCoEditionContext();
 
   return (
@@ -158,7 +175,7 @@ function ConversationInnerLayout({ children }: ConversationInnerLayoutProps) {
           defaultSize={50}
           className={isCoEditionOpen ? "" : "hidden"}
         >
-          {isCoEditionOpen && <CoEditionContainer />}
+          {isCoEditionOpen && <CoEditionContainer owner={owner} />}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

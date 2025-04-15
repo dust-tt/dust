@@ -10,50 +10,63 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import React from "react";
 
+import { CoEditionBubbleMenu } from "@app/components/assistant/conversation/co_edition/CoEditionBubbleMenu";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { CoEditionCopyButton } from "@app/components/assistant/conversation/co_edition/CopyButton";
 import { BlockIdExtension } from "@app/components/assistant/conversation/co_edition/extensions/BlockIdExtension";
 import { CoEditionParagraphExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionParagraphExtension";
 import { CoEditionStyleExtension } from "@app/components/assistant/conversation/co_edition/extensions/CoEditionStyleExtension";
+import { FileImageExtension } from "@app/components/assistant/conversation/co_edition/extensions/FileImageExtension";
+import { makeLinkExtension } from "@app/components/assistant/conversation/co_edition/extensions/LinkExtension";
 import { UserContentMark } from "@app/components/assistant/conversation/co_edition/marks/UserContentMark";
 import { insertNodes } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
+import type { LightWorkspaceType } from "@app/types";
 
-interface CoEditionContainerProps {}
+interface CoEditionContainerProps {
+  owner: LightWorkspaceType;
+}
 
-export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
+export function CoEditionContainer({ owner }: CoEditionContainerProps) {
   const { closeCoEdition, server } = useCoEditionContext();
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        paragraph: false,
-      }),
-      CoEditionParagraphExtension,
-      UserContentMark,
-      CoEditionStyleExtension,
-      BlockIdExtension.configure({
-        types: [
-          "blockquote",
-          "bulletList",
-          "codeBlock",
-          "heading",
-          "listItem",
-          "orderedList",
-          "paragraph",
-          "pre",
-        ],
-        attributeName: "data-id",
-      }),
-      Placeholder.configure({
-        placeholder: "Write something...",
-        emptyNodeClass: cn(
-          "first:before:text-muted-foreground first:before:float-left",
-          "first:before:content-[attr(data-placeholder)]",
-          "first:before:pointer-events-none first:before:h-0"
-        ),
-      }),
-    ],
-  });
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit.configure({
+          paragraph: false,
+        }),
+        CoEditionParagraphExtension,
+        UserContentMark,
+        CoEditionStyleExtension,
+        BlockIdExtension.configure({
+          types: [
+            "blockquote",
+            "bulletList",
+            "codeBlock",
+            "heading",
+            "listItem",
+            "orderedList",
+            "paragraph",
+            "pre",
+          ],
+          attributeName: "data-id",
+        }),
+        FileImageExtension.configure({
+          workspaceId: owner.sId,
+        }),
+        makeLinkExtension(),
+        Placeholder.configure({
+          placeholder: "Write something...",
+          emptyNodeClass: cn(
+            "first:before:text-muted-foreground first:before:float-left",
+            "first:before:content-[attr(data-placeholder)]",
+            "first:before:pointer-events-none first:before:h-0"
+          ),
+        }),
+      ],
+    },
+    [owner.sId]
+  );
 
   const undo = React.useCallback(() => {
     if (editor) {
@@ -98,13 +111,7 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
       state.initialNodes.length > 0
     ) {
       // Apply initial nodes with agent marking.
-      state.initialNodes.forEach((node, idx) => {
-        // Use the existing insertNodes utility.
-        insertNodes(editor, {
-          position: idx,
-          content: node.content,
-        });
-      });
+      insertNodes(editor, state.initialNodes);
 
       // Clear the initial nodes from state.
       if (server) {
@@ -141,8 +148,9 @@ export const CoEditionContainer: React.FC<CoEditionContainerProps> = () => {
         />
       </div>
       <div className="flex-1 overflow-auto p-4">
+        {editor && <CoEditionBubbleMenu editor={editor} />}
         <EditorContent editor={editor} />
       </div>
     </div>
   );
-};
+}
