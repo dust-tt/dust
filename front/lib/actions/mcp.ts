@@ -504,11 +504,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     const content = toolCallResult.value;
     const generatedFiles: ActionGeneratedFileType[] = [];
     const outputItems: AgentMCPActionOutputItem[] = [];
-    for (const c of content) {
+    for (const block of content) {
       let file: FileResource | null = null;
       if (
-        c.type === "resource" &&
-        c.resource.mimeType &&
+        block.type === "resource" &&
+        block.resource.mimeType &&
         isSupportedFileContentType(block.resource.mimeType)
       ) {
         let fileName = block.resource.uri.split("/").pop() ?? "generated-file";
@@ -518,10 +518,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         }
 
         const fileUpsertResult = await processAndStoreFromUrl(auth, {
-          url: blockblock.resource.uri,
+          url: block.resource.uri,
           useCase: "conversation",
           fileName,
-          contentType: c.resource.mimeType,
+          contentType: block.resource.mimeType,
         });
         if (fileUpsertResult.isErr()) {
           localLogger.error(
@@ -533,7 +533,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         file = fileUpsertResult.value;
         generatedFiles.push({
           fileId: file.sId,
-          contentType: c.resource.mimeType,
+          contentType: block.resource.mimeType,
           title: file.fileName,
           snippet: null,
         });
@@ -542,7 +542,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       const outputItem = await AgentMCPActionOutputItem.create({
         workspaceId: owner.id,
         agentMCPActionId: action.id,
-        content: c,
+        content: block,
         fileId: file?.id,
       });
       outputItems.push(outputItem);
