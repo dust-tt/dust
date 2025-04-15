@@ -9,6 +9,13 @@ import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import {
+  TooltipContent,
+  TooltipPortal,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "@sparkle/components/Tooltip";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
@@ -116,50 +123,155 @@ const ItemWithLabelIconAndDescription = <
   truncate,
   children,
 }: T) => {
+  const labelRef = React.useRef<HTMLSpanElement>(null);
+  const descriptionRef = React.useRef<HTMLSpanElement>(null);
+  const [showTooltip, setShowTooltip] = React.useState(false);
+
+  const checkTruncation = React.useCallback(() => {
+    let isTruncated = false;
+
+    if (labelRef.current) {
+      isTruncated = labelRef.current.scrollWidth > labelRef.current.clientWidth;
+    }
+
+    if (descriptionRef.current && !isTruncated) {
+      isTruncated =
+        descriptionRef.current.scrollWidth > descriptionRef.current.clientWidth;
+    }
+
+    setShowTooltip(isTruncated);
+  }, []);
+
+  React.useEffect(() => {
+    if (!truncate) {
+      return;
+    }
+
+    const observer = new ResizeObserver(checkTruncation);
+
+    if (labelRef.current) {
+      observer.observe(labelRef.current);
+    }
+
+    if (descriptionRef.current) {
+      observer.observe(descriptionRef.current);
+    }
+
+    // Initial check
+    checkTruncation();
+
+    return () => observer.disconnect();
+  }, [truncate, checkTruncation]);
+
+  if (!truncate) {
+    return (
+      <>
+        {label && (
+          <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
+            {(icon || extraIcon) && (
+              <div
+                className={cn(
+                  "s-flex",
+                  description ? "s-items-start s-pt-0.5" : "s-items-center"
+                )}
+              >
+                {icon && extraIcon ? (
+                  <DoubleIcon
+                    mainIconProps={{
+                      visual: icon,
+                      size: "sm",
+                    }}
+                    secondaryIconProps={{
+                      visual: extraIcon,
+                      size: "xs",
+                    }}
+                    position="bottom-right"
+                  />
+                ) : icon ? (
+                  <Icon size="sm" visual={icon} />
+                ) : null}
+              </div>
+            )}
+            <div className="s-flex s-flex-col">
+              <span>{label}</span>
+              {description && (
+                <span className={menuStyleClasses.description}>
+                  {description}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        {children}
+      </>
+    );
+  }
+
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
-          {(icon || extraIcon) && (
-            <div
-              className={cn(
-                "s-flex",
-                description ? "s-items-start s-pt-0.5" : "s-items-center"
-              )}
-            >
-              {icon && extraIcon ? (
-                <DoubleIcon
-                  mainIconProps={{
-                    visual: icon,
-                    size: "sm",
-                  }}
-                  secondaryIconProps={{
-                    visual: extraIcon,
-                    size: "xs",
-                  }}
-                  position="bottom-right"
-                />
-              ) : icon ? (
-                <Icon size="sm" visual={icon} />
-              ) : null}
-            </div>
-          )}
-          <div className="s-flex s-flex-col">
-            <span className={truncate ? "s-line-clamp-1" : undefined}>
-              {label}
-            </span>
-            {description && (
-              <span
-                className={cn(
-                  menuStyleClasses.description,
-                  truncate && "s-line-clamp-1"
+        <TooltipProvider>
+          <TooltipRoot>
+            <TooltipTrigger asChild>
+              <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
+                {(icon || extraIcon) && (
+                  <div
+                    className={cn(
+                      "s-flex",
+                      description ? "s-items-start s-pt-0.5" : "s-items-center"
+                    )}
+                  >
+                    {icon && extraIcon ? (
+                      <DoubleIcon
+                        mainIconProps={{
+                          visual: icon,
+                          size: "sm",
+                        }}
+                        secondaryIconProps={{
+                          visual: extraIcon,
+                          size: "xs",
+                        }}
+                        position="bottom-right"
+                      />
+                    ) : icon ? (
+                      <Icon size="sm" visual={icon} />
+                    ) : null}
+                  </div>
                 )}
-              >
-                {description}
-              </span>
+                <div className="s-flex s-flex-col">
+                  <span ref={labelRef} className="s-line-clamp-1">
+                    {label}
+                  </span>
+                  {description && (
+                    <span
+                      ref={descriptionRef}
+                      className={cn(
+                        menuStyleClasses.description,
+                        "s-line-clamp-1"
+                      )}
+                    >
+                      {description}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </TooltipTrigger>
+            {showTooltip && (
+              <TooltipPortal>
+                <TooltipContent side="top" align="start" className="s-max-w-sm">
+                  <div className="s-flex s-flex-col s-gap-1">
+                    <div>{label}</div>
+                    {description && (
+                      <div className={menuStyleClasses.description}>
+                        {description}
+                      </div>
+                    )}
+                  </div>
+                </TooltipContent>
+              </TooltipPortal>
             )}
-          </div>
-        </div>
+          </TooltipRoot>
+        </TooltipProvider>
       )}
       {children}
     </>
