@@ -1,14 +1,8 @@
-use super::structured_query::{
+use super::models::{
     Aggregate, FieldExpression, Filter, FunctionArgument, GroupBy, HavingClause, ParentField,
     Relationship, StructuredQuery, TypedValue, WhereClause,
 };
 use std::collections::HashSet;
-
-pub fn extract_objects(query: &StructuredQuery) -> Vec<String> {
-    let mut objects = HashSet::new();
-    query.extract_objects(&mut objects);
-    objects.into_iter().collect()
-}
 
 fn extract_objects_from_field_str(field: &str, objects: &mut HashSet<String>) {
     let parts: Vec<&str> = field.split('.').collect();
@@ -54,7 +48,7 @@ fn extract_objects_from_typed_value(value: &TypedValue, objects: &mut HashSet<St
     }
 }
 
-trait ObjectExtractor {
+pub trait ObjectExtractor {
     fn extract_objects(&self, objects: &mut HashSet<String>);
 }
 
@@ -190,7 +184,7 @@ impl ObjectExtractor for Aggregate {
 
 #[cfg(test)]
 mod tests {
-    use crate::databases::remote_databases::salesforce::sandbox::structured_query::{
+    use crate::databases::remote_databases::salesforce::sandbox::models::{
         Aggregate, AggregateFilter, AggregateFunction, FieldExpression, Filter, FunctionType,
         GroupBy, HavingClause, LogicalOperator, OrderBy, OrderDirection, ParentField, Relationship,
         TypedValue, WhereClause,
@@ -218,8 +212,9 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
-        assert_eq!(objects, vec!["Account"]);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
+        assert_eq!(objects, HashSet::from(["Account".to_string()]));
     }
 
     #[test]
@@ -242,7 +237,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Account", "Owner"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -275,7 +271,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Account", "Contact"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -312,7 +309,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Account", "Contacts"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -346,7 +344,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Account", "Owner"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -377,7 +376,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Account", "Dust"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -406,7 +406,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Account", "Cha"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -443,7 +444,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Opportunity", "Account", "Contact"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -478,7 +480,8 @@ mod tests {
             }),
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Account", "Hello"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -509,7 +512,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Account", "Hello"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -542,7 +546,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Opportunity", "Account"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -580,7 +585,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Account", "Contact", "Opportunity"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -632,7 +638,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Case", "User", "Account"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
@@ -668,14 +675,15 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Contact", "Campaign"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
             expected
         );
     }
-    
+
     #[test]
     fn test_extract_nested_functions() {
         let query = StructuredQuery {
@@ -706,14 +714,15 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Opportunity", "Account"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
             expected
         );
     }
-    
+
     #[test]
     fn test_extract_deeply_nested_functions() {
         let query = StructuredQuery {
@@ -725,16 +734,14 @@ mod tests {
                     arguments: vec![
                         FunctionArgument::Expression(FieldExpression::Function {
                             function: "CALENDAR_MONTH".to_string(),
-                            arguments: vec![
-                                FunctionArgument::Expression(FieldExpression::Function {
+                            arguments: vec![FunctionArgument::Expression(
+                                FieldExpression::Function {
                                     function: "CALENDAR_YEAR".to_string(),
-                                    arguments: vec![
-                                        FunctionArgument::Expression(FieldExpression::Field(
-                                            "Account.CloseDate".to_string(),
-                                        )),
-                                    ],
-                                }),
-                            ],
+                                    arguments: vec![FunctionArgument::Expression(
+                                        FieldExpression::Field("Account.CloseDate".to_string()),
+                                    )],
+                                },
+                            )],
                         }),
                         FunctionArgument::Literal(serde_json::json!("MMMM")),
                     ],
@@ -742,27 +749,23 @@ mod tests {
             ],
             where_clause: Some(WhereClause {
                 condition: LogicalOperator::And,
-                filters: vec![
-                    Filter::Condition {
-                        field: FieldExpression::Field("StageName".to_string()),
-                        operator: "=".to_string(),
-                        value: TypedValue::Function {
-                            value_type: FunctionType::Function,
-                            function: "FORMAT".to_string(),
-                            arguments: vec![
-                                FunctionArgument::Expression(FieldExpression::Function {
-                                    function: "DAY_ONLY".to_string(),
-                                    arguments: vec![
-                                        FunctionArgument::Expression(FieldExpression::Field(
-                                            "Contact.FirstContactDate".to_string(),
-                                        )),
-                                    ],
-                                }),
-                                FunctionArgument::Literal(serde_json::json!("YYYY-MM-DD")),
-                            ],
-                        },
+                filters: vec![Filter::Condition {
+                    field: FieldExpression::Field("StageName".to_string()),
+                    operator: "=".to_string(),
+                    value: TypedValue::Function {
+                        value_type: FunctionType::Function,
+                        function: "FORMAT".to_string(),
+                        arguments: vec![
+                            FunctionArgument::Expression(FieldExpression::Function {
+                                function: "DAY_ONLY".to_string(),
+                                arguments: vec![FunctionArgument::Expression(
+                                    FieldExpression::Field("Contact.FirstContactDate".to_string()),
+                                )],
+                            }),
+                            FunctionArgument::Literal(serde_json::json!("YYYY-MM-DD")),
+                        ],
                     },
-                ],
+                }],
             }),
             order_by: vec![],
             limit: None,
@@ -774,7 +777,8 @@ mod tests {
             having: None,
         };
 
-        let objects = extract_objects(&query);
+        let mut objects = HashSet::new();
+        query.extract_objects(&mut objects);
         let expected = HashSet::from(["Opportunity", "Account", "Contact"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
