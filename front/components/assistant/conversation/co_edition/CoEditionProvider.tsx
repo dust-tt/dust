@@ -1,7 +1,7 @@
 import React from "react";
 
 import { CoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
-import { useCoEditionServer } from "@app/components/assistant/conversation/co_edition/useCoEditionMcpServer";
+import { useCoEditionMcpServer } from "@app/components/assistant/conversation/co_edition/useCoEditionMcpServer";
 import { isMobile } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -17,7 +17,7 @@ export function CoEditionProvider({
   hasCoEditionFeatureFlag = false,
 }: CoEditionProviderProps) {
   const { closeCoEdition, isCoEditionOpen, isConnected, server, serverId } =
-    useCoEditionServer({
+    useCoEditionMcpServer({
       owner,
       hasCoEditionFeatureFlag,
     });

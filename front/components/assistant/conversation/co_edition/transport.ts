@@ -3,7 +3,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
 const logger = console;
 
-const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
+const HEARTBEAT_INTERVAL_MS = 4 * 60 * 1000; // 4 minutes.
 const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
 
 /**
