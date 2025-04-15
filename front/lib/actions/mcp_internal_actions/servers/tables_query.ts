@@ -267,12 +267,15 @@ function createServer(
       }
       // End salesforce specific
 
+      const dataSourceViewsMap = new Map(
+        dataSourceViews.map((dsv) => [dsv.id, dsv])
+      );
       const configuredTables = agentTableConfigurations.map((t) => ({
-        workspace_id: t.workspaceId,
+        workspace_id: owner.sId,
         table_id: t.tableId,
         // Note: This value is passed to the registry for lookup.
         // The registry will return the associated data source's dustAPIDataSourceId.
-        data_source_id: t.dataSourceViewId,
+        data_source_id: dataSourceViewsMap.get(t.dataSourceViewId)?.sId,
         remote_database_secret_id: personalConnectionIds[t.dataSourceViewId],
       }));
       if (configuredTables.length === 0) {
