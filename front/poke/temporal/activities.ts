@@ -481,7 +481,8 @@ export async function deleteSpacesActivity({
     // Soft delete all the data source views of the space.
     const dataSourceViews = await DataSourceViewResource.listBySpace(
       auth,
-      space
+      space,
+      { includeDeleted: true }
     );
     for (const ds of dataSourceViews) {
       await ds.delete(auth, { hardDelete: false });
