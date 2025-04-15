@@ -128,7 +128,7 @@ export const CATEGORY_DETAILS: {
     icon: CommandLineIcon,
   },
   actions: {
-    label: "Actions",
+    label: "Tools",
     icon: ACTION_SPECIFICATIONS["MCP"].cardIcon,
     flag: "mcp_actions",
   },

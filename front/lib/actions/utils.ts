@@ -1,11 +1,11 @@
 import type { Icon } from "@dust-tt/sparkle";
 import {
   ChatBubbleThoughtIcon,
-  CommandIcon,
   CommandLineIcon,
   MagnifyingGlassIcon,
   PlanetIcon,
   ScanIcon,
+  SuitcaseIcon,
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";
@@ -86,10 +86,10 @@ export const ACTION_SPECIFICATIONS: Record<
     flag: null,
   },
   MCP: {
-    label: "Run an Action",
-    description: "Run an action, then reply",
-    cardIcon: CommandIcon,
-    dropDownIcon: CommandIcon,
+    label: "More...",
+    description: "Pick from Toolsets added by your Admin",
+    cardIcon: SuitcaseIcon,
+    dropDownIcon: SuitcaseIcon,
     flag: "mcp_actions",
   },
 };

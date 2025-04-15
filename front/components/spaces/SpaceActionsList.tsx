@@ -5,7 +5,6 @@ import {
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { sortBy } from "lodash";
 import * as React from "react";
 
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
@@ -89,7 +88,7 @@ export const SpaceActionsList = ({
 
   const rows: RowData[] = React.useMemo(
     () =>
-      sortBy(serverViews, "server.name").map((serverView) => ({
+      serverViews.map((serverView) => ({
         name: serverView.server.name,
         description: serverView.server.description,
         visual: getVisual(serverView.server),

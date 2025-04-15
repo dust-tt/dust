@@ -7,7 +7,6 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import { sortBy } from "lodash";
 import React, { useMemo } from "react";
 
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
@@ -54,11 +53,11 @@ export function MCPServerSelector({
   return (
     <>
       <div className="text-sm text-foreground dark:text-foreground-night">
-        The agent will execute an{" "}
+        The agent will be able to execute tools from the{" "}
         <a className="font-bold" href="https://docs.dust.tt" target="_blank">
-          Action
+          Toolset
         </a>{" "}
-        made available to you.
+        made available to you by your Admin.
       </div>
       {isSpacesLoading ? (
         <Spinner />
@@ -81,13 +80,13 @@ export function MCPServerSelector({
               mcpServerViewsInSpace.length === 0 ||
               hasNoMCPServerViewsInAllowedSpaces
             ) {
-              return <>No Actions available.</>;
+              return <>No Toolsets available.</>;
             }
 
             return (
               <RadioGroup defaultValue={selectedMCPServerView?.id}>
-                {sortBy(mcpServerViewsInSpace, "server.name")
-                  // Default servers can be added as capabilities or in the first level of the Add actions list
+                {mcpServerViewsInSpace
+                  // Default servers can be added as capabilities or in the first level of the "Add tools" list
                   .filter((view) => !view.server.isDefault)
                   .map((mcpServerView, idx, arr) => (
                     <React.Fragment key={mcpServerView.id}>

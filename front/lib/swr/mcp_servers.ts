@@ -2,6 +2,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
@@ -74,7 +75,15 @@ export function useAvailableMCPServers({
 
   const { data, error } = useSWRWithDefaults(url, configFetcher);
 
-  const availableMCPServers = useMemo(() => (data ? data.servers : []), [data]);
+  const availableMCPServers = useMemo(
+    () =>
+      data
+        ? data.servers.sort((a, b) =>
+            mcpServersSortingFn({ mcpServer: a }, { mcpServer: b })
+          )
+        : [],
+    [data]
+  );
 
   return {
     availableMCPServers,
