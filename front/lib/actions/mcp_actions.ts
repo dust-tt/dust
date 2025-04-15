@@ -170,7 +170,7 @@ export async function tryCallMCPTool(
     actionConfiguration: MCPToolConfigurationType;
     inputs: Record<string, unknown> | undefined;
   }
-): Promise<Result<MCPToolResultContent[], Error>> {
+): Promise<Result<MCPToolResult["content"], Error>> {
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
     actionConfiguration,
@@ -212,8 +212,7 @@ export async function tryCallMCPTool(
       );
     }
     // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: MCPToolResultContent[] = (toolCallResult.content ??
-      []) as MCPToolResultContent[];
+    const content = (toolCallResult.content ?? []) as MCPToolResultContent[];
 
     return new Ok(content);
   } catch (error) {
