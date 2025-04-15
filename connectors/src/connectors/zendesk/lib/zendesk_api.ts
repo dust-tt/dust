@@ -95,7 +95,10 @@ export async function getZendeskBrandSubdomain({
  * https://developer.zendesk.com/api-reference/introduction/rate-limits/
  * @returns true if the rate limit was handled and the request should be retried, false otherwise.
  */
-async function handleZendeskRateLimit(response: Response): Promise<boolean> {
+async function handleZendeskRateLimit(
+  response: Response,
+  url: string
+): Promise<boolean> {
   if (response.status === 429) {
     let retryAfter = 1;
 
@@ -108,7 +111,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
     }
     if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
-        { retryAfter },
+        { url, response, retryAfter },
         `[Zendesk] Attempting to wait more than ${ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
       );
       throw new Error(
@@ -116,7 +119,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
       );
     }
     logger.info(
-      { response, retryAfter },
+      { url, response, retryAfter },
       "[Zendesk] Rate limit hit, waiting before retrying."
     );
     await setTimeoutAsync(retryAfter * 1000);
@@ -148,7 +151,7 @@ async function fetchFromZendeskWithRetries({
   let rawResponse = await runFetch();
 
   let retryCount = 0;
-  while (await handleZendeskRateLimit(rawResponse)) {
+  while (await handleZendeskRateLimit(rawResponse, url)) {
     rawResponse = await runFetch();
     retryCount++;
     if (retryCount >= ZENDESK_RATE_LIMIT_MAX_RETRIES) {
