@@ -1,6 +1,6 @@
 use super::structured_query::{
-    Aggregate, FieldExpression, Filter, GroupBy, HavingClause, ParentField, Relationship,
-    StructuredQuery, TypedValue, WhereClause,
+    Aggregate, FieldExpression, Filter, FunctionArgument, GroupBy, HavingClause, ParentField,
+    Relationship, StructuredQuery, TypedValue, WhereClause,
 };
 use std::collections::HashSet;
 
@@ -22,6 +22,17 @@ fn extract_objects_from_field_str(field: &str, objects: &mut HashSet<String>) {
     }
 }
 
+fn extract_objects_from_function_argument(arg: &FunctionArgument, objects: &mut HashSet<String>) {
+    match arg {
+        FunctionArgument::Expression(expr) => {
+            extract_objects_from_field(expr, objects);
+        }
+        FunctionArgument::Literal(_) => {
+            // Literal values don't contain any object references
+        }
+    }
+}
+
 fn extract_objects_from_field(field: &FieldExpression, objects: &mut HashSet<String>) {
     match field {
         FieldExpression::Field(field_str) => {
@@ -29,7 +40,7 @@ fn extract_objects_from_field(field: &FieldExpression, objects: &mut HashSet<Str
         }
         FieldExpression::Function { arguments, .. } => {
             for arg in arguments {
-                extract_objects_from_field_str(arg, objects);
+                extract_objects_from_function_argument(arg, objects);
             }
         }
     }
@@ -38,7 +49,7 @@ fn extract_objects_from_field(field: &FieldExpression, objects: &mut HashSet<Str
 fn extract_objects_from_typed_value(value: &TypedValue, objects: &mut HashSet<String>) {
     if let TypedValue::Function { arguments, .. } = value {
         for arg in arguments {
-            extract_objects_from_field_str(arg, objects);
+            extract_objects_from_function_argument(arg, objects);
         }
     }
 }
@@ -155,7 +166,7 @@ impl ObjectExtractor for GroupBy {
         match self {
             GroupBy::Simple(fields) | GroupBy::Advanced { fields, .. } => {
                 for field in fields {
-                    extract_objects_from_field_str(field, objects);
+                    extract_objects_from_field(field, objects);
                 }
             }
         }
@@ -173,7 +184,7 @@ impl ObjectExtractor for HavingClause {
 
 impl ObjectExtractor for Aggregate {
     fn extract_objects(&self, objects: &mut HashSet<String>) {
-        extract_objects_from_field_str(&self.field, objects);
+        extract_objects_from_field(&self.field, objects);
     }
 }
 
@@ -389,12 +400,51 @@ mod tests {
             relationships: vec![],
             parent_fields: vec![],
             aggregates: vec![],
-            group_by: Some(GroupBy::Simple(vec!["Cha.Warma".to_string()])),
+            group_by: Some(GroupBy::Simple(vec![FieldExpression::Field(
+                "Cha.Warma".to_string(),
+            )])),
             having: None,
         };
 
         let objects = extract_objects(&query);
         let expected = HashSet::from(["Account", "Cha"]);
+        assert_eq!(
+            objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
+            expected
+        );
+    }
+
+    #[test]
+    fn test_extract_group_by_with_functions() {
+        let query = StructuredQuery {
+            object: "Opportunity".to_string(),
+            fields: vec![FieldExpression::Field("AccountId".to_string())],
+            where_clause: None,
+            order_by: vec![],
+            limit: None,
+            offset: None,
+            relationships: vec![],
+            parent_fields: vec![],
+            aggregates: vec![],
+            group_by: Some(GroupBy::Simple(vec![
+                FieldExpression::Function {
+                    function: "CALENDAR_MONTH".to_string(),
+                    arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                        "Account.CreatedDate".to_string(),
+                    ))],
+                },
+                FieldExpression::Function {
+                    function: "CALENDAR_YEAR".to_string(),
+                    arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                        "Contact.CloseDate".to_string(),
+                    ))],
+                },
+            ])),
+            having: None,
+        };
+
+        let objects = extract_objects(&query);
+        let expected = HashSet::from(["Opportunity", "Account", "Contact"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
             expected
@@ -445,7 +495,7 @@ mod tests {
                 FieldExpression::Field("Name".to_string()),
             ],
             aggregates: vec![Aggregate {
-                field: "Hello.World".to_string(),
+                field: FieldExpression::Field("Hello.World".to_string()),
                 function: AggregateFunction::Count,
                 alias: "hello_world_count".to_string(),
             }],
@@ -468,6 +518,39 @@ mod tests {
     }
 
     #[test]
+    fn test_extract_aggregate_with_function() {
+        let query = StructuredQuery {
+            object: "Opportunity".to_string(),
+            fields: vec![FieldExpression::Field("Id".to_string())],
+            aggregates: vec![Aggregate {
+                field: FieldExpression::Function {
+                    function: "CALENDAR_MONTH".to_string(),
+                    arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                        "Account.CloseDate".to_string(),
+                    ))],
+                },
+                function: AggregateFunction::Count,
+                alias: "month_count".to_string(),
+            }],
+            where_clause: None,
+            order_by: vec![],
+            limit: None,
+            offset: None,
+            relationships: vec![],
+            parent_fields: vec![],
+            group_by: None,
+            having: None,
+        };
+
+        let objects = extract_objects(&query);
+        let expected = HashSet::from(["Opportunity", "Account"]);
+        assert_eq!(
+            objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
+            expected
+        );
+    }
+
+    #[test]
     fn test_extract_function_field() {
         let query = StructuredQuery {
             object: "Account".to_string(),
@@ -475,11 +558,15 @@ mod tests {
                 FieldExpression::Field("Id".to_string()),
                 FieldExpression::Function {
                     function: "DAY_ONLY".to_string(),
-                    arguments: vec!["Contact.CreatedDate".to_string()],
+                    arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                        "Contact.CreatedDate".to_string(),
+                    ))],
                 },
                 FieldExpression::Function {
                     function: "CALENDAR_MONTH".to_string(),
-                    arguments: vec!["Opportunity.CloseDate".to_string()],
+                    arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                        "Opportunity.CloseDate".to_string(),
+                    ))],
                 },
             ],
             where_clause: None,
@@ -515,7 +602,9 @@ mod tests {
                     Filter::Condition {
                         field: FieldExpression::Function {
                             function: "CALENDAR_YEAR".to_string(),
-                            arguments: vec!["User.CreatedDate".to_string()],
+                            arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                                "User.CreatedDate".to_string(),
+                            ))],
                         },
                         operator: "=".to_string(),
                         value: TypedValue::Regular(json!(2023)),
@@ -526,7 +615,9 @@ mod tests {
                         value: TypedValue::Function {
                             value_type: FunctionType::Function,
                             function: "DAY_ONLY".to_string(),
-                            arguments: vec!["Account.LastModifiedDate".to_string()],
+                            arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                                "Account.LastModifiedDate".to_string(),
+                            ))],
                         },
                     },
                 ],
@@ -561,7 +652,9 @@ mod tests {
             order_by: vec![OrderBy {
                 field: FieldExpression::Function {
                     function: "CALENDAR_MONTH".to_string(),
-                    arguments: vec!["Campaign.StartDate".to_string()],
+                    arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                        "Campaign.StartDate".to_string(),
+                    ))],
                 },
                 direction: OrderDirection::Asc,
                 nulls: None,
@@ -577,6 +670,112 @@ mod tests {
 
         let objects = extract_objects(&query);
         let expected = HashSet::from(["Contact", "Campaign"]);
+        assert_eq!(
+            objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
+            expected
+        );
+    }
+    
+    #[test]
+    fn test_extract_nested_functions() {
+        let query = StructuredQuery {
+            object: "Opportunity".to_string(),
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Function {
+                    function: "FORMAT".to_string(),
+                    arguments: vec![
+                        FunctionArgument::Expression(FieldExpression::Function {
+                            function: "CALENDAR_MONTH".to_string(),
+                            arguments: vec![FunctionArgument::Expression(FieldExpression::Field(
+                                "Account.CreatedDate".to_string(),
+                            ))],
+                        }),
+                        FunctionArgument::Literal(serde_json::json!("MMMM")),
+                    ],
+                },
+            ],
+            where_clause: None,
+            order_by: vec![],
+            limit: None,
+            offset: None,
+            relationships: vec![],
+            parent_fields: vec![],
+            aggregates: vec![],
+            group_by: None,
+            having: None,
+        };
+
+        let objects = extract_objects(&query);
+        let expected = HashSet::from(["Opportunity", "Account"]);
+        assert_eq!(
+            objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
+            expected
+        );
+    }
+    
+    #[test]
+    fn test_extract_deeply_nested_functions() {
+        let query = StructuredQuery {
+            object: "Opportunity".to_string(),
+            fields: vec![
+                FieldExpression::Field("Id".to_string()),
+                FieldExpression::Function {
+                    function: "FORMAT".to_string(),
+                    arguments: vec![
+                        FunctionArgument::Expression(FieldExpression::Function {
+                            function: "CALENDAR_MONTH".to_string(),
+                            arguments: vec![
+                                FunctionArgument::Expression(FieldExpression::Function {
+                                    function: "CALENDAR_YEAR".to_string(),
+                                    arguments: vec![
+                                        FunctionArgument::Expression(FieldExpression::Field(
+                                            "Account.CloseDate".to_string(),
+                                        )),
+                                    ],
+                                }),
+                            ],
+                        }),
+                        FunctionArgument::Literal(serde_json::json!("MMMM")),
+                    ],
+                },
+            ],
+            where_clause: Some(WhereClause {
+                condition: LogicalOperator::And,
+                filters: vec![
+                    Filter::Condition {
+                        field: FieldExpression::Field("StageName".to_string()),
+                        operator: "=".to_string(),
+                        value: TypedValue::Function {
+                            value_type: FunctionType::Function,
+                            function: "FORMAT".to_string(),
+                            arguments: vec![
+                                FunctionArgument::Expression(FieldExpression::Function {
+                                    function: "DAY_ONLY".to_string(),
+                                    arguments: vec![
+                                        FunctionArgument::Expression(FieldExpression::Field(
+                                            "Contact.FirstContactDate".to_string(),
+                                        )),
+                                    ],
+                                }),
+                                FunctionArgument::Literal(serde_json::json!("YYYY-MM-DD")),
+                            ],
+                        },
+                    },
+                ],
+            }),
+            order_by: vec![],
+            limit: None,
+            offset: None,
+            relationships: vec![],
+            parent_fields: vec![],
+            aggregates: vec![],
+            group_by: None,
+            having: None,
+        };
+
+        let objects = extract_objects(&query);
+        let expected = HashSet::from(["Opportunity", "Account", "Contact"]);
         assert_eq!(
             objects.iter().map(|s| s.as_str()).collect::<HashSet<_>>(),
             expected
