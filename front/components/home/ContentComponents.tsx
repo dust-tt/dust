@@ -16,6 +16,7 @@ import type { AnchorHTMLAttributes, ReactNode } from "react";
 import React from "react";
 
 import { classNames } from "@app/lib/utils";
+import { assertNever } from "@app/types";
 
 const verticalGridClasses = {
   top: "items-start",
@@ -63,7 +64,8 @@ interface HContentProps {
   style?: React.CSSProperties;
 }
 
-type TagName = "h1" | "h2" | "h3" | "h4" | "h5";
+export const TAG_NAMES = ["h1", "h2", "h3", "h4", "h5"] as const;
+type TagName = (typeof TAG_NAMES)[number];
 
 const createHeadingComponent = (Tag: TagName) => {
   const Component: React.FC<HContentProps> = ({
@@ -93,6 +95,32 @@ export const H2 = createHeadingComponent("h2");
 export const H3 = createHeadingComponent("h3");
 export const H4 = createHeadingComponent("h4");
 export const H5 = createHeadingComponent("h5");
+
+export const Heading = ({
+  children,
+  level,
+  ...props
+}: { level: TagName } & HContentProps) => {
+  switch (level) {
+    case "h1": {
+      return <H1 {...props}>{children}</H1>;
+    }
+    case "h2": {
+      return <H2 {...props}>{children}</H2>;
+    }
+    case "h3": {
+      return <H3 {...props}>{children}</H3>;
+    }
+    case "h4": {
+      return <H4 {...props}>{children}</H4>;
+    }
+    case "h5": {
+      return <H5 {...props}>{children}</H5>;
+    }
+    default:
+      assertNever(level);
+  }
+};
 
 export const Span = ({ children, className = "" }: ContentProps) => (
   <span className={classNames(className, "font-sans")}>{children}</span>

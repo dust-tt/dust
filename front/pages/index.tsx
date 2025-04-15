@@ -1,3 +1,4 @@
+import { Content, fetchOneEntry } from "@builder.io/sdk-react";
 import type { ReactElement } from "react";
 import React from "react";
 
@@ -9,7 +10,8 @@ import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session"
 import { getPersistedNavigationSelection } from "@app/lib/persisted_navigation_selection";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import { Landing } from "@app/pages/home";
+
+import { customComponents } from "../builder-registry";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
@@ -19,6 +21,14 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   // Fetch session explicitly as this page redirects logged in users to our home page.
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
+
+  const builderPage = await fetchOneEntry({
+    apiKey: process.env.BUILDER_IO_PUBLIC_KEY!,
+    model: "page",
+    userAttributes: {
+      urlPath: "/",
+    },
+  });
 
   const { inviteToken } = context.query;
 
@@ -74,6 +84,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   return {
     props: {
+      builderPage: builderPage ?? null,
       postLoginReturnToUrl: postLoginCallbackUrl,
       shape: 0,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
@@ -81,8 +92,15 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-export default function Home() {
-  return <Landing />;
+export default function Home({ builderPage }: any) {
+  return (
+    <Content
+      model="page"
+      content={builderPage}
+      apiKey={process.env.BUILDER_IO_PUBLIC_KEY!}
+      customComponents={customComponents}
+    />
+  );
 }
 
 Home.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {

@@ -14,7 +14,7 @@ export type {
   MiniButtonProps,
   RegularButtonProps,
 } from "./Button";
-export { Button } from "./Button";
+export { Button, BUTTON_SIZES, BUTTON_VARIANTS } from "./Button";
 export type { CardProps } from "./Card";
 export { Card, CardActionButton, CardGrid } from "./Card";
 export type { CheckboxProps } from "./Checkbox";
