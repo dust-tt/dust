@@ -23,8 +23,15 @@ import type { ModelId } from "@connectors/types";
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 
-function getEndpointFromZendeskUrl(url: string): string {
-  return url.replace(/^https?:\/\/(.*)\.zendesk\.com(.*)/, "$2");
+function extractMetadataFromZendeskUrl(url: string): {
+  subdomain: string;
+  endpoint: string;
+} {
+  const regex = /^https?:\/\/(.*)\.zendesk\.com(.*)/;
+  return {
+    subdomain: url.replace(regex, "$1"),
+    endpoint: url.replace(regex, "$2"),
+  };
 }
 
 export function createZendeskClient({
@@ -100,6 +107,7 @@ async function handleZendeskRateLimit(
   url: string
 ): Promise<boolean> {
   if (response.status === 429) {
+    const { subdomain, endpoint } = extractMetadataFromZendeskUrl(url);
     let retryAfter = 1;
 
     const headerValue = response.headers.get("retry-after"); // https://developer.zendesk.com/api-reference/introduction/rate-limits/
@@ -111,7 +119,7 @@ async function handleZendeskRateLimit(
     }
     if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
-        { url, response, retryAfter },
+        { subdomain, endpoint, response, retryAfter },
         `[Zendesk] Attempting to wait more than ${ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
       );
       throw new Error(
@@ -119,7 +127,7 @@ async function handleZendeskRateLimit(
       );
     }
     logger.info(
-      { url, response, retryAfter },
+      { subdomain, endpoint, response, retryAfter },
       "[Zendesk] Rate limit hit, waiting before retrying."
     );
     await setTimeoutAsync(retryAfter * 1000);
@@ -171,14 +179,14 @@ async function fetchFromZendeskWithRetries({
     throw new ZendeskApiError(
       "Error parsing Zendesk API response",
       rawResponse.status,
-      { rawResponse, endpoint: getEndpointFromZendeskUrl(url) }
+      { rawResponse, ...extractMetadataFromZendeskUrl(url) }
     );
   }
   if (!rawResponse.ok) {
     throw new ZendeskApiError("Zendesk API error.", rawResponse.status, {
       response,
       rawResponse,
-      endpoint: getEndpointFromZendeskUrl(url),
+      ...extractMetadataFromZendeskUrl(url),
     });
   }
 
