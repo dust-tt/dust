@@ -28,10 +28,9 @@ export function registerInsertNodeTool(server: McpServer, editor: Editor) {
     - You want to expand the document with multiple paragraphs
     - You want to insert an image with its file ID
 
-    DO NOT:
-    - Assume positions remain the same after previous insertions
-    - Use this tool without first getting the current editor content
-    - Use invalid file IDs for images`,
+    DO NOT assume positions remain the same after previous insertions
+    DO NOT use this tool without first getting the current editor content
+    DO NOT use invalid file IDs for images`,
     { params: InsertNodeSchema },
     async ({ params }) => {
       editor

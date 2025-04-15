@@ -18,7 +18,7 @@ export const CoEditionTextNodeSchema = BaseNodeSchema.extend({
         "IMPORTANT:\n" +
         "- Markdown is NOT supported\n" +
         "- The HTML must be valid and properly closed\n" +
-        "- Multiple blocks should be properly separated"
+        "- Subsequent/Successive blocks should be properly separated"
     ),
 });
 
