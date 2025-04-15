@@ -27,7 +27,7 @@ function extractMetadataFromZendeskUrl(url: string): {
   subdomain: string;
   endpoint: string;
 } {
-  const regex = /^https?:\/\/(.*)\.zendesk\.com(.*)/;
+  const regex = /^https?:\/\/(.*)\.zendesk\.com(.*)\??.*/;
   return {
     subdomain: url.replace(regex, "$1"),
     endpoint: url.replace(regex, "$2"),
