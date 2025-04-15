@@ -100,6 +100,21 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
     });
   }
 
+  // Soft delete all ds views for that data source.
+  const views = await DataSourceViewResource.listForDataSources(auth, [
+    dataSource,
+  ]);
+  await concurrentExecutor(
+    views,
+    async (view) => {
+      await view.delete(auth, { transaction, hardDelete: false });
+    },
+    {
+      concurrency: 8,
+    }
+  );
+
+  // Soft delete the data source.
   await dataSource.delete(auth, { transaction, hardDelete: false });
 
   // The scrubbing workflow will delete associated resources and hard delete the data source.

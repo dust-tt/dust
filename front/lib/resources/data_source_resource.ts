@@ -398,19 +398,12 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
-    // Directly delete the DataSourceViewModel here to avoid a circular dependency.
-    await DataSourceViewModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        dataSourceId: this.id,
-      },
-      transaction,
-      hardDelete: false,
-    });
+    // We assume the data source views are already soft-deleted here.
 
     const deletedCount = await this.model.destroy({
       where: {
         id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });

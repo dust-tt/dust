@@ -86,11 +86,3 @@ export function isContentNodeAttachment(
 } {
   return !!arg.nodeId && !!arg.nodeDataSourceViewId;
 }
-
-export function isExpiredContentFragment(
-  arg: ContentFragmentType
-): arg is ContentFragmentType & {
-  expiredReason: ContentFragmentExpiredReason;
-} {
-  return !!arg.expiredReason;
-}
