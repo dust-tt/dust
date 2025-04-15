@@ -311,7 +311,7 @@ export function AgentMessage({
           messageId: message.sId,
           stake: event.stake,
           workspaceId: owner.sId,
-          meta: event.meta,
+          metadata: event.metadata,
         });
         break;
 

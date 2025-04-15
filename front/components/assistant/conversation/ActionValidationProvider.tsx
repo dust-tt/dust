@@ -30,7 +30,7 @@ type ActionValidationContextType = {
     action: MCPActionType;
     inputs: Record<string, unknown>;
     stake?: MCPToolStakeLevelType;
-    meta: MCPValidationMetadataType;
+    metadata: MCPValidationMetadataType;
   }) => void;
 };
 
@@ -42,7 +42,7 @@ export type PendingValidationRequestType = {
   action: MCPActionType;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
-  meta: MCPValidationMetadataType;
+  metadata: MCPValidationMetadataType;
 };
 
 export const ActionValidationContext =
@@ -169,7 +169,7 @@ export function ActionValidationProvider({
     action: MCPActionType;
     inputs: Record<string, unknown>;
     stake?: MCPToolStakeLevelType;
-    meta: MCPValidationMetadataType;
+    metadata: MCPValidationMetadataType;
   }) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
@@ -198,9 +198,9 @@ export function ActionValidationProvider({
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <div>
-                Allow <b>{currentValidation?.meta.agentName}</b> to use the tool{" "}
-                <b>{asDisplayName(currentValidation?.meta.toolName)}</b> from{" "}
-                <b>{asDisplayName(currentValidation?.meta.mcpServerName)}</b>?
+                Allow <b>{currentValidation?.metadata.agentName}</b> to use the tool{" "}
+                <b>{asDisplayName(currentValidation?.metadata.toolName)}</b> from{" "}
+                <b>{asDisplayName(currentValidation?.metadata.mcpServerName)}</b>?
               </div>
               {currentValidation?.inputs &&
                 Object.keys(currentValidation.inputs).length > 0 && (
