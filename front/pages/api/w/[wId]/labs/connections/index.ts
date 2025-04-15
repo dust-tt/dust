@@ -117,7 +117,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 409,
           api_error: {
-            type: "transcripts_configuration_already_exists",
+            type: "labs_connection_configuration_already_exists",
             message: "A configuration for this provider already exists.",
           },
         });
