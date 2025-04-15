@@ -1,6 +1,8 @@
 import {
+  ActionPieChartIcon,
   Button,
   CodeBlock,
+  CollapsibleComponent,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -14,9 +16,11 @@ import { createContext, useCallback, useEffect, useState } from "react";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type {
   MCPToolStakeLevelType,
+  MCPValidationMetadataType,
   MCPValidationOutputType,
 } from "@app/lib/actions/constants";
 import type { MCPActionType } from "@app/lib/actions/mcp";
+import { asDisplayName } from "@app/types";
 
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: {
@@ -26,6 +30,7 @@ type ActionValidationContextType = {
     action: MCPActionType;
     inputs: Record<string, unknown>;
     stake?: MCPToolStakeLevelType;
+    metadata: MCPValidationMetadataType;
   }) => void;
 };
 
@@ -37,6 +42,7 @@ export type PendingValidationRequestType = {
   action: MCPActionType;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
+  metadata: MCPValidationMetadataType;
 };
 
 export const ActionValidationContext =
@@ -96,12 +102,19 @@ export function ActionValidationProvider({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [neverAskAgain, setNeverAskAgain] = useState(false);
+
   useNavigationLock(isDialogOpen);
 
   const sendCurrentValidation = useCallback(
-    async (approved: MCPValidationOutputType) => {
+    async (status: MCPValidationOutputType) => {
       if (!currentValidation) {
         return;
+      }
+
+      let approved = status;
+      if (status === "approved" && neverAskAgain) {
+        approved = "always_approved";
       }
 
       setErrorMessage(null);
@@ -125,8 +138,10 @@ export function ActionValidationProvider({
         setErrorMessage("Failed to assess action approval. Please try again.");
         return;
       }
+
+      setNeverAskAgain(false);
     },
-    [currentValidation]
+    [currentValidation, neverAskAgain]
   );
 
   const handleSubmit = useCallback(
@@ -154,6 +169,7 @@ export function ActionValidationProvider({
     action: MCPActionType;
     inputs: Record<string, unknown>;
     stake?: MCPToolStakeLevelType;
+    metadata: MCPValidationMetadataType;
   }) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
@@ -175,26 +191,42 @@ export function ActionValidationProvider({
       >
         <DialogContent isAlertDialog>
           <DialogHeader>
-            <DialogTitle>Action Validation Required</DialogTitle>
+            <DialogTitle visual={<ActionPieChartIcon />}>
+              Action Validation Required
+            </DialogTitle>
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <div>
-                <span className="font-medium">Action:</span>{" "}
-                {currentValidation?.action.functionCallName}
+                Allow <b>@{currentValidation?.metadata.agentName}</b> to use the
+                tool{" "}
+                <b>{asDisplayName(currentValidation?.metadata.toolName)}</b>{" "}
+                from{" "}
+                <b>
+                  {asDisplayName(currentValidation?.metadata.mcpServerName)}
+                </b>
+                ?
               </div>
               {currentValidation?.inputs &&
                 Object.keys(currentValidation.inputs).length > 0 && (
-                  <div>
-                    <span className="font-medium">Inputs:</span>
-                    <div className="max-h-80 overflow-auto">
-                      <CodeBlock className="language-json">
-                        {JSON.stringify(currentValidation?.inputs, null, 2)}
-                      </CodeBlock>
-                    </div>
-                  </div>
+                  <CollapsibleComponent
+                    triggerChildren={
+                      <span className="font-medium">Details</span>
+                    }
+                    contentChildren={
+                      <div>
+                        <div className="max-h-80 overflow-auto rounded-lg bg-muted">
+                          <CodeBlock
+                            wrapLongLines
+                            className="language-json overflow-y-auto"
+                          >
+                            {JSON.stringify(currentValidation?.inputs, null, 2)}
+                          </CodeBlock>
+                        </div>
+                      </div>
+                    }
+                  />
                 )}
-              <div>Do you want to allow this action to proceed?</div>
 
               {validationQueue.length > 0 && (
                 <div className="mt-2 text-sm font-medium text-info-900">
@@ -210,7 +242,19 @@ export function ActionValidationProvider({
               )}
             </div>
           </DialogContainer>
-          <DialogFooter>
+          <DialogFooter
+            permanentValidation={
+              currentValidation?.stake === "low"
+                ? {
+                    label: "Never ask again",
+                    checked: neverAskAgain,
+                    onChange: (check) => {
+                      setNeverAskAgain(!!check);
+                    },
+                  }
+                : undefined
+            }
+          >
             <Button
               label="Decline"
               variant="outline"
@@ -224,23 +268,6 @@ export function ActionValidationProvider({
                 </div>
               )}
             </Button>
-            {currentValidation?.stake === "low" && (
-              <Button
-                label="Approve and never ask again"
-                variant="ghost"
-                onClick={() => {
-                  handleSubmit("always_approved");
-                }}
-                disabled={isProcessing}
-              >
-                {isProcessing && (
-                  <div className="flex items-center">
-                    <span className="mr-2">Approving</span>
-                    <Spinner size="xs" variant="dark" />
-                  </div>
-                )}
-              </Button>
-            )}
             <Button
               label="Approve"
               variant="primary"

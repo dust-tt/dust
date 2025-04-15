@@ -268,6 +268,7 @@ export function AgentMessage({
             action: event.action,
             inputs: event.inputs,
             stake: event.stake,
+            metadata: event.metadata,
           });
           break;
 

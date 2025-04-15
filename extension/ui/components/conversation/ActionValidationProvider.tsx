@@ -1,12 +1,16 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
+import { asDisplayName } from "@app/shared/lib/utils";
 import type {
   MCPActionPublicType,
   MCPToolStakeLevelPublicType,
+  MCPValidationMetadataPublicType,
   MCPValidationOutputPublicType,
 } from "@dust-tt/client";
 import {
+  ActionPieChartIcon,
   Button,
   CodeBlock,
+  CollapsibleComponent,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -23,6 +27,7 @@ type ActionValidationContextType = {
     conversationId: string;
     inputs: Record<string, unknown>;
     messageId: string;
+    metadata: MCPValidationMetadataPublicType;
     stake?: MCPToolStakeLevelPublicType;
     workspaceId: string;
   }) => void;
@@ -34,6 +39,7 @@ export type PendingValidationRequestType = {
   conversationId: string;
   inputs: Record<string, unknown>;
   messageId: string;
+  metadata: MCPValidationMetadataPublicType;
   stake?: MCPToolStakeLevelPublicType;
   workspaceId: string;
 };
@@ -95,12 +101,19 @@ export function ActionValidationProvider({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [neverAskAgain, setNeverAskAgain] = useState(false);
+
   const dustAPI = useDustAPI();
 
   const sendCurrentValidation = useCallback(
-    async (approved: MCPValidationOutputPublicType) => {
+    async (status: MCPValidationOutputPublicType) => {
       if (!currentValidation) {
         return;
+      }
+
+      let approved = status;
+      if (status === "approved" && neverAskAgain) {
+        approved = "always_approved";
       }
 
       setErrorMessage(null);
@@ -117,8 +130,10 @@ export function ActionValidationProvider({
         setErrorMessage("Failed to assess action approval. Please try again.");
         return;
       }
+
+      setNeverAskAgain(false);
     },
-    [currentValidation, dustAPI]
+    [currentValidation, dustAPI, neverAskAgain]
   );
 
   const handleSubmit = useCallback(
@@ -146,6 +161,7 @@ export function ActionValidationProvider({
     action: MCPActionPublicType;
     inputs: Record<string, unknown>;
     stake?: MCPToolStakeLevelPublicType;
+    metadata: MCPValidationMetadataPublicType;
   }) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
@@ -167,26 +183,42 @@ export function ActionValidationProvider({
       >
         <DialogContent isAlertDialog>
           <DialogHeader>
-            <DialogTitle>Action Validation Required</DialogTitle>
+            <DialogTitle visual={<ActionPieChartIcon />}>
+              Action Validation Required
+            </DialogTitle>
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <div>
-                <span className="font-medium">Action:</span>{" "}
-                {currentValidation?.action.functionCallName}
+                Allow <b>@{currentValidation?.metadata.agentName}</b> to use the
+                tool{" "}
+                <b>{asDisplayName(currentValidation?.metadata.toolName)}</b>{" "}
+                from{" "}
+                <b>
+                  {asDisplayName(currentValidation?.metadata.mcpServerName)}
+                </b>
+                ?
               </div>
               {currentValidation?.inputs &&
                 Object.keys(currentValidation.inputs).length > 0 && (
-                  <div>
-                    <span className="font-medium">Inputs:</span>
-                    <div className="max-h-80 overflow-auto">
-                      <CodeBlock className="language-json">
-                        {JSON.stringify(currentValidation?.inputs, null, 2)}
-                      </CodeBlock>
-                    </div>
-                  </div>
+                  <CollapsibleComponent
+                    triggerChildren={
+                      <span className="font-medium">Details</span>
+                    }
+                    contentChildren={
+                      <div>
+                        <div className="max-h-80 overflow-auto bg-muted rounded-lg">
+                          <CodeBlock
+                            wrapLongLines
+                            className="language-json overflow-y-auto"
+                          >
+                            {JSON.stringify(currentValidation?.inputs, null, 2)}
+                          </CodeBlock>
+                        </div>
+                      </div>
+                    }
+                  />
                 )}
-              <div>Do you want to allow this action to proceed?</div>
 
               {validationQueue.length > 0 && (
                 <div className="mt-2 text-sm font-medium text-info-900">
@@ -202,7 +234,19 @@ export function ActionValidationProvider({
               )}
             </div>
           </DialogContainer>
-          <DialogFooter>
+          <DialogFooter
+            permanentValidation={
+              currentValidation?.stake === "low"
+                ? {
+                    label: "Never ask again",
+                    checked: neverAskAgain,
+                    onChange: (check) => {
+                      setNeverAskAgain(!!check);
+                    },
+                  }
+                : undefined
+            }
+          >
             <Button
               label="Decline"
               variant="outline"
@@ -216,23 +260,6 @@ export function ActionValidationProvider({
                 </div>
               )}
             </Button>
-            {currentValidation?.stake === "low" && (
-              <Button
-                label="Approve and never ask again"
-                variant="ghost"
-                onClick={() => {
-                  handleSubmit("always_approved");
-                }}
-                disabled={isProcessing}
-              >
-                {isProcessing && (
-                  <div className="flex items-center">
-                    <span className="mr-2">Approving</span>
-                    <Spinner size="xs" variant="dark" />
-                  </div>
-                )}
-              </Button>
-            )}
             <Button
               label="Approve"
               variant="primary"
