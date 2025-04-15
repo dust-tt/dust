@@ -58,6 +58,7 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import {
   TrackerConfigurationModel,
   TrackerDataSourceConfigurationModel,
@@ -69,6 +70,7 @@ import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
 import { Plan, Subscription } from "@app/lib/models/plan";
+import { TagModel } from "@app/lib/models/tags";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import {
@@ -120,6 +122,7 @@ async function main() {
   await MembershipInvitation.sync({ alter: true });
   await GroupModel.sync({ alter: true });
   await GroupMembershipModel.sync({ alter: true });
+  await TagModel.sync({ alter: true });
 
   await SpaceModel.sync({ alter: true });
   await AppModel.sync({ alter: true });
@@ -153,6 +156,7 @@ async function main() {
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
   await GlobalAgentSettings.sync({ alter: true });
+  await TagAgentModel.sync({ alter: true });
 
   await RemoteMCPServerModel.sync({ alter: true });
   await MCPServerViewModel.sync({ alter: true });
