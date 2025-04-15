@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useRouter } from "next/router";
-import React, { useContext, useMemo } from "react";
+import React, { useContext } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
@@ -18,7 +18,6 @@ import {
   ToggleNavigationSidebarButton,
 } from "@app/components/navigation/NavigationSidebar";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
@@ -47,24 +46,6 @@ export function Navigation({
   const router = useRouter();
   const { user } = useUser();
 
-  const workspacePicker = useMemo(() => {
-    if (user && user.workspaces.length > 1) {
-      return (
-        <WorkspacePicker
-          user={user}
-          workspace={owner}
-          onWorkspaceUpdate={async (workspace) => {
-            const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-            if (workspace.id !== owner.id) {
-              await router.push(assistantRoute).then(() => router.reload());
-            }
-          }}
-        />
-      );
-    }
-    return null;
-  }, [owner, router, user]);
-
   if (hideSidebar) {
     return null;
   }
@@ -92,7 +73,6 @@ export function Navigation({
             <VisuallyHidden>
               <SheetTitle className="hidden" />
             </VisuallyHidden>
-            {workspacePicker}
           </SheetHeader>
           <NavigationSidebar
             subscription={subscription}
@@ -113,7 +93,6 @@ export function Navigation({
         )}
       >
         <div className="hidden flex-1 bg-muted-background dark:bg-muted-background-night lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
-          {workspacePicker}
           <NavigationSidebar
             owner={owner}
             subscription={subscription}
