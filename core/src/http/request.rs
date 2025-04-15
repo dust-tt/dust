@@ -99,7 +99,7 @@ impl HttpRequest {
         .into_iter()
         .map(|ip| {
             lazy_static! {
-                static ref RE: Regex = Regex::new(r"^(0|127|10|192\.168)\..*").unwrap();
+                static ref RE: Regex = Regex::new(r"^(0|127|10|192\.168|169\.254)\..*").unwrap();
             }
             // println!("IP {}", ip.to_string());
             match RE.is_match(ip.to_string().as_str()) {
