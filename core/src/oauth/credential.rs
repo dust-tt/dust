@@ -137,7 +137,7 @@ impl Credential {
                 vec!["api_key"]
             }
             CredentialProvider::Hubspot => {
-                vec!["api_key"]
+                vec!["accessToken", "portalId"]
             }
             CredentialProvider::Bigquery => {
                 vec![

@@ -25,12 +25,40 @@ import {
   useUpdateLabsConnectionConfiguration,
 } from "@app/lib/swr/labs";
 import type {
+  ConnectionCredentials,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LabsConnectionItemType,
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
+
+type CredentialFieldType = {
+  name: string;
+  label: string;
+  type: "text" | "password";
+};
+
+type CredentialSchemaType = {
+  fields: CredentialFieldType[];
+};
+
+const PROVIDER_CREDENTIAL_SCHEMAS: Record<string, CredentialSchemaType> = {
+  hubspot: {
+    fields: [
+      {
+        name: "accessToken",
+        label: "Hubspot Access Token",
+        type: "password",
+      },
+      {
+        name: "portalId",
+        label: "Hubspot Portal ID",
+        type: "text",
+      },
+    ],
+  },
+};
 
 interface ConfigureLabsConnectionModal {
   owner: LightWorkspaceType;
@@ -70,9 +98,19 @@ export function ConfigureLabsConnectionModal({
 
   const [selectionConfigurations, setSelectionConfigurations] =
     useState<DataSourceViewSelectionConfigurations>({});
-  const [apiKey, setApiKey] = useState("");
+  const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [pendingDataSourceView, setPendingDataSourceView] =
     useState<DataSourceViewType | null>(null);
+
+  const credentialSchema = PROVIDER_CREDENTIAL_SCHEMAS[connection.id] || {
+    fields: [
+      {
+        name: "apiKey",
+        label: "API Key",
+        type: "password",
+      },
+    ],
+  };
 
   useEffect(() => {
     if (!dataSourcesViews.length || !configuration) {
@@ -124,38 +162,27 @@ export function ConfigureLabsConnectionModal({
     }
   };
 
-  const onSaveApiKey = async () => {
-    if (connection.authType !== "apiKey") {
-      return;
-    }
-
-    if (!configuration && !apiKey) {
+  const onSaveCredentials = async () => {
+    if (!configuration && !Object.keys(credentials).length) {
       sendNotification({
         type: "error",
         title: "Failed to save",
-        description: "Please enter an API key before saving.",
+        description: "Please enter all required credentials before saving.",
       });
       return;
     }
 
     let success = false;
 
-    if (configuration) {
-      success = await updateConnectionConfiguration({
-        apiKey,
-        dataSourceViewId: pendingDataSourceView?.id ?? null,
-      });
-    } else {
-      success = await createConnectionConfiguration({
-        provider: connection.id,
-        apiKey,
-      });
+    success = await createConnectionConfiguration({
+      provider: connection.id,
+      credentials: credentials as ConnectionCredentials,
+    });
 
-      if (success && pendingDataSourceView) {
-        success = await updateConnectionConfiguration({
-          dataSourceViewId: pendingDataSourceView.id,
-        });
-      }
+    if (success && pendingDataSourceView) {
+      success = await updateConnectionConfiguration({
+        dataSourceViewId: pendingDataSourceView.id,
+      });
     }
 
     if (success) {
@@ -180,7 +207,7 @@ export function ConfigureLabsConnectionModal({
     const success = await deleteConnectionConfiguration();
     if (success) {
       await mutateConfiguration();
-      setApiKey("");
+      setCredentials({});
     }
   };
 
@@ -228,20 +255,33 @@ export function ConfigureLabsConnectionModal({
                 <>
                   {connection.authType === "apiKey" && (
                     <div className="flex flex-col gap-2">
-                      <label className="text-element-900 text-sm font-medium">
-                        {connection.label} API Key
-                      </label>
-                      <input
-                        type="password"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        className="border-structure-200 text-element-900 rounded-md border bg-white px-3 py-2 text-sm"
-                        placeholder="Enter your API key"
-                      />
+                      {credentialSchema.fields.map((field) => (
+                        <div key={field.name} className="flex flex-col gap-2">
+                          <label className="text-element-900 text-sm font-medium">
+                            {field.label}
+                          </label>
+                          <input
+                            type={field.type}
+                            value={credentials[field.name] || ""}
+                            onChange={(e) =>
+                              setCredentials((prev) => ({
+                                ...prev,
+                                [field.name]: e.target.value,
+                              }))
+                            }
+                            className="border-structure-200 text-element-900 rounded-md border bg-white px-3 py-2 text-sm"
+                            placeholder={`Enter your ${field.label.toLowerCase()}`}
+                          />
+                        </div>
+                      ))}
                       <Button
                         label="Connect"
-                        onClick={onSaveApiKey}
-                        disabled={!apiKey}
+                        onClick={onSaveCredentials}
+                        disabled={
+                          !credentialSchema.fields.every(
+                            (field) => credentials[field.name]
+                          )
+                        }
                       />
                     </div>
                   )}
@@ -288,7 +328,7 @@ export function ConfigureLabsConnectionModal({
           }}
           rightButtonProps={{
             label: "Save",
-            onClick: onSaveApiKey,
+            onClick: onSaveCredentials,
           }}
         />
       </SheetContent>
