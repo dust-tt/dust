@@ -41,7 +41,7 @@ export const TreeExample = () => {
   return (
     <div className="s-flex s-flex-col s-gap-10">
       <div className="s-flex s-gap-10">
-        <div className="s-flex s-flex-col s-gap-3">
+        <div className="s-flex s-w-44 s-flex-col s-gap-3">
           <div className="s-text-xl">Tree</div>
           <div>
             <Tree>

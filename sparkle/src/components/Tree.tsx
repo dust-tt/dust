@@ -1,11 +1,25 @@
-import React, { ComponentType, ReactNode, useState } from "react";
+import React, {
+  ComponentType,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
-import { Button, Spinner } from "@sparkle/components/";
+import {
+  Button,
+  Icon,
+  Spinner,
+  TooltipContent,
+  TooltipPortal,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "@sparkle/components/";
 import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 import { Checkbox, CheckboxProps } from "./Checkbox";
-import { Icon } from "./Icon";
 
 export interface TreeProps {
   children?: ReactNode;
@@ -132,6 +146,9 @@ Tree.Item = React.forwardRef<
     },
     ref
   ) => {
+    const [isTruncated, setIsTruncated] = useState(false);
+    const labelRef = React.useRef<HTMLDivElement>(null);
+
     const [collapsedState, setCollapsedState] = useState<boolean>(
       defaultCollapsed ?? true
     );
@@ -157,6 +174,23 @@ Tree.Item = React.forwardRef<
     };
 
     const childrenToRender = getChildren();
+
+    const checkTruncation = useCallback(() => {
+      if (labelRef.current) {
+        setIsTruncated(
+          labelRef.current.scrollWidth > labelRef.current.clientWidth
+        );
+      }
+    }, []);
+
+    useEffect(() => {
+      const observer = new ResizeObserver(checkTruncation);
+      if (labelRef.current) {
+        observer.observe(labelRef.current);
+        checkTruncation();
+      }
+      return () => observer.disconnect();
+    }, [checkTruncation]);
 
     const isExpanded = childrenToRender && !effectiveCollapsed;
 
@@ -217,11 +251,38 @@ Tree.Item = React.forwardRef<
           )}
           {checkbox && <Checkbox {...checkbox} size="xs" />}
           <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
-          <div
-            className={`s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night ${labelClassName}`}
-          >
-            {label}
-          </div>
+          {isTruncated ? (
+            <TooltipProvider>
+              <TooltipRoot>
+                <TooltipTrigger asChild>
+                  <div
+                    ref={labelRef}
+                    className={cn(
+                      "s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night",
+                      labelClassName
+                    )}
+                  >
+                    {label}
+                  </div>
+                </TooltipTrigger>
+                <TooltipPortal>
+                  <TooltipContent side="top" align="start">
+                    {label}
+                  </TooltipContent>
+                </TooltipPortal>
+              </TooltipRoot>
+            </TooltipProvider>
+          ) : (
+            <div
+              ref={labelRef}
+              className={cn(
+                "s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night",
+                labelClassName
+              )}
+            >
+              {label}
+            </div>
+          )}
           <div className="s-grow" />
           {actions && (
             <div
