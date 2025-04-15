@@ -348,11 +348,11 @@ export async function tryListMCPTools(
         tools,
       });
 
-      // This handle the case where the MCP server configuration is using pre-configured data sources
+      // This handles the case where the MCP server configuration is using pre-configured data sources
       // or tables.
       // We add the description of the data sources or tables to the tool description so that the model
       // has more information to make the right choice.
-      // This replicate the current behavior of the Retrieval action for example.
+      // This replicates the current behavior of the Retrieval action for example.
       let extraDescription: string = "";
 
       // Only do it when there is a single tool configuration as we only have one description to add.
