@@ -38,19 +38,14 @@ export default function SpaceManagedActionsViewsModel({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button
-          label="Add Action"
-          variant="primary"
-          icon={PlusIcon}
-          size="sm"
-        />
+        <Button label="Add Tool" variant="primary" icon={PlusIcon} size="sm" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className="w-[500px]">
         <div className="flex flex-row items-center gap-2">
           <DropdownMenuSearchbar
             className="flex-grow"
-            placeholder="Search actions..."
+            placeholder="Search tools..."
             name="search"
             value={searchText}
             onChange={setSearchText}
@@ -58,7 +53,7 @@ export default function SpaceManagedActionsViewsModel({
         </div>
         <ScrollArea className="max-h-[500px]">
           {availableMCPServers.length <= 0 && (
-            <DropdownMenuItem label="No more actions to add" disabled />
+            <DropdownMenuItem label="No more tools to add" disabled />
           )}
           {availableMCPServers
             .filter((s) => filterMCPServer(s, searchText))
