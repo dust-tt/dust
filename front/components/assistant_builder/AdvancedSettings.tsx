@@ -1,11 +1,15 @@
 import {
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  Popover,
+  Label,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   ScrollArea,
   ScrollBar,
 } from "@dust-tt/sparkle";
@@ -16,7 +20,6 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import { classNames } from "@app/lib/utils";
 import type {
   AssistantCreativityLevel,
   ModelConfigurationType,
@@ -114,29 +117,19 @@ export function AdvancedSettings({
   }
 
   return (
-    <Popover
-      className="!w-[400px] !max-w-[400px]"
-      align="end"
-      popoverTriggerAsChild
-      trigger={
+    <PopoverRoot>
+      <PopoverTrigger asChild>
         <Button
           label="Advanced settings"
           variant="outline"
           size="sm"
           isSelect
         />
-      }
-      content={
+      </PopoverTrigger>
+      <PopoverContent className="w-96 p-4" align="end">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col items-start gap-2">
-            <div
-              className={classNames(
-                "w-full grow text-sm font-bold",
-                "text-muted-foreground dark:text-muted-foreground-night"
-              )}
-            >
-              Model selection
-            </div>
+            <Label>Model selection</Label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -177,14 +170,7 @@ export function AdvancedSettings({
             </DropdownMenu>
           </div>
           <div className="flex flex-col items-start gap-2">
-            <div
-              className={classNames(
-                "w-full grow text-sm font-bold",
-                "text-muted-foreground dark:text-muted-foreground-night"
-              )}
-            >
-              Creativity level
-            </div>
+            <Label>Creativity level</Label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -215,16 +201,9 @@ export function AdvancedSettings({
             </DropdownMenu>
           </div>
           {supportsResponseFormat && (
-            <ScrollArea className="max-h-200 flex flex-col" hideScrollBar>
-              <div
-                className={classNames(
-                  "w-full grow text-sm font-bold",
-                  "text-element-800 dark:text-element-800-night"
-                )}
-              >
-                Structured Response Format
-              </div>
-              <div className="w-full">
+            <div className="flex flex-col gap-2">
+              <Label>Structured Response Format</Label>
+              <ScrollArea className="h-96">
                 <CodeEditor
                   data-color-mode={isDark ? "dark" : "light"}
                   value={generationSettings?.responseFormat ?? ""}
@@ -254,8 +233,8 @@ export function AdvancedSettings({
                       responseFormat: e.target.value,
                     });
                   }}
-                  minHeight={400}
-                  className={classNames(
+                  minHeight={380}
+                  className={cn(
                     "rounded-lg",
                     isInvalidJson(generationSettings?.responseFormat)
                       ? "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
@@ -268,13 +247,13 @@ export function AdvancedSettings({
                   }}
                   language="json"
                 />
-              </div>
-              <ScrollBar className="py-0" />
-            </ScrollArea>
+                <ScrollBar orientation="vertical" />
+              </ScrollArea>
+            </div>
           )}
         </div>
-      }
-    />
+      </PopoverContent>
+    </PopoverRoot>
   );
 }
 
