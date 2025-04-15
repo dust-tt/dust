@@ -33,7 +33,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "invalid_request_error",
-            message: "Only workspace administrators can create tags",
+            message: "Only workspace administrators can delete tags",
           },
         });
       }
