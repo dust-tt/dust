@@ -21,6 +21,7 @@ pub enum CredentialProvider {
     Microsoft,
     Modjo,
     Hubspot,
+    Linear,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -134,6 +135,9 @@ impl Credential {
                 vec!["account", "warehouse", "username", "password", "role"]
             }
             CredentialProvider::Modjo => {
+                vec!["api_key"]
+            }
+            CredentialProvider::Linear => {
                 vec!["api_key"]
             }
             CredentialProvider::Hubspot => {

@@ -105,7 +105,7 @@ export function ConfigureLabsConnectionModal({
   const credentialSchema = PROVIDER_CREDENTIAL_SCHEMAS[connection.id] || {
     fields: [
       {
-        name: "apiKey",
+        name: "api_key",
         label: "API Key",
         type: "password",
       },

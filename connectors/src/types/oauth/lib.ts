@@ -89,6 +89,7 @@ export const CREDENTIALS_PROVIDERS = [
   // Labs
   "modjo",
   "hubspot",
+  "linear",
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
