@@ -350,7 +350,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "add_issue_to_project",
-    "Add an existing issue to a GitHub project.",
+    "Add an existing issue to a GitHub project, optionally setting a field value.",
     {
       owner: z
         .string()
@@ -364,8 +364,23 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       projectId: z
         .string()
         .describe("The node ID of the GitHub project (GraphQL ID)."),
+      field: z
+        .object({
+          fieldId: z
+            .string()
+            .describe("The ID of the field to update (GraphQL ID)."),
+          optionId: z
+            .string()
+            .describe(
+              "The ID of the option to update the field to (GraphQL ID)."
+            ),
+        })
+        .optional()
+        .describe(
+          "Optional field configuration with both fieldId and optionId required if provided."
+        ),
     },
-    async ({ owner, repo, issueNumber, projectId }) => {
+    async ({ owner, repo, issueNumber, projectId, field }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
         provider: "github",
@@ -397,7 +412,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         };
 
         // Add the issue to the project using GraphQL mutation.
-        const mutation = `
+        const addToProjectMutation = `
           mutation($projectId: ID!, $contentId: ID!) {
             addProjectV2ItemById(input: {
               projectId: $projectId
@@ -409,90 +424,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             }
           }`;
 
-        await octokit.graphql(mutation, {
+        const item = (await octokit.graphql(addToProjectMutation, {
           projectId,
           contentId: issue.repository.issue.id,
-        });
-
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text: `Issue #${issueNumber} successfully added to the project.`,
-            },
-          ],
-        };
-      } catch (e) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Error adding GitHub issue to project: ${normalizeError(e).message}`,
-            },
-          ],
-        };
-      }
-    }
-  );
-
-  server.tool(
-    "update_issue_project_field",
-    "Updates a GitHub project field associated with an issue",
-    {
-      owner: z
-        .string()
-        .describe(
-          "The owner of the repository (account or organization name)."
-        ),
-      repo: z.string().describe("The name of the repository."),
-      issueNumber: z
-        .number()
-        .describe("The issue number to add to the project."),
-      projectId: z
-        .string()
-        .describe("The node ID of the GitHub project (GraphQL ID)."),
-      fieldId: z
-        .string()
-        .describe("The ID of the field to update (GraphQL ID)."),
-      optionId: z
-        .string()
-        .describe("The ID of the option to update the field to (GraphQL ID)."),
-    },
-    async ({ owner, repo, issueNumber, projectId, fieldId, optionId }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-        provider: "github",
-      });
-
-      const octokit = new Octokit({ auth: accessToken });
-
-      try {
-        // First, get the issue's node ID using GraphQL
-        const issueQuery = `
-        query($owner: String!, $repo: String!, $issueNumber: Int!) {
-          repository(owner: $owner, name: $repo) {
-            issue(number: $issueNumber) {
-              id
-            }
-          }
-        }`;
-
-        const issue = (await octokit.graphql(issueQuery, {
-          owner,
-          repo,
-          issueNumber,
         })) as {
-          repository: {
-            issue: {
+          addProjectV2ItemById: {
+            item: {
               id: string;
             };
           };
         };
 
-        // Mutation to update the field value to specified option.
-        const mutation = `
+        if (field) {
+          // Mutation to update the field value to specified option.
+          const updateFieldMutation = `
           mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String) {
             updateProjectV2ItemFieldValue(input: {
               projectId: $projectId,
@@ -508,19 +453,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             }
           }`;
 
-        await octokit.graphql(mutation, {
-          projectId,
-          itemId: issue.repository.issue.id,
-          fieldId,
-          optionId,
-        });
+          await octokit.graphql(updateFieldMutation, {
+            projectId,
+            itemId: item.addProjectV2ItemById.item.id,
+            fieldId: field.fieldId,
+            optionId: field.optionId,
+          });
+        }
 
         return {
           isError: false,
           content: [
             {
               type: "text",
-              text: `Issue #${issueNumber} project field successfully updated.`,
+              text: `Issue #${issueNumber} successfully added to the project.`,
             },
           ],
         };
