@@ -162,9 +162,7 @@ export default function LabsTranscriptsIndex({
         pageTitle="Dust - Transcripts processing"
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
-        {featureFlags.includes("labs_features") && (
-          <Breadcrumbs items={items} />
-        )}
+        <Breadcrumbs items={items} />
         <DeleteProviderDialog
           isOpen={isDeleteProviderDialogOpened}
           onClose={() => setIsDeleteProviderDialogOpened(false)}

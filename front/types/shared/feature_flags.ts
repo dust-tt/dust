@@ -10,7 +10,6 @@ export const WHITELISTABLE_FEATURES = [
   "google_ai_studio_experimental_models_feature",
   "index_private_slack_channel",
   "labs_connection_hubspot",
-  "labs_features",
   "labs_salesforce_personal_connections",
   "labs_trackers",
   "labs_transcripts",
