@@ -7,8 +7,6 @@ import { DoubleIcon } from "@sparkle/components/DoubleIcon";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
-import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
-import { cn } from "@sparkle/lib/utils";
 import {
   TooltipContent,
   TooltipPortal,
@@ -16,6 +14,8 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@sparkle/components/Tooltip";
+import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
+import { cn } from "@sparkle/lib/utils";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
