@@ -10,7 +10,7 @@ import {
   getLightAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import {
   batchRenderMessages,
   canReadMessage,
