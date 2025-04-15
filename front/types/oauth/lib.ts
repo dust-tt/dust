@@ -106,6 +106,7 @@ export const CREDENTIALS_PROVIDERS = [
   // LABS
   "hubspot",
   "modjo",
+  "linear",
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
@@ -173,6 +174,7 @@ export const ApiKeyCredentialsSchema = t.type({
   api_key: t.string,
 });
 export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
+export type LinearCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
 
 export const HubspotCredentialsSchema = t.type({
   accessToken: t.string,
@@ -193,7 +195,8 @@ export type ConnectionCredentials =
   | BigQueryCredentialsWithLocation
   | SalesforceCredentials
   | ModjoCredentials
-  | HubspotCredentials;
+  | HubspotCredentials
+  | LinearCredentials;
 
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
@@ -211,6 +214,12 @@ export function isHubspotCredentials(
   credentials: ConnectionCredentials
 ): credentials is HubspotCredentials {
   return "accessToken" in credentials && "portalId" in credentials;
+}
+
+export function isLinearCredentials(
+  credentials: ConnectionCredentials
+): credentials is LinearCredentials {
+  return "api_key" in credentials;
 }
 
 export function isBigQueryWithLocationCredentials(
