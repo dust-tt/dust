@@ -57,6 +57,7 @@ import {
 
 const API_PAGE_SIZE = 100;
 const REPOSITORIES_API_PAGE_SIZE = 25;
+const MAX_ISSUES_PAGE_SIZE = 100;
 
 type GithubOrg = {
   id: number;
@@ -199,6 +200,19 @@ export async function getRepoIssuesPage(
 ): Promise<GithubIssue[]> {
   try {
     const octokit = await getOctokit(connector);
+
+    if (page >= MAX_ISSUES_PAGE_SIZE) {
+      logger.warn(
+        {
+          repoName,
+          login,
+          connectorId: connector.id,
+          page,
+        },
+        `We cannot obtain more than ${MAX_ISSUES_PAGE_SIZE} pages of issues with the GitHub REST API.`
+      );
+      return [];
+    }
 
     const issues = (
       await octokit.rest.issues.listForRepo({

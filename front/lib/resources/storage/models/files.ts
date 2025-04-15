@@ -38,7 +38,7 @@ FileModel.init(
       allowNull: false,
     },
     fileName: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(4096),
       allowNull: false,
     },
     fileSize: {

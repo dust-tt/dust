@@ -1,8 +1,16 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
-import type { MCPActionPublicType } from "@dust-tt/client";
+import { asDisplayName } from "@app/shared/lib/utils";
+import type {
+  MCPActionPublicType,
+  MCPToolStakeLevelPublicType,
+  MCPValidationMetadataPublicType,
+  MCPValidationOutputPublicType,
+} from "@dust-tt/client";
 import {
+  ActionPieChartIcon,
   Button,
   CodeBlock,
+  CollapsibleComponent,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -15,21 +23,25 @@ import { createContext, useCallback, useEffect, useState } from "react";
 
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: {
-    workspaceId: string;
-    messageId: string;
-    conversationId: string;
     action: MCPActionPublicType;
+    conversationId: string;
     inputs: Record<string, unknown>;
+    messageId: string;
+    metadata: MCPValidationMetadataPublicType;
+    stake?: MCPToolStakeLevelPublicType;
+    workspaceId: string;
   }) => void;
 };
 
 // Pending validation requests, keyed by message ID
 export type PendingValidationRequestType = {
-  workspaceId: string;
-  messageId: string;
-  conversationId: string;
   action: MCPActionPublicType;
+  conversationId: string;
   inputs: Record<string, unknown>;
+  messageId: string;
+  metadata: MCPValidationMetadataPublicType;
+  stake?: MCPToolStakeLevelPublicType;
+  workspaceId: string;
 };
 
 export const ActionValidationContext =
@@ -89,12 +101,19 @@ export function ActionValidationProvider({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [neverAskAgain, setNeverAskAgain] = useState(false);
+
   const dustAPI = useDustAPI();
 
   const sendCurrentValidation = useCallback(
-    async (approved: boolean) => {
+    async (status: MCPValidationOutputPublicType) => {
       if (!currentValidation) {
         return;
+      }
+
+      let approved = status;
+      if (status === "approved" && neverAskAgain) {
+        approved = "always_approved";
       }
 
       setErrorMessage(null);
@@ -108,17 +127,17 @@ export function ActionValidationProvider({
       });
 
       if (response.isErr()) {
-        setErrorMessage(
-          `Failed to ${approved ? "approve" : "reject"} action. Please try again.`
-        );
+        setErrorMessage("Failed to assess action approval. Please try again.");
         return;
       }
+
+      setNeverAskAgain(false);
     },
-    [currentValidation]
+    [currentValidation, dustAPI, neverAskAgain]
   );
 
   const handleSubmit = useCallback(
-    async (approved: boolean) => {
+    (approved: MCPValidationOutputPublicType) => {
       void sendCurrentValidation(approved);
       setIsProcessing(false);
       const foundItem = takeNextFromQueue();
@@ -141,6 +160,8 @@ export function ActionValidationProvider({
     conversationId: string;
     action: MCPActionPublicType;
     inputs: Record<string, unknown>;
+    stake?: MCPToolStakeLevelPublicType;
+    metadata: MCPValidationMetadataPublicType;
   }) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
@@ -155,33 +176,49 @@ export function ActionValidationProvider({
         onOpenChange={(open) => {
           if (open === false && !isProcessing) {
             if (currentValidation) {
-              void handleSubmit(false);
+              void handleSubmit("rejected");
             }
           }
         }}
       >
-        <DialogContent>
+        <DialogContent isAlertDialog>
           <DialogHeader>
-            <DialogTitle>Action Validation Required</DialogTitle>
+            <DialogTitle visual={<ActionPieChartIcon />}>
+              Action Validation Required
+            </DialogTitle>
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <div>
-                <span className="font-medium">Action:</span>{" "}
-                {currentValidation?.action.functionCallName}
+                Allow <b>@{currentValidation?.metadata.agentName}</b> to use the
+                tool{" "}
+                <b>{asDisplayName(currentValidation?.metadata.toolName)}</b>{" "}
+                from{" "}
+                <b>
+                  {asDisplayName(currentValidation?.metadata.mcpServerName)}
+                </b>
+                ?
               </div>
               {currentValidation?.inputs &&
                 Object.keys(currentValidation.inputs).length > 0 && (
-                  <div>
-                    <span className="font-medium">Inputs:</span>
-                    <pre className="mt-2 whitespace-pre-wrap rounded bg-primary-50 p-2 text-sm dark:bg-primary-50-night">
-                      <CodeBlock className="language-json">
-                        {JSON.stringify(currentValidation?.inputs, null, 2)}
-                      </CodeBlock>
-                    </pre>
-                  </div>
+                  <CollapsibleComponent
+                    triggerChildren={
+                      <span className="font-medium">Details</span>
+                    }
+                    contentChildren={
+                      <div>
+                        <div className="max-h-80 overflow-auto bg-muted rounded-lg">
+                          <CodeBlock
+                            wrapLongLines
+                            className="language-json overflow-y-auto"
+                          >
+                            {JSON.stringify(currentValidation?.inputs, null, 2)}
+                          </CodeBlock>
+                        </div>
+                      </div>
+                    }
+                  />
                 )}
-              <div>Do you want to allow this action to proceed?</div>
 
               {validationQueue.length > 0 && (
                 <div className="mt-2 text-sm font-medium text-info-900">
@@ -197,11 +234,23 @@ export function ActionValidationProvider({
               )}
             </div>
           </DialogContainer>
-          <DialogFooter>
+          <DialogFooter
+            permanentValidation={
+              currentValidation?.stake === "low"
+                ? {
+                    label: "Never ask again",
+                    checked: neverAskAgain,
+                    onChange: (check) => {
+                      setNeverAskAgain(!!check);
+                    },
+                  }
+                : undefined
+            }
+          >
             <Button
               label="Decline"
               variant="outline"
-              onClick={() => handleSubmit(false)}
+              onClick={() => handleSubmit("rejected")}
               disabled={isProcessing}
             >
               {isProcessing && (
@@ -214,7 +263,7 @@ export function ActionValidationProvider({
             <Button
               label="Approve"
               variant="primary"
-              onClick={() => handleSubmit(true)}
+              onClick={() => handleSubmit("approved")}
               disabled={isProcessing}
             >
               {isProcessing && (

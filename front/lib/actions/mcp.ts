@@ -1,7 +1,10 @@
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type {
+  MCPToolStakeLevelType,
+  MCPValidationMetadataType,
+} from "@app/lib/actions/constants";
 import { DEFAULT_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
@@ -94,6 +97,7 @@ export type MCPToolConfigurationType = (
   | LocalMCPToolConfigurationType
 ) & {
   originalName: string;
+  mcpServerName: string;
 };
 
 type MCPApproveExecutionEvent = {
@@ -104,6 +108,7 @@ type MCPApproveExecutionEvent = {
   action: MCPActionType;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
+  metadata: MCPValidationMetadataType;
 };
 
 export function isMCPApproveExecutionEvent(
@@ -148,6 +153,7 @@ export class MCPActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly executionState:
     | "pending"
+    | "timeout"
     | "allowed_explicitly"
     | "allowed_implicitly"
     | "denied" = "pending";
@@ -307,6 +313,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       | "allowed_implicitly"
       | "allowed_explicitly"
       | "pending"
+      | "timeout"
       | "denied" = s;
 
     if (status === "pending") {
@@ -320,6 +327,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         stake: isPlatformMCPToolConfiguration(actionConfiguration)
           ? actionConfiguration.permission
           : DEFAULT_MCP_TOOL_STAKE_LEVEL,
+        metadata: {
+          toolName: actionConfiguration.originalName,
+          mcpServerName: actionConfiguration.mcpServerName,
+          agentName: agentConfiguration.name,
+        },
       };
 
       try {
@@ -380,8 +392,17 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       }
     }
 
-    // The action timed-out, status was not updated
+    // The status was not updated by the event, or no event was received.
+    // In this case, we set the status to timeout.
     if (status === "pending") {
+      status = "timeout";
+    }
+
+    await action.update({
+      executionState: status,
+    });
+
+    if (status === "timeout") {
       localLogger.info("Action validation timed out");
       // Yield a tool success, with a message that the action timed out
       yield {

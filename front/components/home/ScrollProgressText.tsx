@@ -66,7 +66,6 @@ export const ScrollProgressText: React.FC<ScrollProgressTextProps> = ({
         </span>
       ))}
 
-      {/* Debug indicator (remove in production) */}
       {/* <div className="fixed right-4 top-4 z-50 bg-white p-2 text-black">
         Progress: {Math.round(scrollProgress * 100)}%
       </div> */}

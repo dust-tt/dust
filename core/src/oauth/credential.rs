@@ -21,6 +21,7 @@ pub enum CredentialProvider {
     Microsoft,
     Modjo,
     Hubspot,
+    Linear,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -136,8 +137,11 @@ impl Credential {
             CredentialProvider::Modjo => {
                 vec!["api_key"]
             }
-            CredentialProvider::Hubspot => {
+            CredentialProvider::Linear => {
                 vec!["api_key"]
+            }
+            CredentialProvider::Hubspot => {
+                vec!["accessToken", "portalId"]
             }
             CredentialProvider::Bigquery => {
                 vec![

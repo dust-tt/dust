@@ -16,6 +16,7 @@ import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   findMatchingSchemaKeys,
   findSchemaAtPath,
+  followInternalRef,
   isJSONSchemaObject,
   schemasAreEqual,
   setValueAtPath,
@@ -206,9 +207,18 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
       let shouldInclude = true;
 
       if (isJSONSchemaObject(property)) {
-        // Check if this property has a matching mimeType.
         for (const schema of Object.values(ConfigurableToolInputJSONSchemas)) {
-          if (schemasAreEqual(property, schema)) {
+          // Check if the property matches the schema, following references if $ref points to a schema internally.
+          let schemasMatch = schemasAreEqual(property, schema);
+
+          if (!schemasMatch && property.$ref) {
+            const refSchema = followInternalRef(inputSchema, property.$ref);
+            if (refSchema) {
+              schemasMatch = schemasAreEqual(refSchema, schema);
+            }
+          }
+
+          if (schemasMatch) {
             shouldInclude = false;
             // Track removed properties that were in the required array.
             if (resultingSchema.required?.includes(key)) {
@@ -285,6 +295,11 @@ export function augmentInputsWithConfiguration({
   const inputs = rawInputs;
 
   const ajv = new Ajv({ allErrors: true });
+
+  // Note: When using AJV validation, string patterns must use regex syntax (e.g. /^fil_/) instead
+  // of startsWith() to avoid "Invalid escape" errors. This is important because our Zod schemas are
+  // converted to JSON Schema for AJV validation, and AJV requires regex patterns for string
+  // validation.
   const validate = ajv.compile(inputSchema);
   const isValid = validate(inputs);
 
@@ -301,7 +316,11 @@ export function augmentInputsWithConfiguration({
         : [];
 
       const fullPath = [...parentPath, missingProp];
-      const propSchema = findSchemaAtPath(inputSchema, fullPath);
+      let propSchema = findSchemaAtPath(inputSchema, fullPath);
+      // If the schema we found is a reference, follow it.
+      if (propSchema?.$ref) {
+        propSchema = followInternalRef(inputSchema, propSchema.$ref);
+      }
 
       // If we found a schema and it has a matching MIME type, inject the value
       if (propSchema) {
@@ -341,7 +360,7 @@ export function getMCPServerRequirements(
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
   requiredStrings: Record<string, string>;
-  requiredNumbers: Record<string, number>;
+  requiredNumbers: Record<string, number | null>;
   requiredBooleans: Record<string, boolean>;
   noRequirement: boolean;
 } {
@@ -382,7 +401,7 @@ export function getMCPServerRequirements(
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER,
-    }).map((path) => [path, 0])
+    }).map((path) => [path, null])
   );
   const requiredBooleans = Object.fromEntries(
     findPathsToConfiguration({

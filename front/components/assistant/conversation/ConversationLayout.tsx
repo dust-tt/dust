@@ -25,13 +25,20 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type {
+  ConversationType,
+  LightWorkspaceType,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
   conversationId: string | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  user: UserType;
 }
 
 export default function ConversationLayout({
@@ -41,7 +48,7 @@ export default function ConversationLayout({
   children: React.ReactNode;
   pageProps: ConversationLayoutProps;
 }) {
-  const { baseUrl, owner, subscription } = pageProps;
+  const { baseUrl, owner, subscription, user } = pageProps;
 
   return (
     <ConversationsNavigationProvider
@@ -49,9 +56,10 @@ export default function ConversationLayout({
     >
       <ActionValidationProvider>
         <ConversationLayoutContent
+          baseUrl={baseUrl}
           owner={owner}
           subscription={subscription}
-          baseUrl={baseUrl}
+          user={user}
         >
           {children}
         </ConversationLayoutContent>
@@ -60,12 +68,21 @@ export default function ConversationLayout({
   );
 }
 
+interface ConversationLayoutContentProps {
+  baseUrl: string;
+  children: React.ReactNode;
+  owner: LightWorkspaceType;
+  subscription: SubscriptionType;
+  user: UserType;
+}
+
 const ConversationLayoutContent = ({
-  owner,
-  subscription,
   baseUrl,
   children,
-}: any) => {
+  owner,
+  subscription,
+  user,
+}: ConversationLayoutContentProps) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
     useURLSheet("assistantDetails");
@@ -123,7 +140,13 @@ const ConversationLayoutContent = ({
               owner={owner}
               hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
             >
-              <ConversationInnerLayout>{children}</ConversationInnerLayout>
+              <ConversationInnerLayout
+                conversation={conversation}
+                owner={owner}
+                user={user}
+              >
+                {children}
+              </ConversationInnerLayout>
             </CoEditionProvider>
           </>
         )}
@@ -134,9 +157,17 @@ const ConversationLayoutContent = ({
 
 interface ConversationInnerLayoutProps {
   children: React.ReactNode;
+  conversation: ConversationType | null;
+  owner: LightWorkspaceType;
+  user: UserType;
 }
 
-function ConversationInnerLayout({ children }: ConversationInnerLayoutProps) {
+function ConversationInnerLayout({
+  children,
+  conversation,
+  owner,
+  user,
+}: ConversationInnerLayoutProps) {
   const { isCoEditionOpen } = useCoEditionContext();
 
   return (
@@ -158,7 +189,13 @@ function ConversationInnerLayout({ children }: ConversationInnerLayoutProps) {
           defaultSize={50}
           className={isCoEditionOpen ? "" : "hidden"}
         >
-          {isCoEditionOpen && <CoEditionContainer />}
+          {isCoEditionOpen && (
+            <CoEditionContainer
+              conversation={conversation}
+              owner={owner}
+              user={user}
+            />
+          )}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

@@ -790,10 +790,10 @@ type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
-  | "labs_features"
   | "co_edition"
   | "labs_transcripts"
   | "labs_connection_hubspot"
+  | "labs_connection_linear"
   | "labs_trackers"
   | "labs_salesforce_personal_connections"
   | "document_tracker"
@@ -1311,6 +1311,16 @@ const MCPParamsEventSchema = z.object({
   action: MCPActionTypeSchema,
 });
 
+const MCPValidationMetadataSchema = z.object({
+  mcpServerName: z.string(),
+  toolName: z.string(),
+  agentName: z.string(),
+});
+
+export type MCPValidationMetadataPublicType = z.infer<
+  typeof MCPValidationMetadataSchema
+>;
+
 const MCPApproveExecutionEventSchema = z.object({
   type: z.literal("tool_approve_execution"),
   created: z.number(),
@@ -1319,6 +1329,7 @@ const MCPApproveExecutionEventSchema = z.object({
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
   stake: z.optional(z.enum(["low", "high"])),
+  metadata: MCPValidationMetadataSchema,
 });
 
 const AgentErrorEventSchema = z.object({
@@ -1532,6 +1543,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "table_not_found"
   | "template_not_found"
   | "template_not_found"
+  | "labs_connection_configuration_already_exists"
   | "transcripts_configuration_already_exists"
   | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_not_found"
@@ -2852,3 +2864,15 @@ export const PostMCPResultsResponseSchema = z.object({
 export type PostMCPResultsResponseType = z.infer<
   typeof PostMCPResultsResponseSchema
 >;
+
+const MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export type MCPToolStakeLevelPublicType =
+  (typeof MCP_TOOL_STAKE_LEVELS)[number];
+
+const MCP_VALIDATION_OUTPUTS = [
+  "approved",
+  "rejected",
+  "always_approved",
+] as const;
+export type MCPValidationOutputPublicType =
+  (typeof MCP_VALIDATION_OUTPUTS)[number];

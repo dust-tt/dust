@@ -6,8 +6,10 @@ import {
   NavigationList,
   NavigationListLabel,
   PlusIcon,
+  SuitcaseIcon,
   Tree,
 } from "@dust-tt/sparkle";
+import type { ReturnTypeOf } from "@octokit/core/types";
 import { sortBy, uniqBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
@@ -45,6 +47,7 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
+  WhitelistableFeature,
 } from "@app/types";
 import {
   asDisplayName,
@@ -98,6 +101,10 @@ export default function SpaceSideBarMenu({
     return uniqBy(spacesAsAdmin.concat(spacesAsUser), "sId");
   }, [spacesAsAdmin, spacesAsUser]);
 
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
   if (isSpacesAsAdminLoading || isSpacesAsUserLoading || !spacesAsUser) {
     return <></>;
   }
@@ -115,12 +122,17 @@ export default function SpaceSideBarMenu({
     return spaces.map((space) => (
       <Fragment key={`space-${space.sId}`}>
         {space.kind === "system" ? (
-          <SystemSpaceMenu owner={owner} space={space} />
+          <SystemSpaceMenu
+            owner={owner}
+            space={space}
+            hasFeature={hasFeature}
+          />
         ) : (
           <SpaceMenu
             owner={owner}
             space={space}
             isMember={!!spacesAsUser.find((v) => v.sId === space.sId)}
+            hasFeature={hasFeature}
           />
         )}
       </Fragment>
@@ -146,7 +158,7 @@ export default function SpaceSideBarMenu({
               <div className="flex items-center justify-between pr-1">
                 <NavigationListLabel
                   label={sectionDetails.label}
-                  variant="secondary"
+                  variant="primary"
                 />
                 {sectionDetails.displayCreateSpaceButton &&
                   isAdmin &&
@@ -208,7 +220,7 @@ const getSpaceSectionDetails = (
       };
 
     case "system":
-      return { label: "", displayCreateSpaceButton: false };
+      return { label: "Administration", displayCreateSpaceButton: false };
 
     case "public":
       return { label: "Public", displayCreateSpaceButton: false };
@@ -222,31 +234,47 @@ const getSpaceSectionDetails = (
 
 const SYSTEM_SPACE_ITEMS = [
   {
-    label: "Connection Admin",
+    label: "Connections",
     visual: CloudArrowLeftRightIcon,
     category: "managed" as DataSourceViewCategory,
+    flag: null,
+  },
+  {
+    label: "Tools",
+    visual: SuitcaseIcon,
+    category: "actions" as DataSourceViewCategory,
+    flag: "mcp_actions" as WhitelistableFeature,
   },
 ];
 
 const SystemSpaceMenu = ({
   owner,
   space,
+  hasFeature,
 }: {
   owner: LightWorkspaceType;
   space: SpaceType;
+  hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
 }) => {
   return (
     <Tree variant="navigator">
-      {SYSTEM_SPACE_ITEMS.map((item) => (
-        <SystemSpaceItem
-          category={item.category as DataSourceViewCategoryWithoutApps}
-          key={item.label}
-          label={item.label}
-          owner={owner}
-          space={space}
-          visual={item.visual}
-        />
-      ))}
+      {SYSTEM_SPACE_ITEMS.map((item) => {
+        if (item.flag) {
+          if (!hasFeature(item.flag)) {
+            return null;
+          }
+        }
+        return (
+          <SystemSpaceItem
+            category={item.category as DataSourceViewCategoryWithoutApps}
+            key={item.label}
+            label={item.label}
+            owner={owner}
+            space={space}
+            visual={item.visual}
+          />
+        );
+      })}
     </Tree>
   );
 };
@@ -270,52 +298,20 @@ const SystemSpaceItem = ({
   const router = useRouter();
 
   const itemPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
-  const isAncestorToCurrentPage =
-    router.asPath.startsWith(itemPath + "/") || router.asPath === itemPath;
-
-  // Unfold the item if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(false);
-  useEffect(() => {
-    if (isAncestorToCurrentPage) {
-      setIsExpanded(isAncestorToCurrentPage);
-    }
-  }, [isAncestorToCurrentPage]);
-
-  const { isSpaceDataSourceViewsLoading, spaceDataSourceViews } =
-    useSpaceDataSourceViews({
-      workspaceId: owner.sId,
-      spaceId: space.sId,
-      category,
-      disabled: !isExpanded,
-    });
 
   return (
     <Tree.Item
       isNavigatable
+      type="item"
       label={label}
-      collapsed={!isExpanded}
       onItemClick={async () => {
         await setNavigationSelection({ lastSpaceId: space.sId });
         void router.push(itemPath);
       }}
       isSelected={router.asPath === itemPath}
-      onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={visual}
       areActionsFading={false}
-    >
-      {isExpanded && (
-        <Tree isLoading={isSpaceDataSourceViewsLoading}>
-          {spaceDataSourceViews.map((ds) => (
-            <SpaceDataSourceViewItem
-              item={ds}
-              key={ds.sId}
-              owner={owner}
-              space={space}
-            />
-          ))}
-        </Tree>
-      )}
-    </Tree.Item>
+    ></Tree.Item>
   );
 };
 
@@ -325,14 +321,21 @@ const SpaceMenu = ({
   owner,
   space,
   isMember,
+  hasFeature,
 }: {
   owner: LightWorkspaceType;
   space: SpaceType;
   isMember: boolean;
+  hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
 }) => {
   return (
     <Tree variant="navigator">
-      <SpaceMenuItem owner={owner} space={space} isMember={isMember} />
+      <SpaceMenuItem
+        owner={owner}
+        space={space}
+        isMember={isMember}
+        hasFeature={hasFeature}
+      />
     </Tree>
   );
 };
@@ -341,16 +344,15 @@ const SpaceMenuItem = ({
   owner,
   space,
   isMember,
+  hasFeature,
 }: {
   owner: LightWorkspaceType;
   space: SpaceType;
   isMember: boolean;
+  hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
 }) => {
   const router = useRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
 
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const isAncestorToCurrentPage =
@@ -769,7 +771,7 @@ const SpaceActionsSubMenu = ({
     >
       {isExpanded && (
         <Tree isLoading={isMCPServerViewsLoading}>
-          {sortBy(serverViews, "server.name").map((serverView) => (
+          {serverViews.map((serverView) => (
             <SpaceActionItem
               action={serverView}
               key={serverView.server.name}

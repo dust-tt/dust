@@ -32,6 +32,7 @@ const RESOURCES_PREFIX = {
   mcp_server_connection: "msc",
   mcp_server_view: "msv",
   remote_mcp_server: "rms",
+  tag: "tag",
 
   // Resources relative to the configuration of an MCP server.
   data_source_configuration: "dsc",

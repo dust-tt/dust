@@ -1,5 +1,10 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  MCPServerType,
+  MCPServerViewType,
+  RemoteMCPServerType,
+} from "@app/lib/api/mcp";
 import {
   getResourceNameAndIdFromSId,
   makeSId,
@@ -56,3 +61,29 @@ export const remoteMCPServerNameToSId = ({
     workspaceId,
   });
 };
+
+export const mcpServerViewSortingFn = (
+  a: MCPServerViewType,
+  b: MCPServerViewType
+) => {
+  return mcpServersSortingFn({ mcpServer: a.server }, { mcpServer: b.server });
+};
+
+export const mcpServersSortingFn = (
+  a: { mcpServer: MCPServerType },
+  b: { mcpServer: MCPServerType }
+) => {
+  const { serverType: aServerType } = getServerTypeAndIdFromSId(a.mcpServer.id);
+  const { serverType: bServerType } = getServerTypeAndIdFromSId(b.mcpServer.id);
+  if (aServerType === bServerType) {
+    return a.mcpServer.name.localeCompare(b.mcpServer.name);
+  }
+  return aServerType < bServerType ? -1 : 1;
+};
+
+export function mcpServerIsRemote(
+  server: MCPServerType
+): server is RemoteMCPServerType {
+  const serverType = getServerTypeAndIdFromSId(server.id).serverType;
+  return serverType === "remote";
+}
