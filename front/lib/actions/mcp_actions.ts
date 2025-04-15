@@ -212,9 +212,7 @@ export async function tryCallMCPTool(
       );
     }
     // Type inference is not working here because of them using passthrough in the zod schema.
-    const content = (toolCallResult.content ?? []) as MCPToolResultContent[];
-
-    return new Ok(content);
+    return new Ok((toolCallResult.content ?? []) as MCPToolResultContent[]);
   } catch (error) {
     return new Err(normalizeError(error));
   }
