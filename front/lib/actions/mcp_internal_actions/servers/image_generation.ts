@@ -4,12 +4,18 @@ import { z } from "zod";
 
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import logger from "@app/logger/logger";
 import { dustManagedCredentials } from "@app/types";
 
+const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
+const IMAGE_GENERATION_RATE_LIMITER_MAX_PER_TIMEFRAME = 800; // Around 100€ / week at 0.12€ / image
+const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week
+
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "image_generator",
+  name: "image_generation",
   version: "1.0.0",
-  description: "Generate images with Dall-E v3.",
+  description: "Agent can generate images (Dall-E v3).",
   icon: "GithubLogo",
   authorization: null,
 };
@@ -50,6 +56,27 @@ const createServer = (auth: Authenticator): McpServer => {
         ),
     },
     async ({ prompt, quality, style, size }) => {
+      // Crude way to rate limit the usage of the image generation tool.
+      //
+      const remaining = await rateLimiter({
+        key: `${IMAGE_GENERATION_RATE_LIMITER_KEY}_${auth.getNonNullableWorkspace().sId}`,
+        maxPerTimeframe: IMAGE_GENERATION_RATE_LIMITER_MAX_PER_TIMEFRAME,
+        timeframeSeconds: IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS,
+        logger,
+      });
+
+      if (remaining <= 0) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "Rate limit of 800 requests per week exceeded. Contact your administrator to increase the limit.",
+            },
+          ],
+        };
+      }
+
       const credentials = dustManagedCredentials();
       const openai = new OpenAI({
         apiKey: credentials.OPENAI_API_KEY,

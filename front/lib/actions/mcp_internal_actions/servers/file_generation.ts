@@ -6,14 +6,17 @@ import ConvertAPI from "convertapi";
 import { z } from "zod";
 
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { SupportedFileContentType } from "@app/types";
 import { assertNever, normalizeError, validateUrl } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "file_generator",
+  name: "file_generation",
   version: "1.0.0",
-  description: "Generate and convert files on demand.",
+  description: "Agent can generate and convert files.",
   authorization: null,
   icon: "GithubLogo",
 };
@@ -36,7 +39,7 @@ const OUTPUT_FORMATS = [
   "xml",
 ] as const;
 
-const createServer = (): McpServer => {
+const createServer = (auth: Authenticator): McpServer => {
   const server = new McpServer(serverInfo);
   server.tool(
     "get_supported_source_formats_for_output_format",
@@ -88,7 +91,7 @@ const createServer = (): McpServer => {
         .string()
         .max(64000)
         .describe(
-          "The content of the file to generate. You can either provide a url to a file or the content directly."
+          "The content of the file to generate. You can either provide the id of a file in the conversation, the url to a file or the content directly."
         ),
       source_format: z
         .string()
@@ -170,10 +173,32 @@ const createServer = (): McpServer => {
       const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
       let url: string | UploadResult = input;
       if (!validateUrl(input).valid) {
-        url = await convertapi.upload(
-          Readable.from(input),
-          `${file_name}.${source_format}`
-        );
+        const r = getResourceNameAndIdFromSId(input);
+        if (r && r.resourceName === "file") {
+          const { resourceId } = r;
+          const file = await FileResource.fetchByModelId(resourceId);
+          if (file) {
+            url = await convertapi.upload(
+              file.getReadStream({ auth, version: "original" }),
+              `${file_name}.${source_format}`
+            );
+          } else {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text",
+                  text: `File not found: ${input}`,
+                },
+              ],
+            };
+          }
+        } else {
+          url = await convertapi.upload(
+            Readable.from(input),
+            `${file_name}.${source_format}`
+          );
+        }
       }
 
       try {
@@ -200,7 +225,7 @@ const createServer = (): McpServer => {
         };
       } catch (e) {
         return {
-          isError: false,
+          isError: true,
           content: [
             {
               type: "text",

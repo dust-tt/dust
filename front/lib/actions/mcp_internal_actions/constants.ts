@@ -8,8 +8,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server, but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
-  "image_generator",
-  "file_generator",
+  "image_generation",
+  "file_generation",
   "github",
   "data_sources_debugger",
   "authentication_debugger",
@@ -39,12 +39,12 @@ export const INTERNAL_MCP_SERVERS: Record<
     isDefault: false,
     flag: "mcp_actions",
   },
-  image_generator: {
+  image_generation: {
     id: 2,
     isDefault: true,
     flag: "mcp_actions",
   },
-  file_generator: {
+  file_generation: {
     id: 3,
     isDefault: true,
     flag: "mcp_actions",
