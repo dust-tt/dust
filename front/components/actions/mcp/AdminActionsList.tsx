@@ -35,21 +35,17 @@ const NameCell = ({ row }: { row: RowData }) => {
     <DataTable.CellContent grow>
       <div
         className={classNames(
-          "flex flex-row items-center gap-2 py-3",
+          "flex flex-row items-center gap-3 py-3",
           mcpServerView ? "" : "opacity-50"
         )}
       >
-        <div>
-          <Avatar visual={getVisual(mcpServer)} />
-        </div>
-        <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
-          <div className="flex flex-col gap-1">
-            <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-              {asDisplayName(mcpServer.name)}
-            </div>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {mcpServer.description}
-            </div>
+        <Avatar visual={getVisual(mcpServer)} />
+        <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
+          <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+            {asDisplayName(mcpServer.name)}
+          </div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {mcpServer.description}
           </div>
         </div>
 
@@ -129,9 +125,8 @@ export const AdminActionsList = ({
           return (
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
-                {globalSpace ? getSpaceIcon(globalSpace)({}) : null}
                 {globalSpace
-                  ? "Everybody"
+                  ? "Everyone"
                   : info
                       .getValue()
                       .filter((s) => s.kind === "regular")
