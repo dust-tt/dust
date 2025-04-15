@@ -27,7 +27,10 @@ export const CoEditionImageNodeSchema = BaseNodeSchema.extend({
   type: z.literal("image"),
   fileId: z
     .string()
-    .startsWith("fil_", { message: "File ID must start with 'fil_'" })
+    // Note: We use regex instead of startsWith because this schema is converted to JSON Schema
+    // and validated by AJV, which requires regex patterns for string validation.
+    // Using startsWith would cause "Invalid escape" errors in AJV.
+    .regex(/^fil_\w+/, { message: "File ID must start with 'fil_'" })
     .describe("The file ID of the image to insert (starts with 'fil_')"),
   alt: z.string().optional().describe("Optional alt text for the image"),
 });
