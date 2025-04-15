@@ -37,12 +37,15 @@ pub mod databases {
         pub mod snowflake;
 
         pub mod salesforce {
+            pub mod process_json_query;
             pub mod salesforce;
             pub mod sandbox {
-                pub mod convert;
                 pub mod error;
                 pub mod extract;
-                pub mod structured_query;
+                pub mod models;
+
+                pub mod to_soql;
+                pub mod validator;
             }
         }
     }

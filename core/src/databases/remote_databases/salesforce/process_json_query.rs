@@ -1,367 +1,32 @@
-use super::error::SoqlError;
-use super::structured_query::{
-    FieldExpression, Filter, GroupBy, LogicalOperator, NullsPosition, OrderBy, OrderDirection,
-    StructuredQuery, TypedValue, Validator, WhereClause,
-};
+use super::sandbox::error::SoqlError;
+use super::sandbox::extract::ObjectExtractor;
+use super::sandbox::models::StructuredQuery;
+use super::sandbox::to_soql::ToSoql;
+use super::sandbox::validator::Validator;
+use std::collections::HashSet;
+
+#[derive(Debug)]
+pub struct ProcessedQuery {
+    pub soql: String,
+    pub main_object: String,
+    pub objects: Vec<String>,
+}
 
 /// Convert a JSON query to a SOQL string with detailed error handling and suggestions
-pub fn convert_json_to_soql(json_str: &str) -> Result<String, String> {
+pub fn process_json_query(json_str: &str) -> Result<ProcessedQuery, SoqlError> {
     // Parse the JSON into a structured query
-    let parsed_query = serde_json::from_str::<StructuredQuery>(json_str).map_err(|e| {
-        let err = SoqlError::JsonParseError(e);
-        err.user_friendly_message()
-    })?;
+    let parsed_query = serde_json::from_str::<StructuredQuery>(json_str)?;
 
-    // Convert the query to SOQL, providing detailed error messages if validation fails
-    convert_to_soql(&parsed_query).map_err(|e| e.user_friendly_message())
-}
+    parsed_query.validate()?;
 
-/// Convert a structured query to a SOQL string (internal implementation)
-pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
-    // Validate the query structure
-    query.validate()?;
+    let mut objects = HashSet::new();
+    parsed_query.extract_objects(&mut objects);
 
-    // Build the SELECT clause
-    let mut soql = String::from("SELECT ");
-
-    // Add fields and/or aggregates
-    let mut select_parts: Vec<String> = Vec::new();
-
-    // Add regular fields and function calls
-    if !query.fields.is_empty() {
-        select_parts.extend(query.fields.iter().map(|f| f.format()));
-    }
-
-    // Add parent fields if present
-    if !query.parent_fields.is_empty() {
-        // First, validate that no parent field is a function
-        for parent in &query.parent_fields {
-            for field in &parent.fields {
-                if let FieldExpression::Function { .. } = field {
-                    return Err(SoqlError::unsupported_feature(
-                        "Function calls are not supported on parent fields. Use simple field references only."
-                    ));
-                }
-            }
-        }
-
-        // Then, process the fields (which we know are now all FieldExpression::Field variants)
-        let parent_fields: Vec<String> = query
-            .parent_fields
-            .iter()
-            .flat_map(|parent| {
-                parent.fields.iter().map(move |field| {
-                    // We've validated above that this is a Field variant
-                    if let FieldExpression::Field(field_str) = field {
-                        format!("{}.{}", parent.relationship, field_str)
-                    } else {
-                        // This should never happen due to the validation above
-                        unreachable!(
-                            "Function in parent fields should have been caught by validation"
-                        )
-                    }
-                })
-            })
-            .collect();
-
-        select_parts.push(parent_fields.join(", "));
-    }
-
-    // Add aggregate functions if present
-    if !query.aggregates.is_empty() {
-        let aggregate_strings: Vec<String> = query
-            .aggregates
-            .iter()
-            .map(|agg| {
-                let function_str = format!("{}({})", agg.function.as_str(), agg.field);
-                format!("{} {}", function_str, agg.alias)
-            })
-            .collect();
-
-        select_parts.push(aggregate_strings.join(", "));
-    }
-
-    // Add GROUP BY fields if not referenced in the fields or aggregates
-    let group_by_fields = match &query.group_by {
-        Some(GroupBy::Simple(fields)) => Some(fields),
-        Some(GroupBy::Advanced { fields, .. }) => Some(fields),
-        None => None,
-    };
-    if let Some(fields) = group_by_fields {
-        for field in fields {
-            // If the field is not in the fields or in the aggregates, add it to the select parts
-            if !select_parts.contains(field) {
-                select_parts.push(field.clone());
-            }
-        }
-    }
-
-    // Join all select parts
-    if !select_parts.is_empty() {
-        soql.push_str(&select_parts.join(", "));
-    }
-
-    // Add relationship subqueries if present
-    // TODO(fontanierh): TBD if we actually want to keep this.
-    if !query.relationships.is_empty() {
-        if !query.fields.is_empty() || !query.aggregates.is_empty() {
-            soql.push_str(", ");
-        }
-
-        let relationship_queries: Vec<String> = query
-            .relationships
-            .iter()
-            .map(|rel| {
-                // Start the subquery but don't close the parenthesis yet
-                let formatted_fields = rel
-                    .fields
-                    .iter()
-                    .map(|f| f.format())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let mut subquery = format!(
-                    "(SELECT {} FROM {}",
-                    formatted_fields, rel.relationship_name
-                );
-
-                // Add WHERE clause if present - inside the parentheses
-                if let Some(where_clause) = &rel.where_clause {
-                    let where_str = build_where_clause(where_clause)?;
-                    subquery.push_str(&format!(" {}", where_str));
-                }
-
-                // Add ORDER BY if present - inside the parentheses
-                if !rel.order_by.is_empty() {
-                    let order_by_str = build_order_by(&rel.order_by);
-                    subquery.push_str(&format!(" {}", order_by_str));
-                }
-
-                // Add LIMIT if present - inside the parentheses
-                if let Some(limit) = rel.limit {
-                    subquery.push_str(&format!(" LIMIT {}", limit));
-                }
-
-                // Close the parenthesis after all clauses are added
-                subquery.push_str(")");
-
-                Ok(subquery)
-            })
-            .collect::<Result<Vec<String>, SoqlError>>()?;
-
-        soql.push_str(&relationship_queries.join(", "));
-    }
-
-    // Add FROM clause
-    soql.push_str(&format!(" FROM {}", query.object));
-
-    // Add WHERE clause if present
-    if let Some(where_clause) = &query.where_clause {
-        let where_str = build_where_clause(where_clause)?;
-        soql.push_str(&format!(" {}", where_str));
-    }
-
-    // Add GROUP BY if present
-    if let Some(group_by) = &query.group_by {
-        let group_by_str = match group_by {
-            GroupBy::Simple(fields) => {
-                format!("GROUP BY {}", fields.join(", "))
-            }
-            GroupBy::Advanced { group_type, fields } => {
-                format!("GROUP BY {}({})", group_type.as_str(), fields.join(", "))
-            }
-        };
-        soql.push_str(&format!(" {}", group_by_str));
-    }
-
-    // Add HAVING if present
-    if let Some(having) = &query.having {
-        let having_filters: Vec<String> = having
-            .filters
-            .iter()
-            .map(|filter| {
-                format!(
-                    "{}({}) {} {}",
-                    filter.function.as_str(),
-                    filter.field,
-                    filter.operator,
-                    format_typed_value(&filter.value)
-                )
-            })
-            .collect();
-
-        let having_str = match having.condition {
-            LogicalOperator::And => having_filters.join(" AND "),
-            LogicalOperator::Or => having_filters.join(" OR "),
-        };
-
-        soql.push_str(&format!(" HAVING {}", having_str));
-    }
-
-    // Add ORDER BY if present
-    if !query.order_by.is_empty() {
-        let order_by_str = build_order_by(&query.order_by);
-        soql.push_str(&format!(" {}", order_by_str));
-    }
-
-    // Add LIMIT if present
-    if let Some(limit) = query.limit {
-        soql.push_str(&format!(" LIMIT {}", limit));
-    }
-
-    // Add OFFSET if present
-    if let Some(offset) = query.offset {
-        soql.push_str(&format!(" OFFSET {}", offset));
-    }
-
-    Ok(soql)
-}
-
-/// Builds a WHERE clause from a WhereClause struct.
-fn build_where_clause(where_clause: &WhereClause) -> Result<String, SoqlError> {
-    let mut where_str = String::from("WHERE ");
-
-    let filter_strings: Vec<String> = where_clause
-        .filters
-        .iter()
-        .map(|filter| match filter {
-            Filter::Condition {
-                field,
-                operator,
-                value,
-            } => Ok(format!(
-                "{} {} {}",
-                field.format(),
-                operator,
-                format_typed_value(value)
-            )),
-            Filter::NestedCondition(nested) => {
-                let nested_str = build_nested_condition(nested)?;
-                Ok(format!("({})", nested_str))
-            }
-        })
-        .collect::<Result<Vec<String>, SoqlError>>()?;
-
-    if filter_strings.is_empty() {
-        return Err(SoqlError::invalid_query_structure(
-            "WHERE clause must have at least one filter",
-        ));
-    }
-
-    match where_clause.condition {
-        LogicalOperator::And => where_str.push_str(&filter_strings.join(" AND ")),
-        LogicalOperator::Or => where_str.push_str(&filter_strings.join(" OR ")),
-    }
-
-    Ok(where_str)
-}
-
-/// Builds a nested condition for a WHERE clause.
-fn build_nested_condition(where_clause: &WhereClause) -> Result<String, SoqlError> {
-    let filter_strings: Vec<String> = where_clause
-        .filters
-        .iter()
-        .map(|filter| match filter {
-            Filter::Condition {
-                field,
-                operator,
-                value,
-            } => Ok(format!(
-                "{} {} {}",
-                field.format(),
-                operator,
-                format_typed_value(value)
-            )),
-            Filter::NestedCondition(nested) => {
-                let nested_str = build_nested_condition(nested)?;
-                Ok(format!("({})", nested_str))
-            }
-        })
-        .collect::<Result<Vec<String>, SoqlError>>()?;
-
-    if filter_strings.is_empty() {
-        return Err(SoqlError::invalid_query_structure(
-            "Nested condition must have at least one filter",
-        ));
-    }
-
-    let condition_str = match where_clause.condition {
-        LogicalOperator::And => filter_strings.join(" AND "),
-        LogicalOperator::Or => filter_strings.join(" OR "),
-    };
-
-    Ok(condition_str)
-}
-
-/// Builds an ORDER BY clause from a vector of OrderBy structs.
-fn build_order_by(order_by: &[OrderBy]) -> String {
-    let order_strings: Vec<String> = order_by
-        .iter()
-        .map(|order| {
-            let mut order_str = order.field.format();
-
-            // Add direction
-            match order.direction {
-                OrderDirection::Asc => order_str.push_str(" ASC"),
-                OrderDirection::Desc => order_str.push_str(" DESC"),
-            }
-
-            // Add NULLS position if present
-            if let Some(nulls) = &order.nulls {
-                match nulls {
-                    NullsPosition::First => order_str.push_str(" NULLS FIRST"),
-                    NullsPosition::Last => order_str.push_str(" NULLS LAST"),
-                }
-            }
-
-            order_str
-        })
-        .collect();
-
-    format!("ORDER BY {}", order_strings.join(", "))
-}
-
-/// Formats a value for use in a SOQL query.
-fn format_typed_value(value: &TypedValue) -> String {
-    match value {
-        TypedValue::DateTime { value, .. } => {
-            // For datetime objects, just return the value without quotes
-            value.clone()
-        }
-        TypedValue::Function {
-            function,
-            arguments,
-            ..
-        } => {
-            // Format function call: FUNCTION(arg1, arg2, ...)
-            format!("{}({})", function, arguments.join(", "))
-        }
-        TypedValue::Regular(json_value) => format_json_value(json_value),
-    }
-}
-
-/// Formats a JSON value for use in a SOQL query.
-fn format_json_value(value: &serde_json::Value) -> String {
-    match value {
-        serde_json::Value::Null => String::from("NULL"),
-        serde_json::Value::Bool(b) => b.to_string(),
-        serde_json::Value::Number(n) => n.to_string(),
-        serde_json::Value::String(s) => {
-            // Escape special characters in string values
-            // The main requirement is to escape single quotes by doubling them
-            // per Salesforce documentation
-            let escaped = s.replace('\'', "''");
-            format!("'{}'", escaped)
-        }
-        serde_json::Value::Array(arr) => {
-            let values: Vec<String> = arr.iter().map(format_json_value).collect();
-            format!("({})", values.join(", "))
-        }
-        serde_json::Value::Object(_) => {
-            // Objects are not supported in SOQL values
-            // This could be improved to serialize simple objects or provide better errors
-            String::from("NULL")
-        }
-    }
+    Ok(ProcessedQuery {
+        soql: parsed_query.to_soql(),
+        main_object: parsed_query.object,
+        objects: objects.into_iter().collect(),
+    })
 }
 
 #[cfg(test)]
@@ -400,78 +65,70 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, DAY_ONLY(CreatedDate), CALENDAR_MONTH(LastModifiedDate) FROM Account WHERE DAY_ONLY(CreatedDate) = 2023-01-01 AND LastModifiedDate = DAY_ONLY(CreatedDate)"
         );
+        assert_eq!(processed.objects, vec!["Account"]);
     }
 
-    // Test for the format_json_value function
+    // Test for function calls in GROUP BY clause
     #[test]
-    fn test_format_json_value_escaping() {
-        // Test null value
-        assert_eq!(format_json_value(&serde_json::Value::Null), "NULL");
+    fn test_json_to_soql_group_by_with_functions() {
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["AccountId"],
+            "aggregates": [
+                {
+                    "function": "SUM",
+                    "field": "Amount",
+                    "alias": "TotalAmount"
+                }
+            ],
+            "groupBy": [
+                {"function": "CALENDAR_MONTH", "arguments": ["CloseDate"]},
+                {"function": "CALENDAR_YEAR", "arguments": ["CloseDate"]}
+            ]
+        }"#;
 
-        // Test boolean value
-        assert_eq!(format_json_value(&serde_json::json!(true)), "true");
-        assert_eq!(format_json_value(&serde_json::json!(false)), "false");
-
-        // Test number value
-        assert_eq!(format_json_value(&serde_json::json!(42)), "42");
-        assert_eq!(format_json_value(&serde_json::json!(3.14)), "3.14");
-
-        // Test string value with special characters
-        assert_eq!(format_json_value(&serde_json::json!("hello")), "'hello'");
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            format_json_value(&serde_json::json!("O'Reilly")),
-            "'O''Reilly'"
-        ); // Single quotes are doubled
-        assert_eq!(
-            format_json_value(&serde_json::json!("Line1\nLine2")),
-            "'Line1\nLine2'"
-        ); // Newlines preserved
-
-        // Test array value
-        assert_eq!(
-            format_json_value(&serde_json::json!(["a", "b", "c"])),
-            "('a', 'b', 'c')"
+            processed.soql,
+            "SELECT AccountId, SUM(Amount) TotalAmount, CALENDAR_MONTH(CloseDate), CALENDAR_YEAR(CloseDate) FROM Opportunity GROUP BY CALENDAR_MONTH(CloseDate), CALENDAR_YEAR(CloseDate)"
         );
-
-        // Test mixed array
-        assert_eq!(
-            format_json_value(&serde_json::json!(["a", 1, true, null])),
-            "('a', 1, true, NULL)"
-        );
-
-        // Test object (not supported)
-        assert_eq!(
-            format_json_value(&serde_json::json!({"key": "value"})),
-            "NULL"
-        );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
     }
 
+    // Test for advanced GROUP BY with function calls
     #[test]
-    fn test_format_typed_value() {
-        use crate::databases::remote_databases::salesforce::sandbox::structured_query::{
-            DateTimeType, TypedValue,
-        };
+    fn test_json_to_soql_advanced_group_by_with_functions() {
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["AccountId"],
+            "aggregates": [
+                {
+                    "function": "SUM",
+                    "field": "Amount",
+                    "alias": "TotalAmount"
+                }
+            ],
+            "groupBy": {
+                "type": "CUBE",
+                "fields": [
+                    "AccountId",
+                    {"function": "CALENDAR_MONTH", "arguments": ["CloseDate"]},
+                    {"function": "CALENDAR_YEAR", "arguments": ["CloseDate"]}
+                ]
+            }
+        }"#;
 
-        // Test datetime value (unquoted)
-        let datetime_value = TypedValue::DateTime {
-            value_type: DateTimeType::DateTime,
-            value: "2023-01-01T00:00:00Z".to_string(),
-        };
-        assert_eq!(format_typed_value(&datetime_value), "2023-01-01T00:00:00Z");
-
-        // Test regular string value (quoted)
-        let string_value = TypedValue::Regular(serde_json::json!("hello"));
-        assert_eq!(format_typed_value(&string_value), "'hello'");
-
-        // Test regular number value
-        let number_value = TypedValue::Regular(serde_json::json!(42));
-        assert_eq!(format_typed_value(&number_value), "42");
+        let processed = process_json_query(json).unwrap();
+        assert_eq!(
+            processed.soql,
+            "SELECT AccountId, SUM(Amount) TotalAmount, CALENDAR_MONTH(CloseDate), CALENDAR_YEAR(CloseDate) FROM Opportunity GROUP BY CUBE(AccountId, CALENDAR_MONTH(CloseDate), CALENDAR_YEAR(CloseDate))"
+        );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
     }
 
     #[test]
@@ -488,12 +145,12 @@ mod tests {
             "limit": 10
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, Industry FROM Account WHERE Industry = 'Technology' LIMIT 10"
         );
+        assert_eq!(processed.objects, vec!["Account"]);
     }
 
     #[test]
@@ -530,12 +187,39 @@ mod tests {
             "groupBy": ["StageName"]
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT COUNT(Id) CountId, SUM(Amount) TotalAmount, AVG(Amount) AvgAmount, MIN(Amount) MinAmount, MAX(Amount) MaxAmount, StageName FROM Opportunity GROUP BY StageName"
         );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
+    }
+
+    #[test]
+    fn test_json_to_soql_aggregates_with_functions() {
+        let json = r#"{
+        "object": "Opportunity",
+        "aggregates": [
+                {
+                    "function": "COUNT",
+                    "field": {"function": "CALENDAR_MONTH", "arguments": ["CloseDate"]},
+                    "alias": "MonthCount"
+                },
+                {
+                    "function": "SUM",
+                    "field": {"function": "CALENDAR_YEAR", "arguments": ["CloseDate"]},
+                    "alias": "YearSum"
+                }
+            ],
+            "groupBy": ["StageName"]
+        }"#;
+
+        let processed = process_json_query(json).unwrap();
+        assert_eq!(
+            processed.soql,
+            "SELECT COUNT(CALENDAR_MONTH(CloseDate)) MonthCount, SUM(CALENDAR_YEAR(CloseDate)) YearSum, StageName FROM Opportunity GROUP BY StageName"
+        );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
     }
 
     #[test]
@@ -553,12 +237,12 @@ mod tests {
         "groupBy": ["StageName"]
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT StageName, COUNT(Id) CountId FROM Opportunity GROUP BY StageName"
         );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
     }
 
     #[test]
@@ -568,9 +252,19 @@ mod tests {
         "fields": ["Id", "Name", "Owner.Department"]
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
-        assert_eq!(soql, "SELECT Id, Name, Owner.Department FROM Account");
+        let processed = process_json_query(json).unwrap();
+        assert_eq!(
+            processed.soql,
+            "SELECT Id, Name, Owner.Department FROM Account"
+        );
+        assert_eq!(
+            processed
+                .objects
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<HashSet<_>>(),
+            HashSet::from(["Account", "Owner"])
+        );
     }
 
     #[test]
@@ -593,12 +287,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, FirstName, LastName, Email FROM Contact WHERE LastName != NULL AND (Email LIKE '%@example.com' OR Email LIKE '%@salesforce.com')"
         );
+        assert_eq!(processed.objects, vec!["Contact"]);
     }
 
     #[test]
@@ -619,12 +313,12 @@ mod tests {
             ]
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, Amount, CloseDate FROM Opportunity ORDER BY CloseDate DESC NULLS LAST, Amount DESC"
         );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
     }
 
     #[test]
@@ -640,11 +334,18 @@ mod tests {
             ]
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, FirstName, LastName, Account.Name, Account.Industry, Account.AnnualRevenue FROM Contact"
+        );
+        assert_eq!(
+            processed
+                .objects
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<HashSet<_>>(),
+            HashSet::from(["Contact", "Account"])
         );
     }
 
@@ -669,11 +370,18 @@ mod tests {
             ]
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, (SELECT Id, FirstName, LastName, Email FROM Contacts WHERE IsActive = true ORDER BY LastName ASC LIMIT 5) FROM Account"
+        );
+        assert_eq!(
+            processed
+                .objects
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<HashSet<_>>(),
+            HashSet::from(["Account", "Contacts"])
         );
     }
 
@@ -692,12 +400,12 @@ mod tests {
             "offset": 200
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, Company, Status FROM Lead WHERE Status = 'Open' LIMIT 100 OFFSET 200"
         );
+        assert_eq!(processed.objects, vec!["Lead"]);
     }
 
     #[test]
@@ -726,12 +434,48 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT AccountId, SUM(Amount) TotalAmount FROM Opportunity GROUP BY AccountId HAVING SUM(Amount) > 100000"
         );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
+    }
+
+    #[test]
+    fn test_json_to_soql_having_clause_with_function_in_value() {
+        // Since the HAVING clause doesn't directly support function syntax in the current
+        // implementation, we're testing a simpler case with function in the aggregate
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["AccountId"],
+            "aggregates": [
+                {
+                    "function": "COUNT",
+                    "field": {"function": "CALENDAR_MONTH", "arguments": ["CloseDate"]},
+                    "alias": "MonthCount"
+                }
+            ],
+            "groupBy": ["AccountId"],
+            "having": {
+                "condition": "AND",
+                "filters": [
+                    {
+                        "function": "COUNT",
+                        "field": "Amount",
+                        "operator": ">",
+                        "value": 5
+                    }
+                ]
+            }
+        }"#;
+
+        let processed = process_json_query(json).unwrap();
+        assert_eq!(
+            processed.soql,
+            "SELECT AccountId, COUNT(CALENDAR_MONTH(CloseDate)) MonthCount FROM Opportunity GROUP BY AccountId HAVING COUNT(Amount) > 5"
+        );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
     }
 
     #[test]
@@ -752,12 +496,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT AccountId, StageName, SUM(Amount) TotalAmount FROM Opportunity GROUP BY CUBE(AccountId, StageName)"
         );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
     }
 
     #[test]
@@ -775,12 +519,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, Email FROM Contact WHERE AccountId IN ('001xx000003DGT1AAO', '001xx000003DGT2AAO', '001xx000003DGT3AAO')"
         );
+        assert_eq!(processed.objects, vec!["Contact"]);
     }
 
     #[test]
@@ -796,12 +540,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, Status FROM Lead WHERE Status NOT IN ('Closed', 'Converted')"
         );
+        assert_eq!(processed.objects, vec!["Lead"]);
     }
 
     #[test]
@@ -820,12 +564,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, FirstName, LastName, Email, Phone FROM Contact WHERE Email LIKE '%@example.com' AND FirstName LIKE 'J%' AND LastName LIKE '%son' AND Phone LIKE '415-%'"
         );
+        assert_eq!(processed.objects, vec!["Contact"]);
     }
 
     #[test]
@@ -841,12 +585,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, FirstName, LastName, Email FROM Lead WHERE Email NOT LIKE '%@competitor.com'"
         );
+        assert_eq!(processed.objects, vec!["Lead"]);
     }
 
     #[test]
@@ -871,12 +615,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, DAY_ONLY(CreatedDate), CALENDAR_MONTH(LastModifiedDate) FROM Account WHERE DAY_ONLY(CreatedDate) = '2023-01-01'"
         );
+        assert_eq!(processed.objects, vec!["Account"]);
     }
 
     #[test]
@@ -900,12 +644,74 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name FROM Account WHERE LastModifiedDate > DAY_ONLY(CreatedDate)"
         );
+        assert_eq!(processed.objects, vec!["Account"]);
+    }
+
+    #[test]
+    fn test_json_to_soql_nested_functions() {
+        let json = r#"{
+            "object": "Account",
+            "fields": [
+                "Id", 
+                "Name", 
+                {
+                    "function": "FORMAT", 
+                    "arguments": [
+                        {
+                            "function": "CALENDAR_MONTH", 
+                            "arguments": ["CreatedDate"]
+                        },
+                        "'MMMM'"
+                    ]
+                }
+            ]
+        }"#;
+
+        let processed = process_json_query(json).unwrap();
+        assert_eq!(
+            processed.soql,
+            "SELECT Id, Name, FORMAT(CALENDAR_MONTH(CreatedDate), 'MMMM') FROM Account"
+        );
+        assert_eq!(processed.objects, vec!["Account"]);
+    }
+
+    #[test]
+    fn test_json_to_soql_nested_functions_in_group_by() {
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["AccountId"],
+            "aggregates": [
+                {
+                    "function": "SUM",
+                    "field": "Amount",
+                    "alias": "TotalAmount"
+                }
+            ],
+            "groupBy": [
+                {
+                    "function": "FORMAT", 
+                    "arguments": [
+                        {
+                            "function": "CALENDAR_YEAR", 
+                            "arguments": ["CloseDate"]
+                        },
+                        "'YYYY'"
+                    ]
+                }
+            ]
+        }"#;
+
+        let processed = process_json_query(json).unwrap();
+        assert_eq!(
+            processed.soql,
+            "SELECT AccountId, SUM(Amount) TotalAmount, FORMAT(CALENDAR_YEAR(CloseDate), 'YYYY') FROM Opportunity GROUP BY FORMAT(CALENDAR_YEAR(CloseDate), 'YYYY')"
+        );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
     }
 
     #[test]
@@ -937,12 +743,13 @@ mod tests {
             "limit": 50
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT AccountId, StageName, COUNT(Id) OpportunityCount, SUM(Amount) TotalAmount FROM Opportunity WHERE CloseDate > '2023-01-01' AND Amount > 0 GROUP BY AccountId, StageName HAVING SUM(Amount) > 50000 ORDER BY SUM(Amount) DESC LIMIT 50"
         );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
     }
 
     // Test only the JSON parsing error in convert.rs since this is specific to the conversion function
@@ -957,10 +764,12 @@ mod tests {
             }
         }"#;
 
-        let result = convert_json_to_soql(invalid_json);
-        assert!(result.is_err());
-        let error_message = result.unwrap_err();
-        assert!(error_message.contains("Check your JSON syntax"));
+        let processed = process_json_query(invalid_json);
+        assert!(processed.is_err());
+        let error = processed.unwrap_err();
+        assert!(error
+            .user_friendly_message()
+            .contains("Check your JSON syntax"));
     }
 
     #[test]
@@ -975,12 +784,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, Title, Phone, Email, Department, MailingCity, MailingState FROM Contact WHERE AccountId = '001Qy00000ccRXcIAM'"
         );
+        assert_eq!(processed.objects, vec!["Contact"]);
     }
 
     #[test]
@@ -997,12 +806,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name FROM Contact WHERE Description = 'Value with ''single quotes''' AND LastName = 'O''Reilly'"
         );
+        assert_eq!(processed.objects, vec!["Contact"]);
     }
 
     #[test]
@@ -1031,12 +840,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name FROM Account WHERE Type = 'Customer' AND (Industry = 'Technology' OR (AnnualRevenue > 1000000 AND NumberOfEmployees > 50))"
         );
+        assert_eq!(processed.objects, vec!["Account"]);
     }
 
     #[test]
@@ -1067,12 +876,12 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, CloseDate FROM Opportunity WHERE CreatedDate > 2023-01-01T00:00:00Z AND CloseDate < 2023-12-31"
         );
+        assert_eq!(processed.objects, vec!["Opportunity"]);
     }
 
     #[test]
@@ -1095,8 +904,7 @@ mod tests {
             }
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let result = convert_to_soql(&query);
+        let result = process_json_query(json);
         assert!(result.is_err());
     }
 
@@ -1116,8 +924,7 @@ mod tests {
             ]
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let result = convert_to_soql(&query);
+        let result = process_json_query(json);
         assert!(result.is_err());
 
         // Verify the error message is about function calls on parent fields
@@ -1128,6 +935,55 @@ mod tests {
             }
             _ => panic!("Expected UnsupportedFeature error, got {:?}", error),
         }
+    }
+
+    #[test]
+    fn test_validate_group_by_with_functions() {
+        // Test with valid function in GROUP BY
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["AccountId"],
+            "aggregates": [
+                {
+                    "function": "SUM",
+                    "field": "Amount",
+                    "alias": "TotalAmount"
+                }
+            ],
+            "groupBy": [
+                {"function": "CALENDAR_MONTH", "arguments": ["CloseDate"]},
+                {"function": "CALENDAR_YEAR", "arguments": ["CloseDate"]}
+            ]
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        assert!(
+            query.validate().is_ok(),
+            "Valid functions in GROUP BY should pass validation"
+        );
+
+        // Test with invalid function in GROUP BY
+        let invalid_json = r#"{
+            "object": "Opportunity",
+            "fields": ["AccountId"],
+            "aggregates": [
+                {
+                    "function": "SUM",
+                    "field": "Amount",
+                    "alias": "TotalAmount"
+                }
+            ],
+            "groupBy": [
+                {"function": "INVALID_FUNCTION", "arguments": ["CloseDate"]}
+            ]
+        }"#;
+
+        let invalid_query = serde_json::from_str::<StructuredQuery>(invalid_json).unwrap();
+        let result = invalid_query.validate();
+        assert!(
+            result.is_err(),
+            "Invalid function in GROUP BY should fail validation"
+        );
     }
 
     #[test]
@@ -1155,11 +1011,18 @@ mod tests {
             ]
         }"#;
 
-        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
-        let soql = convert_to_soql(&query).unwrap();
+        let processed = process_json_query(json).unwrap();
         assert_eq!(
-            soql,
+            processed.soql,
             "SELECT Id, Name, (SELECT Id, Name FROM Contacts LIMIT 5), (SELECT Id, Name, Amount FROM Opportunities WHERE StageName != 'Closed Lost' LIMIT 3) FROM Account"
+        );
+        assert_eq!(
+            processed
+                .objects
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<HashSet<_>>(),
+            HashSet::from(["Account", "Contacts", "Opportunities"])
         );
     }
 }
