@@ -18,10 +18,10 @@ export async function launchLabsConnectionWorkflow(
 
   try {
     await client.workflow.start(syncLabsConnectionWorkflow, {
-      args: [connectionConfiguration.id.toString()],
+      args: [connectionConfiguration.id],
       taskQueue: CONNECTIONS_QUEUE_NAME,
       workflowId: workflowId,
-      cronSchedule: "*/5 * * * *",
+      // cronSchedule: "*/5 * * * *",
       memo: {
         configurationId: connectionConfiguration.id,
         dataSourceId: connectionConfiguration.dataSourceViewId,

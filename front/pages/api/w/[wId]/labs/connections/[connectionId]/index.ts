@@ -94,6 +94,7 @@ async function handler(
           await patchConfiguration.setDataSourceViewId(
             validatedBody.dataSourceViewId
           );
+          await patchConfiguration.setIsEnabled(true);
           await launchLabsConnectionWorkflow(patchConfiguration);
         } else {
           await stopLabsConnectionWorkflow(patchConfiguration);

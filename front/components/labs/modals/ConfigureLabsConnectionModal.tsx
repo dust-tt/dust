@@ -24,10 +24,6 @@ import {
   useLabsConnectionConfiguration,
   useUpdateLabsConnectionConfiguration,
 } from "@app/lib/swr/labs";
-import {
-  launchLabsConnectionWorkflow,
-  stopLabsConnectionWorkflow,
-} from "@app/temporal/labs/connections/client";
 import type {
   ConnectionCredentials,
   DataSourceViewSelectionConfigurations,

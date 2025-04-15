@@ -2,9 +2,14 @@ import axios from "axios";
 import Bottleneck from "bottleneck";
 
 import config from "@app/lib/api/config";
+import { Authenticator } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type { ConnectionCredentials, Result } from "@app/types";
+import { stopLabsConnectionWorkflow } from "@app/temporal/labs/connections/client";
+import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
+import type { ConnectionCredentials, ModelId, Result } from "@app/types";
 import { Err, isHubspotCredentials, OAuthAPI, Ok } from "@app/types";
 import { CoreAPI, dustManagedCredentials } from "@app/types";
 
@@ -329,7 +334,7 @@ async function getNotes(
 async function upsertToDustDatasource(
   coreAPI: CoreAPI,
   workspaceId: string,
-  dataSourceId: string,
+  dataSourceViewId: ModelId,
   company: Company,
   contacts: Contact[],
   deals: Deal[],
@@ -454,9 +459,44 @@ ${props.notes_last_updated ? `Last Note Updated: ${props.notes_last_updated}` : 
   `.trim();
 
   try {
+    const user = await UserResource.fetchByModelId(workspaceId);
+
+    if (!user) {
+      logger.error({ workspaceId }, "User not found");
+      return;
+    }
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspaceId
+    );
+
+    const [datasourceView] = await DataSourceViewResource.fetchByModelIds(
+      auth,
+      [dataSourceViewId]
+    );
+
+    if (!datasourceView) {
+      logger.error(
+        {},
+        "[processTranscriptActivity] No datasource view found. Stopping."
+      );
+      return;
+    }
+
+    const dataSource = datasourceView.dataSource;
+
+    if (!dataSource) {
+      logger.error(
+        {},
+        "[processTranscriptActivity] No datasource found. Stopping."
+      );
+      return;
+    }
+
     const upsertRes = await coreAPI.upsertDataSourceDocument({
       projectId: workspaceId,
-      dataSourceId: dataSourceId,
+      dataSourceId: dataSource.sId,
       documentId: documentId,
       tags: ["hubspot", "company"],
       parentId: null,

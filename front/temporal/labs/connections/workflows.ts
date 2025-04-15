@@ -1,16 +1,17 @@
 import { proxyActivities } from "@temporalio/workflow";
 
-import type * as activities from "./activities";
+import type { ModelId } from "@app/types";
 
-const { syncLabsConnection } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minutes",
+import type * as activities from "./activities";
+const { syncLabsConnectionActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "60 minutes",
   retry: {
     maximumAttempts: 3,
   },
 });
 
 export async function syncLabsConnectionWorkflow(
-  configurationId: string
+  configurationId: ModelId
 ): Promise<void> {
-  await syncLabsConnection(configurationId);
+  await syncLabsConnectionActivity(configurationId);
 }
