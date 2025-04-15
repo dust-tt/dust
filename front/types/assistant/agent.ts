@@ -3,6 +3,7 @@ import type {
   AgentActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
+import type { TagType } from "@app/types/tag";
 
 import type { ModelId } from "../shared/model_id";
 import type { ModelIdType, ModelProviderIdType } from "./assistant";
@@ -124,6 +125,7 @@ export type LightAgentConfigurationType = {
 
   maxStepsPerRun: number;
   visualizationEnabled: boolean;
+  tags: TagType[];
 
   templateId: string | null;
 
@@ -156,6 +158,7 @@ export interface TemplateAgentConfigurationType {
   isTemplate: true;
   maxStepsPerRun?: number;
   visualizationEnabled: boolean;
+  tags: TagType[];
 }
 
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
