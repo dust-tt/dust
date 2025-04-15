@@ -341,8 +341,9 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         if !used_forbidden_tables.is_empty() {
             Err(QueryDatabaseError::ExecutionError(
                 format!(
-                    "Query uses tables that are not allowed: {}",
-                    used_forbidden_tables.join(", ")
+                    "Query uses tables that are not allowed: {} (allowed: {})",
+                    used_forbidden_tables.join(", "),
+                    allowed_tables.into_iter().collect::<Vec<_>>().join(", ")
                 ),
                 Some(query.to_string()),
             ))?
