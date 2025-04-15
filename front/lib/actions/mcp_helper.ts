@@ -22,13 +22,13 @@ export const getServerTypeAndIdFromSId = (
     throw new Error(`Invalid MCP server ID: ${mcpServerId}`);
   }
 
-  const { resourceName, resourceId } = sIdParts;
+  const { resourceName, resourceModelId } = sIdParts;
 
   switch (resourceName) {
     case "internal_mcp_server":
-      return { serverType: "internal" as const, id: resourceId };
+      return { serverType: "internal" as const, id: resourceModelId };
     case "remote_mcp_server":
-      return { serverType: "remote" as const, id: resourceId };
+      return { serverType: "remote" as const, id: resourceModelId };
     default:
       throw new Error(
         `Invalid MCP server ID: ${mcpServerId} resourceName: ${resourceName}`

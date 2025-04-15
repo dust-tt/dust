@@ -113,7 +113,7 @@ export const getInternalMCPServerNameAndWorkspaceId = (
 ): Result<
   {
     name: InternalMCPServerNameType;
-    workspaceId: ModelId;
+    workspaceModelId: ModelId;
   },
   Error
 > => {
@@ -133,7 +133,7 @@ export const getInternalMCPServerNameAndWorkspaceId = (
 
   // Swap keys and values.
   const details = Object.entries(INTERNAL_MCP_SERVERS).find(
-    ([, internalMCPServer]) => internalMCPServer.id === sIdParts.resourceId
+    ([, internalMCPServer]) => internalMCPServer.id === sIdParts.resourceModelId
   );
 
   if (!details) {
@@ -154,7 +154,7 @@ export const getInternalMCPServerNameAndWorkspaceId = (
 
   return new Ok({
     name,
-    workspaceId: sIdParts.workspaceId,
+    workspaceModelId: sIdParts.workspaceModelId,
   });
 };
 
@@ -166,12 +166,12 @@ export const isInternalMCPServerName = (
   );
 
 export const isValidInternalMCPServerId = (
-  workspaceId: ModelId,
+  workspaceModelId: ModelId,
   sId: string
 ): boolean => {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
   if (r.isOk()) {
-    return r.value.workspaceId === workspaceId;
+    return r.value.workspaceModelId === workspaceModelId;
   }
 
   return false;

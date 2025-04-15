@@ -175,8 +175,8 @@ const createServer = (auth: Authenticator): McpServer => {
       if (!validateUrl(input).valid) {
         const r = getResourceNameAndIdFromSId(input);
         if (r && r.resourceName === "file") {
-          const { resourceId } = r;
-          const file = await FileResource.fetchByModelId(resourceId);
+          const { resourceModelId } = r;
+          const file = await FileResource.fetchByModelId(resourceModelId);
           if (file) {
             url = await convertapi.upload(
               file.getReadStream({ auth, version: "original" }),
