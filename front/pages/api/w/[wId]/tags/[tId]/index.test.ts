@@ -47,4 +47,4 @@ describe("DELETE /api/w/[wId]/tags/[tId]", () => {
       },
     });
   });
-);
+});

@@ -6,6 +6,7 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { TagModel } from "@app/lib/models/tags";
 import {
   getResourceIdFromSId,
@@ -166,7 +167,7 @@ export class TagResource extends BaseResource<TagModel> {
 
   toJSON() {
     return {
-      id: this.sId,
+      sId: this.sId,
       name: this.name,
     };
   }
