@@ -7,6 +7,7 @@ import {
   generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import {
   ConfigurableToolInputSchemas,
   TABLE_CONFIGURATION_URI_PATTERN,
@@ -141,14 +142,14 @@ function createServer(
   auth: Authenticator,
   {
     agentConfiguration,
+    actionConfiguration,
     conversation,
     agentMessage,
-    description,
   }: {
-    agentConfiguration: AgentConfigurationType;
-    conversation: ConversationType;
-    agentMessage: AgentMessageType;
-    description?: string;
+    agentConfiguration?: AgentConfigurationType;
+    actionConfiguration?: MCPToolConfigurationType;
+    conversation?: ConversationType;
+    agentMessage?: AgentMessageType;
   }
 ): McpServer {
   const server = new McpServer(serverInfo);
@@ -156,8 +157,8 @@ function createServer(
   let actionDescription =
     "Query data tables described below by executing a SQL query automatically generated from the conversation context. " +
     "The function does not require any inputs, the SQL query will be inferred from the conversation history.";
-  if (description) {
-    actionDescription += `\nDescription of the data tables:\n${description}`;
+  if (actionConfiguration?.description) {
+    actionDescription += `\nDescription of the data tables:\n${actionConfiguration.description}`;
   }
 
   server.tool(
@@ -168,6 +169,17 @@ function createServer(
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.TABLE],
     },
     async ({ tables }) => {
+      if (
+        !agentConfiguration ||
+        !conversation ||
+        !agentMessage ||
+        !actionConfiguration
+      ) {
+        throw new Error(
+          "Unreachable: missing agent configuration, conversation or agent message."
+        );
+      }
+
       const owner = auth.getNonNullableWorkspace();
 
       // TODO(mcp): if we stream events, here we want to inform that it has started.

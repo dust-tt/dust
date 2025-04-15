@@ -38,7 +38,12 @@ import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_m
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+  Result,
+} from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
@@ -160,22 +165,26 @@ function makeMCPToolConfigurations<T extends MCPServerConfigurationType>({
 export async function tryCallMCPTool(
   auth: Authenticator,
   {
-    conversationId,
     messageId,
     actionConfiguration,
     inputs,
+    agentConfiguration,
+    conversation,
+    agentMessage,
   }: {
-    conversationId: string;
     messageId: string;
     actionConfiguration: MCPToolConfigurationType;
     inputs: Record<string, unknown> | undefined;
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationType;
+    agentMessage: AgentMessageType;
   }
 ): Promise<Result<MCPToolResult["content"], Error>> {
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
     actionConfiguration,
     {
-      conversationId,
+      conversationId: conversation.sId,
       messageId,
     }
   );
@@ -185,7 +194,12 @@ export async function tryCallMCPTool(
 
   let mcpClient;
   try {
-    mcpClient = await connectToMCPServer(auth, connectionParamsRes.value);
+    mcpClient = await connectToMCPServer(auth, connectionParamsRes.value, {
+      agentConfiguration,
+      conversation,
+      agentMessage,
+      actionConfiguration,
+    });
 
     const toolCallResult = await mcpClient.callTool(
       {
