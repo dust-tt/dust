@@ -10,7 +10,12 @@ import { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_co
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isCredentialProvider, OAuthAPI, SyncStatus } from "@app/types";
+import {
+  HubspotCredentialsSchema,
+  isCredentialProvider,
+  OAuthAPI,
+  SyncStatus,
+} from "@app/types";
 
 type LabsConnectionConfiguration = {
   id: string;
@@ -28,20 +33,20 @@ const OAuthConfigSchema = t.type({
   connectionId: t.string,
 });
 
-const ApiKeyConfigSchema = t.type({
+const CredentialsConfigSchema = t.type({
   provider: acceptableConnectionProvidersCodec,
-  apiKey: t.string,
+  credentials: HubspotCredentialsSchema,
 });
 
 export const PostLabsConnectionsConfigurationBodySchema = t.union([
   OAuthConfigSchema,
-  ApiKeyConfigSchema,
+  CredentialsConfigSchema,
 ]);
 
-export function isApiKeyConfig(
+export function isCredentialsConfig(
   config: t.TypeOf<typeof PostLabsConnectionsConfigurationBodySchema>
-): config is t.TypeOf<typeof ApiKeyConfigSchema> {
-  return "apiKey" in config;
+): config is t.TypeOf<typeof CredentialsConfigSchema> {
+  return "credentials" in config;
 }
 
 async function handler(
@@ -112,7 +117,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 409,
           api_error: {
-            type: "transcripts_configuration_already_exists",
+            type: "labs_connection_configuration_already_exists",
             message: "A configuration for this provider already exists.",
           },
         });
@@ -121,14 +126,15 @@ async function handler(
       let credentialId: string | null = null;
       const connectionId: string | null = null;
 
-      if (isApiKeyConfig(validatedBody) && isCredentialProvider(provider)) {
+      if (
+        isCredentialsConfig(validatedBody) &&
+        isCredentialProvider(provider)
+      ) {
         const oAuthRes = await oauthApi.postCredentials({
           provider,
           userId: user.sId,
           workspaceId: owner.sId,
-          credentials: {
-            api_key: validatedBody.apiKey,
-          },
+          credentials: validatedBody.credentials,
         });
 
         if (oAuthRes.isErr()) {
