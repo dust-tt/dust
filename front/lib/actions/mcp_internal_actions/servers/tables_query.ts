@@ -9,6 +9,7 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import {
   ConfigurableToolInputSchemas,
   TABLE_CONFIGURATION_URI_PATTERN,
@@ -483,17 +484,32 @@ function createServer(
       //   runId: await dustRunId,
       // });
 
-      // TODO(mcp): share the following
-      // resultsFileId: generatedResultFile?.fileId ?? null,
-      // resultsFileSnippet: updateParams.resultsFileSnippet,
-      // sectionFileId: generatedSectionFile?.fileId ?? null,
-      // generatedFiles: removeNulls([
-      //   generatedResultFile,
-      //   generatedSectionFile,
-      // ]),
+      const content: MCPToolResultContent[] = [
+        { type: "text", text: JSON.stringify(sanitizedOutput) },
+      ];
+      if (generatedResultFile) {
+        content.push({
+          type: "resource",
+          resource: {
+            mimeType: generatedResultFile.contentType,
+            uri: generatedResultFile.fileId,
+            text: generatedResultFile.snippet ?? "",
+          },
+        });
+      }
+      if (generatedSectionFile) {
+        content.push({
+          type: "resource",
+          resource: {
+            mimeType: generatedSectionFile.contentType,
+            uri: generatedSectionFile.fileId,
+            text: generatedSectionFile.snippet ?? "",
+          },
+        });
+      }
       return {
         isError: false,
-        content: [{ type: "text", text: JSON.stringify(sanitizedOutput) }],
+        content: content,
       };
     }
   );
