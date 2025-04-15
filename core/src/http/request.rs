@@ -99,10 +99,17 @@ impl HttpRequest {
         .into_iter()
         .map(|ip| {
             lazy_static! {
-                static ref RE: Regex = Regex::new(r"^(0|127|10|192\.168|169\.254)\..*").unwrap();
+                // Simple patterns that match single ranges
+                static ref SIMPLE_RANGES: Regex = Regex::new(r"^(0|127|10|192\.168|169\.254)\..*").unwrap();
+
+                // 172.16-31.x.x range
+                static ref RANGE_172: Regex = Regex::new(r"^172\.(1[6-9]|2[0-9]|3[0-1])\..*").unwrap();
+
+                // 100.64-127.x.x range
+                static ref RANGE_100: Regex = Regex::new(r"^100\.(6[4-9]|7[0-9]|8[0-9]|9[0-9]|1[01][0-9]|12[0-7])\..*").unwrap();
             }
             // println!("IP {}", ip.to_string());
-            match RE.is_match(ip.to_string().as_str()) {
+            match SIMPLE_RANGES.is_match(ip.to_string().as_str()) || RANGE_172.is_match(ip.to_string().as_str()) || RANGE_100.is_match(ip.to_string().as_str()) {
                 true => Err(anyhow!("Forbidden IP range"))?,
                 false => Ok(ip),
             }
