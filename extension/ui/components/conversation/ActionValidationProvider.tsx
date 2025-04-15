@@ -190,7 +190,7 @@ export function ActionValidationProvider({
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <div>
-                Allow <b>{currentValidation?.metadata.agentName}</b> to use the
+                Allow <b>@{currentValidation?.metadata.agentName}</b> to use the
                 tool{" "}
                 <b>{asDisplayName(currentValidation?.metadata.toolName)}</b>{" "}
                 from{" "}
