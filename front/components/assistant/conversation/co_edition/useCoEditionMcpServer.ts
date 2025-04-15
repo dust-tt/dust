@@ -9,7 +9,7 @@ interface UseCoEditionServerProps {
   owner: LightWorkspaceType;
 }
 
-export function useCoEditionServer({
+export function useCoEditionMcpServer({
   hasCoEditionFeatureFlag = true,
   owner,
 }: UseCoEditionServerProps) {
