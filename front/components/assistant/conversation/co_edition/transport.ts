@@ -140,6 +140,11 @@ export class CoEditionTransport implements Transport {
 
     this.eventSource.onmessage = (event) => {
       try {
+        if (event.data === "done") {
+          // Ignore this event.
+          return;
+        }
+
         const eventData = JSON.parse(event.data);
 
         // Save the eventId for reconnection purposes
