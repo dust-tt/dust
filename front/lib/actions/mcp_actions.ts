@@ -76,13 +76,13 @@ const EmbeddedResourceSchema = z.object({
   resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema]),
 });
 
-const Schema = z.union([
+const MCPToolResultContentSchema = z.union([
   TextContentSchema,
   ImageContentSchema,
   EmbeddedResourceSchema,
 ]);
 
-export type MCPToolResultContent = z.infer<typeof Schema>;
+export type MCPToolResultContent = z.infer<typeof MCPToolResultContentSchema>;
 
 export type MCPToolResult = {
   isError: boolean;
