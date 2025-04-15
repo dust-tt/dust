@@ -108,7 +108,7 @@ type MCPApproveExecutionEvent = {
   action: MCPActionType;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
-  meta: MCPValidationMetadataType;
+  metadata: MCPValidationMetadataType;
 };
 
 export function isMCPApproveExecutionEvent(
@@ -327,7 +327,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         stake: isPlatformMCPToolConfiguration(actionConfiguration)
           ? actionConfiguration.permission
           : DEFAULT_MCP_TOOL_STAKE_LEVEL,
-        meta: {
+        metadata: {
           toolName: actionConfiguration.originalName,
           mcpServerName: actionConfiguration.mcpServerName,
           agentName: agentConfiguration.name,
