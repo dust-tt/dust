@@ -54,11 +54,11 @@ export function MCPServerSelector({
   return (
     <>
       <div className="text-sm text-foreground dark:text-foreground-night">
-        The agent will execute an{" "}
+        The agent will be able to execute tools from the{" "}
         <a className="font-bold" href="https://docs.dust.tt" target="_blank">
-          Action
+          Toolset
         </a>{" "}
-        made available to you.
+        made available to you by your Admin.
       </div>
       {isSpacesLoading ? (
         <Spinner />
@@ -81,7 +81,7 @@ export function MCPServerSelector({
               mcpServerViewsInSpace.length === 0 ||
               hasNoMCPServerViewsInAllowedSpaces
             ) {
-              return <>No Actions available.</>;
+              return <>No Toolsets available.</>;
             }
 
             return (
