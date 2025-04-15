@@ -1,0 +1,29 @@
+query GetIssues($owner: String!, $repo: String!, $cursor: String, $perPage: Int!) {
+  repository(owner: $owner, name: $repo) {
+    issues(first: $perPage, after: $cursor, states: [OPEN, CLOSED]) {
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+      nodes {
+        id
+        number
+        title
+        url
+        author {
+          login
+        }
+        createdAt
+        updatedAt
+        body
+        state
+        __typename
+        labels(first: 100) {
+          nodes {
+            name
+          }
+        }
+      }
+    }
+  }
+}
