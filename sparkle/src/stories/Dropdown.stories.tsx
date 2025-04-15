@@ -12,7 +12,6 @@ import {
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuStaticItem,
   DropdownMenuSub,
@@ -31,12 +30,20 @@ import {
 } from "@sparkle/logo/platforms";
 
 import {
+  ActionArmchairIcon,
+  ActionCloudArrowDownIcon,
+  ActionCommand1Icon,
+  ActionDocumentIcon,
+  ActionFolderIcon,
+  ActionMagicIcon,
+  ActionUserGroupIcon,
   ArrowDownCircleIcon,
+  ArrowUpOnSquareIcon,
+  AttachmentIcon,
   Avatar,
   Button,
   ChatBubbleBottomCenterPlusIcon,
   CloudArrowDownIcon,
-  CloudArrowUpIcon,
   Cog6ToothIcon,
   DocumentIcon,
   FolderIcon,
@@ -45,7 +52,12 @@ import {
   Icon,
   LogoutIcon,
   MagicIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  RobotIcon,
   ScrollArea,
+  SearchInput,
+  SuitcaseIcon,
   UserGroupIcon,
   UserIcon,
 } from "../index_with_tw_base";
@@ -65,8 +77,13 @@ export const DropdownExamples = () => (
     <div>{DropdownMenuRadioGroupDemo()}</div>
     <div>{ModelsDropdownDemo()}</div>
     <div>{ModelsDropdownRadioGroupDemo()}</div>
-    <div>{DropdownMenuSearchbarDemo()}</div>
     <div>{StaticItemDropdownDemo()}</div>
+  </div>
+);
+
+export const PickerExamples = () => (
+  <div className="s-flex s-h-80 s-w-full s-flex-col s-items-center s-justify-center s-gap-4 s-text-foreground dark:s-text-foreground-night">
+    <div>{AttachFileDemo()}</div>
   </div>
 );
 
@@ -309,9 +326,39 @@ function ModelsDropdownRadioGroupDemo() {
   );
 }
 
-function DropdownMenuSearchbarDemo() {
+function AttachFileDemo() {
   const [searchText, setSearchText] = React.useState("");
   const [selectedItem, setSelectedItem] = React.useState<string | null>(null);
+  const [open, setOpen] = React.useState(false);
+  const [openAgents, setOpenAgents] = React.useState(false);
+  const [openToolsets, setOpenToolsets] = React.useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const agentsSearchInputRef = React.useRef<HTMLInputElement>(null);
+  const toolsetsSearchInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (open) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 0);
+    }
+  }, [open]);
+
+  React.useEffect(() => {
+    if (openAgents) {
+      setTimeout(() => {
+        agentsSearchInputRef.current?.focus();
+      }, 0);
+    }
+  }, [openAgents]);
+
+  React.useEffect(() => {
+    if (openToolsets) {
+      setTimeout(() => {
+        toolsetsSearchInputRef.current?.focus();
+      }, 0);
+    }
+  }, [openToolsets]);
 
   const items = [
     "Automated Data Processing Automated Data Processing Automated Data Processing Automated Data Processing",
@@ -343,49 +390,251 @@ function DropdownMenuSearchbarDemo() {
   const mainIcons = [FolderIcon, DocumentIcon];
   const extraIcons = [DriveLogo, NotionLogo, SlackLogo];
 
+  const filteredAgents = [
+    {
+      name: "Research Assistant",
+      description: "Academic research and paper analysis",
+      emoji: "🔬",
+      backgroundColor: "s-bg-blue-200",
+    },
+    {
+      name: "Code Companion",
+      description: "Pair programming and code review",
+      emoji: "💻",
+      backgroundColor: "s-bg-purple-200",
+    },
+    {
+      name: "Data Analyst",
+      description: "Data visualization and insights",
+      emoji: "��",
+      backgroundColor: "s-bg-green-200",
+    },
+    {
+      name: "Content Writer",
+      description: "Blog posts and marketing copy",
+      emoji: "✍️",
+      backgroundColor: "s-bg-yellow-200",
+    },
+    {
+      name: "Customer Support",
+      description: "24/7 customer service automation",
+      emoji: "🤝",
+      backgroundColor: "s-bg-pink-200",
+    },
+    {
+      name: "Legal Assistant",
+      description: "Contract review and legal research",
+      emoji: "⚖️",
+      backgroundColor: "s-bg-red-200",
+    },
+    {
+      name: "Design Assistant",
+      description: "UI/UX design and prototyping",
+      emoji: "🎨",
+      backgroundColor: "s-bg-indigo-200",
+    },
+    {
+      name: "Financial Advisor",
+      description: "Investment analysis and planning",
+      emoji: "💰",
+      backgroundColor: "s-bg-emerald-200",
+    },
+  ] as const;
+
+  const filteredToolsetList = [
+    {
+      name: "Product Design Suite",
+      description: "Figma, Adobe XD, and design assets",
+      icon: ActionMagicIcon,
+    },
+    {
+      name: "Business Intelligence",
+      description: "Tableau, PowerBI, and analytics tools",
+      icon: ActionDocumentIcon,
+    },
+    {
+      name: "Project Management",
+      description: "Notion, Jira, and task tracking",
+      icon: ActionFolderIcon,
+    },
+    {
+      name: "Communication Hub",
+      description: "Slack, Email, and messaging platforms",
+      icon: ActionArmchairIcon,
+    },
+    {
+      name: "Development Stack",
+      description: "GitHub, VSCode, and dev tools",
+      icon: ActionCommand1Icon,
+    },
+    {
+      name: "Customer Success",
+      description: "Zendesk, Intercom, and support tools",
+      icon: ActionUserGroupIcon,
+    },
+    {
+      name: "Marketing Suite",
+      description: "HubSpot, Mailchimp, and campaign tools",
+      icon: ActionCloudArrowDownIcon,
+    },
+    {
+      name: "Data Warehouse",
+      description: "Snowflake, BigQuery, and data storage",
+      icon: ActionArmchairIcon,
+    },
+    {
+      name: "HR Platform",
+      description: "BambooHR, Workday, and people tools",
+      icon: ActionMagicIcon,
+    },
+    {
+      name: "Finance Stack",
+      description: "QuickBooks, Stripe, and payment tools",
+      icon: ActionFolderIcon,
+    },
+  ] as const;
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          label={selectedItem || "Select System"}
-          variant="outline"
-          size="sm"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="s-w-[300px]">
-        <DropdownMenuItem icon={CloudArrowUpIcon} label="Upload File" />
-        <DropdownMenuSeparator />
-        <DropdownMenuSearchbar
-          placeholder="Search systems..."
-          name="search"
-          value={searchText}
-          onChange={setSearchText}
-        />
-        <DropdownMenuSeparator />
-        <ScrollArea className="s-h-[200px]">
-          {filteredItems.map((item) => {
-            const randomMainIcon =
-              mainIcons[Math.floor(Math.random() * mainIcons.length)];
-            const randomExtraIcon =
-              extraIcons[Math.floor(Math.random() * extraIcons.length)];
-            return (
-              <DropdownMenuItem
-                key={item}
-                label={item}
-                description="Company Space/Notion"
-                icon={randomMainIcon}
-                extraIcon={randomExtraIcon}
-                onClick={() => {
-                  setSelectedItem(item);
-                  setSearchText("");
-                }}
-                truncateText
-              />
-            );
-          })}
-        </ScrollArea>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="s-flex s-gap-2">
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label={selectedItem || "Attach"}
+            icon={AttachmentIcon}
+            variant="outline"
+            size="sm"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="s-w-[380px]">
+          <div className="s-flex s-gap-1.5 s-p-1.5">
+            <SearchInput
+              ref={searchInputRef}
+              name="search"
+              onChange={setSearchText}
+              onKeyDown={() => {}}
+              placeholder="Search in Dust"
+              value={searchText}
+            />
+            <Button icon={ArrowUpOnSquareIcon} label="Upload File" />
+          </div>
+          <DropdownMenuSeparator />
+          <ScrollArea className="s-h-[380px]">
+            {searchText ? (
+              filteredItems.map((item) => {
+                const randomMainIcon =
+                  mainIcons[Math.floor(Math.random() * mainIcons.length)];
+                const randomExtraIcon =
+                  extraIcons[Math.floor(Math.random() * extraIcons.length)];
+                return (
+                  <DropdownMenuItem
+                    key={item}
+                    label={item}
+                    description="Company Space/Notion"
+                    icon={randomMainIcon}
+                    extraIcon={randomExtraIcon}
+                    onClick={() => {
+                      setSelectedItem(item);
+                      setSearchText("");
+                    }}
+                    truncateText
+                  />
+                );
+              })
+            ) : (
+              <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-py-8">
+                <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-text-center s-text-base s-font-semibold s-text-primary-400">
+                  <Icon visual={MagnifyingGlassIcon} size="sm" />
+                  Search in Dust
+                </div>
+              </div>
+            )}
+          </ScrollArea>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu open={openAgents} onOpenChange={setOpenAgents}>
+        <DropdownMenuTrigger asChild>
+          <Button icon={RobotIcon} variant="outline" size="sm" isSelect />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="s-w-[380px]">
+          <div className="s-flex s-gap-1.5 s-p-1.5">
+            <SearchInput
+              ref={agentsSearchInputRef}
+              name="search"
+              onChange={() => {}}
+              onKeyDown={() => {}}
+              placeholder="Search Agents"
+              value=""
+            />
+            <Button icon={PlusIcon} label="Create" />
+          </div>
+          <DropdownMenuSeparator />
+          <ScrollArea className="s-h-[380px]">
+            {filteredAgents.map((agent) => {
+              return (
+                <DropdownMenuItem
+                  key={agent.name}
+                  label={agent.name}
+                  description={agent.description}
+                  icon={() => (
+                    <Avatar
+                      size="sm"
+                      emoji={agent.emoji}
+                      backgroundColor={agent.backgroundColor}
+                    />
+                  )}
+                  onClick={() => {
+                    setSelectedItem(agent.name);
+                    setSearchText("");
+                  }}
+                  truncateText
+                />
+              );
+            })}
+          </ScrollArea>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu open={openToolsets} onOpenChange={setOpenToolsets}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label={selectedItem || "Add Toolset"}
+            icon={SuitcaseIcon}
+            variant="outline"
+            size="sm"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="s-w-[380px]">
+          <div className="s-flex s-gap-1.5 s-p-1.5">
+            <SearchInput
+              ref={toolsetsSearchInputRef}
+              name="search"
+              onChange={() => {}}
+              onKeyDown={() => {}}
+              placeholder="Search Toolsets"
+              value=""
+            />
+            <Button icon={PlusIcon} label="Add MCP Server" />
+          </div>
+          <DropdownMenuSeparator />
+          <ScrollArea className="s-h-[380px]">
+            {filteredToolsetList.map((toolset) => {
+              return (
+                <DropdownMenuItem
+                  key={toolset.name}
+                  label={toolset.name}
+                  description={toolset.description}
+                  icon={() => <Avatar size="sm" icon={toolset.icon} />}
+                  onClick={() => {
+                    setSelectedItem(toolset.name);
+                    setSearchText("");
+                  }}
+                  truncateText
+                />
+              );
+            })}
+          </ScrollArea>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
