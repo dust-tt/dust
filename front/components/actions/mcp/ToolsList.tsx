@@ -14,12 +14,12 @@ import {
   DEFAULT_MCP_TOOL_STAKE_LEVEL,
   MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
-import { capitalizeMCPToolName } from "@app/lib/actions/mcp_helper";
 import {
   useMCPServerToolsPermissions,
   useUpdateMCPServerToolsPermissions,
 } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType } from "@app/types";
+import type {LightWorkspaceType} from "@app/types";
+import { asDisplayName  } from "@app/types";
 
 export function ToolsList({
   owner,
@@ -84,7 +84,7 @@ export function ToolsList({
                   className="border-b pb-4 last:border-b-0 last:pb-0"
                 >
                   <h4 className="flex-grow text-sm font-semibold">
-                    {capitalizeMCPToolName(tool.name)}
+                    {asDisplayName(tool.name)}
                   </h4>
                   {tool.description && (
                     <p className="mt-1 text-xs text-gray-500">
