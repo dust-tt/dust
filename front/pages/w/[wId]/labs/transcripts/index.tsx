@@ -71,7 +71,6 @@ export default function LabsTranscriptsIndex({
   owner,
   subscription,
   dataSourcesViews,
-  featureFlags,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const {
     transcriptsConfiguration,
