@@ -614,6 +614,19 @@ export async function renderLightContentFragmentForModel(
     throw new Error(`Content fragment not found for message ${sId}`);
   }
 
+  if (contentFragment.expiredReason) {
+    return {
+      role: "content_fragment",
+      name: `attach_${contentType}`,
+      content: [
+        {
+          type: "text",
+          text: `The content of this file is no longer available. Reason: ${contentFragment.expiredReason}`,
+        },
+      ],
+    };
+  }
+
   const { fileId: fileModelId } = contentFragment;
 
   const fileStringId = fileModelId
@@ -622,6 +635,7 @@ export async function renderLightContentFragmentForModel(
         workspaceId: conversation.owner.id,
       })
     : null;
+
   if (fileStringId && isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return {
