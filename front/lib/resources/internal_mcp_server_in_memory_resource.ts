@@ -243,7 +243,6 @@ export class InternalMCPServerInMemoryResource {
 
   // Serialization.
   toJSON(): MCPServerType {
-    console.log(this.metadata);
     return {
       id: this.id,
       ...this.metadata,

@@ -89,7 +89,7 @@ import {
   getDefaultMCPServerActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
-import { getIcon } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -202,10 +202,12 @@ function actionIcon(
     )?.server;
 
     if (server) {
-      return getIcon(server);
+      return getAvatar(server, "xs");
     }
   }
-  return ACTION_SPECIFICATIONS[action.type].cardIcon;
+  return (
+    <Avatar icon={ACTION_SPECIFICATIONS[action.type].cardIcon} size="xs" />
+  );
 }
 
 function actionDisplayName(action: AssistantBuilderActionConfiguration) {
@@ -858,7 +860,7 @@ function ActionCard({
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <Avatar size="xs" icon={actionIcon(action, mcpServerViews)} />
+          {actionIcon(action, mcpServerViews)}
           <div className="w-full truncate">{actionDisplayName(action)}</div>
         </div>
         {isLegacyConfig ? (

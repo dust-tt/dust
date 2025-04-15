@@ -1,5 +1,7 @@
+import { Avatar } from "@dust-tt/sparkle";
 import { ActionIcons, GithubLogo } from "@dust-tt/sparkle";
 import type React from "react";
+import type { ComponentProps } from "react";
 
 import type { MCPServerType } from "@app/lib/api/mcp";
 
@@ -29,12 +31,13 @@ export const isInternalAllowedIcon = (
   typeof icon === "string" &&
   INTERNAL_ALLOWED_ICONS.includes(icon as InternalAllowedIconType);
 
-export const getIcon = (
-  mcpServer: MCPServerType
-): React.ComponentType<{ className?: string }> => {
+export const getAvatar = (
+  mcpServer: MCPServerType,
+  size: ComponentProps<typeof Avatar>["size"] = "sm"
+): React.ReactNode => {
   if (isRemoteAllowedIconType(mcpServer.icon)) {
-    return ActionIcons[mcpServer.icon];
+    return <Avatar icon={ActionIcons[mcpServer.icon]} size={size} />;
   }
 
-  return InternalActionIcons[mcpServer.icon];
+  return <Avatar icon={InternalActionIcons[mcpServer.icon]} size={size} />;
 };

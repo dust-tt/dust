@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
@@ -17,7 +16,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
-import { getIcon } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -658,7 +657,7 @@ const SpaceActionItem = ({
     <Tree.Item
       type="leaf"
       label={asDisplayName(action.server.name)}
-      visual={() => <Avatar icon={getIcon(action.server)} size="xs" />}
+      visual={() => getAvatar(action.server, "xs")}
       areActionsFading={false}
     />
   );
