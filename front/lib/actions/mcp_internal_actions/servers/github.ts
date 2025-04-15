@@ -12,7 +12,7 @@ const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "github",
   version: "1.0.0",
-  description: "GitHub actions to manage issues and pull requests.",
+  description: "GitHub tools to manage issues and pull requests.",
   authorization: {
     provider: "github" as const,
     use_case: "platform_actions" as const,
