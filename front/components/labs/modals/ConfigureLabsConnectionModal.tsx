@@ -174,15 +174,21 @@ export function ConfigureLabsConnectionModal({
 
     let success = false;
 
-    success = await createConnectionConfiguration({
-      provider: connection.id,
-      credentials: credentials as ConnectionCredentials,
-    });
-
-    if (success && pendingDataSourceView) {
+    if (configuration) {
       success = await updateConnectionConfiguration({
-        dataSourceViewId: pendingDataSourceView.id,
+        dataSourceViewId: pendingDataSourceView?.id ?? null,
       });
+    } else {
+      success = await createConnectionConfiguration({
+        provider: connection.id,
+        credentials: credentials as ConnectionCredentials,
+      });
+
+      if (success && pendingDataSourceView) {
+        success = await updateConnectionConfiguration({
+          dataSourceViewId: pendingDataSourceView.id,
+        });
+      }
     }
 
     if (success) {

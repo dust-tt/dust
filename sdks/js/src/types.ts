@@ -1543,6 +1543,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "table_not_found"
   | "template_not_found"
   | "template_not_found"
+  | "labs_connection_configuration_already_exists"
   | "transcripts_configuration_already_exists"
   | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_not_found"

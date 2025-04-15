@@ -90,6 +90,7 @@ const API_ERROR_TYPES = [
   "transcripts_configuration_not_found",
   "transcripts_configuration_default_not_allowed",
   "transcripts_configuration_already_exists",
+  "labs_connection_configuration_already_exists",
   // Files:
   "file_not_found",
   "file_too_large",
