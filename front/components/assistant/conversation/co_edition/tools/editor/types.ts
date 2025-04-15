@@ -27,6 +27,7 @@ export const CoEditionImageNodeSchema = BaseNodeSchema.extend({
   type: z.literal("image"),
   fileId: z
     .string()
+    .startsWith("fil_", { message: "File ID must start with 'fil_'" })
     .describe("The file ID of the image to insert (starts with 'fil_')"),
   alt: z.string().optional().describe("Optional alt text for the image"),
 });
