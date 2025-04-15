@@ -9,7 +9,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
@@ -67,6 +67,14 @@ export class GroupResource extends BaseResource<GroupModel> {
   ) {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
+
+    if (agent.workspaceId !== workspace.id) {
+      throw new DustError(
+        "internal_error",
+        "Unexpected: agent and workspace mismatch"
+      );
+    }
+
     // Create a default group for the agent and add the author to it.
     const defaultGroup = await GroupResource.makeNew(
       {
@@ -78,20 +86,18 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
 
     // Add user to the newly created group. For the specific purpose of
-    // agent_editors group creation, we need admin rights since only admins or
-    // existing members of the group can add/remove members.
-    // Do not copy this pattern elsewhere.
-    const addMemberResult = await defaultGroup.addMember(
-      await Authenticator.internalAdminForWorkspace(workspace.sId),
-      user.toJSON(),
+    // agent_editors group creation, we don't use addMembers, since admins or
+    // existing members of the group can add/remove members this way. We create
+    // the relation directly.
+    await GroupMembershipModel.create(
       {
-        transaction,
-      }
+        groupId: defaultGroup.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: new Date(),
+      },
+      { transaction }
     );
-    if (addMemberResult.isErr()) {
-      // Throw error to trigger transaction rollback
-      throw addMemberResult.error;
-    }
 
     // Associate the group with the agent configuration.
     const groupAgentResult = await defaultGroup.addGroupToAgentConfiguration({
