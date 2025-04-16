@@ -72,5 +72,18 @@ export const ThinkingChip = () => (
 );
 
 export const RemovableChip = () => (
-  <Chip size="sm" label="Remove me" onRemove={() => alert("Removed")} />
+  <>
+    <Chip
+      size="xs"
+      color="golden"
+      label="Remove me"
+      onRemove={() => alert("Removed")}
+    />
+    <Chip
+      size="sm"
+      color="golden"
+      label="Remove me"
+      onRemove={() => alert("Removed")}
+    />
+  </>
 );
