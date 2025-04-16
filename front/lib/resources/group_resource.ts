@@ -451,7 +451,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listUserGroupsInWorkspace({
     user,
     workspace,
-    groupKinds = ["global", "regular"],
+    groupKinds = ["global", "regular", "agent_editors"],
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
