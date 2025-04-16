@@ -1,5 +1,5 @@
 import type { RequestMethod } from "node-mocks-http";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createAgentConfiguration,
@@ -206,7 +206,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => 
 });
 
 describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => {
-  it("admin should successfully add an editor", async (t) => {
+  it("admin should successfully add an editor", async () => {
     const { req, res, workspace, agentOwner } = await setupTest({
       requestUserRole: "admin",
       method: "PATCH",
@@ -226,7 +226,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     expect(editorIds).toContain(newEditor.sId);
   });
 
-  it("admin should successfully remove an editor", async (t) => {
+  it("admin should successfully remove an editor", async () => {
     const { req, res, workspace, agent, agentOwner } = await setupTest({
       requestUserRole: "admin",
       method: "PATCH",
@@ -255,7 +255,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     expect(data.editors[0].sId).toBe(editorToRemove.sId);
   });
 
-  it("editor should successfully add another editor", async (t) => {
+  it("editor should successfully add another editor", async () => {
     const { req, res, workspace, agentOwner } = await setupTest({
       agentOwnerRole: "builder", // Make agent owner a builder
       requestUserRole: "builder",
@@ -319,10 +319,11 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     req.body = { addEditorIds: ["some_user_sid"] }; // Body doesn't matter, auth fails first
 
     await handler(req, res);
+    console.log("res", res._getJSONData());
     expect(res._getStatusCode()).toBe(403);
     expect(res._getJSONData()).toEqual({
       error: {
-        type: "agent_configuration_auth_error",
+        type: "agent_group_permission_error",
         message:
           "Only editors of the agent or workspace admins can modify editors.",
       },
