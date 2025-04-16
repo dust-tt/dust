@@ -325,7 +325,7 @@ export const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description: "OpenAI's GPT 4.1 mini model (1M context).",
-  shortDescription: "OpenAI's most advanced model.",
+  shortDescription: "OpenAI's most advanced mini model.",
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
@@ -355,7 +355,7 @@ export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description: "OpenAI's GPT 4o model (128k context).",
-  shortDescription: "OpenAI's most advanced model.",
+  shortDescription: "OpenAI's older most advanced model.",
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
