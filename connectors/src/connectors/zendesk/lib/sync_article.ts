@@ -1,11 +1,11 @@
 import TurndownService from "turndown";
 
+import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
   ZendeskFetchedArticle,
   ZendeskFetchedSection,
   ZendeskFetchedUser,
-} from "@connectors/@types/node-zendesk";
-import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+} from "@connectors/connectors/zendesk/lib/types";
 import {
   deleteDataSourceDocument,
   renderDocumentTitleAndContent,
@@ -15,8 +15,7 @@ import {
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskArticleResource } from "@connectors/resources/zendesk_resources";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();

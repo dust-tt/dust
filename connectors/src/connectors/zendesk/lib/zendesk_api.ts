@@ -8,7 +8,7 @@ import type {
   ZendeskFetchedTicket,
   ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
-} from "@connectors/@types/node-zendesk";
+} from "@connectors/connectors/zendesk/lib/types";
 import {
   isZendeskNotFoundError,
   ZendeskApiError,
