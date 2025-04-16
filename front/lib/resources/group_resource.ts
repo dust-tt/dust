@@ -859,6 +859,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * 2. Role-based: Workspace admins get read and write access. All users can
    *    read "agent_editors" groups.
    *
+   * CAUTION: if / when editing, note that for role permissions, permissions are
+   * NOT inherited, i.e. if you set a permission for role "user", an "admin"
+   * will NOT have it
+   *
    * @returns Array of ResourcePermission objects defining the default access
    * configuration
    */
@@ -866,6 +870,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     const userReadPermissions: RolePermission[] = [
       {
         role: "user",
+        permissions: ["read"],
+      },
+      {
+        role: "builder",
         permissions: ["read"],
       },
     ];
