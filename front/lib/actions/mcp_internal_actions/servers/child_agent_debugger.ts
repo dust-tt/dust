@@ -14,7 +14,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "child_agent_debugger",
   version: "1.0.0",
   description: "Demo server showing a basic interaction with a child agent.",
-  icon: "GithubLogo",
+  icon: "RobotIcon",
   authorization: null,
 };
 
