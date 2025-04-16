@@ -30,7 +30,6 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  DEFAULT_MAX_STEPS_USE_PER_RUN,
   Err,
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
@@ -138,11 +137,13 @@ export async function constructPromptMultiActions(
   }
 
   if (hasAvailableActions) {
+    const maxStepsPerRun =
+      agentConfiguration.maxStepsPerRun > 1
+        ? agentConfiguration.maxStepsPerRun - 1
+        : agentConfiguration.maxStepsPerRun;
     const toolMetaPrompt = model.toolUseMetaPrompt?.replace(
       "MAX_STEPS_USE_PER_RUN",
-      (
-        agentConfiguration.maxStepsPerRun || DEFAULT_MAX_STEPS_USE_PER_RUN
-      ).toString()
+      maxStepsPerRun.toString()
     );
     if (toolMetaPrompt) {
       additionalInstructions += `\n${toolMetaPrompt}\n`;
