@@ -39,7 +39,7 @@ const createServer = (): McpServer => {
 
       if (websearchRes.isErr()) {
         return {
-          isError: false,
+          isError: true,
           content: [
             {
               type: "text",

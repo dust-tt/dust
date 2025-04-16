@@ -147,7 +147,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
-  tool_action: "Calling an external tool",
+  tool_action: "Using a tool",
 };
 
 /**
