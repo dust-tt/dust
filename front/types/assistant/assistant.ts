@@ -60,7 +60,7 @@ export function getSmallWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4O_MINI_MODEL_CONFIG;
+    return GPT_4_1_MINI_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
     return CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG;
@@ -81,7 +81,7 @@ export function getLargeWhitelistedModel(
     return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4O_MODEL_CONFIG;
+    return GPT_4_1_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
@@ -99,6 +99,8 @@ export function getLargeWhitelistedModel(
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_4O_MODEL_ID = "gpt-4o" as const;
+export const GPT_4_1_MODEL_ID = "gpt-4.1-2025-04-14" as const;
+export const GPT_4_1_MINI_MODEL_ID = "gpt-4.1-mini-2025-04-14" as const;
 export const GPT_4O_20240806_MODEL_ID = "gpt-4o-2024-08-06" as const;
 export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
 export const O1_MODEL_ID = "o1" as const;
@@ -159,6 +161,7 @@ export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
+  GPT_4_1_MODEL_ID,
   GPT_4O_20240806_MODEL_ID,
   GPT_4O_MINI_MODEL_ID,
   O1_MODEL_ID,
@@ -306,6 +309,36 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description: "OpenAI's GPT 4o model (128k context).",
+  shortDescription: "OpenAI's GPT4-o model.",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  supportsResponseFormat: true,
+};
+export const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_4_1_MINI_MODEL_ID,
+  displayName: "GPT 4.1 mini",
+  contextSize: 1_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description: "OpenAI's GPT 4.1 mini model (1M context).",
+  shortDescription: "OpenAI's most advanced model.",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  supportsResponseFormat: true,
+};
+export const GPT_4_1_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_4_1_MODEL_ID,
+  displayName: "GPT 4.1",
+  contextSize: 1_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description: "OpenAI's GPT 4.1 model (1M context).",
   shortDescription: "OpenAI's most advanced model.",
   isLegacy: false,
   generationTokensCount: 2048,
