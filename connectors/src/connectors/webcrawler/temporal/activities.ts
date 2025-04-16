@@ -247,6 +247,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             return req;
           },
         });
+        const content = await page.content();
         const extracted = new turndown()
           .remove([
             "style",
@@ -260,7 +261,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             "meta",
             "img",
           ])
-          .turndown(page.content());
+          .turndown(content);
 
         totalExtracted += extracted.length;
         const pageTitle = await page.title();
