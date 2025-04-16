@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { useCreateTag, useTags } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types";
 
 const MAX_TAG_LENGTH = 100;
 
@@ -234,19 +235,23 @@ export const TagsSelector = ({
               ))}
               <ScrollBar className="py-0" />
             </ScrollArea>
-            <DropdownMenuSeparator />
-            <div className="flex justify-end p-1">
-              <Button
-                label="Create"
-                size="xs"
-                variant="primary"
-                icon={PlusIcon}
-                onClick={() => {
-                  onMenuOpenChange(false);
-                  setIsDialogOpen(true);
-                }}
-              />
-            </div>
+            {isAdmin(owner) && (
+              <>
+                <DropdownMenuSeparator />
+                <div className="flex justify-end p-1">
+                  <Button
+                    label="Create"
+                    size="xs"
+                    variant="primary"
+                    icon={PlusIcon}
+                    onClick={() => {
+                      onMenuOpenChange(false);
+                      setIsDialogOpen(true);
+                    }}
+                  />
+                </div>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
