@@ -98,7 +98,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
               <Avatar visual={row.original.visual} size="sm" />
               <div className="flex flex-col">
                 <div className="flex-grow">{row.original.name}</div>
-                <span className="line-clamp-1 text-sm text-muted-foreground">
+                <span className="line-clamp-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {row.original.description || "No description available"}
                 </span>
               </div>
@@ -135,7 +135,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     <>
       <div className="relative mb-4">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-          <SearchIcon className="h-4 w-4 text-muted-foreground" />
+          <SearchIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
         </div>
         <Input
           className="pl-10"

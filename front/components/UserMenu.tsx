@@ -98,7 +98,7 @@ export function UserMenu({
           />
           <div className="flex flex-col items-start pr-4">
             <span className="text-sm font-medium">{user.firstName}</span>
-            <span className="text-sm text-muted-foreground">{owner.name}</span>
+            <span className="text-sm">{owner.name}</span>
           </div>
           <Icon visual={ChevronDownIcon} />
         </div>
