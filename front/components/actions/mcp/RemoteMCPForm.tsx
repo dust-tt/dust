@@ -31,9 +31,9 @@ import {
   useSyncRemoteMCPServer,
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
+import { formatSecret } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
-
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
   mcpServer: RemoteMCPServerType;
@@ -327,9 +327,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             <Label htmlFor="sharedSecret">Shared Secret</Label>
             <div className="flex items-center justify-between">
               <p className="overflow-hidden text-ellipsis whitespace-nowrap">
-                {isSecretVisible
-                  ? sharedSecret
-                  : `${sharedSecret.substring(0, 4)}${"•".repeat(Math.max(0, sharedSecret.length - 4))}`}
+                {isSecretVisible ? sharedSecret : formatSecret(sharedSecret)}
               </p>
               <div className="flex items-center gap-2">
                 <Button
