@@ -1,5 +1,5 @@
 import type { RequestMethod } from "node-mocks-http";
-import { describe, expect } from "vitest";
+import { describe, expect, vi } from "vitest";
 
 import {
   createAgentConfiguration,
@@ -19,10 +19,17 @@ import type {
 } from "@app/types";
 
 import handler from "./editors";
+import { Transaction } from "sequelize";
+
+// Mock this function
+vi.mock("@app/lib/api/assistant/recent_authors", () => ({
+  agentConfigurationWasUpdatedBy: vi.fn(),
+}));
 
 // Helper to create a test agent configuration
 async function createTestAgent(
   auth: Authenticator,
+  t: Transaction,
   overrides: Partial<{
     name: string;
     description: string;
@@ -41,24 +48,28 @@ async function createTestAgent(
   const modelId = overrides.model?.modelId ?? "gpt-4-turbo";
   const temperature = overrides.model?.temperature ?? 0.7;
 
-  const result = await createAgentConfiguration(auth, {
-    name,
-    description,
-    instructions: "Test Instructions",
-    maxStepsPerRun: 5,
-    visualizationEnabled: false,
-    pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
-    status: "active",
-    scope,
-    model: {
-      providerId,
-      modelId,
-      temperature,
+  const result = await createAgentConfiguration(
+    auth,
+    {
+      name,
+      description,
+      instructions: "Test Instructions",
+      maxStepsPerRun: 5,
+      visualizationEnabled: false,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope,
+      model: {
+        providerId,
+        modelId,
+        temperature,
+      },
+      templateId: null,
+      requestedGroupIds: [], // Let createAgentConfiguration handle group creation
+      tags: [], // Added missing tags property
     },
-    templateId: null,
-    requestedGroupIds: [], // Let createAgentConfiguration handle group creation
-    tags: [], // Added missing tags property
-  });
+    t
+  );
 
   if (result.isErr()) {
     throw result.error;
@@ -112,7 +123,7 @@ async function setupTest(
   }
 
   // Create agent owned by agentOwner
-  const agent = await createTestAgent(agentOwnerAuth);
+  const agent = await createTestAgent(agentOwnerAuth, t);
 
   // Set up query parameters for the agent
   req.query = { ...req.query, wId: workspace.sId, aId: agent.sId };
@@ -213,7 +224,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => 
 
 describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => {
   itInTransaction("admin should successfully add an editor", async (t) => {
-    const { req, res, workspace, agent, agentOwner } = await setupTest(t, {
+    const { req, res, workspace, agentOwner } = await setupTest(t, {
       requestUserRole: "admin",
       method: "PATCH",
     });
@@ -264,7 +275,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   itInTransaction(
     "editor should successfully add another editor",
     async (t) => {
-      const { req, res, workspace, agent, agentOwner } = await setupTest(t, {
+      const { req, res, workspace, agentOwner } = await setupTest(t, {
         agentOwnerRole: "builder", // Make agent owner a builder
         requestUserRole: "builder",
         method: "PATCH",
