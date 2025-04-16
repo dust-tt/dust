@@ -884,14 +884,27 @@ export async function createAgentConfiguration(
         }
       );
 
-        if (created && status === "active") {
-          await GroupResource.makeNewAgentEditorsGroup(
-            auth,
-            agentConfigurationInstance,
+      for (const tag of tags) {
+        const id = getResourceIdFromSId(tag.sId);
+        if (id) {
+          await TagAgentModel.create(
+            {
+              workspaceId: owner.id,
+              tagId: id,
+              agentConfigurationId: agentConfigurationInstance.id,
+            },
             { transaction: t }
           );
         }
-     
+      }
+
+      if (created && status === "active") {
+        await GroupResource.makeNewAgentEditorsGroup(
+          auth,
+          agentConfigurationInstance,
+          { transaction: t }
+        );
+      }
 
       if (created) {
         await GroupResource.makeNewAgentEditorsGroup(
