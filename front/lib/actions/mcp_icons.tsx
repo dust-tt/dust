@@ -21,7 +21,6 @@ export type RemoteAllowedIconType = keyof typeof ActionIcons;
 export const isRemoteAllowedIconType = (
   icon: string
 ): icon is RemoteAllowedIconType =>
-  typeof icon === "string" &&
   REMOTE_ALLOWED_ICONS.includes(icon as RemoteAllowedIconType);
 
 export type InternalAllowedIconType = keyof typeof InternalActionIcons;
@@ -29,7 +28,6 @@ export type InternalAllowedIconType = keyof typeof InternalActionIcons;
 export const isInternalAllowedIcon = (
   icon: string
 ): icon is InternalAllowedIconType =>
-  typeof icon === "string" &&
   INTERNAL_ALLOWED_ICONS.includes(icon as InternalAllowedIconType);
 
 export const getAvatar = (
