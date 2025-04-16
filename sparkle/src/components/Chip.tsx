@@ -30,8 +30,8 @@ export const CHIP_COLORS = [
 type ChipColorType = (typeof CHIP_COLORS)[number];
 
 const sizeVariants: Record<ChipSizeType, string> = {
-  xs: "s-rounded-lg s-min-h-7 s-text-xs s-font-medium s-px-3 s-gap-1",
-  sm: "s-rounded-xl s-min-h-9 s-text-sm s-font-medium s-px-3 s-gap-1.5",
+  xs: "s-rounded-lg s-min-h-7 s-heading-xs s-px-3 s-gap-1",
+  sm: "s-rounded-xl s-min-h-9 s-heading-sm s-px-4 s-gap-1.5",
 };
 
 const backgroundVariants: Record<ChipColorType, string> = {
@@ -60,8 +60,8 @@ const backgroundVariants: Record<ChipColorType, string> = {
     "dark:s-bg-green-100-night dark:s-border-green-200-night"
   ),
   blue: cn(
-    "s-bg-sky-100 s-border-sky-200",
-    "dark:s-bg-sky-100-night dark:s-border-sky-200-night"
+    "s-bg-blue-100 s-border-blue-200",
+    "dark:s-bg-blue-100-night dark:s-border-blue-200-night"
   ),
   rose: cn(
     "s-bg-rose-100 s-border-rose-200",
@@ -80,9 +80,48 @@ const textVariants: Record<ChipColorType, string> = {
   warning: "s-text-warning-900 dark:s-text-warning-900-night",
   info: "s-text-info-900 dark:s-text-info-900-night",
   green: "s-text-green-900 dark:s-text-green-900-night",
-  blue: "s-text-sky-900 dark:s-text-sky-900-night",
+  blue: "s-text-blue-900 dark:s-text-blue-900-night",
   rose: "s-text-rose-900 dark:s-text-rose-900-night",
   golden: "s-text-golden-900 dark:s-text-golden-900-night",
+};
+
+const closeIconVariants: Record<ChipColorType, string> = {
+  primary: cn(
+    "s-text-primary-700 hover:s-text-primary-500 active:s-text-primary-950",
+    "dark:s-text-primary-700-night dark:hover:s-text-primary-500-night dark:active:s-text-primary-950-night"
+  ),
+  highlight: cn(
+    "s-text-highlight-900 hover:s-text-highlight-700 active:s-text-highlight-950",
+    "dark:s-text-highlight-900-night dark:hover:s-text-highlight-700-night dark:active:s-text-highlight-950-night"
+  ),
+  success: cn(
+    "s-text-success-900 hover:s-text-success-700 active:s-text-success-950",
+    "dark:s-text-success-900-night dark:hover:s-text-success-700-night dark:active:s-text-success-950-night"
+  ),
+  warning: cn(
+    "s-text-warning-900 hover:s-text-warning-700 active:s-text-warning-950",
+    "dark:s-text-warning-900-night dark:hover:s-text-warning-700-night dark:active:s-text-warning-950-night"
+  ),
+  info: cn(
+    "s-text-info-900 hover:s-text-info-700 active:s-text-info-950",
+    "dark:s-text-info-900-night dark:hover:s-text-info-700-night dark:active:s-text-info-950-night"
+  ),
+  green: cn(
+    "s-text-green-900 hover:s-text-green-700 active:s-text-green-950",
+    "dark:s-text-green-900-night dark:hover:s-text-green-700-night dark:active:s-text-green-950-night"
+  ),
+  blue: cn(
+    "s-text-blue-900 hover:s-text-blue-700 active:s-text-blue-950",
+    "dark:s-text-blue-900-night dark:hover:s-text-blue-700-night dark:active:s-text-blue-950-night"
+  ),
+  rose: cn(
+    "s-text-rose-900 hover:s-text-rose-700 active:s-text-rose-950",
+    "dark:s-text-rose-900-night dark:hover:s-text-rose-700-night dark:active:s-text-rose-950-night"
+  ),
+  golden: cn(
+    "s-text-golden-900 hover:s-text-golden-700 active:s-text-golden-950",
+    "dark:s-text-golden-900-night dark:hover:s-text-golden-700-night dark:active:s-text-golden-950-night"
+  ),
 };
 
 const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
@@ -171,7 +210,10 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
             <Icon
               visual={XMarkIcon}
               size={size}
-              className="s-text-primary-700 hover:s-text-primary-500"
+              className={cn(
+                "s-transition-color -s-mr-1 s-duration-200",
+                closeIconVariants[color || "primary"]
+              )}
             />
           </div>
         )}
