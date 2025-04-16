@@ -79,6 +79,7 @@ pub mod providers {
     pub mod togetherai;
 }
 pub mod http {
+    pub mod network;
     pub mod request;
 }
 pub mod blocks {
