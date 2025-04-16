@@ -183,7 +183,7 @@ export async function joinChannel(
             connectorId,
             error: e,
           },
-          `Slack can't join the channel. Missing scope.`
+          "Slack can't join the channel. Missing scope."
         );
         return new Err(
           new Error(
@@ -198,7 +198,7 @@ export async function joinChannel(
             channelId,
             error: e,
           },
-          `Slack can't join the channel. Rate limit exceeded.`
+          "Slack can't join the channel. Rate limit exceeded."
         );
         return new Err(
           new Error(
