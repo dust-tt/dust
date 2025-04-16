@@ -218,6 +218,40 @@ export async function fetchZendeskBrand({
 }
 
 /**
+ * Fetches all the brands available in the Zendesk API.
+ */
+export async function listZendeskBrands({
+  subdomain,
+  accessToken,
+}: {
+  subdomain: string;
+  accessToken: string;
+}): Promise<ZendeskFetchedBrand[]> {
+  let url = `https://${subdomain}.zendesk.com/api/v2/brands`;
+  const brands = [];
+  let hasMore = true;
+
+  do {
+    try {
+      const response = await fetchFromZendeskWithRetries({
+        url,
+        accessToken,
+      });
+      brands.push(...response.brands);
+      hasMore = response.meta.has_more;
+      url = response.links.next;
+    } catch (e) {
+      if (isZendeskNotFoundError(e)) {
+        return brands;
+      }
+      throw e;
+    }
+  } while (hasMore);
+
+  return brands;
+}
+
+/**
  * Fetches a single article from the Zendesk API.
  */
 export async function fetchZendeskArticle({
