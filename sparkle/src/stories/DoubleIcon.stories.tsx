@@ -2,8 +2,10 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { DoubleIcon } from "@sparkle/components";
+import { SimpleDoubleIcon } from "@sparkle/components/DoubleIcon";
 import {
   ChatBubbleBottomCenterTextIcon,
+  ChatBubbleThoughtIcon,
   CheckCircleIcon,
   DocumentIcon,
   FolderIcon,
@@ -13,7 +15,7 @@ import {
   StarIcon,
   UserIcon,
 } from "@sparkle/icons/app";
-import { SlackLogo } from "@sparkle/logo";
+import { DriveLogo, NotionLogo, SlackLogo } from "@sparkle/logo";
 
 const meta = {
   title: "Primitives/DoubleIcon",
@@ -24,6 +26,12 @@ export default meta;
 
 export const IconPositions = () => (
   <div className="s-flex s-flex-col s-gap-8">
+    <SimpleDoubleIcon mainIcon={FolderIcon} secondaryIcon={DriveLogo} />{" "}
+    <SimpleDoubleIcon mainIcon={DocumentIcon} secondaryIcon={NotionLogo} />{" "}
+    <SimpleDoubleIcon
+      mainIcon={ChatBubbleThoughtIcon}
+      secondaryIcon={SlackLogo}
+    />
     <div className="s-flex s-items-center s-gap-16">
       <div className="s-flex s-flex-col s-items-center s-gap-2">
         <DoubleIcon
@@ -93,7 +101,6 @@ export const IconPositions = () => (
         <span className="s-text-xs s-text-muted-foreground">top-left</span>
       </div>
     </div>
-
     <div className="s-flex s-items-center s-gap-16">
       <div className="s-flex s-flex-col s-items-center s-gap-2">
         <DoubleIcon

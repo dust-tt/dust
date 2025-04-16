@@ -41,3 +41,32 @@ export const DoubleIcon = ({
     </div>
   );
 };
+
+export interface SimpleDoubleIconProps
+  extends VariantProps<typeof positionVariants> {
+  mainIcon: React.ComponentType;
+  secondaryIcon: React.ComponentType;
+  position?: "bottom-right" | "top-right" | "bottom-left" | "top-left";
+  className?: string;
+}
+
+export const SimpleDoubleIcon = ({
+  mainIcon,
+  secondaryIcon,
+  className,
+}: SimpleDoubleIconProps) => {
+  return (
+    <div className={cn("s-relative s-h-8 s-w-8 s-p-0.5", className)}>
+      <Icon
+        className="s-text-foreground dark:s-text-foreground-night"
+        size="md"
+        visual={mainIcon}
+      />
+      <Icon
+        size="xs"
+        visual={secondaryIcon}
+        className="s-absolute s-bottom-0 s-right-0"
+      />
+    </div>
+  );
+};
