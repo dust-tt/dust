@@ -1,6 +1,7 @@
 import {
   Avatar,
   ChevronDownIcon,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -79,7 +80,7 @@ export function UserMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <div className="flex items-center gap-2">
+        <div className="cursor-pointeritems-center group flex max-w-[200px] gap-2">
           <span className="sr-only">Open user menu</span>
           <Avatar
             size="sm"
@@ -88,15 +89,25 @@ export function UserMenu({
                 ? user.image
                 : "https://gravatar.com/avatar/anonymous?d=mp"
             }
-            onClick={() => {
-              "clickable";
-            }}
+            clickable
           />
-          <div className="flex flex-col items-start pr-4">
-            <span className="text-sm font-medium">{user.firstName}</span>
-            <span className="text-sm">{owner.name}</span>
+          <div className="flex flex-col items-start">
+            <span
+              className={cn(
+                "heading-sm transition-colors duration-200",
+                "text-foreground group-hover:text-primary-600 group-active:text-primary-950 dark:text-foreground-night dark:group-hover:text-muted-foreground-night dark:group-active:text-primary-700"
+              )}
+            >
+              {user.firstName}
+            </span>
+            <span className="-mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {owner.name}
+            </span>
           </div>
-          <Icon visual={ChevronDownIcon} />
+          <Icon
+            visual={ChevronDownIcon}
+            className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
+          />
         </div>
       </DropdownMenuTrigger>
 
