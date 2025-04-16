@@ -2,6 +2,8 @@ import {
   ActionBookOpenIcon,
   ActionIcons,
   Button,
+  ClipboardCheckIcon,
+  ClipboardIcon,
   CloudArrowLeftRightIcon,
   ContentMessage,
   ExclamationCircleIcon,
@@ -14,6 +16,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   Separator,
+  useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -51,6 +54,8 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isSecretVisible, setIsSecretVisible] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  const [isCopied, copy] = useCopyToClipboard();
 
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
@@ -147,6 +152,17 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
   const toggleSecretVisibility = () => {
     setIsSecretVisible(!isSecretVisible);
+  };
+
+  const copyToClipboard = async () => {
+    if (sharedSecret) {
+      await copy(sharedSecret);
+      sendNotification({
+        title: "Copied to clipboard",
+        type: "success",
+        description: "The shared secret has been copied to your clipboard.",
+      });
+    }
   };
 
   const closePopover = () => {
@@ -309,18 +325,26 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         <>
           <div className="space-y-2">
             <Label htmlFor="sharedSecret">Shared Secret</Label>
-            <div className="relative">
-              <Input
-                value={sharedSecret}
-                readOnly
-                type={isSecretVisible ? "text" : "password"}
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-1">
+            <div className="flex items-center justify-between">
+              <p className="overflow-hidden text-ellipsis whitespace-nowrap">
+                {isSecretVisible
+                  ? sharedSecret
+                  : `${sharedSecret.substring(0, 4)}${"•".repeat(Math.max(0, sharedSecret.length - 4))}`}
+              </p>
+              <div className="flex items-center gap-2">
                 <Button
                   icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
-                  variant="tertiary"
-                  size="xs"
+                  variant="outline"
+                  size="sm"
                   onClick={toggleSecretVisibility}
+                  tooltip={isSecretVisible ? "Hide secret" : "Show secret"}
+                />
+                <Button
+                  icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                  variant="outline"
+                  size="sm"
+                  onClick={copyToClipboard}
+                  tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
                 />
               </div>
             </div>
