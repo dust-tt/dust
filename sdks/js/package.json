@@ -40,10 +40,12 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@types/json-schema": "^7.0.15",
     "axios": "^1.7.9",
     "eventsource-parser": "^1.1.1",
     "moment-timezone": "^0.5.46",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.24.5"
   },
   "browser": {
     "tls": false,

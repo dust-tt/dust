@@ -4,13 +4,12 @@ import type {
 } from "@dust-tt/client";
 import {
   assertNever,
-  ConfigurableToolInputSchemas,
+  ConfigurableToolInputJSONSchemas,
   INTERNAL_MIME_TYPES,
 } from "@dust-tt/client";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -28,17 +27,6 @@ import {
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
-
-/**
- * Mapping between the mime types we used to identify a configurable resource
- * and the JSON schema resulting from the Zod schema defined above.
- */
-export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
-  Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
-    key,
-    zodToJsonSchema(schema),
-  ])
-) as Record<InternalToolInputMimeType, JSONSchema>;
 
 /**
  * Defines how we fill the actual inputs of the tool for each mime type.

@@ -1,7 +1,9 @@
-import {z} from "zod";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
-import type {InternalToolInputMimeType} from "./internal_mime_types";
-import {INTERNAL_MIME_TYPES} from "./internal_mime_types";
+import type { InternalToolInputMimeType } from "./internal_mime_types";
+import { INTERNAL_MIME_TYPES } from "./internal_mime_types";
 
 export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
   /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
@@ -45,10 +47,19 @@ export const ConfigurableToolInputSchemas = {
     value: z.boolean(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN),
   }),
-  // We use a satisfies here to ensure that all the InternalToolInputMimeType are covered whilst preserving the type
-  // inference in tools definitions (server.tool is templated).
-} as const satisfies Record<InternalToolInputMimeType, z.ZodSchema>;
+} as const satisfies Record<InternalToolInputMimeType, z.ZodType>;
 
 export type ConfigurableToolInputType = z.infer<
   (typeof ConfigurableToolInputSchemas)[InternalToolInputMimeType]
 >;
+
+/**
+ * Mapping between the mime types we used to identify a configurable resource
+ * and the JSON schema resulting from the Zod schema defined above.
+ */
+export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
+  Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
+    key,
+    zodToJsonSchema(schema),
+  ])
+) as Record<InternalToolInputMimeType, JSONSchema>;
