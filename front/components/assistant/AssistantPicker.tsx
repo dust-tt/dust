@@ -4,15 +4,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   PlusIcon,
   RobotIcon,
   ScrollArea,
   ScrollBar,
+  SearchInput,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
@@ -22,9 +22,9 @@ interface AssistantPickerProps {
   assistants: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
-  showMoreDetailsButtons?: boolean;
   showFooterButtons?: boolean;
   size?: "xs" | "sm" | "md";
+  isLoading?: boolean;
 }
 
 export function AssistantPicker({
@@ -34,24 +34,32 @@ export function AssistantPicker({
   pickerButton,
   showFooterButtons = true,
   size = "md",
+  isLoading = false,
 }: AssistantPickerProps) {
   const [searchText, setSearchText] = useState("");
-  const [searchedAssistants, setSearchedAssistants] = useState<
-    LightAgentConfigurationType[]
-  >([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setSearchedAssistants(filterAndSortAgents(assistants, searchText));
-  }, [searchText, assistants]);
-
-  const searchbarRef = (element: HTMLInputElement) => {
-    if (element) {
-      element.focus();
+    if (isOpen) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 0);
     }
-  };
+  }, [isOpen]);
+
+  const searchedAssistants = filterAndSortAgents(assistants, searchText);
 
   return (
-    <DropdownMenu>
+    <DropdownMenu
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (open) {
+          setSearchText("");
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         {pickerButton ? (
           pickerButton
@@ -62,51 +70,57 @@ export function AssistantPicker({
             isSelect
             size={size}
             tooltip="Pick an agent"
+            disabled={isLoading}
           />
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-[300px]">
-        <DropdownMenuSearchbar
-          ref={searchbarRef}
-          placeholder="Search"
-          name="input"
-          value={searchText}
-          onChange={setSearchText}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && searchedAssistants.length > 0) {
-              onItemClick(searchedAssistants[0]);
-              setSearchText("");
-              close();
-            }
-          }}
-        />
-        <DropdownMenuSeparator />
-        <ScrollArea className="flex max-h-[300px] flex-col" hideScrollBar>
-          {searchedAssistants.map((c) => (
-            <DropdownMenuItem
-              key={`assistant-picker-${c.sId}`}
-              icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
-              label={c.name}
-              onClick={() => {
-                onItemClick(c);
+      <DropdownMenuContent className="w-96" align="end">
+        <div className="flex gap-1.5 p-1.5">
+          <SearchInput
+            ref={searchInputRef}
+            name="search-assistants"
+            placeholder="Search Agents"
+            value={searchText}
+            onChange={setSearchText}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && searchedAssistants.length > 0) {
+                onItemClick(searchedAssistants[0]);
                 setSearchText("");
-              }}
-            />
-          ))}
-          <ScrollBar className="py-0" />
-        </ScrollArea>
-        <DropdownMenuSeparator />
-        {showFooterButtons && (
-          <div className="flex justify-end p-1">
+                setIsOpen(false);
+              }
+            }}
+          />
+          {showFooterButtons && (
             <Button
               label="Create"
-              size="xs"
-              variant="primary"
               icon={PlusIcon}
               href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
             />
-          </div>
-        )}
+          )}
+        </div>
+        <DropdownMenuSeparator />
+        <ScrollArea className="h-96">
+          {searchedAssistants.length > 0 ? (
+            searchedAssistants.map((c) => (
+              <DropdownMenuItem
+                key={`assistant-picker-${c.sId}`}
+                icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
+                label={c.name}
+                truncateText
+                onClick={() => {
+                  onItemClick(c);
+                  setSearchText("");
+                  setIsOpen(false);
+                }}
+              />
+            ))
+          ) : (
+            <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+              No results found
+            </div>
+          )}
+          <ScrollBar className="py-0" />
+        </ScrollArea>
       </DropdownMenuContent>
     </DropdownMenu>
   );
