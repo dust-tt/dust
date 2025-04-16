@@ -8,7 +8,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "Tools that expand thinking and reasoning capabilities through various mechanisms.",
-  icon: "GithubLogo",
+  icon: "LightbulbIcon",
   authorization: null,
 };
 
