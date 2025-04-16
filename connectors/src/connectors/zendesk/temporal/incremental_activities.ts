@@ -110,9 +110,6 @@ export async function syncZendeskArticleUpdateBatchActivity({
     subdomain,
     accessToken,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
   const { articles, hasMore, endTime } = await listRecentlyUpdatedArticles({
     subdomain,
@@ -247,9 +244,6 @@ export async function syncZendeskTicketUpdateBatchActivity({
     subdomain,
     accessToken,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
   const { tickets, hasMore, nextLink } = await listZendeskTickets(
     accessToken,

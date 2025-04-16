@@ -100,9 +100,6 @@ export const zendesk = async ({
         subdomain,
         accessToken,
       });
-      if (!brandSubdomain) {
-        throw new Error(`Brand ${brandId} not found in Zendesk.`);
-      }
 
       const ticketCount = await getZendeskTicketCount({
         brandSubdomain,
@@ -191,12 +188,6 @@ export const zendesk = async ({
         subdomain,
         accessToken,
       });
-      if (!brandSubdomain) {
-        return {
-          ticket: null,
-          isTicketOnDb: ticketOnDb !== null,
-        };
-      }
 
       const ticket = await fetchZendeskTicket({
         accessToken,

@@ -229,9 +229,6 @@ async function getHelpCenterChildren({
       subdomain,
       accessToken,
     });
-    if (!brandSubdomain) {
-      throw new Error(`Brand ${brandId} not found in Zendesk.`);
-    }
 
     const categories = await listZendeskCategories({
       accessToken,

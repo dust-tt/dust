@@ -43,9 +43,6 @@ makeScript({}, async ({ execute }, logger) => {
         accessToken,
         subdomain,
       });
-      if (!brandSubdomain) {
-        throw new Error("Brand not found.");
-      }
 
       let couldFetchCategories;
       try {

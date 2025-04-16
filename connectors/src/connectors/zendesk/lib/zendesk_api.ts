@@ -35,6 +35,7 @@ function extractMetadataFromZendeskUrl(url: string): {
 
 /**
  * Retrieves a brand's subdomain from the database if it exists, fetches it from the Zendesk API otherwise.
+ * Throws if the brand is not found neither in DB nor in Zendesk.
  */
 export async function getZendeskBrandSubdomain({
   connectorId,
@@ -46,7 +47,7 @@ export async function getZendeskBrandSubdomain({
   brandId: number;
   subdomain: string;
   accessToken: string;
-}): Promise<string | null> {
+}): Promise<string> {
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -56,7 +57,7 @@ export async function getZendeskBrandSubdomain({
   }
   const brand = await fetchZendeskBrand({ subdomain, accessToken, brandId });
   if (!brand) {
-    return null;
+    throw new Error(`Brand ${brandId} not found in Zendesk.`);
   }
   return brand.subdomain;
 }
