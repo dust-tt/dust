@@ -27,6 +27,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   GroupKind,
   GroupType,
+  LightAgentConfigurationType,
   LightWorkspaceType,
   ModelId,
   ResourcePermission,
@@ -112,6 +113,52 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     return defaultGroup;
+  }
+
+  /**
+   * Finds the specific editor group associated with an agent configuration.
+   */
+  static async findEditorGroupForAgent(
+    auth: Authenticator,
+    agent: LightAgentConfigurationType
+  ): Promise<Result<GroupResource, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const groupAgent = await GroupAgentModel.findOne({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: owner.id,
+      },
+      attributes: ["groupId"],
+    });
+
+    if (!groupAgent) {
+      return new Err(
+        new Error("Editor group association not found for agent.")
+      );
+    }
+
+    const group = await GroupResource.fetchById(
+      auth,
+      GroupResource.modelIdToSId({
+        id: groupAgent.groupId,
+        workspaceId: owner.id,
+      })
+    );
+
+    if (group.isErr()) {
+      // Propagate the error from fetchById (which could be not found or auth error)
+      return group;
+    }
+
+    if (group.value.kind !== "agent_editors") {
+      // Should not happen based on creation logic, but good to check.
+      return new Err(
+        new Error("Associated group is not an agent_editors group.")
+      );
+    }
+
+    return group;
   }
 
   static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {

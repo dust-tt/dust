@@ -5,19 +5,15 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   getAgentConfiguration,
-  getAgentEditorGroup,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type {
-  LightAgentConfigurationType,
-  UserType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { UserType, WithAPIErrorResponse } from "@app/types";
 
 // Changed schema to accept optional add/remove lists
 export const PatchAgentEditorsRequestBodySchema = t.intersection([
@@ -90,9 +86,28 @@ async function handler(
     });
   }
 
-  const editorGroupRes = await getAgentEditorGroup(auth, agent.id);
+  // Use the new static method from GroupResource, passing the agent object
+  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    auth,
+    agent // Pass the whole agent object
+  );
   if (editorGroupRes.isErr()) {
-    // Handle cases like group not found (might happen during creation race condition or deletion)
+    // Handle cases like group not found or auth errors from fetchById
+    if (
+      editorGroupRes.error instanceof DustError &&
+      (editorGroupRes.error.code === "resource_not_found" ||
+        editorGroupRes.error.code === "unauthorized")
+    ) {
+      // Return 404 for not found or unauthorized to find the group
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found", // Keep error generic
+          message: "The agent configuration editor group was not found.",
+        },
+      });
+    }
+    // Generic internal error for other cases
     return apiError(req, res, {
       status_code: 500,
       api_error: {
