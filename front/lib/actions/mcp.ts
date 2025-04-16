@@ -497,7 +497,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         error: {
           code: "tool_error",
-          message: `Error calling tool ${actionConfiguration.name}, error: ${normalizeError(r.error).message}.`,
+          message: `Error calling tool ${actionConfiguration.name}, error: ${normalizeError(toolCallResult.error).message}.`,
         },
       };
       return;
