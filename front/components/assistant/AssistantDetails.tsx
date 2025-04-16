@@ -42,7 +42,6 @@ import {
   useAgentConfiguration,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
-import { classNames } from "@app/lib/utils";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -310,14 +309,7 @@ export function AssistantDetails({
           size="lg"
         />
         <div className="flex grow flex-col gap-1">
-          <div
-            className={classNames(
-              "text-foreground dark:text-foreground-night",
-              agentConfiguration?.name && agentConfiguration.name.length > 20
-                ? "heading-md"
-                : "heading-lg"
-            )}
-          >{`@${agentConfiguration?.name ?? ""}`}</div>
+          <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">{`${agentConfiguration?.name ?? ""}`}</div>
           {agentConfiguration?.status === "active" && (
             <SharingDropdown
               owner={owner}

@@ -2,6 +2,7 @@ import { Meta } from "@storybook/react";
 import React from "react";
 
 import {
+  Button,
   Cog6ToothIcon,
   CommandIcon,
   LightbulbIcon,
@@ -50,6 +51,8 @@ export function Demo2() {
           <TabsTrigger value="tab4" label="Tab 4" icon={CommandIcon} />
           <TabsTrigger value="tab5" label="Tab 5" icon={LightbulbIcon} />
           <TabsTrigger value="tab6" label="Tab 6" icon={Cog6ToothIcon} />
+          <div className="s-grow" />
+          <Button label="Hello" />
         </TabsList>
         <TabsContent value="tab1">Content for Tab 1</TabsContent>
         <TabsContent value="tab2">Content for Tab 2</TabsContent>
