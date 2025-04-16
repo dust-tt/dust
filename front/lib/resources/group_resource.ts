@@ -125,7 +125,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Result<GroupResource, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
-    const groupAgent = await GroupAgentModel.findOne({
+    const groupAgents = await GroupAgentModel.findAll({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: owner.id,
@@ -133,11 +133,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       attributes: ["groupId"],
     });
 
-    if (!groupAgent) {
+    if (groupAgents.length === 0) {
       return new Err(
         new Error("Editor group association not found for agent.")
       );
     }
+
+    if (groupAgents.length > 1) {
+      return new Err(
+        new Error("Multiple editor group associations found for agent.")
+      );
+    }
+
+    const groupAgent = groupAgents[0];
 
     const group = await GroupResource.fetchById(
       auth,
