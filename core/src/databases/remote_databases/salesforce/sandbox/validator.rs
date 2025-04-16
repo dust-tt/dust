@@ -35,13 +35,6 @@ impl Validator for StructuredQuery {
             field.validate()?;
         }
 
-        // If multiple aggregates are present, check that group by is also present
-        if self.aggregates.len() > 1 && self.group_by.is_none() {
-            return Err(SoqlError::aggregation_error(
-                "When using multiple aggregate functions (COUNT, SUM, etc.), a GROUP BY clause must be specified."
-            ));
-        }
-
         // If having is present, check that aggregates are also present
         if self.having.is_some() && self.aggregates.is_empty() {
             return Err(SoqlError::aggregation_error(
@@ -903,44 +896,6 @@ mod tests {
                 assert!(reason.contains("Exceeds maximum dot notation depth"));
             }
             _ => panic!("Expected FieldValidationError error, got {:?}", error),
-        }
-    }
-
-    #[test]
-    fn test_validate_multiple_aggregates_without_group_by_fails() {
-        let query = StructuredQuery {
-            object: "Opportunity".to_string(),
-            fields: vec![],
-            aggregates: vec![
-                Aggregate {
-                    function: AggregateFunction::Count,
-                    field: FieldExpression::Field("Id".to_string()),
-                    alias: "CountId".to_string(),
-                },
-                Aggregate {
-                    function: AggregateFunction::Sum,
-                    field: FieldExpression::Field("Amount".to_string()),
-                    alias: "TotalAmount".to_string(),
-                },
-            ],
-            where_clause: None,
-            order_by: vec![],
-            limit: None,
-            offset: None,
-            relationships: vec![],
-            parent_fields: vec![],
-            group_by: None,
-            having: None,
-        };
-
-        let result = query.validate();
-        assert!(result.is_err());
-        let error = result.unwrap_err();
-        match error {
-            SoqlError::AggregationError(msg) => {
-                assert!(msg.contains("GROUP BY clause must be specified"));
-            }
-            _ => panic!("Expected AggregationError error, got {:?}", error),
         }
     }
 
