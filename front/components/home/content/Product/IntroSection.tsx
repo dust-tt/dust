@@ -2,7 +2,6 @@
 
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import { Button, PlayIcon, RocketIcon } from "@dust-tt/sparkle";
-import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -18,12 +17,7 @@ import TrustedBy from "@app/components/home/TrustedBy";
 
 const HeroContent = () => {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6"
-    >
+    <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
       <H1
         mono
         className="text-center text-5xl font-medium md:text-6xl lg:text-7xl"
@@ -37,12 +31,7 @@ const HeroContent = () => {
         knowledge,
         <br className="hidden sm:block" /> powered by the best AI models.
       </P>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="mt-4 flex flex-row justify-center gap-4"
-      >
+      <div className="mt-4 flex flex-row justify-center gap-4">
         <Link href="/home/pricing" shallow={true}>
           <Button
             variant="highlight"
@@ -54,19 +43,14 @@ const HeroContent = () => {
         <Link href="/home/contact" shallow={true}>
           <Button variant="outline" size="md" label="Book a demo" />
         </Link>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 };
 
 const HeroVisual = () => {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
-      className="relative mt-12 w-full sm:-mt-6 md:mt-0"
-    >
+    <div className="relative mt-12 w-full sm:-mt-6 md:mt-0">
       <div className="relative mx-auto w-full max-w-[2000px]">
         <div className="relative flex aspect-[16/9] items-center justify-center">
           <div className="relative h-auto w-auto rounded-xl">
@@ -93,12 +77,7 @@ const HeroVisual = () => {
           </div>
         </div>
       </div>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="absolute inset-0 flex items-center justify-center"
-      >
+      <div className="absolute inset-0 flex items-center justify-center">
         <Link
           href="#demo-video"
           className="z-10"
@@ -118,68 +97,35 @@ const HeroVisual = () => {
             className="shadow-[0_8px_16px_-2px_rgba(0,0,0,0.3),0_4px_8px_-2px_rgba(255,255,255,0.1)] transition-all duration-300 hover:shadow-[0_16px_40px_-2px_rgba(255,255,255,0.2),0_8px_20px_-4px_rgba(255,255,255,0.15)]"
           />
         </Link>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 };
+
 export function IntroSection() {
   return (
-    <motion.section
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="w-full"
-    >
+    <section className="w-full">
       <div className="flex flex-col gap-6 pt-24 md:gap-4 lg:gap-8">
         <div className="flex flex-col gap-16">
           <HeroContent />
           <HeroVisual />
         </div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="mt-12"
-        >
+        <div className="mt-12">
           <TrustedBy />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="mt-12"
-        >
+        </div>
+        <div className="mt-12">
           <FunctionsSection />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="mt-12"
-        >
+        </div>
+        <div className="mt-12">
           <ScrollProgressSection />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="mt-12"
-        >
+        </div>
+        <div className="mt-12">
           <TeamFeatureSection />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="mt-12"
-        >
+        </div>
+        <div className="mt-12">
           <ValuePropSection />
-        </motion.div>
+        </div>
       </div>
-    </motion.section>
+    </section>
   );
 }
