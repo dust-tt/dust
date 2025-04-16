@@ -216,7 +216,7 @@ export async function tryCallMCPTool(
       logger.error(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          conversationId,
+          conversationId: conversation.sId,
           messageId,
           error: toolCallResult.error,
         },
