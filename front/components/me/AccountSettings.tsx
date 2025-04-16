@@ -1,14 +1,22 @@
 import { Button, Input, Label, Page, Spinner } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import type { UserTypeWithWorkspaces } from "@app/types";
-
 interface AccountSettingsProps {
   user: UserTypeWithWorkspaces | null;
   isUserLoading: boolean;
   mutateUser: () => void;
 }
+
+const AccountSettingsSchema = z.object({
+  firstName: z.string().min(1, "First name is required."),
+  lastName: z.string().min(1, "Last name is required."),
+});
+
+type AccountSettingsType = z.infer<typeof AccountSettingsSchema>;
 
 export function AccountSettings({
   user,
@@ -16,29 +24,31 @@ export function AccountSettings({
   mutateUser,
 }: AccountSettingsProps) {
   const sendNotification = useSendNotification();
-  const [firstName, setFirstName] = useState(user?.firstName || "");
-  const [lastName, setLastName] = useState(user?.lastName || "");
-  const [isUpdating, setIsUpdating] = useState(false);
+  const { register, handleSubmit, reset, formState } =
+    useForm<AccountSettingsType>({
+      defaultValues: {
+        firstName: user?.firstName || "",
+        lastName: user?.lastName || "",
+      },
+    });
 
   useEffect(() => {
     if (user) {
-      setFirstName(user.firstName);
-      setLastName(user.lastName || "");
+      reset({
+        firstName: user.firstName,
+        lastName: user.lastName || "",
+      });
     }
-  }, [user]);
+  }, [user, reset]);
 
-  const updateUserProfile = async () => {
-    setIsUpdating(true);
+  const updateUserProfile = async (data: AccountSettingsType) => {
     try {
       const response = await fetch("/api/user", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-        }),
+        body: JSON.stringify(data),
       });
 
       if (response.ok) {
@@ -59,8 +69,6 @@ export function AccountSettings({
           error instanceof Error ? error.message : "Failed to update profile",
         type: "error",
       });
-    } finally {
-      setIsUpdating(false);
     }
   };
 
@@ -76,44 +84,54 @@ export function AccountSettings({
     <>
       <Page.Horizontal>
         <Label>eMail</Label>
-        <Page.P variant="secondary">{user?.email}</Page.P>
+        <Label className="text-muted-foreground dark:text-muted-foreground-night">
+          {user?.email}
+        </Label>
       </Page.Horizontal>
 
-      <Page.Horizontal sizing="grow">
+      <form onSubmit={handleSubmit(updateUserProfile)}>
         <Page.Vertical sizing="grow" align="stretch">
-          <Input
-            label="First Name"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="First Name"
-          />
+          <Page.Horizontal sizing="grow">
+            <Page.Vertical sizing="grow" align="stretch">
+              <Input
+                label="First Name"
+                {...register("firstName")}
+                placeholder="First Name"
+              />
+            </Page.Vertical>
+            <Page.Vertical sizing="grow" align="stretch">
+              <Input
+                label="Last Name"
+                {...register("lastName")}
+                placeholder="Last Name"
+              />
+            </Page.Vertical>
+          </Page.Horizontal>
+
+          {formState.isDirty && (
+            <Page.Horizontal align="right">
+              <Button
+                label="Cancel"
+                variant="ghost"
+                onClick={() =>
+                  reset({
+                    firstName: user?.firstName || "",
+                    lastName: user?.lastName || "",
+                  })
+                }
+                type="button"
+              />
+              <Button
+                label="Save"
+                variant="primary"
+                type="submit"
+                disabled={formState.isSubmitting}
+                loading={formState.isSubmitting}
+              />
+            </Page.Horizontal>
+          )}
         </Page.Vertical>
-        <Page.Vertical sizing="grow" align="stretch">
-          <Input
-            label="Last Name"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="Last Name"
-          />
-        </Page.Vertical>
-      </Page.Horizontal>
-      <Page.Horizontal align="right">
-        <Button
-          label="Cancel"
-          variant="ghost"
-          onClick={() => {
-            setFirstName(user?.firstName || "");
-            setLastName(user?.lastName || "");
-          }}
-        />
-        <Button
-          label="Save"
-          variant="primary"
-          onClick={updateUserProfile}
-          disabled={isUpdating}
-          loading={isUpdating}
-        />
-      </Page.Horizontal>
+      </form>
     </>
   );
 }
