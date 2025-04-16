@@ -141,8 +141,7 @@ export const InputBarAttachmentsPicker = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-[380px]"
-        side="bottom"
+        className="w-96"
         align="end"
         onInteractOutside={() => setIsOpen(false)}
       >
@@ -183,7 +182,7 @@ export const InputBarAttachmentsPicker = ({
           />
         </div>
         <DropdownMenuSeparator />
-        <ScrollArea className="h-[380px]">
+        <ScrollArea className="h-96">
           {searchQuery ? (
             <div ref={itemsContainerRef}>
               {pickedSpaceNodes.map((item, index) => (
