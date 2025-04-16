@@ -86,7 +86,7 @@ export function SpaceBreadCrumbs({
         return [
           {
             icon: SuitcaseIcon,
-            label: "Tools Admin",
+            label: "Toolsets Admin",
           },
         ];
       }

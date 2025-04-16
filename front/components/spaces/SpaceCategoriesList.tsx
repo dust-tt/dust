@@ -194,7 +194,7 @@ export const SpaceCategoriesList = ({
             disabled={!isAdmin}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/actions`}
             icon={ACTION_SPECIFICATIONS["MCP"].cardIcon}
-            label="Tools"
+            label="Toolsets"
           />
         </DropdownMenuContent>
       </DropdownMenu>

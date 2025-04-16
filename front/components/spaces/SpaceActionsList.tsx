@@ -10,7 +10,9 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useAddMCPServerToSpace,
   useMCPServerViews,
+  useRemoveMCPServerViewFromSpace,
 } from "@app/lib/swr/mcp_server_views";
+import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
 
@@ -18,40 +20,11 @@ import { RequestActionsModal } from "./mcp/RequestActionsModal";
 import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";
 
 type RowData = {
+  id: string;
   name: string;
   description: string;
   avatar: React.ReactNode;
   onClick?: () => void;
-};
-
-const getTableColumns = (): ColumnDef<RowData, string>[] => {
-  return [
-    {
-      id: "name",
-      cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
-          <div className="flex flex-row items-center gap-2 py-3">
-            <div>{info.row.original.avatar}</div>
-            <div className="flex-grow truncate">{info.getValue()}</div>
-          </div>
-        </DataTable.CellContent>
-      ),
-      accessorFn: (row: RowData) => asDisplayName(row.name),
-      meta: {
-        className: "w-80",
-      },
-    },
-    {
-      id: "description",
-      cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
-      ),
-      accessorFn: (row: RowData) => row.description,
-      meta: {
-        className: "w-full",
-      },
-    },
-  ];
 };
 
 interface SpaceActionsListProps {
@@ -74,14 +47,79 @@ export const SpaceActionsList = ({
       space,
     });
   const { addToSpace } = useAddMCPServerToSpace(owner);
+  const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
+  const { mutateAvailableMCPServers } = useAvailableMCPServers({
+    owner,
+    space,
+  });
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
   });
 
+  const onAddServer = async (server: MCPServerType) => {
+    await addToSpace(server, space);
+    await mutateMCPServerViews();
+    await mutateAvailableMCPServers();
+  };
+
+  const onRemoveServer = async (id: string) => {
+    await removeFromSpace(serverViews.find((view) => view.id === id)!, space);
+    await mutateMCPServerViews();
+    await mutateAvailableMCPServers();
+  };
+
+  const getTableColumns = (): ColumnDef<RowData, string>[] => {
+    return [
+      {
+        id: "name",
+        cell: (info: CellContext<RowData, string>) => (
+          <DataTable.CellContent>
+            <div className="flex flex-row items-center gap-2 py-3">
+              <div>{info.row.original.avatar}</div>
+              <div className="flex-grow truncate">{info.getValue()}</div>
+            </div>
+          </DataTable.CellContent>
+        ),
+        accessorFn: (row: RowData) => asDisplayName(row.name),
+        meta: {
+          className: "w-80",
+        },
+      },
+      {
+        id: "description",
+        cell: (info: CellContext<RowData, string>) => (
+          <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
+        ),
+        accessorFn: (row: RowData) => row.description,
+        meta: {
+          className: "w-full",
+        },
+      },
+      {
+        id: "actions",
+        cell: (info: CellContext<RowData, string>) => (
+          <DataTable.MoreButton
+            menuItems={[
+              {
+                label: "Remove toolset from space",
+                onClick: async () => onRemoveServer(info.row.original.id),
+                kind: "item",
+              },
+            ]}
+          />
+        ),
+        meta: {
+          className: "w-12",
+        },
+      },
+    ];
+  };
+
   const rows: RowData[] = React.useMemo(
     () =>
       serverViews.map((serverView) => ({
+        id: serverView.id,
         name: serverView.server.name,
         description: serverView.server.description,
         avatar: getAvatar(serverView.server),
@@ -92,11 +130,6 @@ export const SpaceActionsList = ({
   const { portalToHeader } = useActionButtonsPortal({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
-
-  const onAddServer = async (server: MCPServerType) => {
-    await addToSpace(server, space);
-    await mutateMCPServerViews();
-  };
 
   if (isMCPServerViewsLoading) {
     return (
