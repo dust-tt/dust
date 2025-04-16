@@ -90,8 +90,8 @@ async function setupTest(
     method: method,
   });
   const requestUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    String(requestUser.id),
-    String(workspace.id)
+    requestUser.sId,
+    workspace.sId
   );
 
   // Create agent owner (might be the same as requestUser or different)
@@ -106,8 +106,8 @@ async function setupTest(
     agentOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, agentOwner, agentOwnerRole);
     agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      String(agentOwner.id),
-      String(workspace.id)
+      agentOwner.sId,
+      workspace.sId
     );
   }
 
