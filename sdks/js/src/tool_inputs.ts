@@ -1,6 +1,6 @@
 import {z} from "zod";
 
-import type {InternalConfigurationMimeType} from "./internal_mime_types";
+import type {InternalToolInputMimeType} from "./internal_mime_types";
 import {INTERNAL_MIME_TYPES} from "./internal_mime_types";
 
 export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
@@ -17,38 +17,38 @@ export const CHILD_AGENT_CONFIGURATION_URI_PATTERN =
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  */
 export const ConfigurableToolInputSchemas = {
-  [INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE]: z.array(
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]: z.array(
     z.object({
       uri: z.string().regex(DATA_SOURCE_CONFIGURATION_URI_PATTERN),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE),
     })
   ),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.TABLE]: z.array(
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE]: z.array(
     z.object({
       uri: z.string().regex(TABLE_CONFIGURATION_URI_PATTERN),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.TABLE),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE),
     })
   ),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT]: z.object({
     uri: z.string().regex(CHILD_AGENT_CONFIGURATION_URI_PATTERN),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT),
   }),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.STRING]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.STRING]: z.object({
     value: z.string(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.STRING),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.STRING),
   }),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER]: z.object({
     value: z.number(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER),
   }),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN]: z.object({
     value: z.boolean(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN),
   }),
-  // We use a satisfies here to ensure that all the InternalConfigurationMimeType are covered whilst preserving the type
+  // We use a satisfies here to ensure that all the InternalToolInputMimeType are covered whilst preserving the type
   // inference in tools definitions (server.tool is templated).
-} as const satisfies Record<InternalConfigurationMimeType, z.ZodSchema>;
+} as const satisfies Record<InternalToolInputMimeType, z.ZodSchema>;
 
 export type ConfigurableToolInputType = z.infer<
-  (typeof ConfigurableToolInputSchemas)[InternalConfigurationMimeType]
+  (typeof ConfigurableToolInputSchemas)[InternalToolInputMimeType]
 >;

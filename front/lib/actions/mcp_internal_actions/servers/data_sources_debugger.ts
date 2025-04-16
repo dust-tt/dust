@@ -79,7 +79,7 @@ function createServer(): McpServer {
       query: z.string(),
       dataSources:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
     },
     async ({ dataSources }) => {

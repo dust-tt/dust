@@ -93,9 +93,7 @@ describe("JSON Schema Utilities", () => {
 
       // Look for STRING configuration schema
       const targetSchema =
-        ConfigurableToolInputJSONSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.STRING
-        ];
+        ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING];
 
       const result = findMatchingSchemaKeys(mainSchema, targetSchema);
       expect(result).toContain("config.userPreferences.theme");
@@ -164,9 +162,7 @@ describe("JSON Schema Utilities", () => {
 
       // Look for TABLE configuration schema
       const targetSchema =
-        ConfigurableToolInputJSONSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.TABLE
-        ];
+        ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE];
 
       const result = findMatchingSchemaKeys(mainSchema, targetSchema);
       expect(result).toContain("dataSourceConfigs.items.settings.tables");
@@ -219,7 +215,7 @@ describe("JSON Schema Utilities", () => {
       // Look for CHILD_AGENT configuration schema
       const targetSchema =
         ConfigurableToolInputJSONSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
         ];
 
       const result = findMatchingSchemaKeys(mainSchema, targetSchema);

@@ -39,7 +39,7 @@ function createServer(): McpServer {
       query: z.string(),
       childAgent:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
         ],
     },
     async ({ childAgent: { uri } }) => {
