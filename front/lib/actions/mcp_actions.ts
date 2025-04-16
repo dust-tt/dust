@@ -191,10 +191,19 @@ export async function tryCallMCPTool(
 
     await mcpClient.close();
 
+    // Do not raise an error here as it will break the conversation.
+    // Let the model decide what to do.
     if (toolCallResult.isError) {
-      return new Err(new Error(JSON.stringify(toolCallResult.content)));
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          conversationId,
+          messageId,
+          error: toolCallResult.error,
+        },
+        `Error calling MCP tool`
+      );
     }
-
     // Type inference is not working here because of them using passthrough in the zod schema.
     const content: MCPToolResultContent[] = (toolCallResult.content ??
       []) as MCPToolResultContent[];

@@ -66,8 +66,8 @@ export function makeSId(
 
 function getIdsFromSId(sId: string): Result<
   {
-    workspaceId: ModelId;
-    resourceId: ModelId;
+    workspaceModelId: ModelId;
+    resourceModelId: ModelId;
   },
   Error
 > {
@@ -90,7 +90,10 @@ function getIdsFromSId(sId: string): Result<
 
     const [, , workspaceId, resourceId] = ids;
 
-    return new Ok({ workspaceId, resourceId });
+    return new Ok({
+      workspaceModelId: workspaceId,
+      resourceModelId: resourceId,
+    });
   } catch (error) {
     return new Err(
       error instanceof Error ? error : new Error("Failed to decode string Id")
@@ -109,7 +112,7 @@ export function getResourceIdFromSId(sId: string): ModelId | null {
     return null;
   }
 
-  return sIdsRes.value.resourceId;
+  return sIdsRes.value.resourceModelId;
 }
 
 export function isResourceSId(
@@ -122,8 +125,8 @@ export function isResourceSId(
 export function getResourceNameAndIdFromSId(sId: string): {
   resourceName: ResourceNameType;
   sId: string;
-  workspaceId: ModelId;
-  resourceId: ModelId;
+  workspaceModelId: ModelId;
+  resourceModelId: ModelId;
 } | null {
   const resourceName = (
     Object.keys(RESOURCES_PREFIX) as ResourceNameType[]

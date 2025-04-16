@@ -4,9 +4,9 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import { default as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/servers/authentication_debugger";
 import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/child_agent_debugger";
 import { default as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_debugger";
-import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generator";
+import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
-import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generator";
+import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
@@ -32,10 +32,10 @@ export function getInternalMCPServer(
       return tableUtilsServer();
     case "github":
       return githubServer(auth, mcpServerId);
-    case "image_generator":
+    case "image_generation":
       return imageGenerationDallEServer(auth);
-    case "file_generator":
-      return generateFileServer();
+    case "file_generation":
+      return generateFileServer(auth);
     case "child_agent_debugger":
       return askAgentServer();
     case "primitive_types_debugger":

@@ -42,7 +42,12 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { isSupportedFileContentType, Ok, removeNulls } from "@app/types";
+import {
+  isSupportedFileContentType,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -489,7 +494,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         error: {
           code: "tool_error",
-          message: `Error calling tool ${actionConfiguration.name}.`,
+          message: `Error calling tool ${actionConfiguration.name}, error: ${normalizeError(r.error).message}.`,
         },
       };
       return;
@@ -497,6 +502,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     const content = r.value;
     const generatedFiles: ActionGeneratedFileType[] = [];
+    const outputItems: AgentMCPActionOutputItem[] = [];
     for (const c of content) {
       let file: FileResource | null = null;
       if (
@@ -523,12 +529,13 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         });
       }
 
-      await AgentMCPActionOutputItem.create({
+      const outputItem = await AgentMCPActionOutputItem.create({
         workspaceId: owner.id,
         agentMCPActionId: action.id,
         content: c,
         fileId: file?.id,
       });
+      outputItems.push(outputItem);
     }
 
     yield {
@@ -542,7 +549,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         executionState: status,
         id: action.id,
         isError: false,
-        output: content,
+        output: outputItems.map((o) => o.getContentForModel()),
         type: "tool_action",
       }),
     };
@@ -584,7 +591,7 @@ export async function mcpActionTypesFromAgentMessageIds(
     return new MCPActionType({
       id: action.id,
       params: action.params,
-      output: action.outputItems.map((o) => o.content),
+      output: action.outputItems.map((o) => o.getContentForModel()),
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
