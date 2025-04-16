@@ -147,12 +147,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
 
     if (group.isErr()) {
-      // Propagate the error from fetchById (which could be not found or auth error)
       return group;
     }
 
     if (group.value.kind !== "agent_editors") {
       // Should not happen based on creation logic, but good to check.
+      // Might change when we allow other group kinds to be associated with agents.
       return new Err(
         new Error("Associated group is not an agent_editors group.")
       );
@@ -554,7 +554,10 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Result<undefined, DustError>> {
     if (!this.canWrite(auth)) {
       return new Err(
-        new DustError("unauthorized", "Only `admins` can administer groups")
+        new DustError(
+          "unauthorized",
+          "Only admins or group editors can change group members"
+        )
       );
     }
     const owner = auth.getNonNullableWorkspace();
@@ -648,7 +651,10 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Result<undefined, DustError>> {
     if (!this.canWrite(auth)) {
       return new Err(
-        new DustError("unauthorized", "Only `admins` can administer groups")
+        new DustError(
+          "unauthorized",
+          "Only admins or group editors can change group members"
+        )
       );
     }
     const owner = auth.getNonNullableWorkspace();

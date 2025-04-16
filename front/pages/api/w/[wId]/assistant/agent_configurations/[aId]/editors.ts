@@ -70,26 +70,9 @@ async function handler(
       },
     });
   }
-
-  // TODO(FILOU): Implement canRead/canEdit checks based on new permission model (editors group + visible/hidden scope)
-  // For now, assuming a basic check exists or will be added.
-  const hasReadPermission = true; // Replace with actual check: await auth.canReadAgent(agent);
-  const hasEditPermission = true; // Replace with actual check: await auth.canEditAgent(agent);
-
-  if (!hasReadPermission) {
-    return apiError(req, res, {
-      status_code: 404, // Return 404 to avoid leaking existence of agent
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration was not found.",
-      },
-    });
-  }
-
-  // Use the new static method from GroupResource, passing the agent object
   const editorGroupRes = await GroupResource.findEditorGroupForAgent(
     auth,
-    agent // Pass the whole agent object
+    agent
   );
   if (editorGroupRes.isErr()) {
     // Handle cases like group not found or auth errors from fetchById
@@ -116,10 +99,21 @@ async function handler(
       },
     });
   }
+
   const editorGroup = editorGroupRes.value;
 
   switch (req.method) {
     case "GET": {
+      if (!editorGroup.canRead(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "agent_group_permission_error",
+            message: "User is not authorized to read the agent editors.",
+          },
+        });
+      }
+
       const members = await editorGroup.getActiveMembers(auth);
       const memberUsers = members.map((m) => m.toJSON());
 
@@ -127,11 +121,11 @@ async function handler(
     }
 
     case "PATCH": {
-      if (!hasEditPermission) {
+      if (!editorGroup.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
-            type: "agent_configuration_auth_error",
+            type: "agent_group_permission_error",
             message:
               "Only editors of the agent or workspace admins can modify editors.",
           },
@@ -152,10 +146,8 @@ async function handler(
         });
       }
 
-      // Use validated body with defaults for potentially missing arrays
       const { addEditorIds = [], removeEditorIds = [] } = bodyValidation.right;
 
-      // Fetch user resources for both lists
       const usersToAdd = await UserResource.fetchByIds(addEditorIds);
       const usersToRemove = await UserResource.fetchByIds(removeEditorIds);
 
@@ -172,7 +164,6 @@ async function handler(
         );
         const missingIds = [...missingAddIds, ...missingRemoveIds];
 
-        // Check if any IDs were actually missing before returning error
         if (missingIds.length > 0) {
           return apiError(req, res, {
             status_code: 404,
@@ -184,7 +175,6 @@ async function handler(
         }
       }
 
-      // Call the updated permission function
       const updateRes = await updateAgentPermissions(auth, {
         agent,
         usersToAdd: usersToAdd.map((u) => u.toJSON()),
@@ -219,10 +209,10 @@ async function handler(
 
       // Refetch members to return the updated list
       const updatedMembers = await editorGroup.getActiveMembers(auth);
-      const updatedMemberUsers = updatedMembers.map((m) => m.toJSON());
 
-      // Use PatchAgentEditorsResponseBody type here
-      return res.status(200).json({ editors: updatedMemberUsers });
+      return res.status(200).json({
+        editors: updatedMembers.map((m) => m.toJSON()),
+      });
     }
 
     default:

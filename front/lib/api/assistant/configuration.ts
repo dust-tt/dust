@@ -1604,7 +1604,6 @@ export async function updateAgentPermissions(
     usersToRemove: UserType[];
   }
 ): Promise<Result<undefined, Error>> {
-  // Use the new static method from GroupResource, passing the agent object
   const editorGroupRes = await GroupResource.findEditorGroupForAgent(
     auth,
     agent

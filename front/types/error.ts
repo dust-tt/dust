@@ -54,7 +54,7 @@ const API_ERROR_TYPES = [
   "connector_provider_not_supported",
   "connector_credentials_error",
   "agent_configuration_not_found",
-  "agent_configuration_auth_error",
+  "agent_group_permission_error",
   "agent_message_error",
   "message_not_found",
   "plan_message_limit_exceeded",
