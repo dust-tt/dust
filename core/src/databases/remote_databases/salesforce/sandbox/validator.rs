@@ -681,7 +681,7 @@ fn is_valid_function_name(function: &str) -> bool {
         // Formatting functions
         "FORMAT" | "CONVERT_TIMEZONE" |
         // Math functions
-        "ABS" | "CEILING" | "FLOOR" | "ROUND" |
+        "ABS" | "CEILING" | "FLOOR" | "ROUND" | "MIN" | "MAX" | "COUNT" | "AVG" |
         // Geolocation functions
         "DISTANCE" | "GEOLOCATION" |
         // Logical functions
