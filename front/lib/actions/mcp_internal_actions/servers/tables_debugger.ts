@@ -23,7 +23,7 @@ function createServer(): McpServer {
     {
       query: z.string(),
       tables:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.TABLE],
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
     async ({ tables }) => {
       return {

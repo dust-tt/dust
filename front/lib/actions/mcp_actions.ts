@@ -1,4 +1,7 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import {
+  ConfigurableToolInputJSONSchemas,
+  INTERNAL_MIME_TYPES,
+} from "@dust-tt/client";
 import type { JSONSchema7 } from "json-schema";
 import { z } from "zod";
 
@@ -14,7 +17,6 @@ import type {
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { isDefaultInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
-import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
@@ -329,7 +331,7 @@ export async function tryListMCPTools(
           findMatchingSchemaKeys(
             toolConfigurations[0].inputSchema,
             ConfigurableToolInputJSONSchemas[
-              INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
+              INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
             ]
           ).length > 0;
 
@@ -337,7 +339,7 @@ export async function tryListMCPTools(
           findMatchingSchemaKeys(
             toolConfigurations[0].inputSchema,
             ConfigurableToolInputJSONSchemas[
-              INTERNAL_MIME_TYPES.CONFIGURATION.TABLE
+              INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
             ]
           ).length > 0;
 

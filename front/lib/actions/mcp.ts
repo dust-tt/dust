@@ -236,7 +236,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       );
     }
 
-    // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION
+    // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT
     const filteredInputSchema = hideInternalConfiguration(
       this.actionConfiguration.inputSchema
     );

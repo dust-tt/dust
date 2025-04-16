@@ -1,7 +1,7 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
-import type { SVGProps } from "react";
 import type React from "react";
+import type { SVGProps } from "react";
 
 import {
   DEFAULT_MCP_ACTION_NAME,
