@@ -1,4 +1,7 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import {
+  INTERNAL_MIME_TYPES,
+  TABLE_CONFIGURATION_URI_PATTERN,
+} from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Op } from "sequelize";
 
@@ -10,10 +13,7 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
-import {
-  ConfigurableToolInputSchemas,
-  TABLE_CONFIGURATION_URI_PATTERN,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
@@ -117,14 +117,14 @@ async function fetchAgentTableConfigurations(
         new Error(`ID is not a table configuration ID: ${tableConfigId}`)
       );
     }
-    if (sIdParts.workspaceId !== owner.id) {
+    if (sIdParts.workspaceModelId !== owner.id) {
       return new Err(
         new Error(
-          `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceId}`
+          `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`
         )
       );
     }
-    configurationIds.push(sIdParts.resourceId);
+    configurationIds.push(sIdParts.workspaceModelId);
   }
 
   const agentTableConfigurations =
@@ -141,7 +141,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "tables_query",
   version: "1.0.0",
   description: "Tables, Spreadsheets, Notion DBs (quantitative).",
-  visual: "https://dust.tt/static/droidavatar/Droid_Sky_5.jpg",
+  icon: "GithubLogo",
   authorization: null,
 };
 
@@ -173,7 +173,7 @@ function createServer(
     actionDescription,
     {
       tables:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.TABLE],
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
     async ({ tables }) => {
       if (
