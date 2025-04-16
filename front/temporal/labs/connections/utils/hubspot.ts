@@ -7,11 +7,10 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import { stopLabsConnectionWorkflow } from "@app/temporal/labs/connections/client";
-import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
-import type { ConnectionCredentials, ModelId, Result } from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import { Err, isHubspotCredentials, OAuthAPI, Ok } from "@app/types";
 import { CoreAPI, dustManagedCredentials } from "@app/types";
+import { SyncStatus } from "@app/types";
 
 interface Company {
   id: string;
@@ -537,74 +536,103 @@ ${props.notes_last_updated ? `Last Note Updated: ${props.notes_last_updated}` : 
 export async function syncHubspotConnection(
   configuration: LabsConnectionsConfigurationResource
 ): Promise<Result<void, Error>> {
-  const credentialId = configuration.credentialId;
-  if (!credentialId) {
-    return new Err(new Error("No credentials found"));
-  }
+  try {
+    await configuration.setSyncStatus(SyncStatus.IN_PROGRESS);
+    await configuration.setLastSyncStartedAt(new Date());
+    await configuration.setLastSyncError(null);
 
-  const dataSourceViewId = configuration.dataSourceViewId;
-  if (!dataSourceViewId) {
-    return new Err(new Error("No data source view found"));
-  }
-
-  const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-
-  const credentialsRes = await oauthApi.getCredentials({
-    credentialsId: credentialId,
-  });
-
-  if (credentialsRes.isErr()) {
-    logger.error(
-      { error: credentialsRes.error },
-      "Error fetching credentials from OAuth API"
-    );
-    return new Err(new Error("Failed to fetch credentials"));
-  }
-
-  if (!isHubspotCredentials(credentialsRes.value.credential.content)) {
-    return new Err(
-      new Error("Invalid credentials type - expected hubspot credentials")
-    );
-  }
-
-  const credentials = credentialsRes.value.credential.content;
-
-  const hubspotApi = axios.create({
-    baseURL: "https://api.hubapi.com",
-    headers: {
-      Authorization: `Bearer ${credentials.accessToken}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-  const companyIds = await getRecentlyUpdatedCompanyIds(hubspotApi);
-  logger.info({ count: companyIds.length }, "Found companies with updates");
-
-  for (const companyId of companyIds) {
-    const company = await getCompanyDetails(hubspotApi, companyId);
-    if (company) {
-      const contacts = await getAssociatedContacts(hubspotApi, companyId);
-      const deals = await getAssociatedDeals(hubspotApi, companyId);
-      const tickets = await getAssociatedTickets(hubspotApi, companyId);
-      const orders = await getAssociatedOrders(hubspotApi, companyId);
-      const notes = await getNotes(hubspotApi, companyId);
-
-      await upsertToDustDatasource(
-        coreAPI,
-        configuration.workspaceId.toString(),
-        dataSourceViewId,
-        company,
-        contacts,
-        deals,
-        tickets,
-        orders,
-        notes,
-        credentials.portalId
-      );
+    const credentialId = configuration.credentialId;
+    if (!credentialId) {
+      await configuration.setSyncStatus(SyncStatus.FAILED);
+      await configuration.setLastSyncError("No credentials found");
+      return new Err(new Error("No credentials found"));
     }
-  }
 
-  return new Ok(undefined);
+    const dataSourceViewId = configuration.dataSourceViewId;
+    if (!dataSourceViewId) {
+      await configuration.setSyncStatus(SyncStatus.FAILED);
+      await configuration.setLastSyncError("No data source view found");
+      return new Err(new Error("No data source view found"));
+    }
+
+    const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+    const credentialsRes = await oauthApi.getCredentials({
+      credentialsId: credentialId,
+    });
+
+    if (credentialsRes.isErr()) {
+      const errorMsg = "Error fetching credentials from OAuth API";
+      logger.error({ error: credentialsRes.error }, errorMsg);
+      await configuration.setSyncStatus(SyncStatus.FAILED);
+      await configuration.setLastSyncError(errorMsg);
+      return new Err(new Error("Failed to fetch credentials"));
+    }
+
+    if (!isHubspotCredentials(credentialsRes.value.credential.content)) {
+      const errorMsg =
+        "Invalid credentials type - expected hubspot credentials";
+      await configuration.setSyncStatus(SyncStatus.FAILED);
+      await configuration.setLastSyncError(errorMsg);
+      return new Err(new Error(errorMsg));
+    }
+
+    const credentials = credentialsRes.value.credential.content;
+
+    const hubspotApi = axios.create({
+      baseURL: "https://api.hubapi.com",
+      headers: {
+        Authorization: `Bearer ${credentials.accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+    const companyIds = await getRecentlyUpdatedCompanyIds(hubspotApi);
+    logger.info({ count: companyIds.length }, "Found companies with updates");
+
+    try {
+      for (const companyId of companyIds) {
+        const company = await getCompanyDetails(hubspotApi, companyId);
+        if (company) {
+          const contacts = await getAssociatedContacts(hubspotApi, companyId);
+          const deals = await getAssociatedDeals(hubspotApi, companyId);
+          const tickets = await getAssociatedTickets(hubspotApi, companyId);
+          const orders = await getAssociatedOrders(hubspotApi, companyId);
+          const notes = await getNotes(hubspotApi, companyId);
+
+          await upsertToDustDatasource(
+            coreAPI,
+            configuration.workspaceId.toString(),
+            dataSourceViewId,
+            company,
+            contacts,
+            deals,
+            tickets,
+            orders,
+            notes,
+            credentials.portalId
+          );
+        }
+      }
+
+      // Set sync status to COMPLETED and record completion time on success
+      await configuration.setSyncStatus(SyncStatus.COMPLETED);
+      await configuration.setLastSyncCompletedAt(new Date());
+      return new Ok(undefined);
+    } catch (error) {
+      const errorMsg = `Error during sync: ${error instanceof Error ? error.message : String(error)}`;
+      logger.error({ error }, errorMsg);
+      await configuration.setSyncStatus(SyncStatus.FAILED);
+      await configuration.setLastSyncError(errorMsg);
+      return new Err(error as Error);
+    }
+  } catch (error) {
+    const errorMsg = `Unexpected error during sync: ${error instanceof Error ? error.message : String(error)}`;
+    logger.error({ error }, errorMsg);
+    await configuration.setSyncStatus(SyncStatus.FAILED);
+    await configuration.setLastSyncError(errorMsg);
+    return new Err(error as Error);
+  }
 }
