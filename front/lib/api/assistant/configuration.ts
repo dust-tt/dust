@@ -771,7 +771,8 @@ export async function createAgentConfiguration(
     templateId: string | null;
     requestedGroupIds: number[][];
     tags: TagType[];
-  }
+  },
+  t?: Transaction
 ): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -806,95 +807,82 @@ export async function createAgentConfiguration(
     if (templateId) {
       template = await TemplateResource.fetchByExternalId(templateId);
     }
-    const agent = await frontSequelize.transaction(
-      async (t): Promise<AgentConfiguration> => {
-        let created = false;
-        if (agentConfigurationId) {
-          const [existing, userRelation] = await Promise.all([
-            AgentConfiguration.findOne({
-              where: {
-                sId: agentConfigurationId,
-                workspaceId: owner.id,
-              },
-              attributes: ["scope", "version"],
-              order: [["version", "DESC"]],
-              transaction: t,
-              limit: 1,
-            }),
-            AgentUserRelation.findOne({
-              where: {
-                workspaceId: owner.id,
-                agentConfiguration: agentConfigurationId,
-                userId: user.id,
-              },
-              transaction: t,
-            }),
-          ]);
+    const performCreation = async (
+      t: Transaction
+    ): Promise<AgentConfiguration> => {
+      let created = false;
+      if (agentConfigurationId) {
+        const [existing, userRelation] = await Promise.all([
+          AgentConfiguration.findOne({
+            where: {
+              sId: agentConfigurationId,
+              workspaceId: owner.id,
+            },
+            attributes: ["scope", "version"],
+            order: [["version", "DESC"]],
+            transaction: t,
+            limit: 1,
+          }),
+          AgentUserRelation.findOne({
+            where: {
+              workspaceId: owner.id,
+              agentConfiguration: agentConfigurationId,
+              userId: user.id,
+            },
+            transaction: t,
+          }),
+        ]);
 
-          if (existing) {
-            // Bump the version of the agent.
-            version = existing.version + 1;
-          }
-
-          await AgentConfiguration.update(
-            { status: "archived" },
-            {
-              where: {
-                sId: agentConfigurationId,
-                workspaceId: owner.id,
-              },
-              transaction: t,
-            }
-          );
-          userFavorite = userRelation?.favorite ?? false;
-        } else {
-          // Only set created to true if we are not updating an existing agent
-          created = true;
+        if (existing) {
+          // Bump the version of the agent.
+          version = existing.version + 1;
         }
 
-        const sId = agentConfigurationId || generateRandomModelSId();
-
-        // Create Agent config.
-        const agentConfigurationInstance = await AgentConfiguration.create(
+        await AgentConfiguration.update(
+          { status: "archived" },
           {
-            sId,
-            version,
-            status,
-            scope,
-            name,
-            description,
-            instructions,
-            providerId: model.providerId,
-            modelId: model.modelId,
-            temperature: model.temperature,
-            reasoningEffort: model.reasoningEffort,
-            maxStepsPerRun,
-            visualizationEnabled,
-            pictureUrl,
-            workspaceId: owner.id,
-            authorId: user.id,
-            templateId: template?.id,
-            requestedGroupIds,
-            responseFormat: model.responseFormat,
-          },
-          {
+            where: {
+              sId: agentConfigurationId,
+              workspaceId: owner.id,
+            },
             transaction: t,
           }
         );
+        userFavorite = userRelation?.favorite ?? false;
+      } else {
+        // Only set created to true if we are not updating an existing agent
+        created = true;
+      }
 
-        for (const tag of tags) {
-          const id = getResourceIdFromSId(tag.sId);
-          if (id) {
-            await TagAgentModel.create(
-              {
-                workspaceId: owner.id,
-                tagId: id,
-                agentConfigurationId: agentConfigurationInstance.id,
-              },
-              { transaction: t }
-            );
-          }
+      const sId = agentConfigurationId || generateRandomModelSId();
+
+      // Create Agent config.
+      const agentConfigurationInstance = await AgentConfiguration.create(
+        {
+          sId,
+          version,
+          status,
+          scope,
+          name,
+          description,
+          instructions,
+          providerId: model.providerId,
+          modelId: model.modelId,
+          temperature: model.temperature,
+          reasoningEffort: model.reasoningEffort,
+          maxStepsPerRun,
+          visualizationEnabled,
+          pictureUrl,
+          workspaceId: owner.id,
+          authorId: user.id,
+          templateId: template?.id,
+          requestedGroupIds,
+          responseFormat: model.responseFormat,
+        },
+        {
+          transaction: t,
         }
+      );
 
         if (created && status === "active") {
           await GroupResource.makeNewAgentEditorsGroup(
@@ -903,10 +891,22 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
         }
+     
 
-        return agentConfigurationInstance;
+      if (created) {
+        await GroupResource.makeNewAgentEditorsGroup(
+          auth,
+          agentConfigurationInstance,
+          { transaction: t }
+        );
       }
-    );
+
+      return agentConfigurationInstance;
+    };
+
+    const agent = await (t
+      ? performCreation(t)
+      : frontSequelize.transaction(performCreation));
 
     /*
      * Final rendering.
