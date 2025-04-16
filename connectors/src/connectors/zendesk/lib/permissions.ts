@@ -1,5 +1,4 @@
 import { assertNever } from "@dust-tt/client";
-import type { Client } from "node-zendesk";
 
 import {
   getBrandInternalId,
@@ -10,8 +9,9 @@ import {
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  changeZendeskClientSubdomain,
-  createZendeskClient,
+  fetchZendeskBrand,
+  listZendeskBrands,
+  listZendeskCategories,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -24,8 +24,8 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
+  ModelId,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
@@ -64,16 +64,17 @@ export async function retrieveAllSelectedNodes(
 /**
  * Retrieves the Brand content nodes, which populate the root level.
  */
-async function getRootLevelContentNodes(
-  zendeskApiClient: Client,
-  {
-    connectorId,
-    isReadPermissionsOnly,
-  }: {
-    connectorId: ModelId;
-    isReadPermissionsOnly: boolean;
-  }
-): Promise<ContentNode[]> {
+async function getRootLevelContentNodes({
+  connectorId,
+  isReadPermissionsOnly,
+  subdomain,
+  accessToken,
+}: {
+  connectorId: ModelId;
+  isReadPermissionsOnly: boolean;
+  subdomain: string;
+  accessToken: string;
+}): Promise<ContentNode[]> {
   const brandsInDatabase =
     await ZendeskBrandResource.fetchAllReadOnly(connectorId);
   if (isReadPermissionsOnly) {
@@ -88,7 +89,7 @@ async function getRootLevelContentNodes(
         ),
     ];
   } else {
-    const { result: brands } = await zendeskApiClient.brand.list();
+    const brands = await listZendeskBrands({ subdomain, accessToken });
     return brands.map(
       (brand) =>
         brandsInDatabase
@@ -112,46 +113,55 @@ async function getRootLevelContentNodes(
  * Retrieves the two children node of a Brand, one for its tickets and one for its help center.
  */
 async function getBrandChildren(
-  zendeskApiClient: Client,
-  connector: ConnectorResource,
   {
+    connectorId,
     brandId,
     isReadPermissionsOnly,
     parentInternalId,
+    subdomain,
+    accessToken,
   }: {
+    connectorId: ModelId;
     brandId: number;
     parentInternalId: string;
     isReadPermissionsOnly: boolean;
+    subdomain: string;
+    accessToken: string;
   }
 ): Promise<ContentNode[]> {
   const nodes = [];
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
-    connectorId: connector.id,
+    connectorId,
     brandId,
   });
 
   // fetching the brand to check whether it has an enabled Help Center
-  const {
-    result: { brand: fetchedBrand },
-  } = await zendeskApiClient.brand.show(brandId);
+  const fetchedBrand = await fetchZendeskBrand({
+    subdomain,
+    accessToken,
+    brandId,
+  });
+  if (!fetchedBrand) {
+    throw new Error(`Brand not found: ${brandId}`);
+  }
 
   if (isReadPermissionsOnly) {
     if (brandInDb?.ticketsPermission === "read") {
       nodes.push(
-        brandInDb.getTicketsContentNode(connector.id, { expandable: true })
+        brandInDb.getTicketsContentNode(connectorId, { expandable: true })
       );
     }
     if (
       fetchedBrand.has_help_center &&
       brandInDb?.helpCenterPermission === "read"
     ) {
-      nodes.push(brandInDb.getHelpCenterContentNode(connector.id));
+      nodes.push(brandInDb.getHelpCenterContentNode(connectorId));
     }
   } else {
     const ticketsNode: ContentNode = brandInDb?.getTicketsContentNode(
-      connector.id
+      connectorId
     ) ?? {
-      internalId: getTicketsInternalId({ connectorId: connector.id, brandId }),
+      internalId: getTicketsInternalId({ connectorId, brandId }),
       parentInternalId: parentInternalId,
       type: "folder",
       title: "Tickets",
@@ -166,10 +176,10 @@ async function getBrandChildren(
     // only displaying the Help Center node if the brand has an enabled Help Center
     if (fetchedBrand.has_help_center) {
       const helpCenterNode: ContentNode = brandInDb?.getHelpCenterContentNode(
-        connector.id
+        connectorId
       ) ?? {
         internalId: getHelpCenterInternalId({
-          connectorId: connector.id,
+          connectorId,
           brandId,
         }),
         parentInternalId: parentInternalId,
@@ -190,20 +200,21 @@ async function getBrandChildren(
 /**
  * Retrieves the children nodes of a Help Center, which are the categories.
  */
-async function getHelpCenterChildren(
-  zendeskApiClient: Client,
-  {
-    connectorId,
-    brandId,
-    isReadPermissionsOnly,
-    parentInternalId,
-  }: {
-    connectorId: ModelId;
-    brandId: number;
-    parentInternalId: string;
-    isReadPermissionsOnly: boolean;
-  }
-): Promise<ContentNode[]> {
+async function getHelpCenterChildren({
+  connectorId,
+  brandId,
+  isReadPermissionsOnly,
+  parentInternalId,
+  subdomain,
+  accessToken,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  parentInternalId: string;
+  isReadPermissionsOnly: boolean;
+  subdomain: string;
+  accessToken: string;
+}): Promise<ContentNode[]> {
   const categoriesInDatabase = await ZendeskCategoryResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -214,11 +225,31 @@ async function getHelpCenterChildren(
     );
   } else {
     // fetching the categories
-    await changeZendeskClientSubdomain(zendeskApiClient, {
+    // First get the brand subdomain
+    const brandInDb = await ZendeskBrandResource.fetchByBrandId({
       connectorId,
       brandId,
     });
-    const categories = await zendeskApiClient.helpcenter.categories.list();
+
+    let brandSubdomain;
+    if (brandInDb) {
+      brandSubdomain = brandInDb.subdomain;
+    } else {
+      const brand = await fetchZendeskBrand({
+        subdomain,
+        accessToken,
+        brandId,
+      });
+      if (!brand) {
+        throw new Error(`Brand not found: ${brandId}`);
+      }
+      brandSubdomain = brand.subdomain;
+    }
+
+    const categories = await listZendeskCategories({
+      accessToken,
+      brandSubdomain,
+    });
 
     return categories.map(
       (category) =>
@@ -256,13 +287,15 @@ export async function retrieveChildrenNodes({
   filterPermission: ConnectorPermission | null;
   viewType: ContentNodesViewType;
 }): Promise<ContentNode[]> {
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connector.connectionId)
+  const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
   );
   const isReadPermissionsOnly = filterPermission === "read";
 
   if (!parentInternalId) {
-    return getRootLevelContentNodes(zendeskApiClient, {
+    return getRootLevelContentNodes({
+      subdomain,
+      accessToken,
       connectorId: connector.id,
       isReadPermissionsOnly,
     });
@@ -273,18 +306,23 @@ export async function retrieveChildrenNodes({
   );
   switch (type) {
     case "brand": {
-      return getBrandChildren(zendeskApiClient, connector, {
-        brandId: objectIds.brandId,
-        isReadPermissionsOnly,
-        parentInternalId,
-      });
-    }
-    case "help-center": {
-      return getHelpCenterChildren(zendeskApiClient, {
+      return getBrandChildren({
         connectorId: connector.id,
         brandId: objectIds.brandId,
         isReadPermissionsOnly,
         parentInternalId,
+        subdomain,
+        accessToken,
+      });
+    }
+    case "help-center": {
+      return getHelpCenterChildren({
+        connectorId: connector.id,
+        brandId: objectIds.brandId,
+        isReadPermissionsOnly,
+        parentInternalId,
+        subdomain,
+        accessToken,
       });
     }
     // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.

@@ -6,13 +6,14 @@ import {
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  changeZendeskClientSubdomain,
-  createZendeskClient,
-  fetchRecentlyUpdatedArticles,
-  fetchZendeskManyUsers,
-  fetchZendeskTicketComments,
-  fetchZendeskTickets,
+  fetchZendeskCategory,
+  fetchZendeskSection,
+  fetchZendeskUser,
   getZendeskBrandSubdomain,
+  listRecentlyUpdatedArticles,
+  listZendeskTicketComments,
+  listZendeskTickets,
+  listZendeskUsers,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -103,13 +104,17 @@ export async function syncZendeskArticleUpdateBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
     brandId,
+    subdomain,
+    accessToken,
   });
+  if (!brandSubdomain) {
+    throw new Error(`Brand ${brandId} not found in Zendesk.`);
+  }
 
-  const { articles, hasMore, endTime } = await fetchRecentlyUpdatedArticles({
+  const { articles, hasMore, endTime } = await listRecentlyUpdatedArticles({
     subdomain,
     brandSubdomain,
     accessToken,
@@ -119,13 +124,18 @@ export async function syncZendeskArticleUpdateBatchActivity({
   await concurrentExecutor(
     articles,
     async (article) => {
-      const { result: section } =
-        await zendeskApiClient.helpcenter.sections.show(article.section_id);
-      const { result: user } = await zendeskApiClient.users.show(
-        article.author_id
-      );
+      const section = await fetchZendeskSection({
+        accessToken,
+        brandSubdomain,
+        sectionId: article.section_id,
+      });
+      const user = await fetchZendeskUser({
+        accessToken,
+        brandSubdomain,
+        userId: article.author_id,
+      });
 
-      if (section.category_id) {
+      if (section && section.category_id) {
         let category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
           brandId,
@@ -134,8 +144,11 @@ export async function syncZendeskArticleUpdateBatchActivity({
         /// fetching and adding the category to the db if it is newly created, and the Help Center is selected
         if (!category && hasHelpCenterPermissions) {
           const { category_id: categoryId } = section;
-          const { result: fetchedCategory } =
-            await zendeskApiClient.helpcenter.categories.show(categoryId);
+          const fetchedCategory = await fetchZendeskCategory({
+            accessToken,
+            brandSubdomain,
+            categoryId,
+          });
           if (fetchedCategory) {
             category = await ZendeskCategoryResource.makeNew({
               blob: {
@@ -238,7 +251,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
     throw new Error(`Brand ${brandId} not found in Zendesk.`);
   }
 
-  const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
+  const { tickets, hasMore, nextLink } = await listZendeskTickets(
     accessToken,
     url ? { url } : { brandSubdomain, startTime }
   );
@@ -255,12 +268,12 @@ export async function syncZendeskTicketUpdateBatchActivity({
           loggerArgs,
         });
       } else if (shouldSyncTicket(ticket, configuration)) {
-        const comments = await fetchZendeskTicketComments({
+        const comments = await listZendeskTicketComments({
           accessToken,
           brandSubdomain,
           ticketId: ticket.id,
         });
-        const users = await fetchZendeskManyUsers({
+        const users = await listZendeskUsers({
           accessToken,
           brandSubdomain,
           userIds: comments.map((c) => c.author_id),

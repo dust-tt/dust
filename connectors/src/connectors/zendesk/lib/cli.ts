@@ -4,8 +4,8 @@ import {
   fetchZendeskBrand,
   fetchZendeskCurrentUser,
   fetchZendeskTicket,
-  fetchZendeskTicketCount,
   getZendeskBrandSubdomain,
+  getZendeskTicketCount,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncZendeskBrandActivity } from "@connectors/connectors/zendesk/temporal/activities";
 import {
@@ -104,7 +104,7 @@ export const zendesk = async ({
         throw new Error(`Brand ${brandId} not found in Zendesk.`);
       }
 
-      const ticketCount = await fetchZendeskTicketCount({
+      const ticketCount = await getZendeskTicketCount({
         brandSubdomain,
         accessToken,
         retentionPeriodDays,
