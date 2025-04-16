@@ -181,8 +181,9 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         // </div>
       )}
 
+      <div className="heading-lg">Server Settings</div>
       <div className="space-y-2">
-        <Label htmlFor="url">MCP Server URL</Label>
+        <Label htmlFor="url">Server URL</Label>
         <div className="flex space-x-2">
           <div className="flex-grow">
             <Input
@@ -200,7 +201,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           />
         </div>
       </div>
-      <div className="heading-base">MCP Server Settings</div>
       <div className="flex items-end space-x-2">
         <div className="flex-grow">
           <Controller

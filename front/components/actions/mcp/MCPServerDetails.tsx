@@ -211,19 +211,22 @@ export function MCPServerDetails({
                     onClick={() => setSelectedTab("sharing")}
                   />
                 )}
+
+                {effectiveMCPServer && !effectiveMCPServer.isDefault && (
+                  <>
+                    <div className="grow" />
+                    <Button
+                      variant="outline"
+                      icon={TrashIcon}
+                      label={"Remove"}
+                      size="sm"
+                      onClick={() => {
+                        setMCPServerToDelete(effectiveMCPServer);
+                      }}
+                    />
+                  </>
+                )}
               </TabsList>
-              <div className="grow" />
-              {effectiveMCPServer && !effectiveMCPServer.isDefault && (
-                <Button
-                  variant="outline"
-                  icon={TrashIcon}
-                  label={"Remove"}
-                  size="sm"
-                  onClick={() => {
-                    setMCPServerToDelete(effectiveMCPServer);
-                  }}
-                />
-              )}
             </Tabs>
           </SheetHeader>
 

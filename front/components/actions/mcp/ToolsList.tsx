@@ -55,7 +55,7 @@ export function ToolsList({
 
   return (
     <div className="mb-2 flex w-full flex-col gap-y-2 pt-2 text-foreground dark:text-foreground-night">
-      <div className="heading-base">Available Tools</div>
+      <div className="heading-lg">Available Tools</div>
       {serverType === "remote" && (
         <ContentMessage
           className="w-fit"
@@ -80,9 +80,9 @@ export function ToolsList({
               return (
                 <div
                   key={index}
-                  className="boder-border flex flex-col gap-3 border-b py-5 last:border-b-0 last:pb-0"
+                  className="flex flex-col gap-3 border-b border-border py-5 last:border-b-0 last:pb-0"
                 >
-                  <h4 className="heading-sm flex-grow text-foreground dark:text-foreground-night">
+                  <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
                     {asDisplayName(tool.name)}
                   </h4>
                   {tool.description && (
@@ -92,9 +92,9 @@ export function ToolsList({
                   )}
                   {serverType === "remote" && (
                     <div className="flex flex-row items-center gap-2">
-                      <h5 className="heading-sm flex-grow">
+                      <p className="heading-base flex-grow">
                         Tool stake setting
-                      </h5>
+                      </p>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
