@@ -143,7 +143,7 @@ export function MCPServerDetails({
               <SheetTitle />
             </VisuallyHidden>
             <div className="flex flex-col items-center gap-3 sm:flex-row">
-              {effectiveMCPServer && getAvatar(effectiveMCPServer, "lg")}
+              {effectiveMCPServer && getAvatar(effectiveMCPServer, "md")}
               <div className="flex grow flex-col gap-0 pr-9">
                 <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
                   {asDisplayName(effectiveMCPServer?.name)}
