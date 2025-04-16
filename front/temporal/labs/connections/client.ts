@@ -21,7 +21,7 @@ export async function launchLabsConnectionWorkflow(
       args: [connectionConfiguration.id],
       taskQueue: CONNECTIONS_QUEUE_NAME,
       workflowId: workflowId,
-      // cronSchedule: "*/5 * * * *",
+      cronSchedule: "*/5 * * * *",
       memo: {
         configurationId: connectionConfiguration.id,
         dataSourceId: connectionConfiguration.dataSourceViewId,
