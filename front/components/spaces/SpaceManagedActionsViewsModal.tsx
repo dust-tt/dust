@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
   PlusIcon,
   ScrollArea,
+  Spinner,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
@@ -29,10 +30,11 @@ export default function SpaceManagedActionsViewsModel({
   onAddServer,
 }: SpaceManagedActionsViewsModelProps) {
   const [searchText, setSearchText] = useState("");
-  const { availableMCPServers } = useAvailableMCPServers({
-    owner,
-    space,
-  });
+  const { availableMCPServers, isAvailableMCPServersLoading } =
+    useAvailableMCPServers({
+      owner,
+      space,
+    });
 
   return (
     <DropdownMenu modal={false}>
@@ -48,10 +50,16 @@ export default function SpaceManagedActionsViewsModel({
             name="search"
             value={searchText}
             onChange={setSearchText}
+            disabled={isAvailableMCPServersLoading}
           />
         </div>
         <ScrollArea className="max-h-[500px]">
-          {availableMCPServers.length <= 0 && (
+          {isAvailableMCPServersLoading && (
+            <div className="flex justify-center py-4">
+              <Spinner size="sm" />{" "}
+            </div>
+          )}
+          {!isAvailableMCPServersLoading && availableMCPServers.length <= 0 && (
             <DropdownMenuItem label="No more tools to add" disabled />
           )}
           {availableMCPServers

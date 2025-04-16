@@ -25,17 +25,18 @@ async function handler(
 
   switch (method) {
     // We get the server that are:
-    // - installed in the workspace but not in global (so can be restricted but not yet assign to spaces)
+    // - not in global (so can be restricted but not yet assign to spaces)
     // - not in the current space
     case "GET": {
+      const internalServers =
+        await InternalMCPServerInMemoryResource.listAvailableInternalMCPServers(
+          auth
+        );
       const workspaceServerViews =
         await MCPServerViewResource.listByWorkspace(auth);
       const globalServersId = workspaceServerViews
         .filter((s) => s.space.kind === "global")
         .map((s) => s.toJSON().server.id);
-
-      const workspaceInstalledServer =
-        await InternalMCPServerInMemoryResource.listByWorkspace(auth);
 
       const spaceServerViews = await MCPServerViewResource.listBySpace(
         auth,
@@ -43,7 +44,7 @@ async function handler(
       );
       const spaceServersId = spaceServerViews.map((s) => s.toJSON().server.id);
 
-      const availableServer = workspaceInstalledServer.filter(
+      const availableServer = internalServers.filter(
         (s) => !spaceServersId.includes(s.id) && !globalServersId.includes(s.id)
       );
 
