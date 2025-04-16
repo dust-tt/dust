@@ -343,7 +343,7 @@ export function AgentMessage({
               assertNever(event);
           }
 
-          if (isAtBottom.current) {
+          if (isAtBottom.current && isLastMessage) {
             bottomRef.current?.scrollIntoView({
               behavior: "auto",
               block: "center",
@@ -357,7 +357,13 @@ export function AgentMessage({
           assertNever(event);
       }
     },
-    [conversationId, message.sId, owner.sId, showValidationDialog]
+    [
+      conversationId,
+      message.sId,
+      owner.sId,
+      showValidationDialog,
+      isLastMessage,
+    ]
   );
 
   useEventSource(
