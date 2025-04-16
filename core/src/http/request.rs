@@ -2,16 +2,15 @@ use crate::stores::store::Store;
 use crate::utils;
 use crate::{cached_request::CachedRequest, project::Project};
 use anyhow::{anyhow, Result};
-use dns_lookup::lookup_host;
 use hyper::body::Buf;
-use lazy_static::lazy_static;
-use regex::Regex;
+use reqwest::redirect::Policy;
 use reqwest::{header, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{io::prelude::*, str::FromStr};
 use tracing::info;
-use url::{Host, Url};
+
+use super::network::NetworkUtils;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct HttpRequest {
@@ -74,67 +73,48 @@ impl HttpRequest {
             ))?,
         };
 
-        let parsed_url = Url::parse(self.url.as_str())?;
-
-        let _: Vec<std::net::Ipv4Addr> = match parsed_url.host() {
-            Some(h) => match h {
-                Host::Domain(d) => {
-                    let ipv4: Vec<std::net::Ipv4Addr> = lookup_host(d)?
-                        .into_iter()
-                        .filter_map(|ip| match ip {
-                            std::net::IpAddr::V4(ip) => Some(ip),
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>();
-                    match ipv4.len() {
-                        0 => Err(anyhow!("Could not find an ipv4 address for host: {}", d))?,
-                        _ => ipv4,
-                    }
-                }
-                Host::Ipv4(ip) => vec![ip],
-                Host::Ipv6(_) => Err(anyhow!("Ipv6 addresses are not supported."))?,
-            },
-            None => Err(anyhow!("Provided URL has an empty host"))?,
-        }
-        .into_iter()
-        .map(|ip| {
-            lazy_static! {
-                // Simple patterns that match single ranges
-                static ref SIMPLE_RANGES: Regex = Regex::new(r"^(0|127|10|192\.168|169\.254)\..*").unwrap();
-
-                // 172.16-31.x.x range
-                static ref RANGE_172: Regex = Regex::new(r"^172\.(1[6-9]|2[0-9]|3[0-1])\..*").unwrap();
-
-                // 100.64-127.x.x range
-                static ref RANGE_100: Regex = Regex::new(r"^100\.(6[4-9]|7[0-9]|8[0-9]|9[0-9]|1[01][0-9]|12[0-7])\..*").unwrap();
-            }
-            // println!("IP {}", ip.to_string());
-            match SIMPLE_RANGES.is_match(ip.to_string().as_str()) || RANGE_172.is_match(ip.to_string().as_str()) || RANGE_100.is_match(ip.to_string().as_str()) {
-                true => Err(anyhow!("Forbidden IP range"))?,
-                false => Ok(ip),
-            }
-        })
-        .collect::<Result<Vec<_>>>()?;
-
         // TODO(spolu): encode query
         // TODO(spolu): timeout requests
 
-        let req = reqwest::Client::new()
-            .request(method, self.url.as_str())
-            .headers(
-                self.headers
-                    .as_object()
-                    .unwrap_or(&serde_json::Map::new())
-                    .iter()
-                    .map(|(k, v)| match v {
-                        Value::String(v) => Ok((
-                            header::HeaderName::from_str(k)?,
-                            header::HeaderValue::from_str(v)?,
-                        )),
-                        _ => Err(anyhow!("Header value for header {} must be a string", k)),
-                    })
-                    .collect::<Result<header::HeaderMap>>()?,
-            );
+        // First check the initial URL.
+        NetworkUtils::check_url_for_private_ip(&self.url)?;
+
+        // First create the client with the custom redirect policy.
+        let client = reqwest::Client::builder()
+            .redirect(Policy::custom(|attempt| {
+                // Log the redirect for debugging.
+                println!(
+                    "Redirect attempt from: {:?} to: {}",
+                    attempt.previous(),
+                    attempt.url()
+                );
+
+                // Ensure the URL is not pointing to a private IP.
+                match NetworkUtils::check_url_for_private_ip(attempt.url().as_str()) {
+                    Ok(_) => attempt.follow(),
+                    Err(e) => {
+                        println!("Attempt to follow redirect to private IP: {}", e);
+                        attempt.error(e)
+                    }
+                }
+            }))
+            .build()
+            .map_err(|e| anyhow!("Failed to build HTTP client: {}", e))?;
+
+        let req = client.request(method, self.url.as_str()).headers(
+            self.headers
+                .as_object()
+                .unwrap_or(&serde_json::Map::new())
+                .iter()
+                .map(|(k, v)| match v {
+                    Value::String(v) => Ok((
+                        header::HeaderName::from_str(k)?,
+                        header::HeaderValue::from_str(v)?,
+                    )),
+                    _ => Err(anyhow!("Header value for header {} must be a string", k)),
+                })
+                .collect::<Result<header::HeaderMap>>()?,
+        );
 
         let req = match &self.body {
             Value::Object(body) => req.json(&serde_json::to_string(body)?),
