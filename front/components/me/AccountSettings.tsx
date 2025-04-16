@@ -1,4 +1,4 @@
-import { Button, Input, Page, Spinner } from "@dust-tt/sparkle";
+import { Button, Input, Label, Page, Spinner } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -75,7 +75,7 @@ export function AccountSettings({
   return (
     <>
       <Page.Horizontal>
-        <Page.P>eMail</Page.P>
+        <Label>eMail</Label>
         <Page.P variant="secondary">{user?.email}</Page.P>
       </Page.Horizontal>
 
@@ -100,7 +100,7 @@ export function AccountSettings({
       <Page.Horizontal align="right">
         <Button
           label="Cancel"
-          variant="secondary"
+          variant="ghost"
           onClick={() => {
             setFirstName(user?.firstName || "");
             setLastName(user?.lastName || "");

@@ -1,7 +1,12 @@
-import { Avatar, DataTable, Input, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  DataTable,
+  Label,
+  SearchInput,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { SearchIcon } from "lucide-react";
 import type { FunctionComponentElement, SVGProps } from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -62,8 +67,14 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     }
 
     return serverViews
-      .filter((serverView) =>
-        serverView.server.name.toLowerCase().includes(searchQuery.toLowerCase())
+      .filter(
+        (serverView) =>
+          serverView.server.name
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          serverView.server.description
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
       )
       .map((serverView) => ({
         id: serverView.id,
@@ -126,14 +137,11 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
   return (
     <>
       <div className="relative mb-4">
-        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-          <SearchIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
-        </div>
-        <Input
-          className="pl-10"
+        <SearchInput
+          name="search"
           placeholder="Search toolsets"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={setSearchQuery}
         />
       </div>
 
@@ -144,9 +152,9 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       ) : actionsTableData.length > 0 ? (
         <DataTable data={actionsTableData} columns={actionColumns} />
       ) : (
-        <Page.P>
+        <Label>
           {searchQuery ? "No matching toolsets found" : "No toolsets available"}
-        </Page.P>
+        </Label>
       )}
     </>
   );
