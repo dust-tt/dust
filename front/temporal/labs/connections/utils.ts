@@ -66,7 +66,8 @@ export async function markSyncFailed(
 }
 
 export function makeLabsConnectionWorkflowId(
-  connectionConfiguration: LabsConnectionsConfigurationResource
+  connectionConfiguration: LabsConnectionsConfigurationResource,
+  isIncrementalSync: boolean = false
 ): string {
-  return `labs-connection-sync-${connectionConfiguration.id}`;
+  return `labs-connection-${isIncrementalSync ? "incremental" : "full"}-sync-${connectionConfiguration.id}`;
 }

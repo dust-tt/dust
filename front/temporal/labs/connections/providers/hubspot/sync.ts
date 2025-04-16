@@ -219,20 +219,24 @@ ${props.notes_last_updated ? `Last Note Updated: ${props.notes_last_updated}` : 
 
     if (upsertRes.isErr()) {
       logger.error(
-        { error: upsertRes.error, companyId: company.id },
-        `Error upserting company ${company.properties.name} (${company.id}) to Dust datasource`
+        {
+          error: upsertRes.error,
+          companyId: company.id,
+          companyName: props.name,
+        },
+        `Error upserting company to Dust datasource`
       );
       return;
     }
 
     logger.info(
-      { companyId: company.id },
-      `Upserted company ${company.properties.name} (${company.id}) to Dust datasource (${props.name})`
+      { companyId: company.id, companyName: props.name },
+      `Upserted hubspot company to Dust datasource`
     );
   } catch (error) {
     logger.error(
-      { error, companyId: company.id },
-      `Error upserting company ${company.properties.name} (${company.id}) to Dust datasource`
+      { error, companyId: company.id, companyName: props.name },
+      `Error upserting company to Dust datasource`
     );
   }
 }
@@ -289,8 +293,6 @@ export async function syncHubspotConnection(
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-    // For incremental sync, use the cursor (last sync timestamp) or default to 24h ago
-    // For full sync, pass null to get all companies
     const since = isFullSync
       ? null
       : cursor

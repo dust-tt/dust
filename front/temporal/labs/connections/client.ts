@@ -52,7 +52,10 @@ export async function launchIncrementalSyncLabsConnectionWorkflow(
   connectionConfiguration: LabsConnectionsConfigurationResource
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
-  const workflowId = makeLabsConnectionWorkflowId(connectionConfiguration);
+  const workflowId = makeLabsConnectionWorkflowId(
+    connectionConfiguration,
+    true
+  );
 
   try {
     await client.workflow.start(incrementalSyncLabsConnectionWorkflow, {
