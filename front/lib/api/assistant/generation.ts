@@ -137,7 +137,14 @@ export async function constructPromptMultiActions(
   }
 
   if (hasAvailableActions) {
-    const toolMetaPrompt = model.toolUseMetaPrompt;
+    const maxStepsPerRun =
+      agentConfiguration.maxStepsPerRun > 1
+        ? agentConfiguration.maxStepsPerRun - 1
+        : agentConfiguration.maxStepsPerRun;
+    const toolMetaPrompt = model.toolUseMetaPrompt?.replace(
+      "MAX_STEPS_USE_PER_RUN",
+      maxStepsPerRun.toString()
+    );
     if (toolMetaPrompt) {
       additionalInstructions += `\n${toolMetaPrompt}\n`;
     }

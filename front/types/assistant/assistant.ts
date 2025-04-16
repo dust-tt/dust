@@ -512,6 +512,7 @@ const ANTHROPIC_DELIMITERS_CONFIGURATION = {
 const ANTHROPIC_TOOL_USE_META_PROMPT =
   `Immediately before using a tool, think for one short bullet point in \`<thinking>\` tags about ` +
   `how it evaluates against the criteria for a good and bad tool use. ` +
+  `You are restricted to a maximum of MAX_STEPS_USE_PER_RUN tool uses per run. ` +
   `After using a tool, think for one short bullet point in \`<thinking>\` tags to evaluate ` +
   `whether the tools results are enough to answer the user's question. ` +
   `The response to the user must be in \`<response>\` tags. ` +
