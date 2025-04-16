@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
   PlusIcon,
   ScrollArea,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import React from "react";
@@ -33,9 +34,10 @@ export const AddActionMenu = ({
   createRemoteMCPServer,
 }: AddActionMenuProps) => {
   const [searchText, setSearchText] = useState("");
-  const { availableMCPServers } = useAvailableMCPServers({
-    owner,
-  });
+  const { availableMCPServers, isAvailableMCPServersLoading } =
+    useAvailableMCPServers({
+      owner,
+    });
 
   return (
     <DropdownMenu modal={false}>
@@ -55,6 +57,7 @@ export const AddActionMenu = ({
             name="search"
             value={searchText}
             onChange={setSearchText}
+            disabled={isAvailableMCPServersLoading}
           />
           <Button
             icon={PlusIcon}
@@ -63,6 +66,11 @@ export const AddActionMenu = ({
           />
         </div>
         <ScrollArea className="max-h-[500px]">
+          {isAvailableMCPServersLoading && (
+            <div className="flex justify-center py-4">
+              <Spinner size="sm" />{" "}
+            </div>
+          )}
           {availableMCPServers
             .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.id))
             .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
