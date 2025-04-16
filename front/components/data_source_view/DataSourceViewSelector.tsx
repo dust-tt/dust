@@ -103,17 +103,27 @@ const getNodesFromConfig = (
     {}
   );
 
-const updateSelection = (
-  item: DataSourceViewContentNode,
-  prevState: DataSourceViewSelectionConfigurations,
-  selectionMode: "checkbox" | "radio" = "checkbox"
-): DataSourceViewSelectionConfigurations => {
+const updateSelection = ({
+  item,
+  prevState,
+  selectionMode = "checkbox",
+  onlyAdd = false,
+}: {
+  item: DataSourceViewContentNode;
+  prevState: DataSourceViewSelectionConfigurations;
+  selectionMode: "checkbox" | "radio";
+  onlyAdd?: boolean;
+}): DataSourceViewSelectionConfigurations => {
   const { dataSourceView: dsv } = item;
   const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
 
   const exists = prevConfig.selectedResources.some(
     (r) => r.internalId === item.internalId
   );
+
+  if (onlyAdd && exists) {
+    return _.cloneDeep(prevState);
+  }
 
   if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
     return {
@@ -320,7 +330,13 @@ export function DataSourceViewsSelector({
     // Update all selections in a single state update.
     setSelectionConfigurations((prevState) => {
       const newState = searchResultNodes.reduce(
-        (acc, item) => updateSelection(item, acc, selectionMode),
+        (acc, item) =>
+          updateSelection({
+            item,
+            prevState: acc,
+            selectionMode,
+            onlyAdd: true,
+          }),
         prevState
       );
       return newState;
@@ -355,7 +371,11 @@ export function DataSourceViewsSelector({
           setSearchResult(item);
           setSearchSpaceText("");
           setSelectionConfigurations((prevState) =>
-            updateSelection(item, prevState, selectionMode)
+            updateSelection({
+              item,
+              prevState,
+              selectionMode,
+            })
           );
         }}
         displayItemCount={useCase === "assistantBuilder"}
@@ -372,7 +392,11 @@ export function DataSourceViewsSelector({
                 setSearchResult(item);
                 setSearchSpaceText("");
                 setSelectionConfigurations((prevState) =>
-                  updateSelection(item, prevState, selectionMode)
+                  updateSelection({
+                    item,
+                    prevState,
+                    selectionMode,
+                  })
                 );
               }}
             >
