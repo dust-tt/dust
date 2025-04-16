@@ -1,11 +1,11 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import {
-  ConfigurableToolInputSchemas,
-  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
-} from "@app/lib/actions/mcp_internal_actions/tool_input_schemas";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import {
+  ConfigurableToolInputSchemas,
+  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";

@@ -90,7 +90,7 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { getVisual } from "@app/lib/actions/mcp_icons";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schema_parsing";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
