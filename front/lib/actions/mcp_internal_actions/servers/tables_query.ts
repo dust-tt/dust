@@ -16,7 +16,6 @@ import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -383,8 +382,7 @@ function createServer(
         output: null,
       };
 
-      let generatedResultFile: ActionGeneratedFileType | null = null;
-      let generatedSectionFile: ActionGeneratedFileType | null = null;
+      const content: MCPToolResultContent[] = [];
 
       const rawResults =
         "results" in sanitizedOutput ? sanitizedOutput.results : [];
@@ -418,12 +416,14 @@ function createServer(
         });
 
         //  Save ref to the generated csv file to be yielded later.
-        generatedResultFile = {
-          fileId: csvFile.sId,
-          title: queryTitle,
-          contentType: csvFile.contentType,
-          snippet: csvFile.snippet,
-        };
+        content.push({
+          type: "resource",
+          resource: {
+            uri: csvFile.sId,
+            text: `${queryTitle} - ${csvFile.snippet}`,
+            mimeType: csvFile.contentType,
+          },
+        });
 
         // Check if we should generate a section JSON file.
         const shouldGenerateSectionFile = results.some((result) =>
@@ -462,13 +462,14 @@ function createServer(
             file: sectionFile,
           });
 
-          // Save ref to the generated section file to be yielded later.
-          generatedSectionFile = {
-            fileId: sectionFile.sId,
-            title: `${queryTitle} (Rich Text)`,
-            contentType: sectionFile.contentType,
-            snippet: null,
-          };
+          content.push({
+            type: "resource",
+            resource: {
+              uri: sectionFile.sId,
+              text: `${queryTitle} ${sectionFile.snippet}`,
+              mimeType: sectionFile.contentType,
+            },
+          });
         }
 
         delete sanitizedOutput.results;
@@ -484,29 +485,8 @@ function createServer(
       //   runId: await dustRunId,
       // });
 
-      const content: MCPToolResultContent[] = [
-        { type: "text", text: JSON.stringify(sanitizedOutput) },
-      ];
-      if (generatedResultFile) {
-        content.push({
-          type: "resource",
-          resource: {
-            mimeType: generatedResultFile.contentType,
-            uri: generatedResultFile.fileId,
-            text: generatedResultFile.snippet ?? "",
-          },
-        });
-      }
-      if (generatedSectionFile) {
-        content.push({
-          type: "resource",
-          resource: {
-            mimeType: generatedSectionFile.contentType,
-            uri: generatedSectionFile.fileId,
-            text: generatedSectionFile.snippet ?? "",
-          },
-        });
-      }
+      content.push({ type: "text", text: JSON.stringify(sanitizedOutput) });
+
       return {
         isError: false,
         content: content,

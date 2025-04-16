@@ -1,4 +1,4 @@
-import {ConnectorProvider} from "./types";
+import { ConnectorProvider } from "./types";
 
 /**
  * This is a utility type that indicates that we removed all underscores from a string.
@@ -175,33 +175,38 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
   GONG: [],
 };
 
-// If we get other categories of mimeTypes we'll do the same as above and add a templated variable.
-function generateToolInputMimeTypes<T extends Uppercase<string>[]>({
+function generateToolMimeTypes<
+  P extends Uppercase<string>,
+  T extends Uppercase<string>[]
+>({
+  category,
   resourceTypes,
 }: {
+  category: P;
   resourceTypes: T;
 }): {
-  [K in T[number]]: `application/vnd.dust.tool_input.${Lowercase<
-    UnderscoreToDash<K>
-  >}`;
+  [K in T[number]]: `application/vnd.dust.${Lowercase<
+    WithoutUnderscores<P>
+  >}.${Lowercase<UnderscoreToDash<K>>}`;
 } {
   return resourceTypes.reduce(
     (acc, s) => ({
       ...acc,
-      [s]: `application/vnd.dust.tool_input.${s
+      [s]: `application/vnd.dust.${category.toLowerCase().replace("_", "")}.${s
         .replace(/_/g, "-")
         .toLowerCase()}`,
     }),
     {} as {
-      [K in T[number]]: `application/vnd.dust.tool_input.${Lowercase<
-        UnderscoreToDash<K>
-      >}`;
+      [K in T[number]]: `application/vnd.dust.${Lowercase<
+        WithoutUnderscores<P>
+      >}.${Lowercase<UnderscoreToDash<K>>}`;
     }
   );
 }
 
 const TOOL_INPUT_MIME_TYPES = {
-  TOOL_INPUT: generateToolInputMimeTypes({
+  TOOL_INPUT: generateToolMimeTypes({
+    category: "TOOL_INPUT",
     resourceTypes: [
       "DATA_SOURCE",
       "TABLE",
@@ -210,6 +215,10 @@ const TOOL_INPUT_MIME_TYPES = {
       "NUMBER",
       "BOOLEAN",
     ],
+  }),
+  TOOL_OUTPUT: generateToolMimeTypes({
+    category: "TOOL_OUTPUT",
+    resourceTypes: ["FILE"],
   }),
 };
 
