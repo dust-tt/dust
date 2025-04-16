@@ -193,19 +193,6 @@ export function MCPServerDetails({
                   />
                 </div>
               )}
-              {effectiveMCPServer && !effectiveMCPServer.isDefault && (
-                <div>
-                  <Button
-                    variant="outline"
-                    icon={TrashIcon}
-                    label={"Remove"}
-                    size="sm"
-                    onClick={() => {
-                      setMCPServerToDelete(effectiveMCPServer);
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             <Tabs value={selectedTab}>
@@ -225,6 +212,18 @@ export function MCPServerDetails({
                   />
                 )}
               </TabsList>
+              <div className="grow" />
+              {effectiveMCPServer && !effectiveMCPServer.isDefault && (
+                <Button
+                  variant="outline"
+                  icon={TrashIcon}
+                  label={"Remove"}
+                  size="sm"
+                  onClick={() => {
+                    setMCPServerToDelete(effectiveMCPServer);
+                  }}
+                />
+              )}
             </Tabs>
           </SheetHeader>
 
