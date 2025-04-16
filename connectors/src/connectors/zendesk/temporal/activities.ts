@@ -12,16 +12,15 @@ import {
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  changeZendeskClientSubdomain,
-  createZendeskClient,
-  fetchZendeskArticlesInCategory,
   fetchZendeskBrand,
-  fetchZendeskCategoriesInBrand,
   fetchZendeskCategory,
-  fetchZendeskManyUsers,
-  fetchZendeskTicketComments,
-  fetchZendeskTickets,
   getZendeskBrandSubdomain,
+  listZendeskArticlesInCategory,
+  listZendeskCategoriesInBrand,
+  listZendeskSectionsByCategory,
+  listZendeskTicketComments,
+  listZendeskTickets,
+  listZendeskUsers,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -357,16 +356,13 @@ export async function syncZendeskCategoryBatchActivity({
     accessToken,
     subdomain,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
 
-  const { categories, hasMore, nextLink } = await fetchZendeskCategoriesInBrand(
+  const { categories, hasMore, nextLink } = await listZendeskCategoriesInBrand(
     accessToken,
     url ? { url } : { brandSubdomain, pageSize: ZENDESK_BATCH_SIZE }
   );
@@ -451,9 +447,6 @@ export async function syncZendeskCategoryActivity({
     subdomain,
     brandId,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
   // if the category is not on Zendesk anymore, we remove its permissions
   const fetchedCategory = await fetchZendeskCategory({
@@ -547,13 +540,14 @@ export async function syncZendeskArticleBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     brandId: category.brandId,
     connectorId,
+    accessToken,
+    subdomain,
   });
 
-  const { articles, hasMore, nextLink } = await fetchZendeskArticlesInCategory(
+  const { articles, hasMore, nextLink } = await listZendeskArticlesInCategory(
     category,
     accessToken,
     url ? { url } : { brandSubdomain, pageSize: ZENDESK_BATCH_SIZE }
@@ -564,9 +558,12 @@ export async function syncZendeskArticleBatchActivity({
     `[Zendesk] Processing ${articles.length} articles in batch`
   );
 
-  const sections =
-    await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
-  const users = await fetchZendeskManyUsers({
+  const sections = await listZendeskSectionsByCategory({
+    accessToken,
+    brandSubdomain,
+    categoryId,
+  });
+  const users = await listZendeskUsers({
     accessToken,
     brandSubdomain,
     userIds: articles.map((article) => article.author_id),
@@ -637,14 +634,11 @@ export async function syncZendeskTicketBatchActivity({
     accessToken,
     subdomain,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
   const startTime =
     Math.floor(currentSyncDateMs / 1000) -
     configuration.retentionPeriodDays * 24 * 60 * 60; // days to seconds
-  const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
+  const { tickets, hasMore, nextLink } = await listZendeskTickets(
     accessToken,
     url ? { url } : { brandSubdomain, startTime }
   );
@@ -664,14 +658,14 @@ export async function syncZendeskTicketBatchActivity({
   const comments2d = await concurrentExecutor(
     ticketsToSync,
     async (ticket) =>
-      fetchZendeskTicketComments({
+      listZendeskTicketComments({
         accessToken,
         brandSubdomain,
         ticketId: ticket.id,
       }),
     { concurrency: 3, onBatchComplete: heartbeat }
   );
-  const users = await fetchZendeskManyUsers({
+  const users = await listZendeskUsers({
     accessToken,
     brandSubdomain,
     userIds: [

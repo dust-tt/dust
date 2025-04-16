@@ -154,9 +154,6 @@ export async function removeMissingArticleBatchActivity({
     accessToken,
     subdomain,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
   // not deleting in batch for now, assuming we won't have that many articles to delete at once
   await concurrentExecutor(

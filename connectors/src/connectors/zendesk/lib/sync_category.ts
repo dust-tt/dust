@@ -1,9 +1,9 @@
-import type { ZendeskFetchedCategory } from "@connectors/@types/node-zendesk";
 import {
   getArticleInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import type { ZendeskFetchedCategory } from "@connectors/connectors/zendesk/lib/types";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteDataSourceDocument,
@@ -14,8 +14,7 @@ import {
   ZendeskArticleResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**

@@ -4,8 +4,8 @@ import {
   fetchZendeskBrand,
   fetchZendeskCurrentUser,
   fetchZendeskTicket,
-  fetchZendeskTicketCount,
   getZendeskBrandSubdomain,
+  getZendeskTicketCount,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncZendeskBrandActivity } from "@connectors/connectors/zendesk/temporal/activities";
 import {
@@ -100,11 +100,8 @@ export const zendesk = async ({
         subdomain,
         accessToken,
       });
-      if (!brandSubdomain) {
-        throw new Error(`Brand ${brandId} not found in Zendesk.`);
-      }
 
-      const ticketCount = await fetchZendeskTicketCount({
+      const ticketCount = await getZendeskTicketCount({
         brandSubdomain,
         accessToken,
         retentionPeriodDays,
@@ -191,12 +188,6 @@ export const zendesk = async ({
         subdomain,
         accessToken,
       });
-      if (!brandSubdomain) {
-        return {
-          ticket: null,
-          isTicketOnDb: ticketOnDb !== null,
-        };
-      }
 
       const ticket = await fetchZendeskTicket({
         accessToken,

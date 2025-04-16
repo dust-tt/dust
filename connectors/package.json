@@ -55,7 +55,6 @@
     "micromark-extension-gfm": "^3.0.0",
     "minimist": "^1.2.8",
     "morgan": "^1.10.0",
-    "node-zendesk": "^5.0.13",
     "octokit": "^3.1.2",
     "p-queue": "^7.3.4",
     "pg": "^8.8.0",
