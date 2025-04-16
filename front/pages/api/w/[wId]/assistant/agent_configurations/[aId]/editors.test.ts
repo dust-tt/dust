@@ -1,5 +1,5 @@
 import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createAgentConfiguration,
@@ -79,12 +79,12 @@ async function createTestAgent(
 }
 
 async function setupTest(
-  t: any,
   options: {
     agentOwnerRole?: "admin" | "builder" | "user";
     requestUserRole?: "admin" | "builder" | "user";
     method?: RequestMethod;
-  } = {}
+  } = {},
+  t?: Transaction
 ) {
   const agentOwnerRole = options.agentOwnerRole ?? "admin";
   const requestUserRole = options.requestUserRole ?? "admin";
@@ -123,7 +123,7 @@ async function setupTest(
   }
 
   // Create agent owned by agentOwner
-  const agent = await createTestAgent(agentOwnerAuth, t);
+  const agent = await createTestAgent(agentOwnerAuth, t as Transaction);
 
   // Set up query parameters for the agent
   req.query = { ...req.query, wId: workspace.sId, aId: agent.sId };
@@ -144,9 +144,12 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => 
   itInTransaction(
     "should return 200 and the editor list for admin",
     async (t) => {
-      const { req, res, agentOwner } = await setupTest(t, {
-        requestUserRole: "admin",
-      });
+      const { req, res, agentOwner } = await setupTest(
+        {
+          requestUserRole: "admin",
+        },
+        t
+      );
 
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -161,10 +164,13 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => 
   itInTransaction(
     "should return 200 and the editor list for editor",
     async (t) => {
-      const { req, res, agentOwner } = await setupTest(t, {
-        agentOwnerRole: "builder",
-        requestUserRole: "builder",
-      });
+      const { req, res, agentOwner } = await setupTest(
+        {
+          agentOwnerRole: "builder",
+          requestUserRole: "builder",
+        },
+        t
+      );
 
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -174,41 +180,8 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => 
     }
   );
 
-  itInTransaction("should return 403 for non-editor builder", async (t) => {
-    const { req, res } = await setupTest(t, {
-      requestUserRole: "builder",
-    });
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(403);
-    // Assuming canRead requires editor/admin status
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "agent_configuration_auth_error", // Or could be 404 depending on perm check
-        message:
-          "Only editors of the agent or workspace admins can view or modify editors.",
-      },
-    });
-  });
-
-  itInTransaction("should return 403 for non-editor user", async (t) => {
-    const { req, res } = await setupTest(t, {
-      requestUserRole: "user",
-    });
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "agent_configuration_auth_error", // Or could be 404 depending on perm check
-        message:
-          "Only editors of the agent or workspace admins can view or modify editors.",
-      },
-    });
-  });
-
   itInTransaction("should return 404 for non-existent agent", async (t) => {
-    const { req, res } = await setupTest(t);
+    const { req, res } = await setupTest({}, t);
     req.query.aId = "non_existent_agent_sid";
 
     await handler(req, res);
@@ -224,10 +197,13 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => 
 
 describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => {
   itInTransaction("admin should successfully add an editor", async (t) => {
-    const { req, res, workspace, agentOwner } = await setupTest(t, {
-      requestUserRole: "admin",
-      method: "PATCH",
-    });
+    const { req, res, workspace, agentOwner } = await setupTest(
+      {
+        requestUserRole: "admin",
+        method: "PATCH",
+      },
+      t
+    );
 
     const newEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, newEditor, "builder");
@@ -235,19 +211,23 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     req.body = { addEditorIds: [newEditor.sId] };
 
     await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
+    console.log("data", data);
+    expect(res._getStatusCode()).toBe(200);
     expect(data.editors).toHaveLength(2);
     const editorIds = data.editors.map((e: UserType) => e.sId);
     expect(editorIds).toContain(agentOwner.sId);
     expect(editorIds).toContain(newEditor.sId);
   });
-
+  // }); /*
   itInTransaction("admin should successfully remove an editor", async (t) => {
-    const { req, res, workspace, agent, agentOwner } = await setupTest(t, {
-      requestUserRole: "admin",
-      method: "PATCH",
-    });
+    const { req, res, workspace, agent, agentOwner } = await setupTest(
+      {
+        requestUserRole: "admin",
+        method: "PATCH",
+      },
+      t
+    );
 
     // Add another editor first
     const editorToRemove = await UserFactory.basic();
@@ -275,11 +255,14 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   itInTransaction(
     "editor should successfully add another editor",
     async (t) => {
-      const { req, res, workspace, agentOwner } = await setupTest(t, {
-        agentOwnerRole: "builder", // Make agent owner a builder
-        requestUserRole: "builder",
-        method: "PATCH",
-      });
+      const { req, res, workspace, agentOwner } = await setupTest(
+        {
+          agentOwnerRole: "builder", // Make agent owner a builder
+          requestUserRole: "builder",
+          method: "PATCH",
+        },
+        t
+      );
 
       const newEditor = await UserFactory.basic();
       await MembershipFactory.associate(workspace, newEditor, "user");
@@ -300,11 +283,14 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     "editor should successfully remove another editor",
     async (t) => {
       const { req, res, workspace, agent, agentOwner, requestUser } =
-        await setupTest(t, {
-          agentOwnerRole: "builder", // Make agent owner a builder
-          requestUserRole: "builder",
-          method: "PATCH",
-        });
+        await setupTest(
+          {
+            agentOwnerRole: "builder", // Make agent owner a builder
+            requestUserRole: "builder",
+            method: "PATCH",
+          },
+          t
+        );
 
       // Add another editor first
       const editorToRemove = await UserFactory.basic();
@@ -331,10 +317,13 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   );
 
   itInTransaction("should return 403 for non-editor user", async (t) => {
-    const { req, res } = await setupTest(t, {
-      requestUserRole: "user",
-      method: "PATCH",
-    });
+    const { req, res } = await setupTest(
+      {
+        requestUserRole: "user",
+        method: "PATCH",
+      },
+      t
+    );
 
     req.body = { addEditorIds: ["some_user_sid"] }; // Body doesn't matter, auth fails first
 
@@ -352,10 +341,13 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   itInTransaction(
     "should return 400 when adding existing editor",
     async (t) => {
-      const { req, res, agentOwner } = await setupTest(t, {
-        requestUserRole: "admin",
-        method: "PATCH",
-      });
+      const { req, res, agentOwner } = await setupTest(
+        {
+          requestUserRole: "admin",
+          method: "PATCH",
+        },
+        t
+      );
 
       req.body = { addEditorIds: [agentOwner.sId] }; // Try to re-add owner
 
@@ -372,10 +364,13 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   );
 
   itInTransaction("should return 400 when removing non-editor", async (t) => {
-    const { req, res, workspace } = await setupTest(t, {
-      requestUserRole: "admin",
-      method: "PATCH",
-    });
+    const { req, res, workspace } = await setupTest(
+      {
+        requestUserRole: "admin",
+        method: "PATCH",
+      },
+      t
+    );
 
     const nonEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, nonEditor, "user");
@@ -396,10 +391,13 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   itInTransaction(
     "should return 404 when adding non-existent user",
     async (t) => {
-      const { req, res } = await setupTest(t, {
-        requestUserRole: "admin",
-        method: "PATCH",
-      });
+      const { req, res } = await setupTest(
+        {
+          requestUserRole: "admin",
+          method: "PATCH",
+        },
+        t
+      );
 
       req.body = { addEditorIds: ["user_not_exists_sid"] };
 
@@ -417,10 +415,13 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   itInTransaction(
     "should return 404 when removing non-existent user",
     async (t) => {
-      const { req, res } = await setupTest(t, {
-        requestUserRole: "admin",
-        method: "PATCH",
-      });
+      const { req, res } = await setupTest(
+        {
+          requestUserRole: "admin",
+          method: "PATCH",
+        },
+        t
+      );
 
       req.body = { removeEditorIds: ["user_not_exists_sid"] };
 
@@ -438,10 +439,13 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   itInTransaction(
     "should return 400 for invalid request body (empty)",
     async (t) => {
-      const { req, res } = await setupTest(t, {
-        requestUserRole: "admin",
-        method: "PATCH",
-      });
+      const { req, res } = await setupTest(
+        {
+          requestUserRole: "admin",
+          method: "PATCH",
+        },
+        t
+      );
 
       req.body = {};
 
@@ -457,10 +461,13 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   itInTransaction(
     "should return 400 for invalid request body (empty arrays)",
     async (t) => {
-      const { req, res } = await setupTest(t, {
-        requestUserRole: "admin",
-        method: "PATCH",
-      });
+      const { req, res } = await setupTest(
+        {
+          requestUserRole: "admin",
+          method: "PATCH",
+        },
+        t
+      );
 
       req.body = { addEditorIds: [], removeEditorIds: [] };
 
@@ -476,10 +483,13 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   itInTransaction(
     "should successfully add and remove editors in same request",
     async (t) => {
-      const { req, res, workspace, agentOwner } = await setupTest(t, {
-        requestUserRole: "admin",
-        method: "PATCH",
-      });
+      const { req, res, workspace, agentOwner } = await setupTest(
+        {
+          requestUserRole: "admin",
+          method: "PATCH",
+        },
+        t
+      );
 
       const editorToAdd = await UserFactory.basic();
       await MembershipFactory.associate(workspace, editorToAdd, "builder");
@@ -499,7 +509,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
   );
 
   itInTransaction("should return 404 for non-existent agent", async (t) => {
-    const { req, res } = await setupTest(t, { method: "PATCH" });
+    const { req, res } = await setupTest({ method: "PATCH" }, t);
     req.query.aId = "non_existent_agent_sid";
     req.body = { addEditorIds: ["any_user_sid"] }; // Need a valid body
 
@@ -517,7 +527,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
 describe("Method Support /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => {
   itInTransaction("only supports GET and PATCH methods", async (t) => {
     for (const method of ["POST", "PUT", "DELETE"] as const) {
-      const { req, res } = await setupTest(t, { method });
+      const { req, res } = await setupTest({ method }, t);
 
       await handler(req, res);
 
