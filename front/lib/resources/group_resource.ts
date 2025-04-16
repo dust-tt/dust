@@ -32,6 +32,7 @@ import type {
   ModelId,
   ResourcePermission,
   Result,
+  RolePermission,
   UserType,
 } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
@@ -855,11 +856,19 @@ export class GroupResource extends BaseResource<GroupModel> {
    *
    * For agent_editors groups, the permissions are:
    * 1. Group-based: The group's members get read and write access
-   * 2. Role-based: Workspace admins get read and write access
+   * 2. Role-based: Workspace admins get read and write access. All users can
+   *    read "agent_editors" groups.
    *
-   * @returns Array of ResourcePermission objects defining the default access configuration
+   * @returns Array of ResourcePermission objects defining the default access
+   * configuration
    */
   requestedPermissions(): ResourcePermission[] {
+    const userReadPermissions: RolePermission[] = [
+      {
+        role: "user",
+        permissions: ["read"],
+      },
+    ];
     return [
       {
         groups: [
@@ -869,7 +878,10 @@ export class GroupResource extends BaseResource<GroupModel> {
               this.kind === "agent_editors" ? ["read", "write"] : ["read"],
           },
         ],
-        roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
+        roles: [
+          { role: "admin", permissions: ["read", "write", "admin"] },
+          ...(this.kind === "agent_editors" ? userReadPermissions : []),
+        ],
         workspaceId: this.workspaceId,
       },
     ];

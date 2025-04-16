@@ -23,7 +23,7 @@ type GroupPermission = {
  * @property role - The type of role (RoleType)
  * @property permissions - Array of permissions granted to the role
  */
-type RolePermission = {
+export type RolePermission = {
   role: RoleType;
   permissions: PermissionType[];
 };
