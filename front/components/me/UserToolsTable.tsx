@@ -9,11 +9,11 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_server_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteMetadata } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
 
 interface UserTableRow {
   id: string;
