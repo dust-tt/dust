@@ -7,21 +7,19 @@ import {
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { FunctionComponentElement, SVGProps } from "react";
 import { useCallback, useMemo, useState } from "react";
 
-import { getVisual } from "@app/lib/actions/mcp_icons";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_server_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteMetadata } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
+
 interface UserTableRow {
   id: string;
   name: string;
   description: string;
-  visual:
-    | `https://${string}`
-    | FunctionComponentElement<SVGProps<SVGSVGElement>>;
+  visual: React.ReactNode;
   onClick?: () => void;
   moreMenuItems?: any[];
 }
@@ -80,7 +78,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         id: serverView.id,
         name: serverView.server.name,
         description: serverView.server.description,
-        visual: getVisual(serverView.server),
+        visual: getAvatar(serverView.server),
         onClick: () => {},
         moreMenuItems: [],
       }));
