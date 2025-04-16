@@ -86,6 +86,7 @@ const EmbeddedResourceSchema = z.object({
 const ActionGeneratedFileSchema = z.object({
   type: z.literal("resource"),
   resource: z.object({
+    text: z.string(),
     uri: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE),
     fileId: z.string(),

@@ -386,8 +386,8 @@ function createServer(
 
       const rawResults =
         "results" in sanitizedOutput ? sanitizedOutput.results : [];
-      let results: CSVRecord[] = [];
 
+      let results: CSVRecord[] = [];
       if (Array.isArray(rawResults)) {
         results = rawResults.filter(
           (record) =>
@@ -419,9 +419,13 @@ function createServer(
         content.push({
           type: "resource",
           resource: {
-            uri: csvFile.sId,
-            text: `${queryTitle} - ${csvFile.snippet}`,
-            mimeType: csvFile.contentType,
+            text: `Your query results were generated successfully.`,
+            uri: csvFile.getPublicUrl(auth),
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+            fileId: csvFile.sId,
+            title: queryTitle,
+            contentType: csvFile.contentType,
+            snippet: csvFile.snippet,
           },
         });
 
@@ -465,9 +469,13 @@ function createServer(
           content.push({
             type: "resource",
             resource: {
-              uri: sectionFile.sId,
-              text: `${queryTitle} ${sectionFile.snippet}`,
-              mimeType: sectionFile.contentType,
+              text: `Your query results were generated successfully.`,
+              uri: sectionFile.getPublicUrl(auth),
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              fileId: sectionFile.sId,
+              title: `${queryTitle} (Rich Text)`,
+              contentType: sectionFile.contentType,
+              snippet: null,
             },
           });
         }
@@ -489,7 +497,7 @@ function createServer(
 
       return {
         isError: false,
-        content: content,
+        content,
       };
     }
   );
