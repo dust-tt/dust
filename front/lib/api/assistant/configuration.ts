@@ -897,7 +897,7 @@ export async function createAgentConfiguration(
         }
 
         if (created) {
-          await GroupResource.makeNewAgentEditorsGroup(
+          await GroupResource.findOrCreateAgentEditorsGroup(
             auth,
             agentConfigurationInstance,
             { transaction: t }

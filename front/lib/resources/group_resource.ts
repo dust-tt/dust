@@ -114,6 +114,39 @@ export class GroupResource extends BaseResource<GroupModel> {
     return defaultGroup;
   }
 
+  /**
+   * Checks if an agent editors group exists for the given agent and creates one if it doesn't.
+   * This prevents duplicate group creation when drafting the same agent multiple times.
+   */
+  static async findOrCreateAgentEditorsGroup(
+    auth: Authenticator,
+    agent: AgentConfiguration,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    if (agent.workspaceId !== workspace.id) {
+      throw new DustError(
+        "internal_error",
+        "Unexpected: agent and workspace mismatch"
+      );
+    }
+
+    const existingAssociation = await GroupModel.findOne({
+      where: {
+        name: `Group for Agent ${agent.name}`,
+        workspaceId: agent.workspaceId,
+      },
+      transaction,
+    });
+
+    if (existingAssociation) {
+      return new this(GroupModel, existingAssociation.get());
+    }
+
+    return this.makeNewAgentEditorsGroup(auth, agent, { transaction });
+  }
+
   static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
     const existingGroups = (
       await GroupModel.findAll({
