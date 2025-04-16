@@ -4,6 +4,7 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   ContentMessage,
+  ExclamationCircleIcon,
   EyeIcon,
   EyeSlashIcon,
   IconPicker,
