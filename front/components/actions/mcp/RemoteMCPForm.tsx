@@ -232,7 +232,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    icon={<CurrentIconComponent />}
+                    icon={CurrentIconComponent}
                     onClick={() => setIsPopoverOpen(true)}
                     isSelect
                   />

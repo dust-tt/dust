@@ -5,6 +5,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  InformationCircleIcon,
 } from "@dust-tt/sparkle";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -121,7 +122,7 @@ export function ToolsList({
             }
           )
         ) : (
-          <p className="text-faint text-sm">No tools available</p>
+          <p className="text-sm text-faint">No tools available</p>
         )}
       </div>
     </div>
