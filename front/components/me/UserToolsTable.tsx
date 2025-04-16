@@ -50,7 +50,9 @@ export function UserToolsTable({
 
   // Prepare data for the actions table
   const actionsTableData = useMemo(() => {
-    if (!mcpServers) {return [];}
+    if (!mcpServers) {
+      return [];
+    }
 
     return mcpServers
       .filter((server) =>
