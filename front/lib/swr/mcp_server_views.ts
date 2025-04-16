@@ -197,7 +197,7 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
 
   const deleteView = useCallback(
     async (serverView: MCPServerViewType, space: SpaceType): Promise<void> => {
-      void mutateMCPServers(
+      await mutateMCPServers(
         async (data) => {
           const response = await fetch(
             `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${serverView.id}`,

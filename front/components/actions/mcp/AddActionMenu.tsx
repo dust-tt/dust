@@ -40,7 +40,12 @@ export const AddActionMenu = ({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button label="Add Tool" variant="primary" icon={PlusIcon} size="sm" />
+        <Button
+          label="Add Toolset"
+          variant="primary"
+          icon={PlusIcon}
+          size="sm"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[500px]">
         <div className="flex flex-row items-center gap-2">
