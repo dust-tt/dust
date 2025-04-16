@@ -15,7 +15,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description: "Generate and convert files on demand.",
   authorization: null,
-  visual: "https://dust.tt/static/spiritavatar/Spirit_Cream_3.jpg",
+  icon: "GithubLogo",
 };
 
 const OUTPUT_FORMATS = [

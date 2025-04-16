@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import {
   DEFAULT_MCP_SERVER_ICON,
-  isAllowedIconType,
+  isRemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
@@ -131,8 +131,8 @@ async function handler(
           cachedName: metadata.name,
           cachedDescription: metadata.description,
           cachedTools: metadata.tools,
-          icon: isAllowedIconType(metadata.visual)
-            ? metadata.visual
+          icon: isRemoteAllowedIconType(metadata.icon)
+            ? metadata.icon
             : DEFAULT_MCP_SERVER_ICON,
           version: metadata.version,
         });

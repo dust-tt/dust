@@ -57,7 +57,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     defaultValues: {
       name: asDisplayName(mcpServer.name),
       description: mcpServer.description,
-      icon: mcpServer.visual,
+      icon: mcpServer.icon,
     },
   });
 

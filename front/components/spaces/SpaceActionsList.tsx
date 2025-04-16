@@ -1,16 +1,11 @@
-import {
-  Avatar,
-  DataTable,
-  Spinner,
-  usePaginationFromUrl,
-} from "@dust-tt/sparkle";
+import { DataTable, Spinner, usePaginationFromUrl } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useAddMCPServerToSpace,
@@ -25,7 +20,7 @@ import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";
 type RowData = {
   name: string;
   description: string;
-  visual: string | React.ReactNode;
+  avatar: React.ReactNode;
   onClick?: () => void;
 };
 
@@ -36,9 +31,7 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <div className="flex flex-row items-center gap-2 py-3">
-            <div>
-              <Avatar visual={info.row.original.visual} />
-            </div>
+            <div>{info.row.original.avatar}</div>
             <div className="flex-grow truncate">{info.getValue()}</div>
           </div>
         </DataTable.CellContent>
@@ -91,7 +84,7 @@ export const SpaceActionsList = ({
       serverViews.map((serverView) => ({
         name: serverView.server.name,
         description: serverView.server.description,
-        visual: getVisual(serverView.server),
+        avatar: getAvatar(serverView.server),
       })) || [],
     [serverViews]
   );
