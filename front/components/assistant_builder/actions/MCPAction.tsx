@@ -38,7 +38,7 @@ function NoActionAvailable({ owner }: NoActionAvailableProps) {
               return (
                 <div>
                   <strong>
-                    Visit the "Tools" section in the Knowledge panel to add a
+                    Visit the "Toolsets" section in the Knowledge panel to add a
                     Toolset.
                   </strong>
                 </div>

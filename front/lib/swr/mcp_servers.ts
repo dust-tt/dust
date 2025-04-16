@@ -73,7 +73,7 @@ export function useAvailableMCPServers({
     ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp/available`
     : `/api/w/${owner.sId}/mcp/available`;
 
-  const { data, error } = useSWRWithDefaults(url, configFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher);
 
   const availableMCPServers = useMemo(
     () =>
@@ -89,6 +89,7 @@ export function useAvailableMCPServers({
     availableMCPServers,
     isAvailableMCPServersLoading: !error && !data,
     isAvailableMCPServersError: error,
+    mutateAvailableMCPServers: mutate,
   };
 }
 

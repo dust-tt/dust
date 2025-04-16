@@ -1333,7 +1333,7 @@ function AddAction({
       <DropdownMenuTrigger asChild>
         <Button
           variant="primary"
-          label="Add a tool"
+          label="Add a toolset"
           data-gtm-label="toolAddingButton"
           data-gtm-location="toolsPanel"
           icon={PlusIcon}

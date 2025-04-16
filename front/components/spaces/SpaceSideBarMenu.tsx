@@ -3,6 +3,7 @@ import {
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   NavigationList,
+  NavigationListItem,
   NavigationListLabel,
   PlusIcon,
   SuitcaseIcon,
@@ -239,7 +240,7 @@ const SYSTEM_SPACE_ITEMS = [
     flag: null,
   },
   {
-    label: "Tools",
+    label: "Toolsets",
     visual: SuitcaseIcon,
     category: "actions" as DataSourceViewCategory,
     flag: "mcp_actions" as WhitelistableFeature,
@@ -256,7 +257,7 @@ const SystemSpaceMenu = ({
   hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
 }) => {
   return (
-    <Tree variant="navigator">
+    <NavigationList>
       {SYSTEM_SPACE_ITEMS.map((item) => {
         if (item.flag) {
           if (!hasFeature(item.flag)) {
@@ -274,7 +275,7 @@ const SystemSpaceMenu = ({
           />
         );
       })}
-    </Tree>
+    </NavigationList>
   );
 };
 
@@ -299,18 +300,15 @@ const SystemSpaceItem = ({
   const itemPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
 
   return (
-    <Tree.Item
-      isNavigatable
-      type="item"
+    <NavigationListItem
       label={label}
-      onItemClick={async () => {
-        await setNavigationSelection({ lastSpaceId: space.sId });
+      onClick={async () => {
+        void setNavigationSelection({ lastSpaceId: space.sId });
         void router.push(itemPath);
       }}
-      isSelected={router.asPath === itemPath}
-      visual={visual}
-      areActionsFading={false}
-    ></Tree.Item>
+      selected={router.asPath === itemPath}
+      icon={visual}
+    />
   );
 };
 
