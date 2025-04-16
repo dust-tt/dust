@@ -689,12 +689,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular groups.
-    if (this.kind !== "regular") {
+    if (this.kind !== "regular" && this.kind !== "agent_editors") {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be added to regular groups."
+          "Users can only be removed from regular or agent_editors groups."
         )
       );
     }
