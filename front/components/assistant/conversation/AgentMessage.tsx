@@ -342,6 +342,13 @@ export function AgentMessage({
             default:
               assertNever(event);
           }
+
+          if (isAtBottom.current) {
+            bottomRef.current?.scrollIntoView({
+              behavior: "auto",
+              block: "center",
+            });
+          }
           setLastAgentStateClassification("thinking");
           break;
         }
@@ -393,7 +400,7 @@ export function AgentMessage({
       ([entry]) => {
         isAtBottom.current = entry.isIntersecting;
       },
-      { threshold: 1 }
+      { rootMargin: "20px", threshold: 0.5 }
     );
 
     const currentBottomRef = bottomRef.current;
