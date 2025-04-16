@@ -896,7 +896,7 @@ export async function createAgentConfiguration(
           }
         }
 
-        if (created) {
+        if (created && status === "active") {
           await GroupResource.makeNewAgentEditorsGroup(
             auth,
             agentConfigurationInstance,
