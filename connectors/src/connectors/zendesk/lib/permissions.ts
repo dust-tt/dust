@@ -10,6 +10,7 @@ import {
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskBrand,
+  getZendeskBrandSubdomain,
   listZendeskBrands,
   listZendeskCategories,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -112,23 +113,21 @@ async function getRootLevelContentNodes({
 /**
  * Retrieves the two children node of a Brand, one for its tickets and one for its help center.
  */
-async function getBrandChildren(
-  {
-    connectorId,
-    brandId,
-    isReadPermissionsOnly,
-    parentInternalId,
-    subdomain,
-    accessToken,
-  }: {
-    connectorId: ModelId;
-    brandId: number;
-    parentInternalId: string;
-    isReadPermissionsOnly: boolean;
-    subdomain: string;
-    accessToken: string;
-  }
-): Promise<ContentNode[]> {
+async function getBrandChildren({
+  connectorId,
+  brandId,
+  isReadPermissionsOnly,
+  parentInternalId,
+  subdomain,
+  accessToken,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  parentInternalId: string;
+  isReadPermissionsOnly: boolean;
+  subdomain: string;
+  accessToken: string;
+}): Promise<ContentNode[]> {
   const nodes = [];
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
@@ -224,26 +223,14 @@ async function getHelpCenterChildren({
       category.toContentNode(connectorId, { expandable: true })
     );
   } else {
-    // fetching the categories
-    // First get the brand subdomain
-    const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    const brandSubdomain = await getZendeskBrandSubdomain({
       connectorId,
       brandId,
+      subdomain,
+      accessToken,
     });
-
-    let brandSubdomain;
-    if (brandInDb) {
-      brandSubdomain = brandInDb.subdomain;
-    } else {
-      const brand = await fetchZendeskBrand({
-        subdomain,
-        accessToken,
-        brandId,
-      });
-      if (!brand) {
-        throw new Error(`Brand not found: ${brandId}`);
-      }
-      brandSubdomain = brand.subdomain;
+    if (!brandSubdomain) {
+      throw new Error(`Brand ${brandId} not found in Zendesk.`);
     }
 
     const categories = await listZendeskCategories({
