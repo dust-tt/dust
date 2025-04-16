@@ -315,6 +315,15 @@ export async function tryListMCPTools(
           messageId,
         });
       } catch (error) {
+        logger.error(
+          {
+            workspaceId: owner.id,
+            conversationId,
+            messageId,
+            error,
+          },
+          `Error listing tools from MCP server: ${normalizeError(error)}`
+        );
         return [];
       }
 
