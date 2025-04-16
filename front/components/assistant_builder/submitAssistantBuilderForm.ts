@@ -319,6 +319,7 @@ export async function submitAssistantBuilderForm({
       maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,
       templateId: builderState.templateId,
+      tags: builderState.tags,
     },
   };
 

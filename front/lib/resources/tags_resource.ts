@@ -115,6 +115,22 @@ export class TagResource extends BaseResource<TagModel> {
     return this.baseFetch(auth, options);
   }
 
+  static async listForAgent(
+    auth: Authenticator,
+    agentConfigurationId: number
+  ): Promise<TagResource[]> {
+    const tags = await TagAgentModel.findAll({
+      where: {
+        agentConfigurationId,
+      },
+    });
+    return this.baseFetch(auth, {
+      where: {
+        id: tags.map((t) => t.tagId),
+      },
+    });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}

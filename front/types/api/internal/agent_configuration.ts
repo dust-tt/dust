@@ -221,6 +221,11 @@ const IsSupportedModelSchema = new t.Type<SupportedModel>(
   t.identity
 );
 
+const TagSchema = t.type({
+  sId: t.string,
+  name: t.string,
+});
+
 export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
   assistant: t.type({
     name: t.string,
@@ -242,6 +247,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     templateId: t.union([t.string, t.null, t.undefined]),
     maxStepsPerRun: t.union([t.number, t.undefined]),
     visualizationEnabled: t.boolean,
+    tags: t.array(TagSchema),
   }),
 });
 

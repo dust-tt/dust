@@ -13,9 +13,28 @@ describe("DELETE /api/w/[wId]/tags/[tId]", () => {
     vi.clearAllMocks();
   });
 
+  itInTransaction("should not delete a tag if user is not admin", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "DELETE",
+    });
+    const tag = await TagFactory.create(workspace, { name: "test-tag" });
+    req.query.tId = tag.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Only workspace administrators can delete tags",
+      },
+    });
+  });
+
   itInTransaction("should delete a tag", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "DELETE",
+      role: "admin",
     });
     const tag = await TagFactory.create(workspace, { name: "test-tag" });
     req.query.tId = tag.sId;
@@ -34,6 +53,7 @@ describe("DELETE /api/w/[wId]/tags/[tId]", () => {
   itInTransaction("should return 404 if tag not found", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "DELETE",
+      role: "admin",
     });
     req.query.tId = "non-existent-tag";
 

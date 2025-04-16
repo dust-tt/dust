@@ -185,9 +185,9 @@ export function isConversationIncludeFileConfigurationActionType(
 }
 
 export function throwIfInvalidAgentConfiguration(
-  configation: AgentConfigurationType | TemplateAgentConfigurationType
+  configuration: AgentConfigurationType | TemplateAgentConfigurationType
 ) {
-  configation.actions.forEach((action) => {
+  configuration.actions.forEach((action) => {
     if (isProcessConfiguration(action)) {
       if (
         action.relativeTimeFrame === "auto" ||
@@ -201,8 +201,8 @@ export function throwIfInvalidAgentConfiguration(
     }
   });
 
-  const templateConfiguration = configation as TemplateAgentConfigurationType; // Creation
-  const agentConfiguration = configation as AgentConfigurationType; // Edition
+  const templateConfiguration = configuration as TemplateAgentConfigurationType; // Creation
+  const agentConfiguration = configuration as AgentConfigurationType; // Edition
 
   if (templateConfiguration) {
     if (templateConfiguration.scope === "global") {

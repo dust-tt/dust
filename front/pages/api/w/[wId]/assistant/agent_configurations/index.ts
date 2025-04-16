@@ -334,6 +334,7 @@ export async function createOrUpgradeAgentConfiguration({
       auth,
       actions
     ),
+    tags: assistant.tags,
   });
 
   if (agentConfigurationRes.isErr()) {

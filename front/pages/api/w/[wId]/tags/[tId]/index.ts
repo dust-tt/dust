@@ -28,6 +28,16 @@ async function handler(
 
   switch (method) {
     case "DELETE": {
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Only workspace administrators can delete tags",
+          },
+        });
+      }
+
       const tag = await TagResource.fetchById(auth, tId);
 
       if (!tag) {

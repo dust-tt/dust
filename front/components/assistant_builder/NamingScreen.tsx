@@ -7,8 +7,8 @@ import {
   PencilSquareIcon,
   SparklesIcon,
   Spinner,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import React, {
   useCallback,
   useContext,
@@ -26,8 +26,10 @@ import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
+import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
   APIError,
@@ -150,6 +152,10 @@ export default function NamingScreen({
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   // Name suggestions handling
   const [nameSuggestions, setNameSuggestions] =
@@ -468,6 +474,25 @@ export default function NamingScreen({
             )}
           </div>
         </div>
+        {featureFlags.includes("agent_discovery") && (
+          <div className="flex flex-row gap-4">
+            <div className="flex flex-[1_0_0] flex-col gap-4">
+              <Page.SectionHeader title="Visibility" />
+              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night"></div>
+            </div>
+            <div className="flex flex-[1_0_0] flex-col gap-4">
+              <Page.SectionHeader title="Tags" />
+              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                <TagsSelector
+                  owner={owner}
+                  builderState={builderState}
+                  setBuilderState={setBuilderState}
+                  setEdited={setEdited}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
