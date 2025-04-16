@@ -62,7 +62,10 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import type {
@@ -85,6 +88,7 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
