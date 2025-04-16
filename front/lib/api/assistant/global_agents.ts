@@ -41,7 +41,7 @@ import {
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4O_MODEL_CONFIG,
+  GPT_4_1_MODEL_CONFIG,
   isProviderWhitelisted,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
@@ -54,8 +54,8 @@ import {
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
-  providerId: GPT_4O_MODEL_CONFIG.providerId,
-  modelId: GPT_4O_MODEL_CONFIG.modelId,
+  providerId: GPT_4_1_MODEL_CONFIG.providerId,
+  modelId: GPT_4_1_MODEL_CONFIG.modelId,
   temperature: 0,
 };
 
@@ -278,15 +278,15 @@ function _getGPT4GlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "gpt4",
-    description: GPT_4O_MODEL_CONFIG.description,
+    description: GPT_4_1_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GPT_4O_MODEL_CONFIG.providerId,
-      modelId: GPT_4O_MODEL_CONFIG.modelId,
+      providerId: GPT_4_1_MODEL_CONFIG.providerId,
+      modelId: GPT_4_1_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [

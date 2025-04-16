@@ -71,7 +71,7 @@ import type {
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GPT_4O_MINI_MODEL_CONFIG,
+  GPT_4_1_MINI_MODEL_CONFIG,
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
@@ -149,7 +149,7 @@ export default function AssistantBuilder({
           generationSettings: {
             ...getDefaultAssistantState().generationSettings,
             modelSettings: !isUpgraded(plan)
-              ? GPT_4O_MINI_MODEL_CONFIG
+              ? GPT_4_1_MINI_MODEL_CONFIG
               : CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
           },
         }
