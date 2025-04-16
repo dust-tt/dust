@@ -26,12 +26,57 @@ export default meta;
 
 export const IconPositions = () => (
   <div className="s-flex s-flex-col s-gap-8">
-    <SimpleDoubleIcon mainIcon={FolderIcon} secondaryIcon={DriveLogo} />{" "}
-    <SimpleDoubleIcon mainIcon={DocumentIcon} secondaryIcon={NotionLogo} />{" "}
-    <SimpleDoubleIcon
-      mainIcon={ChatBubbleThoughtIcon}
-      secondaryIcon={SlackLogo}
-    />
+    <div className="s-flex s-items-center s-gap-8">
+      <SimpleDoubleIcon
+        size="xl"
+        mainIcon={FolderIcon}
+        secondaryIcon={DriveLogo}
+      />{" "}
+      <SimpleDoubleIcon
+        size="xl"
+        mainIcon={DocumentIcon}
+        secondaryIcon={NotionLogo}
+      />{" "}
+      <SimpleDoubleIcon
+        size="xl"
+        mainIcon={ChatBubbleThoughtIcon}
+        secondaryIcon={SlackLogo}
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-8">
+      <SimpleDoubleIcon
+        size="lg"
+        mainIcon={FolderIcon}
+        secondaryIcon={DriveLogo}
+      />{" "}
+      <SimpleDoubleIcon
+        size="lg"
+        mainIcon={DocumentIcon}
+        secondaryIcon={NotionLogo}
+      />{" "}
+      <SimpleDoubleIcon
+        size="lg"
+        mainIcon={ChatBubbleThoughtIcon}
+        secondaryIcon={SlackLogo}
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-8">
+      <SimpleDoubleIcon
+        size="md"
+        mainIcon={FolderIcon}
+        secondaryIcon={DriveLogo}
+      />{" "}
+      <SimpleDoubleIcon
+        size="md"
+        mainIcon={DocumentIcon}
+        secondaryIcon={NotionLogo}
+      />{" "}
+      <SimpleDoubleIcon
+        size="md"
+        mainIcon={ChatBubbleThoughtIcon}
+        secondaryIcon={SlackLogo}
+      />
+    </div>
     <div className="s-flex s-items-center s-gap-16">
       <div className="s-flex s-flex-col s-items-center s-gap-2">
         <DoubleIcon

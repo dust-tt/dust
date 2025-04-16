@@ -19,6 +19,32 @@ const positionVariants = cva("s-flex s-absolute", {
   },
 });
 
+const sizeVariants = cva("s-relative", {
+  variants: {
+    size: {
+      md: "s-h-6 s-w-6",
+      lg: "s-h-8 s-w-8 s-p-0.5",
+      xl: "s-h-10 s-w-10",
+    },
+  },
+  defaultVariants: {
+    size: "lg",
+  },
+});
+
+const iconSizeVariants = cva("s-absolute", {
+  variants: {
+    size: {
+      md: "s-bottom-0 s-right-0",
+      lg: "s-bottom-0 s-right-0",
+      xl: "s-bottom-0 s-right-0",
+    },
+  },
+  defaultVariants: {
+    size: "lg",
+  },
+});
+
 export interface DoubleIconProps extends VariantProps<typeof positionVariants> {
   mainIconProps: IconProps;
   secondaryIconProps: IconProps;
@@ -43,10 +69,10 @@ export const DoubleIcon = ({
 };
 
 export interface SimpleDoubleIconProps
-  extends VariantProps<typeof positionVariants> {
+  extends VariantProps<typeof sizeVariants> {
   mainIcon: React.ComponentType;
   secondaryIcon: React.ComponentType;
-  position?: "bottom-right" | "top-right" | "bottom-left" | "top-left";
+  size?: "md" | "lg" | "xl";
   className?: string;
 }
 
@@ -54,18 +80,19 @@ export const SimpleDoubleIcon = ({
   mainIcon,
   secondaryIcon,
   className,
+  size = "lg",
 }: SimpleDoubleIconProps) => {
   return (
-    <div className={cn("s-relative s-h-8 s-w-8 s-p-0.5", className)}>
+    <div className={cn(sizeVariants({ size }), className)}>
       <Icon
         className="s-text-foreground dark:s-text-foreground-night"
-        size="md"
+        size={size === "md" ? "sm" : size === "lg" ? "md" : "lg"}
         visual={mainIcon}
       />
       <Icon
-        size="xs"
+        size={size === "md" ? "xs" : size === "lg" ? "xs" : "md"}
         visual={secondaryIcon}
-        className="s-absolute s-bottom-0 s-right-0"
+        className={cn("s-absolute", iconSizeVariants({ size }))}
       />
     </div>
   );
