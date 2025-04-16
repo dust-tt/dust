@@ -125,10 +125,10 @@ export const InputBarAttachmentsPicker = ({
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) {
+        setIsOpen(open);
+        if (open) {
           setSearch("");
         }
-        setIsOpen(open);
       }}
     >
       <DropdownMenuTrigger asChild>

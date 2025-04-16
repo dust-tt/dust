@@ -55,7 +55,7 @@ export function AssistantPicker({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open) {
+        if (open) {
           setSearchText("");
         }
       }}
