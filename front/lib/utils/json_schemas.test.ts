@@ -1,8 +1,9 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import {
+  ConfigurableToolInputJSONSchemas,
+  INTERNAL_MIME_TYPES,
+} from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
-
-import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 import { findMatchingSchemaKeys } from "./json_schemas";
 
