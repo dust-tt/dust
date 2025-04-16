@@ -510,10 +510,15 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         c.resource.mimeType &&
         isSupportedFileContentType(c.resource.mimeType)
       ) {
+        const fileName =
+          "name" in c.resource && typeof c.resource.name === "string"
+            ? c.resource.name
+            : c.resource.uri.split("/").pop() ?? "generated-file";
+
         const r = await processAndStoreFromUrl(auth, {
           url: c.resource.uri,
           useCase: "conversation",
-          fileName: c.resource.uri.split("/").pop() ?? "generated-file",
+          fileName,
           contentType: c.resource.mimeType,
         });
         if (r.isErr()) {

@@ -89,7 +89,7 @@ pub struct AssistantChatMessage {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct FunctionChatMessage {
-    pub content: String,
+    pub content: ContentBlock,
     pub function_call_id: String,
     pub name: Option<String>,
     pub role: ChatMessageRole,

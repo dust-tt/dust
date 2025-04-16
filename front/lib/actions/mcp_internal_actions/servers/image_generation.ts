@@ -33,6 +33,12 @@ const createServer = (auth: Authenticator): McpServer => {
         .describe(
           "A text description of the desired image(s). The maximum length is 4000 characters."
         ),
+      name: z
+        .string()
+        .max(32)
+        .describe(
+          "The name of the image. The maximum length is 32 characters."
+        ),
       quality: z
         .enum(["standard", "hd"])
         .optional()
@@ -55,7 +61,7 @@ const createServer = (auth: Authenticator): McpServer => {
           "The size of the generated images. Must be one of 1024x1024, 1792x1024, or 1024x1792"
         ),
     },
-    async ({ prompt, quality, style, size }) => {
+    async ({ prompt, name, quality, style, size }) => {
       // Crude way to rate limit the usage of the image generation tool.
       //
       const remaining = await rateLimiter({
@@ -92,12 +98,15 @@ const createServer = (auth: Authenticator): McpServer => {
         user: `workspace-${auth.getNonNullableWorkspace().sId}`,
       });
 
+      const fileName = name + ".png";
+
       const content = images.data.map((image) => ({
         type: "resource" as const,
         resource: {
           mimeType: "image/png",
           uri: image.url!,
-          text: `Your image was generated successfully.`,
+          text: `Your image ${fileName} was generated successfully.`,
+          name: fileName,
         },
       }));
 
