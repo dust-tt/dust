@@ -76,6 +76,7 @@ import type {
   AgentsGetViewType,
   AgentStatus,
   LightAgentConfigurationType,
+  ModelIdType,
   Result,
   WorkspaceType,
 } from "@app/types";
@@ -87,6 +88,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
   removeNulls,
+  UserType,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
@@ -1584,6 +1586,114 @@ export async function removeGroupFromAgentConfiguration({
 
     return new Ok(undefined);
   } catch (error) {
+    return new Err(error as Error);
+  }
+}
+
+/**
+ * Fetches the editor group associated with an agent configuration.
+ */
+export async function getAgentEditorGroup(
+  auth: Authenticator,
+  agentConfigurationId: ModelIdType
+): Promise<Result<GroupResource, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const agent = await AgentConfiguration.findByPk(agentConfigurationId, {
+    attributes: ["id"], // Only need the ID for the join query
+  });
+
+  if (!agent) {
+    return new Err(new Error("Agent configuration not found."));
+  }
+
+  const groupAgent = await GroupAgentModel.findOne({
+    where: {
+      agentConfigurationId: agent.id,
+      workspaceId: owner.id,
+    },
+  });
+
+  if (!groupAgent) {
+    return new Err(new Error("Editor group association not found for agent."));
+  }
+
+  const group = await GroupResource.fetchById(
+    auth,
+    GroupResource.modelIdToSId({
+      id: groupAgent.groupId,
+      workspaceId: owner.id,
+    })
+  );
+
+  if (group.isErr()) {
+    return new Err(
+      new Error(`Failed to fetch editor group: ${group.error.message}`)
+    );
+  }
+
+  if (group.value.kind !== "agent_editors") {
+    return new Err(
+      new Error("Associated group is not an agent_editors group.")
+    );
+  }
+
+  return group;
+}
+
+/**
+ * Updates the permissions (editors) for an agent configuration.
+ */
+export async function updateAgentPermissions(
+  auth: Authenticator,
+  {
+    agent,
+    usersToAdd,
+    usersToRemove,
+  }: {
+    agent: LightAgentConfigurationType;
+    usersToAdd: UserType[];
+    usersToRemove: UserType[];
+  }
+): Promise<Result<undefined, Error>> {
+  const editorGroupRes = await getAgentEditorGroup(auth, agent.id);
+  if (editorGroupRes.isErr()) {
+    return editorGroupRes;
+  }
+  const editorGroup = editorGroupRes.value;
+
+  // The canWrite check for agent_editors groups (allowing members and admins)
+  // is implicitly handled by addMembers and removeMembers.
+  try {
+    const result = await frontSequelize.transaction(async (t) => {
+      if (usersToAdd.length > 0) {
+        const addRes = await editorGroup.addMembers(auth, usersToAdd, {
+          transaction: t,
+        });
+        if (addRes.isErr()) {
+          // Throw error to trigger rollback
+          throw new Error(
+            `Failed to add agent editors: ${addRes.error.message}`
+          );
+        }
+      }
+
+      if (usersToRemove.length > 0) {
+        const removeRes = await editorGroup.removeMembers(auth, usersToRemove, {
+          transaction: t,
+        });
+        if (removeRes.isErr()) {
+          // Throw error to trigger rollback
+          throw new Error(
+            `Failed to remove agent editors: ${removeRes.error.message}`
+          );
+        }
+      }
+      return new Ok(undefined);
+    });
+    return result;
+  } catch (error) {
+    // Catch errors thrown from within the transaction
     return new Err(error as Error);
   }
 }
