@@ -46,6 +46,7 @@ export function FeatureFlagsDataTable({
           featureFlags,
           whitelistableFeatures
         )}
+        pageSize={50}
       />
     </div>
   );
