@@ -1,7 +1,6 @@
 import {
   Button,
   Chip,
-  classNames,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -144,20 +143,12 @@ export function MCPServerDetails({
               <SheetTitle />
             </VisuallyHidden>
             <div className="flex flex-col items-center gap-3 sm:flex-row">
-              {effectiveMCPServer && getAvatar(effectiveMCPServer)}
-              <div className="flex grow flex-col gap-1">
-                <div
-                  className={classNames(
-                    "text-foreground dark:text-foreground-night",
-                    effectiveMCPServer?.name &&
-                      effectiveMCPServer.name.length > 20
-                      ? "heading-md"
-                      : "heading-lg"
-                  )}
-                >
+              {effectiveMCPServer && getAvatar(effectiveMCPServer, "lg")}
+              <div className="flex grow flex-col gap-0 pr-9">
+                <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
                   {asDisplayName(effectiveMCPServer?.name)}
                 </div>
-                <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <div className="line-clamp-1 overflow-hidden text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {effectiveMCPServer?.description}
                 </div>
                 {authorization && !connection && (

@@ -2,19 +2,18 @@ import {
   ActionBookOpenIcon,
   ActionIcons,
   Button,
-  ChevronDownIcon,
+  CloudArrowLeftRightIcon,
+  ContentMessage,
   EyeIcon,
   EyeSlashIcon,
   IconPicker,
   Input,
   Label,
-  Page,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
   Separator,
   useSendNotification,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState } from "react";
@@ -154,27 +153,35 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 text-foreground">
       {syncError && (
-        <div className="rounded-md bg-warning-50 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <XMarkIcon className="h-5 w-5 text-warning-400" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-warning-800">
-                Synchronization Error
-              </h3>
-              <div className="mt-2 text-sm text-warning-700">
-                <p>{syncError}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ContentMessage
+          variant="warning"
+          icon={ExclamationCircleIcon}
+          size="sm"
+          title="Synchronization Error"
+        >
+          {syncError}
+        </ContentMessage>
+        // <div className="rounded-md bg-warning-50 p-4">
+        //   <div className="flex">
+        //     <div className="flex-shrink-0">
+        //       <Icon size="sm" icon={XMarkIcon} className="text-warning" />
+        //     </div>
+        //     <div className="ml-3">
+        //       <h3 className="text-sm font-medium text-warning-800">
+        //         Synchronization Error
+        //       </h3>
+        //       <div className="mt-2 text-sm text-warning-700">
+        //         <p>{syncError}</p>
+        //       </div>
+        //     </div>
+        //   </div>
+        // </div>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="url">URL</Label>
+        <Label htmlFor="url">MCP Server URL</Label>
         <div className="flex space-x-2">
           <div className="flex-grow">
             <Input
@@ -185,25 +192,23 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           </div>
           <Button
             label={isSynchronizing ? "Synchronizing..." : "Synchronize"}
+            icon={CloudArrowLeftRightIcon}
             variant="outline"
             onClick={handleSynchronize}
             disabled={isSynchronizing}
           />
         </div>
       </div>
-
-      <Separator className="my-4" />
-
-      <Page.SectionHeader title="Settings" />
-      <div className="flex space-x-2">
+      <div className="heading-base">MCP Server Settings</div>
+      <div className="flex items-end space-x-2">
         <div className="flex-grow">
-          <Label htmlFor="name">Name</Label>
           <Controller
             control={form.control}
             name="name"
             render={({ field }) => (
               <Input
                 {...field}
+                label="Name"
                 isError={!!form.formState.errors.name}
                 message={form.formState.errors.name?.message}
                 placeholder={mcpServer.cachedName}
@@ -211,57 +216,47 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             )}
           />
         </div>
+        <Controller
+          control={form.control}
+          name="icon"
+          render={({ field }) => {
+            const currentIcon = field.value;
+            const CurrentIconComponent =
+              ActionIcons[currentIcon as keyof typeof ActionIcons] ||
+              ActionBookOpenIcon;
 
-        <div>
-          <Label htmlFor="icon">Icon</Label>
-          <br />
-          <Controller
-            control={form.control}
-            name="icon"
-            render={({ field }) => {
-              const currentIcon = field.value;
-              const CurrentIconComponent =
-                ActionIcons[currentIcon as keyof typeof ActionIcons] ||
-                ActionBookOpenIcon;
-
-              return (
-                <PopoverRoot open={isPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon={() => (
-                        <>
-                          <CurrentIconComponent />
-                          <ChevronDownIcon />
-                        </>
-                      )}
-                      onClick={() => setIsPopoverOpen(true)}
-                    />
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-fit py-0"
-                    onInteractOutside={closePopover}
-                    onEscapeKeyDown={closePopover}
-                  >
-                    <IconPicker
-                      icons={ActionIcons}
-                      selectedIcon={currentIcon}
-                      onIconSelect={(iconName: string) => {
-                        field.onChange(iconName);
-                        closePopover();
-                      }}
-                    />
-                  </PopoverContent>
-                </PopoverRoot>
-              );
-            }}
-          />
-        </div>
+            return (
+              <PopoverRoot open={isPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<CurrentIconComponent />}
+                    onClick={() => setIsPopoverOpen(true)}
+                    isSelect
+                  />
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-fit py-0"
+                  onInteractOutside={closePopover}
+                  onEscapeKeyDown={closePopover}
+                >
+                  <IconPicker
+                    icons={ActionIcons}
+                    selectedIcon={currentIcon}
+                    onIconSelect={(iconName: string) => {
+                      field.onChange(iconName);
+                      closePopover();
+                    }}
+                  />
+                </PopoverContent>
+              </PopoverRoot>
+            );
+          }}
+        />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
         <Controller
           control={form.control}
           name="description"
@@ -269,6 +264,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             <>
               <Input
                 {...field}
+                label="Description"
                 isError={!!form.formState.errors.description?.message}
                 message={form.formState.errors.description?.message}
                 placeholder={
@@ -306,7 +302,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         </div>
       )}
 
-      <Separator className="my-4" />
+      <Separator />
 
       {sharedSecret && (
         <>
@@ -332,7 +328,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
               Dust. Keep it secure.
             </p>
           </div>
-          <Separator className="my-4" />
+          <Separator />
         </>
       )}
     </div>
