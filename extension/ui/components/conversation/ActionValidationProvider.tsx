@@ -207,7 +207,7 @@ export function ActionValidationProvider({
                     }
                     contentChildren={
                       <div>
-                        <div className="max-h-80 overflow-auto bg-muted rounded-lg">
+                        <div className="max-h-80 overflow-auto bg-muted dark:bg-muted-night rounded-lg">
                           <CodeBlock
                             wrapLongLines
                             className="language-json overflow-y-auto"
@@ -221,14 +221,14 @@ export function ActionValidationProvider({
                 )}
 
               {validationQueue.length > 0 && (
-                <div className="mt-2 text-sm font-medium text-info-900">
+                <div className="mt-2 text-sm font-medium text-info-900 dark:text-info-900-night">
                   {validationQueue.length} more action
                   {validationQueue.length > 1 ? "s" : ""} in queue
                 </div>
               )}
 
               {errorMessage && (
-                <div className="mt-2 text-sm font-medium text-warning-800">
+                <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
                   {errorMessage}
                 </div>
               )}
