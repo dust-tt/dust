@@ -1,5 +1,18 @@
-import { Avatar } from "@dust-tt/sparkle";
-import { ActionIcons, GithubLogo, LightbulbIcon } from "@dust-tt/sparkle";
+import {
+  ActionIcons,
+  Avatar,
+  CommandIcon,
+  DocumentPlusIcon,
+  DocumentTextIcon,
+  EmotionLaughIcon,
+  FolderTableIcon,
+  GithubLogo,
+  ImageIcon,
+  LockIcon,
+  PlanetIcon,
+  RobotIcon,
+  RocketIcon,
+} from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
 
@@ -10,8 +23,18 @@ export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
 export const REMOTE_ALLOWED_ICONS = Object.keys(ActionIcons);
 
 export const InternalActionIcons = {
+  CommandIcon,
+  DocumentTextIcon,
+  DocumentPlusIcon,
+  EmotionLaughIcon,
+  FolderTableIcon,
   GithubLogo,
   LightbulbIcon,
+  ImageIcon,
+  LockIcon,
+  PlanetIcon,
+  RobotIcon,
+  RocketIcon,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
