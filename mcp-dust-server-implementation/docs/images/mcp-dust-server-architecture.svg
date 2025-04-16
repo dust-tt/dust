@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .title { font: bold 20px sans-serif; }
+    .box { fill: white; stroke: #333; stroke-width: 2; }
+    .label { font: 14px sans-serif; text-anchor: middle; }
+    .arrow { stroke: #333; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    .dashed { stroke-dasharray: 5,5; }
+    .client { fill: #E1F5FE; }
+    .server { fill: #E8F5E9; }
+    .dust { fill: #FFF3E0; }
+    .component { fill: #F3E5F5; }
+  </style>
+  
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+  
+  <!-- Title -->
+  <text x="400" y="30" class="title" text-anchor="middle">MCP Dust Server Architecture</text>
+  
+  <!-- Clients -->
+  <rect x="50" y="80" width="150" height="80" rx="5" ry="5" class="box client" />
+  <text x="125" y="120" class="label">Task Master</text>
+  <text x="125" y="140" class="label">(MCP Client)</text>
+  
+  <rect x="50" y="180" width="150" height="80" rx="5" ry="5" class="box client" />
+  <text x="125" y="220" class="label">Other MCP Clients</text>
+  <text x="125" y="240" class="label">(e.g., Editors, IDEs)</text>
+  
+  <!-- MCP Dust Server -->
+  <rect x="300" y="80" width="200" height="400" rx="5" ry="5" class="box server" />
+  <text x="400" y="110" class="label">MCP Dust Server</text>
+  
+  <!-- Server Components -->
+  <rect x="325" y="130" width="150" height="50" rx="5" ry="5" class="box component" />
+  <text x="400" y="160" class="label">MCP Protocol Handler</text>
+  
+  <rect x="325" y="190" width="150" height="50" rx="5" ry="5" class="box component" />
+  <text x="400" y="220" class="label">Resource Provider</text>
+  
+  <rect x="325" y="250" width="150" height="50" rx="5" ry="5" class="box component" />
+  <text x="400" y="280" class="label">Tool Provider</text>
+  
+  <rect x="325" y="310" width="150" height="50" rx="5" ry="5" class="box component" />
+  <text x="400" y="340" class="label">Permission Proxy</text>
+  
+  <rect x="325" y="370" width="150" height="50" rx="5" ry="5" class="box component" />
+  <text x="400" y="400" class="label">Dust API Reflector</text>
+  
+  <!-- Dust API -->
+  <rect x="600" y="80" width="150" height="400" rx="5" ry="5" class="box dust" />
+  <text x="675" y="110" class="label">Dust AI Platform</text>
+  
+  <!-- Dust Components -->
+  <rect x="625" y="130" width="100" height="50" rx="5" ry="5" class="box" />
+  <text x="675" y="160" class="label">Workspaces</text>
+  
+  <rect x="625" y="190" width="100" height="50" rx="5" ry="5" class="box" />
+  <text x="675" y="220" class="label">Agents</text>
+  
+  <rect x="625" y="250" width="100" height="50" rx="5" ry="5" class="box" />
+  <text x="675" y="280" class="label">Knowledge Bases</text>
+  
+  <rect x="625" y="310" width="100" height="50" rx="5" ry="5" class="box" />
+  <text x="675" y="340" class="label">Connectors</text>
+  
+  <rect x="625" y="370" width="100" height="50" rx="5" ry="5" class="box" />
+  <text x="675" y="400" class="label">Authentication</text>
+  
+  <!-- Connections -->
+  <path d="M 200 120 L 300 155" class="arrow" />
+  <path d="M 200 220 L 300 155" class="arrow" />
+  
+  <path d="M 475 155 L 600 155" class="arrow" />
+  <path d="M 475 220 L 600 220" class="arrow" />
+  <path d="M 475 280 L 600 280" class="arrow" />
+  <path d="M 475 340 L 600 340" class="arrow" />
+  <path d="M 475 400 L 600 400" class="arrow" />
+  
+  <!-- Legend -->
+  <rect x="50" y="520" width="20" height="20" class="box client" />
+  <text x="80" y="535" font="14px sans-serif">MCP Clients</text>
+  
+  <rect x="200" y="520" width="20" height="20" class="box server" />
+  <text x="230" y="535" font="14px sans-serif">MCP Dust Server</text>
+  
+  <rect x="350" y="520" width="20" height="20" class="box component" />
+  <text x="380" y="535" font="14px sans-serif">Server Components</text>
+  
+  <rect x="500" y="520" width="20" height="20" class="box dust" />
+  <text x="530" y="535" font="14px sans-serif">Dust AI Platform</text>
+  
+  <line x1="650" y1="520" x2="680" y2="520" class="arrow" />
+  <text x="710" y="535" font="14px sans-serif">Data Flow</text>
+</svg>

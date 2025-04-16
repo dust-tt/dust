@@ -1,0 +1,83 @@
+name: End-to-End Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build
+      run: npm run build
+
+    - name: Create .env.e2e file
+      run: |
+        cat > .env.e2e << EOL
+        # End-to-End Test Environment Configuration
+
+        # Dust API Configuration
+        DUST_API_KEY=${{ secrets.TEST_DUST_API_KEY }}
+        DUST_WORKSPACE_ID=${{ secrets.TEST_DUST_WORKSPACE_ID }}
+        DUST_AGENT_ID=${{ secrets.TEST_DUST_AGENT_ID }}
+
+        # User Context
+        DUST_USERNAME=test_user
+        DUST_EMAIL=test@example.com
+        DUST_FULL_NAME=Test User
+        DUST_TIMEZONE=UTC
+
+        # MCP Server Configuration
+        MCP_SERVER_NAME=MCP Dust Server Test
+        MCP_SERVER_HOST=localhost
+        MCP_SERVER_PORT=5002
+        MCP_SERVER_TIMEOUT=30
+
+        # Logging Configuration
+        LOG_LEVEL=error
+        LOG_FORMAT=pretty
+        LOG_REQUEST_BODY=false
+        LOG_REQUEST_HEADERS=false
+        LOG_RESPONSE_BODY=false
+        LOG_RESPONSE_HEADERS=false
+
+        # Security Configuration
+        CORS_ALLOWED_ORIGINS=http://localhost:3000
+        SECURITY_SECRET_KEY=${{ secrets.TEST_SECRET_KEY }}
+        SECURITY_TOKEN_EXPIRATION=3600
+        SESSION_TTL=3600000
+
+        # Metrics Configuration
+        ENABLE_METRICS=false
+        METRICS_PREFIX=mcp_dust_server_test
+
+        # Test Configuration
+        TEST_MODE=true
+        TEST_TIMEOUT=30000
+        EOL
+
+    - name: Run end-to-end tests
+      run: npm run test:e2e
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: e2e-test-results
+        path: |
+          coverage/
+          junit.xml

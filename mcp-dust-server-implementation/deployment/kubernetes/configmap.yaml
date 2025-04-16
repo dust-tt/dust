@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-dust-server-config
+  namespace: mcp-dust-server
+  labels:
+    app: mcp-dust-server
+data:
+  # MCP Server Configuration
+  MCP_SERVER_NAME: "MCP Dust Server"
+  MCP_SERVER_HOST: "0.0.0.0"
+  MCP_SERVER_PORT: "5001"
+  MCP_SERVER_TIMEOUT: "120"
+  
+  # Logging Configuration
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  LOG_REQUEST_BODY: "false"
+  LOG_REQUEST_HEADERS: "false"
+  LOG_RESPONSE_BODY: "false"
+  LOG_RESPONSE_HEADERS: "false"
+  
+  # Security Configuration (non-sensitive)
+  SECURITY_TOKEN_EXPIRATION: "3600"
+  SESSION_TTL: "3600000"
+  
+  # Metrics Configuration
+  ENABLE_METRICS: "true"
+  METRICS_PREFIX: "mcp_dust_server"

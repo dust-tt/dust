@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mcp-dust-server
+  namespace: mcp-dust-server
+  labels:
+    app: mcp-dust-server
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: mcp-dust-server

@@ -1,0 +1,53 @@
+# Version control
+.git
+.gitignore
+.github
+
+# Node.js
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Build artifacts
+dist
+coverage
+.nyc_output
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Development files
+*.md
+!README.md
+!CHANGELOG.md
+*.log
+*.swp
+*.swo
+.DS_Store
+.idea
+.vscode
+*.sublime-*
+
+# Test files
+__tests__
+__mocks__
+*.test.ts
+*.spec.ts
+jest.config.js
+
+# Documentation
+docs
+
+# Reference files
+reference-mcp-dust-server
+
+# Task management
+tasks
+tasks.json
+
+# Temporary files
+tmp
+temp

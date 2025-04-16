@@ -1,0 +1,665 @@
+{
+  "metadata": {
+    "project_name": "MCP Dust Server Implementation",
+    "created_at": "2025-04-16T09:55:00.000Z",
+    "updated_at": "2025-04-16T09:55:00.000Z"
+  },
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Set Up Project Repository",
+      "description": "Initialize the project repository and set up the basic structure for the MCP Dust Server implementation.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-04-17",
+      "tags": [
+        "setup",
+        "repository",
+        "initialization"
+      ],
+      "dependencies": [],
+      "subtasks": [
+        "Clone the mcp-dust-server repository from https://github.com/ma3u/mcp-dust-server",
+        "Set up the project structure with necessary directories",
+        "Initialize package.json with required dependencies",
+        "Create a .gitignore file for the project",
+        "Set up TypeScript configuration",
+        "Create a README.md with project overview"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Configure Environment and Dependencies",
+      "description": "Set up the environment variables and install all necessary dependencies for the MCP Dust Server.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-04-18",
+      "tags": [
+        "configuration",
+        "dependencies",
+        "environment"
+      ],
+      "dependencies": [
+        1
+      ],
+      "subtasks": [
+        "Create a .env.example file with required environment variables",
+        "Set up configuration loading from environment variables",
+        "Install and configure Express.js for the HTTP server",
+        "Install and configure TypeScript and related tools",
+        "Set up logging infrastructure",
+        "Configure development tools (ESLint, Prettier, etc.)"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Implement Core MCP Server Structure",
+      "description": "Implement the core structure of the MCP server based on the mcp-dust-server repository.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-04-20",
+      "tags": [
+        "server",
+        "core",
+        "implementation"
+      ],
+      "dependencies": [
+        2
+      ],
+      "subtasks": [
+        "Create the main server.js file with Express setup",
+        "Implement the MCPServer class with basic functionality",
+        "Set up SSE and HTTP Stream endpoints",
+        "Implement health check endpoints",
+        "Create basic error handling middleware",
+        "Set up server startup and shutdown procedures"
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Implement DustService Class",
+      "description": "Implement the DustService class that will interact with the Dust API.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-04-22",
+      "tags": [
+        "service",
+        "dust-api",
+        "implementation"
+      ],
+      "dependencies": [
+        3
+      ],
+      "subtasks": [
+        "Create the DustService class structure",
+        "Implement authentication with Dust API",
+        "Set up methods for interacting with workspaces",
+        "Implement methods for agent operations",
+        "Create utility functions for API requests",
+        "Implement error handling for API interactions"
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Implement Authentication System",
+      "description": "Implement the authentication system for the MCP server, integrating with Dust's authentication.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-04-24",
+      "tags": [
+        "authentication",
+        "security",
+        "implementation"
+      ],
+      "dependencies": [
+        4
+      ],
+      "subtasks": [
+        "Implement API key validation for Dust API",
+        "Create session management for MCP clients",
+        "Implement authentication middleware",
+        "Set up permission checking for operations",
+        "Create user context handling",
+        "Implement secure token storage and transmission"
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Implement API Reflection Layer",
+      "description": "Implement the API Reflection Layer that maps Dust's API structure to MCP resources and tools.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-04-26",
+      "tags": [
+        "api",
+        "reflection",
+        "implementation"
+      ],
+      "dependencies": [
+        4,
+        5
+      ],
+      "subtasks": [
+        "Create the DustApiReflector class structure",
+        "Implement methods for analyzing Dust's API structure",
+        "Create mapping functions for resources and tools",
+        "Implement parameter validation and transformation",
+        "Set up response formatting and error handling",
+        "Create utility functions for API reflection"
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Implement Permission Proxy",
+      "description": "Implement the Permission Proxy that provides a unified interface for checking permissions.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-04-28",
+      "tags": [
+        "permissions",
+        "security",
+        "implementation"
+      ],
+      "dependencies": [
+        5,
+        6
+      ],
+      "subtasks": [
+        "Create the PermissionProxy class structure",
+        "Implement methods for checking resource permissions",
+        "Create functions for tool permission validation",
+        "Implement permission caching for performance",
+        "Set up logging for permission checks",
+        "Create utility functions for permission management"
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Implement Event Bridge",
+      "description": "Implement the Event Bridge that connects Dust's event system with MCP's progress notifications.",
+      "status": "DONE",
+      "priority": "MEDIUM",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-04-30",
+      "tags": [
+        "events",
+        "notifications",
+        "implementation"
+      ],
+      "dependencies": [
+        4,
+        6
+      ],
+      "subtasks": [
+        "Create the EventBridge class structure",
+        "Implement methods for subscribing to Dust events",
+        "Create functions for mapping events to MCP notifications",
+        "Implement progress reporting for long-running operations",
+        "Set up error handling for event processing",
+        "Create utility functions for event management"
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Implement Resource Hierarchy",
+      "description": "Implement the Resource Hierarchy that mirrors Dust's data model in MCP resources.",
+      "status": "DONE",
+      "priority": "MEDIUM",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-02",
+      "tags": [
+        "resources",
+        "hierarchy",
+        "implementation"
+      ],
+      "dependencies": [
+        6,
+        7
+      ],
+      "subtasks": [
+        "Define the resource URI structure",
+        "Implement workspace resource handling",
+        "Create agent resource mapping",
+        "Implement knowledge base resource handling",
+        "Create connector resource mapping",
+        "Implement task resource handling"
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Implement Workspace Integration",
+      "description": "Implement the integration with Dust workspaces, exposing them as MCP resources.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-04",
+      "tags": [
+        "workspaces",
+        "integration",
+        "implementation"
+      ],
+      "dependencies": [
+        7,
+        9
+      ],
+      "subtasks": [
+        "Extend DustService with workspace listing functionality",
+        "Implement workspace details retrieval",
+        "Create workspace creation and update functionality",
+        "Implement workspace member management",
+        "Create workspace settings handling",
+        "Implement permission checking for workspace operations"
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Implement Agent Integration",
+      "description": "Implement the integration with Dust agents, exposing them as MCP tools.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-06",
+      "tags": [
+        "agents",
+        "integration",
+        "implementation"
+      ],
+      "dependencies": [
+        7,
+        9
+      ],
+      "subtasks": [
+        "Extend DustService with agent listing functionality",
+        "Implement agent execution methods",
+        "Create agent configuration and customization functionality",
+        "Implement agent run tracking",
+        "Create agent result handling",
+        "Implement permission checking for agent operations"
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Implement Knowledge Base Integration",
+      "description": "Implement the integration with Dust knowledge bases, exposing them as MCP resources.",
+      "status": "DONE",
+      "priority": "MEDIUM",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-08",
+      "tags": [
+        "knowledge-bases",
+        "integration",
+        "implementation"
+      ],
+      "dependencies": [
+        7,
+        9
+      ],
+      "subtasks": [
+        "Extend DustService with knowledge base listing functionality",
+        "Implement knowledge base content retrieval",
+        "Create search and query functionality",
+        "Implement document management",
+        "Create knowledge base settings handling",
+        "Implement permission checking for knowledge base operations"
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Implement Connector Integration",
+      "description": "Implement the integration with Dust connectors, exposing them as MCP resources and tools.",
+      "status": "DONE",
+      "priority": "MEDIUM",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-10",
+      "tags": [
+        "connectors",
+        "integration",
+        "implementation"
+      ],
+      "dependencies": [
+        7,
+        9
+      ],
+      "subtasks": [
+        "Extend DustService with connector listing functionality",
+        "Implement connector configuration methods",
+        "Create data retrieval functionality",
+        "Implement credential management",
+        "Create connector execution handling",
+        "Implement permission checking for connector operations"
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Implement Error Handling and Logging",
+      "description": "Implement comprehensive error handling and logging for the MCP Dust Server.",
+      "status": "TODO",
+      "priority": "MEDIUM",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-14",
+      "tags": [
+        "error-handling",
+        "logging",
+        "implementation"
+      ],
+      "dependencies": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "subtasks": [
+        "Create a centralized error handling system",
+        "Implement detailed error messages and codes",
+        "Create structured logging for all operations",
+        "Implement log levels for different environments",
+        "Create error recovery mechanisms",
+        "Implement monitoring hooks"
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Implement Performance Optimization",
+      "description": "Implement performance optimization for the MCP Dust Server.",
+      "status": "TODO",
+      "priority": "MEDIUM",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-16",
+      "tags": [
+        "performance",
+        "optimization",
+        "implementation"
+      ],
+      "dependencies": [
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "subtasks": [
+        "Implement caching for frequently accessed resources",
+        "Create connection pooling for API requests",
+        "Implement request batching for efficiency",
+        "Create pagination for large data sets",
+        "Implement asynchronous processing for long-running operations",
+        "Create performance monitoring and metrics"
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Create Comprehensive Documentation",
+      "description": "Create comprehensive documentation for the MCP Dust Server.",
+      "status": "TODO",
+      "priority": "MEDIUM",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-18",
+      "tags": [
+        "documentation",
+        "implementation"
+      ],
+      "dependencies": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "subtasks": [
+        "Create API documentation for all endpoints",
+        "Write setup and configuration guides",
+        "Create usage examples for common operations",
+        "Write troubleshooting guides",
+        "Create architecture documentation",
+        "Write security best practices"
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Implement Testing Infrastructure",
+      "description": "Implement testing infrastructure for the MCP Dust Server.",
+      "status": "TODO",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-20",
+      "tags": [
+        "testing",
+        "implementation"
+      ],
+      "dependencies": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "subtasks": [
+        "Set up unit testing framework",
+        "Create integration testing infrastructure",
+        "Implement mock services for testing",
+        "Create test data and fixtures",
+        "Implement CI/CD pipeline for testing",
+        "Create test coverage reporting"
+      ]
+    },
+    {
+      "id": 19,
+      "title": "Write Unit Tests",
+      "description": "Write unit tests for all components of the MCP Dust Server.",
+      "status": "TODO",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-22",
+      "tags": [
+        "testing",
+        "unit-tests",
+        "implementation"
+      ],
+      "dependencies": [
+        18
+      ],
+      "subtasks": [
+        "Write tests for the MCPServer class",
+        "Create tests for the DustService class",
+        "Implement tests for the API Reflection Layer",
+        "Write tests for the Permission Proxy",
+        "Create tests for the Event Bridge",
+        "Implement tests for resource and tool handlers"
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Write Integration Tests",
+      "description": "Write integration tests for the MCP Dust Server.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-24",
+      "tags": [
+        "testing",
+        "integration-tests",
+        "implementation"
+      ],
+      "dependencies": [
+        18,
+        19
+      ],
+      "subtasks": [
+        "Write tests for the authentication flow",
+        "Create tests for workspace operations",
+        "Implement tests for agent execution",
+        "Write tests for knowledge base access",
+        "Create tests for connector operations"
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Perform Security Audit",
+      "description": "Perform a security audit of the MCP Dust Server.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-26",
+      "tags": [
+        "security",
+        "audit",
+        "implementation"
+      ],
+      "dependencies": [
+        5,
+        7,
+        15
+      ],
+      "subtasks": [
+        "Review authentication implementation",
+        "Audit permission checking mechanisms",
+        "Review secure data handling",
+        "Check for common vulnerabilities",
+        "Audit dependency security",
+        "Create security recommendations"
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Create Deployment Infrastructure",
+      "description": "Create deployment infrastructure for the MCP Dust Server.",
+      "status": "DONE",
+      "priority": "MEDIUM",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-28",
+      "tags": [
+        "deployment",
+        "infrastructure",
+        "implementation"
+      ],
+      "dependencies": [
+        3,
+        15,
+        16
+      ],
+      "subtasks": [
+        "Create Docker configuration",
+        "Implement Kubernetes deployment files",
+        "Create environment-specific configurations",
+        "Implement scaling mechanisms",
+        "Create backup and recovery procedures",
+        "Implement monitoring and alerting"
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Perform End-to-End Testing",
+      "description": "Perform end-to-end testing of the MCP Dust Server with Task Master.",
+      "status": "DONE",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-05-30",
+      "tags": [
+        "testing",
+        "end-to-end",
+        "implementation"
+      ],
+      "dependencies": [
+        14,
+        19,
+        20
+      ],
+      "subtasks": [
+        "Set up end-to-end testing environment",
+        "Create test scenarios for common workflows",
+        "Implement automated end-to-end tests",
+        "Perform manual testing of key features",
+        "Document test results and issues",
+        "Create recommendations for improvements"
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Prepare for Production Deployment",
+      "description": "Prepare the MCP Dust Server for production deployment.",
+      "status": "TODO",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-06-01",
+      "tags": [
+        "deployment",
+        "production",
+        "implementation"
+      ],
+      "dependencies": [
+        21,
+        22,
+        23
+      ],
+      "subtasks": [
+        "Finalize configuration for production",
+        "Create deployment documentation",
+        "Implement monitoring and alerting",
+        "Create backup and recovery procedures",
+        "Perform final security review",
+        "Create rollback procedures"
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Deploy to Production",
+      "description": "Deploy the MCP Dust Server to production.",
+      "status": "TODO",
+      "priority": "HIGH",
+      "assigned": "",
+      "created": "2025-04-16",
+      "due": "2025-06-03",
+      "tags": [
+        "deployment",
+        "production",
+        "implementation"
+      ],
+      "dependencies": [
+        24
+      ],
+      "subtasks": [
+        "Deploy to production environment",
+        "Verify deployment success",
+        "Monitor initial usage and performance",
+        "Address any immediate issues",
+        "Communicate deployment to stakeholders",
+        "Begin post-deployment support"
+      ]
+    }
+  ]
+}
