@@ -432,8 +432,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         );
         if (
           !context.response ||
-          context.response.statusCode === 403 ||
-          context.response.statusCode === 429
+          context.response.status() === 403 ||
+          context.response.status() === 429
         ) {
           pageCount.blocked++;
         }
