@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +11,7 @@ import {
 import { useState } from "react";
 import React from "react";
 
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
@@ -66,7 +65,7 @@ export const AddActionMenu = ({
               <DropdownMenuItem
                 key={mcpServer.id}
                 label={asDisplayName(mcpServer.name)}
-                icon={() => <Avatar visual={getVisual(mcpServer)} size="xs" />}
+                icon={() => getAvatar(mcpServer, "xs")}
                 description={mcpServer.description}
                 onClick={async () => {
                   createInternalMCPServer(mcpServer);

@@ -1,4 +1,4 @@
-import { Avatar, Chip, classNames, DataTable, Spinner } from "@dust-tt/sparkle";
+import { Chip, classNames, DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 
@@ -7,7 +7,7 @@ import { CreateMCPServerModal } from "@app/components/actions/mcp/CreateMCPServe
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { getSpaceIcon } from "@app/lib/spaces";
@@ -39,9 +39,7 @@ const NameCell = ({ row }: { row: RowData }) => {
           mcpServerView ? "" : "opacity-50"
         )}
       >
-        <div>
-          <Avatar visual={getVisual(mcpServer)} />
-        </div>
+        <div>{getAvatar(mcpServer)}</div>
         <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
           <div className="flex flex-col gap-1">
             <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
