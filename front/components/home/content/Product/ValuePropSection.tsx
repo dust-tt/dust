@@ -1,5 +1,6 @@
 "use client";
 
+import { Pointer } from "@app/components/magicui/pointer";
 import { H3, P } from "../../ContentComponents";
 
 export function ValuePropSection() {
@@ -15,12 +16,15 @@ export function ValuePropSection() {
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-8 md:flex-row">
           <div className="order-1 w-full md:order-1 md:w-1/2">
-            <div className="flex aspect-video items-center justify-center rounded-2xl bg-golden-50">
+            <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-golden-50">
               <img
                 src="/static/landing/docexpert/docexpert.png"
                 alt="DocExpert"
                 className="h-full w-full object-contain"
               />
+              <Pointer>
+                <div className="text-2xl">✨</div>
+              </Pointer>
             </div>
           </div>
           <div className="order-2 w-full md:order-2 md:w-1/2">
@@ -41,18 +45,21 @@ export function ValuePropSection() {
 
         <div className="flex flex-col items-center gap-8 md:flex-row">
           <div className="order-1 w-full md:order-2 md:w-1/2">
-            <div className="flex aspect-video items-center justify-center rounded-2xl bg-blue-50">
+            <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-blue-50">
               <img
-                src="/static/landing/code/code.png"
+                src="/static/landing/code/code.svg"
                 alt="Platform Integration"
                 className="h-full w-full object-contain"
               />
+              <Pointer>
+                <div className="text-2xl">🔗</div>
+              </Pointer>
             </div>
           </div>
           <div className="order-2 w-full md:order-1 md:w-1/2">
             <div className="flex flex-col gap-3">
               <H3 className="text-foreground">
-                Connect all your data easily and<br></br> securely
+                Connect all your data easily&nbsp;and securely
               </H3>
               <P size="md" className="text-muted-foreground">
                 Bring your company knowledge together from Slack, Google Drive,
@@ -67,12 +74,15 @@ export function ValuePropSection() {
 
         <div className="flex flex-col items-center gap-8 md:flex-row">
           <div className="order-1 w-full md:order-1 md:w-1/2">
-            <div className="flex aspect-video items-center justify-center rounded-2xl bg-rose-50">
+            <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-rose-50">
               <img
-                src="/static/landing/analysis/analysis.png"
+                src="/static/landing/analysis/analysis.svg"
                 alt="Analysis"
                 className="h-full w-full object-contain"
               />
+              <Pointer>
+                <div className="text-2xl">🧠</div>
+              </Pointer>
             </div>
           </div>
           <div className="order-2 w-full md:order-2 md:w-1/2">
