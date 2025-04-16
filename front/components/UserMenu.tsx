@@ -16,35 +16,33 @@ import {
   LightModeIcon,
   LogoutIcon,
   StarIcon,
-  TrashIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import { BugIcon, TestTubeIcon, UserCogIcon } from "lucide-react";
+import { BugIcon, TestTubeIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
-import { useDeleteMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { UserType, WorkspaceType } from "@app/types";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 export function UserMenu({
   user,
   owner,
 }: {
-  user: UserType;
+  user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
 }) {
   const router = useRouter();
-  const { featureFlags, hasFeature } = useFeatureFlags({
+  const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const { deleteMetadata: deleteServerValidationMetadata } =
-    useDeleteMetadata("toolsValidations");
 
   const sendNotification = useSendNotification();
+  const { setNavigationSelection } = usePersistedNavigationSelection();
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -71,6 +69,13 @@ export function UserMenu({
 
   const theme = localStorage.getItem("theme") || "light";
 
+  // Check if user has multiple workspaces
+  const hasMultipleWorkspaces = useMemo(() => {
+    return (
+      "workspaces" in user && user.workspaces && user.workspaces.length > 1
+    );
+  }, [user]);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
@@ -87,6 +92,10 @@ export function UserMenu({
               "clickable";
             }}
           />
+          <div className="flex flex-col items-start pr-4">
+            <span className="text-sm font-medium">{user.firstName}</span>
+            <span className="text-sm">{owner.name}</span>
+          </div>
           <Icon visual={ChevronDownIcon} />
         </div>
       </DropdownMenuTrigger>
@@ -144,6 +153,7 @@ export function UserMenu({
         <DropdownMenuLabel label="Preferences" />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
+
           <DropdownMenuSubContent>
             <DropdownMenuRadioGroup value={theme}>
               <DropdownMenuRadioItem
@@ -174,26 +184,13 @@ export function UserMenu({
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
-        {hasFeature("mcp_actions") && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Metadata" icon={UserCogIcon} />
-            <DropdownMenuSubContent>
-              <DropdownMenuItem
-                label="Delete tool approbation history"
-                onClick={() => {
-                  void deleteServerValidationMetadata();
-                  sendNotification({
-                    title: "Success !",
-                    description: "Tool approbation history deleted.",
-                    type: "success",
-                  });
-                }}
-                icon={TrashIcon}
-              />
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )}
         <DropdownMenuLabel label="Account" />
+        <DropdownMenuItem
+          label="Profile"
+          icon={UserIcon}
+          href={`/w/${owner.sId}/me`}
+        />
+
         <DropdownMenuItem
           onClick={() => {
             void router.push("/api/auth/logout");
@@ -201,6 +198,33 @@ export function UserMenu({
           icon={LogoutIcon}
           label="Sign&nbsp;out"
         />
+
+        {hasMultipleWorkspaces && (
+          <>
+            <DropdownMenuLabel label="Workspaces" />
+            <DropdownMenuRadioGroup value={owner.name}>
+              {"workspaces" in user &&
+                user.workspaces.map((w) => (
+                  <DropdownMenuRadioItem
+                    key={w.sId}
+                    value={w.name}
+                    onClick={async () => {
+                      await setNavigationSelection({
+                        lastWorkspaceId: w.sId,
+                      });
+                      if (w.id !== owner.id) {
+                        await router
+                          .push(`/w/${w.sId}/assistant/new`)
+                          .then(() => router.reload());
+                      }
+                    }}
+                  >
+                    {w.name}
+                  </DropdownMenuRadioItem>
+                ))}
+            </DropdownMenuRadioGroup>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
