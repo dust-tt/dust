@@ -1,5 +1,9 @@
 import _ from "lodash";
 
+import {
+  isZendeskNotFoundError,
+  ZendeskApiError,
+} from "@connectors/connectors/zendesk/lib/errors";
 import type {
   ZendeskFetchedArticle,
   ZendeskFetchedBrand,
@@ -9,10 +13,6 @@ import type {
   ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
 } from "@connectors/connectors/zendesk/lib/types";
-import {
-  isZendeskNotFoundError,
-  ZendeskApiError,
-} from "@connectors/connectors/zendesk/lib/errors";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
