@@ -153,6 +153,7 @@ interface AvatarProps {
   className?: string;
   disabled?: boolean;
   icon?: React.ComponentType<{ className?: string }>;
+  iconColor?: string;
 }
 
 export function Avatar({
@@ -169,6 +170,7 @@ export function Avatar({
   disabled = false,
   className,
   icon,
+  iconColor = "s-text-foreground",
 }: AvatarProps) {
   const emojiInfos =
     typeof visual === "string" && getEmojiAndBackgroundFromUrl(visual);
@@ -200,7 +202,7 @@ export function Avatar({
             ? backgroundColorToUse
             : name
               ? getColor(name)
-              : "s-bg-muted-background dark:s-bg-muted-background-night",
+              : "s-bg-muted-background",
         className
       )}
       style={hexBgColor ? { backgroundColor: hexBgColor } : undefined}
@@ -219,8 +221,7 @@ export function Avatar({
         visualToUse
       ) : icon ? (
         React.createElement(icon, {
-          className:
-            "s-h-1/2 s-w-1/2 s-text-foreground dark:s-text-foreground-night",
+          className: cn("s-h-1/2 s-w-1/2", iconColor),
         })
       ) : emojiToUse ? (
         <span className={textVariants({ size })}>{emojiToUse}</span>
@@ -229,7 +230,7 @@ export function Avatar({
           {/\+/.test(name) ? name : name[0].toUpperCase()}
         </span>
       ) : (
-        <UserIcon className="s-h-1/2 s-w-1/2 s-opacity-20" />
+        <UserIcon className="s-h-1/2 s-w-1/2 s-text-foreground s-opacity-20" />
       )}
     </div>
   );

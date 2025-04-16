@@ -4,7 +4,11 @@ import React from "react";
 import {
   ActionBeerIcon,
   ActionFlagIcon,
+  ActionImageIcon,
+  ActionMagnifyingGlassIcon,
+  ActionScanIcon,
   ActionShirtIcon,
+  ActionTableIcon,
   ActionUmbrellaIcon,
 } from "@sparkle/icons/actions";
 import SvgHome from "@sparkle/icons/actions/Home";
@@ -123,6 +127,49 @@ export const AvatarExample = () => (
       <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
       <Avatar size="xl" icon={ActionShirtIcon} />
       <Avatar size="xxl" icon={StarStrokeIcon} />
+    </div>
+    <div className="heading-2xl">Tools example</div>
+    <div>Remote MCP Servers</div>
+    <div className="s-flex s-gap-4">
+      <Avatar size="md" icon={SvgHome} />
+      <Avatar size="md" icon={ActionBeerIcon} />
+      <Avatar size="md" icon={ActionUmbrellaIcon} />
+      <Avatar size="md" icon={ActionFlagIcon} />
+      <Avatar size="md" icon={ActionShirtIcon} />
+      <Avatar size="md" icon={StarStrokeIcon} />
+    </div>
+    <div>Internal Tools Servers</div>
+    <div className="s-flex s-gap-4">
+      <Avatar
+        size="md"
+        icon={ActionTableIcon}
+        backgroundColor="s-bg-gray-700"
+        iconColor="s-text-gray-50"
+      />
+      <Avatar
+        size="md"
+        icon={ActionMagnifyingGlassIcon}
+        backgroundColor="s-bg-gray-700"
+        iconColor="s-text-gray-50"
+      />
+      <Avatar
+        size="md"
+        icon={ActionImageIcon}
+        backgroundColor="s-bg-gray-700"
+        iconColor="s-text-gray-50"
+      />
+      <Avatar
+        size="md"
+        icon={ActionScanIcon}
+        backgroundColor="s-bg-gray-700"
+        iconColor="s-text-gray-50"
+      />
+    </div>
+    <div>Platforms integrations</div>
+    <div className="s-flex s-gap-4">
+      <Avatar size="md" icon={DriveLogo} backgroundColor="s-bg-gray-900" />
+      <Avatar size="md" icon={NotionLogo} backgroundColor="s-bg-white" />
+      <Avatar size="md" icon={SlackLogo} hexBgColor="#421D51" />
     </div>
   </div>
 );
