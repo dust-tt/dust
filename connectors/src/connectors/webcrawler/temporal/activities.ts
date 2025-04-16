@@ -168,6 +168,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       maxRequestsPerMinute: 20, // 1 request every 3 seconds average, to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
       async requestHandler({ page, request, enqueueLinks }) {
+        await page.waitForLoadState("networkidle");
+
         Context.current().heartbeat({
           type: "http_request",
         });
