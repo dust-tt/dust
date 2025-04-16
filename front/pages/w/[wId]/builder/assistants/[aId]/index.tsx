@@ -159,6 +159,7 @@ export default function EditAssistant({
           visualizationEnabled: agentConfiguration.visualizationEnabled,
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
+          tags: agentConfiguration.tags,
         }}
         agentConfigurationId={agentConfiguration.sId}
         baseUrl={baseUrl}

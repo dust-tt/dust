@@ -35,6 +35,7 @@ import {
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 export const ACTION_MODES = [
   "GENERIC",
@@ -227,6 +228,7 @@ export type AssistantBuilderState = {
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
+  tags: TagType[];
 };
 
 export type AssistantBuilderInitialState = {
@@ -244,6 +246,7 @@ export type AssistantBuilderInitialState = {
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
+  tags: TagType[];
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
@@ -265,6 +268,7 @@ export function getDefaultAssistantState() {
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
+    tags: [],
   } satisfies AssistantBuilderState;
 }
 

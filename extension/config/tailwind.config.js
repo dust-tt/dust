@@ -567,6 +567,10 @@ module.exports = {
             night: colors.gray[950],
           },
         },
+        faint: {
+          DEFAULT: colors.gray[400],
+          night: colors.gray[600],
+        },
         // Semantic Palette
         primary: {
           DEFAULT: colors.gray[800],

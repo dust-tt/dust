@@ -95,6 +95,7 @@ export function usePreviewAssistant({
         maxStepsPerRun: builderState.maxStepsPerRun,
         visualizationEnabled: builderState.visualizationEnabled,
         templateId: builderState.templateId,
+        tags: builderState.tags,
       },
       agentConfigurationId: null,
       slackData: {
@@ -134,6 +135,7 @@ export function usePreviewAssistant({
     builderState.maxStepsPerRun,
     builderState.templateId,
     builderState.visualizationEnabled,
+    builderState.tags,
     reasoningModels,
     sendNotification,
   ]);

@@ -7,6 +7,7 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  ContentFragmentExpiredReason,
   ContentFragmentVersion,
   ContentNodeType,
   SupportedContentFragmentType,
@@ -39,6 +40,7 @@ export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentMod
   declare nodeType: ContentNodeType | null;
 
   declare version: ContentFragmentVersion;
+  declare expiredReason: ContentFragmentExpiredReason | null;
 }
 
 ContentFragmentModel.init(
@@ -99,6 +101,10 @@ ContentFragmentModel.init(
       allowNull: true,
     },
     nodeType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    expiredReason: {
       type: DataTypes.STRING,
       allowNull: true,
     },

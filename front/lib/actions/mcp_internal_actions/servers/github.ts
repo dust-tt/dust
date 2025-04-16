@@ -17,7 +17,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     provider: "github" as const,
     use_case: "platform_actions" as const,
   },
-  visual: "https://dust.tt/static/systemavatar/github_avatar_full.png",
+  icon: "GithubLogo",
 };
 
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
@@ -341,6 +341,89 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             {
               type: "text",
               text: `Error retrieving GitHub pull request: ${normalizeError(e).message}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "create_pull_request_review",
+    "Create a review on a pull request with optional line comments.",
+    {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      pullNumber: z
+        .number()
+        .describe("The number that identifies the pull request."),
+      body: z.string().describe("The body text of the review."),
+      event: z
+        .enum(["APPROVE", "REQUEST_CHANGES", "COMMENT"])
+        .describe(
+          "The review action you want to perform. The review actions include: APPROVE, REQUEST_CHANGES, or COMMENT."
+        ),
+      comments: z
+        .array(
+          z.object({
+            path: z
+              .string()
+              .describe(
+                "The relative path to the file that necessitates a review comment."
+              ),
+            line: z
+              .number()
+              .optional()
+              .describe(
+                "The line number in the file. If not set the review comment will apply to the file."
+              ),
+            body: z.string().describe("The text of the review comment."),
+          })
+        )
+        .describe("File comments to leave as part of the review.")
+        .optional(),
+    },
+    async ({ owner, repo, pullNumber, body, event, comments = [] }) => {
+      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
+        mcpServerId,
+        provider: "github",
+      });
+
+      const octokit = new Octokit({ auth: accessToken });
+
+      try {
+        const { data: review } = await octokit.request(
+          "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+          {
+            owner,
+            repo,
+            pull_number: pullNumber,
+            body,
+            event,
+            comments, // Array of comment objects
+          }
+        );
+
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text: `Review created: ID ${review.id}`,
+            },
+          ],
+        };
+      } catch (e) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error reviewing GitHub pull request: ${normalizeError(e).message}`,
             },
           ],
         };

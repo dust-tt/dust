@@ -816,6 +816,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_3_7_reasoning"
   | "mcp_actions"
   | "dev_mcp_actions"
+  | "agent_discovery"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

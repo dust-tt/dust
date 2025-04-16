@@ -32,7 +32,7 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { formatUserFullName, Ok, removeNulls } from "@app/types";
+import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 
@@ -398,19 +398,25 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
-    // Directly delete the DataSourceViewModel here to avoid a circular dependency.
-    await DataSourceViewModel.destroy({
+    // We assume the data source views are already soft-deleted here.
+    const dataSourceViews = await DataSourceViewModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: this.id,
+        deletedAt: {
+          [Op.is]: null,
+        },
       },
-      transaction,
-      hardDelete: false,
     });
+
+    if (dataSourceViews.length > 0) {
+      return new Err(new Error("Data source views still exist"));
+    }
 
     const deletedCount = await this.model.destroy({
       where: {
         id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });

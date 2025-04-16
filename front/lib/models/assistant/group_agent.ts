@@ -2,33 +2,29 @@ import type {
   BelongsToGetAssociationMixin,
   CreationOptional,
   ForeignKey,
-  NonAttribute,
 } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { TagModel } from "@app/lib/models/tags";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class TagAgentModel extends WorkspaceAwareModel<TagAgentModel> {
+export class GroupAgentModel extends WorkspaceAwareModel<GroupAgentModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare tag: NonAttribute<TagModel>;
-  declare tagId: ForeignKey<TagModel["id"]>;
-
-  declare agentConfiguration: NonAttribute<AgentConfiguration>;
+  declare groupId: ForeignKey<GroupModel["id"]>;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
   // workspaceId is inherited from WorkspaceAwareModel
 
   declare getGroup: BelongsToGetAssociationMixin<GroupModel>;
   declare getAgentConfiguration: BelongsToGetAssociationMixin<AgentConfiguration>;
+  // getWorkspace is inherited
 }
 
-TagAgentModel.init(
+GroupAgentModel.init(
   {
     id: {
       type: DataTypes.BIGINT,
@@ -45,7 +41,7 @@ TagAgentModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    tagId: {
+    groupId: {
       type: DataTypes.BIGINT,
       allowNull: false,
     },
@@ -53,14 +49,15 @@ TagAgentModel.init(
       type: DataTypes.BIGINT,
       allowNull: false,
     },
+    // workspaceId is automatically added by WorkspaceAwareModel.init
   },
   {
-    modelName: "tag_agents",
+    modelName: "group_agents",
     sequelize: frontSequelize,
     indexes: [
       {
         unique: true,
-        fields: ["tagId", "agentConfigurationId"],
+        fields: ["groupId", "agentConfigurationId"],
       },
       { fields: ["agentConfigurationId"] },
     ],
@@ -69,46 +66,40 @@ TagAgentModel.init(
 
 // Define associations
 
-// Association with Tag
-TagAgentModel.belongsTo(TagModel, {
-  foreignKey: { name: "tagId", allowNull: false },
+// Association with Group
+GroupAgentModel.belongsTo(GroupModel, {
+  foreignKey: { name: "groupId", allowNull: false },
   targetKey: "id",
-  onDelete: "RESTRICT",
 });
-TagModel.hasMany(TagAgentModel, {
-  foreignKey: { name: "tagId", allowNull: false },
+GroupModel.hasMany(GroupAgentModel, {
+  foreignKey: { name: "groupId", allowNull: false },
   sourceKey: "id",
-  as: "tagAgentLinks",
-  onDelete: "RESTRICT",
+  as: "groupAgentLinks",
 });
 
 // Association with AgentConfiguration
-TagAgentModel.belongsTo(AgentConfiguration, {
+GroupAgentModel.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   targetKey: "id",
-  onDelete: "RESTRICT",
 });
-AgentConfiguration.hasMany(TagAgentModel, {
+AgentConfiguration.hasMany(GroupAgentModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   sourceKey: "id",
-  as: "agentTagLinks",
-  onDelete: "RESTRICT",
+  as: "agentGroupLinks",
 });
 
-// Many-to-Many between Tags and AgentConfiguration (ensure FKs match)
-TagModel.belongsToMany(AgentConfiguration, {
-  through: TagAgentModel,
-  foreignKey: "tagId",
+// Many-to-Many between Group and AgentConfiguration (ensure FKs match)
+GroupModel.belongsToMany(AgentConfiguration, {
+  through: GroupAgentModel,
+  foreignKey: "groupId",
   otherKey: "agentConfigurationId",
   as: "agentConfigurations",
-  onDelete: "RESTRICT",
 });
-AgentConfiguration.belongsToMany(TagModel, {
-  through: TagAgentModel,
+AgentConfiguration.belongsToMany(GroupModel, {
+  through: GroupAgentModel,
   foreignKey: "agentConfigurationId",
-  otherKey: "tagId",
-  as: "tags",
-  onDelete: "RESTRICT",
+  otherKey: "groupId",
+  as: "groups",
 });
 
 // Workspace association is handled by WorkspaceAwareModel.init
