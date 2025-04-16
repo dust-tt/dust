@@ -17,6 +17,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "child_agent_debugger",
   "primitive_types_debugger",
   "web_search_&_browse_v2",
+  "think",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -53,6 +54,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1005,
     isDefault: true,
     flag: "mcp_actions",
+  },
+  think: {
+    id: 6,
+    isDefault: true,
+    flag: "dev_mcp_actions",
   },
 
   // Dev
