@@ -1,10 +1,9 @@
+import type { ConfigurableToolInputType } from "@dust-tt/client";
 import type {
   JSONSchema7 as JSONSchema,
   JSONSchema7Definition as JSONSchemaDefinition,
 } from "json-schema";
 import { isEqual } from "lodash";
-
-import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 /**
  * Type guard to check if a value is a JSONSchema object
