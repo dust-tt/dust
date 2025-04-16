@@ -17,7 +17,7 @@ export type GoogleDriveObjectType = {
   driveId: string;
   isInSharedDrive: boolean;
   labels: string[];
-  sharedWithMeTime?: string | null; // TODO: can potentially remove.
+  sharedWithMeTime?: string | null;
 };
 
 export const FILE_ATTRIBUTES_TO_FETCH = [

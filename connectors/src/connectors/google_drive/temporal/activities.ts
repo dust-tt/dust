@@ -229,14 +229,6 @@ export async function syncFiles(
   if (nextPageToken === undefined && !isSharedWithMe) {
     // On the first page of a folder id, we can check if we already visited it
 
-    // add log statement here
-    logger.info(
-      {
-        connectorId,
-        folderId: driveFolderId,
-      },
-      "Checking if folder has been visited"
-    );
     const visitedFolder = await GoogleDriveFiles.findOne({
       where: {
         connectorId: connectorId,
@@ -265,9 +257,8 @@ export async function syncFiles(
   let driveParams: drive_v3.Params$Resource$Files$List = {
     corpora: "allDrives",
     pageSize: 200,
-    includeItemsFromAllDrives:
-      driveFolderId !== GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
-    supportsAllDrives: driveFolderId !== GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
     includeLabels: labels.map((l) => l.id).join(","),
     fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
     q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
