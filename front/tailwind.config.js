@@ -809,11 +809,11 @@ module.exports = {
         ".heading-xs": {
           fontSize: theme("fontSize.xs[0]"),
           lineHeight: theme("fontSize.xs[1].lineHeight"),
-          letterSpacing: theme("fontSize.sm[1].letterSpacing"),
+          letterSpacing: theme("fontSize.xs[1].letterSpacing"),
           fontWeight: "600",
         },
         ".heading-sm": {
-          fontSize: theme("fontSize.xs[0]"),
+          fontSize: theme("fontSize.sm[0]"),
           lineHeight: theme("fontSize.sm[1].lineHeight"),
           letterSpacing: theme("fontSize.sm[1].letterSpacing"),
           fontWeight: "600",

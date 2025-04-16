@@ -92,7 +92,7 @@ export function ToolsList({
                   )}
                   {serverType === "remote" && (
                     <div className="flex w-full flex-row items-center justify-end gap-2">
-                      <p className="heading-sm flex-grow">Tool stake setting</p>
+                      <p className="heading-sm">Tool stake setting</p>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

@@ -106,3 +106,42 @@ export const MultiParagraph: Story = {
     size: "md",
   },
 };
+
+export const ColorVariants: Story = {
+  render: () => (
+    <div className="s-grid s-grid-cols-1 s-gap-4 sm:s-grid-cols-2 lg:s-grid-cols-3">
+      {[
+        "primary",
+        "warning",
+        "success",
+        "highlight",
+        "info",
+        "green",
+        "blue",
+        "rose",
+        "golden",
+      ].map((variant) => (
+        <ContentMessage
+          key={variant}
+          title={`${variant.charAt(0).toUpperCase() + variant.slice(1)} Variant`}
+          variant={
+            variant as
+              | "primary"
+              | "warning"
+              | "success"
+              | "highlight"
+              | "info"
+              | "green"
+              | "blue"
+              | "rose"
+              | "golden"
+          }
+          size="md"
+        >
+          This is a {variant} variant message. It shows how the component looks
+          with this color scheme.
+        </ContentMessage>
+      ))}
+    </div>
+  ),
+};
