@@ -202,7 +202,7 @@ export function Avatar({
             ? backgroundColorToUse
             : name
               ? getColor(name)
-              : "s-bg-muted-background dark:s-bg-muted-background-night",
+              : "s-bg-muted-background",
         className
       )}
       style={hexBgColor ? { backgroundColor: hexBgColor } : undefined}
@@ -230,7 +230,7 @@ export function Avatar({
           {/\+/.test(name) ? name : name[0].toUpperCase()}
         </span>
       ) : (
-        <UserIcon className="s-h-1/2 s-w-1/2 s-opacity-20" />
+        <UserIcon className="s-h-1/2 s-w-1/2 s-text-foreground s-opacity-20" />
       )}
     </div>
   );
