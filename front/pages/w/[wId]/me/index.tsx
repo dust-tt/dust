@@ -7,7 +7,6 @@ import { AccountSettings } from "@app/components/me/AccountSettings";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
@@ -41,7 +40,6 @@ export default function ProfilePage({
     workspaceId: owner.sId,
   });
   const { user, isUserLoading, mutateUser } = useUser();
-  const { mcpServers, isMCPServersLoading } = useMCPServers({ owner });
 
   return (
     <ConversationsNavigationProvider>
@@ -67,10 +65,7 @@ export default function ProfilePage({
                   title="Tools Confirmation Preferences"
                   description="Manage your tool approbation history per action"
                 />
-                <UserToolsTable
-                  mcpServers={mcpServers}
-                  isMCPServersLoading={isMCPServersLoading}
-                />
+                <UserToolsTable owner={owner} />
               </>
             )}
           </Page.Layout>

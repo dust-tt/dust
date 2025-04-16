@@ -2,32 +2,47 @@ import { Avatar, DataTable, Input, Page, Spinner } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { SearchIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import type {
+  FunctionComponentElement,
+  SVGProps} from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 
-import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import { getVisual } from "@app/lib/actions/mcp_icons";
+import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteMetadata } from "@app/lib/swr/user";
+import type { LightWorkspaceType } from "@app/types";
 interface UserTableRow {
   id: string;
   name: string;
   description: string;
-  visual: string;
+  visual:
+    | `https://${string}`
+    | FunctionComponentElement<SVGProps<SVGSVGElement>>;
   onClick?: () => void;
   moreMenuItems?: any[];
 }
 
 interface UserToolsTableProps {
-  mcpServers: MCPServerTypeWithViews[] | undefined;
-  isMCPServersLoading: boolean;
+  owner: LightWorkspaceType;
 }
 
-export function UserToolsTable({
-  mcpServers,
-  isMCPServersLoading,
-}: UserToolsTableProps) {
+export function UserToolsTable({ owner }: UserToolsTableProps) {
   const sendNotification = useSendNotification();
   const [searchQuery, setSearchQuery] = useState("");
 
+  const { spaces } = useSpaces({ workspaceId: owner.sId });
+  const { serverViews, isMCPServerViewsLoading } = useMCPServerViews({
+    owner,
+    space: spaces[0],
+  });
+
   const { deleteMetadata } = useDeleteMetadata("toolsValidations");
+
   const handleDeleteToolMetadata = useCallback(
     async (mcpServerId: string) => {
       try {
@@ -50,23 +65,23 @@ export function UserToolsTable({
 
   // Prepare data for the actions table
   const actionsTableData = useMemo(() => {
-    if (!mcpServers) {
+    if (!serverViews) {
       return [];
     }
 
-    return mcpServers
-      .filter((server) =>
-        server.name.toLowerCase().includes(searchQuery.toLowerCase())
+    return serverViews
+      .filter((serverView) =>
+        serverView.server.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-      .map((server) => ({
-        id: server.id,
-        name: server.name,
-        description: server.description,
-        visual: server.visual,
+      .map((serverView) => ({
+        id: serverView.id,
+        name: serverView.server.name,
+        description: serverView.server.description,
+        visual: getVisual(serverView.server),
         onClick: () => {},
         moreMenuItems: [],
       }));
-  }, [mcpServers, searchQuery]);
+  }, [serverViews, searchQuery]);
 
   // Define columns for the actions table
   const actionColumns = useMemo<ColumnDef<UserTableRow>[]>(
@@ -97,19 +112,17 @@ export function UserToolsTable({
       {
         header: "",
         accessorKey: "actions",
-        cell: ({ row }) => {
-          return (
-            <DataTable.MoreButton
-              menuItems={[
-                {
-                  label: "Delete tool approbation history",
-                  onClick: () => handleDeleteToolMetadata(row.original.id),
-                  kind: "item",
-                },
-              ]}
-            />
-          );
-        },
+        cell: ({ row }) => (
+          <DataTable.MoreButton
+            menuItems={[
+              {
+                label: "Delete tool approbation history",
+                onClick: () => handleDeleteToolMetadata(row.original.id),
+                kind: "item",
+              },
+            ]}
+          />
+        ),
         meta: {
           className: "w-12",
         },
@@ -132,7 +145,7 @@ export function UserToolsTable({
         />
       </div>
 
-      {isMCPServersLoading ? (
+      {isMCPServerViewsLoading ? (
         <div className="flex justify-center p-6">
           <Spinner />
         </div>
