@@ -58,11 +58,16 @@ import {
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import type {
   AgentConfigurationScope,
@@ -83,6 +88,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -559,6 +565,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
       model.reasoningEffort = agent.reasoningEffort;
     }
 
+    const tags = await TagResource.listForAgent(auth, agent.id);
+
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -584,6 +592,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
+      tags: tags.map((t) => t.toJSON()),
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
@@ -747,6 +756,7 @@ export async function createAgentConfiguration(
     agentConfigurationId,
     templateId,
     requestedGroupIds,
+    tags,
   }: {
     name: string;
     description: string;
@@ -760,6 +770,7 @@ export async function createAgentConfiguration(
     agentConfigurationId?: string;
     templateId: string | null;
     requestedGroupIds: number[][];
+    tags: TagType[];
   }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
@@ -871,6 +882,20 @@ export async function createAgentConfiguration(
           }
         );
 
+        for (const tag of tags) {
+          const id = getResourceIdFromSId(tag.sId);
+          if (id) {
+            await TagAgentModel.create(
+              {
+                workspaceId: owner.id,
+                tagId: id,
+                agentConfigurationId: agentConfigurationInstance.id,
+              },
+              { transaction: t }
+            );
+          }
+        }
+
         if (created) {
           await GroupResource.makeNewAgentEditorsGroup(
             auth,
@@ -913,6 +938,7 @@ export async function createAgentConfiguration(
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
+      tags,
     };
 
     await agentConfigurationWasUpdatedBy({

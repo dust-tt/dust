@@ -215,6 +215,7 @@ function _getHelperGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -251,6 +252,7 @@ function _getGPT35TurboGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 function _getGPT4GlobalAgent({
@@ -296,6 +298,7 @@ function _getGPT4GlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 function _getO3MiniGlobalAgent({
@@ -337,6 +340,7 @@ function _getO3MiniGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 function _getO1GlobalAgent({
@@ -374,6 +378,7 @@ function _getO1GlobalAgent({
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 function _getO1MiniGlobalAgent({
@@ -411,6 +416,7 @@ function _getO1MiniGlobalAgent({
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -450,6 +456,7 @@ function _getO1HighReasoningGlobalAgent({
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -482,6 +489,7 @@ function _getClaudeInstantGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -521,6 +529,7 @@ function _getClaude2GlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -554,6 +563,7 @@ function _getClaude3HaikuGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -592,6 +602,7 @@ function _getClaude3OpusGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -633,6 +644,7 @@ function _getClaude3GlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -674,6 +686,7 @@ function _getClaude3_7GlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -716,6 +729,7 @@ function _getMistralLargeGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -758,6 +772,7 @@ function _getMistralMediumGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -794,6 +809,7 @@ function _getMistralSmallGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -835,6 +851,7 @@ function _getGeminiProGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -874,6 +891,7 @@ function _getDeepSeekR1GlobalAgent({
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -941,6 +959,7 @@ function _getManagedDataSourceAgent(
       visualizationEnabled: false,
       templateId: null,
       requestedGroupIds: [],
+      tags: [],
     };
   }
 
@@ -968,6 +987,7 @@ function _getManagedDataSourceAgent(
       visualizationEnabled: false,
       templateId: null,
       requestedGroupIds: [],
+      tags: [],
     };
   }
 
@@ -1007,6 +1027,7 @@ function _getManagedDataSourceAgent(
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -1185,6 +1206,7 @@ function _getDustGlobalAgent(
       visualizationEnabled: true,
       templateId: null,
       requestedGroupIds: [],
+      tags: [],
     };
   }
 
@@ -1212,6 +1234,7 @@ function _getDustGlobalAgent(
       visualizationEnabled: true,
       templateId: null,
       requestedGroupIds: [],
+      tags: [],
     };
   }
 
@@ -1317,6 +1340,7 @@ function _getDustGlobalAgent(
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 

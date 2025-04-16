@@ -41,6 +41,16 @@ async function handler(
     case "POST": {
       const r = PostBodySchema.decode(req.body);
 
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Only workspace administrators can create tags",
+          },
+        });
+      }
+
       if (isLeft(r)) {
         return apiError(req, res, {
           status_code: 400,
