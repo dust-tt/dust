@@ -1621,10 +1621,7 @@ export async function updateAgentPermissions(
           transaction: t,
         });
         if (addRes.isErr()) {
-          // Throw error to trigger rollback
-          throw new Error(
-            `Failed to add agent editors: ${addRes.error.message}`
-          );
+          return addRes;
         }
       }
 
@@ -1637,10 +1634,7 @@ export async function updateAgentPermissions(
           }
         );
         if (removeRes.isErr()) {
-          // Throw error to trigger rollback
-          throw new Error(
-            `Failed to remove agent editors: ${removeRes.error.message}`
-          );
+          return removeRes;
         }
       }
       return new Ok(undefined);

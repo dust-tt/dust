@@ -590,8 +590,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError(
           "user_not_member",
           userIds.length === 1
-            ? "User is not a member of the workspace"
-            : "Users are not members of the workspace"
+            ? "Cannot add: user is not a member of the workspace"
+            : "Cannot add: users are not members of the workspace"
         )
       );
     }
@@ -617,8 +617,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError(
           "user_already_member",
           alreadyActiveUserIds.length === 1
-            ? "User is already a member of the group"
-            : "Users are already members of the group"
+            ? "Cannot add: user is already a member of the group"
+            : "Cannot add: users are already members of the group"
         )
       );
     }
@@ -683,8 +683,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError(
           "user_not_member",
           userIds.length === 1
-            ? "User is not a member of the workspace"
-            : "Users are not members of the workspace"
+            ? "Cannot remove: user is not a member of the workspace"
+            : "Cannot remove: users are not members of the workspace"
         )
       );
     }
@@ -709,8 +709,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError(
           "user_not_member",
           notActiveUserIds.length === 1
-            ? "User is not a member of the group"
-            : "Users are not members of the group"
+            ? "Cannot remove: user is not a member of the group"
+            : "Cannot remove: users are not members of the group"
         )
       );
     }
