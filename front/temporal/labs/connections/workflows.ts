@@ -1,5 +1,7 @@
 import { proxyActivities } from "@temporalio/workflow";
 
+import { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
+import { launchIncrementalSyncLabsConnectionWorkflow } from "@app/temporal/labs/connections/client";
 import type { ModelId } from "@app/types";
 
 import type * as activities from "./activities";
@@ -7,7 +9,6 @@ import type * as activities from "./activities";
 const {
   fullSyncLabsConnectionActivity,
   incrementalSyncLabsConnectionActivity,
-  startIncrementalSyncActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minutes",
   retry: {
@@ -18,15 +19,21 @@ const {
 export async function fullSyncLabsConnectionWorkflow(
   configurationId: ModelId
 ): Promise<void> {
-  // Run full sync
   await fullSyncLabsConnectionActivity(configurationId);
-
-  // Start incremental sync workflow after full sync completes
-  await startIncrementalSyncActivity(configurationId);
+  const connectionConfiguration =
+    await LabsConnectionsConfigurationResource.fetchByModelId(configurationId);
+  if (connectionConfiguration) {
+    await launchIncrementalSyncLabsConnectionWorkflow(connectionConfiguration);
+  }
 }
 
 export async function incrementalSyncLabsConnectionWorkflow(
   configurationId: ModelId
 ): Promise<void> {
   await incrementalSyncLabsConnectionActivity(configurationId);
+  const connectionConfiguration =
+    await LabsConnectionsConfigurationResource.fetchByModelId(configurationId);
+  if (connectionConfiguration) {
+    await launchIncrementalSyncLabsConnectionWorkflow(connectionConfiguration);
+  }
 }

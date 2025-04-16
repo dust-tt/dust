@@ -6,7 +6,10 @@ import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { CONNECTIONS_QUEUE_NAME } from "@app/temporal/labs/connections/config";
 import { makeLabsConnectionWorkflowId } from "@app/temporal/labs/connections/utils";
-import { syncLabsConnectionWorkflow } from "@app/temporal/labs/connections/workflows";
+import {
+  fullSyncLabsConnectionWorkflow,
+  incrementalSyncLabsConnectionWorkflow,
+} from "@app/temporal/labs/connections/workflows";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -17,11 +20,10 @@ export async function launchLabsConnectionWorkflow(
   const workflowId = makeLabsConnectionWorkflowId(connectionConfiguration);
 
   try {
-    await client.workflow.start(syncLabsConnectionWorkflow, {
+    await client.workflow.start(fullSyncLabsConnectionWorkflow, {
       args: [connectionConfiguration.id],
       taskQueue: CONNECTIONS_QUEUE_NAME,
       workflowId: workflowId,
-      cronSchedule: "*/5 * * * *",
       memo: {
         configurationId: connectionConfiguration.id,
         dataSourceId: connectionConfiguration.dataSourceViewId,
@@ -46,6 +48,37 @@ export async function launchLabsConnectionWorkflow(
   }
 }
 
+export async function launchIncrementalSyncLabsConnectionWorkflow(
+  connectionConfiguration: LabsConnectionsConfigurationResource
+): Promise<Result<string, Error>> {
+  const client = await getTemporalClient();
+  const workflowId = makeLabsConnectionWorkflowId(connectionConfiguration);
+
+  try {
+    await client.workflow.start(incrementalSyncLabsConnectionWorkflow, {
+      args: [connectionConfiguration.id],
+      taskQueue: CONNECTIONS_QUEUE_NAME,
+      workflowId: workflowId,
+    });
+    logger.info(
+      {
+        workflowId,
+      },
+      "Labs connection incremental sync workflow started."
+    );
+    return new Ok(workflowId);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        error: e,
+      },
+      "Labs connection sync workflow failed."
+    );
+    return new Err(e as Error);
+  }
+}
+
 export async function stopLabsConnectionWorkflow(
   connectionConfiguration: LabsConnectionsConfigurationResource,
   setInactive: boolean = true
@@ -54,7 +87,7 @@ export async function stopLabsConnectionWorkflow(
   const workflowId = makeLabsConnectionWorkflowId(connectionConfiguration);
 
   try {
-    const handle: WorkflowHandle<typeof syncLabsConnectionWorkflow> =
+    const handle: WorkflowHandle<typeof fullSyncLabsConnectionWorkflow> =
       client.workflow.getHandle(workflowId);
     try {
       await handle.terminate();
