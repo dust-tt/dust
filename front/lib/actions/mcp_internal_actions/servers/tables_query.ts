@@ -124,7 +124,7 @@ async function fetchAgentTableConfigurations(
         )
       );
     }
-    configurationIds.push(sIdParts.workspaceModelId);
+    configurationIds.push(sIdParts.resourceModelId);
   }
 
   const agentTableConfigurations =
