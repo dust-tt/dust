@@ -4,8 +4,8 @@ import { getHubspotProvider } from "@app/temporal/labs/connections/providers/hub
 import type { LabsConnectionProvider } from "@app/temporal/labs/connections/types";
 import type { ModelId } from "@app/types";
 
-const PROVIDERS: Record<string, () => LabsConnectionProvider> = {
-  hubspot: getHubspotProvider,
+const PROVIDERS: Record<string, LabsConnectionProvider> = {
+  hubspot: getHubspotProvider(),
 };
 
 async function getConfiguration(configurationId: ModelId) {
@@ -25,14 +25,9 @@ async function getConfiguration(configurationId: ModelId) {
     );
   }
 
-  const providerFactory = PROVIDERS[configuration.provider];
-  if (!providerFactory) {
-    throw new Error(`Unknown provider ${configuration.provider}`);
-  }
-
   return {
     configuration,
-    provider: providerFactory(),
+    provider: PROVIDERS[configuration.provider],
   };
 }
 
