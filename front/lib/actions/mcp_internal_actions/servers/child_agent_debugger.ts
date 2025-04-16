@@ -1,8 +1,8 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   CHILD_AGENT_CONFIGURATION_URI_PATTERN,
   ConfigurableToolInputSchemas,
-  INTERNAL_MIME_TYPES,
-} from "@dust-tt/client";
+} from "@app/lib/actions/mcp_internal_actions/tool_input_schemas";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 

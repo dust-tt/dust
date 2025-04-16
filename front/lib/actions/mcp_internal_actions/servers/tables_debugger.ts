@@ -1,7 +1,5 @@
-import {
-  ConfigurableToolInputSchemas,
-  INTERNAL_MIME_TYPES,
-} from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/tool_input_schemas";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
