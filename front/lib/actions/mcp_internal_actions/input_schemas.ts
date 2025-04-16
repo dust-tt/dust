@@ -1,10 +1,16 @@
-import type { InternalConfigurationMimeType } from "@dust-tt/client";
-import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { InternalToolInputMimeType } from "@dust-tt/client";
+import {
+  assertNever,
+  CHILD_AGENT_CONFIGURATION_URI_PATTERN,
+  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
+  INTERNAL_MIME_TYPES,
+  TABLE_CONFIGURATION_URI_PATTERN,
+} from "@dust-tt/client";
+import { ConfigurableToolInputJSONSchemas } from "@dust-tt/client/src/tool_input_schemas";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -23,66 +29,46 @@ import {
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 
-export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
-  /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
-
-export const TABLE_CONFIGURATION_URI_PATTERN =
-  /^table_configuration:\/\/dust\/w\/(\w+)\/table_configurations\/(\w+)$/;
-
-// URI pattern for configuring the agent to use within an action (agent calls agent, sort of Russian doll situation).
-export const CHILD_AGENT_CONFIGURATION_URI_PATTERN =
-  /^agent:\/\/dust\/w\/(\w+)\/agents\/(\w+)$/;
+// TODO(mcp): use the definitions from the client instead of copying them here.
+// Currently the type inference does not work as is.
 
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  */
 export const ConfigurableToolInputSchemas = {
-  [INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE]: z.array(
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]: z.array(
     z.object({
       uri: z.string().regex(DATA_SOURCE_CONFIGURATION_URI_PATTERN),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE),
     })
   ),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.TABLE]: z.array(
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE]: z.array(
     z.object({
       uri: z.string().regex(TABLE_CONFIGURATION_URI_PATTERN),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.TABLE),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE),
     })
   ),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT]: z.object({
     uri: z.string().regex(CHILD_AGENT_CONFIGURATION_URI_PATTERN),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT),
   }),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.STRING]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.STRING]: z.object({
     value: z.string(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.STRING),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.STRING),
   }),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER]: z.object({
     value: z.number(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER),
   }),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN]: z.object({
     value: z.boolean(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN),
   }),
-  // We use a satisfies here to ensure that all the InternalConfigurationMimeType are covered whilst preserving the type
-  // inference in tools definitions (server.tool is templated).
-} as const satisfies Record<InternalConfigurationMimeType, z.ZodSchema>;
+} as const satisfies Record<InternalToolInputMimeType, z.ZodType>;
 
 export type ConfigurableToolInputType = z.infer<
-  (typeof ConfigurableToolInputSchemas)[InternalConfigurationMimeType]
+  (typeof ConfigurableToolInputSchemas)[InternalToolInputMimeType]
 >;
-
-/**
- * Mapping between the mime types we used to identify a configurable resource
- * and the JSON schema resulting from the Zod schema defined above.
- */
-export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
-  Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
-    key,
-    zodToJsonSchema(schema),
-  ])
-) as Record<InternalConfigurationMimeType, JSONSchema>;
 
 /**
  * Defines how we fill the actual inputs of the tool for each mime type.
@@ -95,7 +81,7 @@ export function generateConfiguredInput({
 }: {
   owner: WorkspaceType;
   actionConfiguration: MCPToolConfigurationType;
-  mimeType: InternalConfigurationMimeType;
+  mimeType: InternalToolInputMimeType;
   keyPath: string;
 }): ConfigurableToolInputType {
   assert(
@@ -104,7 +90,7 @@ export function generateConfiguredInput({
   );
 
   switch (mimeType) {
-    case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE:
       return (
         actionConfiguration.dataSources?.map((config) => ({
           uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
@@ -112,7 +98,7 @@ export function generateConfiguredInput({
         })) || []
       );
 
-    case INTERNAL_MIME_TYPES.CONFIGURATION.TABLE:
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE:
       return (
         actionConfiguration.tables?.map((config) => ({
           uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
@@ -120,7 +106,7 @@ export function generateConfiguredInput({
         })) || []
       );
 
-    case INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT: {
       const { childAgentId } = actionConfiguration;
       if (!childAgentId) {
         // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
@@ -134,7 +120,7 @@ export function generateConfiguredInput({
       };
     }
 
-    case INTERNAL_MIME_TYPES.CONFIGURATION.STRING: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
       // For primitive types, we have rendered the key from the path and use it to look up the value.
       const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "string") {
@@ -145,7 +131,7 @@ export function generateConfiguredInput({
       return { value, mimeType };
     }
 
-    case INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER: {
       const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "number") {
         throw new Error(
@@ -155,7 +141,7 @@ export function generateConfiguredInput({
       return { value, mimeType };
     }
 
-    case INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN: {
       const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "boolean") {
         throw new Error(
@@ -179,7 +165,7 @@ export function findPathsToConfiguration({
   mimeType,
 }: {
   mcpServer: MCPServerType;
-  mimeType: InternalConfigurationMimeType;
+  mimeType: InternalToolInputMimeType;
 }): string[] {
   return mcpServer.tools.flatMap((tool) =>
     tool.inputSchema
@@ -192,7 +178,7 @@ export function findPathsToConfiguration({
 }
 
 /**
- * Recursively filters out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION.
+ * Recursively filters out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT.
  * This function handles nested objects and arrays.
  */
 export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
@@ -269,7 +255,7 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
 
 /**
  * Augments the inputs with configuration data from actionConfiguration.
- * For each missing property that has a mimeType matching a value in INTERNAL_MIME_TYPES.CONFIGURATION,
+ * For each missing property that has a mimeType matching a value in INTERNAL_MIME_TYPES.TOOL_INPUT,
  * it adds the corresponding data from actionConfiguration.
  * This function uses Ajv validation errors to identify missing properties.
  */
@@ -324,9 +310,7 @@ export function augmentInputsWithConfiguration({
 
       // If we found a schema and it has a matching MIME type, inject the value
       if (propSchema) {
-        for (const mimeType of Object.values(
-          INTERNAL_MIME_TYPES.CONFIGURATION
-        )) {
+        for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
           if (
             schemasAreEqual(
               propSchema,
@@ -379,34 +363,34 @@ export function getMCPServerRequirements(
   const requiresDataSourceConfiguration =
     findPathsToConfiguration({
       mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
     }).length > 0;
   const requiresTableConfiguration =
     findPathsToConfiguration({
       mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
     }).length > 0;
   const requiresChildAgentConfiguration =
     findPathsToConfiguration({
       mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT,
     }).length > 0;
   const requiredStrings = Object.fromEntries(
     findPathsToConfiguration({
       mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.STRING,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
     }).map((path) => [path, ""])
   );
   const requiredNumbers = Object.fromEntries(
     findPathsToConfiguration({
       mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
     }).map((path) => [path, null])
   );
   const requiredBooleans = Object.fromEntries(
     findPathsToConfiguration({
       mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
     }).map((path) => [path, false])
   );
 

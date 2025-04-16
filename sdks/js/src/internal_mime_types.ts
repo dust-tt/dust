@@ -1,4 +1,4 @@
-import { ConnectorProvider } from "./types";
+import {ConnectorProvider} from "./types";
 
 /**
  * This is a utility type that indicates that we removed all underscores from a string.
@@ -176,24 +176,24 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
 };
 
 // If we get other categories of mimeTypes we'll do the same as above and add a templated variable.
-function generateConfigurableResourcesMimeTypes<T extends Uppercase<string>[]>({
+function generateToolInputMimeTypes<T extends Uppercase<string>[]>({
   resourceTypes,
 }: {
   resourceTypes: T;
 }): {
-  [K in T[number]]: `application/vnd.dust.configuration.${Lowercase<
+  [K in T[number]]: `application/vnd.dust.tool_input.${Lowercase<
     UnderscoreToDash<K>
   >}`;
 } {
   return resourceTypes.reduce(
     (acc, s) => ({
       ...acc,
-      [s]: `application/vnd.dust.configuration.${s
+      [s]: `application/vnd.dust.tool_input.${s
         .replace(/_/g, "-")
         .toLowerCase()}`,
     }),
     {} as {
-      [K in T[number]]: `application/vnd.dust.configuration.${Lowercase<
+      [K in T[number]]: `application/vnd.dust.tool_input.${Lowercase<
         UnderscoreToDash<K>
       >}`;
     }
@@ -201,7 +201,7 @@ function generateConfigurableResourcesMimeTypes<T extends Uppercase<string>[]>({
 }
 
 const TOOL_INPUT_MIME_TYPES = {
-  CONFIGURATION: generateConfigurableResourcesMimeTypes({
+  TOOL_INPUT: generateToolInputMimeTypes({
     resourceTypes: [
       "DATA_SOURCE",
       "TABLE",
@@ -265,8 +265,8 @@ export type SalesforceMimeType =
 export type GongMimeType =
   (typeof INTERNAL_MIME_TYPES.GONG)[keyof typeof INTERNAL_MIME_TYPES.GONG];
 
-export type InternalConfigurationMimeType =
-  (typeof INTERNAL_MIME_TYPES.CONFIGURATION)[keyof typeof INTERNAL_MIME_TYPES.CONFIGURATION];
+export type InternalToolInputMimeType =
+  (typeof INTERNAL_MIME_TYPES.TOOL_INPUT)[keyof typeof INTERNAL_MIME_TYPES.TOOL_INPUT];
 
 export type IncludableInternalMimeType =
   (typeof INCLUDABLE_INTERNAL_MIME_TYPES_VALUES)[number];

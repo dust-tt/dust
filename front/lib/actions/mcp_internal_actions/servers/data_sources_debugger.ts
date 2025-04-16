@@ -1,11 +1,11 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import {
+  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
+  INTERNAL_MIME_TYPES,
+} from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import {
-  ConfigurableToolInputSchemas,
-  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -79,7 +79,7 @@ function createServer(): McpServer {
       query: z.string(),
       dataSources:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
     },
     async ({ dataSources }) => {

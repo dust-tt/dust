@@ -23,26 +23,19 @@ function createServer(): McpServer {
     {
       query: z.string(),
       user: z.object({
-        first_name:
-          ConfigurableToolInputSchemas[
-            INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN
-          ],
-        last_name:
-          ConfigurableToolInputSchemas[
-            INTERNAL_MIME_TYPES.CONFIGURATION.STRING
-          ],
+        name: ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+        ],
         age: ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER
+          INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
         ],
         admin:
-          ConfigurableToolInputSchemas[
-            INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN
-          ],
+          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
       }),
       location:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.STRING],
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING],
       enabled:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN],
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
     },
     async (params) => {
       return {
