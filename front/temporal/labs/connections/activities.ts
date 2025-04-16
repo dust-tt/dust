@@ -1,10 +1,14 @@
 import { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
-import { syncHubspotConnection } from "@app/temporal/labs/connections/utils/hubspot";
+import { launchLabsConnectionWorkflow } from "@app/temporal/labs/connections/client";
+import { getHubspotProvider } from "@app/temporal/labs/connections/providers/hubspot";
+import type { LabsConnectionProvider } from "@app/temporal/labs/connections/types";
 import type { ModelId } from "@app/types";
 
-export async function syncLabsConnectionActivity(
-  configurationId: ModelId
-): Promise<void> {
+const PROVIDERS: Record<string, () => LabsConnectionProvider> = {
+  hubspot: getHubspotProvider,
+};
+
+async function getConfiguration(configurationId: ModelId) {
   const configuration =
     await LabsConnectionsConfigurationResource.fetchByModelId(configurationId);
   if (!configuration) {
@@ -12,7 +16,7 @@ export async function syncLabsConnectionActivity(
   }
 
   if (!configuration.isEnabled) {
-    return;
+    throw new Error(`Configuration ${configurationId} is not enabled`);
   }
 
   if (!configuration.dataSourceViewId) {
@@ -21,11 +25,59 @@ export async function syncLabsConnectionActivity(
     );
   }
 
-  switch (configuration.provider) {
-    case "hubspot":
-      await syncHubspotConnection(configuration);
-      break;
-    default:
-      throw new Error(`Unknown provider ${configuration.provider}`);
+  const providerFactory = PROVIDERS[configuration.provider];
+  if (!providerFactory) {
+    throw new Error(`Unknown provider ${configuration.provider}`);
+  }
+
+  return {
+    configuration,
+    provider: providerFactory(),
+  };
+}
+
+export async function fullSyncLabsConnectionActivity(
+  configurationId: ModelId
+): Promise<void> {
+  const { configuration, provider } = await getConfiguration(configurationId);
+
+  const result = await provider.fullSync(configuration);
+  if (result.isErr()) {
+    throw result.error;
+  }
+}
+
+export async function incrementalSyncLabsConnectionActivity(
+  configurationId: ModelId
+): Promise<void> {
+  const { configuration, provider } = await getConfiguration(configurationId);
+
+  const result = await provider.incrementalSync(
+    configuration,
+    configuration.lastSyncCursor
+  );
+
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  // Update the cursor if sync was successful
+  if (result.value.cursor !== configuration.lastSyncCursor) {
+    await configuration.setLastSyncCursor(result.value.cursor);
+  }
+}
+
+export async function startIncrementalSyncActivity(
+  configurationId: ModelId
+): Promise<void> {
+  const configuration =
+    await LabsConnectionsConfigurationResource.fetchByModelId(configurationId);
+  if (!configuration) {
+    throw new Error(`Configuration ${configurationId} not found`);
+  }
+
+  const result = await launchLabsConnectionWorkflow(configuration);
+  if (result.isErr()) {
+    throw result.error;
   }
 }

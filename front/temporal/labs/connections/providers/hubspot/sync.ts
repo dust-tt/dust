@@ -1,5 +1,4 @@
 import axios from "axios";
-import Bottleneck from "bottleneck";
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -7,328 +6,33 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
+import {
+  formatDate,
+  getAssociatedContacts,
+  getAssociatedDeals,
+  getAssociatedOrders,
+  getAssociatedTickets,
+  getCompanyDetails,
+  getNotes,
+  getRecentlyUpdatedCompanyIds,
+  stripHtmlTags,
+} from "@app/temporal/labs/connections/providers/hubspot/api";
+import type {
+  Company,
+  Contact,
+  Deal,
+  Note,
+  Order,
+  Ticket,
+} from "@app/temporal/labs/connections/providers/hubspot/types";
+import {
+  markSyncCompleted,
+  markSyncFailed,
+  markSyncStarted,
+} from "@app/temporal/labs/connections/utils";
 import type { ModelId, Result } from "@app/types";
 import { Err, isHubspotCredentials, OAuthAPI, Ok } from "@app/types";
 import { CoreAPI, dustManagedCredentials } from "@app/types";
-import { SyncStatus } from "@app/types";
-
-interface Company {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-  archived: boolean;
-}
-
-interface Contact {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-  archived: boolean;
-}
-
-interface Deal {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-  archived: boolean;
-}
-
-interface Ticket {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-}
-
-interface Order {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-}
-
-interface Note {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-}
-
-const hubspotLimiter = new Bottleneck({
-  maxConcurrent: 1,
-  minTime: 100, // 1000ms / 10 requests per second
-});
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toISOString().split("T")[0];
-}
-
-function stripHtmlTags(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim();
-}
-
-async function getRecentlyUpdatedCompanyIds(
-  hubspotApi: ReturnType<typeof axios.create>
-): Promise<string[]> {
-  try {
-    const response = await hubspotLimiter.schedule(() =>
-      hubspotApi.post("/crm/v3/objects/companies/search", {
-        filterGroups: [
-          {
-            filters: [
-              {
-                propertyName: "hs_lastmodifieddate",
-                operator: "GTE",
-                value: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-              },
-            ],
-          },
-        ],
-        properties: ["hs_object_id"],
-        limit: 100,
-      })
-    );
-    return response.data.results.map((company: Company) => company.id);
-  } catch (error) {
-    logger.error({ error }, "Error fetching recently updated company IDs");
-    return [];
-  }
-}
-
-async function getCompanyDetails(
-  hubspotApi: ReturnType<typeof axios.create>,
-  companyId: string
-): Promise<Company | null> {
-  try {
-    const response = await hubspotLimiter.schedule(() =>
-      hubspotApi.get(`/crm/v3/objects/companies/${companyId}`, {
-        params: {
-          properties: [
-            "name",
-            "industry",
-            "annualrevenue",
-            "numberofemployees",
-            "phone",
-            "website",
-            "description",
-            "hs_lead_status",
-            "createdate",
-            "hs_lastmodifieddate",
-            "lifecyclestage",
-            "hubspot_owner_id",
-            "type",
-            "city",
-            "state",
-            "country",
-            "zip",
-            "address",
-            "facebook_company_page",
-            "linkedin_company_page",
-            "twitterhandle",
-            "hs_analytics_source",
-            "notes_last_updated",
-            "hs_pipeline",
-          ],
-        },
-      })
-    );
-    return response.data;
-  } catch (error) {
-    logger.error({ error, companyId }, "Error fetching company details");
-    return null;
-  }
-}
-
-async function getAssociatedContacts(
-  hubspotApi: ReturnType<typeof axios.create>,
-  companyId: string
-): Promise<Contact[]> {
-  try {
-    const response = await hubspotLimiter.schedule(() =>
-      hubspotApi.get(
-        `/crm/v3/objects/companies/${companyId}/associations/contacts`,
-        {
-          params: { limit: 100 },
-        }
-      )
-    );
-    const contactIds = response.data.results.map(
-      (result: { id: string }) => result.id
-    );
-
-    if (contactIds.length === 0) {
-      return [];
-    }
-
-    const contactsResponse = await hubspotLimiter.schedule(() =>
-      hubspotApi.post("/crm/v3/objects/contacts/batch/read", {
-        properties: ["firstname", "lastname", "email", "phone", "jobtitle"],
-        inputs: contactIds.map((id: string) => ({ id })),
-      })
-    );
-
-    return contactsResponse.data.results;
-  } catch (error) {
-    logger.error({ error, companyId }, "Error fetching associated contacts");
-    return [];
-  }
-}
-
-async function getAssociatedDeals(
-  hubspotApi: ReturnType<typeof axios.create>,
-  companyId: string
-): Promise<Deal[]> {
-  try {
-    const response = await hubspotLimiter.schedule(() =>
-      hubspotApi.get(
-        `/crm/v3/objects/companies/${companyId}/associations/deals`,
-        {
-          params: { limit: 100 },
-        }
-      )
-    );
-    const dealIds = response.data.results.map(
-      (result: { id: string }) => result.id
-    );
-
-    if (dealIds.length === 0) {
-      return [];
-    }
-
-    const dealsResponse = await hubspotLimiter.schedule(() =>
-      hubspotApi.post("/crm/v3/objects/deals/batch/read", {
-        properties: ["dealname", "dealstage", "amount", "closedate"],
-        inputs: dealIds.map((id: string) => ({ id })),
-      })
-    );
-
-    return dealsResponse.data.results;
-  } catch (error) {
-    logger.error({ error, companyId }, "Error fetching associated deals");
-    return [];
-  }
-}
-
-async function getAssociatedTickets(
-  hubspotApi: ReturnType<typeof axios.create>,
-  companyId: string
-): Promise<Ticket[]> {
-  try {
-    const response = await hubspotLimiter.schedule(() =>
-      hubspotApi.get(
-        `/crm/v3/objects/companies/${companyId}/associations/tickets`,
-        {
-          params: { limit: 100 },
-        }
-      )
-    );
-    const ticketIds = response.data.results.map(
-      (result: { id: string }) => result.id
-    );
-
-    if (ticketIds.length === 0) {
-      return [];
-    }
-
-    const ticketsResponse = await hubspotLimiter.schedule(() =>
-      hubspotApi.post("/crm/v3/objects/tickets/batch/read", {
-        properties: [
-          "subject",
-          "content",
-          "hs_pipeline_stage",
-          "hs_ticket_priority",
-          "createdate",
-        ],
-        inputs: ticketIds.map((id: string) => ({ id })),
-      })
-    );
-
-    return ticketsResponse.data.results;
-  } catch (error) {
-    logger.error({ error, companyId }, "Error fetching associated tickets");
-    return [];
-  }
-}
-
-async function getAssociatedOrders(
-  hubspotApi: ReturnType<typeof axios.create>,
-  companyId: string
-): Promise<Order[]> {
-  try {
-    const response = await hubspotLimiter.schedule(() =>
-      hubspotApi.get(
-        `/crm/v3/objects/companies/${companyId}/associations/line_items`,
-        {
-          params: { limit: 100 },
-        }
-      )
-    );
-    const orderIds = response.data.results.map(
-      (result: { id: string }) => result.id
-    );
-
-    if (orderIds.length === 0) {
-      return [];
-    }
-
-    const ordersResponse = await hubspotLimiter.schedule(() =>
-      hubspotApi.post("/crm/v3/objects/line_items/batch/read", {
-        properties: ["name", "quantity", "price", "amount", "createdate"],
-        inputs: orderIds.map((id: string) => ({ id })),
-      })
-    );
-
-    return ordersResponse.data.results;
-  } catch (error) {
-    logger.error({ error, companyId }, "Error fetching associated orders");
-    return [];
-  }
-}
-
-async function getNotes(
-  hubspotApi: ReturnType<typeof axios.create>,
-  companyId: string
-): Promise<Note[]> {
-  try {
-    const response = await hubspotLimiter.schedule(() =>
-      hubspotApi.get(
-        `/crm/v3/objects/companies/${companyId}/associations/notes`,
-        {
-          params: { limit: 100 },
-        }
-      )
-    );
-    const noteIds = response.data.results.map(
-      (result: { id: string }) => result.id
-    );
-
-    if (noteIds.length === 0) {
-      return [];
-    }
-
-    const notesResponse = await hubspotLimiter.schedule(() =>
-      hubspotApi.post("/crm/v3/objects/notes/batch/read", {
-        properties: ["hs_note_body", "hs_createdate"],
-        inputs: noteIds.map((id: string) => ({ id })),
-      })
-    );
-
-    return notesResponse.data.results;
-  } catch (error) {
-    logger.error({ error, companyId }, "Error fetching notes");
-    return [];
-  }
-}
 
 async function upsertToDustDatasource(
   coreAPI: CoreAPI,
@@ -534,24 +238,22 @@ ${props.notes_last_updated ? `Last Note Updated: ${props.notes_last_updated}` : 
 }
 
 export async function syncHubspotConnection(
-  configuration: LabsConnectionsConfigurationResource
+  configuration: LabsConnectionsConfigurationResource,
+  cursor: string | null = null
 ): Promise<Result<void, Error>> {
+  const isFullSync = cursor === null;
   try {
-    await configuration.setSyncStatus(SyncStatus.IN_PROGRESS);
-    await configuration.setLastSyncStartedAt(new Date());
-    await configuration.setLastSyncError(null);
+    await markSyncStarted(configuration);
 
     const credentialId = configuration.credentialId;
     if (!credentialId) {
-      await configuration.setSyncStatus(SyncStatus.FAILED);
-      await configuration.setLastSyncError("No credentials found");
+      await markSyncFailed(configuration, "No credentials found");
       return new Err(new Error("No credentials found"));
     }
 
     const dataSourceViewId = configuration.dataSourceViewId;
     if (!dataSourceViewId) {
-      await configuration.setSyncStatus(SyncStatus.FAILED);
-      await configuration.setLastSyncError("No data source view found");
+      await markSyncFailed(configuration, "No data source view found");
       return new Err(new Error("No data source view found"));
     }
 
@@ -564,16 +266,14 @@ export async function syncHubspotConnection(
     if (credentialsRes.isErr()) {
       const errorMsg = "Error fetching credentials from OAuth API";
       logger.error({ error: credentialsRes.error }, errorMsg);
-      await configuration.setSyncStatus(SyncStatus.FAILED);
-      await configuration.setLastSyncError(errorMsg);
+      await markSyncFailed(configuration, errorMsg);
       return new Err(new Error("Failed to fetch credentials"));
     }
 
     if (!isHubspotCredentials(credentialsRes.value.credential.content)) {
       const errorMsg =
         "Invalid credentials type - expected hubspot credentials";
-      await configuration.setSyncStatus(SyncStatus.FAILED);
-      await configuration.setLastSyncError(errorMsg);
+      await markSyncFailed(configuration, errorMsg);
       return new Err(new Error(errorMsg));
     }
 
@@ -589,8 +289,21 @@ export async function syncHubspotConnection(
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-    const companyIds = await getRecentlyUpdatedCompanyIds(hubspotApi);
-    logger.info({ count: companyIds.length }, "Found companies with updates");
+    // For incremental sync, use the cursor (last sync timestamp) or default to 24h ago
+    // For full sync, pass null to get all companies
+    const since = isFullSync
+      ? null
+      : cursor
+        ? new Date(cursor)
+        : new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const companyIds = await getRecentlyUpdatedCompanyIds({
+      accessToken: credentials.accessToken,
+      since,
+    });
+    logger.info(
+      { count: companyIds.length, isFullSync, since },
+      "Found companies to sync"
+    );
 
     try {
       for (const companyId of companyIds) {
@@ -617,22 +330,18 @@ export async function syncHubspotConnection(
         }
       }
 
-      // Set sync status to COMPLETED and record completion time on success
-      await configuration.setSyncStatus(SyncStatus.COMPLETED);
-      await configuration.setLastSyncCompletedAt(new Date());
+      await markSyncCompleted(configuration);
       return new Ok(undefined);
     } catch (error) {
       const errorMsg = `Error during sync: ${error instanceof Error ? error.message : String(error)}`;
       logger.error({ error }, errorMsg);
-      await configuration.setSyncStatus(SyncStatus.FAILED);
-      await configuration.setLastSyncError(errorMsg);
+      await markSyncFailed(configuration, errorMsg);
       return new Err(error as Error);
     }
   } catch (error) {
     const errorMsg = `Unexpected error during sync: ${error instanceof Error ? error.message : String(error)}`;
     logger.error({ error }, errorMsg);
-    await configuration.setSyncStatus(SyncStatus.FAILED);
-    await configuration.setLastSyncError(errorMsg);
+    await markSyncFailed(configuration, errorMsg);
     return new Err(error as Error);
   }
 }
