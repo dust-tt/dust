@@ -43,7 +43,9 @@ import type {
   AgentMessageType,
   ConversationType,
   Result,
+  SupportedFileContentType,
 } from "@app/types";
+import { FILE_FORMATS } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
@@ -81,10 +83,39 @@ const EmbeddedResourceSchema = z.object({
   resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema]),
 });
 
+const ActionGeneratedFileSchema = z.object({
+  type: z.literal("resource"),
+  resource: z.object({
+    uri: z.string(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE),
+    fileId: z.string(),
+    title: z.string(),
+    contentType: z.enum(
+      Object.keys(FILE_FORMATS) as [
+        SupportedFileContentType,
+        ...SupportedFileContentType[],
+      ]
+    ),
+    snippet: z.string().nullable(),
+  }),
+});
+
+export type ActionGeneratedFile = z.infer<typeof ActionGeneratedFileSchema>;
+
+export function isActionGeneratedFile(
+  content: MCPToolResultContent
+): content is ActionGeneratedFile {
+  return (
+    content.type === "resource" &&
+    content.resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE
+  );
+}
+
 const MCPToolResultContentSchema = z.union([
   TextContentSchema,
   ImageContentSchema,
   EmbeddedResourceSchema,
+  ActionGeneratedFileSchema,
 ]);
 
 export type MCPToolResultContent = z.infer<typeof MCPToolResultContentSchema>;
