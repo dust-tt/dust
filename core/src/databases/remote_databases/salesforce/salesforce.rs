@@ -686,14 +686,11 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
         self.execute_query(&processed_query.soql).await
     }
 
-    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>> {
+    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>> {
         let schemas = try_join_all(opaque_ids.iter().map(|opaque_id| async move {
             match self.describe_sobject(opaque_id).await {
-                Ok(schema) => Ok(schema),
-                Err(e) => Err(QueryDatabaseError::GenericError(anyhow!(
-                    "Error describing object: {}",
-                    e
-                ))),
+                Ok(schema) => Ok::<Option<TableSchema>, QueryDatabaseError>(Some(schema)),
+                Err(_) => Ok::<Option<TableSchema>, QueryDatabaseError>(None),
             }
         }))
         .await?;
