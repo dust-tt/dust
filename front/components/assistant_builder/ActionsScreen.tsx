@@ -90,6 +90,7 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -1499,6 +1500,24 @@ function Capabilities({
     builderState.actions,
   ]);
 
+  // Users should see the old web Capabilities only if
+  // their agents has it selected in the past or
+  // if they don't have mcp_actions activated
+  const shouldShowOldWebCapabilities = useMemo(() => {
+    // this is to catch any changes in the name
+    const webtoolsV2ServerName: InternalMCPServerNameType =
+      "web_search_&_browse_v2";
+
+    const webtoolsServer = mcpServerViews.find(
+      (view) => view.server.name === webtoolsV2ServerName
+    );
+    if (webtoolsServer != null) {
+      return isWebNavigationEnabled;
+    }
+
+    return true;
+  }, [isWebNavigationEnabled, mcpServerViews]);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1514,27 +1533,29 @@ function Capabilities({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <Capability
-          name="Web search & browse"
-          description="Agent can search (Google) and retrieve information from specific websites."
-          enabled={isWebNavigationEnabled}
-          onEnable={() => {
-            setEdited(true);
-            const defaultWebNavigationAction =
-              getDefaultActionConfiguration("WEB_NAVIGATION");
-            assert(defaultWebNavigationAction);
-            setAction({
-              type: "insert",
-              action: defaultWebNavigationAction,
-            });
-          }}
-          onDisable={() => {
-            const defaultWebNavigationAction =
-              getDefaultActionConfiguration("WEB_NAVIGATION");
-            assert(defaultWebNavigationAction);
-            deleteAction(defaultWebNavigationAction.name);
-          }}
-        />
+        {shouldShowOldWebCapabilities && (
+          <Capability
+            name="Web search & browse"
+            description="Agent can search (Google) and retrieve information from specific websites."
+            enabled={isWebNavigationEnabled}
+            onEnable={() => {
+              setEdited(true);
+              const defaultWebNavigationAction =
+                getDefaultActionConfiguration("WEB_NAVIGATION");
+              assert(defaultWebNavigationAction);
+              setAction({
+                type: "insert",
+                action: defaultWebNavigationAction,
+              });
+            }}
+            onDisable={() => {
+              const defaultWebNavigationAction =
+                getDefaultActionConfiguration("WEB_NAVIGATION");
+              assert(defaultWebNavigationAction);
+              deleteAction(defaultWebNavigationAction.name);
+            }}
+          />
+        )}
 
         <Capability
           name="Data visualization"
