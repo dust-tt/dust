@@ -702,7 +702,7 @@ impl OpenAILLM {
             "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
             "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
             _ => {
-                if self.id.starts_with("gpt-4o-") {
+                if self.id.starts_with("gpt-4o-") || self.id.starts_with("gpt-4.1") {
                     o200k_base_singleton()
                 } else if self.id.starts_with("gpt-3.5-turbo") || self.id.starts_with("gpt-4") {
                     cl100k_base_singleton()
@@ -729,6 +729,9 @@ impl OpenAILLM {
 
         // gpt-4*
         if model_id.starts_with("gpt-4") {
+            if model_id.starts_with("gpt-4.1") {
+                return 1000000;
+            }
             if model_id.starts_with("gpt-4-32k") {
                 return 32768;
             }
