@@ -7,6 +7,7 @@ import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetMCPServersResponseBody } from "@app/pages/api/w/[wId]/mcp";
+import type { GetMCPServerViewsListResponseBody } from "@app/pages/api/w/[wId]/mcp/views";
 import type { GetMCPServerViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
 import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -237,4 +238,23 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
   );
 
   return { removeFromSpace: deleteView };
+}
+
+// this is a post request to get the mcp server views from the spaces
+export function useMCPServerViewsFromSpaces(
+  owner: LightWorkspaceType,
+  spaces: SpaceType[]
+) {
+  const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
+  const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaces.map((s) => s.sId).join(",")}`;
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled: !spaces.length,
+  });
+
+  return {
+    serverViews: data?.serverViews,
+    isLoading: !error && !data && !spaces.length,
+    isError: error,
+    mutateServerViews: mutate,
+  };
 }
