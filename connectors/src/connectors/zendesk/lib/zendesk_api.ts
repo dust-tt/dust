@@ -204,8 +204,8 @@ export async function listZendeskBrands({
         accessToken,
       });
       brands.push(...response.brands);
-      hasMore = response.meta.has_more;
-      url = response.links.next;
+      hasMore = response.next_page !== null && response.articles.length !== 0;
+      url = response.next_page;
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
         return brands;
