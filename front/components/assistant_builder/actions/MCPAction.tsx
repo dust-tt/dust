@@ -11,7 +11,7 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schema_parsing";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   DataSourceViewSelectionConfigurations,

@@ -1,7 +1,6 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
-import type { SVGProps } from "react";
-import type React from "react";
+import type React, { SVGProps } from "react";
 
 import {
   DEFAULT_MCP_ACTION_NAME,
@@ -13,7 +12,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schema_parsing";
 import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
