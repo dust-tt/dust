@@ -1,9 +1,4 @@
-import {
-  Button,
-  ConfettiBackground,
-  Page,
-  SparklesIcon,
-} from "@dust-tt/sparkle";
+import { Button, ConfettiBackground, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef } from "react";
