@@ -58,15 +58,11 @@ import {
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  generateRandomModelSId,
-  getResourceIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import type {
@@ -772,7 +768,7 @@ export async function createAgentConfiguration(
     requestedGroupIds: number[][];
     tags: TagType[];
   },
-  t?: Transaction
+  transaction?: Transaction
 ): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -906,19 +902,11 @@ export async function createAgentConfiguration(
         );
       }
 
-      if (created) {
-        await GroupResource.makeNewAgentEditorsGroup(
-          auth,
-          agentConfigurationInstance,
-          { transaction: t }
-        );
-      }
-
       return agentConfigurationInstance;
     };
 
-    const agent = await (t
-      ? performCreation(t)
+    const agent = await (transaction
+      ? performCreation(transaction)
       : frontSequelize.transaction(performCreation));
 
     /*
