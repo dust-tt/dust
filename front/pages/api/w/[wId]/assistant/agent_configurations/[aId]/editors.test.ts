@@ -1,4 +1,5 @@
 import type { RequestMethod } from "node-mocks-http";
+import type { Transaction } from "sequelize";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -6,7 +7,7 @@ import {
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator } from "@app/lib/auth";
-import { UserResource } from "@app/lib/resources/user_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -19,7 +20,6 @@ import type {
 } from "@app/types";
 
 import handler from "./editors";
-import { Transaction } from "sequelize";
 
 // Mock this function
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
