@@ -308,10 +308,15 @@ export async function tryListMCPTools(
   // Discover all the tools exposed by all the mcp servers available.
   const configurations = await Promise.all(
     mcpServerActions.map(async (action) => {
-      const tools = await listMCPServerTools(auth, action, {
-        conversationId,
-        messageId,
-      });
+      let tools: MCPToolWithStakeLevelType[] = [];
+      try {
+        tools = await listMCPServerTools(auth, action, {
+          conversationId,
+          messageId,
+        });
+      } catch (error) {
+        return [];
+      }
 
       const toolConfigurations = makeMCPToolConfigurations({
         config: action,
