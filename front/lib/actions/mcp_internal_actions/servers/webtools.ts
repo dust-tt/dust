@@ -10,7 +10,7 @@ import type { OAuthProvider } from "@app/types";
 
 export const provider: OAuthProvider = "google_drive" as const;
 export const serverInfo: MCPServerDefinitionType = {
-  name: "web_search_&_browse",
+  name: "web_search_&_browse_v2",
   version: "1.0.0",
   description:
     "Agent can search (Google) and retrieve information from specific websites.",

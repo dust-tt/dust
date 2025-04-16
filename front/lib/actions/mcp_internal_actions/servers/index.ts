@@ -40,7 +40,7 @@ export function getInternalMCPServer(
       return askAgentServer();
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
-    case "web_search_&_browse":
+    case "web_search_&_browse_v2":
       return webtoolsServer();
     default:
       assertNever(internalMCPServerName);
