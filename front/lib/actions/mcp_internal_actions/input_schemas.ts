@@ -23,6 +23,9 @@ import {
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 
+// TODO(mcp): use the definitions from the client instead of copying them here.
+// Currently the type inference does not work as is.
+
 export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
   /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
 
