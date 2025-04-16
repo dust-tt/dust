@@ -6,7 +6,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { LabsConnectionsConfigurationModel } from "@app/lib/resources/storage/models/labs_connections";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { ModelId, Result, SyncStatus } from "@app/types";
+import type { Result, SyncStatus } from "@app/types";
 import type { LabsConnectionType } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -43,19 +43,6 @@ export class LabsConnectionsConfigurationResource extends BaseResource<LabsConne
       LabsConnectionsConfigurationModel,
       configuration.get()
     );
-  }
-
-  static async fetchByModelId(
-    id: ModelId
-  ): Promise<LabsConnectionsConfigurationResource | null> {
-    const configuration = await LabsConnectionsConfigurationModel.findByPk(id);
-
-    return configuration
-      ? new LabsConnectionsConfigurationResource(
-          LabsConnectionsConfigurationModel,
-          configuration.get()
-        )
-      : null;
   }
 
   static async findByUserAndWorkspace({

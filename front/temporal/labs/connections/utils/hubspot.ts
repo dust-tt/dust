@@ -495,8 +495,8 @@ ${props.notes_last_updated ? `Last Note Updated: ${props.notes_last_updated}` : 
     }
 
     const upsertRes = await coreAPI.upsertDataSourceDocument({
-      projectId: workspaceId,
-      dataSourceId: dataSource.sId,
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
       documentId: documentId,
       tags: ["hubspot", "company"],
       parentId: null,
@@ -510,26 +510,26 @@ ${props.notes_last_updated ? `Last Note Updated: ${props.notes_last_updated}` : 
       },
       credentials: dustManagedCredentials(),
       lightDocumentOutput: true,
-      title: `Company ${props.name || company.id}`,
+      title: `${props.name || company.id}`,
       mimeType: "text/plain",
     });
 
     if (upsertRes.isErr()) {
       logger.error(
         { error: upsertRes.error, companyId: company.id },
-        "Error upserting company to Dust datasource"
+        `Error upserting company ${company.properties.name} (${company.id}) to Dust datasource`
       );
       return;
     }
 
     logger.info(
       { companyId: company.id },
-      "Upserted company to Dust datasource"
+      `Upserted company ${company.properties.name} (${company.id}) to Dust datasource (${props.name})`
     );
   } catch (error) {
     logger.error(
       { error, companyId: company.id },
-      "Error upserting company to Dust datasource"
+      `Error upserting company ${company.properties.name} (${company.id}) to Dust datasource`
     );
   }
 }
@@ -594,7 +594,7 @@ export async function syncHubspotConnection(
       await upsertToDustDatasource(
         coreAPI,
         configuration.workspaceId.toString(),
-        dataSourceViewId.toString(),
+        dataSourceViewId,
         company,
         contacts,
         deals,
