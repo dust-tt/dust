@@ -2,17 +2,11 @@ import { Avatar, DataTable, Input, Page, Spinner } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { SearchIcon } from "lucide-react";
-import type {
-  FunctionComponentElement,
-  SVGProps} from "react";
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import type { FunctionComponentElement, SVGProps } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { getVisual } from "@app/lib/actions/mcp_icons";
-import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
+import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_server_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteMetadata } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types";
@@ -36,10 +30,8 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { spaces } = useSpaces({ workspaceId: owner.sId });
-  const { serverViews, isMCPServerViewsLoading } = useMCPServerViews({
-    owner,
-    space: spaces[0],
-  });
+  const { serverViews, isLoading: isMCPServerViewsLoading } =
+    useMCPServerViewsFromSpaces(owner, spaces);
 
   const { deleteMetadata } = useDeleteMetadata("toolsValidations");
 
