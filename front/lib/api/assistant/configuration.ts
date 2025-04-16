@@ -1137,7 +1137,7 @@ export async function createAgentActionConfiguration(
               ? action.relativeTimeFrame.unit
               : null,
             agentConfigurationId: agentConfiguration.id,
-            schema: action.schema,
+            jsonSchema: action.schema,
             name: action.name,
             description: action.description,
             workspaceId: owner.id,

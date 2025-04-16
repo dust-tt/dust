@@ -189,10 +189,7 @@ export function throwIfInvalidAgentConfiguration(
 ) {
   configuration.actions.forEach((action) => {
     if (isProcessConfiguration(action)) {
-      if (
-        action.relativeTimeFrame === "auto" ||
-        action.relativeTimeFrame === "none"
-      ) {
+      if (action.relativeTimeFrame === "none") {
         /** Should never happen as not permitted for now. */
         throw new Error(
           "Invalid configuration: process must have a definite time frame"

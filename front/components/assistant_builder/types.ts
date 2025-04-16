@@ -108,11 +108,11 @@ export type AssistantBuilderTableConfiguration =
 // Process configuration
 
 export type AssistantBuilderProcessConfiguration = {
-  timeFrame: AssistantBuilderTimeFrame;
+  timeFrame?: AssistantBuilderTimeFrame | null;
 } & {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   tagsFilter: AssistantBuilderTagsFilter | null;
-  schema: ProcessSchemaPropertyType[];
+  schema: string | null;
 };
 
 // Websearch configuration (no configuration)
@@ -330,12 +330,9 @@ export function getDefaultProcessActionConfiguration() {
     type: "PROCESS",
     configuration: {
       dataSourceConfigurations: {},
-      timeFrame: {
-        value: 1,
-        unit: "day",
-      },
+      timeFrame: null,
       tagsFilter: null,
-      schema: [],
+      schema: null,
     } as AssistantBuilderProcessConfiguration,
     name: DEFAULT_PROCESS_ACTION_NAME,
     description: "",

@@ -243,7 +243,9 @@ export function AdvancedSettings({
                   style={{
                     fontSize: 13,
                     fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",              
+                      overflowY: "auto",
+                      height: "400px",
                   }}
                   language="json"
                 />

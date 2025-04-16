@@ -874,7 +874,7 @@ function ActionCard({
             />
           </div>
         ) : (
-          <div className="w-full truncate text-muted-foreground dark:text-muted-foreground-night">
+          <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
             {actionError ? (
               <span className="text-warning-500">{actionError}</span>
             ) : (

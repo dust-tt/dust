@@ -1,9 +1,10 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type {
-  ProcessActionOutputsType,
-  ProcessSchemaPropertyType,
+import {
+  renderSchemaPropertiesAsJSONSchema,
+  type ProcessActionOutputsType,
+  type ProcessSchemaPropertyType,
 } from "@app/lib/actions/process";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
@@ -23,7 +24,10 @@ export class AgentProcessConfiguration extends WorkspaceAwareModel<AgentProcessC
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
-  declare schema: ProcessSchemaPropertyType[];
+  // Maintained for backward compatibility for old version of the process action
+  // All saved process actions will used jsonSchema from now on
+  declare schema: ProcessSchemaPropertyType[] | null;
+  declare jsonSchema: Record<string, any> | null;
 
   declare name: string | null;
   declare description: string | null;
@@ -60,7 +64,20 @@ AgentProcessConfiguration.init(
     },
     schema: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: true,
+    },
+    jsonSchema: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      get() {
+        const rawSchema = this.getDataValue("schema");
+        const jsonSchema = this.getDataValue("jsonSchema");
+
+        return jsonSchema || (rawSchema
+          ? renderSchemaPropertiesAsJSONSchema(rawSchema || [])
+          : null);
+
+      },
     },
     name: {
       type: DataTypes.STRING,
@@ -123,7 +140,10 @@ export class AgentProcessAction extends WorkspaceAwareModel<AgentProcessAction> 
   declare tagsIn: string[] | null;
   declare tagsNot: string[] | null;
 
-  declare schema: ProcessSchemaPropertyType[];
+  // Maintained for backward compatibility for old version of the process action
+  // All saved process actions will used jsonSchema from now on
+  declare schema: ProcessSchemaPropertyType[] | null;
+  declare jsonSchema: Record<string, any> | null;
   declare outputs: ProcessActionOutputsType | null;
   declare functionCallId: string | null;
   declare functionCallName: string | null;
@@ -170,7 +190,19 @@ AgentProcessAction.init(
     },
     schema: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: true,
+      defaultValue: null
+    },
+    jsonSchema: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      get() {
+        const rawSchema = this.getDataValue("schema");
+        const jsonSchema = this.getDataValue("jsonSchema");
+        return jsonSchema || rawSchema
+          ? renderSchemaPropertiesAsJSONSchema(rawSchema || [])
+          : null;
+      },
     },
     outputs: {
       type: DataTypes.JSONB,
