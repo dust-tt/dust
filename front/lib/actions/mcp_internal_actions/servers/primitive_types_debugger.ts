@@ -23,10 +23,9 @@ function createServer(): McpServer {
     {
       query: z.string(),
       user: z.object({
-        first_name:
-          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
-        last_name:
-          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING],
+        name: ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+        ],
         age: ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
         ],
