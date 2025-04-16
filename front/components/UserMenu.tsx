@@ -26,18 +26,14 @@ import { useMemo } from "react";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  UserType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 export function UserMenu({
   user,
   owner,
 }: {
-  user: UserType | UserTypeWithWorkspaces;
+  user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
 }) {
   const router = useRouter();
@@ -203,29 +199,31 @@ export function UserMenu({
           label="Sign&nbsp;out"
         />
 
-        <DropdownMenuLabel label="Workspaces" />
         {hasMultipleWorkspaces && (
-          <DropdownMenuRadioGroup value={owner.name}>
-            {"workspaces" in user &&
-              user.workspaces.map((w) => (
-                <DropdownMenuRadioItem
-                  key={w.sId}
-                  value={w.name}
-                  onClick={async () => {
-                    await setNavigationSelection({
-                      lastWorkspaceId: w.sId,
-                    });
-                    if (w.id !== owner.id) {
-                      await router
-                        .push(`/w/${w.sId}/assistant/new`)
-                        .then(() => router.reload());
-                    }
-                  }}
-                >
-                  {w.name}
-                </DropdownMenuRadioItem>
-              ))}
-          </DropdownMenuRadioGroup>
+          <>
+            <DropdownMenuLabel label="Workspaces" />
+            <DropdownMenuRadioGroup value={owner.name}>
+              {"workspaces" in user &&
+                user.workspaces.map((w) => (
+                  <DropdownMenuRadioItem
+                    key={w.sId}
+                    value={w.name}
+                    onClick={async () => {
+                      await setNavigationSelection({
+                        lastWorkspaceId: w.sId,
+                      });
+                      if (w.id !== owner.id) {
+                        await router
+                          .push(`/w/${w.sId}/assistant/new`)
+                          .then(() => router.reload());
+                      }
+                    }}
+                  >
+                    {w.name}
+                  </DropdownMenuRadioItem>
+                ))}
+            </DropdownMenuRadioGroup>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
