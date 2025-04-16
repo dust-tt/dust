@@ -19,7 +19,7 @@ import type {
   Result,
   TrackerIdWorkspaceId,
 } from "@app/types";
-import { CoreAPI, Err, GPT_4_1_MODEL_CONFIG, Ok } from "@app/types";
+import { CoreAPI, Err, GPT_4O_MODEL_CONFIG, Ok } from "@app/types";
 import { withRetries } from "@app/types";
 
 // If a diff is less than this number of characters, we don't run the tracker.
@@ -37,7 +37,7 @@ const TRACKER_MAINTAINED_SCOPE_MAX_TOP_K = 8;
 // TODO(@fontanierh): find a way to ensure this remains true.
 const CHUNK_SIZE = 512;
 
-const TRACKER_SCORE_DOCS_MODEL_CONFIG = GPT_4_1_MODEL_CONFIG;
+const TRACKER_SCORE_DOCS_MODEL_CONFIG = GPT_4O_MODEL_CONFIG;
 
 export async function getDebounceMsActivity(
   dataSourceConnectorProvider: ConnectorProvider | null

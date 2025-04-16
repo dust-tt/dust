@@ -327,7 +327,7 @@ export const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT 4.1 mini model (1M context).",
   shortDescription: "OpenAI's most advanced mini model.",
   isLegacy: false,
-  generationTokensCount: 2048,
+  generationTokensCount: 32_000,
   supportsVision: true,
   supportsResponseFormat: true,
 };
@@ -342,7 +342,7 @@ export const GPT_4_1_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT 4.1 model (1M context).",
   shortDescription: "OpenAI's most advanced model.",
   isLegacy: false,
-  generationTokensCount: 2048,
+  generationTokensCount: 32_000,
   supportsVision: true,
   supportsResponseFormat: true,
 };
