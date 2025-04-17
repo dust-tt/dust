@@ -1,3 +1,4 @@
+import _ from "lodash";
 import type {
   Attributes,
   CreationAttributes,
@@ -134,24 +135,23 @@ export class TagResource extends BaseResource<TagModel> {
   static async listForAgents(
     auth: Authenticator,
     agentConfigurationIds: number[]
-  ): Promise<Map<number, TagResource[]>> {
+  ): Promise<Record<number, TagResource[]>> {
     const tagAgents = await TagAgentModel.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         agentConfigurationId: agentConfigurationIds,
       },
     });
     const tags = await this.baseFetch(auth, {
       where: {
-        id: tagAgents.map((t) => t.tagId),
+        id: [...new Set(tagAgents.map((t) => t.tagId))],
       },
     });
-    return tagAgents.reduce((acc, tagAgent) => {
-      acc.set(tagAgent.agentConfigurationId, [
-        ...(acc.get(tagAgent.agentConfigurationId) ?? []),
-        tags.find((t) => t.id === tagAgent.tagId)!,
-      ]);
-      return acc;
-    }, new Map<number, TagResource[]>());
+
+    const tagsMap = _.keyBy(tags, "id");
+    return _.mapValues(_.groupBy(tagAgents, "agentConfigurationId"), (group) =>
+      group.map((tagAgent) => tagsMap[tagAgent.tagId])
+    );
   }
 
   async delete(

@@ -568,7 +568,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       model.reasoningEffort = agent.reasoningEffort;
     }
 
-    const tags: TagResource[] = tagsPerAgent.get(agent.id) ?? [];
+    const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
