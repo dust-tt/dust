@@ -72,7 +72,9 @@ export function ConfirmDialog({
           <DialogTitle>{confirmData?.title ?? ""}</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          <DialogDescription>{confirmData?.message ?? ""}</DialogDescription>
+          <DialogDescription className="whitespace-normal break-words">
+            {confirmData?.message ?? ""}
+          </DialogDescription>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
