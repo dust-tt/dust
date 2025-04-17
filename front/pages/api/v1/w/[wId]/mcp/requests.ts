@@ -160,4 +160,6 @@ async function handler(
   return;
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(handler, {
+  isStreaming: true,
+});
