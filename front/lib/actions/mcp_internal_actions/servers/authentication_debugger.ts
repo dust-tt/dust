@@ -14,7 +14,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     provider,
     use_case: "connection" as const,
   },
-  icon: "GithubLogo",
+  icon: "LockIcon",
 };
 
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {

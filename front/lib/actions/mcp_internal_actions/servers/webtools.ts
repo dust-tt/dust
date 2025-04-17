@@ -14,7 +14,7 @@ export const serverInfo: MCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "Agent can search (Google) and retrieve information from specific websites.",
-  icon: "GithubLogo",
+  icon: "PlanetIcon",
   authorization: {
     provider,
     use_case: "connection" as const,
