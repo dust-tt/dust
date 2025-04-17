@@ -50,6 +50,7 @@ export default function SpaceManagedActionsViewsModel({
       <DropdownMenuContent className="w-[500px]">
         <div className="flex flex-row items-center gap-2">
           <DropdownMenuSearchbar
+            autoFocus
             className="flex-grow"
             placeholder="Search tools..."
             name="search"
