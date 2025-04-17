@@ -2,13 +2,9 @@ import {
   ActionBookOpenIcon,
   ActionIcons,
   Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
   CloudArrowLeftRightIcon,
   ContentMessage,
   ExclamationCircleIcon,
-  EyeIcon,
-  EyeSlashIcon,
   IconPicker,
   Input,
   Label,
@@ -16,7 +12,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   Separator,
-  useCopyToClipboard,
+  // useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,9 +27,9 @@ import {
   useSyncRemoteMCPServer,
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
-import { formatSecret } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
+
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
   mcpServer: RemoteMCPServerType;
@@ -52,10 +48,10 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [isSecretVisible, setIsSecretVisible] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  const [isCopied, copy] = useCopyToClipboard();
+  // const [isSecretVisible, setIsSecretVisible] = useState(false);
+  // const [isCopied, copy] = useCopyToClipboard();
 
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
@@ -66,7 +62,8 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     },
   });
 
-  const { url, sharedSecret } = mcpServer;
+  const { url } = mcpServer;
+  // const { url, sharedSecret } = mcpServer;
 
   const { mutateMCPServers } = useMCPServers({
     owner,
@@ -150,20 +147,20 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     }
   }, [url, syncServer, mutateMCPServers, sendNotification]);
 
-  const toggleSecretVisibility = () => {
-    setIsSecretVisible(!isSecretVisible);
-  };
+  // const toggleSecretVisibility = () => {
+  //   setIsSecretVisible(!isSecretVisible);
+  // };
 
-  const copyToClipboard = async () => {
-    if (sharedSecret) {
-      await copy(sharedSecret);
-      sendNotification({
-        title: "Copied to clipboard",
-        type: "success",
-        description: "The shared secret has been copied to your clipboard.",
-      });
-    }
-  };
+  // const copyToClipboard = async () => {
+  //   if (sharedSecret) {
+  //     await copy(sharedSecret);
+  //     sendNotification({
+  //       title: "Copied to clipboard",
+  //       type: "success",
+  //       description: "The shared secret has been copied to your clipboard.",
+  //     });
+  //   }
+  // };
 
   const closePopover = () => {
     setIsPopoverOpen(false);
@@ -321,7 +318,13 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
       <Separator />
 
-      {sharedSecret && (
+      {/**
+       * TODO(mcp): Show shared secret in the UI.
+       * Shared secret will be added back in the future.
+       * As they are not used right now, they are confusing in the UI.
+       * Will be moved to an "Advanced" section.
+      
+       {sharedSecret && (
         <>
           <div className="space-y-2">
             <Label htmlFor="sharedSecret">Shared Secret</Label>
@@ -354,6 +357,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           <Separator />
         </>
       )}
+      */}
     </div>
   );
 }
