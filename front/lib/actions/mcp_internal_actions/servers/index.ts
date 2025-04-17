@@ -14,6 +14,7 @@ import { default as tableDebuggerServer } from "@app/lib/actions/mcp_internal_ac
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
+import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
@@ -31,6 +32,9 @@ export function getInternalMCPServer(
     conversation,
     agentMessage,
     actionConfiguration,
+    stepActionIndex,
+    stepActions,
+    citationsRefsOffset,
   }: {
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
@@ -38,6 +42,9 @@ export function getInternalMCPServer(
     actionConfiguration?: MCPToolConfigurationType;
     conversation?: ConversationType;
     agentMessage?: AgentMessageType;
+    stepActionIndex: number;
+    stepActions: ActionConfigurationType[];
+    citationsRefsOffset: number;
   }
 ): McpServer {
   switch (internalMCPServerName) {
@@ -70,7 +77,12 @@ export function getInternalMCPServer(
       return webtoolsServer();
     case "search":
       // TODO(mcp): refsOffset and topK should be computed based on the number of actions working on data sources
-      return searchServer(auth, 256, 32);
+      return searchServer(auth, {
+        agentConfiguration,
+        stepActionIndex,
+        stepActions,
+        citationsRefsOffset,
+      });
     default:
       assertNever(internalMCPServerName);
   }
