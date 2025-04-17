@@ -30,6 +30,9 @@ TagModel.init(
   {
     modelName: "tags",
     sequelize: frontSequelize,
-    indexes: [{ unique: true, fields: ["workspaceId", "name"] }],
+    indexes: [
+      { unique: true, fields: ["workspaceId", "name"] },
+      { unique: true, fields: ["workspaceId", "agentConfigurationId"] },
+    ],
   }
 );

@@ -4,6 +4,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
@@ -129,6 +130,29 @@ export class TagResource extends BaseResource<TagModel> {
         id: tags.map((t) => t.tagId),
       },
     });
+  }
+
+  static async listForAgents(
+    auth: Authenticator,
+    agentConfigurationIds: number[]
+  ): Promise<Map<number, TagResource[]>> {
+    const tagAgents = await TagAgentModel.findAll({
+      where: {
+        agentConfigurationId: agentConfigurationIds,
+      },
+    });
+    const tags = await this.baseFetch(auth, {
+      where: {
+        id: tagAgents.map((t) => t.tagId),
+      },
+    });
+    return tagAgents.reduce((acc, tagAgent) => {
+      acc.set(tagAgent.agentConfigurationId, [
+        ...(acc.get(tagAgent.agentConfigurationId) ?? []),
+        tags.find((t) => t.id === tagAgent.tagId)!,
+      ]);
+      return acc;
+    }, new Map<number, TagResource[]>());
   }
 
   async delete(
