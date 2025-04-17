@@ -596,7 +596,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
-      tags: tags.map((t) => t.toJSON()),
+      tags: tags
+        .map((t) => t.toJSON())
+        .sort((a, b) => a.name.localeCompare(b.name)),
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
