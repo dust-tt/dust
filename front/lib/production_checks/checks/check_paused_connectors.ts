@@ -55,7 +55,7 @@ export const checkPausedConnectors: CheckFunction = async (
   for (const connector of pausedConnectors) {
     logger.info(
       { connector },
-      "Connector is paused. Checking if worskpace has a valid subscription."
+      "Connector is paused. Checking if workspace has a valid subscription."
     );
 
     const workspaceSubscription = workspaceSubscriptions.find(
