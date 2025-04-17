@@ -473,7 +473,7 @@ export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
     },
     actions: {
       id: "actions",
-      label: "Tools & Data sources",
+      label: "Tools & Knowledge",
       dataGtm: {
         label: "assistantToolsButton",
         location: "assistantBuilder",
