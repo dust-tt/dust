@@ -30,16 +30,8 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import {
-  WebCrawlerFolder,
-  WebCrawlerPage,
-} from "@connectors/lib/models/webcrawler";
-import {
-  reportInitialSyncProgress,
-  syncFailed,
-  syncStarted,
-  syncSucceeded,
-} from "@connectors/lib/sync_status";
+import { WebCrawlerFolder, WebCrawlerPage } from "@connectors/lib/models/webcrawler";
+import { reportInitialSyncProgress, syncFailed, syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -48,10 +40,10 @@ import type { ModelId } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
   stripNullBytes,
+  validateUrl,
   WEBCRAWLER_MAX_DEPTH,
   WEBCRAWLER_MAX_PAGES,
 } from "@connectors/types";
-import { validateUrl } from "@connectors/types";
 
 const CONCURRENCY = 1;
 
@@ -331,7 +323,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             documentId,
             configId: webCrawlerConfig.id,
             documentLen: extracted.length,
-            url: rootUrl,
+            url: request.url,
           },
           "Successfully crawled page"
         );
