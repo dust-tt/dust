@@ -516,12 +516,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           generatedFiles.push({ ...block.resource });
         } else if (isSupportedFileContentType(block.resource.mimeType)) {
           // If the file is supported and is not yet upserted, we upsert it.
-          let fileName =
-            block.resource.uri.split("/").pop() ?? "generated-file";
+          const fileName = isResourceWithName(block.resource)
+            ? block.resource.name
+            : block.resource.uri.split("/").pop() ?? "generated-file";
 
-          if (isResourceWithName(block.resource)) {
-            fileName = block.resource.name;
-          }
           const fileUpsertResult = await processAndStoreFromUrl(auth, {
             url: block.resource.uri,
             useCase: "conversation",
