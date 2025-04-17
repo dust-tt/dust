@@ -53,20 +53,22 @@ const HeroVisual = () => {
     <div className="relative mt-12 w-full sm:-mt-6 md:mt-0">
       <div className="relative mx-auto w-full max-w-[2000px]">
         <div className="relative flex aspect-[16/9] items-center justify-center">
-          <div className="relative h-auto w-auto rounded-xl">
-            <Image
-              src="/static/landing/header/header.png"
-              alt="Dust Platform"
-              width={1920}
-              height={1080}
-              className="rounded-xl"
-              style={{
-                maxWidth: "100%",
-                height: "auto",
-              }}
-              priority
-            />
-            <div className="absolute inset-0 overflow-hidden rounded-4xl">
+          <div className="relative h-auto w-auto overflow-hidden rounded-lg bg-gray-50 p-1 sm:rounded-xl sm:p-2 md:rounded-2xl md:p-3 lg:rounded-3xl lg:p-4">
+            <div className="relative overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl">
+              <Image
+                src="/static/landing/header/header.png"
+                alt="Dust Platform"
+                width={1920}
+                height={1080}
+                className="rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl"
+                style={{
+                  maxWidth: "100%",
+                  height: "auto",
+                }}
+                priority
+              />
+            </div>
+            <div className="absolute inset-0 overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl">
               <BorderBeam
                 size={400}
                 duration={10}
