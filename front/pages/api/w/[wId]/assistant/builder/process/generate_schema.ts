@@ -17,7 +17,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<{
-      schema: Record<string, unknown>
+      schema: Record<string, unknown>;
     }>
   >,
   auth: Authenticator

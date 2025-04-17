@@ -8,6 +8,7 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { ChevronDownIcon, ChevronUpIcon, SparklesIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
@@ -18,10 +19,9 @@ import type {
   AssistantBuilderProcessConfiguration,
   AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
+import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
 import type { Result, SpaceType, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { ChevronDownIcon, ChevronUpIcon, SparklesIcon } from "lucide-react";
-import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
 
 export function hasErrorActionProcess(
   action: AssistantBuilderActionConfiguration
@@ -31,8 +31,11 @@ export function hasErrorActionProcess(
   if (action.type !== "PROCESS") {
     return "Invalid action type.";
   }
-  if (!action.configuration.schema || !isValidJsonSchema(action.configuration.schema).isValid) {
-      return errorMessage;
+  if (
+    !action.configuration.schema ||
+    !isValidJsonSchema(action.configuration.schema).isValid
+  ) {
+    return errorMessage;
   }
   if (Object.keys(action.configuration.dataSourceConfigurations).length === 0) {
     return errorMessage;
@@ -97,7 +100,9 @@ export function ActionProcess({
     });
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [schemaEdit, setSchemaEdit] = useState(actionConfiguration?.schema ?? null);
+  const [schemaEdit, setSchemaEdit] = useState(
+    actionConfiguration?.schema ?? null
+  );
   const sendNotification = useSendNotification();
   const toggleAdvancedSettings = () => {
     setShowAdvancedSettings((prev) => !prev);
@@ -142,8 +147,8 @@ export function ActionProcess({
         });
 
         if (res.isOk()) {
-          const schema = res.value ? JSON.stringify(res.value, null, 2): null;
-          setSchemaEdit(schema); 
+          const schema = res.value ? JSON.stringify(res.value, null, 2) : null;
+          setSchemaEdit(schema);
           setEdited(true);
           updateAction((previousAction) => ({
             ...previousAction,
@@ -166,7 +171,7 @@ export function ActionProcess({
         setIsGeneratingSchema(false);
       }
     } else {
-      setSchemaEdit(null); 
+      setSchemaEdit(null);
       setEdited(true);
       updateAction((previousAction) => ({
         ...previousAction,
@@ -248,37 +253,37 @@ export function ActionProcess({
         </div>
       )}
 
-
-        <div className="flex flex-col gap-4 pt-8">
-          <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-            Schema
-          </div>
-          <Button
-                tooltip="Automatically re-generate the extraction schema based on Instructions"
-                label="Re-generate from Instructions"
-                variant="primary"
-                icon={SparklesIcon}
-                size="sm"
-                disabled={isGeneratingSchema || !instructions}
-                onClick={generateSchemaFromInstructions}
-              />
-          <TextArea
-            error={isValidJsonSchema(schemaEdit).error}
-            showErrorLabel={true}
-            placeholder={'{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'}
-            value={schemaEdit ?? ""}
-            disabled={isGeneratingSchema}
-            onChange={(e) => {
-              setSchemaEdit(e.target.value); 
-                setEdited(true);
-                updateAction((previousAction) => ({
-                  ...previousAction,
-                  schema: e.target.value ?? null
-              }));
-            }
-          }
-          />
+      <div className="flex flex-col gap-4 pt-8">
+        <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
+          Schema
         </div>
+        <Button
+          tooltip="Automatically re-generate the extraction schema based on Instructions"
+          label="Re-generate from Instructions"
+          variant="primary"
+          icon={SparklesIcon}
+          size="sm"
+          disabled={isGeneratingSchema || !instructions}
+          onClick={generateSchemaFromInstructions}
+        />
+        <TextArea
+          error={isValidJsonSchema(schemaEdit).error}
+          showErrorLabel={true}
+          placeholder={
+            '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
+          }
+          value={schemaEdit ?? ""}
+          disabled={isGeneratingSchema}
+          onChange={(e) => {
+            setSchemaEdit(e.target.value);
+            setEdited(true);
+            updateAction((previousAction) => ({
+              ...previousAction,
+              schema: e.target.value ?? null,
+            }));
+          }}
+        />
+      </div>
 
       <div className="flex flex-col gap-4 pt-8">
         <div className="-ml-3 flex flex-row items-center text-lg font-bold text-foreground dark:text-foreground-night">
@@ -316,7 +321,11 @@ export function ActionProcess({
           <Input
             type="text"
             messageStatus={timeFrameError ? "error" : "default"}
-            value={timeFrame.value && !isNaN(timeFrame.value) ? timeFrame.value.toString() : ""}
+            value={
+              timeFrame.value && !isNaN(timeFrame.value)
+                ? timeFrame.value.toString()
+                : ""
+            }
             onChange={(e) => {
               const value = parseInt(e.target.value, 10);
               if (!isNaN(value) || !e.target.value) {

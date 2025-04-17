@@ -394,23 +394,24 @@ export default function Chat({
                           readOnly={readOnly}
                           value={responseFormatText}
                           language="json"
-                          placeholder={"{\n" +
-                          '  "type": "json_schema",\n' +
-                          '  "json_schema": {\n' +
-                          '    "name": "YourSchemaName",\n' +
-                          '    "strict": true,\n' +
-                          '    "schema": {\n' +
-                          '      "type": "object",\n' +
-                          '      "properties": {\n' +
-                          '        "property1":\n' +
-                          '          { "type":"string" }\n' +
-                          "      },\n" +
-                          '      "required": ["property1"],\n' +
-                          '      "additionalProperties": false\n' +
-                          "    }\n" +
-                          "  }\n" +
-                          "}"
-                        }
+                          placeholder={
+                            "{\n" +
+                            '  "type": "json_schema",\n' +
+                            '  "json_schema": {\n' +
+                            '    "name": "YourSchemaName",\n' +
+                            '    "strict": true,\n' +
+                            '    "schema": {\n' +
+                            '      "type": "object",\n' +
+                            '      "properties": {\n' +
+                            '        "property1":\n' +
+                            '          { "type":"string" }\n' +
+                            "      },\n" +
+                            '      "required": ["property1"],\n' +
+                            '      "additionalProperties": false\n' +
+                            "    }\n" +
+                            "  }\n" +
+                            "}"
+                          }
                           onChange={(e) =>
                             handleResponseFormatChange(e.target.value)
                           }

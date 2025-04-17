@@ -50,36 +50,6 @@ export type ProcessSchemaPropertyType = {
   description: string;
 };
 
-export function renderSchemaPropertiesAsJSONSchema(
-  schema: ProcessSchemaPropertyType[]
-): { type: string; properties: Record<string, object>, required: string[] } {
-
-  let properties: { [name: string]: { type: string; description: string } } = {};
-  if (schema.length > 0) {
-    schema.forEach((f) => {
-      properties[f.name] = {
-        type: f.type,
-        description: f.description,
-      };
-    });
-  } else {
-    // Default schema for extraction.
-    properties = {
-      required_data: {
-        type: "string",
-        description:
-          "Minimal (short and concise) piece of information extracted to follow instructions",
-      },
-    };
-  }
-
-  return {
-    type: "object",
-    properties: properties,
-    required: Object.keys(properties)
-  }
-}
-
 export type ProcessConfigurationType = {
   id: ModelId;
   sId: string;

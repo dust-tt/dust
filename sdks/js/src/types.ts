@@ -745,13 +745,7 @@ export type RetrievalActionPublicType = z.infer<
   typeof RetrievalActionTypeSchema
 >;
 
-const ProcessSchemaAllowedTypesSchema = z.enum(["string", "number", "boolean"]);
-
-const ProcessSchemaPropertySchema = z.object({
-  name: z.string(),
-  type: ProcessSchemaAllowedTypesSchema,
-  description: z.string(),
-});
+const ProcessSchemaPropertySchema = z.union([z.record(z.string(), z.unknown()), z.null()])
 
 const ProcessActionOutputsSchema = z.object({
   data: z.array(z.unknown()),
@@ -766,7 +760,7 @@ const ProcessActionTypeSchema = BaseActionSchema.extend({
   params: z.object({
     relativeTimeFrame: TimeFrameSchema.nullable(),
   }),
-  schema: z.array(ProcessSchemaPropertySchema),
+  schema: ProcessSchemaPropertySchema,
   outputs: ProcessActionOutputsSchema.nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),

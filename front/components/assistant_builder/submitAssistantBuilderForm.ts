@@ -255,7 +255,9 @@ export async function submitAssistantBuilderForm({
             ),
             tagsFilter: a.configuration.tagsFilter,
             relativeTimeFrame: timeFrame,
-            schema: a.configuration.schema ? JSON.parse(a.configuration.schema) : null,
+            schema: a.configuration.schema
+              ? JSON.parse(a.configuration.schema)
+              : null,
           },
         ];
 
