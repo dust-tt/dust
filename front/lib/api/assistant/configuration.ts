@@ -67,7 +67,7 @@ import {
   generateRandomModelSId,
   getResourceIdFromSId,
 } from "@app/lib/resources/string_ids";
-import { TagResource } from "@app/lib/resources/tags_resource";
+import type { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import type {
   AgentConfigurationScope,
@@ -565,7 +565,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       model.reasoningEffort = agent.reasoningEffort;
     }
 
-    const tags = await TagResource.listForAgent(auth, agent.id);
+    const tags: TagResource[] = [];
 
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
