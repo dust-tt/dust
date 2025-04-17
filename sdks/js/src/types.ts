@@ -818,6 +818,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "force_gdrive_labels_scope"
   | "claude_3_7_reasoning"
   | "mcp_actions"
+  | "experimental_mcp_actions"
   | "dev_mcp_actions"
   | "agent_discovery"
 >();

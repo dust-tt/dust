@@ -25,6 +25,7 @@ export const WHITELISTABLE_FEATURES = [
   "show_debug_tools",
   "usage_data_api",
   "agent_discovery",
+  "experimental_mcp_actions",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
