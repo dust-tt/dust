@@ -1,6 +1,10 @@
-import { Button } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContentMessage,
+  InformationCircleIcon,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
-import type { ComponentType, MouseEvent } from "react";
+import type { ComponentType, MouseEvent, ReactNode } from "react";
 import React from "react";
 
 import { classNames } from "@app/lib/utils";
@@ -11,12 +15,16 @@ export function EmptyCallToAction({
   icon,
   href,
   onClick,
+  disabledTitle,
+  disabledDescription,
 }: {
   label: string;
   disabled?: boolean;
   icon?: ComponentType;
   href?: string;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  disabledTitle?: string;
+  disabledDescription?: ReactNode;
 }) {
   const button = (
     <Button
@@ -35,7 +43,19 @@ export function EmptyCallToAction({
         "bg-muted-background dark:bg-muted-background-night"
       )}
     >
-      {href ? <Link href={href}>{button}</Link> : button}
+      {disabled && disabledTitle && disabledDescription ? (
+        <div className="flex w-full items-center justify-center">
+          <ContentMessage
+            title={disabledTitle}
+            icon={InformationCircleIcon}
+            variant="warning"
+          >
+            <div>{disabledDescription}</div>
+          </ContentMessage>
+        </div>
+      ) : (
+        <>{href ? <Link href={href}>{button}</Link> : button}</>
+      )}
     </div>
   );
 }
