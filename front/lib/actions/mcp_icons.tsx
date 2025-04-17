@@ -1,18 +1,17 @@
 import {
+  ActionBrainIcon,
+  ActionCloudArrowLeftRightIcon,
+  ActionDocumentTextIcon,
+  ActionEmotionLaughIcon,
+  ActionGitBranchIcon,
+  ActionGlobeAltIcon,
   ActionIcons,
+  ActionImageIcon,
+  ActionLockIcon,
+  ActionRobotIcon,
+  ActionTableIcon,
   Avatar,
-  CommandIcon,
-  DocumentPlusIcon,
-  DocumentTextIcon,
-  EmotionLaughIcon,
-  FolderTableIcon,
   GithubLogo,
-  ImageIcon,
-  LightbulbIcon,
-  LockIcon,
-  PlanetIcon,
-  RobotIcon,
-  RocketIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
@@ -24,18 +23,17 @@ export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
 export const REMOTE_ALLOWED_ICONS = Object.keys(ActionIcons);
 
 export const InternalActionIcons = {
-  CommandIcon,
-  DocumentTextIcon,
-  DocumentPlusIcon,
-  EmotionLaughIcon,
-  FolderTableIcon,
+  ActionRobotIcon,
+  ActionImageIcon,
+  ActionDocumentTextIcon,
+  ActionGlobeAltIcon,
+  ActionGitBranchIcon,
+  ActionLockIcon,
+  ActionCloudArrowLeftRightIcon,
+  ActionEmotionLaughIcon,
+  ActionTableIcon,
+  ActionBrainIcon,
   GithubLogo,
-  ImageIcon,
-  LightbulbIcon,
-  LockIcon,
-  PlanetIcon,
-  RobotIcon,
-  RocketIcon,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

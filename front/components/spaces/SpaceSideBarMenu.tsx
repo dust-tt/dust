@@ -240,7 +240,7 @@ const SYSTEM_SPACE_ITEMS = [
     flag: null,
   },
   {
-    label: "Toolsets",
+    label: "Tools",
     visual: SuitcaseIcon,
     category: "actions" as DataSourceViewCategory,
     flag: "mcp_actions" as WhitelistableFeature,

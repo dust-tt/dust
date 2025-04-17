@@ -609,7 +609,7 @@ function AttachFileDemo() {
               name="search"
               onChange={() => {}}
               onKeyDown={() => {}}
-              placeholder="Search Toolsets"
+              placeholder="Search Tools"
               value=""
             />
             <Button icon={PlusIcon} label="Add MCP Server" />

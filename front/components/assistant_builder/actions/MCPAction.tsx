@@ -38,8 +38,8 @@ function NoActionAvailable({ owner }: NoActionAvailableProps) {
               return (
                 <div>
                   <strong>
-                    Visit the "Toolsets" section in the Knowledge panel to add a
-                    Toolset.
+                    Visit the "Tools" section in the Knowledge panel to add
+                    Tools.
                   </strong>
                 </div>
               );
@@ -47,7 +47,7 @@ function NoActionAvailable({ owner }: NoActionAvailableProps) {
             case "user":
               return (
                 <div>
-                  <strong>Ask your Admins to add a Toolset.</strong>
+                  <strong>Ask your Admins to add Tools.</strong>
                 </div>
               );
             case "none":
