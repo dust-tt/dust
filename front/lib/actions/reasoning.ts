@@ -12,7 +12,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { isReasoningConfiguration } from "@app/lib/actions/types/guards";
 import { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";

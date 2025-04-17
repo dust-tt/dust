@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import config from "@app/lib/file_storage/config";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/withlogging";
+import { statsDClient } from "@app/logger/statsDClient";
 import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 import { launchUpsertTableWorkflow } from "@app/temporal/upsert_tables/client";
 import type { Result } from "@app/types";

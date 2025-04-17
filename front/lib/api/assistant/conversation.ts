@@ -10,12 +10,12 @@ import {
   getLightAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import {
   batchRenderMessages,
   canReadMessage,
 } from "@app/lib/api/assistant/messages";
 import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,

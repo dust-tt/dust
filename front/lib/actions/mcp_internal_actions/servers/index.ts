@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/servers/authentication_debugger";
 import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/child_agent_debugger";
@@ -9,9 +10,15 @@ import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
+import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type { Authenticator } from "@app/lib/auth";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+} from "@app/types";
 import { assertNever } from "@app/types";
 
 export function getInternalMCPServer(
@@ -19,9 +26,17 @@ export function getInternalMCPServer(
   {
     internalMCPServerName,
     mcpServerId,
+    agentConfiguration,
+    conversation,
+    agentMessage,
+    actionConfiguration,
   }: {
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
+    agentConfiguration?: AgentConfigurationType;
+    actionConfiguration?: MCPToolConfigurationType;
+    conversation?: ConversationType;
+    agentMessage?: AgentMessageType;
   }
 ): McpServer {
   switch (internalMCPServerName) {
@@ -39,6 +54,13 @@ export function getInternalMCPServer(
       return generateFileServer(auth);
     case "child_agent_debugger":
       return askAgentServer();
+    case "tables_query":
+      return tablesQueryServer(auth, {
+        agentConfiguration,
+        conversation,
+        agentMessage,
+        actionConfiguration,
+      });
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
     case "think":
