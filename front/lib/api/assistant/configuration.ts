@@ -819,7 +819,7 @@ export async function createAgentConfiguration(
               sId: agentConfigurationId,
               workspaceId: owner.id,
             },
-            attributes: ["scope", "version"],
+            attributes: ["scope", "version", "id", "sId"],
             order: [["version", "DESC"]],
             transaction: t,
             limit: 1,
@@ -911,11 +911,20 @@ export async function createAgentConfiguration(
             existingAgent
           );
           if (group.isOk()) {
-            await group.value.addGroupToAgentConfiguration({
+            const result = await group.value.addGroupToAgentConfiguration({
               auth,
               agentConfiguration: agentConfigurationInstance,
               transaction: t,
             });
+            if (result.isErr()) {
+              logger.warn(
+                {
+                  workspaceId: owner.id,
+                  agentConfigurationId: existingAgent.sId,
+                },
+                `Error adding group to agent ${existingAgent.sId}: ${result.error}`
+              );
+            }
           } else {
             logger.warn(
               {

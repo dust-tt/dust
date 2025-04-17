@@ -364,7 +364,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Err(new DustError("resource_not_found", "Group not found"));
     }
 
-    return new Ok(new this(GroupModel, await groupAgent.getGroup()));
+    const group = await groupAgent.getGroup();
+
+    return new Ok(new this(GroupModel, group.get()));
   }
 
   static async fetchWorkspaceSystemGroup(
