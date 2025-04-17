@@ -30,8 +30,16 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { WebCrawlerFolder, WebCrawlerPage } from "@connectors/lib/models/webcrawler";
-import { reportInitialSyncProgress, syncFailed, syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import {
+  WebCrawlerFolder,
+  WebCrawlerPage,
+} from "@connectors/lib/models/webcrawler";
+import {
+  reportInitialSyncProgress,
+  syncFailed,
+  syncStarted,
+  syncSucceeded,
+} from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
