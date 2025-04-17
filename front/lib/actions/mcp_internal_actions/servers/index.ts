@@ -10,8 +10,8 @@ import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
-import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
+import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type { Authenticator } from "@app/lib/auth";
 import type {
