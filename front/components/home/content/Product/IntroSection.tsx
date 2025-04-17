@@ -11,6 +11,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { BorderBeam } from "@app/components/magicui/border-beam";
 
 const HeroContent = () => {
   return (
@@ -48,15 +49,33 @@ const HeroContent = () => {
 const HeroVisual = () => {
   return (
     <div className="relative mt-12 w-full sm:-mt-6 md:mt-0">
-      <div className="relative mx-auto aspect-video w-full max-w-[2000px] px-4">
-        <Image
-          src="/static/landing/header/header.png"
-          alt="Dust Platform"
-          fill
-          className="rounded-xl object-contain"
-          priority
-          sizes="(max-width: 2000px) 100vw, 2000px"
-        />
+      <div className="relative mx-auto w-full max-w-[2000px]">
+        <div className="relative flex aspect-[16/9] items-center justify-center">
+          <div className="relative h-auto w-auto overflow-hidden rounded-lg bg-gray-50 p-1 sm:rounded-xl sm:p-2 md:rounded-2xl md:p-3 lg:rounded-3xl lg:p-4">
+            <div className="relative overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl">
+              <Image
+                src="/static/landing/header/header.png"
+                alt="Dust Platform"
+                width={1920}
+                height={1080}
+                className="rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl"
+                style={{
+                  maxWidth: "100%",
+                  height: "auto",
+                }}
+                priority
+              />
+            </div>
+            <div className="absolute inset-0 overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl">
+              <BorderBeam
+                size={400}
+                duration={10}
+                colorFrom="#CDCDCD"
+                colorTo="#CDCDCD"
+              />
+            </div>
+          </div>
+        </div>
       </div>
       <div className="absolute inset-0 flex items-center justify-center">
         <Link
