@@ -1,0 +1,783 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - Monitoring and Alerting - Part 1 (SNS, Dashboards)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+  NotificationEmail:
+    Type: String
+    Default: alerts@example.com
+    Description: The email address to send notifications to
+
+  SlackWebhookUrl:
+    Type: String
+    Default: ''
+    Description: The Slack webhook URL for notifications
+
+  PagerDutyIntegrationKey:
+    Type: String
+    Default: ''
+    Description: The PagerDuty integration key for critical alerts
+
+Resources:
+  # SNS Topics for Alerting
+  CriticalAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-critical-alerts-${Environment}
+      DisplayName: Dust Critical Alerts
+
+  WarningAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-warning-alerts-${Environment}
+      DisplayName: Dust Warning Alerts
+
+  InfoAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-info-alerts-${Environment}
+      DisplayName: Dust Info Alerts
+
+  SecurityAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-security-alerts-${Environment}
+      DisplayName: Dust Security Alerts
+
+  CostAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-cost-alerts-${Environment}
+      DisplayName: Dust Cost Alerts
+
+  # SNS Subscriptions
+  CriticalAlertsEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref CriticalAlertsTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  WarningAlertsEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref WarningAlertsTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  SecurityAlertsEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref SecurityAlertsTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  CostAlertsEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref CostAlertsTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # Lambda Function for Slack Notifications
+  SlackNotificationsFunction:
+    Type: AWS::Lambda::Function
+    Condition: HasSlackWebhookUrl
+    Properties:
+      FunctionName: !Sub dust-slack-notifications-${Environment}
+      Handler: index.handler
+      Role: !GetAtt SlackNotificationsRole.Arn
+      Runtime: nodejs18.x
+      Timeout: 30
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+      Code:
+        ZipFile: |
+          const https = require('https');
+          const url = require('url');
+
+          exports.handler = async (event) => {
+            console.log('Event:', JSON.stringify(event, null, 2));
+            
+            // Parse the SNS message
+            const message = event.Records[0].Sns.Message;
+            const subject = event.Records[0].Sns.Subject || 'No subject';
+            const topicArn = event.Records[0].Sns.TopicArn;
+            
+            // Determine severity based on topic name
+            let severity = 'info';
+            if (topicArn.includes('critical')) {
+              severity = 'danger';
+            } else if (topicArn.includes('warning')) {
+              severity = 'warning';
+            } else if (topicArn.includes('security')) {
+              severity = 'danger';
+            } else if (topicArn.includes('cost')) {
+              severity = 'warning';
+            }
+            
+            // Create Slack message
+            const slackMessage = {
+              attachments: [
+                {
+                  fallback: subject,
+                  color: severity,
+                  title: subject,
+                  text: message,
+                  fields: [
+                    {
+                      title: 'Environment',
+                      value: process.env.ENVIRONMENT || 'unknown',
+                      short: true
+                    },
+                    {
+                      title: 'Severity',
+                      value: severity.toUpperCase(),
+                      short: true
+                    }
+                  ],
+                  footer: 'AWS SNS via Lambda',
+                  ts: Math.floor(Date.now() / 1000)
+                }
+              ]
+            };
+            
+            // Send to Slack
+            try {
+              await postToSlack(slackMessage);
+              return { statusCode: 200, body: 'Message sent to Slack' };
+            } catch (error) {
+              console.error('Error posting to Slack:', error);
+              throw error;
+            }
+          };
+          
+          function postToSlack(message) {
+            return new Promise((resolve, reject) => {
+              const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+              const parsedUrl = url.parse(webhookUrl);
+              
+              const options = {
+                hostname: parsedUrl.hostname,
+                path: parsedUrl.path,
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              };
+              
+              const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => {
+                  data += chunk;
+                });
+                res.on('end', () => {
+                  if (res.statusCode < 200 || res.statusCode >= 300) {
+                    reject(new Error(`Status Code: ${res.statusCode} ${data}`));
+                  } else {
+                    resolve(data);
+                  }
+                });
+              });
+              
+              req.on('error', (error) => {
+                reject(error);
+              });
+              
+              req.write(JSON.stringify(message));
+              req.end();
+            });
+          }
+
+  # IAM Role for Slack Notifications Lambda
+  SlackNotificationsRole:
+    Type: AWS::IAM::Role
+    Condition: HasSlackWebhookUrl
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # Lambda Permission for SNS
+  SlackNotificationsCriticalPermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasSlackWebhookUrl
+    Properties:
+      FunctionName: !Ref SlackNotificationsFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref CriticalAlertsTopic
+
+  SlackNotificationsWarningPermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasSlackWebhookUrl
+    Properties:
+      FunctionName: !Ref SlackNotificationsFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref WarningAlertsTopic
+
+  SlackNotificationsInfoPermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasSlackWebhookUrl
+    Properties:
+      FunctionName: !Ref SlackNotificationsFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref InfoAlertsTopic
+
+  SlackNotificationsSecurityPermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasSlackWebhookUrl
+    Properties:
+      FunctionName: !Ref SlackNotificationsFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref SecurityAlertsTopic
+
+  SlackNotificationsCostPermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasSlackWebhookUrl
+    Properties:
+      FunctionName: !Ref SlackNotificationsFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref CostAlertsTopic
+
+  # SNS Subscriptions for Slack
+  CriticalAlertsSlackSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasSlackWebhookUrl
+    Properties:
+      TopicArn: !Ref CriticalAlertsTopic
+      Protocol: lambda
+      Endpoint: !GetAtt SlackNotificationsFunction.Arn
+
+  WarningAlertsSlackSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasSlackWebhookUrl
+    Properties:
+      TopicArn: !Ref WarningAlertsTopic
+      Protocol: lambda
+      Endpoint: !GetAtt SlackNotificationsFunction.Arn
+
+  InfoAlertsSlackSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasSlackWebhookUrl
+    Properties:
+      TopicArn: !Ref InfoAlertsTopic
+      Protocol: lambda
+      Endpoint: !GetAtt SlackNotificationsFunction.Arn
+
+  SecurityAlertsSlackSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasSlackWebhookUrl
+    Properties:
+      TopicArn: !Ref SecurityAlertsTopic
+      Protocol: lambda
+      Endpoint: !GetAtt SlackNotificationsFunction.Arn
+
+  CostAlertsSlackSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasSlackWebhookUrl
+    Properties:
+      TopicArn: !Ref CostAlertsTopic
+      Protocol: lambda
+      Endpoint: !GetAtt SlackNotificationsFunction.Arn
+
+  # Lambda Function for PagerDuty Notifications
+  PagerDutyNotificationsFunction:
+    Type: AWS::Lambda::Function
+    Condition: HasPagerDutyIntegrationKey
+    Properties:
+      FunctionName: !Sub dust-pagerduty-notifications-${Environment}
+      Handler: index.handler
+      Role: !GetAtt PagerDutyNotificationsRole.Arn
+      Runtime: nodejs18.x
+      Timeout: 30
+      Environment:
+        Variables:
+          PAGERDUTY_INTEGRATION_KEY: !Ref PagerDutyIntegrationKey
+      Code:
+        ZipFile: |
+          const https = require('https');
+          
+          exports.handler = async (event) => {
+            console.log('Event:', JSON.stringify(event, null, 2));
+            
+            // Parse the SNS message
+            const message = event.Records[0].Sns.Message;
+            const subject = event.Records[0].Sns.Subject || 'No subject';
+            const topicArn = event.Records[0].Sns.TopicArn;
+            
+            // Create PagerDuty event
+            const pdEvent = {
+              routing_key: process.env.PAGERDUTY_INTEGRATION_KEY,
+              event_action: 'trigger',
+              dedup_key: `${topicArn}-${subject}`,
+              payload: {
+                summary: subject,
+                source: 'AWS SNS',
+                severity: 'critical',
+                custom_details: {
+                  message: message,
+                  environment: process.env.ENVIRONMENT || 'unknown',
+                  topic_arn: topicArn
+                }
+              }
+            };
+            
+            // Send to PagerDuty
+            try {
+              await postToPagerDuty(pdEvent);
+              return { statusCode: 200, body: 'Event sent to PagerDuty' };
+            } catch (error) {
+              console.error('Error posting to PagerDuty:', error);
+              throw error;
+            }
+          };
+          
+          function postToPagerDuty(event) {
+            return new Promise((resolve, reject) => {
+              const options = {
+                hostname: 'events.pagerduty.com',
+                path: '/v2/enqueue',
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              };
+              
+              const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => {
+                  data += chunk;
+                });
+                res.on('end', () => {
+                  if (res.statusCode < 200 || res.statusCode >= 300) {
+                    reject(new Error(`Status Code: ${res.statusCode} ${data}`));
+                  } else {
+                    resolve(data);
+                  }
+                });
+              });
+              
+              req.on('error', (error) => {
+                reject(error);
+              });
+              
+              req.write(JSON.stringify(event));
+              req.end();
+            });
+          }
+
+  # IAM Role for PagerDuty Notifications Lambda
+  PagerDutyNotificationsRole:
+    Type: AWS::IAM::Role
+    Condition: HasPagerDutyIntegrationKey
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # Lambda Permission for SNS
+  PagerDutyNotificationsCriticalPermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasPagerDutyIntegrationKey
+    Properties:
+      FunctionName: !Ref PagerDutyNotificationsFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref CriticalAlertsTopic
+
+  # SNS Subscriptions for PagerDuty
+  CriticalAlertsPagerDutySubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasPagerDutyIntegrationKey
+    Properties:
+      TopicArn: !Ref CriticalAlertsTopic
+      Protocol: lambda
+      Endpoint: !GetAtt PagerDutyNotificationsFunction.Arn
+
+  # CloudWatch Dashboards
+  ExecutiveDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub dust-executive-dashboard-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 1,
+              "properties": {
+                "markdown": "# Dust Platform Executive Dashboard - ${Environment} Environment"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "HTTPCode_Target_2XX_Count", "LoadBalancer", "dust-alb-${Environment}" ],
+                  [ ".", "HTTPCode_Target_4XX_Count", ".", "." ],
+                  [ ".", "HTTPCode_Target_5XX_Count", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "API Request Status Codes",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "dust-alb-${Environment}", "TargetGroup", "dust-core-api-tg-${Environment}", { "label": "Core API" } ],
+                  [ "...", "dust-mcp-server-tg-${Environment}", { "label": "MCP Server" } ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "API Response Time",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ECS", "CPUUtilization", "ServiceName", "dust-core-api-${Environment}", "ClusterName", "dust-${Environment}", { "label": "Core API" } ],
+                  [ "...", "dust-frontend-${Environment}", ".", ".", { "label": "Frontend" } ],
+                  [ "...", "dust-mcp-server-${Environment}", ".", ".", { "label": "MCP Server" } ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Service CPU Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "dust-db-${Environment}" ],
+                  [ "AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "dust-cache-${Environment}" ],
+                  [ "AWS/ES", "CPUUtilization", "DomainName", "dust-search-${Environment}", "ClientId", "${AWS::AccountId}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Database Services CPU Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/Billing", "EstimatedCharges", "Currency", "USD" ]
+                ],
+                "region": "us-east-1",
+                "title": "Estimated Monthly Charges",
+                "period": 86400,
+                "stat": "Maximum"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/SecurityHub", "FindingsCount", "ComplianceStatus", "FAILED" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Security Hub Failed Findings",
+                "period": 300
+              }
+            }
+          ]
+        }
+
+  OperationsDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub dust-operations-dashboard-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 1,
+              "properties": {
+                "markdown": "# Dust Platform Operations Dashboard - ${Environment} Environment"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ECS", "CPUUtilization", "ServiceName", "dust-core-api-${Environment}", "ClusterName", "dust-${Environment}", { "label": "Core API" } ],
+                  [ "...", "dust-frontend-${Environment}", ".", ".", { "label": "Frontend" } ],
+                  [ "...", "dust-mcp-server-${Environment}", ".", ".", { "label": "MCP Server" } ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Service CPU Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ECS", "MemoryUtilization", "ServiceName", "dust-core-api-${Environment}", "ClusterName", "dust-${Environment}", { "label": "Core API" } ],
+                  [ "...", "dust-frontend-${Environment}", ".", ".", { "label": "Frontend" } ],
+                  [ "...", "dust-mcp-server-${Environment}", ".", ".", { "label": "MCP Server" } ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Service Memory Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", "dust-core-api-tg-${Environment}", "LoadBalancer", "dust-alb-${Environment}", { "label": "Core API" } ],
+                  [ "...", "dust-frontend-tg-${Environment}", ".", ".", { "label": "Frontend" } ],
+                  [ "...", "dust-mcp-server-tg-${Environment}", ".", ".", { "label": "MCP Server" } ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Healthy Host Count",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "HTTPCode_Target_2XX_Count", "LoadBalancer", "dust-alb-${Environment}" ],
+                  [ ".", "HTTPCode_Target_4XX_Count", ".", "." ],
+                  [ ".", "HTTPCode_Target_5XX_Count", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "API Request Status Codes",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "dust-alb-${Environment}", "TargetGroup", "dust-core-api-tg-${Environment}", { "label": "Core API" } ],
+                  [ "...", "dust-mcp-server-tg-${Environment}", { "label": "MCP Server" } ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "API Response Time",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "RequestCount", "LoadBalancer", "dust-alb-${Environment}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Request Count",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 13,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "dust-db-${Environment}" ],
+                  [ "AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "dust-cache-${Environment}" ],
+                  [ "AWS/ES", "CPUUtilization", "DomainName", "dust-search-${Environment}", "ClientId", "${AWS::AccountId}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Database Services CPU Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 13,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/RDS", "FreeStorageSpace", "DBInstanceIdentifier", "dust-db-${Environment}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "RDS Free Storage Space",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 13,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "dust-db-${Environment}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "RDS Database Connections",
+                "period": 300
+              }
+            }
+          ]
+        }
+
+Conditions:
+  HasSlackWebhookUrl: !Not [!Equals [!Ref SlackWebhookUrl, '']]
+  HasPagerDutyIntegrationKey: !Not [!Equals [!Ref PagerDutyIntegrationKey, '']]
+
+Outputs:
+  CriticalAlertsTopic:
+    Description: The SNS topic for critical alerts
+    Value: !Ref CriticalAlertsTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-CriticalAlertsTopic
+
+  WarningAlertsTopic:
+    Description: The SNS topic for warning alerts
+    Value: !Ref WarningAlertsTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-WarningAlertsTopic
+
+  InfoAlertsTopic:
+    Description: The SNS topic for info alerts
+    Value: !Ref InfoAlertsTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-InfoAlertsTopic
+
+  SecurityAlertsTopic:
+    Description: The SNS topic for security alerts
+    Value: !Ref SecurityAlertsTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-SecurityAlertsTopic
+
+  CostAlertsTopic:
+    Description: The SNS topic for cost alerts
+    Value: !Ref CostAlertsTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-CostAlertsTopic
+
+  ExecutiveDashboard:
+    Description: The executive dashboard
+    Value: !Ref ExecutiveDashboard
+    Export:
+      Name: !Sub ${AWS::StackName}-ExecutiveDashboard
+
+  OperationsDashboard:
+    Description: The operations dashboard
+    Value: !Ref OperationsDashboard
+    Export:
+      Name: !Sub ${AWS::StackName}-OperationsDashboard

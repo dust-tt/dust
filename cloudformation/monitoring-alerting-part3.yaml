@@ -1,0 +1,479 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - Monitoring and Alerting - Part 3 (Synthetics, Log Metrics)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+  CriticalAlertsTopicArn:
+    Type: String
+    Description: The ARN of the SNS topic for critical alerts
+
+  WarningAlertsTopicArn:
+    Type: String
+    Description: The ARN of the SNS topic for warning alerts
+
+  ApiEndpoint:
+    Type: String
+    Description: The API endpoint URL
+    Default: https://api.example.com
+
+  WebAppEndpoint:
+    Type: String
+    Description: The web application endpoint URL
+    Default: https://app.example.com
+
+  McpServerEndpoint:
+    Type: String
+    Description: The MCP server endpoint URL
+    Default: https://mcp.example.com
+
+Resources:
+  # IAM Role for CloudWatch Synthetics
+  SyntheticsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchSyntheticsFullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # CloudWatch Synthetics Canaries
+  ApiHealthCheckCanary:
+    Type: AWS::Synthetics::Canary
+    Properties:
+      Name: !Sub dust-api-health-check-${Environment}
+      ArtifactS3Location: !Sub s3://dust-monitoring-${Environment}-${AWS::AccountId}/canary-artifacts
+      ExecutionRoleArn: !GetAtt SyntheticsRole.Arn
+      RuntimeVersion: syn-nodejs-puppeteer-3.9
+      Schedule:
+        Expression: rate(1 minute)
+        DurationInSeconds: 0
+      StartCanaryAfterCreation: true
+      RunConfig:
+        TimeoutInSeconds: 30
+        MemoryInMB: 1024
+        ActiveTracing: true
+      SuccessRetentionPeriod: 30
+      FailureRetentionPeriod: 30
+      Code:
+        Handler: apiHealthCheck.handler
+        Script: |
+          const synthetics = require('Synthetics');
+          const log = require('SyntheticsLogger');
+
+          const apiHealthCheck = async function () {
+            const url = '${ApiEndpoint}/health';
+            
+            const requestOptions = {
+              hostname: new URL(url).hostname,
+              port: new URL(url).port || (new URL(url).protocol === 'https:' ? 443 : 80),
+              path: new URL(url).pathname,
+              method: 'GET',
+              protocol: new URL(url).protocol,
+              headers: {
+                'User-Agent': 'CloudWatch Synthetics'
+              }
+            };
+            
+            log.info('Making request to: ' + url);
+            
+            const response = await synthetics.executeHttpStep('API Health Check', requestOptions);
+            
+            if (response.statusCode !== 200) {
+              throw new Error(`Failed to get 200 response. Got ${response.statusCode}`);
+            }
+            
+            const responseBody = JSON.parse(response.body);
+            if (responseBody.status !== 'ok') {
+              throw new Error(`Health check returned non-ok status: ${responseBody.status}`);
+            }
+            
+            log.info('API health check successful');
+          };
+
+          exports.handler = async () => {
+            return await apiHealthCheck();
+          };
+
+  WebAppHealthCheckCanary:
+    Type: AWS::Synthetics::Canary
+    Properties:
+      Name: !Sub dust-webapp-health-check-${Environment}
+      ArtifactS3Location: !Sub s3://dust-monitoring-${Environment}-${AWS::AccountId}/canary-artifacts
+      ExecutionRoleArn: !GetAtt SyntheticsRole.Arn
+      RuntimeVersion: syn-nodejs-puppeteer-3.9
+      Schedule:
+        Expression: rate(5 minutes)
+        DurationInSeconds: 0
+      StartCanaryAfterCreation: true
+      RunConfig:
+        TimeoutInSeconds: 60
+        MemoryInMB: 1024
+        ActiveTracing: true
+      SuccessRetentionPeriod: 30
+      FailureRetentionPeriod: 30
+      Code:
+        Handler: webAppHealthCheck.handler
+        Script: |
+          const synthetics = require('Synthetics');
+          const log = require('SyntheticsLogger');
+
+          const webAppHealthCheck = async function () {
+            const url = '${WebAppEndpoint}';
+            
+            // Set up Synthetics configuration
+            synthetics.setConfig({
+              includeRequestHeaders: true,
+              includeResponseHeaders: true,
+              restrictedHeaders: ['Authorization'],
+              restrictedUrlParameters: ['sessionId']
+            });
+            
+            // Navigate to the page
+            let page = await synthetics.getPage();
+            
+            // Set viewport
+            await page.setViewport({ width: 1280, height: 720 });
+            
+            // Navigate to the URL
+            const response = await synthetics.executeStep('Navigate to Home Page', async () => {
+              return await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            });
+            
+            // Verify page loaded successfully
+            await synthetics.executeStep('Verify Page Title', async () => {
+              const title = await page.title();
+              log.info('Page title: ' + title);
+              
+              if (!title || title.trim() === '') {
+                throw new Error('Page title is empty');
+              }
+            });
+            
+            // Verify page content
+            await synthetics.executeStep('Verify Page Content', async () => {
+              const content = await page.content();
+              
+              if (!content.includes('Dust') && !content.includes('Login')) {
+                throw new Error('Page content does not contain expected text');
+              }
+            });
+            
+            log.info('Web app health check successful');
+          };
+
+          exports.handler = async () => {
+            return await webAppHealthCheck();
+          };
+
+  McpServerHealthCheckCanary:
+    Type: AWS::Synthetics::Canary
+    Properties:
+      Name: !Sub dust-mcp-server-health-check-${Environment}
+      ArtifactS3Location: !Sub s3://dust-monitoring-${Environment}-${AWS::AccountId}/canary-artifacts
+      ExecutionRoleArn: !GetAtt SyntheticsRole.Arn
+      RuntimeVersion: syn-nodejs-puppeteer-3.9
+      Schedule:
+        Expression: rate(5 minutes)
+        DurationInSeconds: 0
+      StartCanaryAfterCreation: true
+      RunConfig:
+        TimeoutInSeconds: 30
+        MemoryInMB: 1024
+        ActiveTracing: true
+      SuccessRetentionPeriod: 30
+      FailureRetentionPeriod: 30
+      Code:
+        Handler: mcpServerHealthCheck.handler
+        Script: |
+          const synthetics = require('Synthetics');
+          const log = require('SyntheticsLogger');
+
+          const mcpServerHealthCheck = async function () {
+            const url = '${McpServerEndpoint}/health';
+            
+            const requestOptions = {
+              hostname: new URL(url).hostname,
+              port: new URL(url).port || (new URL(url).protocol === 'https:' ? 443 : 80),
+              path: new URL(url).pathname,
+              method: 'GET',
+              protocol: new URL(url).protocol,
+              headers: {
+                'User-Agent': 'CloudWatch Synthetics'
+              }
+            };
+            
+            log.info('Making request to: ' + url);
+            
+            const response = await synthetics.executeHttpStep('MCP Server Health Check', requestOptions);
+            
+            if (response.statusCode !== 200) {
+              throw new Error(`Failed to get 200 response. Got ${response.statusCode}`);
+            }
+            
+            const responseBody = JSON.parse(response.body);
+            if (responseBody.status !== 'ok') {
+              throw new Error(`Health check returned non-ok status: ${responseBody.status}`);
+            }
+            
+            log.info('MCP server health check successful');
+          };
+
+          exports.handler = async () => {
+            return await mcpServerHealthCheck();
+          };
+
+  # CloudWatch Alarms for Synthetics
+  ApiHealthCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-api-health-check-alarm-${Environment}
+      AlarmDescription: Alarm when API health check fails
+      Namespace: CloudWatchSynthetics
+      MetricName: SuccessPercent
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref ApiHealthCheckCanary
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 100
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  WebAppHealthCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-webapp-health-check-alarm-${Environment}
+      AlarmDescription: Alarm when web app health check fails
+      Namespace: CloudWatchSynthetics
+      MetricName: SuccessPercent
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref WebAppHealthCheckCanary
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 100
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  McpServerHealthCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-mcp-server-health-check-alarm-${Environment}
+      AlarmDescription: Alarm when MCP server health check fails
+      Namespace: CloudWatchSynthetics
+      MetricName: SuccessPercent
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref McpServerHealthCheckCanary
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 100
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  # CloudWatch Log Groups
+  CoreApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/dust-core-api-${Environment}
+      RetentionInDays: 30
+
+  McpServerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/dust-mcp-server-${Environment}
+      RetentionInDays: 30
+
+  FrontendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/dust-frontend-${Environment}
+      RetentionInDays: 30
+
+  # CloudWatch Log Metric Filters
+  CoreApiErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref CoreApiLogGroup
+      FilterPattern: '{ $.level = "error" }'
+      MetricTransformations:
+        - MetricName: CoreApiErrorCount
+          MetricNamespace: !Sub Dust/${Environment}
+          MetricValue: '1'
+          DefaultValue: 0
+
+  CoreApiWarningMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref CoreApiLogGroup
+      FilterPattern: '{ $.level = "warn" }'
+      MetricTransformations:
+        - MetricName: CoreApiWarningCount
+          MetricNamespace: !Sub Dust/${Environment}
+          MetricValue: '1'
+          DefaultValue: 0
+
+  McpServerErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref McpServerLogGroup
+      FilterPattern: '{ $.level = "error" }'
+      MetricTransformations:
+        - MetricName: McpServerErrorCount
+          MetricNamespace: !Sub Dust/${Environment}
+          MetricValue: '1'
+          DefaultValue: 0
+
+  McpServerWarningMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref McpServerLogGroup
+      FilterPattern: '{ $.level = "warn" }'
+      MetricTransformations:
+        - MetricName: McpServerWarningCount
+          MetricNamespace: !Sub Dust/${Environment}
+          MetricValue: '1'
+          DefaultValue: 0
+
+  FrontendErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref FrontendLogGroup
+      FilterPattern: '{ $.level = "error" }'
+      MetricTransformations:
+        - MetricName: FrontendErrorCount
+          MetricNamespace: !Sub Dust/${Environment}
+          MetricValue: '1'
+          DefaultValue: 0
+
+  FrontendWarningMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref FrontendLogGroup
+      FilterPattern: '{ $.level = "warn" }'
+      MetricTransformations:
+        - MetricName: FrontendWarningCount
+          MetricNamespace: !Sub Dust/${Environment}
+          MetricValue: '1'
+          DefaultValue: 0
+
+  # CloudWatch Alarms for Log Metrics
+  CoreApiErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-core-api-error-alarm-${Environment}
+      AlarmDescription: Alarm when Core API logs contain errors
+      Namespace: !Sub Dust/${Environment}
+      MetricName: CoreApiErrorCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  McpServerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-mcp-server-error-alarm-${Environment}
+      AlarmDescription: Alarm when MCP Server logs contain errors
+      Namespace: !Sub Dust/${Environment}
+      MetricName: McpServerErrorCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  FrontendErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-frontend-error-alarm-${Environment}
+      AlarmDescription: Alarm when Frontend logs contain errors
+      Namespace: !Sub Dust/${Environment}
+      MetricName: FrontendErrorCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+Outputs:
+  ApiHealthCheckCanary:
+    Description: The API health check canary
+    Value: !Ref ApiHealthCheckCanary
+    Export:
+      Name: !Sub ${AWS::StackName}-ApiHealthCheckCanary
+
+  WebAppHealthCheckCanary:
+    Description: The web app health check canary
+    Value: !Ref WebAppHealthCheckCanary
+    Export:
+      Name: !Sub ${AWS::StackName}-WebAppHealthCheckCanary
+
+  McpServerHealthCheckCanary:
+    Description: The MCP server health check canary
+    Value: !Ref McpServerHealthCheckCanary
+    Export:
+      Name: !Sub ${AWS::StackName}-McpServerHealthCheckCanary
+
+  CoreApiLogGroup:
+    Description: The Core API log group
+    Value: !Ref CoreApiLogGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-CoreApiLogGroup
+
+  McpServerLogGroup:
+    Description: The MCP server log group
+    Value: !Ref McpServerLogGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-McpServerLogGroup
+
+  FrontendLogGroup:
+    Description: The Frontend log group
+    Value: !Ref FrontendLogGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-FrontendLogGroup

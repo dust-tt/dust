@@ -1,0 +1,239 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**', 'release/**', 'hotfix/**' ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x]
+        service: [core-api, frontend, mcp-server]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: services/${{ matrix.service }}
+        run: npm ci
+      
+      - name: Lint
+        working-directory: services/${{ matrix.service }}
+        run: npm run lint
+      
+      - name: Build
+        working-directory: services/${{ matrix.service }}
+        run: npm run build
+      
+      - name: Test
+        working-directory: services/${{ matrix.service }}
+        run: npm test
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          directory: services/${{ matrix.service }}/coverage
+          flags: ${{ matrix.service }}
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.service }}-build
+          path: services/${{ matrix.service }}/dist
+  
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    
+    strategy:
+      matrix:
+        service: [core-api, frontend, mcp-server]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+      
+      - name: Install dependencies
+        working-directory: services/${{ matrix.service }}
+        run: npm ci
+      
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high services/${{ matrix.service }}
+      
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: ${{ matrix.service }}
+          path: services/${{ matrix.service }}
+          format: 'HTML'
+          args: >
+            --failOnCVSS 7
+            --enableRetired
+      
+      - name: Upload dependency check report
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.service }}-dependency-check-report
+          path: reports
+  
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [build, security-scan]
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'develop')
+    
+    strategy:
+      matrix:
+        service: [core-api, frontend, mcp-server]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ matrix.service }}-build
+          path: services/${{ matrix.service }}/dist
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=short
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Scan Docker image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository }}/${{ matrix.service }}:${{ github.sha }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+  
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/feature/'))
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Tag and push images to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          for service in core-api frontend mcp-server; do
+            docker pull ghcr.io/${{ github.repository }}/$service:${{ github.sha }}
+            docker tag ghcr.io/${{ github.repository }}/$service:${{ github.sha }} $ECR_REGISTRY/dust-$service:${{ github.sha }}
+            docker tag ghcr.io/${{ github.repository }}/$service:${{ github.sha }} $ECR_REGISTRY/dust-$service:dev-latest
+            docker push $ECR_REGISTRY/dust-$service:${{ github.sha }}
+            docker push $ECR_REGISTRY/dust-$service:dev-latest
+          done
+      
+      - name: Deploy to ECS
+        run: |
+          for service in core-api frontend mcp-server; do
+            aws ecs update-service --cluster dust-dev --service dust-$service-dev --force-new-deployment
+          done
+      
+      - name: Wait for services to stabilize
+        run: |
+          for service in core-api frontend mcp-server; do
+            aws ecs wait services-stable --cluster dust-dev --services dust-$service-dev
+          done
+  
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/feature/'))
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+      
+      - name: Install dependencies
+        run: npm ci
+        working-directory: tests/integration
+      
+      - name: Run integration tests
+        run: npm test
+        working-directory: tests/integration
+        env:
+          API_URL: https://api.dev.dust.example.com
+          MCP_URL: https://mcp.dev.dust.example.com
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-results
+          path: tests/integration/results

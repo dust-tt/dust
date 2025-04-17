@@ -1,14 +1,24 @@
+version: "3.8"
+
 services:
+  # PostgreSQL Database
   db:
     image: postgres:14.1-alpine
+    container_name: dust-postgres
     restart: always
     environment:
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: dev
+      POSTGRES_DB: dust
     volumes:
       - pgsql:/var/lib/postgresql/data
     ports:
       - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   qdrant_primary:
     image: "qdrant/qdrant:v1.13.0"
     volumes:
@@ -43,9 +53,19 @@ services:
       qdrant_primary:
         condition: service_healthy # Ensure qdrant is healthy before starting qdrant_primary.
   redis:
-    image: redis
+    image: redis:7-alpine
+    container_name: dust-redis
+    restart: unless-stopped
     ports:
       - 6379:6379
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   apache-tika:
     image: apache/tika:2.9.2.1-full
     ports:
@@ -125,9 +145,58 @@ services:
       timeout: 10s
       retries: 20
 
+  # Note: MCP Server is not included in this setup
+
+  # Core API Service (if needed)
+  core-api:
+    build:
+      context: ./core-api
+      dockerfile: Dockerfile.dev
+    container_name: dust-core-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://dev:dev@db:5432/dust
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: local_development_jwt_secret
+      CORS_ORIGIN: http://localhost:3000
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./core-api:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # Frontend Service (if needed)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: dust-frontend
+    restart: unless-stopped
+    depends_on:
+      - core-api
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev
+
 volumes:
   pgsql:
   qdrant_primary:
   qdrant_secondary:
   dev-elasticsearch:
   dev-kibana:
+  redis_data:

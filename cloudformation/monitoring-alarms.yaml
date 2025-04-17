@@ -1,0 +1,701 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - Monitoring and Alerting System'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+  CoreApiServiceName:
+    Type: String
+    Default: dust-core-api
+    Description: The name of the Core API ECS service
+
+  FrontendServiceName:
+    Type: String
+    Default: dust-frontend
+    Description: The name of the Frontend ECS service
+
+  MCPServerServiceName:
+    Type: String
+    Default: dust-mcp-server
+    Description: The name of the MCP Server ECS service
+
+  ClusterName:
+    Type: String
+    Default: dust-dev
+    Description: The name of the ECS cluster
+
+  DatabaseIdentifier:
+    Type: String
+    Default: dust-db
+    Description: The identifier of the RDS database
+
+  ElastiCacheClusterId:
+    Type: String
+    Default: dust-cache
+    Description: The identifier of the ElastiCache cluster
+
+  OpenSearchDomainName:
+    Type: String
+    Default: dust-search
+    Description: The name of the OpenSearch domain
+
+  LoadBalancerName:
+    Type: String
+    Default: dust-alb
+    Description: The name of the Application Load Balancer
+
+  NotificationEmail:
+    Type: String
+    Default: alerts@example.com
+    Description: The email address to send notifications to
+
+Resources:
+  # SNS Topics for Notifications
+  CriticalAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-critical-alerts-${Environment}
+      DisplayName: Dust Critical Alerts
+
+  HighAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-high-alerts-${Environment}
+      DisplayName: Dust High Alerts
+
+  MediumAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-medium-alerts-${Environment}
+      DisplayName: Dust Medium Alerts
+
+  LowAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-low-alerts-${Environment}
+      DisplayName: Dust Low Alerts
+
+  # SNS Subscriptions
+  CriticalAlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref CriticalAlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  HighAlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref HighAlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  MediumAlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref MediumAlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  LowAlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref LowAlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # Service Health Alarms
+  CoreApiHealthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${CoreApiServiceName}-health-${Environment}
+      AlarmDescription: Alarm when Core API service is unhealthy
+      MetricName: HealthyHostCount
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub ${LoadBalancerName}
+        - Name: TargetGroup
+          Value: !Sub ${CoreApiServiceName}-tg
+      AlarmActions:
+        - !Ref CriticalAlertTopic
+      OKActions:
+        - !Ref CriticalAlertTopic
+
+  FrontendHealthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${FrontendServiceName}-health-${Environment}
+      AlarmDescription: Alarm when Frontend service is unhealthy
+      MetricName: HealthyHostCount
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub ${LoadBalancerName}
+        - Name: TargetGroup
+          Value: !Sub ${FrontendServiceName}-tg
+      AlarmActions:
+        - !Ref CriticalAlertTopic
+      OKActions:
+        - !Ref CriticalAlertTopic
+
+  MCPServerHealthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${MCPServerServiceName}-health-${Environment}
+      AlarmDescription: Alarm when MCP Server service is unhealthy
+      MetricName: HealthyHostCount
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub ${LoadBalancerName}
+        - Name: TargetGroup
+          Value: !Sub ${MCPServerServiceName}-tg
+      AlarmActions:
+        - !Ref CriticalAlertTopic
+      OKActions:
+        - !Ref CriticalAlertTopic
+
+  # CPU Utilization Alarms
+  CoreApiCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${CoreApiServiceName}-cpu-${Environment}
+      AlarmDescription: Alarm when Core API CPU utilization is high
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+        - Name: ServiceName
+          Value: !Ref CoreApiServiceName
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  FrontendCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${FrontendServiceName}-cpu-${Environment}
+      AlarmDescription: Alarm when Frontend CPU utilization is high
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+        - Name: ServiceName
+          Value: !Ref FrontendServiceName
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  MCPServerCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${MCPServerServiceName}-cpu-${Environment}
+      AlarmDescription: Alarm when MCP Server CPU utilization is high
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+        - Name: ServiceName
+          Value: !Ref MCPServerServiceName
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  # Memory Utilization Alarms
+  CoreApiMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${CoreApiServiceName}-memory-${Environment}
+      AlarmDescription: Alarm when Core API memory utilization is high
+      MetricName: MemoryUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+        - Name: ServiceName
+          Value: !Ref CoreApiServiceName
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  FrontendMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${FrontendServiceName}-memory-${Environment}
+      AlarmDescription: Alarm when Frontend memory utilization is high
+      MetricName: MemoryUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+        - Name: ServiceName
+          Value: !Ref FrontendServiceName
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  MCPServerMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${MCPServerServiceName}-memory-${Environment}
+      AlarmDescription: Alarm when MCP Server memory utilization is high
+      MetricName: MemoryUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+        - Name: ServiceName
+          Value: !Ref MCPServerServiceName
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  # Database Alarms
+  DatabaseCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${DatabaseIdentifier}-cpu-${Environment}
+      AlarmDescription: Alarm when database CPU utilization is high
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref DatabaseIdentifier
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  DatabaseMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${DatabaseIdentifier}-memory-${Environment}
+      AlarmDescription: Alarm when database memory utilization is high
+      MetricName: FreeableMemory
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1073741824  # 1 GB in bytes
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref DatabaseIdentifier
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  DatabaseStorageAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${DatabaseIdentifier}-storage-${Environment}
+      AlarmDescription: Alarm when database storage is low
+      MetricName: FreeStorageSpace
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 10737418240  # 10 GB in bytes
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref DatabaseIdentifier
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  DatabaseConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${DatabaseIdentifier}-connections-${Environment}
+      AlarmDescription: Alarm when database connections are high
+      MetricName: DatabaseConnections
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 100  # Adjust based on your database instance size
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref DatabaseIdentifier
+      AlarmActions:
+        - !Ref MediumAlertTopic
+      OKActions:
+        - !Ref MediumAlertTopic
+
+  # ElastiCache Alarms
+  ElastiCacheCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ElastiCacheClusterId}-cpu-${Environment}
+      AlarmDescription: Alarm when ElastiCache CPU utilization is high
+      MetricName: CPUUtilization
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Ref ElastiCacheClusterId
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  ElastiCacheMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ElastiCacheClusterId}-memory-${Environment}
+      AlarmDescription: Alarm when ElastiCache memory utilization is high
+      MetricName: DatabaseMemoryUsagePercentage
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Ref ElastiCacheClusterId
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  ElastiCacheEvictionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ElastiCacheClusterId}-evictions-${Environment}
+      AlarmDescription: Alarm when ElastiCache evictions are high
+      MetricName: Evictions
+      Namespace: AWS/ElastiCache
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1000  # Adjust based on your cache size and usage patterns
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Ref ElastiCacheClusterId
+      AlarmActions:
+        - !Ref MediumAlertTopic
+      OKActions:
+        - !Ref MediumAlertTopic
+
+  # OpenSearch Alarms
+  OpenSearchCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${OpenSearchDomainName}-cpu-${Environment}
+      AlarmDescription: Alarm when OpenSearch CPU utilization is high
+      MetricName: CPUUtilization
+      Namespace: AWS/ES
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DomainName
+          Value: !Ref OpenSearchDomainName
+        - Name: ClientId
+          Value: !Ref AWS::AccountId
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  OpenSearchJVMMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${OpenSearchDomainName}-jvm-memory-${Environment}
+      AlarmDescription: Alarm when OpenSearch JVM memory pressure is high
+      MetricName: JVMMemoryPressure
+      Namespace: AWS/ES
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DomainName
+          Value: !Ref OpenSearchDomainName
+        - Name: ClientId
+          Value: !Ref AWS::AccountId
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  OpenSearchDiskSpaceAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${OpenSearchDomainName}-disk-space-${Environment}
+      AlarmDescription: Alarm when OpenSearch free storage space is low
+      MetricName: FreeStorageSpace
+      Namespace: AWS/ES
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 10737418240  # 10 GB in bytes
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: DomainName
+          Value: !Ref OpenSearchDomainName
+        - Name: ClientId
+          Value: !Ref AWS::AccountId
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  # Load Balancer Alarms
+  LoadBalancerLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${LoadBalancerName}-latency-${Environment}
+      AlarmDescription: Alarm when load balancer latency is high
+      MetricName: TargetResponseTime
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1  # 1 second
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub ${LoadBalancerName}
+      AlarmActions:
+        - !Ref MediumAlertTopic
+      OKActions:
+        - !Ref MediumAlertTopic
+
+  LoadBalancer5xxErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${LoadBalancerName}-5xx-errors-${Environment}
+      AlarmDescription: Alarm when load balancer 5xx errors are high
+      MetricName: HTTPCode_ELB_5XX_Count
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub ${LoadBalancerName}
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  LoadBalancer4xxErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${LoadBalancerName}-4xx-errors-${Environment}
+      AlarmDescription: Alarm when load balancer 4xx errors are high
+      MetricName: HTTPCode_ELB_4XX_Count
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 100
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub ${LoadBalancerName}
+      AlarmActions:
+        - !Ref MediumAlertTopic
+      OKActions:
+        - !Ref MediumAlertTopic
+
+  # API Error Rate Alarms
+  CoreApi5xxErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${CoreApiServiceName}-5xx-errors-${Environment}
+      AlarmDescription: Alarm when Core API 5xx errors are high
+      MetricName: HTTPCode_Target_5XX_Count
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub ${LoadBalancerName}
+        - Name: TargetGroup
+          Value: !Sub ${CoreApiServiceName}-tg
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  MCPServer5xxErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${MCPServerServiceName}-5xx-errors-${Environment}
+      AlarmDescription: Alarm when MCP Server 5xx errors are high
+      MetricName: HTTPCode_Target_5XX_Count
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub ${LoadBalancerName}
+        - Name: TargetGroup
+          Value: !Sub ${MCPServerServiceName}-tg
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+  # Composite Alarms
+  CoreApiCriticalCompositeAlarm:
+    Type: AWS::CloudWatch::CompositeAlarm
+    Properties:
+      AlarmName: !Sub ${CoreApiServiceName}-critical-composite-${Environment}
+      AlarmDescription: Composite alarm for critical Core API issues
+      AlarmRule: !Sub ALARM(${CoreApiHealthAlarm}) OR ALARM(${CoreApi5xxErrorsAlarm})
+      AlarmActions:
+        - !Ref CriticalAlertTopic
+      OKActions:
+        - !Ref CriticalAlertTopic
+
+  FrontendCriticalCompositeAlarm:
+    Type: AWS::CloudWatch::CompositeAlarm
+    Properties:
+      AlarmName: !Sub ${FrontendServiceName}-critical-composite-${Environment}
+      AlarmDescription: Composite alarm for critical Frontend issues
+      AlarmRule: !Sub ALARM(${FrontendHealthAlarm})
+      AlarmActions:
+        - !Ref CriticalAlertTopic
+      OKActions:
+        - !Ref CriticalAlertTopic
+
+  MCPServerCriticalCompositeAlarm:
+    Type: AWS::CloudWatch::CompositeAlarm
+    Properties:
+      AlarmName: !Sub ${MCPServerServiceName}-critical-composite-${Environment}
+      AlarmDescription: Composite alarm for critical MCP Server issues
+      AlarmRule: !Sub ALARM(${MCPServerHealthAlarm}) OR ALARM(${MCPServer5xxErrorsAlarm})
+      AlarmActions:
+        - !Ref CriticalAlertTopic
+      OKActions:
+        - !Ref CriticalAlertTopic
+
+  DatabaseCriticalCompositeAlarm:
+    Type: AWS::CloudWatch::CompositeAlarm
+    Properties:
+      AlarmName: !Sub ${DatabaseIdentifier}-critical-composite-${Environment}
+      AlarmDescription: Composite alarm for critical Database issues
+      AlarmRule: !Sub ALARM(${DatabaseCPUAlarm}) OR ALARM(${DatabaseMemoryAlarm}) OR ALARM(${DatabaseStorageAlarm})
+      AlarmActions:
+        - !Ref HighAlertTopic
+      OKActions:
+        - !Ref HighAlertTopic
+
+Outputs:
+  CriticalAlertTopic:
+    Description: The SNS topic for critical alerts
+    Value: !Ref CriticalAlertTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-CriticalAlertTopic
+
+  HighAlertTopic:
+    Description: The SNS topic for high alerts
+    Value: !Ref HighAlertTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-HighAlertTopic
+
+  MediumAlertTopic:
+    Description: The SNS topic for medium alerts
+    Value: !Ref MediumAlertTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-MediumAlertTopic
+
+  LowAlertTopic:
+    Description: The SNS topic for low alerts
+    Value: !Ref LowAlertTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-LowAlertTopic

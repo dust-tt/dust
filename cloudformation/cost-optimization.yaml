@@ -1,0 +1,748 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - Cost Optimization'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+  NotificationEmail:
+    Type: String
+    Default: alerts@example.com
+    Description: The email address to send cost notifications to
+
+  DailyBudgetAmount:
+    Type: Number
+    Default: 50
+    Description: The daily budget amount in USD
+
+  MonthlyBudgetAmount:
+    Type: Number
+    Default: 1500
+    Description: The monthly budget amount in USD
+
+  BudgetThreshold:
+    Type: Number
+    Default: 80
+    Description: The budget threshold percentage for alerts
+
+  CostAnomalyThreshold:
+    Type: Number
+    Default: 20
+    Description: The cost anomaly threshold percentage
+
+Resources:
+  # SNS Topic for Cost Notifications
+  CostNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-cost-notifications-${Environment}
+      DisplayName: Dust Cost Notifications
+
+  CostNotificationEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref CostNotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # Daily Budget
+  DailyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub dust-daily-budget-${Environment}
+        BudgetLimit:
+          Amount: !Ref DailyBudgetAmount
+          Unit: USD
+        TimeUnit: DAILY
+        BudgetType: COST
+        CostFilters:
+          TagKeyValue:
+            - Key: Environment
+              Values:
+                - !Ref Environment
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref BudgetThreshold
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref NotificationEmail
+            - SubscriptionType: SNS
+              Address: !Ref CostNotificationTopic
+        - Notification:
+            NotificationType: FORECASTED
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref BudgetThreshold
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref NotificationEmail
+            - SubscriptionType: SNS
+              Address: !Ref CostNotificationTopic
+
+  # Monthly Budget
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub dust-monthly-budget-${Environment}
+        BudgetLimit:
+          Amount: !Ref MonthlyBudgetAmount
+          Unit: USD
+        TimeUnit: MONTHLY
+        BudgetType: COST
+        CostFilters:
+          TagKeyValue:
+            - Key: Environment
+              Values:
+                - !Ref Environment
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref BudgetThreshold
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref NotificationEmail
+            - SubscriptionType: SNS
+              Address: !Ref CostNotificationTopic
+        - Notification:
+            NotificationType: FORECASTED
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref BudgetThreshold
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref NotificationEmail
+            - SubscriptionType: SNS
+              Address: !Ref CostNotificationTopic
+
+  # Cost Anomaly Detection
+  CostAnomalyDetection:
+    Type: AWS::CE::AnomalyMonitor
+    Properties:
+      MonitorName: !Sub dust-cost-anomaly-monitor-${Environment}
+      MonitorType: DIMENSIONAL
+      MonitorDimension: SERVICE
+      MonitorSpecification: !Sub |
+        {
+          "Dimensions": {
+            "Key": "LINKED_ACCOUNT",
+            "Values": [ "${AWS::AccountId}" ],
+            "MatchOptions": [ "EQUALS" ]
+          }
+        }
+
+  CostAnomalySubscription:
+    Type: AWS::CE::AnomalySubscription
+    Properties:
+      SubscriptionName: !Sub dust-cost-anomaly-subscription-${Environment}
+      Threshold: !Ref CostAnomalyThreshold
+      Frequency: DAILY
+      MonitorArnList:
+        - !GetAtt CostAnomalyDetection.MonitorArn
+      Subscribers:
+        - Type: EMAIL
+          Address: !Ref NotificationEmail
+        - Type: SNS
+          Address: !Ref CostNotificationTopic
+
+  # IAM Role for Cost Optimization
+  CostOptimizationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CostOptimizationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ce:*
+                  - budgets:*
+                  - sns:Publish
+                  - ec2:DescribeInstances
+                  - ec2:DescribeVolumes
+                  - ec2:ModifyInstanceAttribute
+                  - ec2:StopInstances
+                  - ec2:StartInstances
+                  - rds:DescribeDBInstances
+                  - rds:ModifyDBInstance
+                  - elasticache:DescribeCacheClusters
+                  - elasticache:ModifyCacheCluster
+                  - es:DescribeDomain
+                  - es:UpdateDomainConfig
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                  - s3:GetBucketLifecycleConfiguration
+                  - s3:PutBucketLifecycleConfiguration
+                Resource: '*'
+
+  # Lambda Function for Resource Cleanup
+  ResourceCleanupFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub dust-resource-cleanup-${Environment}
+      Handler: index.handler
+      Role: !GetAtt CostOptimizationRole.Arn
+      Runtime: python3.9
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          SNS_TOPIC_ARN: !Ref CostNotificationTopic
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import json
+          from datetime import datetime, timedelta
+
+          def handler(event, context):
+              environment = os.environ['ENVIRONMENT']
+              sns_topic_arn = os.environ['SNS_TOPIC_ARN']
+              
+              ec2 = boto3.client('ec2')
+              ecs = boto3.client('ecs')
+              s3 = boto3.client('s3')
+              sns = boto3.client('sns')
+              
+              # Initialize counters
+              stopped_instances = 0
+              modified_services = 0
+              lifecycle_buckets = 0
+              
+              # Get current time in UTC
+              now = datetime.utcnow()
+              
+              # Check if it's outside business hours (assuming business hours are 8 AM to 6 PM UTC, Monday to Friday)
+              is_business_hours = True
+              if now.hour < 8 or now.hour >= 18 or now.weekday() >= 5:  # 5 and 6 are Saturday and Sunday
+                  is_business_hours = False
+              
+              # Only perform cleanup in non-production environments
+              if environment != 'prod':
+                  # Stop idle EC2 instances in development environment
+                  if environment == 'dev' and not is_business_hours:
+                      response = ec2.describe_instances(
+                          Filters=[
+                              {'Name': 'tag:Environment', 'Values': [environment]},
+                              {'Name': 'instance-state-name', 'Values': ['running']}
+                          ]
+                      )
+                      
+                      for reservation in response['Reservations']:
+                          for instance in reservation['Instances']:
+                              # Check if instance has a "KeepRunning" tag set to "true"
+                              keep_running = False
+                              if 'Tags' in instance:
+                                  for tag in instance['Tags']:
+                                      if tag['Key'] == 'KeepRunning' and tag['Value'].lower() == 'true':
+                                          keep_running = True
+                                          break
+                              
+                              if not keep_running:
+                                  instance_id = instance['InstanceId']
+                                  ec2.stop_instances(InstanceIds=[instance_id])
+                                  stopped_instances += 1
+                                  print(f"Stopped EC2 instance: {instance_id}")
+                  
+                  # Scale down ECS services in development environment during non-business hours
+                  if environment == 'dev' and not is_business_hours:
+                      cluster_name = f"dust-{environment}"
+                      
+                      response = ecs.list_services(cluster=cluster_name)
+                      service_arns = response['serviceArns']
+                      
+                      for service_arn in service_arns:
+                          service_name = service_arn.split('/')[-1]
+                          
+                          # Skip services with "KeepRunning" tag
+                          response = ecs.describe_services(
+                              cluster=cluster_name,
+                              services=[service_name]
+                          )
+                          
+                          if len(response['services']) > 0:
+                              service = response['services'][0]
+                              
+                              # Check if service has a "KeepRunning" tag set to "true"
+                              keep_running = False
+                              if 'tags' in service:
+                                  for tag in service['tags']:
+                                      if tag['key'] == 'KeepRunning' and tag['value'].lower() == 'true':
+                                          keep_running = True
+                                          break
+                              
+                              if not keep_running:
+                                  # Scale down to 0 tasks
+                                  ecs.update_service(
+                                      cluster=cluster_name,
+                                      service=service_name,
+                                      desiredCount=0
+                                  )
+                                  modified_services += 1
+                                  print(f"Scaled down ECS service: {service_name}")
+                  
+                  # Add lifecycle policies to S3 buckets
+                  response = s3.list_buckets()
+                  
+                  for bucket in response['Buckets']:
+                      bucket_name = bucket['Name']
+                      
+                      # Check if bucket belongs to the current environment
+                      if environment in bucket_name:
+                          try:
+                              # Check if bucket already has a lifecycle configuration
+                              lifecycle = s3.get_bucket_lifecycle_configuration(Bucket=bucket_name)
+                              has_lifecycle = True
+                          except:
+                              has_lifecycle = False
+                          
+                          if not has_lifecycle:
+                              # Add lifecycle policy to transition objects to Infrequent Access after 30 days
+                              # and to Glacier after 90 days
+                              s3.put_bucket_lifecycle_configuration(
+                                  Bucket=bucket_name,
+                                  LifecycleConfiguration={
+                                      'Rules': [
+                                          {
+                                              'ID': 'TransitionToIA',
+                                              'Status': 'Enabled',
+                                              'Prefix': '',
+                                              'Transitions': [
+                                                  {
+                                                      'Days': 30,
+                                                      'StorageClass': 'STANDARD_IA'
+                                                  },
+                                                  {
+                                                      'Days': 90,
+                                                      'StorageClass': 'GLACIER'
+                                                  }
+                                              ]
+                                          }
+                                      ]
+                                  }
+                              )
+                              lifecycle_buckets += 1
+                              print(f"Added lifecycle policy to S3 bucket: {bucket_name}")
+              
+              # Send summary notification
+              summary = {
+                  'environment': environment,
+                  'timestamp': now.isoformat(),
+                  'stopped_instances': stopped_instances,
+                  'modified_services': modified_services,
+                  'lifecycle_buckets': lifecycle_buckets
+              }
+              
+              sns.publish(
+                  TopicArn=sns_topic_arn,
+                  Subject=f"Cost Optimization Report - {environment}",
+                  Message=json.dumps(summary, indent=2)
+              )
+              
+              return summary
+
+  # CloudWatch Event Rule for Resource Cleanup
+  ResourceCleanupSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub dust-resource-cleanup-schedule-${Environment}
+      Description: Schedule for resource cleanup
+      ScheduleExpression: cron(0 0 * * ? *)  # Run daily at midnight UTC
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ResourceCleanupFunction.Arn
+          Id: ResourceCleanupFunction
+
+  # Lambda Permission for CloudWatch Events
+  ResourceCleanupPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ResourceCleanupFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ResourceCleanupSchedule.Arn
+
+  # Lambda Function for Cost Report
+  CostReportFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub dust-cost-report-${Environment}
+      Handler: index.handler
+      Role: !GetAtt CostOptimizationRole.Arn
+      Runtime: python3.9
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          SNS_TOPIC_ARN: !Ref CostNotificationTopic
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import json
+          from datetime import datetime, timedelta
+
+          def handler(event, context):
+              environment = os.environ['ENVIRONMENT']
+              sns_topic_arn = os.environ['SNS_TOPIC_ARN']
+              
+              ce = boto3.client('ce')
+              sns = boto3.client('sns')
+              
+              # Get current time in UTC
+              now = datetime.utcnow()
+              
+              # Calculate start and end dates for the cost report
+              end_date = now.strftime('%Y-%m-%d')
+              start_date = (now - timedelta(days=30)).strftime('%Y-%m-%d')
+              
+              # Get cost and usage data for the past 30 days
+              response = ce.get_cost_and_usage(
+                  TimePeriod={
+                      'Start': start_date,
+                      'End': end_date
+                  },
+                  Granularity='DAILY',
+                  Metrics=['UnblendedCost'],
+                  GroupBy=[
+                      {
+                          'Type': 'DIMENSION',
+                          'Key': 'SERVICE'
+                      }
+                  ],
+                  Filter={
+                      'Tags': {
+                          'Key': 'Environment',
+                          'Values': [environment]
+                      }
+                  }
+              )
+              
+              # Process the cost data
+              cost_data = []
+              total_cost = 0
+              
+              for result in response['ResultsByTime']:
+                  date = result['TimePeriod']['Start']
+                  
+                  for group in result['Groups']:
+                      service = group['Keys'][0]
+                      cost = float(group['Metrics']['UnblendedCost']['Amount'])
+                      total_cost += cost
+                      
+                      cost_data.append({
+                          'date': date,
+                          'service': service,
+                          'cost': cost
+                      })
+              
+              # Get cost and usage data by service for the past 30 days
+              response = ce.get_cost_and_usage(
+                  TimePeriod={
+                      'Start': start_date,
+                      'End': end_date
+                  },
+                  Granularity='MONTHLY',
+                  Metrics=['UnblendedCost'],
+                  GroupBy=[
+                      {
+                          'Type': 'DIMENSION',
+                          'Key': 'SERVICE'
+                      }
+                  ],
+                  Filter={
+                      'Tags': {
+                          'Key': 'Environment',
+                          'Values': [environment]
+                      }
+                  }
+              )
+              
+              # Process the service cost data
+              service_costs = []
+              
+              for result in response['ResultsByTime']:
+                  for group in result['Groups']:
+                      service = group['Keys'][0]
+                      cost = float(group['Metrics']['UnblendedCost']['Amount'])
+                      
+                      service_costs.append({
+                          'service': service,
+                          'cost': cost
+                      })
+              
+              # Sort service costs by cost (descending)
+              service_costs.sort(key=lambda x: x['cost'], reverse=True)
+              
+              # Get cost and usage forecast for the next 30 days
+              response = ce.get_cost_forecast(
+                  TimePeriod={
+                      'Start': end_date,
+                      'End': (now + timedelta(days=30)).strftime('%Y-%m-%d')
+                  },
+                  Metric='UNBLENDED_COST',
+                  Granularity='MONTHLY',
+                  Filter={
+                      'Tags': {
+                          'Key': 'Environment',
+                          'Values': [environment]
+                      }
+                  }
+              )
+              
+              # Process the forecast data
+              forecast_cost = float(response['Total']['Amount'])
+              
+              # Create the cost report
+              report = {
+                  'environment': environment,
+                  'report_date': now.isoformat(),
+                  'period': {
+                      'start': start_date,
+                      'end': end_date
+                  },
+                  'total_cost': total_cost,
+                  'forecast_cost': forecast_cost,
+                  'top_services': service_costs[:5],
+                  'daily_costs': cost_data
+              }
+              
+              # Send the cost report
+              sns.publish(
+                  TopicArn=sns_topic_arn,
+                  Subject=f"Cost Report - {environment} - {end_date}",
+                  Message=json.dumps(report, indent=2)
+              )
+              
+              return report
+
+  # CloudWatch Event Rule for Cost Report
+  CostReportSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub dust-cost-report-schedule-${Environment}
+      Description: Schedule for cost report
+      ScheduleExpression: cron(0 8 1 * ? *)  # Run at 8 AM UTC on the 1st day of each month
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt CostReportFunction.Arn
+          Id: CostReportFunction
+
+  # Lambda Permission for CloudWatch Events
+  CostReportPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CostReportFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CostReportSchedule.Arn
+
+  # CloudWatch Dashboard for Cost Monitoring
+  CostDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub dust-cost-dashboard-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 1,
+              "properties": {
+                "markdown": "# Dust Platform Cost Dashboard - ${Environment} Environment"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 1,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/Billing", "EstimatedCharges", "Currency", "USD" ]
+                ],
+                "region": "us-east-1",
+                "title": "Estimated Monthly Charges",
+                "period": 86400,
+                "stat": "Maximum"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 1,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": true,
+                "metrics": [
+                  [ "AWS/Billing", "EstimatedCharges", "ServiceName", "AmazonECS", "Currency", "USD" ],
+                  [ "...", "AmazonRDS", ".", "." ],
+                  [ "...", "AmazonElastiCache", ".", "." ],
+                  [ "...", "AmazonES", ".", "." ],
+                  [ "...", "AmazonS3", ".", "." ],
+                  [ "...", "AmazonCloudFront", ".", "." ],
+                  [ "...", "AmazonRoute53", ".", "." ],
+                  [ "...", "AmazonEC2", ".", "." ]
+                ],
+                "region": "us-east-1",
+                "title": "Estimated Charges by Service",
+                "period": 86400,
+                "stat": "Maximum"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ECS", "CPUUtilization", "ServiceName", "dust-core-api-${Environment}", "ClusterName", "dust-${Environment}" ],
+                  [ "...", "dust-frontend-${Environment}", ".", "." ],
+                  [ "...", "dust-mcp-server-${Environment}", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "ECS CPU Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ECS", "MemoryUtilization", "ServiceName", "dust-core-api-${Environment}", "ClusterName", "dust-${Environment}" ],
+                  [ "...", "dust-frontend-${Environment}", ".", "." ],
+                  [ "...", "dust-mcp-server-${Environment}", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "ECS Memory Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "dust-db-${Environment}" ],
+                  [ "AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "dust-cache-${Environment}" ],
+                  [ "AWS/ES", "CPUUtilization", "DomainName", "dust-search-${Environment}", "ClientId", "${AWS::AccountId}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Database Services CPU Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 13,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/S3", "BucketSizeBytes", "BucketName", "dust-application-data-${Environment}", "StorageType", "StandardStorage" ],
+                  [ "...", "StandardIAStorage" ],
+                  [ "...", "GlacierStorage" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "S3 Storage by Class",
+                "period": 86400
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 13,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/NetworkELB", "ProcessedBytes", "LoadBalancer", "dust-alb-${Environment}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Load Balancer Processed Bytes",
+                "period": 300
+              }
+            }
+          ]
+        }
+
+Outputs:
+  CostNotificationTopic:
+    Description: The SNS topic for cost notifications
+    Value: !Ref CostNotificationTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-CostNotificationTopic
+
+  DailyBudget:
+    Description: The daily budget
+    Value: !Ref DailyBudget
+    Export:
+      Name: !Sub ${AWS::StackName}-DailyBudget
+
+  MonthlyBudget:
+    Description: The monthly budget
+    Value: !Ref MonthlyBudget
+    Export:
+      Name: !Sub ${AWS::StackName}-MonthlyBudget
+
+  CostAnomalyDetection:
+    Description: The cost anomaly detection monitor
+    Value: !Ref CostAnomalyDetection
+    Export:
+      Name: !Sub ${AWS::StackName}-CostAnomalyDetection
+
+  CostDashboard:
+    Description: The cost dashboard
+    Value: !Ref CostDashboard
+    Export:
+      Name: !Sub ${AWS::StackName}-CostDashboard

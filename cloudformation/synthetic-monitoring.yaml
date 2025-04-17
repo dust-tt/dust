@@ -1,0 +1,424 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - Synthetic Monitoring'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+  FrontendURL:
+    Type: String
+    Description: The URL of the frontend application
+    Default: https://example.com
+
+  CoreApiURL:
+    Type: String
+    Description: The URL of the Core API
+    Default: https://api.example.com
+
+  MCPServerURL:
+    Type: String
+    Description: The URL of the MCP Server
+    Default: https://mcp.example.com
+
+  NotificationEmail:
+    Type: String
+    Default: alerts@example.com
+    Description: The email address to send notifications to
+
+Resources:
+  # IAM Role for Synthetics
+  SyntheticsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchSyntheticsFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # SNS Topic for Synthetic Monitoring Alerts
+  SyntheticsAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-synthetics-alerts-${Environment}
+      DisplayName: Dust Synthetics Alerts
+
+  SyntheticsAlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref SyntheticsAlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # Frontend Canary
+  FrontendCanary:
+    Type: AWS::Synthetics::Canary
+    Properties:
+      Name: !Sub dust-frontend-canary-${Environment}
+      ArtifactS3Location: !Sub s3://dust-monitoring-${AWS::AccountId}/canary-artifacts
+      ExecutionRoleArn: !GetAtt SyntheticsRole.Arn
+      RuntimeVersion: syn-nodejs-puppeteer-3.9
+      Schedule:
+        Expression: rate(5 minutes)
+        DurationInSeconds: 0
+      RunConfig:
+        TimeoutInSeconds: 60
+        MemoryInMB: 1024
+        ActiveTracing: true
+      SuccessRetentionPeriod: 30
+      FailureRetentionPeriod: 90
+      Code:
+        Handler: index.handler
+        Script: |
+          const synthetics = require('Synthetics');
+          const log = require('SyntheticsLogger');
+
+          const pageLoadBlueprint = async function () {
+            // Navigate to the frontend URL
+            const page = await synthetics.getPage();
+            const url = '${FrontendURL}';
+            
+            // Set up custom metrics
+            const requestsMetric = new synthetics.MetricConfig.CounterConfig();
+            requestsMetric.namespace = 'Dust/Synthetics';
+            requestsMetric.metricName = 'RequestCount';
+            requestsMetric.dimensions = [{ name: 'Environment', value: '${Environment}' }, { name: 'Service', value: 'Frontend' }];
+            
+            const loadTimeMetric = new synthetics.MetricConfig.CounterConfig();
+            loadTimeMetric.namespace = 'Dust/Synthetics';
+            loadTimeMetric.metricName = 'PageLoadTime';
+            loadTimeMetric.dimensions = [{ name: 'Environment', value: '${Environment}' }, { name: 'Service', value: 'Frontend' }];
+            
+            // Navigate to the page and measure load time
+            const startTime = Date.now();
+            const response = await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
+            const loadTime = Date.now() - startTime;
+            
+            // Add metrics
+            synthetics.addMetric(requestsMetric.metricName, requestsMetric.dimensions, 1, requestsMetric.namespace);
+            synthetics.addMetric(loadTimeMetric.metricName, loadTimeMetric.dimensions, loadTime, loadTimeMetric.namespace);
+            
+            // Verify page loaded successfully
+            if (response.status() !== 200) {
+              throw new Error(`Failed to load page: ${response.status()} ${response.statusText()}`);
+            }
+            
+            // Check for critical elements
+            await page.waitForSelector('header', { timeout: 5000 });
+            await page.waitForSelector('footer', { timeout: 5000 });
+            
+            // Take a screenshot
+            await synthetics.takeScreenshot('loaded', 'page-loaded');
+            
+            // Verify login form is present
+            await page.waitForSelector('form', { timeout: 5000 });
+            
+            // Take a screenshot of the login form
+            await synthetics.takeScreenshot('login-form', 'login-form');
+            
+            log.info('Frontend page loaded successfully');
+          };
+
+          exports.handler = async () => {
+            return await pageLoadBlueprint();
+          };
+
+  # Core API Canary
+  CoreApiCanary:
+    Type: AWS::Synthetics::Canary
+    Properties:
+      Name: !Sub dust-core-api-canary-${Environment}
+      ArtifactS3Location: !Sub s3://dust-monitoring-${AWS::AccountId}/canary-artifacts
+      ExecutionRoleArn: !GetAtt SyntheticsRole.Arn
+      RuntimeVersion: syn-nodejs-puppeteer-3.9
+      Schedule:
+        Expression: rate(5 minutes)
+        DurationInSeconds: 0
+      RunConfig:
+        TimeoutInSeconds: 60
+        MemoryInMB: 1024
+        ActiveTracing: true
+      SuccessRetentionPeriod: 30
+      FailureRetentionPeriod: 90
+      Code:
+        Handler: index.handler
+        Script: |
+          const synthetics = require('Synthetics');
+          const log = require('SyntheticsLogger');
+
+          const apiCanaryBlueprint = async function () {
+            // Set up custom metrics
+            const requestsMetric = new synthetics.MetricConfig.CounterConfig();
+            requestsMetric.namespace = 'Dust/Synthetics';
+            requestsMetric.metricName = 'RequestCount';
+            requestsMetric.dimensions = [{ name: 'Environment', value: '${Environment}' }, { name: 'Service', value: 'CoreAPI' }];
+            
+            const responseTimeMetric = new synthetics.MetricConfig.CounterConfig();
+            responseTimeMetric.namespace = 'Dust/Synthetics';
+            responseTimeMetric.metricName = 'ResponseTime';
+            responseTimeMetric.dimensions = [{ name: 'Environment', value: '${Environment}' }, { name: 'Service', value: 'CoreAPI' }];
+            
+            // Test health endpoint
+            const healthUrl = '${CoreApiURL}/health';
+            const startTime = Date.now();
+            
+            let response;
+            try {
+              response = await synthetics.executeHttpStep('Health Check', healthUrl);
+            } catch (error) {
+              log.error('Failed to execute health check', error);
+              throw error;
+            }
+            
+            const responseTime = Date.now() - startTime;
+            
+            // Add metrics
+            synthetics.addMetric(requestsMetric.metricName, requestsMetric.dimensions, 1, requestsMetric.namespace);
+            synthetics.addMetric(responseTimeMetric.metricName, responseTimeMetric.dimensions, responseTime, responseTimeMetric.namespace);
+            
+            // Verify response
+            if (response.statusCode !== 200) {
+              throw new Error(`Health check failed: ${response.statusCode}`);
+            }
+            
+            // Parse response body
+            const body = JSON.parse(response.body);
+            if (body.status !== 'ok') {
+              throw new Error(`Health check returned non-ok status: ${body.status}`);
+            }
+            
+            log.info('Core API health check passed');
+          };
+
+          exports.handler = async () => {
+            return await apiCanaryBlueprint();
+          };
+
+  # MCP Server Canary
+  MCPServerCanary:
+    Type: AWS::Synthetics::Canary
+    Properties:
+      Name: !Sub dust-mcp-server-canary-${Environment}
+      ArtifactS3Location: !Sub s3://dust-monitoring-${AWS::AccountId}/canary-artifacts
+      ExecutionRoleArn: !GetAtt SyntheticsRole.Arn
+      RuntimeVersion: syn-nodejs-puppeteer-3.9
+      Schedule:
+        Expression: rate(5 minutes)
+        DurationInSeconds: 0
+      RunConfig:
+        TimeoutInSeconds: 60
+        MemoryInMB: 1024
+        ActiveTracing: true
+      SuccessRetentionPeriod: 30
+      FailureRetentionPeriod: 90
+      Code:
+        Handler: index.handler
+        Script: |
+          const synthetics = require('Synthetics');
+          const log = require('SyntheticsLogger');
+
+          const apiCanaryBlueprint = async function () {
+            // Set up custom metrics
+            const requestsMetric = new synthetics.MetricConfig.CounterConfig();
+            requestsMetric.namespace = 'Dust/Synthetics';
+            requestsMetric.metricName = 'RequestCount';
+            requestsMetric.dimensions = [{ name: 'Environment', value: '${Environment}' }, { name: 'Service', value: 'MCPServer' }];
+            
+            const responseTimeMetric = new synthetics.MetricConfig.CounterConfig();
+            responseTimeMetric.namespace = 'Dust/Synthetics';
+            responseTimeMetric.metricName = 'ResponseTime';
+            responseTimeMetric.dimensions = [{ name: 'Environment', value: '${Environment}' }, { name: 'Service', value: 'MCPServer' }];
+            
+            // Test health endpoint
+            const healthUrl = '${MCPServerURL}/health';
+            const startTime = Date.now();
+            
+            let response;
+            try {
+              response = await synthetics.executeHttpStep('Health Check', healthUrl);
+            } catch (error) {
+              log.error('Failed to execute health check', error);
+              throw error;
+            }
+            
+            const responseTime = Date.now() - startTime;
+            
+            // Add metrics
+            synthetics.addMetric(requestsMetric.metricName, requestsMetric.dimensions, 1, requestsMetric.namespace);
+            synthetics.addMetric(responseTimeMetric.metricName, responseTimeMetric.dimensions, responseTime, responseTimeMetric.namespace);
+            
+            // Verify response
+            if (response.statusCode !== 200) {
+              throw new Error(`Health check failed: ${response.statusCode}`);
+            }
+            
+            // Parse response body
+            const body = JSON.parse(response.body);
+            if (body.status !== 'ok') {
+              throw new Error(`Health check returned non-ok status: ${body.status}`);
+            }
+            
+            log.info('MCP Server health check passed');
+          };
+
+          exports.handler = async () => {
+            return await apiCanaryBlueprint();
+          };
+
+  # Alarms for Synthetic Monitoring
+  FrontendCanaryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-frontend-canary-alarm-${Environment}
+      AlarmDescription: Alarm when the frontend canary fails
+      MetricName: SuccessPercent
+      Namespace: CloudWatchSynthetics
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 100
+      ComparisonOperator: LessThan
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref FrontendCanary
+      AlarmActions:
+        - !Ref SyntheticsAlertTopic
+      OKActions:
+        - !Ref SyntheticsAlertTopic
+
+  CoreApiCanaryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-core-api-canary-alarm-${Environment}
+      AlarmDescription: Alarm when the Core API canary fails
+      MetricName: SuccessPercent
+      Namespace: CloudWatchSynthetics
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 100
+      ComparisonOperator: LessThan
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref CoreApiCanary
+      AlarmActions:
+        - !Ref SyntheticsAlertTopic
+      OKActions:
+        - !Ref SyntheticsAlertTopic
+
+  MCPServerCanaryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-mcp-server-canary-alarm-${Environment}
+      AlarmDescription: Alarm when the MCP Server canary fails
+      MetricName: SuccessPercent
+      Namespace: CloudWatchSynthetics
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 100
+      ComparisonOperator: LessThan
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref MCPServerCanary
+      AlarmActions:
+        - !Ref SyntheticsAlertTopic
+      OKActions:
+        - !Ref SyntheticsAlertTopic
+
+  FrontendCanaryDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-frontend-canary-duration-alarm-${Environment}
+      AlarmDescription: Alarm when the frontend canary duration is high
+      MetricName: Duration
+      Namespace: CloudWatchSynthetics
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 5000  # 5 seconds
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref FrontendCanary
+      AlarmActions:
+        - !Ref SyntheticsAlertTopic
+      OKActions:
+        - !Ref SyntheticsAlertTopic
+
+  CoreApiCanaryDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-core-api-canary-duration-alarm-${Environment}
+      AlarmDescription: Alarm when the Core API canary duration is high
+      MetricName: Duration
+      Namespace: CloudWatchSynthetics
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 3000  # 3 seconds
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref CoreApiCanary
+      AlarmActions:
+        - !Ref SyntheticsAlertTopic
+      OKActions:
+        - !Ref SyntheticsAlertTopic
+
+  MCPServerCanaryDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-mcp-server-canary-duration-alarm-${Environment}
+      AlarmDescription: Alarm when the MCP Server canary duration is high
+      MetricName: Duration
+      Namespace: CloudWatchSynthetics
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 3000  # 3 seconds
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref MCPServerCanary
+      AlarmActions:
+        - !Ref SyntheticsAlertTopic
+      OKActions:
+        - !Ref SyntheticsAlertTopic
+
+Outputs:
+  FrontendCanary:
+    Description: The frontend canary
+    Value: !Ref FrontendCanary
+    Export:
+      Name: !Sub ${AWS::StackName}-FrontendCanary
+
+  CoreApiCanary:
+    Description: The Core API canary
+    Value: !Ref CoreApiCanary
+    Export:
+      Name: !Sub ${AWS::StackName}-CoreApiCanary
+
+  MCPServerCanary:
+    Description: The MCP Server canary
+    Value: !Ref MCPServerCanary
+    Export:
+      Name: !Sub ${AWS::StackName}-MCPServerCanary
+
+  SyntheticsAlertTopic:
+    Description: The SNS topic for synthetic monitoring alerts
+    Value: !Ref SyntheticsAlertTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-SyntheticsAlertTopic

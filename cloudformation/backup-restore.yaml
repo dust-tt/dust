@@ -1,0 +1,457 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - Backup and Restore for Disaster Recovery'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+  BackupVaultName:
+    Type: String
+    Default: dust-backup-vault
+    Description: The name of the AWS Backup vault
+
+  DailyBackupSchedule:
+    Type: String
+    Default: cron(0 0 * * ? *)
+    Description: The schedule for daily backups (default is midnight UTC)
+
+  WeeklyBackupSchedule:
+    Type: String
+    Default: cron(0 0 ? * SUN *)
+    Description: The schedule for weekly backups (default is Sunday midnight UTC)
+
+  DailyBackupRetentionDays:
+    Type: Number
+    Default: 30
+    Description: The number of days to retain daily backups
+
+  WeeklyBackupRetentionDays:
+    Type: Number
+    Default: 90
+    Description: The number of days to retain weekly backups
+
+  NotificationEmail:
+    Type: String
+    Default: alerts@example.com
+    Description: The email address to send backup notifications to
+
+Resources:
+  # IAM Role for AWS Backup
+  BackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores
+
+  # AWS Backup Vault
+  BackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: !Sub ${BackupVaultName}-${Environment}
+      EncryptionKeyArn: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/dust-encryption-key
+      Notifications:
+        BackupVaultEvents:
+          - BACKUP_JOB_STARTED
+          - BACKUP_JOB_COMPLETED
+          - BACKUP_JOB_FAILED
+          - RESTORE_JOB_STARTED
+          - RESTORE_JOB_COMPLETED
+          - RESTORE_JOB_FAILED
+        SNSTopicArn: !Ref BackupNotificationTopic
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # SNS Topic for Backup Notifications
+  BackupNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-backup-notifications-${Environment}
+      DisplayName: Dust Backup Notifications
+
+  BackupNotificationEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref BackupNotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # Daily Backup Plan
+  DailyBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub dust-daily-backup-plan-${Environment}
+        BackupPlanRule:
+          - RuleName: DailyBackups
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: !Ref DailyBackupSchedule
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 180
+            Lifecycle:
+              DeleteAfterDays: !Ref DailyBackupRetentionDays
+            CopyActions:
+              - DestinationBackupVaultArn: !Sub arn:aws:backup:us-west-2:${AWS::AccountId}:backup-vault:${BackupVaultName}-${Environment}-secondary
+                Lifecycle:
+                  DeleteAfterDays: !Ref DailyBackupRetentionDays
+        AdvancedBackupSettings:
+          - ResourceType: RDS
+            BackupOptions:
+              WindowsVSS: disabled
+
+  # Weekly Backup Plan
+  WeeklyBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub dust-weekly-backup-plan-${Environment}
+        BackupPlanRule:
+          - RuleName: WeeklyBackups
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: !Ref WeeklyBackupSchedule
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 180
+            Lifecycle:
+              DeleteAfterDays: !Ref WeeklyBackupRetentionDays
+            CopyActions:
+              - DestinationBackupVaultArn: !Sub arn:aws:backup:us-west-2:${AWS::AccountId}:backup-vault:${BackupVaultName}-${Environment}-secondary
+                Lifecycle:
+                  DeleteAfterDays: !Ref WeeklyBackupRetentionDays
+        AdvancedBackupSettings:
+          - ResourceType: RDS
+            BackupOptions:
+              WindowsVSS: disabled
+
+  # Daily Backup Selection
+  DailyBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref DailyBackupPlan
+      BackupSelection:
+        SelectionName: !Sub dust-daily-backup-selection-${Environment}
+        IamRoleArn: !GetAtt BackupRole.Arn
+        Resources:
+          - !Sub arn:aws:rds:${AWS::Region}:${AWS::AccountId}:db:dust-db-${Environment}
+          - !Sub arn:aws:elasticache:${AWS::Region}:${AWS::AccountId}:cluster:dust-cache-${Environment}
+          - !Sub arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/dust-search-${Environment}
+          - !Sub arn:aws:s3:::dust-application-data-${Environment}-${AWS::AccountId}-${AWS::Region}
+        ListOfTags:
+          - ConditionType: STRINGEQUALS
+            ConditionKey: Environment
+            ConditionValue: !Ref Environment
+
+  # Weekly Backup Selection
+  WeeklyBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref WeeklyBackupPlan
+      BackupSelection:
+        SelectionName: !Sub dust-weekly-backup-selection-${Environment}
+        IamRoleArn: !GetAtt BackupRole.Arn
+        Resources:
+          - !Sub arn:aws:rds:${AWS::Region}:${AWS::AccountId}:db:dust-db-${Environment}
+          - !Sub arn:aws:elasticache:${AWS::Region}:${AWS::AccountId}:cluster:dust-cache-${Environment}
+          - !Sub arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/dust-search-${Environment}
+          - !Sub arn:aws:s3:::dust-application-data-${Environment}-${AWS::AccountId}-${AWS::Region}
+        ListOfTags:
+          - ConditionType: STRINGEQUALS
+            ConditionKey: Environment
+            ConditionValue: !Ref Environment
+
+  # Secondary Region Backup Vault
+  SecondaryBackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: !Sub ${BackupVaultName}-${Environment}-secondary
+      EncryptionKeyArn: !Sub arn:aws:kms:us-west-2:${AWS::AccountId}:alias/dust-encryption-key
+      Notifications:
+        BackupVaultEvents:
+          - BACKUP_JOB_STARTED
+          - BACKUP_JOB_COMPLETED
+          - BACKUP_JOB_FAILED
+          - RESTORE_JOB_STARTED
+          - RESTORE_JOB_COMPLETED
+          - RESTORE_JOB_FAILED
+        SNSTopicArn: !Ref SecondaryBackupNotificationTopic
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # SNS Topic for Secondary Region Backup Notifications
+  SecondaryBackupNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-backup-notifications-${Environment}-secondary
+      DisplayName: Dust Backup Notifications (Secondary)
+
+  SecondaryBackupNotificationEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref SecondaryBackupNotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # CloudWatch Alarms for Backup Monitoring
+  BackupJobFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-backup-job-failed-${Environment}
+      AlarmDescription: Alarm when a backup job fails
+      MetricName: BackupJobsFailed
+      Namespace: AWS/Backup
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: BackupVault
+          Value: !Ref BackupVault
+      AlarmActions:
+        - !Ref BackupNotificationTopic
+      OKActions:
+        - !Ref BackupNotificationTopic
+
+  RestoreJobFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-restore-job-failed-${Environment}
+      AlarmDescription: Alarm when a restore job fails
+      MetricName: RestoreJobsFailed
+      Namespace: AWS/Backup
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: BackupVault
+          Value: !Ref BackupVault
+      AlarmActions:
+        - !Ref BackupNotificationTopic
+      OKActions:
+        - !Ref BackupNotificationTopic
+
+  # Lambda Function for Backup Verification
+  BackupVerificationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub dust-backup-verification-${Environment}
+      Handler: index.handler
+      Role: !GetAtt BackupVerificationRole.Arn
+      Runtime: nodejs14.x
+      Timeout: 300
+      Environment:
+        Variables:
+          BACKUP_VAULT_NAME: !Ref BackupVault
+          SNS_TOPIC_ARN: !Ref BackupNotificationTopic
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const backup = new AWS.Backup();
+          const sns = new AWS.SNS();
+
+          exports.handler = async (event) => {
+            console.log('Received event:', JSON.stringify(event, null, 2));
+            
+            // Get the backup job details
+            const backupJobId = event.detail.backupJobId;
+            const backupJobsParams = {
+              BackupJobId: backupJobId
+            };
+            
+            try {
+              const backupJobDetails = await backup.describeBackupJob(backupJobsParams).promise();
+              console.log('Backup job details:', JSON.stringify(backupJobDetails, null, 2));
+              
+              // Verify the backup job was successful
+              if (backupJobDetails.State === 'COMPLETED') {
+                // Get the recovery point details
+                const recoveryPointArn = backupJobDetails.RecoveryPointArn;
+                const recoveryPointParams = {
+                  BackupVaultName: process.env.BACKUP_VAULT_NAME,
+                  RecoveryPointArn: recoveryPointArn
+                };
+                
+                const recoveryPointDetails = await backup.describeRecoveryPoint(recoveryPointParams).promise();
+                console.log('Recovery point details:', JSON.stringify(recoveryPointDetails, null, 2));
+                
+                // Verify the recovery point is valid
+                if (recoveryPointDetails.Status === 'COMPLETED') {
+                  // Send a success notification
+                  const message = `Backup verification successful for job ${backupJobId}. Recovery point ${recoveryPointArn} is valid.`;
+                  await sns.publish({
+                    TopicArn: process.env.SNS_TOPIC_ARN,
+                    Subject: 'Backup Verification Successful',
+                    Message: message
+                  }).promise();
+                  
+                  return {
+                    statusCode: 200,
+                    body: JSON.stringify({
+                      message: 'Backup verification successful',
+                      backupJobId: backupJobId,
+                      recoveryPointArn: recoveryPointArn
+                    })
+                  };
+                } else {
+                  // Send a failure notification
+                  const message = `Backup verification failed for job ${backupJobId}. Recovery point ${recoveryPointArn} is not valid. Status: ${recoveryPointDetails.Status}`;
+                  await sns.publish({
+                    TopicArn: process.env.SNS_TOPIC_ARN,
+                    Subject: 'Backup Verification Failed',
+                    Message: message
+                  }).promise();
+                  
+                  return {
+                    statusCode: 500,
+                    body: JSON.stringify({
+                      message: 'Backup verification failed',
+                      backupJobId: backupJobId,
+                      recoveryPointArn: recoveryPointArn,
+                      status: recoveryPointDetails.Status
+                    })
+                  };
+                }
+              } else {
+                // Send a failure notification
+                const message = `Backup job ${backupJobId} was not successful. Status: ${backupJobDetails.State}`;
+                await sns.publish({
+                  TopicArn: process.env.SNS_TOPIC_ARN,
+                  Subject: 'Backup Job Failed',
+                  Message: message
+                }).promise();
+                
+                return {
+                  statusCode: 500,
+                  body: JSON.stringify({
+                    message: 'Backup job was not successful',
+                    backupJobId: backupJobId,
+                    status: backupJobDetails.State
+                  })
+                };
+              }
+            } catch (error) {
+              console.error('Error:', error);
+              
+              // Send an error notification
+              const message = `Error verifying backup job ${backupJobId}: ${error.message}`;
+              await sns.publish({
+                TopicArn: process.env.SNS_TOPIC_ARN,
+                Subject: 'Backup Verification Error',
+                Message: message
+              }).promise();
+              
+              return {
+                statusCode: 500,
+                body: JSON.stringify({
+                  message: 'Error verifying backup',
+                  backupJobId: backupJobId,
+                  error: error.message
+                })
+              };
+            }
+          };
+
+  # IAM Role for Backup Verification Lambda
+  BackupVerificationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BackupVerificationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - backup:DescribeBackupJob
+                  - backup:DescribeRecoveryPoint
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref BackupNotificationTopic
+
+  # CloudWatch Event Rule for Backup Job Completion
+  BackupJobCompletionRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub dust-backup-job-completion-${Environment}
+      Description: Rule for backup job completion
+      EventPattern:
+        source:
+          - aws.backup
+        detail-type:
+          - Backup Job State Change
+        detail:
+          state:
+            - COMPLETED
+          backup-vault-name:
+            - !Ref BackupVault
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt BackupVerificationFunction.Arn
+          Id: BackupVerificationFunction
+
+  # Lambda Permission for CloudWatch Events
+  BackupJobCompletionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref BackupVerificationFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt BackupJobCompletionRule.Arn
+
+Outputs:
+  BackupVault:
+    Description: The AWS Backup vault
+    Value: !Ref BackupVault
+    Export:
+      Name: !Sub ${AWS::StackName}-BackupVault
+
+  SecondaryBackupVault:
+    Description: The AWS Backup vault in the secondary region
+    Value: !Ref SecondaryBackupVault
+    Export:
+      Name: !Sub ${AWS::StackName}-SecondaryBackupVault
+
+  DailyBackupPlan:
+    Description: The daily backup plan
+    Value: !Ref DailyBackupPlan
+    Export:
+      Name: !Sub ${AWS::StackName}-DailyBackupPlan
+
+  WeeklyBackupPlan:
+    Description: The weekly backup plan
+    Value: !Ref WeeklyBackupPlan
+    Export:
+      Name: !Sub ${AWS::StackName}-WeeklyBackupPlan
+
+  BackupNotificationTopic:
+    Description: The SNS topic for backup notifications
+    Value: !Ref BackupNotificationTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-BackupNotificationTopic

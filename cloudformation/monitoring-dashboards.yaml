@@ -1,0 +1,735 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - Monitoring Dashboards'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+  CoreApiServiceName:
+    Type: String
+    Default: dust-core-api
+    Description: The name of the Core API ECS service
+
+  FrontendServiceName:
+    Type: String
+    Default: dust-frontend
+    Description: The name of the Frontend ECS service
+
+  MCPServerServiceName:
+    Type: String
+    Default: dust-mcp-server
+    Description: The name of the MCP Server ECS service
+
+  ClusterName:
+    Type: String
+    Default: dust-dev
+    Description: The name of the ECS cluster
+
+  DatabaseIdentifier:
+    Type: String
+    Default: dust-db
+    Description: The identifier of the RDS database
+
+  ElastiCacheClusterId:
+    Type: String
+    Default: dust-cache
+    Description: The identifier of the ElastiCache cluster
+
+  OpenSearchDomainName:
+    Type: String
+    Default: dust-search
+    Description: The name of the OpenSearch domain
+
+  LoadBalancerName:
+    Type: String
+    Default: dust-alb
+    Description: The name of the Application Load Balancer
+
+Resources:
+  # Executive Dashboard
+  ExecutiveDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub dust-executive-dashboard-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 1,
+              "properties": {
+                "markdown": "# Dust Platform Executive Dashboard - ${Environment} Environment"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", "${CoreApiServiceName}-tg", "LoadBalancer", "${LoadBalancerName}" ],
+                  [ "...", "${FrontendServiceName}-tg", ".", "." ],
+                  [ "...", "${MCPServerServiceName}-tg", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Service Health",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${LoadBalancerName}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Total Requests",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", "${LoadBalancerName}" ],
+                  [ ".", "HTTPCode_ELB_4XX_Count", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Error Rates",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ECS", "CPUUtilization", "ServiceName", "${CoreApiServiceName}", "ClusterName", "${ClusterName}" ],
+                  [ "...", "${FrontendServiceName}", ".", "." ],
+                  [ "...", "${MCPServerServiceName}", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Service CPU Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${DatabaseIdentifier}" ],
+                  [ "AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "${ElastiCacheClusterId}" ],
+                  [ "AWS/ES", "CPUUtilization", "DomainName", "${OpenSearchDomainName}", "ClientId", "${AWS::AccountId}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Database Services CPU Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "${LoadBalancerName}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Response Time",
+                "period": 300
+              }
+            }
+          ]
+        }
+
+  # Operations Dashboard
+  OperationsDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub dust-operations-dashboard-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 1,
+              "properties": {
+                "markdown": "# Dust Platform Operations Dashboard - ${Environment} Environment"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ECS", "CPUUtilization", "ServiceName", "${CoreApiServiceName}", "ClusterName", "${ClusterName}" ],
+                  [ ".", "MemoryUtilization", ".", ".", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Core API Resource Utilization",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ECS", "CPUUtilization", "ServiceName", "${FrontendServiceName}", "ClusterName", "${ClusterName}" ],
+                  [ ".", "MemoryUtilization", ".", ".", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Frontend Resource Utilization",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ECS", "CPUUtilization", "ServiceName", "${MCPServerServiceName}", "ClusterName", "${ClusterName}" ],
+                  [ ".", "MemoryUtilization", ".", ".", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "MCP Server Resource Utilization",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "RequestCount", "TargetGroup", "${CoreApiServiceName}-tg", "LoadBalancer", "${LoadBalancerName}" ],
+                  [ "...", "${FrontendServiceName}-tg", ".", "." ],
+                  [ "...", "${MCPServerServiceName}-tg", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Request Count by Service",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "TargetResponseTime", "TargetGroup", "${CoreApiServiceName}-tg", "LoadBalancer", "${LoadBalancerName}" ],
+                  [ "...", "${FrontendServiceName}-tg", ".", "." ],
+                  [ "...", "${MCPServerServiceName}-tg", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Response Time by Service",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 7,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "TargetGroup", "${CoreApiServiceName}-tg", "LoadBalancer", "${LoadBalancerName}" ],
+                  [ "...", "${FrontendServiceName}-tg", ".", "." ],
+                  [ "...", "${MCPServerServiceName}-tg", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "5XX Errors by Service",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 13,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${DatabaseIdentifier}" ],
+                  [ ".", "FreeableMemory", ".", "." ],
+                  [ ".", "FreeStorageSpace", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Database Metrics",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 13,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "${ElastiCacheClusterId}" ],
+                  [ ".", "DatabaseMemoryUsagePercentage", ".", "." ],
+                  [ ".", "CacheHits", ".", "." ],
+                  [ ".", "CacheMisses", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "ElastiCache Metrics",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 13,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ES", "CPUUtilization", "DomainName", "${OpenSearchDomainName}", "ClientId", "${AWS::AccountId}" ],
+                  [ ".", "JVMMemoryPressure", ".", ".", ".", "." ],
+                  [ ".", "FreeStorageSpace", ".", ".", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "OpenSearch Metrics",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 19,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ECS", "RunningTaskCount", "ServiceName", "${CoreApiServiceName}", "ClusterName", "${ClusterName}" ],
+                  [ "...", "${FrontendServiceName}", ".", "." ],
+                  [ "...", "${MCPServerServiceName}", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Running Tasks",
+                "period": 60
+              }
+            }
+          ]
+        }
+
+  # Development Dashboard
+  DevelopmentDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub dust-development-dashboard-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 1,
+              "properties": {
+                "markdown": "# Dust Platform Development Dashboard - ${Environment} Environment"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 1,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "TargetGroup", "${CoreApiServiceName}-tg", "LoadBalancer", "${LoadBalancerName}" ],
+                  [ ".", "HTTPCode_Target_4XX_Count", ".", ".", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Core API Error Codes",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 1,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "TargetGroup", "${MCPServerServiceName}-tg", "LoadBalancer", "${LoadBalancerName}" ],
+                  [ ".", "HTTPCode_Target_4XX_Count", ".", ".", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "MCP Server Error Codes",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 7,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "TargetResponseTime", "TargetGroup", "${CoreApiServiceName}-tg", "LoadBalancer", "${LoadBalancerName}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Core API Response Time",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 7,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "TargetResponseTime", "TargetGroup", "${MCPServerServiceName}-tg", "LoadBalancer", "${LoadBalancerName}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "MCP Server Response Time",
+                "period": 60
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 13,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '/ecs/${CoreApiServiceName}' | fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 20",
+                "region": "${AWS::Region}",
+                "title": "Core API Error Logs",
+                "view": "table"
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 19,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '/ecs/${MCPServerServiceName}' | fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 20",
+                "region": "${AWS::Region}",
+                "title": "MCP Server Error Logs",
+                "view": "table"
+              }
+            }
+          ]
+        }
+
+  # Security Dashboard
+  SecurityDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub dust-security-dashboard-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 1,
+              "properties": {
+                "markdown": "# Dust Platform Security Dashboard - ${Environment} Environment"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 1,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/WAFV2", "BlockedRequests", "WebACL", "dust-waf-web-acl", "Region", "${AWS::Region}" ],
+                  [ ".", "AllowedRequests", ".", ".", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "WAF Requests",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 1,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/WAFV2", "CountedRequests", "WebACL", "dust-waf-web-acl", "Region", "${AWS::Region}", { "stat": "Sum" } ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "WAF Counted Requests",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 7,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "CloudTrailMetrics", "AuthorizationFailureCount", { "stat": "Sum" } ],
+                  [ ".", "ConsoleSignInFailures", { "stat": "Sum" } ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Authentication Failures",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 7,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "CloudTrailMetrics", "RootAccountUsage", { "stat": "Sum" } ],
+                  [ ".", "IAMPolicyChanges", { "stat": "Sum" } ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Security Events",
+                "period": 300
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 13,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '/ecs/${CoreApiServiceName}' | fields @timestamp, @message\n| filter @message like /authentication failed/ or @message like /authorization failed/\n| sort @timestamp desc\n| limit 20",
+                "region": "${AWS::Region}",
+                "title": "Authentication/Authorization Failures",
+                "view": "table"
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 19,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '/vpc/flow-logs' | fields @timestamp, srcAddr, dstAddr, srcPort, dstPort, action\n| filter action = \"REJECT\"\n| sort @timestamp desc\n| limit 20",
+                "region": "${AWS::Region}",
+                "title": "Rejected Network Traffic",
+                "view": "table"
+              }
+            }
+          ]
+        }
+
+  # User Experience Dashboard
+  UserExperienceDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub dust-user-experience-dashboard-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 1,
+              "properties": {
+                "markdown": "# Dust Platform User Experience Dashboard - ${Environment} Environment"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 1,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "${LoadBalancerName}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Overall Response Time",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 1,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", "${LoadBalancerName}" ],
+                  [ ".", "HTTPCode_ELB_4XX_Count", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Error Rates",
+                "period": 60
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 7,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/Synthetics", "SuccessPercent", "CanaryName", "dust-frontend-canary" ],
+                  [ ".", "Duration", ".", "." ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Synthetic Monitoring",
+                "period": 60
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 13,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '/ecs/${FrontendServiceName}' | fields @timestamp, @message\n| filter @message like /Error/\n| sort @timestamp desc\n| limit 20",
+                "region": "${AWS::Region}",
+                "title": "Frontend Error Logs",
+                "view": "table"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  ExecutiveDashboard:
+    Description: The URL for the Executive Dashboard
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${ExecutiveDashboard}
+
+  OperationsDashboard:
+    Description: The URL for the Operations Dashboard
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${OperationsDashboard}
+
+  DevelopmentDashboard:
+    Description: The URL for the Development Dashboard
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${DevelopmentDashboard}
+
+  SecurityDashboard:
+    Description: The URL for the Security Dashboard
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${SecurityDashboard}
+
+  UserExperienceDashboard:
+    Description: The URL for the User Experience Dashboard
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${UserExperienceDashboard}

@@ -1,0 +1,374 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - Cross-Region Replication for Disaster Recovery'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+  PrimaryRegion:
+    Type: String
+    Default: us-east-1
+    Description: The primary AWS region
+
+  SecondaryRegion:
+    Type: String
+    Default: us-west-2
+    Description: The secondary AWS region for disaster recovery
+
+  ApplicationDataBucketName:
+    Type: String
+    Default: dust-application-data
+    Description: The name of the S3 bucket for application data
+
+  DatabaseIdentifier:
+    Type: String
+    Default: dust-db
+    Description: The identifier of the RDS database
+
+  ElastiCacheClusterId:
+    Type: String
+    Default: dust-cache
+    Description: The identifier of the ElastiCache cluster
+
+  OpenSearchDomainName:
+    Type: String
+    Default: dust-search
+    Description: The name of the OpenSearch domain
+
+  CoreApiRepositoryName:
+    Type: String
+    Default: dust-core-api
+    Description: The name of the ECR repository for Core API
+
+  FrontendRepositoryName:
+    Type: String
+    Default: dust-frontend
+    Description: The name of the ECR repository for Frontend
+
+  MCPServerRepositoryName:
+    Type: String
+    Default: dust-mcp-server
+    Description: The name of the ECR repository for MCP Server
+
+Resources:
+  # IAM Role for Replication
+  ReplicationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  # S3 Bucket for Application Data in Primary Region
+  ApplicationDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ApplicationDataBucketName}-${Environment}-${AWS::AccountId}-${PrimaryRegion}
+      VersioningConfiguration:
+        Status: Enabled
+      ReplicationConfiguration:
+        Role: !GetAtt ReplicationRole.Arn
+        Rules:
+          - Status: Enabled
+            Destination:
+              Bucket: !Sub arn:aws:s3:::${ApplicationDataBucketName}-${Environment}-${AWS::AccountId}-${SecondaryRegion}
+              EncryptionConfiguration:
+                ReplicaKmsKeyID: !Sub arn:aws:kms:${SecondaryRegion}:${AWS::AccountId}:alias/dust-encryption-key
+            SourceSelectionCriteria:
+              SseKmsEncryptedObjects:
+                Status: Enabled
+            DeleteMarkerReplication:
+              Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Sub arn:aws:kms:${PrimaryRegion}:${AWS::AccountId}:alias/dust-encryption-key
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToGlacier
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+            ExpirationInDays: 365
+
+  # S3 Bucket for Application Data in Secondary Region
+  ApplicationDataBucketSecondary:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ApplicationDataBucketName}-${Environment}-${AWS::AccountId}-${SecondaryRegion}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Sub arn:aws:kms:${SecondaryRegion}:${AWS::AccountId}:alias/dust-encryption-key
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToGlacier
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+            ExpirationInDays: 365
+
+  # RDS Read Replica in Secondary Region
+  DatabaseReadReplica:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub ${DatabaseIdentifier}-replica-${Environment}
+      SourceDBInstanceIdentifier: !Sub arn:aws:rds:${PrimaryRegion}:${AWS::AccountId}:db:${DatabaseIdentifier}-${Environment}
+      DBInstanceClass: db.t3.medium
+      Engine: postgres
+      MultiAZ: true
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      KmsKeyId: !Sub arn:aws:kms:${SecondaryRegion}:${AWS::AccountId}:alias/dust-encryption-key
+      CopyTagsToSnapshot: true
+      BackupRetentionPeriod: 7
+      DeleteAutomatedBackups: false
+      DeletionProtection: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Name
+          Value: !Sub ${DatabaseIdentifier}-replica-${Environment}
+
+  # ElastiCache Global Datastore
+  ElastiCacheGlobalDatastore:
+    Type: AWS::ElastiCache::GlobalReplicationGroup
+    Properties:
+      GlobalReplicationGroupIdSuffix: !Sub ${ElastiCacheClusterId}-${Environment}
+      PrimaryReplicationGroupId: !Sub ${ElastiCacheClusterId}-${Environment}
+      RegionalConfigurations:
+        - ReplicationGroupId: !Sub ${ElastiCacheClusterId}-${Environment}-secondary
+          ReplicationGroupRegion: !Ref SecondaryRegion
+          ReshardingConfiguration:
+            - NodeGroupId: '0001'
+              PreferredAvailabilityZones:
+                - !Sub ${SecondaryRegion}a
+                - !Sub ${SecondaryRegion}b
+
+  # OpenSearch Cross-Cluster Replication
+  OpenSearchCrossClusterReplication:
+    Type: AWS::OpenSearchService::Domain
+    Properties:
+      DomainName: !Sub ${OpenSearchDomainName}-replica-${Environment}
+      EngineVersion: OpenSearch_1.3
+      ClusterConfig:
+        InstanceType: r6g.large.search
+        InstanceCount: 2
+        ZoneAwarenessEnabled: true
+        ZoneAwarenessConfig:
+          AvailabilityZoneCount: 2
+      EBSOptions:
+        EBSEnabled: true
+        VolumeType: gp3
+        VolumeSize: 100
+      EncryptionAtRestOptions:
+        Enabled: true
+        KmsKeyId: !Sub arn:aws:kms:${SecondaryRegion}:${AWS::AccountId}:alias/dust-encryption-key
+      NodeToNodeEncryptionOptions:
+        Enabled: true
+      DomainEndpointOptions:
+        EnforceHTTPS: true
+        TLSSecurityPolicy: Policy-Min-TLS-1-2-2019-07
+      AdvancedSecurityOptions:
+        Enabled: true
+        InternalUserDatabaseEnabled: false
+        MasterUserOptions:
+          MasterUserARN: !Sub arn:aws:iam::${AWS::AccountId}:role/OpenSearchAdminRole
+      AccessPolicies:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/OpenSearchAdminRole
+            Action: 'es:*'
+            Resource: !Sub arn:aws:es:${SecondaryRegion}:${AWS::AccountId}:domain/${OpenSearchDomainName}-replica-${Environment}/*
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Name
+          Value: !Sub ${OpenSearchDomainName}-replica-${Environment}
+
+  # ECR Replication Configuration for Core API
+  CoreApiECRReplicationConfiguration:
+    Type: AWS::ECR::ReplicationConfiguration
+    Properties:
+      RegistryId: !Ref AWS::AccountId
+      ReplicationConfiguration:
+        Rules:
+          - Destinations:
+              - Region: !Ref SecondaryRegion
+                RegistryId: !Ref AWS::AccountId
+            RepositoryFilters:
+              - Filter: !Ref CoreApiRepositoryName
+                FilterType: PREFIX
+
+  # ECR Replication Configuration for Frontend
+  FrontendECRReplicationConfiguration:
+    Type: AWS::ECR::ReplicationConfiguration
+    Properties:
+      RegistryId: !Ref AWS::AccountId
+      ReplicationConfiguration:
+        Rules:
+          - Destinations:
+              - Region: !Ref SecondaryRegion
+                RegistryId: !Ref AWS::AccountId
+            RepositoryFilters:
+              - Filter: !Ref FrontendRepositoryName
+                FilterType: PREFIX
+
+  # ECR Replication Configuration for MCP Server
+  MCPServerECRReplicationConfiguration:
+    Type: AWS::ECR::ReplicationConfiguration
+    Properties:
+      RegistryId: !Ref AWS::AccountId
+      ReplicationConfiguration:
+        Rules:
+          - Destinations:
+              - Region: !Ref SecondaryRegion
+                RegistryId: !Ref AWS::AccountId
+            RepositoryFilters:
+              - Filter: !Ref MCPServerRepositoryName
+                FilterType: PREFIX
+
+  # Route 53 Health Check for Primary Region
+  PrimaryRegionHealthCheck:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /health
+        FullyQualifiedDomainName: !Sub api.${Environment}.dust.example.com
+        RequestInterval: 30
+        FailureThreshold: 3
+      HealthCheckTags:
+        - Key: Name
+          Value: !Sub dust-primary-region-health-check-${Environment}
+
+  # Route 53 DNS Records
+  DustDNSRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: dust.example.com.
+      RecordSets:
+        # Frontend DNS Record
+        - Name: !Sub ${Environment}.dust.example.com.
+          Type: A
+          SetIdentifier: !Sub frontend-${PrimaryRegion}
+          HealthCheckId: !Ref PrimaryRegionHealthCheck
+          Failover: PRIMARY
+          AliasTarget:
+            HostedZoneId: !Sub ${AWS::Region}-alb-hostedzoneid
+            DNSName: !Sub dust-alb-${Environment}.${PrimaryRegion}.elb.amazonaws.com
+            EvaluateTargetHealth: true
+        - Name: !Sub ${Environment}.dust.example.com.
+          Type: A
+          SetIdentifier: !Sub frontend-${SecondaryRegion}
+          Failover: SECONDARY
+          AliasTarget:
+            HostedZoneId: !Sub ${SecondaryRegion}-alb-hostedzoneid
+            DNSName: !Sub dust-alb-${Environment}.${SecondaryRegion}.elb.amazonaws.com
+            EvaluateTargetHealth: true
+        
+        # API DNS Record
+        - Name: !Sub api.${Environment}.dust.example.com.
+          Type: A
+          SetIdentifier: !Sub api-${PrimaryRegion}
+          HealthCheckId: !Ref PrimaryRegionHealthCheck
+          Failover: PRIMARY
+          AliasTarget:
+            HostedZoneId: !Sub ${AWS::Region}-alb-hostedzoneid
+            DNSName: !Sub dust-alb-${Environment}.${PrimaryRegion}.elb.amazonaws.com
+            EvaluateTargetHealth: true
+        - Name: !Sub api.${Environment}.dust.example.com.
+          Type: A
+          SetIdentifier: !Sub api-${SecondaryRegion}
+          Failover: SECONDARY
+          AliasTarget:
+            HostedZoneId: !Sub ${SecondaryRegion}-alb-hostedzoneid
+            DNSName: !Sub dust-alb-${Environment}.${SecondaryRegion}.elb.amazonaws.com
+            EvaluateTargetHealth: true
+        
+        # MCP Server DNS Record
+        - Name: !Sub mcp.${Environment}.dust.example.com.
+          Type: A
+          SetIdentifier: !Sub mcp-${PrimaryRegion}
+          HealthCheckId: !Ref PrimaryRegionHealthCheck
+          Failover: PRIMARY
+          AliasTarget:
+            HostedZoneId: !Sub ${AWS::Region}-alb-hostedzoneid
+            DNSName: !Sub dust-alb-${Environment}.${PrimaryRegion}.elb.amazonaws.com
+            EvaluateTargetHealth: true
+        - Name: !Sub mcp.${Environment}.dust.example.com.
+          Type: A
+          SetIdentifier: !Sub mcp-${SecondaryRegion}
+          Failover: SECONDARY
+          AliasTarget:
+            HostedZoneId: !Sub ${SecondaryRegion}-alb-hostedzoneid
+            DNSName: !Sub dust-alb-${Environment}.${SecondaryRegion}.elb.amazonaws.com
+            EvaluateTargetHealth: true
+
+Outputs:
+  ApplicationDataBucket:
+    Description: The S3 bucket for application data in the primary region
+    Value: !Ref ApplicationDataBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-ApplicationDataBucket
+
+  ApplicationDataBucketSecondary:
+    Description: The S3 bucket for application data in the secondary region
+    Value: !Ref ApplicationDataBucketSecondary
+    Export:
+      Name: !Sub ${AWS::StackName}-ApplicationDataBucketSecondary
+
+  DatabaseReadReplica:
+    Description: The RDS read replica in the secondary region
+    Value: !Ref DatabaseReadReplica
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseReadReplica
+
+  ElastiCacheGlobalDatastore:
+    Description: The ElastiCache global datastore
+    Value: !Ref ElastiCacheGlobalDatastore
+    Export:
+      Name: !Sub ${AWS::StackName}-ElastiCacheGlobalDatastore
+
+  OpenSearchCrossClusterReplication:
+    Description: The OpenSearch domain in the secondary region
+    Value: !Ref OpenSearchCrossClusterReplication
+    Export:
+      Name: !Sub ${AWS::StackName}-OpenSearchCrossClusterReplication
+
+  PrimaryRegionHealthCheck:
+    Description: The Route 53 health check for the primary region
+    Value: !Ref PrimaryRegionHealthCheck
+    Export:
+      Name: !Sub ${AWS::StackName}-PrimaryRegionHealthCheck

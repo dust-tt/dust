@@ -1,0 +1,328 @@
+name: CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Tag and push images to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          for service in core-api frontend mcp-server; do
+            # Pull the dev-latest image
+            docker pull $ECR_REGISTRY/dust-$service:dev-latest
+            # Tag for staging
+            docker tag $ECR_REGISTRY/dust-$service:dev-latest $ECR_REGISTRY/dust-$service:staging-latest
+            docker push $ECR_REGISTRY/dust-$service:staging-latest
+          done
+      
+      - name: Deploy to ECS
+        run: |
+          for service in core-api frontend mcp-server; do
+            aws ecs update-service --cluster dust-staging --service dust-$service-staging --force-new-deployment
+          done
+      
+      - name: Wait for services to stabilize
+        run: |
+          for service in core-api frontend mcp-server; do
+            aws ecs wait services-stable --cluster dust-staging --services dust-$service-staging
+          done
+  
+  acceptance-tests:
+    name: Acceptance Tests
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+      
+      - name: Install dependencies
+        run: npm ci
+        working-directory: tests/acceptance
+      
+      - name: Run acceptance tests
+        run: npm test
+        working-directory: tests/acceptance
+        env:
+          API_URL: https://api.staging.dust.example.com
+          MCP_URL: https://mcp.staging.dust.example.com
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: acceptance-test-results
+          path: tests/acceptance/results
+  
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: acceptance-tests
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    
+    environment:
+      name: production
+      url: https://dust.example.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Tag and push images to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          for service in core-api frontend mcp-server; do
+            # Pull the staging-latest image
+            docker pull $ECR_REGISTRY/dust-$service:staging-latest
+            # Tag for production
+            docker tag $ECR_REGISTRY/dust-$service:staging-latest $ECR_REGISTRY/dust-$service:production-latest
+            # If this is a tag, also tag with the version
+            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+              VERSION=${GITHUB_REF#refs/tags/}
+              docker tag $ECR_REGISTRY/dust-$service:staging-latest $ECR_REGISTRY/dust-$service:$VERSION
+              docker push $ECR_REGISTRY/dust-$service:$VERSION
+            fi
+            docker push $ECR_REGISTRY/dust-$service:production-latest
+          done
+      
+      - name: Deploy to ECS (Blue/Green)
+        run: |
+          # Create a new task definition revision for each service
+          for service in core-api frontend mcp-server; do
+            # Get the current task definition
+            TASK_DEF=$(aws ecs describe-task-definition --task-definition dust-$service-production --query 'taskDefinition' --output json)
+            
+            # Create a new task definition with the new image
+            echo $TASK_DEF | jq '.containerDefinitions[0].image = "${{ steps.login-ecr.outputs.registry }}/dust-$service:production-latest"' > task-def.json
+            
+            # Register the new task definition
+            NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+            
+            # Create a new deployment
+            aws ecs update-service --cluster dust-production --service dust-$service-production --task-definition $NEW_TASK_DEF_ARN --deployment-configuration "deploymentCircuitBreaker={enable=true,rollback=true},maximumPercent=200,minimumHealthyPercent=100"
+          done
+      
+      - name: Wait for services to stabilize
+        run: |
+          for service in core-api frontend mcp-server; do
+            aws ecs wait services-stable --cluster dust-production --services dust-$service-production
+          done
+  
+  post-deployment-tests:
+    name: Post-Deployment Tests
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Run synthetic canary tests
+        run: |
+          # Start the canaries
+          aws synthetics start-canary --name dust-frontend-canary-production
+          aws synthetics start-canary --name dust-core-api-canary-production
+          aws synthetics start-canary --name dust-mcp-server-canary-production
+          
+          # Wait for the canaries to complete
+          for canary in dust-frontend-canary-production dust-core-api-canary-production dust-mcp-server-canary-production; do
+            while true; do
+              STATUS=$(aws synthetics get-canary-runs --name $canary --query 'CanaryRuns[0].Status.State' --output text)
+              if [ "$STATUS" == "COMPLETED" ]; then
+                break
+              elif [ "$STATUS" == "FAILED" ]; then
+                echo "Canary $canary failed"
+                exit 1
+              fi
+              echo "Waiting for canary $canary to complete..."
+              sleep 30
+            done
+          done
+      
+      - name: Check CloudWatch alarms
+        run: |
+          # Check if any alarms are in ALARM state
+          ALARMS=$(aws cloudwatch describe-alarms --state-value ALARM --query 'MetricAlarms[?starts_with(AlarmName, `dust-production`)].AlarmName' --output text)
+          
+          if [ -n "$ALARMS" ]; then
+            echo "The following alarms are in ALARM state:"
+            echo $ALARMS
+            exit 1
+          else
+            echo "No alarms in ALARM state"
+          fi
+  
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production, post-deployment-tests]
+    if: always()
+    
+    steps:
+      - name: Notify Slack on success
+        if: ${{ success() }}
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "✅ Deployment to ${{ github.event.inputs.environment || (github.ref == 'refs/heads/develop' && 'staging') || (startsWith(github.ref, 'refs/tags/v') && 'production') }} successful!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ Deployment to ${{ github.event.inputs.environment || (github.ref == 'refs/heads/develop' && 'staging') || (startsWith(github.ref, 'refs/tags/v') && 'production') }} successful!"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch/Tag:*\n${{ github.ref_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n${{ github.sha }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Workflow:*\n${{ github.workflow }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Workflow"
+                      },
+                      "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      
+      - name: Notify Slack on failure
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "❌ Deployment to ${{ github.event.inputs.environment || (github.ref == 'refs/heads/develop' && 'staging') || (startsWith(github.ref, 'refs/tags/v') && 'production') }} failed!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "❌ Deployment to ${{ github.event.inputs.environment || (github.ref == 'refs/heads/develop' && 'staging') || (startsWith(github.ref, 'refs/tags/v') && 'production') }} failed!"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch/Tag:*\n${{ github.ref_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n${{ github.sha }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Workflow:*\n${{ github.workflow }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Workflow"
+                      },
+                      "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

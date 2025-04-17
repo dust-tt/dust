@@ -1,0 +1,837 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - Security Hardening'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+  NotificationEmail:
+    Type: String
+    Default: security@example.com
+    Description: The email address to send security notifications to
+
+  EnableGuardDuty:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    Description: Whether to enable GuardDuty
+
+  EnableSecurityHub:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    Description: Whether to enable Security Hub
+
+  EnableConfig:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    Description: Whether to enable AWS Config
+
+  EnableCloudTrail:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    Description: Whether to enable CloudTrail
+
+  EnableInspector:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    Description: Whether to enable Inspector
+
+  EnableMacie:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    Description: Whether to enable Macie
+
+  EnableDetective:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    Description: Whether to enable Detective
+
+  LogRetentionDays:
+    Type: Number
+    Default: 90
+    Description: The number of days to retain logs
+
+Resources:
+  # SNS Topic for Security Notifications
+  SecurityNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub dust-security-notifications-${Environment}
+      DisplayName: Dust Security Notifications
+
+  SecurityNotificationEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref SecurityNotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # S3 Bucket for CloudTrail Logs
+  CloudTrailLogsBucket:
+    Type: AWS::S3::Bucket
+    Condition: EnableCloudTrailCondition
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub dust-cloudtrail-logs-${Environment}-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldLogs
+            Status: Enabled
+            ExpirationInDays: !Ref LogRetentionDays
+
+  CloudTrailLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: EnableCloudTrailCondition
+    Properties:
+      Bucket: !Ref CloudTrailLogsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !Sub arn:aws:s3:::${CloudTrailLogsBucket}
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub arn:aws:s3:::${CloudTrailLogsBucket}/AWSLogs/${AWS::AccountId}/*
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+  # CloudTrail
+  CloudTrail:
+    Type: AWS::CloudTrail::Trail
+    Condition: EnableCloudTrailCondition
+    DependsOn:
+      - CloudTrailLogsBucketPolicy
+    Properties:
+      TrailName: !Sub dust-cloudtrail-${Environment}
+      S3BucketName: !Ref CloudTrailLogsBucket
+      IsLogging: true
+      IsMultiRegionTrail: true
+      EnableLogFileValidation: true
+      IncludeGlobalServiceEvents: true
+      CloudWatchLogsLogGroupArn: !GetAtt CloudTrailLogGroup.Arn
+      CloudWatchLogsRoleArn: !GetAtt CloudTrailLogsRole.Arn
+      EventSelectors:
+        - ReadWriteType: All
+          IncludeManagementEvents: true
+          DataResources:
+            - Type: AWS::S3::Object
+              Values:
+                - arn:aws:s3:::
+            - Type: AWS::Lambda::Function
+              Values:
+                - arn:aws:lambda
+
+  # CloudWatch Log Group for CloudTrail
+  CloudTrailLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: EnableCloudTrailCondition
+    Properties:
+      LogGroupName: !Sub /aws/cloudtrail/dust-cloudtrail-${Environment}
+      RetentionInDays: !Ref LogRetentionDays
+
+  # IAM Role for CloudTrail to CloudWatch Logs
+  CloudTrailLogsRole:
+    Type: AWS::IAM::Role
+    Condition: EnableCloudTrailCondition
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+
+  # S3 Bucket for AWS Config
+  ConfigLogsBucket:
+    Type: AWS::S3::Bucket
+    Condition: EnableConfigCondition
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub dust-config-logs-${Environment}-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldLogs
+            Status: Enabled
+            ExpirationInDays: !Ref LogRetentionDays
+
+  ConfigLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: EnableConfigCondition
+    Properties:
+      Bucket: !Ref ConfigLogsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSConfigBucketPermissionsCheck
+            Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !Sub arn:aws:s3:::${ConfigLogsBucket}
+          - Sid: AWSConfigBucketDelivery
+            Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub arn:aws:s3:::${ConfigLogsBucket}/AWSLogs/${AWS::AccountId}/Config/*
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+  # IAM Role for AWS Config
+  ConfigRole:
+    Type: AWS::IAM::Role
+    Condition: EnableConfigCondition
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWS_ConfigRole
+
+  # AWS Config Recorder
+  ConfigRecorder:
+    Type: AWS::Config::ConfigurationRecorder
+    Condition: EnableConfigCondition
+    Properties:
+      Name: !Sub dust-config-recorder-${Environment}
+      RecordingGroup:
+        AllSupported: true
+        IncludeGlobalResourceTypes: true
+      RoleARN: !GetAtt ConfigRole.Arn
+
+  # AWS Config Delivery Channel
+  ConfigDeliveryChannel:
+    Type: AWS::Config::DeliveryChannel
+    Condition: EnableConfigCondition
+    Properties:
+      Name: !Sub dust-config-delivery-channel-${Environment}
+      S3BucketName: !Ref ConfigLogsBucket
+      ConfigSnapshotDeliveryProperties:
+        DeliveryFrequency: Six_Hours
+
+  # Enable AWS Config
+  ConfigRecorderStatus:
+    Type: AWS::Config::ConfigurationRecorderStatus
+    Condition: EnableConfigCondition
+    Properties:
+      Name: !Ref ConfigRecorder
+      Recording: true
+
+  # AWS Config Rules
+  ConfigRuleIAMPasswordPolicy:
+    Type: AWS::Config::ConfigRule
+    Condition: EnableConfigCondition
+    DependsOn: ConfigRecorderStatus
+    Properties:
+      ConfigRuleName: !Sub dust-config-rule-iam-password-policy-${Environment}
+      Description: Checks whether the account password policy for IAM users meets the specified requirements.
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_PASSWORD_POLICY
+
+  ConfigRuleRootAccountMFA:
+    Type: AWS::Config::ConfigRule
+    Condition: EnableConfigCondition
+    DependsOn: ConfigRecorderStatus
+    Properties:
+      ConfigRuleName: !Sub dust-config-rule-root-account-mfa-${Environment}
+      Description: Checks whether the root user of your AWS account requires multi-factor authentication for console sign-in.
+      Source:
+        Owner: AWS
+        SourceIdentifier: ROOT_ACCOUNT_MFA_ENABLED
+
+  ConfigRuleIAMUserMFA:
+    Type: AWS::Config::ConfigRule
+    Condition: EnableConfigCondition
+    DependsOn: ConfigRecorderStatus
+    Properties:
+      ConfigRuleName: !Sub dust-config-rule-iam-user-mfa-${Environment}
+      Description: Checks whether the AWS Identity and Access Management users have multi-factor authentication (MFA) enabled.
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_USER_MFA_ENABLED
+
+  ConfigRuleS3BucketPublicReadProhibited:
+    Type: AWS::Config::ConfigRule
+    Condition: EnableConfigCondition
+    DependsOn: ConfigRecorderStatus
+    Properties:
+      ConfigRuleName: !Sub dust-config-rule-s3-bucket-public-read-prohibited-${Environment}
+      Description: Checks that your Amazon S3 buckets do not allow public read access.
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_PUBLIC_READ_PROHIBITED
+
+  ConfigRuleS3BucketPublicWriteProhibited:
+    Type: AWS::Config::ConfigRule
+    Condition: EnableConfigCondition
+    DependsOn: ConfigRecorderStatus
+    Properties:
+      ConfigRuleName: !Sub dust-config-rule-s3-bucket-public-write-prohibited-${Environment}
+      Description: Checks that your Amazon S3 buckets do not allow public write access.
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_PUBLIC_WRITE_PROHIBITED
+
+  ConfigRuleS3BucketSSLRequestsOnly:
+    Type: AWS::Config::ConfigRule
+    Condition: EnableConfigCondition
+    DependsOn: ConfigRecorderStatus
+    Properties:
+      ConfigRuleName: !Sub dust-config-rule-s3-bucket-ssl-requests-only-${Environment}
+      Description: Checks whether S3 buckets have policies that require requests to use Secure Socket Layer (SSL).
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_SSL_REQUESTS_ONLY
+
+  ConfigRuleEncryptedVolumes:
+    Type: AWS::Config::ConfigRule
+    Condition: EnableConfigCondition
+    DependsOn: ConfigRecorderStatus
+    Properties:
+      ConfigRuleName: !Sub dust-config-rule-encrypted-volumes-${Environment}
+      Description: Checks whether the EBS volumes that are in an attached state are encrypted.
+      Source:
+        Owner: AWS
+        SourceIdentifier: ENCRYPTED_VOLUMES
+
+  ConfigRuleRDSStorageEncrypted:
+    Type: AWS::Config::ConfigRule
+    Condition: EnableConfigCondition
+    DependsOn: ConfigRecorderStatus
+    Properties:
+      ConfigRuleName: !Sub dust-config-rule-rds-storage-encrypted-${Environment}
+      Description: Checks whether storage encryption is enabled for your RDS DB instances.
+      Source:
+        Owner: AWS
+        SourceIdentifier: RDS_STORAGE_ENCRYPTED
+
+  ConfigRuleRDSSnapshotEncrypted:
+    Type: AWS::Config::ConfigRule
+    Condition: EnableConfigCondition
+    DependsOn: ConfigRecorderStatus
+    Properties:
+      ConfigRuleName: !Sub dust-config-rule-rds-snapshot-encrypted-${Environment}
+      Description: Checks whether RDS DB snapshots are encrypted.
+      Source:
+        Owner: AWS
+        SourceIdentifier: RDS_SNAPSHOT_ENCRYPTED
+
+  ConfigRuleRestrictedIncomingTraffic:
+    Type: AWS::Config::ConfigRule
+    Condition: EnableConfigCondition
+    DependsOn: ConfigRecorderStatus
+    Properties:
+      ConfigRuleName: !Sub dust-config-rule-restricted-incoming-traffic-${Environment}
+      Description: Checks whether security groups that are in use disallow unrestricted incoming TCP traffic to the specified ports.
+      InputParameters:
+        blockedPort1: 22
+        blockedPort2: 3389
+      Source:
+        Owner: AWS
+        SourceIdentifier: RESTRICTED_INCOMING_TRAFFIC
+
+  # GuardDuty
+  GuardDuty:
+    Type: AWS::GuardDuty::Detector
+    Condition: EnableGuardDutyCondition
+    Properties:
+      Enable: true
+      FindingPublishingFrequency: FIFTEEN_MINUTES
+
+  # GuardDuty Notification
+  GuardDutyToSNSEventRule:
+    Type: AWS::Events::Rule
+    Condition: EnableGuardDutyCondition
+    Properties:
+      Name: !Sub dust-guardduty-to-sns-${Environment}
+      Description: Send GuardDuty findings to SNS
+      EventPattern:
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
+      State: ENABLED
+      Targets:
+        - Arn: !Ref SecurityNotificationTopic
+          Id: SecurityNotificationTopic
+
+  # Security Hub
+  SecurityHub:
+    Type: AWS::SecurityHub::Hub
+    Condition: EnableSecurityHubCondition
+
+  # Security Hub Standards
+  SecurityHubCISStandard:
+    Type: AWS::SecurityHub::StandardsSubscription
+    Condition: EnableSecurityHubCondition
+    Properties:
+      StandardsArn: !Sub arn:aws:securityhub:${AWS::Region}::standards/cis-aws-foundations-benchmark/v/1.2.0
+    DependsOn: SecurityHub
+
+  SecurityHubPCIStandard:
+    Type: AWS::SecurityHub::StandardsSubscription
+    Condition: EnableSecurityHubCondition
+    Properties:
+      StandardsArn: !Sub arn:aws:securityhub:${AWS::Region}::standards/pci-dss/v/3.2.1
+    DependsOn: SecurityHub
+
+  SecurityHubAWSStandard:
+    Type: AWS::SecurityHub::StandardsSubscription
+    Condition: EnableSecurityHubCondition
+    Properties:
+      StandardsArn: !Sub arn:aws:securityhub:${AWS::Region}::standards/aws-foundational-security-best-practices/v/1.0.0
+    DependsOn: SecurityHub
+
+  # Security Hub Notification
+  SecurityHubToSNSEventRule:
+    Type: AWS::Events::Rule
+    Condition: EnableSecurityHubCondition
+    Properties:
+      Name: !Sub dust-securityhub-to-sns-${Environment}
+      Description: Send Security Hub findings to SNS
+      EventPattern:
+        source:
+          - aws.securityhub
+        detail-type:
+          - Security Hub Findings - Imported
+      State: ENABLED
+      Targets:
+        - Arn: !Ref SecurityNotificationTopic
+          Id: SecurityNotificationTopic
+
+  # Inspector
+  InspectorResourceGroup:
+    Type: AWS::Inspector::ResourceGroup
+    Condition: EnableInspectorCondition
+    Properties:
+      ResourceGroupTags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  InspectorAssessmentTarget:
+    Type: AWS::Inspector::AssessmentTarget
+    Condition: EnableInspectorCondition
+    Properties:
+      AssessmentTargetName: !Sub dust-inspector-target-${Environment}
+      ResourceGroupArn: !GetAtt InspectorResourceGroup.Arn
+
+  InspectorAssessmentTemplate:
+    Type: AWS::Inspector::AssessmentTemplate
+    Condition: EnableInspectorCondition
+    Properties:
+      AssessmentTemplateName: !Sub dust-inspector-template-${Environment}
+      AssessmentTargetArn: !GetAtt InspectorAssessmentTarget.Arn
+      DurationInSeconds: 3600
+      RulesPackageArns:
+        - !Sub arn:aws:inspector:${AWS::Region}:${AWS::AccountId}:rulespackage/0-gEjTy7T7
+        - !Sub arn:aws:inspector:${AWS::Region}:${AWS::AccountId}:rulespackage/0-rExsr2X8
+        - !Sub arn:aws:inspector:${AWS::Region}:${AWS::AccountId}:rulespackage/0-PmNV0Tcd
+        - !Sub arn:aws:inspector:${AWS::Region}:${AWS::AccountId}:rulespackage/0-JnA8Zp85
+
+  # Inspector Notification
+  InspectorToSNSEventRule:
+    Type: AWS::Events::Rule
+    Condition: EnableInspectorCondition
+    Properties:
+      Name: !Sub dust-inspector-to-sns-${Environment}
+      Description: Send Inspector findings to SNS
+      EventPattern:
+        source:
+          - aws.inspector
+        detail-type:
+          - Inspector Assessment Run Completed
+      State: ENABLED
+      Targets:
+        - Arn: !Ref SecurityNotificationTopic
+          Id: SecurityNotificationTopic
+
+  # Inspector Schedule
+  InspectorSchedule:
+    Type: AWS::Events::Rule
+    Condition: EnableInspectorCondition
+    Properties:
+      Name: !Sub dust-inspector-schedule-${Environment}
+      Description: Schedule Inspector assessment runs
+      ScheduleExpression: rate(7 days)
+      State: ENABLED
+      Targets:
+        - Arn: !Sub arn:aws:inspector:${AWS::Region}:${AWS::AccountId}:target/${InspectorAssessmentTarget}
+          Id: InspectorTarget
+          RoleArn: !GetAtt InspectorScheduleRole.Arn
+
+  # IAM Role for Inspector Schedule
+  InspectorScheduleRole:
+    Type: AWS::IAM::Role
+    Condition: EnableInspectorCondition
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonInspectorFullAccess
+
+  # Macie
+  Macie:
+    Type: AWS::Macie::Session
+    Condition: EnableMacieCondition
+    Properties:
+      Status: ENABLED
+      FindingPublishingFrequency: FIFTEEN_MINUTES
+
+  # Macie Notification
+  MacieToSNSEventRule:
+    Type: AWS::Events::Rule
+    Condition: EnableMacieCondition
+    Properties:
+      Name: !Sub dust-macie-to-sns-${Environment}
+      Description: Send Macie findings to SNS
+      EventPattern:
+        source:
+          - aws.macie
+        detail-type:
+          - Macie Finding
+      State: ENABLED
+      Targets:
+        - Arn: !Ref SecurityNotificationTopic
+          Id: SecurityNotificationTopic
+
+  # Detective
+  Detective:
+    Type: AWS::Detective::Graph
+    Condition: EnableDetectiveCondition
+    Properties:
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # CloudWatch Alarms for Security
+  RootAccountUsageAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: EnableCloudTrailCondition
+    Properties:
+      AlarmName: !Sub dust-root-account-usage-${Environment}
+      AlarmDescription: Alarm when the root account is used
+      MetricName: RootAccountUsage
+      Namespace: CloudTrailMetrics
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref SecurityNotificationTopic
+      Dimensions:
+        - Name: RootAccountUsage
+          Value: 'Yes'
+
+  UnauthorizedAPICallsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: EnableCloudTrailCondition
+    Properties:
+      AlarmName: !Sub dust-unauthorized-api-calls-${Environment}
+      AlarmDescription: Alarm when unauthorized API calls are made
+      MetricName: UnauthorizedAttemptCount
+      Namespace: CloudTrailMetrics
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref SecurityNotificationTopic
+      Dimensions:
+        - Name: UnauthorizedAttemptCount
+          Value: 'Yes'
+
+  ConsoleSignInWithoutMFAAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: EnableCloudTrailCondition
+    Properties:
+      AlarmName: !Sub dust-console-signin-without-mfa-${Environment}
+      AlarmDescription: Alarm when console sign-in without MFA occurs
+      MetricName: ConsoleSignInWithoutMFA
+      Namespace: CloudTrailMetrics
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref SecurityNotificationTopic
+      Dimensions:
+        - Name: ConsoleSignInWithoutMFA
+          Value: 'Yes'
+
+  # CloudWatch Metric Filters for Security
+  RootAccountUsageMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableCloudTrailCondition
+    Properties:
+      LogGroupName: !Ref CloudTrailLogGroup
+      FilterPattern: '{ $.userIdentity.type = "Root" && $.userIdentity.invokedBy NOT EXISTS && $.eventType != "AwsServiceEvent" }'
+      MetricTransformations:
+        - MetricName: RootAccountUsage
+          MetricNamespace: CloudTrailMetrics
+          MetricValue: '1'
+          DefaultValue: 0
+          Dimensions:
+            - Name: RootAccountUsage
+              Value: 'Yes'
+
+  UnauthorizedAPICallsMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableCloudTrailCondition
+    Properties:
+      LogGroupName: !Ref CloudTrailLogGroup
+      FilterPattern: '{ ($.errorCode = "*UnauthorizedOperation") || ($.errorCode = "AccessDenied*") }'
+      MetricTransformations:
+        - MetricName: UnauthorizedAttemptCount
+          MetricNamespace: CloudTrailMetrics
+          MetricValue: '1'
+          DefaultValue: 0
+          Dimensions:
+            - Name: UnauthorizedAttemptCount
+              Value: 'Yes'
+
+  ConsoleSignInWithoutMFAMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableCloudTrailCondition
+    Properties:
+      LogGroupName: !Ref CloudTrailLogGroup
+      FilterPattern: '{ ($.eventName = "ConsoleLogin") && ($.additionalEventData.MFAUsed != "Yes") }'
+      MetricTransformations:
+        - MetricName: ConsoleSignInWithoutMFA
+          MetricNamespace: CloudTrailMetrics
+          MetricValue: '1'
+          DefaultValue: 0
+          Dimensions:
+            - Name: ConsoleSignInWithoutMFA
+              Value: 'Yes'
+
+  # CloudWatch Dashboard for Security
+  SecurityDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub dust-security-dashboard-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 1,
+              "properties": {
+                "markdown": "# Dust Platform Security Dashboard - ${Environment} Environment"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "CloudTrailMetrics", "RootAccountUsage", "RootAccountUsage", "Yes" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Root Account Usage",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "CloudTrailMetrics", "UnauthorizedAttemptCount", "UnauthorizedAttemptCount", "Yes" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Unauthorized API Calls",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 1,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "CloudTrailMetrics", "ConsoleSignInWithoutMFA", "ConsoleSignInWithoutMFA", "Yes" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Console Sign-In Without MFA",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 7,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/GuardDuty", "FindingCount", "Detector", "${GuardDuty}" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "GuardDuty Findings",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 7,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "AWS/SecurityHub", "FindingsCount", "ComplianceStatus", "FAILED" ]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Security Hub Failed Findings",
+                "period": 300
+              }
+            }
+          ]
+        }
+
+Conditions:
+  EnableCloudTrailCondition: !Equals [!Ref EnableCloudTrail, true]
+  EnableConfigCondition: !Equals [!Ref EnableConfig, true]
+  EnableGuardDutyCondition: !Equals [!Ref EnableGuardDuty, true]
+  EnableSecurityHubCondition: !Equals [!Ref EnableSecurityHub, true]
+  EnableInspectorCondition: !Equals [!Ref EnableInspector, true]
+  EnableMacieCondition: !Equals [!Ref EnableMacie, true]
+  EnableDetectiveCondition: !Equals [!Ref EnableDetective, true]
+
+Outputs:
+  SecurityNotificationTopic:
+    Description: The SNS topic for security notifications
+    Value: !Ref SecurityNotificationTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-SecurityNotificationTopic
+
+  CloudTrailLogsBucket:
+    Condition: EnableCloudTrailCondition
+    Description: The S3 bucket for CloudTrail logs
+    Value: !Ref CloudTrailLogsBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-CloudTrailLogsBucket
+
+  ConfigLogsBucket:
+    Condition: EnableConfigCondition
+    Description: The S3 bucket for AWS Config logs
+    Value: !Ref ConfigLogsBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-ConfigLogsBucket
+
+  GuardDuty:
+    Condition: EnableGuardDutyCondition
+    Description: The GuardDuty detector
+    Value: !Ref GuardDuty
+    Export:
+      Name: !Sub ${AWS::StackName}-GuardDuty
+
+  SecurityHub:
+    Condition: EnableSecurityHubCondition
+    Description: The Security Hub
+    Value: !Ref SecurityHub
+    Export:
+      Name: !Sub ${AWS::StackName}-SecurityHub
+
+  SecurityDashboard:
+    Description: The security dashboard
+    Value: !Ref SecurityDashboard
+    Export:
+      Name: !Sub ${AWS::StackName}-SecurityDashboard

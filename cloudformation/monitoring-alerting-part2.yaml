@@ -1,0 +1,537 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - Monitoring and Alerting - Part 2 (CloudWatch Alarms)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+  CriticalAlertsTopicArn:
+    Type: String
+    Description: The ARN of the SNS topic for critical alerts
+
+  WarningAlertsTopicArn:
+    Type: String
+    Description: The ARN of the SNS topic for warning alerts
+
+Resources:
+  # CloudWatch Alarms - Core API Service
+  CoreApiCPUUtilizationAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-core-api-cpu-utilization-warning-${Environment}
+      AlarmDescription: Alarm when Core API CPU utilization exceeds 80%
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-core-api-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  CoreApiCPUUtilizationAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-core-api-cpu-utilization-critical-${Environment}
+      AlarmDescription: Alarm when Core API CPU utilization exceeds 90%
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-core-api-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 90
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  CoreApiMemoryUtilizationAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-core-api-memory-utilization-warning-${Environment}
+      AlarmDescription: Alarm when Core API memory utilization exceeds 80%
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-core-api-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  CoreApiMemoryUtilizationAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-core-api-memory-utilization-critical-${Environment}
+      AlarmDescription: Alarm when Core API memory utilization exceeds 90%
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-core-api-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 90
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  # CloudWatch Alarms - MCP Server Service
+  MCPServerCPUUtilizationAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-mcp-server-cpu-utilization-warning-${Environment}
+      AlarmDescription: Alarm when MCP Server CPU utilization exceeds 80%
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-mcp-server-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  MCPServerCPUUtilizationAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-mcp-server-cpu-utilization-critical-${Environment}
+      AlarmDescription: Alarm when MCP Server CPU utilization exceeds 90%
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-mcp-server-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 90
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  MCPServerMemoryUtilizationAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-mcp-server-memory-utilization-warning-${Environment}
+      AlarmDescription: Alarm when MCP Server memory utilization exceeds 80%
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-mcp-server-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  MCPServerMemoryUtilizationAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-mcp-server-memory-utilization-critical-${Environment}
+      AlarmDescription: Alarm when MCP Server memory utilization exceeds 90%
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-mcp-server-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 90
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  # CloudWatch Alarms - Frontend Service
+  FrontendCPUUtilizationAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-frontend-cpu-utilization-warning-${Environment}
+      AlarmDescription: Alarm when Frontend CPU utilization exceeds 80%
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-frontend-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  FrontendCPUUtilizationAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-frontend-cpu-utilization-critical-${Environment}
+      AlarmDescription: Alarm when Frontend CPU utilization exceeds 90%
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-frontend-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 90
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  FrontendMemoryUtilizationAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-frontend-memory-utilization-warning-${Environment}
+      AlarmDescription: Alarm when Frontend memory utilization exceeds 80%
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-frontend-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  FrontendMemoryUtilizationAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-frontend-memory-utilization-critical-${Environment}
+      AlarmDescription: Alarm when Frontend memory utilization exceeds 90%
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Sub dust-${Environment}
+        - Name: ServiceName
+          Value: !Sub dust-frontend-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 90
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  # CloudWatch Alarms - ALB
+  ALB5XXErrorRateAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-alb-5xx-error-rate-warning-${Environment}
+      AlarmDescription: Alarm when ALB 5XX error rate exceeds 1%
+      Namespace: AWS/ApplicationELB
+      MetricName: HTTPCode_ELB_5XX_Count
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub dust-alb-${Environment}
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  ALB5XXErrorRateAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-alb-5xx-error-rate-critical-${Environment}
+      AlarmDescription: Alarm when ALB 5XX error rate exceeds 5%
+      Namespace: AWS/ApplicationELB
+      MetricName: HTTPCode_ELB_5XX_Count
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub dust-alb-${Environment}
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 50
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  ALBTargetResponseTimeAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-alb-target-response-time-warning-${Environment}
+      AlarmDescription: Alarm when ALB target response time exceeds 500ms
+      Namespace: AWS/ApplicationELB
+      MetricName: TargetResponseTime
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub dust-alb-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 0.5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  ALBTargetResponseTimeAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-alb-target-response-time-critical-${Environment}
+      AlarmDescription: Alarm when ALB target response time exceeds 1000ms
+      Namespace: AWS/ApplicationELB
+      MetricName: TargetResponseTime
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Sub dust-alb-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 1.0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  # CloudWatch Alarms - RDS
+  RDSCPUUtilizationAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-rds-cpu-utilization-warning-${Environment}
+      AlarmDescription: Alarm when RDS CPU utilization exceeds 80%
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Sub dust-db-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  RDSCPUUtilizationAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-rds-cpu-utilization-critical-${Environment}
+      AlarmDescription: Alarm when RDS CPU utilization exceeds 90%
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Sub dust-db-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 90
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  RDSFreeStorageSpaceAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-rds-free-storage-space-warning-${Environment}
+      AlarmDescription: Alarm when RDS free storage space is below 20%
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Sub dust-db-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 20000000000  # 20 GB in bytes
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  RDSFreeStorageSpaceAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-rds-free-storage-space-critical-${Environment}
+      AlarmDescription: Alarm when RDS free storage space is below 10%
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Sub dust-db-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 10000000000  # 10 GB in bytes
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+  RDSDatabaseConnectionsAlarmWarning:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-rds-database-connections-warning-${Environment}
+      AlarmDescription: Alarm when RDS database connections exceed 80% of maximum
+      Namespace: AWS/RDS
+      MetricName: DatabaseConnections
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Sub dust-db-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80  # Assuming 100 max connections, adjust as needed
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref WarningAlertsTopicArn
+      OKActions:
+        - !Ref WarningAlertsTopicArn
+
+  RDSDatabaseConnectionsAlarmCritical:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub dust-rds-database-connections-critical-${Environment}
+      AlarmDescription: Alarm when RDS database connections exceed 90% of maximum
+      Namespace: AWS/RDS
+      MetricName: DatabaseConnections
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Sub dust-db-${Environment}
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 90  # Assuming 100 max connections, adjust as needed
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref CriticalAlertsTopicArn
+      OKActions:
+        - !Ref CriticalAlertsTopicArn
+
+Outputs:
+  CoreApiCPUUtilizationAlarmWarning:
+    Description: The Core API CPU utilization warning alarm
+    Value: !Ref CoreApiCPUUtilizationAlarmWarning
+    Export:
+      Name: !Sub ${AWS::StackName}-CoreApiCPUUtilizationAlarmWarning
+
+  CoreApiCPUUtilizationAlarmCritical:
+    Description: The Core API CPU utilization critical alarm
+    Value: !Ref CoreApiCPUUtilizationAlarmCritical
+    Export:
+      Name: !Sub ${AWS::StackName}-CoreApiCPUUtilizationAlarmCritical
+
+  ALB5XXErrorRateAlarmCritical:
+    Description: The ALB 5XX error rate critical alarm
+    Value: !Ref ALB5XXErrorRateAlarmCritical
+    Export:
+      Name: !Sub ${AWS::StackName}-ALB5XXErrorRateAlarmCritical
+
+  RDSFreeStorageSpaceAlarmCritical:
+    Description: The RDS free storage space critical alarm
+    Value: !Ref RDSFreeStorageSpaceAlarmCritical
+    Export:
+      Name: !Sub ${AWS::StackName}-RDSFreeStorageSpaceAlarmCritical

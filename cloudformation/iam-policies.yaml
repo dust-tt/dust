@@ -1,0 +1,694 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Dust Platform - IAM Policies for Least Privilege'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: The environment to deploy to
+
+Resources:
+  # IAM Group for Developers
+  DevelopersGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub dust-developers-${Environment}
+      ManagedPolicyArns:
+        - !Ref DevelopersPolicy
+
+  # IAM Group for Operations
+  OperationsGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub dust-operations-${Environment}
+      ManagedPolicyArns:
+        - !Ref OperationsPolicy
+
+  # IAM Group for Security
+  SecurityGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub dust-security-${Environment}
+      ManagedPolicyArns:
+        - !Ref SecurityPolicy
+
+  # IAM Group for Read-Only
+  ReadOnlyGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub dust-readonly-${Environment}
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+
+  # IAM Policy for Developers
+  DevelopersPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub dust-developers-policy-${Environment}
+      Description: Policy for developers
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # EC2 Permissions
+          - Effect: Allow
+            Action:
+              - ec2:DescribeInstances
+              - ec2:DescribeImages
+              - ec2:DescribeKeyPairs
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeVpcs
+              - ec2:DescribeSubnets
+              - ec2:DescribeAvailabilityZones
+            Resource: '*'
+          
+          # S3 Permissions
+          - Effect: Allow
+            Action:
+              - s3:ListAllMyBuckets
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetBucketLocation
+            Resource:
+              - !Sub arn:aws:s3:::dust-*-${Environment}-*
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource:
+              - !Sub arn:aws:s3:::dust-*-${Environment}-*/*
+          
+          # CloudWatch Permissions
+          - Effect: Allow
+            Action:
+              - cloudwatch:GetDashboard
+              - cloudwatch:ListDashboards
+              - cloudwatch:GetMetricData
+              - cloudwatch:GetMetricStatistics
+              - cloudwatch:ListMetrics
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+              - logs:GetLogEvents
+              - logs:FilterLogEvents
+            Resource: '*'
+          
+          # ECS Permissions
+          - Effect: Allow
+            Action:
+              - ecs:ListClusters
+              - ecs:DescribeClusters
+              - ecs:ListServices
+              - ecs:DescribeServices
+              - ecs:ListTasks
+              - ecs:DescribeTasks
+              - ecs:ListTaskDefinitions
+              - ecs:DescribeTaskDefinition
+            Resource: '*'
+          
+          # ECR Permissions
+          - Effect: Allow
+            Action:
+              - ecr:GetAuthorizationToken
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:DescribeRepositories
+              - ecr:ListImages
+              - ecr:DescribeImages
+              - ecr:PutImage
+              - ecr:InitiateLayerUpload
+              - ecr:UploadLayerPart
+              - ecr:CompleteLayerUpload
+            Resource: '*'
+          
+          # RDS Permissions
+          - Effect: Allow
+            Action:
+              - rds:DescribeDBInstances
+              - rds:DescribeDBClusters
+              - rds:DescribeDBSnapshots
+              - rds:DescribeDBClusterSnapshots
+            Resource: '*'
+          
+          # ElastiCache Permissions
+          - Effect: Allow
+            Action:
+              - elasticache:DescribeCacheClusters
+              - elasticache:DescribeCacheSubnetGroups
+              - elasticache:DescribeReplicationGroups
+            Resource: '*'
+          
+          # OpenSearch Permissions
+          - Effect: Allow
+            Action:
+              - es:DescribeElasticsearchDomain
+              - es:DescribeElasticsearchDomains
+              - es:DescribeElasticsearchDomainConfig
+              - es:ESHttpGet
+              - es:ESHttpHead
+              - es:ESHttpPost
+              - es:ESHttpPut
+            Resource:
+              - !Sub arn:aws:es:*:*:domain/dust-*-${Environment}
+          
+          # CloudFormation Permissions
+          - Effect: Allow
+            Action:
+              - cloudformation:DescribeStacks
+              - cloudformation:DescribeStackEvents
+              - cloudformation:DescribeStackResources
+              - cloudformation:GetTemplate
+              - cloudformation:ListStacks
+            Resource: '*'
+          
+          # Secrets Manager Permissions
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+              - secretsmanager:ListSecrets
+            Resource:
+              - !Sub arn:aws:secretsmanager:*:*:secret:dust-*-${Environment}-*
+          
+          # Lambda Permissions
+          - Effect: Allow
+            Action:
+              - lambda:ListFunctions
+              - lambda:GetFunction
+              - lambda:InvokeFunction
+            Resource: '*'
+          
+          # IAM Permissions (Read-Only)
+          - Effect: Allow
+            Action:
+              - iam:GetRole
+              - iam:ListRoles
+              - iam:GetPolicy
+              - iam:ListPolicies
+              - iam:GetPolicyVersion
+              - iam:ListPolicyVersions
+              - iam:GetRolePolicy
+              - iam:ListRolePolicies
+            Resource: '*'
+
+  # IAM Policy for Operations
+  OperationsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub dust-operations-policy-${Environment}
+      Description: Policy for operations
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # EC2 Permissions
+          - Effect: Allow
+            Action:
+              - ec2:*
+            Resource: '*'
+          
+          # S3 Permissions
+          - Effect: Allow
+            Action:
+              - s3:*
+            Resource:
+              - !Sub arn:aws:s3:::dust-*-${Environment}-*
+              - !Sub arn:aws:s3:::dust-*-${Environment}-*/*
+          
+          # CloudWatch Permissions
+          - Effect: Allow
+            Action:
+              - cloudwatch:*
+              - logs:*
+            Resource: '*'
+          
+          # ECS Permissions
+          - Effect: Allow
+            Action:
+              - ecs:*
+            Resource: '*'
+          
+          # ECR Permissions
+          - Effect: Allow
+            Action:
+              - ecr:*
+            Resource: '*'
+          
+          # RDS Permissions
+          - Effect: Allow
+            Action:
+              - rds:*
+            Resource: '*'
+          
+          # ElastiCache Permissions
+          - Effect: Allow
+            Action:
+              - elasticache:*
+            Resource: '*'
+          
+          # OpenSearch Permissions
+          - Effect: Allow
+            Action:
+              - es:*
+            Resource:
+              - !Sub arn:aws:es:*:*:domain/dust-*-${Environment}
+          
+          # CloudFormation Permissions
+          - Effect: Allow
+            Action:
+              - cloudformation:*
+            Resource: '*'
+          
+          # Secrets Manager Permissions
+          - Effect: Allow
+            Action:
+              - secretsmanager:*
+            Resource:
+              - !Sub arn:aws:secretsmanager:*:*:secret:dust-*-${Environment}-*
+          
+          # Lambda Permissions
+          - Effect: Allow
+            Action:
+              - lambda:*
+            Resource: '*'
+          
+          # IAM Permissions (Limited)
+          - Effect: Allow
+            Action:
+              - iam:GetRole
+              - iam:ListRoles
+              - iam:GetPolicy
+              - iam:ListPolicies
+              - iam:GetPolicyVersion
+              - iam:ListPolicyVersions
+              - iam:GetRolePolicy
+              - iam:ListRolePolicies
+              - iam:PassRole
+              - iam:CreateServiceLinkedRole
+            Resource: '*'
+          
+          # Route 53 Permissions
+          - Effect: Allow
+            Action:
+              - route53:*
+            Resource: '*'
+          
+          # Load Balancer Permissions
+          - Effect: Allow
+            Action:
+              - elasticloadbalancing:*
+            Resource: '*'
+          
+          # Auto Scaling Permissions
+          - Effect: Allow
+            Action:
+              - autoscaling:*
+            Resource: '*'
+          
+          # Systems Manager Permissions
+          - Effect: Allow
+            Action:
+              - ssm:*
+            Resource: '*'
+          
+          # KMS Permissions
+          - Effect: Allow
+            Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:Encrypt
+              - kms:GenerateDataKey
+              - kms:ListKeys
+              - kms:ReEncrypt*
+            Resource: '*'
+
+  # IAM Policy for Security
+  SecurityPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub dust-security-policy-${Environment}
+      Description: Policy for security
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Security Services Permissions
+          - Effect: Allow
+            Action:
+              - guardduty:*
+              - securityhub:*
+              - inspector:*
+              - macie:*
+              - detective:*
+              - access-analyzer:*
+              - config:*
+            Resource: '*'
+          
+          # CloudTrail Permissions
+          - Effect: Allow
+            Action:
+              - cloudtrail:*
+            Resource: '*'
+          
+          # IAM Permissions
+          - Effect: Allow
+            Action:
+              - iam:GetAccountPasswordPolicy
+              - iam:GetAccountSummary
+              - iam:GetCredentialReport
+              - iam:GenerateCredentialReport
+              - iam:GetUser
+              - iam:ListUsers
+              - iam:ListGroups
+              - iam:ListGroupsForUser
+              - iam:ListMFADevices
+              - iam:ListVirtualMFADevices
+              - iam:ListAccessKeys
+              - iam:GetAccessKeyLastUsed
+              - iam:GetLoginProfile
+              - iam:GetRole
+              - iam:ListRoles
+              - iam:GetPolicy
+              - iam:ListPolicies
+              - iam:GetPolicyVersion
+              - iam:ListPolicyVersions
+              - iam:GetRolePolicy
+              - iam:ListRolePolicies
+              - iam:GetGroupPolicy
+              - iam:ListGroupPolicies
+              - iam:GetUserPolicy
+              - iam:ListUserPolicies
+              - iam:ListAttachedUserPolicies
+              - iam:ListAttachedGroupPolicies
+              - iam:ListAttachedRolePolicies
+              - iam:SimulatePrincipalPolicy
+              - iam:SimulateCustomPolicy
+            Resource: '*'
+          
+          # KMS Permissions
+          - Effect: Allow
+            Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:ListKeys
+              - kms:ListAliases
+              - kms:ListKeyPolicies
+              - kms:GetKeyPolicy
+              - kms:GetKeyRotationStatus
+            Resource: '*'
+          
+          # CloudWatch Permissions
+          - Effect: Allow
+            Action:
+              - cloudwatch:DescribeAlarms
+              - cloudwatch:GetDashboard
+              - cloudwatch:ListDashboards
+              - cloudwatch:GetMetricData
+              - cloudwatch:GetMetricStatistics
+              - cloudwatch:ListMetrics
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+              - logs:GetLogEvents
+              - logs:FilterLogEvents
+            Resource: '*'
+          
+          # S3 Permissions (Read-Only)
+          - Effect: Allow
+            Action:
+              - s3:GetBucketAcl
+              - s3:GetBucketPolicy
+              - s3:GetBucketPolicyStatus
+              - s3:GetBucketPublicAccessBlock
+              - s3:GetBucketEncryption
+              - s3:GetBucketVersioning
+              - s3:GetBucketLogging
+              - s3:ListAllMyBuckets
+              - s3:ListBucket
+              - s3:GetObject
+            Resource: '*'
+          
+          # EC2 Permissions (Read-Only)
+          - Effect: Allow
+            Action:
+              - ec2:DescribeInstances
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeNetworkAcls
+              - ec2:DescribeVpcs
+              - ec2:DescribeSubnets
+              - ec2:DescribeVolumes
+              - ec2:DescribeSnapshots
+              - ec2:DescribeImages
+              - ec2:DescribeAddresses
+              - ec2:DescribeKeyPairs
+              - ec2:DescribeInternetGateways
+              - ec2:DescribeNatGateways
+              - ec2:DescribeVpcEndpoints
+              - ec2:DescribeFlowLogs
+            Resource: '*'
+          
+          # RDS Permissions (Read-Only)
+          - Effect: Allow
+            Action:
+              - rds:DescribeDBInstances
+              - rds:DescribeDBClusters
+              - rds:DescribeDBSnapshots
+              - rds:DescribeDBClusterSnapshots
+              - rds:DescribeDBSecurityGroups
+              - rds:DescribeDBSubnetGroups
+              - rds:DescribeDBParameterGroups
+              - rds:DescribeDBParameters
+              - rds:DescribeOptionGroups
+              - rds:DescribeEventSubscriptions
+              - rds:DescribeEvents
+            Resource: '*'
+          
+          # SNS Permissions
+          - Effect: Allow
+            Action:
+              - sns:ListTopics
+              - sns:ListSubscriptions
+              - sns:ListSubscriptionsByTopic
+              - sns:GetTopicAttributes
+              - sns:GetSubscriptionAttributes
+              - sns:Publish
+            Resource: '*'
+
+  # Password Policy
+  PasswordPolicy:
+    Type: AWS::IAM::AccountPasswordPolicy
+    Properties:
+      MinimumPasswordLength: 14
+      RequireSymbols: true
+      RequireNumbers: true
+      RequireUppercaseCharacters: true
+      RequireLowercaseCharacters: true
+      AllowUsersToChangePassword: true
+      MaxPasswordAge: 90
+      PasswordReusePrevention: 24
+      HardExpiry: false
+
+  # Service Role for ECS
+  ECSServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub dust-ecs-service-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSServiceRolePolicy
+
+  # Task Execution Role for ECS
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub dust-ecs-task-execution-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub arn:aws:secretsmanager:*:*:secret:dust-*-${Environment}-*
+
+  # Task Role for Core API
+  CoreAPITaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub dust-core-api-task-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CoreAPIAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub arn:aws:secretsmanager:*:*:secret:dust-*-${Environment}-*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::dust-application-data-${Environment}-*
+                  - !Sub arn:aws:s3:::dust-application-data-${Environment}-*/*
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:*:*:log-group:/ecs/dust-core-api-${Environment}:*
+
+  # Task Role for Frontend
+  FrontendTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub dust-frontend-task-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: FrontendAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:*:*:log-group:/ecs/dust-frontend-${Environment}:*
+
+  # Task Role for MCP Server
+  MCPServerTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub dust-mcp-server-task-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: MCPServerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub arn:aws:secretsmanager:*:*:secret:dust-*-${Environment}-*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::dust-application-data-${Environment}-*
+                  - !Sub arn:aws:s3:::dust-application-data-${Environment}-*/*
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:*:*:log-group:/ecs/dust-mcp-server-${Environment}:*
+
+Outputs:
+  DevelopersGroup:
+    Description: The IAM group for developers
+    Value: !Ref DevelopersGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-DevelopersGroup
+
+  OperationsGroup:
+    Description: The IAM group for operations
+    Value: !Ref OperationsGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-OperationsGroup
+
+  SecurityGroup:
+    Description: The IAM group for security
+    Value: !Ref SecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-SecurityGroup
+
+  ReadOnlyGroup:
+    Description: The IAM group for read-only access
+    Value: !Ref ReadOnlyGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-ReadOnlyGroup
+
+  ECSServiceRole:
+    Description: The IAM role for ECS service
+    Value: !Ref ECSServiceRole
+    Export:
+      Name: !Sub ${AWS::StackName}-ECSServiceRole
+
+  ECSTaskExecutionRole:
+    Description: The IAM role for ECS task execution
+    Value: !Ref ECSTaskExecutionRole
+    Export:
+      Name: !Sub ${AWS::StackName}-ECSTaskExecutionRole
+
+  CoreAPITaskRole:
+    Description: The IAM role for Core API task
+    Value: !Ref CoreAPITaskRole
+    Export:
+      Name: !Sub ${AWS::StackName}-CoreAPITaskRole
+
+  FrontendTaskRole:
+    Description: The IAM role for Frontend task
+    Value: !Ref FrontendTaskRole
+    Export:
+      Name: !Sub ${AWS::StackName}-FrontendTaskRole
+
+  MCPServerTaskRole:
+    Description: The IAM role for MCP Server task
+    Value: !Ref MCPServerTaskRole
+    Export:
+      Name: !Sub ${AWS::StackName}-MCPServerTaskRole

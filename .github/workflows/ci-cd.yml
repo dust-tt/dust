@@ -1,0 +1,469 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, staging, development, dust-mcp-server ]
+  pull_request:
+    branches: [ main, staging, development, dust-mcp-server ]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY_CORE_API: dust-core-api
+  ECR_REPOSITORY_FRONTEND: dust-frontend
+  ECR_REPOSITORY_MCP_SERVER: dust-mcp-server
+  ECS_CLUSTER: dust
+  ECS_SERVICE_CORE_API: dust-core-api
+  ECS_SERVICE_FRONTEND: dust-frontend
+  ECS_SERVICE_MCP_SERVER: dust-mcp-server
+  ECS_TASK_DEFINITION_CORE_API: .aws/task-definition-core-api.json
+  ECS_TASK_DEFINITION_FRONTEND: .aws/task-definition-frontend.json
+  ECS_TASK_DEFINITION_MCP_SERVER: .aws/task-definition-mcp-server.json
+  CONTAINER_NAME_CORE_API: dust-core-api
+  CONTAINER_NAME_FRONTEND: dust-frontend
+  CONTAINER_NAME_MCP_SERVER: dust-mcp-server
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Run tests
+      run: npm test
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: coverage/
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run Snyk to check for vulnerabilities
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'Dust'
+        path: '.'
+        format: 'HTML'
+        out: 'reports'
+        args: >
+          --suppression suppression.xml
+          --failOnCVSS 7
+          --enableRetired
+
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-scan-results
+        path: reports/
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Download test results
+      uses: actions/download-artifact@v3
+      with:
+        name: test-results
+        path: coverage/
+
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+    - name: SonarQube Quality Gate check
+      uses: SonarSource/sonarqube-quality-gate-action@master
+      timeout-minutes: 5
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build-and-push:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    needs: [security-scan, quality-gate]
+    if: github.event_name == 'push'
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Set environment variables
+      run: |
+        echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
+        if [[ $GITHUB_REF == refs/heads/main ]]; then
+          echo "ENVIRONMENT=production" >> $GITHUB_ENV
+        elif [[ $GITHUB_REF == refs/heads/staging ]]; then
+          echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+        elif [[ $GITHUB_REF == refs/heads/dust-mcp-server ]]; then
+          echo "ENVIRONMENT=development" >> $GITHUB_ENV
+        else
+          echo "ENVIRONMENT=development" >> $GITHUB_ENV
+        fi
+
+    # Build and push Core API
+    - name: Build and push Core API image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./core-api
+        push: true
+        tags: |
+          ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_CORE_API }}:${{ github.sha }}
+          ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_CORE_API }}:latest-${{ env.ENVIRONMENT }}
+
+    # Build and push Frontend
+    - name: Build and push Frontend image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./frontend
+        push: true
+        tags: |
+          ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_FRONTEND }}:${{ github.sha }}
+          ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_FRONTEND }}:latest-${{ env.ENVIRONMENT }}
+
+    # Build and push MCP Server
+    - name: Build and push MCP Server image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./mcp-server
+        push: true
+        tags: |
+          ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_MCP_SERVER }}:${{ github.sha }}
+          ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_MCP_SERVER }}:latest-${{ env.ENVIRONMENT }}
+
+    - name: Fill in the new Core API image ID in the Amazon ECS task definition
+      id: task-def-core-api
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: ${{ env.ECS_TASK_DEFINITION_CORE_API }}
+        container-name: ${{ env.CONTAINER_NAME_CORE_API }}
+        image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_CORE_API }}:${{ github.sha }}
+
+    - name: Fill in the new Frontend image ID in the Amazon ECS task definition
+      id: task-def-frontend
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: ${{ env.ECS_TASK_DEFINITION_FRONTEND }}
+        container-name: ${{ env.CONTAINER_NAME_FRONTEND }}
+        image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_FRONTEND }}:${{ github.sha }}
+
+    - name: Fill in the new MCP Server image ID in the Amazon ECS task definition
+      id: task-def-mcp-server
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: ${{ env.ECS_TASK_DEFINITION_MCP_SERVER }}
+        container-name: ${{ env.CONTAINER_NAME_MCP_SERVER }}
+        image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_MCP_SERVER }}:${{ github.sha }}
+
+    - name: Upload task definitions
+      uses: actions/upload-artifact@v3
+      with:
+        name: task-definitions
+        path: |
+          ${{ steps.task-def-core-api.outputs.task-definition }}
+          ${{ steps.task-def-frontend.outputs.task-definition }}
+          ${{ steps.task-def-mcp-server.outputs.task-definition }}
+
+  deploy-development:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/development' || github.ref == 'refs/heads/dust-mcp-server'
+    environment: development
+    steps:
+    - name: Download task definitions
+      uses: actions/download-artifact@v3
+      with:
+        name: task-definitions
+        path: .aws/
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Deploy Core API to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: .aws/task-definition-core-api-rendered.json
+        service: ${{ env.ECS_SERVICE_CORE_API }}-development
+        cluster: ${{ env.ECS_CLUSTER }}-development
+        wait-for-service-stability: true
+
+    - name: Deploy Frontend to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: .aws/task-definition-frontend-rendered.json
+        service: ${{ env.ECS_SERVICE_FRONTEND }}-development
+        cluster: ${{ env.ECS_CLUSTER }}-development
+        wait-for-service-stability: true
+
+    - name: Deploy MCP Server to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: .aws/task-definition-mcp-server-rendered.json
+        service: ${{ env.ECS_SERVICE_MCP_SERVER }}-development
+        cluster: ${{ env.ECS_CLUSTER }}-development
+        wait-for-service-stability: true
+
+    - name: Verify deployment
+      run: |
+        # Wait for services to stabilize
+        sleep 60
+        
+        # Check Core API health
+        CORE_API_URL=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }}-development --services ${{ env.ECS_SERVICE_CORE_API }}-development --query 'services[0].loadBalancers[0].targetGroupArn' --output text | xargs -I {} aws elbv2 describe-target-groups --target-group-arns {} --query 'TargetGroups[0].LoadBalancerArns[0]' --output text | xargs -I {} aws elbv2 describe-load-balancers --load-balancer-arns {} --query 'LoadBalancers[0].DNSName' --output text)
+        curl -f http://$CORE_API_URL/health || exit 1
+        
+        # Check MCP Server health
+        MCP_SERVER_URL=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }}-development --services ${{ env.ECS_SERVICE_MCP_SERVER }}-development --query 'services[0].loadBalancers[0].targetGroupArn' --output text | xargs -I {} aws elbv2 describe-target-groups --target-group-arns {} --query 'TargetGroups[0].LoadBalancerArns[0]' --output text | xargs -I {} aws elbv2 describe-load-balancers --load-balancer-arns {} --query 'LoadBalancers[0].DNSName' --output text)
+        curl -f http://$MCP_SERVER_URL/health || exit 1
+
+    - name: Notify deployment success
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_CHANNEL: deployments
+        SLACK_COLOR: good
+        SLACK_TITLE: Development Deployment Successful
+        SLACK_MESSAGE: 'Successfully deployed to development environment :rocket:'
+        SLACK_FOOTER: 'Dust CI/CD Pipeline'
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/staging'
+    environment: staging
+    steps:
+    - name: Download task definitions
+      uses: actions/download-artifact@v3
+      with:
+        name: task-definitions
+        path: .aws/
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Deploy Core API to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: .aws/task-definition-core-api-rendered.json
+        service: ${{ env.ECS_SERVICE_CORE_API }}-staging
+        cluster: ${{ env.ECS_CLUSTER }}-staging
+        wait-for-service-stability: true
+
+    - name: Deploy Frontend to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: .aws/task-definition-frontend-rendered.json
+        service: ${{ env.ECS_SERVICE_FRONTEND }}-staging
+        cluster: ${{ env.ECS_CLUSTER }}-staging
+        wait-for-service-stability: true
+
+    - name: Deploy MCP Server to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: .aws/task-definition-mcp-server-rendered.json
+        service: ${{ env.ECS_SERVICE_MCP_SERVER }}-staging
+        cluster: ${{ env.ECS_CLUSTER }}-staging
+        wait-for-service-stability: true
+
+    - name: Verify deployment
+      run: |
+        # Wait for services to stabilize
+        sleep 60
+        
+        # Check Core API health
+        CORE_API_URL=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }}-staging --services ${{ env.ECS_SERVICE_CORE_API }}-staging --query 'services[0].loadBalancers[0].targetGroupArn' --output text | xargs -I {} aws elbv2 describe-target-groups --target-group-arns {} --query 'TargetGroups[0].LoadBalancerArns[0]' --output text | xargs -I {} aws elbv2 describe-load-balancers --load-balancer-arns {} --query 'LoadBalancers[0].DNSName' --output text)
+        curl -f http://$CORE_API_URL/health || exit 1
+        
+        # Check MCP Server health
+        MCP_SERVER_URL=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }}-staging --services ${{ env.ECS_SERVICE_MCP_SERVER }}-staging --query 'services[0].loadBalancers[0].targetGroupArn' --output text | xargs -I {} aws elbv2 describe-target-groups --target-group-arns {} --query 'TargetGroups[0].LoadBalancerArns[0]' --output text | xargs -I {} aws elbv2 describe-load-balancers --load-balancer-arns {} --query 'LoadBalancers[0].DNSName' --output text)
+        curl -f http://$MCP_SERVER_URL/health || exit 1
+
+    - name: Notify deployment success
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_CHANNEL: deployments
+        SLACK_COLOR: good
+        SLACK_TITLE: Staging Deployment Successful
+        SLACK_MESSAGE: 'Successfully deployed to staging environment :rocket:'
+        SLACK_FOOTER: 'Dust CI/CD Pipeline'
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://app.dust.tt
+    steps:
+    - name: Download task definitions
+      uses: actions/download-artifact@v3
+      with:
+        name: task-definitions
+        path: .aws/
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    # Blue/Green deployment for production
+    - name: Create new task set for Core API
+      id: create-task-set-core-api
+      run: |
+        TASK_SET_ID=$(aws ecs create-task-set \
+          --cluster ${{ env.ECS_CLUSTER }}-production \
+          --service ${{ env.ECS_SERVICE_CORE_API }}-production \
+          --task-definition .aws/task-definition-core-api-rendered.json \
+          --launch-type FARGATE \
+          --network-configuration "awsvpcConfiguration={subnets=[subnet-12345678,subnet-87654321],securityGroups=[sg-12345678],assignPublicIp=DISABLED}" \
+          --scale value=100,unit=PERCENT \
+          --query 'taskSet.id' \
+          --output text)
+        echo "TASK_SET_ID=$TASK_SET_ID" >> $GITHUB_ENV
+
+    - name: Create new task set for Frontend
+      id: create-task-set-frontend
+      run: |
+        TASK_SET_ID=$(aws ecs create-task-set \
+          --cluster ${{ env.ECS_CLUSTER }}-production \
+          --service ${{ env.ECS_SERVICE_FRONTEND }}-production \
+          --task-definition .aws/task-definition-frontend-rendered.json \
+          --launch-type FARGATE \
+          --network-configuration "awsvpcConfiguration={subnets=[subnet-12345678,subnet-87654321],securityGroups=[sg-12345678],assignPublicIp=DISABLED}" \
+          --scale value=100,unit=PERCENT \
+          --query 'taskSet.id' \
+          --output text)
+        echo "TASK_SET_ID=$TASK_SET_ID" >> $GITHUB_ENV
+
+    - name: Create new task set for MCP Server
+      id: create-task-set-mcp-server
+      run: |
+        TASK_SET_ID=$(aws ecs create-task-set \
+          --cluster ${{ env.ECS_CLUSTER }}-production \
+          --service ${{ env.ECS_SERVICE_MCP_SERVER }}-production \
+          --task-definition .aws/task-definition-mcp-server-rendered.json \
+          --launch-type FARGATE \
+          --network-configuration "awsvpcConfiguration={subnets=[subnet-12345678,subnet-87654321],securityGroups=[sg-12345678],assignPublicIp=DISABLED}" \
+          --scale value=100,unit=PERCENT \
+          --query 'taskSet.id' \
+          --output text)
+        echo "TASK_SET_ID=$TASK_SET_ID" >> $GITHUB_ENV
+
+    - name: Wait for task sets to stabilize
+      run: |
+        sleep 60
+
+    - name: Update service primary task set for Core API
+      run: |
+        aws ecs update-service-primary-task-set \
+          --cluster ${{ env.ECS_CLUSTER }}-production \
+          --service ${{ env.ECS_SERVICE_CORE_API }}-production \
+          --primary-task-set ${{ env.TASK_SET_ID }}
+
+    - name: Update service primary task set for Frontend
+      run: |
+        aws ecs update-service-primary-task-set \
+          --cluster ${{ env.ECS_CLUSTER }}-production \
+          --service ${{ env.ECS_SERVICE_FRONTEND }}-production \
+          --primary-task-set ${{ env.TASK_SET_ID }}
+
+    - name: Update service primary task set for MCP Server
+      run: |
+        aws ecs update-service-primary-task-set \
+          --cluster ${{ env.ECS_CLUSTER }}-production \
+          --service ${{ env.ECS_SERVICE_MCP_SERVER }}-production \
+          --primary-task-set ${{ env.TASK_SET_ID }}
+
+    - name: Verify deployment
+      run: |
+        # Wait for services to stabilize
+        sleep 60
+        
+        # Check Core API health
+        CORE_API_URL=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }}-production --services ${{ env.ECS_SERVICE_CORE_API }}-production --query 'services[0].loadBalancers[0].targetGroupArn' --output text | xargs -I {} aws elbv2 describe-target-groups --target-group-arns {} --query 'TargetGroups[0].LoadBalancerArns[0]' --output text | xargs -I {} aws elbv2 describe-load-balancers --load-balancer-arns {} --query 'LoadBalancers[0].DNSName' --output text)
+        curl -f http://$CORE_API_URL/health || exit 1
+        
+        # Check MCP Server health
+        MCP_SERVER_URL=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }}-production --services ${{ env.ECS_SERVICE_MCP_SERVER }}-production --query 'services[0].loadBalancers[0].targetGroupArn' --output text | xargs -I {} aws elbv2 describe-target-groups --target-group-arns {} --query 'TargetGroups[0].LoadBalancerArns[0]' --output text | xargs -I {} aws elbv2 describe-load-balancers --load-balancer-arns {} --query 'LoadBalancers[0].DNSName' --output text)
+        curl -f http://$MCP_SERVER_URL/health || exit 1
+
+    - name: Notify deployment success
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_CHANNEL: deployments
+        SLACK_COLOR: good
+        SLACK_TITLE: Production Deployment Successful
+        SLACK_MESSAGE: 'Successfully deployed to production environment :rocket:'
+        SLACK_FOOTER: 'Dust CI/CD Pipeline'
