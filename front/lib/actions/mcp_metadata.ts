@@ -147,13 +147,8 @@ export const connectToMCPServer = async (
     }
     case "remoteMCPServerUrl": {
       const url = new URL(params.remoteMCPServerUrl);
-      try {
-        const sseTransport = new SSEClientTransport(url);
-        await mcpClient.connect(sseTransport);
-      } catch (e) {
-        logger.error("Error establishing connection to MCP server");
-        throw e;
-      }
+      const sseTransport = new SSEClientTransport(url);
+      await mcpClient.connect(sseTransport);
       break;
     }
 
