@@ -77,6 +77,7 @@ import type {
   AgentStatus,
   LightAgentConfigurationType,
   Result,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -1584,6 +1585,63 @@ export async function removeGroupFromAgentConfiguration({
 
     return new Ok(undefined);
   } catch (error) {
+    return new Err(error as Error);
+  }
+}
+
+/**
+ * Updates the permissions (editors) for an agent configuration.
+ */
+export async function updateAgentPermissions(
+  auth: Authenticator,
+  {
+    agent,
+    usersToAdd,
+    usersToRemove,
+  }: {
+    agent: LightAgentConfigurationType;
+    usersToAdd: UserType[];
+    usersToRemove: UserType[];
+  }
+): Promise<Result<undefined, Error>> {
+  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    auth,
+    agent
+  );
+  if (editorGroupRes.isErr()) {
+    return editorGroupRes;
+  }
+
+  // The canWrite check for agent_editors groups (allowing members and admins)
+  // is implicitly handled by addMembers and removeMembers.
+  try {
+    const result = await frontSequelize.transaction(async (t) => {
+      if (usersToAdd.length > 0) {
+        const addRes = await editorGroupRes.value.addMembers(auth, usersToAdd, {
+          transaction: t,
+        });
+        if (addRes.isErr()) {
+          return addRes;
+        }
+      }
+
+      if (usersToRemove.length > 0) {
+        const removeRes = await editorGroupRes.value.removeMembers(
+          auth,
+          usersToRemove,
+          {
+            transaction: t,
+          }
+        );
+        if (removeRes.isErr()) {
+          return removeRes;
+        }
+      }
+      return new Ok(undefined);
+    });
+    return result;
+  } catch (error) {
+    // Catch errors thrown from within the transaction
     return new Err(error as Error);
   }
 }
