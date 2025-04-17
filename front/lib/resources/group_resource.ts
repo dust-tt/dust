@@ -395,6 +395,36 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(groups);
   }
 
+  static async fetchByAgentConfiguration(
+    auth: Authenticator,
+    agentConfiguration: AgentConfiguration
+  ): Promise<Result<GroupResource, DustError>> {
+    const workspace = auth.getNonNullableWorkspace();
+    const groupAgent = await GroupAgentModel.findOne({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: GroupModel,
+          where: {
+            workspaceId: workspace.id,
+          },
+          required: true,
+        },
+      ],
+    });
+
+    if (!groupAgent) {
+      return new Err(new DustError("resource_not_found", "Group not found"));
+    }
+
+    const group = await groupAgent.getGroup();
+
+    return new Ok(new this(GroupModel, group.get()));
+  }
+
   static async fetchWorkspaceSystemGroup(
     auth: Authenticator
   ): Promise<Result<GroupResource, DustError>> {
