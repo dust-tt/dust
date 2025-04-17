@@ -80,10 +80,10 @@ MCPServerViewModel.init(
       },
       {
         fields: ["workspaceId", "internalMCPServerId", "vaultId"],
-        unique: true,
         where: {
           deletedAt: null,
         },
+        unique: true,
         name: "mcp_server_views_workspace_internal_mcp_server_vault_active",
       },
     ],
