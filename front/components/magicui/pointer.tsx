@@ -1,10 +1,10 @@
 "use client";
 
-import type { HTMLMotionProps } from "motion/react";
-import { AnimatePresence, motion, useMotionValue } from "motion/react";
+import { classNames as cn } from "@dust-tt/sparkle";
+import type { HTMLMotionProps } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue } from "framer-motion";
+import React from "react";
 import { useEffect, useRef, useState } from "react";
-
-import { classNames as cn } from "@app/lib/utils";
 
 interface PointerProps extends Omit<HTMLMotionProps<"div">, "ref"> {}
 

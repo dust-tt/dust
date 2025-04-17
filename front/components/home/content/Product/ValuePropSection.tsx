@@ -1,6 +1,7 @@
 "use client";
 
 import { Pointer } from "@app/components/magicui/pointer";
+
 import { H3, P } from "../../ContentComponents";
 
 export function ValuePropSection() {

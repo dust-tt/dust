@@ -1,6 +1,5 @@
 "use client";
 
-import { BorderBeam } from "@app/components/magicui/border-beam";
 import { Button, PlayIcon, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
@@ -14,6 +13,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { BorderBeam } from "@app/components/magicui/border-beam";
 
 const HeroContent = () => {
   return (
