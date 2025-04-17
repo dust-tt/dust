@@ -64,10 +64,27 @@ impl ToString for AnthropicChatMessageRole {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnthropicContentToolResultContentType {
+    Text,
+    Image,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde()]
+struct AnthropicContentToolResultContent {
+    r#type: AnthropicContentToolResultContentType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source: Option<AnthropicImageContent>,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 struct AnthropicContentToolResult {
     tool_use_id: String,
-    content: Option<String>,
+    content: Vec<AnthropicContentToolResultContent>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -229,31 +246,37 @@ async fn fetch_image_base64(image_url: &str) -> Result<(String, AnthropicImageCo
         },
     ))
 }
-
 async fn fetch_and_encode_images(
     messages: Vec<ChatMessage>,
 ) -> Result<HashMap<String, AnthropicImageContent>, anyhow::Error> {
     let futures = messages
         .into_iter()
         .filter_map(|message| {
-            if let ChatMessage::User(user_msg) = message {
-                if let ContentBlock::Mixed(mixed_content) = user_msg.content {
-                    let inner_futures = mixed_content
-                        .into_iter()
-                        .filter_map(|content| {
-                            if let MixedContent::ImageContent(ic) = content {
-                                let url = ic.image_url.url.clone();
+            let mixed_content = match message {
+                ChatMessage::User(user_msg) => match user_msg.content {
+                    ContentBlock::Mixed(content) => Some(content),
+                    _ => None,
+                },
+                ChatMessage::Function(func_msg) => match func_msg.content {
+                    ContentBlock::Mixed(content) => Some(content),
+                    _ => None,
+                },
+                _ => None,
+            };
 
-                                Some(async move { fetch_image_base64(&url).await })
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>();
-                    return Some(inner_futures);
-                }
-            }
-            None
+            mixed_content.map(|content| {
+                content
+                    .into_iter()
+                    .filter_map(|content| {
+                        if let MixedContent::ImageContent(ic) = content {
+                            let url = ic.image_url.url.clone();
+                            Some(async move { fetch_image_base64(&url).await })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
         })
         .flatten()
         .collect::<Vec<_>>();
@@ -336,14 +359,44 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                 })
             }
             ChatMessage::Function(function_msg) => {
+                let content: Vec<AnthropicContentToolResultContent> = match &function_msg.content {
+                    ContentBlock::Text(t) => vec![AnthropicContentToolResultContent {
+                        r#type: AnthropicContentToolResultContentType::Text,
+                        text: Some(t.clone()),
+                        source: None,
+                    }],
+                    ContentBlock::Mixed(m) => m
+                        .into_iter()
+                        .map(|mb| match mb {
+                            MixedContent::TextContent(tc) => {
+                                Ok(AnthropicContentToolResultContent {
+                                    r#type: AnthropicContentToolResultContentType::Text,
+                                    text: Some(tc.text.clone()),
+                                    source: None,
+                                })
+                            }
+                            MixedContent::ImageContent(ic) => {
+                                if let Some(base64_data) = base64_map.get(&ic.image_url.url) {
+                                    Ok(AnthropicContentToolResultContent {
+                                        r#type: AnthropicContentToolResultContentType::Image,
+                                        source: Some(base64_data.clone()),
+                                        text: None,
+                                    })
+                                } else {
+                                    Err(anyhow!("Invalid Image."))
+                                }
+                            }
+                        })
+                        .collect::<Result<Vec<AnthropicContentToolResultContent>>>()?,
+                };
+
                 // Handling tool_result.
                 let tool_result = AnthropicContent {
                     r#type: AnthropicContentType::ToolResult,
                     tool_use: None,
                     tool_result: Some(AnthropicContentToolResult {
                         tool_use_id: function_msg.function_call_id.clone(),
-                        // TODO(2024-06-24 flav) This does not need to be Optionable.
-                        content: Some(function_msg.content.clone()),
+                        content: content,
                     }),
                     text: None,
                     source: None,

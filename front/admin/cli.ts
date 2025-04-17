@@ -366,7 +366,10 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
             if (m.role === "function") {
               return {
                 ...m,
-                content: m.content.slice(0, 200) + "...",
+                content:
+                  typeof m.content === "string"
+                    ? m.content.slice(0, 200) + "..."
+                    : m.content,
               };
             }
             return m;

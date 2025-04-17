@@ -25,10 +25,6 @@ import {
 function isConversationIncludableFileContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
-  // We allow including everything except images.
-  if (isSupportedImageContentType(contentType)) {
-    return false;
-  }
   if (isDustMimeType(contentType)) {
     return isIncludableInternalMimeType(contentType);
   }
