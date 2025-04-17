@@ -1,10 +1,15 @@
 import {
+  ActionBrainIcon,
+  ActionCloudArrowLeftRightIcon,
   ActionDocumentTextIcon,
+  ActionEmotionLaughIcon,
   ActionGitBranchIcon,
   ActionGlobeAltIcon,
   ActionIcons,
   ActionImageIcon,
+  ActionLockIcon,
   ActionRobotIcon,
+  ActionTableIcon,
   Avatar,
   GithubLogo,
 } from "@dust-tt/sparkle";
@@ -23,6 +28,11 @@ export const InternalActionIcons = {
   ActionDocumentTextIcon,
   ActionGlobeAltIcon,
   ActionGitBranchIcon,
+  ActionLockIcon,
+  ActionCloudArrowLeftRightIcon,
+  ActionEmotionLaughIcon,
+  ActionTableIcon,
+  ActionBrainIcon,
   GithubLogo,
 };
 
