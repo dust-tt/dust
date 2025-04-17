@@ -377,7 +377,9 @@ function createServer(
         unknown
       >;
 
-      const content: MCPToolResultContent[] = [];
+      const content: MCPToolResultContent[] = [
+        { type: "text", text: JSON.stringify(sanitizedOutput) },
+      ];
 
       const rawResults =
         "results" in sanitizedOutput ? sanitizedOutput.results : [];
@@ -474,8 +476,6 @@ function createServer(
           });
         }
       }
-
-      content.push({ type: "text", text: JSON.stringify(sanitizedOutput) });
 
       return {
         isError: false,
