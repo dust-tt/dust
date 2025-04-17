@@ -167,22 +167,19 @@ export async function hardDeleteDataSource(
     );
   }
 
-  // Ensure all data source views are soft deleted.
-  // Soft delete all ds views for that data source.
-  const views = await DataSourceViewResource.listForDataSources(auth, [
-    dataSource,
-  ]);
+  // Ensure all content fragments from dsviews are expired.
+  // Only used temporarily to unstuck queues -- TODO(fontanierh)
+  const views = await DataSourceViewResource.listForDataSources(
+    auth,
+    [dataSource],
+    {
+      includeDeleted: true,
+    }
+  );
   await concurrentExecutor(
     views,
     async (view) => {
-      const r = await view.delete(auth, { hardDelete: false });
-      if (r.isErr()) {
-        logger.error(
-          { viewId: view.id, error: r.error },
-          "Error deleting data source view"
-        );
-        throw r.error;
-      }
+      await view.expireContentFragments(auth);
     },
     {
       concurrency: 8,
