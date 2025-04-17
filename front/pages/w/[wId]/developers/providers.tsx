@@ -23,8 +23,8 @@ import {
   serviceProviders,
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
+import { formatSecret } from "@app/lib/utils";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
-
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -170,15 +170,6 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   );
 }
 
-function formatApiKey(key?: string, visibleChars = 4, dotCount = 30) {
-  if (!key) {
-    return "";
-  }
-  const dots = "•".repeat(dotCount);
-  const end = key.slice(-visibleChars);
-  return `${dots}${end}`;
-}
-
 function ProviderListItem({
   name,
   isEnabled,
@@ -214,7 +205,7 @@ function ProviderListItem({
           {apiKey && (
             <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
               <span className="shrink-0">API Key:</span>
-              <div className="max-w-72 truncate">{formatApiKey(apiKey)}</div>
+              <div className="max-w-72 truncate">{formatSecret(apiKey)}</div>
             </div>
           )}
         </div>
