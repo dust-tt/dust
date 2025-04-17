@@ -1,5 +1,6 @@
 import { MentionPluginKey } from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Fragment, Node, Slice } from "@tiptap/pm/model";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -304,6 +305,22 @@ const useCustomEditor = ({
 
         // Return false to let other keydown handlers or TipTap's default behavior process the event.
         return false;
+      },
+      clipboardTextParser: (text, $context) => {
+        const blocks = text.replace(/\r\n?|\n/g, "\n").split("\n");
+        const nodes: Node[] = [];
+
+        blocks.forEach((line) => {
+          const nodeJson: JSONContent = { type: "paragraph" };
+          if (line.length > 0) {
+            nodeJson.content = [{ type: "text", text: line }];
+          }
+          const node = Node.fromJSON($context.doc.type.schema, nodeJson);
+          nodes.push(node);
+        });
+
+        const fragment = Fragment.fromArray(nodes);
+        return Slice.maxOpen(fragment);
       },
     },
   });
