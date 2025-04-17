@@ -80,7 +80,7 @@ export function UserMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <div className="cursor-pointer items-center group flex max-w-[200px] gap-2">
+        <div className="group flex max-w-[200px] cursor-pointer items-center gap-2">
           <span className="sr-only">Open user menu</span>
           <Avatar
             size="sm"
