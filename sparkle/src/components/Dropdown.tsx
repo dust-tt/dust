@@ -1,6 +1,7 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cva } from "class-variance-authority";
 import * as React from "react";
+import { useRef } from "react";
 
 import { DoubleIcon } from "@sparkle/components/DoubleIcon";
 import { Icon } from "@sparkle/components/Icon";
@@ -412,7 +413,9 @@ const DropdownMenuShortcut = ({
 };
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
-interface DropdownMenuSearchbarProps extends SearchInputProps {}
+interface DropdownMenuSearchbarProps extends SearchInputProps {
+  button?: React.ReactNode;
+}
 
 const DropdownMenuSearchbar = React.forwardRef<
   HTMLInputElement,
@@ -427,18 +430,31 @@ const DropdownMenuSearchbar = React.forwardRef<
       name,
       className,
       disabled = false,
+      button,
     },
     ref
   ) => {
+    const internalRef = useRef<HTMLInputElement>(null);
+    React.useImperativeHandle<HTMLInputElement | null, HTMLInputElement | null>(
+      ref,
+      () => internalRef.current
+    );
+
+    React.useEffect(() => {
+      setTimeout(() => {
+        internalRef.current?.focus();
+      }, 0);
+    }, []);
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       e.stopPropagation();
       onKeyDown?.(e);
     };
 
     return (
-      <div className={cn("s-px-1 s-py-1", className)}>
+      <div className={cn("s-flex s-gap-1.5 s-p-1.5", className)}>
         <SearchInput
-          ref={ref}
+          ref={internalRef}
           placeholder={placeholder}
           name={name}
           value={value}
@@ -446,6 +462,7 @@ const DropdownMenuSearchbar = React.forwardRef<
           onKeyDown={handleKeyDown}
           disabled={disabled}
         />
+        {button}
       </div>
     );
   }
