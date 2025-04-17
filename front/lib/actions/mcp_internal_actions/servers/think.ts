@@ -6,8 +6,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "think",
   version: "1.0.0",
-  description:
-    "Tools that expand thinking and reasoning capabilities through various mechanisms.",
+  description: "Tools that expand thinking and reasoning capabilities.",
   icon: "LightbulbIcon",
   authorization: null,
 };
