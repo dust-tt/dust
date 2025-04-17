@@ -12,6 +12,7 @@ import {
   augmentInputsWithConfiguration,
   hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { isResourceWithName } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
@@ -510,10 +511,16 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         c.resource.mimeType &&
         isSupportedFileContentType(c.resource.mimeType)
       ) {
+        let fileName = c.resource.uri.split("/").pop() ?? "generated-file";
+
+        if (isResourceWithName(c.resource)) {
+          fileName = c.resource.name;
+        }
+
         const r = await processAndStoreFromUrl(auth, {
           url: c.resource.uri,
           useCase: "conversation",
-          fileName: c.resource.uri.split("/").pop() ?? "generated-file",
+          fileName,
           contentType: c.resource.mimeType,
         });
         if (r.isErr()) {

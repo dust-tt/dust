@@ -778,24 +778,30 @@ fn to_openai_messages(
                 let all_contents_are_text = contents
                     .iter()
                     .all(|c| matches!(c, OpenAIContentBlock::TextContent(_)));
+                let is_tool_result = m.tool_call_id.is_some();
 
                 OpenAIChatMessage {
                     role: m.role,
                     name: m.name,
                     tool_call_id: m.tool_call_id,
                     tool_calls: m.tool_calls,
-                    content: match (contents.len(), all_contents_are_text, squash_text_contents) {
+                    content: match (
+                        contents.len(),
+                        all_contents_are_text,
+                        squash_text_contents,
+                        is_tool_result,
+                    ) {
                         // Case 0: there's no content => return None
-                        (0, _, _) => None,
+                        (0, _, _, _) => None,
                         // Case 1: there's only a single text content => use string format
-                        (1, true, _) => Some(OpenAIChatMessageContent::String(
+                        (1, true, _, _) => Some(OpenAIChatMessageContent::String(
                             match contents.into_iter().next().unwrap() {
                                 OpenAIContentBlock::TextContent(tc) => tc.text.clone(),
                                 _ => unreachable!(),
                             },
                         )),
                         // Case 2: There's more than one content, all contents are text and we want to squash them => squash them
-                        (_, true, true) => Some(OpenAIChatMessageContent::String(
+                        (_, true, true, _) => Some(OpenAIChatMessageContent::String(
                             contents
                                 .into_iter()
                                 .map(|c| match c {
@@ -805,8 +811,21 @@ fn to_openai_messages(
                                 .collect::<Vec<String>>()
                                 .join("\n"),
                         )),
-                        // Case 3: there's more than one content, the content isn't text or we don't want to squash them => keep structured format
-                        (_, _, _) => Some(OpenAIChatMessageContent::Structured(contents)),
+                        // Case 3: it's a tool result, openai only supports string format for tool results, return the stringified content as a string
+                        (_, _, _, true) => Some(OpenAIChatMessageContent::String(
+                            contents
+                                .into_iter()
+                                .map(|c| match c {
+                                    OpenAIContentBlock::TextContent(tc) => tc.text.clone(),
+                                    OpenAIContentBlock::ImageContent(ic) => {
+                                        ic.image_url.url.clone()
+                                    }
+                                })
+                                .collect::<Vec<String>>()
+                                .join("\n"),
+                        )),
+                        // Case 4: there's more than one content, the content isn't text or we don't want to squash them => keep structured format
+                        (_, _, _, _) => Some(OpenAIChatMessageContent::Structured(contents)),
                     },
                 }
             }

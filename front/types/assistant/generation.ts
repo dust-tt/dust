@@ -19,7 +19,7 @@ export interface ImageContent {
   };
 }
 
-interface TextContent {
+export interface TextContent {
   type: "text";
   text: string;
 }
@@ -71,7 +71,7 @@ export interface FunctionMessageTypeModel {
   role: "function";
   name: string;
   function_call_id: string;
-  content: string;
+  content: string | Content[];
 }
 
 export type ModelMessageTypeMultiActions =

@@ -168,7 +168,35 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
             }),
             ChatMessage::Function(function_msg) => Ok(MistralChatMessage {
                 role: MistralChatMessageRole::Tool,
-                content: Some(function_msg.content.clone()),
+                content: match &function_msg.content {
+                    ContentBlock::Mixed(m) => {
+                        let result = m.iter().enumerate().try_fold(
+                            String::new(),
+                            |mut acc, (i, content)| {
+                                match content {
+                                    MixedContent::ImageContent(_) => {
+                                        Err(anyhow!("Vision is not supported for Mistral."))
+                                    }
+                                    MixedContent::TextContent(tc) => {
+                                        acc.push_str(&tc.text);
+                                        if i != m.len() - 1 {
+                                            // Add newline if it's not the last item.
+                                            acc.push('\n');
+                                        }
+                                        Ok(acc)
+                                    }
+                                }
+                            },
+                        );
+
+                        match result {
+                            Ok(text) if !text.is_empty() => Some(text),
+                            Ok(_) => None, // Empty string.
+                            Err(e) => return Err(e),
+                        }
+                    }
+                    ContentBlock::Text(t) => Some(t.clone()),
+                },
                 tool_calls: None,
                 tool_call_id: Some(sanitize_tool_call_id(&function_msg.function_call_id)),
             }),
