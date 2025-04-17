@@ -48,6 +48,8 @@ import type {
 import { FILE_FORMATS } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
+const MAX_OUTPUT_ITEMS = 128;
+
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
@@ -256,7 +258,20 @@ export async function tryCallMCPTool(
       );
     }
     // Type inference is not working here because of them using passthrough in the zod schema.
-    return new Ok((toolCallResult.content ?? []) as MCPToolResultContent[]);
+    const content: MCPToolResultContent[] = (toolCallResult.content ??
+      []) as MCPToolResultContent[];
+
+    if (content.length >= MAX_OUTPUT_ITEMS) {
+      return new Err(
+        new Error(
+          `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`
+        )
+      );
+    }
+
+    // TODO(mcp) refuse if the content is too large
+
+    return new Ok(content);
   } catch (error) {
     return new Err(normalizeError(error));
   } finally {

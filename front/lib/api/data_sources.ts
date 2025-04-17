@@ -167,6 +167,25 @@ export async function hardDeleteDataSource(
     );
   }
 
+  // Ensure all content fragments from dsviews are expired.
+  // Only used temporarily to unstuck queues -- TODO(fontanierh)
+  const views = await DataSourceViewResource.listForDataSources(
+    auth,
+    [dataSource],
+    {
+      includeDeleted: true,
+    }
+  );
+  await concurrentExecutor(
+    views,
+    async (view) => {
+      await view.expireContentFragments(auth);
+    },
+    {
+      concurrency: 8,
+    }
+  );
+
   // Delete all connectors associated with the data source.
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (

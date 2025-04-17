@@ -492,6 +492,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     reasoningActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
+    tagsPerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
     fetchAgentProcessActionConfigurations({ configurationIds, variant }),
@@ -504,6 +505,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
+    TagResource.listForAgents(auth, configurationIds),
   ]);
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -566,7 +568,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       model.reasoningEffort = agent.reasoningEffort;
     }
 
-    const tags = await TagResource.listForAgent(auth, agent.id);
+    const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,

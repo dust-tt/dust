@@ -192,7 +192,7 @@ export function ActionValidationProvider({
         <DialogContent isAlertDialog>
           <DialogHeader>
             <DialogTitle visual={<ActionPieChartIcon />}>
-              Action Validation Required
+              Tool Validation Required
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
@@ -230,7 +230,7 @@ export function ActionValidationProvider({
 
               {validationQueue.length > 0 && (
                 <div className="mt-2 text-sm font-medium text-info-900 dark:text-info-900-night">
-                  {validationQueue.length} more action
+                  {validationQueue.length} more requests
                   {validationQueue.length > 1 ? "s" : ""} in queue
                 </div>
               )}

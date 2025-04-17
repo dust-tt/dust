@@ -16,7 +16,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "image_generation",
   version: "1.0.0",
   description: "Agent can generate images (Dall-E v3).",
-  icon: "ImageIcon",
+  icon: "ActionImageIcon",
   authorization: null,
 };
 

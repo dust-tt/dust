@@ -106,6 +106,7 @@ export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
 export const O1_MODEL_ID = "o1" as const;
 export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const O3_MINI_MODEL_ID = "o3-mini" as const;
+export const O4_MINI_MODEL_ID = "o4-mini" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
@@ -168,6 +169,7 @@ export const MODEL_IDS = [
   O1_MODEL_ID,
   O1_MINI_MODEL_ID,
   O3_MINI_MODEL_ID,
+  O4_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
   CLAUDE_3_5_SONNET_20241022_MODEL_ID,
@@ -465,6 +467,40 @@ export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   reasoningEffort: "high",
   supportsResponseFormat: true,
+};
+
+export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O4_MINI_MODEL_ID,
+  displayName: "o4-mini",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "OpenAI's o4 mini model (200k context).",
+  shortDescription: "OpenAI's fast o4 model.",
+  isLegacy: false,
+  generationTokensCount: 100_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  reasoningEffort: "medium",
+};
+
+export const O4_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O4_MINI_MODEL_ID,
+  displayName: "o4-mini (High Reasoning)",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "OpenAI's o4 mini model (200k context). High reasoning effort.",
+  shortDescription: "OpenAI's fast o4 model.",
+  isLegacy: false,
+  generationTokensCount: 100_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  reasoningEffort: "high",
 };
 
 const ANTHROPIC_DELIMITERS_CONFIGURATION = {
@@ -1045,6 +1081,8 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   O1_MINI_MODEL_CONFIG,
   O3_MINI_MODEL_CONFIG,
   O3_MINI_HIGH_REASONING_MODEL_CONFIG,
+  O4_MINI_MODEL_CONFIG,
+  O4_MINI_HIGH_REASONING_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,

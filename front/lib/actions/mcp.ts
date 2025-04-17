@@ -410,7 +410,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     });
 
     if (status === "timeout") {
-      localLogger.info("Action validation timed out");
+      localLogger.info("Tool validation timed out");
       // Yield a tool success, with a message that the action timed out
       yield {
         type: "tool_success",

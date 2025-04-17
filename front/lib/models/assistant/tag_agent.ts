@@ -63,6 +63,7 @@ TagAgentModel.init(
         fields: ["tagId", "agentConfigurationId"],
       },
       { fields: ["agentConfigurationId"] },
+      { fields: ["workspaceId", "agentConfigurationId"] },
     ],
   }
 );

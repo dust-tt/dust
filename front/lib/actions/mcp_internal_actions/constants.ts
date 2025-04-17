@@ -64,7 +64,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   think: {
     id: 6,
     isDefault: true,
-    flag: "dev_mcp_actions",
+    flag: "experimental_mcp_actions",
   },
 
   // Dev
