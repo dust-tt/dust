@@ -76,7 +76,7 @@ MCPServerViewModel.init(
         where: {
           deletedAt: null,
         },
-        name: "mcp_server_view_workspace_remote_mcp_server_vault_deleted_at_un",
+        name: "mcp_server_views_workspace_remote_mcp_server_vault_uniq_active",
       },
       {
         fields: ["workspaceId", "internalMCPServerId", "vaultId", "deletedAt"],
@@ -84,7 +84,7 @@ MCPServerViewModel.init(
         where: {
           deletedAt: null,
         },
-        name: "mcp_server_view_workspace_internal_mcp_server_vault_deleted_at_",
+        name: "mcp_server_views_workspace_internal_mcp_server_vault_uniq_active",
       },
     ],
     hooks: {
