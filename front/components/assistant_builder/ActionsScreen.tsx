@@ -463,7 +463,7 @@ export default function ActionsScreen({
       <div className="flex flex-col gap-8 text-sm text-muted-foreground dark:text-muted-foreground-night">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Page.Header title="Tools & Data sources" />
+            <Page.Header title="Tools & Knowledge" />
             <Page.P>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Configure the tools that your agent is able to use, such as{" "}
@@ -1121,7 +1121,7 @@ function ActionEditor({
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
           <Page.Header
-            title={actionDisplayName(action) || "Select a Toolset"}
+            title={actionDisplayName(action) || "Select a tool"}
             icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
           />
           {shouldDisplayAdvancedSettings && (
@@ -1333,7 +1333,7 @@ function AddAction({
       <DropdownMenuTrigger asChild>
         <Button
           variant="primary"
-          label="Add a toolset"
+          label="Add a tool"
           data-gtm-label="toolAddingButton"
           data-gtm-location="toolsPanel"
           icon={PlusIcon}
