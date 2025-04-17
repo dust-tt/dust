@@ -1,5 +1,5 @@
 import { Avatar } from "@dust-tt/sparkle";
-import { ActionIcons, GithubLogo } from "@dust-tt/sparkle";
+import { ActionIcons, GithubLogo, LightbulbIcon } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
 
@@ -11,6 +11,7 @@ export const REMOTE_ALLOWED_ICONS = Object.keys(ActionIcons);
 
 export const InternalActionIcons = {
   GithubLogo,
+  LightbulbIcon,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
