@@ -830,7 +830,7 @@ function ErrorMessage({
           }
           content={
             <div className="flex flex-col gap-3">
-              <div className="text-sm font-normal text-warning-800">
+              <div className="whitespace-normal break-words text-sm font-normal text-warning-800">
                 {fullMessage}
               </div>
               <div className="self-end">
