@@ -11,9 +11,8 @@ import {
   RobotIcon,
   ScrollArea,
   ScrollBar,
-  SearchInput,
 } from "@dust-tt/sparkle";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";

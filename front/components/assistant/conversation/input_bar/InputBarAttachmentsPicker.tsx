@@ -13,10 +13,9 @@ import {
   MagnifyingGlassIcon,
   ScrollArea,
   ScrollBar,
-  SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useDebounce } from "@app/hooks/useDebounce";
