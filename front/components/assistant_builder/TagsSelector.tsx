@@ -237,7 +237,7 @@ export const TagsSelector = ({
             <ScrollArea className="flex max-h-[300px] flex-col" hideScrollBar>
               {filteredTags.map((c) => (
                 <DropdownMenuItem
-                  className="[&&]:p-[4px]"
+                  className="p-[4px]"
                   key={`assistant-picker-${c.sId}`}
                   onClick={() => {
                     setBuilderState((state) => ({
