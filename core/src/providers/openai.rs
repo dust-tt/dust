@@ -702,7 +702,10 @@ impl OpenAILLM {
             "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
             "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
             _ => {
-                if self.id.starts_with("gpt-4o-") || self.id.starts_with("gpt-4.1") {
+                if self.id.starts_with("gpt-4o-")
+                    || self.id.starts_with("gpt-4.1")
+                    || self.id.starts_with("o4")
+                {
                     o200k_base_singleton()
                 } else if self.id.starts_with("gpt-3.5-turbo") || self.id.starts_with("gpt-4") {
                     cl100k_base_singleton()
@@ -715,6 +718,10 @@ impl OpenAILLM {
 
     pub fn openai_context_size(model_id: &str) -> usize {
         // Reference: https://platform.openai.com/docs/models
+
+        if model_id.starts_with("o4-mini") || model_id.starts_with("o3-mini") || model_id == "o1" {
+            return 200000;
+        }
 
         // gpt-3.5-*
         if model_id.starts_with("gpt-3.5") {
@@ -1008,10 +1015,12 @@ impl LLM for OpenAILLM {
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        let is_reasoning_model =
-            self.id.as_str().starts_with("o3") || self.id.as_str().starts_with("o1");
+        let is_reasoning_model = self.id.as_str().starts_with("o3")
+            || self.id.as_str().starts_with("o1")
+            || self.id.as_str().starts_with("o4");
         // o1-mini specifically does not support any type of system messages.
         let remove_system_messages = self.id.as_str().starts_with("o1-mini");
+
         openai_compatible_chat_completion(
             self.chat_uri()?,
             self.id.clone(),
