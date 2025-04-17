@@ -52,12 +52,22 @@ async function handler(
         });
       }
 
-      const server = await fetchRemoteServerMetaDataByURL(auth, url);
-
-      return res.status(201).json({
-        success: true,
-        server,
-      });
+      try {
+        const server = await fetchRemoteServerMetaDataByURL(auth, url);
+        return res.status(201).json({
+          success: true,
+          server,
+        });
+      } catch (e) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Error fetching remote server metadata, URL may be invalid.",
+          },
+        });
+      }
     }
 
     default: {

@@ -123,7 +123,20 @@ async function handler(
           });
         }
 
-        const metadata = await fetchRemoteServerMetaDataByURL(auth, url);
+        let metadata: Omit<MCPServerType, "id">;
+
+        try {
+          metadata = await fetchRemoteServerMetaDataByURL(auth, url);
+        } catch (e) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Error fetching remote server metadata, URL may be invalid.",
+            },
+          });
+        }
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,

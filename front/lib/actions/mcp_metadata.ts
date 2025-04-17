@@ -147,8 +147,13 @@ export const connectToMCPServer = async (
     }
     case "remoteMCPServerUrl": {
       const url = new URL(params.remoteMCPServerUrl);
-      const sseTransport = new SSEClientTransport(url);
-      await mcpClient.connect(sseTransport);
+      try {
+        const sseTransport = new SSEClientTransport(url);
+        await mcpClient.connect(sseTransport);
+      } catch (e) {
+        logger.error("Error establishing connection to MCP server");
+        throw e;
+      }
       break;
     }
 
@@ -225,10 +230,17 @@ export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
   url: string
 ): Promise<Omit<MCPServerType, "id">> {
-  const mcpClient = await connectToMCPServer(auth, {
-    type: "remoteMCPServerUrl",
-    remoteMCPServerUrl: url,
-  });
+  let mcpClient: Client;
+
+  try {
+    mcpClient = await connectToMCPServer(auth, {
+      type: "remoteMCPServerUrl",
+      remoteMCPServerUrl: url,
+    });
+  } catch (e) {
+    logger.error("Error establishing connection to MCP server");
+    throw e;
+  }
 
   try {
     const serverVersion = mcpClient.getServerVersion();

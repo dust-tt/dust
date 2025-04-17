@@ -65,19 +65,28 @@ async function handler(
     });
   }
 
-  const metadata = await fetchRemoteServerMetaDataByURL(auth, server.url);
+  try {
+    const metadata = await fetchRemoteServerMetaDataByURL(auth, server.url);
+    await server.updateMetadata(auth, {
+      cachedName: metadata.name,
+      cachedDescription: metadata.description,
+      cachedTools: metadata.tools,
+      lastSyncAt: new Date(),
+    });
 
-  await server.updateMetadata(auth, {
-    cachedName: metadata.name,
-    cachedDescription: metadata.description,
-    cachedTools: metadata.tools,
-    lastSyncAt: new Date(),
-  });
-
-  return res.status(200).json({
-    success: true,
-    server: server.toJSON(),
-  });
+    return res.status(200).json({
+      success: true,
+      server: server.toJSON(),
+    });
+  } catch (e) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Error fetching remote server metadata, URL may be invalid.",
+      },
+    });
+  }
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
