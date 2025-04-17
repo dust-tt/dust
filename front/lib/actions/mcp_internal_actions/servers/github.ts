@@ -240,46 +240,68 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           }
         );
 
-        // const formatDiffWithLineNumbers = (diff: string) => {
-        //   const lines = diff.split("\n");
-        //   let oldLineNum = 0;
-        //   let newLineNum = 0;
+        // Transforms the diff to inject positions for each lines in the sense of the github pull
+        // request review comments definition.
+        const diffWithPositions = (diff: string) => {
+          const lines = diff.split("\n");
 
-        //   return lines
-        //     .map((line) => {
-        //       if (
-        //         !line.startsWith("+") &&
-        //         !line.startsWith("-") &&
-        //         !line.startsWith(" ") &&
-        //         !line.startsWith("@")
-        //       ) {
-        //         return line;
-        //       }
+          // First pass: calculate global max position
+          let currentFile = null;
+          let position = 0;
+          let globalMaxPosition = 0;
 
-        //       if (line.startsWith("@@")) {
-        //         // Reset line numbers based on hunk header
-        //         const match = line.match(/@@ -(\d+),\d+ \+(\d+),\d+ @@/);
-        //         if (match) {
-        //           oldLineNum = parseInt(match[1]) - 1;
-        //           newLineNum = parseInt(match[2]) - 1;
-        //         }
-        //         return line;
-        //       }
+          for (const line of lines) {
+            if (line.startsWith("diff --git")) {
+              currentFile = null;
+              position = 0;
+              continue;
+            }
 
-        //       if (line.startsWith("-")) {
-        //         oldLineNum++;
-        //         return `${oldLineNum}: ${line}`;
-        //       }
-        //       if (line.startsWith("+")) {
-        //         newLineNum++;
-        //         return `${newLineNum}: ${line}`;
-        //       }
-        //       oldLineNum++;
-        //       newLineNum++;
-        //       return `${newLineNum}: ${line}`;
-        //     })
-        //     .join("\n");
-        // };
+            if (line.startsWith("@@")) {
+              position = 0;
+              continue;
+            }
+
+            if (currentFile !== null) {
+              position++;
+              globalMaxPosition = Math.max(position, globalMaxPosition);
+            } else if (line.startsWith("+++")) {
+              currentFile = line.substring(4).trim();
+            }
+          }
+
+          // Second pass: add positions with consistent space padding
+          const result = [];
+          currentFile = null;
+          position = 0;
+          const digits = globalMaxPosition.toString().length;
+
+          for (const line of lines) {
+            if (line.startsWith("diff --git")) {
+              currentFile = null;
+              position = 0;
+              result.push(line);
+              continue;
+            }
+
+            if (currentFile !== null) {
+              const paddedPosition = position.toString().padStart(digits, " ");
+              if (line.startsWith("@@")) {
+                result.push(line);
+              } else {
+                result.push(`[${paddedPosition}] ${line}`);
+              }
+              position++;
+            } else {
+              result.push(line);
+              if (line.startsWith("+++")) {
+                currentFile = line.substring(4).trim();
+              }
+            }
+          }
+
+          return result.join("\n");
+        };
 
         // Get the actual diff using REST API (not available in GraphQL)
         const diff = await octokit.request(
@@ -295,7 +317,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         );
         // @ts-expect-error - data is a string when mediatType.format is `diff` (wrongly typed as
         // their defauilt response type)
-        const pullDiff = diff.data as string;
+        const pullDiff = diffWithPositions(diff.data as string);
+
+        console.log("======================================================");
+        console.log(pullDiff);
+        console.log("======================================================");
 
         const content =
           `TITLE: ${pullTitle}\n\n` +
@@ -305,7 +331,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           `${(pullCommits || [])
             .map((c) => `${c.sha} ${c.author}: ${c.message}`)
             .join("\n")}\n\n` +
-          `DIFF:\n` +
+          `DIFF (lines are prepended by diff file positions):\n` +
           `${pullDiff}\n\n` +
           `COMMENTS:\n` +
           `${(pullComments || [])
@@ -375,11 +401,12 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
               .describe(
                 "The relative path to the file that necessitates a review comment."
               ),
-            line: z
+            position: z
               .number()
               .optional()
               .describe(
-                "The line number in the file. If not set the review comment will apply to the file."
+                "The position in the diff to add a review comment as prepended in " +
+                  "the diff retrieved by `get_pull_request`"
               ),
             body: z.string().describe("The text of the review comment."),
           })
