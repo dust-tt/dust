@@ -12,7 +12,10 @@ import { useCallback, useMemo, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useAgentConfigurations,
+  useAgentConfigurationsSuggestions,
+} from "@app/lib/swr/assistants";
 import { setQueryParam } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
@@ -36,6 +39,13 @@ export function AgentSuggestion({
     agentsGetView: "list",
     includes: ["authors", "usage"],
   });
+
+  const { agentConfigurations: agentSuggestions } =
+    useAgentConfigurationsSuggestions({
+      workspaceId: owner.sId,
+      conversationId,
+    });
+
   const sendNotification = useSendNotification();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -76,11 +86,17 @@ export function AgentSuggestion({
   );
 
   const [topAgents, otherAgents] = useMemo(() => {
-    const agents = agentConfigurations.sort((a, b) => {
+    const topAgents = agentSuggestions.slice(0, 3);
+
+    const sortedAgents = agentConfigurations.sort((a, b) => {
       return sortAgents(a, b);
     });
-    return [agents.slice(0, 3), agents.slice(3)];
-  }, [agentConfigurations]);
+
+    const otherAgents = sortedAgents.filter(
+      (a) => !topAgents.some((t) => t.sId === a.sId)
+    );
+    return [topAgents, otherAgents];
+  }, [agentConfigurations, agentSuggestions]);
 
   const showAssistantDetails = useCallback(
     (agentConfiguration: LightAgentConfigurationType) => {
@@ -118,7 +134,7 @@ export function AgentSuggestion({
           />
         </div>
 
-        {agentConfigurations.length === 0 ? (
+        {agentSuggestions.length === 0 ? (
           <div className="flex h-full min-h-28 w-full items-center justify-center">
             <Spinner />
           </div>

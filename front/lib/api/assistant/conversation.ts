@@ -450,6 +450,113 @@ export async function generateConversationTitle(
   return new Ok(title);
 }
 
+export async function selectAgentForConversation(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<Result<LightAgentConfigurationType[], Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const message = await Message.findOne({
+    where: {
+      conversationId: conversation.id,
+    },
+    order: [
+      ["rank", "DESC"],
+      ["version", "ASC"],
+    ],
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: false,
+      },
+    ],
+  });
+
+  const content = message?.userMessage?.content;
+  if (!content) {
+    return new Err(new Error("No content found in conversation"));
+  }
+
+  const model = getSmallWhitelistedModel(owner);
+  if (!model) {
+    return new Err(
+      new Error(`Failed to find a whitelisted model to generate title`)
+    );
+  }
+
+  const config = cloneBaseConfig(getDustProdAction("agent-router").config);
+  config.MODEL.provider_id = model.providerId;
+  config.MODEL.model_id = model.modelId;
+
+  // Get all active assistants for the workspace
+  const assistants = await getAgentConfigurations({
+    auth,
+    agentsGetView: "list",
+    variant: "light",
+  });
+  const agents = assistants.map((a) => ({
+    sId: a.sId,
+    description: a.description,
+  }));
+
+  const res = await runActionStreamed(
+    auth,
+    "agent-router",
+    config,
+    [
+      {
+        agents,
+        user_prompt: content,
+      },
+    ],
+    {
+      conversationId: conversation.sId,
+      workspaceId: owner.sId,
+    }
+  );
+
+  if (res.isErr()) {
+    return new Err(
+      new Error(`Error generating conversation title: ${res.error}`)
+    );
+  }
+
+  const { eventStream } = res.value;
+
+  let suggestions: LightAgentConfigurationType[] = [];
+
+  for await (const event of eventStream) {
+    if (event.type === "error") {
+      return new Err(
+        new Error(
+          `Error generating conversation title: ${event.content.message}`
+        )
+      );
+    }
+
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
+        return new Err(
+          new Error(`Error generating conversation title: ${e.error}`)
+        );
+      }
+
+      if (event.content.block_name === "OUTPUT" && e.value) {
+        const v = e.value as string[];
+        suggestions = removeNulls(
+          v.map((id) => assistants.find((a) => a.sId === id))
+        );
+      }
+    }
+  }
+
+  console.log("suggestions", suggestions);
+
+  return new Ok(suggestions);
+}
+
 /**
  * Conversation API
  */

@@ -15,6 +15,22 @@ export type Action = {
 export type ActionRegistry = Record<DustRegistryActionName, Action>;
 
 export const BaseDustProdActionRegistry = {
+  "agent-router": {
+    app: {
+      appId: "NrGOCANnr4",
+      appHash:
+        "40723b962ed90f3b06fc89699a9f35ed3c238262c5ecb1eadb13da83ec627e43",
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "auto",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
+
   "assistant-v2-multi-actions-agent": {
     app: {
       appId: "0e9889c787",
