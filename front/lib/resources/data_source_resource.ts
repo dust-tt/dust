@@ -410,6 +410,14 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     });
 
     if (dataSourceViews.length > 0) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          dataSourceId: this.id,
+          error: "data_source_views_still_exist",
+        },
+        "DataSourceResource.softDelete"
+      );
       return new Err(new Error("Data source views still exist"));
     }
 
