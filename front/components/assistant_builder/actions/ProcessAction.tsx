@@ -262,7 +262,7 @@ export function ActionProcess({
                 disabled={isGeneratingSchema || !instructions}
                 onClick={generateSchemaFromInstructions}
               />
-          <TextArea //todo: text
+          <TextArea
             error={isValidJsonSchema(schemaEdit).error}
             showErrorLabel={true}
             placeholder={'{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'}
