@@ -200,9 +200,12 @@ AgentProcessAction.init(
       get() {
         const rawSchema = this.getDataValue("schema");
         const jsonSchema = this.getDataValue("jsonSchema");
-        return jsonSchema || rawSchema
-          ? renderSchemaPropertiesAsJSONSchema(rawSchema || [])
-          : null;
+        return (
+          jsonSchema ||
+          (rawSchema
+            ? renderSchemaPropertiesAsJSONSchema(rawSchema || [])
+            : null)
+        );
       },
     },
     outputs: {

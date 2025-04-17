@@ -760,7 +760,7 @@ const ProcessActionTypeSchema = BaseActionSchema.extend({
   params: z.object({
     relativeTimeFrame: TimeFrameSchema.nullable(),
   }),
-  schema: ProcessSchemaPropertySchema,
+  jsonSchema: ProcessSchemaPropertySchema,
   outputs: ProcessActionOutputsSchema.nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),

@@ -201,8 +201,8 @@ async function getProcessActionConfiguration(
 
   processConfiguration.configuration.dataSourceConfigurations =
     await renderDataSourcesConfigurations(action, dataSourceViews);
-  processConfiguration.configuration.schema = JSON.stringify(
-    action.schema,
+  processConfiguration.configuration.jsonSchema = JSON.stringify(
+    action.jsonSchema,
     null,
     2
   );

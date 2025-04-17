@@ -58,7 +58,7 @@ export type ProcessConfigurationType = {
 
   dataSources: DataSourceConfiguration[];
   relativeTimeFrame: RetrievalTimeframe;
-  schema: Record<string, any> | null;
+  jsonSchema: Record<string, any> | null;
 
   name: string;
   description: string | null;
@@ -112,7 +112,7 @@ export class ProcessActionType extends BaseAction {
     tagsIn: string[] | null;
     tagsNot: string[] | null;
   };
-  readonly schema: Record<string, any> | null;
+  readonly jsonSchema: Record<string, any> | null;
   readonly outputs: ProcessActionOutputsType | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
@@ -124,7 +124,7 @@ export class ProcessActionType extends BaseAction {
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
-    this.schema = blob.schema;
+    this.jsonSchema = blob.jsonSchema;
     this.outputs = blob.outputs;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
@@ -273,7 +273,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       relativeTimeFrameDuration: relativeTimeFrame?.duration ?? null,
       relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
       processConfigurationId: actionConfiguration.sId,
-      jsonSchema: actionConfiguration.schema,
+      jsonSchema: actionConfiguration.jsonSchema,
       functionCallId,
       functionCallName: actionConfiguration.name,
       tagsIn: globalTagsIn,
@@ -299,7 +299,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           tagsIn: globalTagsIn,
           tagsNot: globalTagsNot,
         },
-        schema: action.jsonSchema,
+        jsonSchema: action.jsonSchema,
         outputs: null,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -370,7 +370,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         {
           context_size: contextSize,
           prompt,
-          schema: actionConfiguration.schema,
+          schema: actionConfiguration.jsonSchema,
           objective,
         },
       ],
@@ -487,7 +487,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           tagsIn: globalTagsIn,
           tagsNot: globalTagsNot,
         },
-        schema: action.jsonSchema,
+        jsonSchema: action.jsonSchema,
         outputs,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -570,7 +570,7 @@ export async function processActionTypesFromAgentMessageIds(
         tagsIn: action.tagsIn,
         tagsNot: action.tagsNot,
       },
-      schema: action.jsonSchema,
+      jsonSchema: action.jsonSchema,
       outputs: action.outputs,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,

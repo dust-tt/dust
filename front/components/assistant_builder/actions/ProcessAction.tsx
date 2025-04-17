@@ -32,8 +32,8 @@ export function hasErrorActionProcess(
     return "Invalid action type.";
   }
   if (
-    !action.configuration.schema ||
-    !isValidJsonSchema(action.configuration.schema).isValid
+    !action.configuration.jsonSchema ||
+    !isValidJsonSchema(action.configuration.jsonSchema).isValid
   ) {
     return errorMessage;
   }
@@ -101,7 +101,7 @@ export function ActionProcess({
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [schemaEdit, setSchemaEdit] = useState(
-    actionConfiguration?.schema ?? null
+    actionConfiguration?.jsonSchema ?? null
   );
   const sendNotification = useSendNotification();
   const toggleAdvancedSettings = () => {
@@ -152,7 +152,7 @@ export function ActionProcess({
           setEdited(true);
           updateAction((previousAction) => ({
             ...previousAction,
-            schema: schema,
+            jsonSchema: schema,
           }));
         } else {
           sendNotification({
@@ -175,7 +175,7 @@ export function ActionProcess({
       setEdited(true);
       updateAction((previousAction) => ({
         ...previousAction,
-        schema: null,
+        jsonSchema: null,
       }));
     }
   };
@@ -279,7 +279,7 @@ export function ActionProcess({
             setEdited(true);
             updateAction((previousAction) => ({
               ...previousAction,
-              schema: e.target.value ?? null,
+              jsonSchema: e.target.value ?? null,
             }));
           }}
         />

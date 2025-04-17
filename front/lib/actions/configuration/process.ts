@@ -81,7 +81,7 @@ export async function fetchAgentProcessActionConfigurations({
         type: "process_configuration",
         dataSources: dataSourceConfig.map(renderDataSourceConfiguration),
         relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
-        schema: processConfig.jsonSchema,
+        jsonSchema: processConfig.jsonSchema,
         name: processConfig.name || DEFAULT_PROCESS_ACTION_NAME,
         description: processConfig.description,
       });

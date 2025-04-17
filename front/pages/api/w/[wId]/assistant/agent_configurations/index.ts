@@ -414,7 +414,7 @@ export async function createOrUpgradeAgentConfiguration({
           type: "process_configuration",
           dataSources: action.dataSources,
           relativeTimeFrame: action.relativeTimeFrame,
-          schema: action.schema ?? null,
+          jsonSchema: action.jsonSchema ?? null,
           name: action.name ?? null,
           description: action.description ?? null,
         },

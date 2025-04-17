@@ -111,7 +111,7 @@ export type AssistantBuilderProcessConfiguration = {
 } & {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   tagsFilter: AssistantBuilderTagsFilter | null;
-  schema: string | null;
+  jsonSchema: string | null;
 };
 
 // Websearch configuration (no configuration)
@@ -331,7 +331,7 @@ export function getDefaultProcessActionConfiguration() {
       dataSourceConfigurations: {},
       timeFrame: null,
       tagsFilter: null,
-      schema: null,
+      jsonSchema: null,
     } as AssistantBuilderProcessConfiguration,
     name: DEFAULT_PROCESS_ACTION_NAME,
     description: "",
