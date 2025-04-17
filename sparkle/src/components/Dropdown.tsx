@@ -415,6 +415,7 @@ DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
 interface DropdownMenuSearchbarProps extends SearchInputProps {
   button?: React.ReactNode;
+  autoFocus?: boolean;
 }
 
 const DropdownMenuSearchbar = React.forwardRef<
@@ -431,6 +432,7 @@ const DropdownMenuSearchbar = React.forwardRef<
       className,
       disabled = false,
       button,
+      autoFocus,
     },
     ref
   ) => {
@@ -441,10 +443,12 @@ const DropdownMenuSearchbar = React.forwardRef<
     );
 
     React.useEffect(() => {
-      setTimeout(() => {
-        internalRef.current?.focus();
-      }, 0);
-    }, []);
+      if (autoFocus) {
+        setTimeout(() => {
+          internalRef.current?.focus();
+        }, 0);
+      }
+    }, [autoFocus]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       e.stopPropagation();
