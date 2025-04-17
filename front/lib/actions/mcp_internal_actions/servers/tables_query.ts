@@ -5,7 +5,6 @@ import {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Op } from "sequelize";
 
-import { getTablesQueryResultsFileTitle } from "@app/components/actions/tables_query/utils";
 import {
   generateCSVFileAndSnippet,
   generateSectionFile,
@@ -43,6 +42,16 @@ import { assertNever, Err, Ok } from "@app/types";
 const TABLES_QUERY_MIN_TOKEN = 28_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
+
+function getTablesQueryResultsFileTitle({
+  output,
+}: {
+  output: Record<string, unknown> | null;
+}): string {
+  return typeof output?.query_title === "string"
+    ? output.query_title
+    : "query_results";
+}
 
 function getTablesQueryError(error: string) {
   switch (error) {
