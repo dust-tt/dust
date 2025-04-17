@@ -51,7 +51,6 @@
     "@tiptap/pm": "^2.1.13",
     "@tiptap/react": "^2.1.13",
     "@tiptap/starter-kit": "^2.1.13",
-    "@tiptap/suggestion": "^2.11.7",
     "@types/cls-hooked": "^4.3.9",
     "@types/json-schema": "^7.0.15",
     "@uiw/react-textarea-code-editor": "^3.0.2",
