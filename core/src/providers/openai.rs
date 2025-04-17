@@ -1015,10 +1015,12 @@ impl LLM for OpenAILLM {
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        let is_reasoning_model =
-            self.id.as_str().starts_with("o3") || self.id.as_str().starts_with("o1");
+        let is_reasoning_model = self.id.as_str().starts_with("o3")
+            || self.id.as_str().starts_with("o1")
+            || self.id.as_str().starts_with("o4");
         // o1-mini specifically does not support any type of system messages.
         let remove_system_messages = self.id.as_str().starts_with("o1-mini");
+
         openai_compatible_chat_completion(
             self.chat_uri()?,
             self.id.clone(),
