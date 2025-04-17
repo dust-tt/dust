@@ -63,8 +63,7 @@ function getTablesQueryError(error: string) {
 /**
  * Get the prefix for a row in a section file.
  * This prefix is used to identify the row in the section file.
- * We currently only support Salesforce since it's the only connector for which we can
- * generate a prefix.
+ * We currently only support Salesforce since it's the only connector for which we can generate a prefix.
  */
 function getSectionColumnsPrefix(
   provider: ConnectorProvider | null
@@ -370,18 +369,6 @@ function createServer(
         unknown
       >;
 
-      const updateParams: {
-        resultsFileId: number | null;
-        resultsFileSnippet: string | null;
-        sectionFileId: number | null;
-        output: Record<string, unknown> | null;
-      } = {
-        resultsFileId: null,
-        resultsFileSnippet: null,
-        sectionFileId: null,
-        output: null,
-      };
-
       const content: MCPToolResultContent[] = [];
 
       const rawResults =
@@ -425,7 +412,7 @@ function createServer(
             fileId: csvFile.sId,
             title: queryTitle,
             contentType: csvFile.contentType,
-            snippet: csvFile.snippet,
+            snippet: csvSnippet,
           },
         });
 
@@ -479,19 +466,7 @@ function createServer(
             },
           });
         }
-
-        delete sanitizedOutput.results;
-        updateParams.resultsFileId = csvFile.id;
-        updateParams.resultsFileSnippet = csvSnippet;
-        updateParams.sectionFileId = sectionFile?.id ?? null;
       }
-
-      // // Updating action
-      // await action.update({
-      //   ...updateParams,
-      //   output: sanitizedOutput,
-      //   runId: await dustRunId,
-      // });
 
       content.push({ type: "text", text: JSON.stringify(sanitizedOutput) });
 
