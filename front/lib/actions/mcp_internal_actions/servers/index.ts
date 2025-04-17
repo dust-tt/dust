@@ -11,6 +11,7 @@ import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_in
 import { default as tableUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
+import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
@@ -45,6 +46,8 @@ export function getInternalMCPServer(
       return thinkServer();
     case "web_search_&_browse_v2":
       return webtoolsServer();
+    case "jira":
+      return jiraServer(auth, mcpServerId);
     default:
       assertNever(internalMCPServerName);
   }

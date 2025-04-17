@@ -18,6 +18,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "primitive_types_debugger",
   "web_search_&_browse_v2",
   "think",
+  "jira",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -59,6 +60,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 6,
     isDefault: true,
     flag: "experimental_mcp_actions",
+  },
+  jira: {
+    id: 7,
+    isDefault: false,
+    flag: "mcp_actions",
   },
 
   // Dev

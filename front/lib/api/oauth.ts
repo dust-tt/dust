@@ -220,6 +220,7 @@ const PROVIDER_STRATEGIES: Record<
         "read:me",
         "read:label:confluence",
         "offline_access",
+        // TODO(jira): add scopes for Jira
       ];
       return (
         `https://auth.atlassian.com/authorize?audience=api.atlassian.com` +
