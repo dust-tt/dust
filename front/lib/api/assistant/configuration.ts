@@ -69,6 +69,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -810,9 +811,9 @@ export async function createAgentConfiguration(
     const performCreation = async (
       t: Transaction
     ): Promise<AgentConfiguration> => {
-      let created = false;
+      let existingAgent = null;
       if (agentConfigurationId) {
-        const [existing, userRelation] = await Promise.all([
+        const [agentConfiguration, userRelation] = await Promise.all([
           AgentConfiguration.findOne({
             where: {
               sId: agentConfigurationId,
@@ -833,9 +834,11 @@ export async function createAgentConfiguration(
           }),
         ]);
 
-        if (existing) {
+        existingAgent = agentConfiguration;
+
+        if (existingAgent) {
           // Bump the version of the agent.
-          version = existing.version + 1;
+          version = existingAgent.version + 1;
         }
 
         await AgentConfiguration.update(
@@ -849,9 +852,6 @@ export async function createAgentConfiguration(
           }
         );
         userFavorite = userRelation?.favorite ?? false;
-      } else {
-        // Only set created to true if we are not updating an existing agent
-        created = true;
       }
 
       const sId = agentConfigurationId || generateRandomModelSId();
@@ -898,12 +898,34 @@ export async function createAgentConfiguration(
         }
       }
 
-      if (created && status === "active") {
-        await GroupResource.makeNewAgentEditorsGroup(
-          auth,
-          agentConfigurationInstance,
-          { transaction: t }
-        );
+      if (status === "active") {
+        if (!existingAgent) {
+          await GroupResource.makeNewAgentEditorsGroup(
+            auth,
+            agentConfigurationInstance,
+            { transaction: t }
+          );
+        } else {
+          const group = await GroupResource.fetchByAgentConfiguration(
+            auth,
+            existingAgent
+          );
+          if (group.isOk()) {
+            await group.value.addGroupToAgentConfiguration({
+              auth,
+              agentConfiguration: agentConfigurationInstance,
+              transaction: t,
+            });
+          } else {
+            logger.warn(
+              {
+                workspaceId: owner.id,
+                agentConfigurationId: existingAgent.sId,
+              },
+              `Error fetching group for agent ${existingAgent.sId}: ${group.error}`
+            );
+          }
+        }
       }
 
       return agentConfigurationInstance;
