@@ -202,7 +202,7 @@ export const TagsSelector = ({
               tooltip="Select a tag"
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-[300px]">
+          <DropdownMenuContent className="min-w-72">
             <DropdownMenuSearchbar
               autoFocus
               placeholder="Search"
