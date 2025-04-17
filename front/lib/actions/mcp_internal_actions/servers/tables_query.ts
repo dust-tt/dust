@@ -25,7 +25,6 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { FileResource } from "@app/lib/resources/file_resource";
 import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { sanitizeJSONOutput } from "@app/lib/utils";
@@ -374,15 +373,14 @@ function createServer(
       const rawResults =
         "results" in sanitizedOutput ? sanitizedOutput.results : [];
 
-      let results: CSVRecord[] = [];
-      if (Array.isArray(rawResults)) {
-        results = rawResults.filter(
-          (record) =>
-            record !== undefined &&
-            record !== null &&
-            typeof record === "object"
-        );
-      }
+      const results: CSVRecord[] = Array.isArray(rawResults)
+        ? rawResults.filter(
+            (record) =>
+              record !== undefined &&
+              record !== null &&
+              typeof record === "object"
+          )
+        : [];
 
       if (results.length > 0) {
         const queryTitle = getTablesQueryResultsFileTitle({
@@ -402,7 +400,7 @@ function createServer(
           file: csvFile,
         });
 
-        //  Save ref to the generated csv file to be yielded later.
+        // Append the CSV file to the output of the tool as an agent-generated file.
         content.push({
           type: "resource",
           resource: {
@@ -425,7 +423,6 @@ function createServer(
           )
         );
 
-        let sectionFile: FileResource | null = null;
         if (shouldGenerateSectionFile) {
           // First, we fetch the connector provider for the data source, cause the chunking
           // strategy of the section file depends on it: Since all tables are from the same
@@ -440,7 +437,7 @@ function createServer(
             getSectionColumnsPrefix(connectorProvider);
 
           // Generate the section file.
-          sectionFile = await generateSectionFile(auth, {
+          const sectionFile = await generateSectionFile(auth, {
             title: queryTitle,
             conversationId: conversation.sId,
             results,
@@ -453,6 +450,7 @@ function createServer(
             file: sectionFile,
           });
 
+          // Append the section file to the output of the tool as an agent-generated file.
           content.push({
             type: "resource",
             resource: {
