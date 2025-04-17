@@ -331,6 +331,8 @@ function createServer(
 
       let output: Record<string, string | boolean | number> = {};
 
+      const content: MCPToolResultContent[] = [];
+
       const { eventStream } = res.value;
       for await (const event of eventStream) {
         if (event.type === "error") {
@@ -362,8 +364,15 @@ function createServer(
             return makeMCPToolTextError(getTablesQueryError(e.error).message);
           }
 
-          if (event.content.block_name === "MODEL_OUTPUT") {
-            // TODO(mcp): if we stream events, here we can yield an event with the model output.
+          if (
+            event.content.block_name === "MODEL_OUTPUT" &&
+            e.value &&
+            typeof e.value === "object"
+          ) {
+            content.push({
+              type: "text",
+              text: JSON.stringify(e.value),
+            });
           }
 
           if (event.content.block_name === "OUTPUT" && e.value) {
@@ -376,8 +385,6 @@ function createServer(
         string,
         unknown
       >;
-
-      const content: MCPToolResultContent[] = [];
 
       const rawResults =
         "results" in sanitizedOutput ? sanitizedOutput.results : [];
