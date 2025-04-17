@@ -6,6 +6,7 @@ import type { MCPActionType } from "@app/lib/actions/mcp";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { isSupportedImageContentType } from "@app/types";
 
+// TODO(mcp): add nicer display for the tables_query server.
 export function MCPActionDetails({
   owner,
   action,
