@@ -38,8 +38,8 @@ import type {
 } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
 
-// We need a model with at least 32k tokens to run tables_query.
-const TABLES_QUERY_MIN_TOKEN = 28_000;
+// We need a model with at least 54k tokens to run tables_query.
+const TABLES_QUERY_MIN_TOKEN = 50_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
