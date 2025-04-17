@@ -33,7 +33,10 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
+import {
+  getDocumentIcon,
+  makeDocumentCitation,
+} from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
@@ -557,7 +560,7 @@ export function AgentMessage({
       acc[d.ref] = {
         href: d.uri,
         title: d.text,
-        icon: <DocumentIcon />,
+        icon: getDocumentIcon(d.source.provider),
       };
       return acc;
     }, {});

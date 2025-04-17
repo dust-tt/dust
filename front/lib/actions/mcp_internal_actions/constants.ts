@@ -95,7 +95,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     flag: "dev_mcp_actions",
   },
   search: {
-    id: 1005,
+    id: 1006,
     isDefault: true,
     flag: "dev_mcp_actions",
   },

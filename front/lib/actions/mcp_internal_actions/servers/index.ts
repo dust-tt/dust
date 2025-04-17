@@ -1,6 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as authDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/authentication_debugger";
 import { default as childAgentDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/child_agent_debugger";
@@ -14,13 +13,8 @@ import { default as tableDebuggerServer } from "@app/lib/actions/mcp_internal_ac
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-} from "@app/types";
 import { assertNever } from "@app/types";
 
 export function getInternalMCPServer(
@@ -28,24 +22,11 @@ export function getInternalMCPServer(
   {
     internalMCPServerName,
     mcpServerId,
-    agentConfiguration,
-    conversation,
-    agentMessage,
-    actionConfiguration,
-    stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
   }: {
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
-    agentConfiguration?: AgentConfigurationType;
-    actionConfiguration?: MCPToolConfigurationType;
-    conversation?: ConversationType;
-    agentMessage?: AgentMessageType;
-    stepActionIndex: number;
-    stepActions: ActionConfigurationType[];
-    citationsRefsOffset: number;
-  }
+  },
+  agentLoopContext?: AgentLoopContextType
 ): McpServer {
   switch (internalMCPServerName) {
     case "authentication_debugger":
@@ -63,12 +44,7 @@ export function getInternalMCPServer(
     case "child_agent_debugger":
       return childAgentDebuggerServer();
     case "tables_query":
-      return tablesQueryServer(auth, {
-        agentConfiguration,
-        conversation,
-        agentMessage,
-        actionConfiguration,
-      });
+      return tablesQueryServer(auth, agentLoopContext);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
     case "think":
@@ -76,13 +52,7 @@ export function getInternalMCPServer(
     case "web_search_&_browse_v2":
       return webtoolsServer();
     case "search":
-      // TODO(mcp): refsOffset and topK should be computed based on the number of actions working on data sources
-      return searchServer(auth, {
-        agentConfiguration,
-        stepActionIndex,
-        stepActions,
-        citationsRefsOffset,
-      });
+      return searchServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

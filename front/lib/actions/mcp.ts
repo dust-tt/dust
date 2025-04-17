@@ -19,6 +19,7 @@ import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   ActionGeneratedFileType,
+  AgentLoopContextType,
   BaseActionRunParams,
   ExtractActionBlob,
 } from "@app/lib/actions/types";
@@ -26,7 +27,10 @@ import {
   BaseAction,
   BaseActionConfigurationServerRunner,
 } from "@app/lib/actions/types";
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type {
+  ActionConfigurationType,
+  AgentActionSpecification,
+} from "@app/lib/actions/types/agent";
 import { isPlatformMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
@@ -260,7 +264,14 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       rawInputs,
       functionCallId,
       step,
-    }: BaseActionRunParams
+      stepActionIndex,
+      stepActions,
+      citationsRefsOffset,
+    }: BaseActionRunParams & {
+      stepActionIndex: number;
+      stepActions: ActionConfigurationType[];
+      citationsRefsOffset: number;
+    }
   ): AsyncGenerator<
     MCPParamsEvent | MCPSuccessEvent | MCPErrorEvent | MCPApproveExecutionEvent,
     void
@@ -471,15 +482,18 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       actionConfiguration,
     });
 
-    // TODO(mcp): listen to sse events to provide live feedback to the user
-    const toolCallResult = await tryCallMCPTool(auth, {
-      messageId: agentMessage.sId,
+    const agentLoopContext: AgentLoopContextType = {
       actionConfiguration,
-      inputs,
       agentConfiguration,
       conversation,
       agentMessage,
-    });
+      stepActionIndex,
+      stepActions,
+      citationsRefsOffset,
+    };
+
+    // TODO(mcp): listen to sse events to provide live feedback to the user
+    const toolCallResult = await tryCallMCPTool(auth, inputs, agentLoopContext);
 
     if (toolCallResult.isErr()) {
       localLogger.error(

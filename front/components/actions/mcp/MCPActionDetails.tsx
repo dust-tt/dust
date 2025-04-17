@@ -2,12 +2,12 @@ import {
   cn,
   CodeBlock,
   CollapsibleComponent,
-  DocumentIcon,
   MagnifyingGlassIcon,
   PaginatedCitationsGrid,
 } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -17,12 +17,7 @@ import {
   SearchQueryResourceSchema,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import {
-  isConnectorProvider,
-  isSupportedImageContentType,
-  removeNulls,
-} from "@app/types";
+import { isSupportedImageContentType, removeNulls } from "@app/types";
 
 // TODO(mcp): add nicer display for the tables_query server.
 export function MCPActionDetails(
@@ -53,17 +48,6 @@ function SearchResultActionDetails({
 }: ActionDetailsComponentBaseProps<MCPActionType> & {
   searchResults: SearchResultResourceType[];
 }) {
-  const getDocumentIcon = (provider: string | null | undefined) => {
-    if (provider && isConnectorProvider(provider)) {
-      const IconComponent = getConnectorProviderLogoWithFallback({
-        provider,
-        fallback: DocumentIcon,
-      });
-      return <IconComponent />;
-    }
-    return <DocumentIcon />;
-  };
-
   const queryResources = removeNulls(
     action.output?.map((o) => {
       if (

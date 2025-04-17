@@ -10,7 +10,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { SearchQueryResourceMimeType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -22,7 +22,7 @@ import {
 } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType, TimeFrame } from "@app/types";
+import type { TimeFrame } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
@@ -41,17 +41,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 function createServer(
   auth: Authenticator,
-  {
-    agentConfiguration,
-    stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-    stepActionIndex: number;
-    stepActions: ActionConfigurationType[];
-    citationsRefsOffset: number;
-  }
+  agentLoopContext?: AgentLoopContextType
 ): McpServer {
   const server = new McpServer(serverInfo);
 
@@ -104,16 +94,22 @@ function createServer(
       const credentials = dustManagedCredentials();
       const timeFrame = parseTimeFrame(relativeTimeFrame);
 
+      if (!agentLoopContext) {
+        throw new Error(
+          "agentLoopContext is required where the tool is called."
+        );
+      }
+
       // Compute the topK and refsOffset for the search.
       const topK = getRetrievalTopK({
-        agentConfiguration,
-        stepActions,
+        agentConfiguration: agentLoopContext.agentConfiguration,
+        stepActions: agentLoopContext.stepActions,
       });
       const refsOffset = actionRefsOffset({
-        agentConfiguration,
-        stepActionIndex,
-        stepActions,
-        refsOffset: citationsRefsOffset,
+        agentConfiguration: agentLoopContext.agentConfiguration,
+        stepActionIndex: agentLoopContext.stepActionIndex,
+        stepActions: agentLoopContext.stepActions,
+        refsOffset: agentLoopContext.citationsRefsOffset,
       });
 
       // Get the core search args for each data source, fail if any of them are invalid.

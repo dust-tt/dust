@@ -1,7 +1,12 @@
-import { DATA_SOURCE_CONFIGURATION_URI_PATTERN } from "@dust-tt/client";
+import {
+  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
+  TABLE_CONFIGURATION_URI_PATTERN,
+} from "@dust-tt/client";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
@@ -62,6 +67,51 @@ export async function fetchAgentDataSourceConfiguration(
   }
 
   return new Ok(agentDataSourceConfiguration);
+}
+
+export async function fetchAgentTableConfigurations(
+  auth: Authenticator,
+  uris: string[]
+): Promise<Result<AgentTablesQueryConfigurationTable[], Error>> {
+  const configurationIds = [];
+  for (const uri of uris) {
+    const match = uri.match(TABLE_CONFIGURATION_URI_PATTERN);
+    if (!match) {
+      return new Err(
+        new Error(`Invalid URI for a table configuration: ${uri}`)
+      );
+    }
+    // Safe to do because the inputs are already checked against the zod schema here.
+    const [, , tableConfigId] = match;
+    const sIdParts = getResourceNameAndIdFromSId(tableConfigId);
+    if (!sIdParts) {
+      return new Err(
+        new Error(`Invalid table configuration ID: ${tableConfigId}`)
+      );
+    }
+    if (sIdParts.resourceName !== "table_configuration") {
+      return new Err(
+        new Error(`ID is not a table configuration ID: ${tableConfigId}`)
+      );
+    }
+    if (sIdParts.workspaceModelId !== auth.getNonNullableWorkspace().id) {
+      return new Err(
+        new Error(
+          `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`
+        )
+      );
+    }
+    configurationIds.push(sIdParts.resourceModelId);
+  }
+
+  const agentTableConfigurations =
+    await AgentTablesQueryConfigurationTable.findAll({
+      where: {
+        id: { [Op.in]: configurationIds },
+      },
+    });
+
+  return new Ok(agentTableConfigurations);
 }
 
 type CoreSearchArgs = {
