@@ -1,5 +1,3 @@
-"use client";
-
 import { Button, PlayIcon, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
