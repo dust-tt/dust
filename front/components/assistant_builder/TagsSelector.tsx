@@ -20,7 +20,7 @@ import {
   ScrollArea,
   ScrollBar,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { useCreateTag, useTags } from "@app/lib/swr/tags";
@@ -179,6 +179,7 @@ export const TagsSelector = ({
               }));
               setEdited(true);
             }}
+            size="sm"
             color="golden"
             label={tag.name}
           />
@@ -203,6 +204,7 @@ export const TagsSelector = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-[300px]">
             <DropdownMenuSearchbar
+              autoFocus
               placeholder="Search"
               name="input"
               value={searchText}
@@ -217,31 +219,10 @@ export const TagsSelector = ({
                   onMenuOpenChange(false);
                 }
               }}
-            />
-            <DropdownMenuSeparator />
-            <ScrollArea className="flex max-h-[300px] flex-col" hideScrollBar>
-              {filteredTags.map((c) => (
-                <DropdownMenuItem
-                  key={`assistant-picker-${c.sId}`}
-                  label={c.name}
-                  onClick={() => {
-                    setBuilderState((state) => ({
-                      ...state,
-                      tags: [...state.tags, c],
-                    }));
-                    setEdited(true);
-                  }}
-                />
-              ))}
-              <ScrollBar className="py-0" />
-            </ScrollArea>
-            {isAdmin(owner) && (
-              <>
-                <DropdownMenuSeparator />
-                <div className="flex justify-end p-1">
+              button={
+                isAdmin(owner) ? (
                   <Button
                     label="Create"
-                    size="xs"
                     variant="primary"
                     icon={PlusIcon}
                     onClick={() => {
@@ -249,9 +230,28 @@ export const TagsSelector = ({
                       setIsDialogOpen(true);
                     }}
                   />
-                </div>
-              </>
-            )}
+                ) : undefined
+              }
+            />
+            <DropdownMenuSeparator />
+            <ScrollArea className="flex max-h-[300px] flex-col" hideScrollBar>
+              {filteredTags.map((c) => (
+                <DropdownMenuItem
+                  className="[&&]:p-[4px]"
+                  key={`assistant-picker-${c.sId}`}
+                  onClick={() => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      tags: [...state.tags, c],
+                    }));
+                    setEdited(true);
+                  }}
+                >
+                  <Chip size="sm" color="golden" label={c.name} />
+                </DropdownMenuItem>
+              ))}
+              <ScrollBar className="py-0" />
+            </ScrollArea>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

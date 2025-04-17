@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   PlusIcon,
@@ -38,15 +39,6 @@ export function AssistantPicker({
 }: AssistantPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 0);
-    }
-  }, [isOpen]);
 
   const searchedAssistants = filterAndSortAgents(assistants, searchText);
 
@@ -75,29 +67,29 @@ export function AssistantPicker({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-96" align="end">
-        <div className="flex gap-1.5 p-1.5">
-          <SearchInput
-            ref={searchInputRef}
-            name="search-assistants"
-            placeholder="Search Agents"
-            value={searchText}
-            onChange={setSearchText}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && searchedAssistants.length > 0) {
-                onItemClick(searchedAssistants[0]);
-                setSearchText("");
-                setIsOpen(false);
-              }
-            }}
-          />
-          {showFooterButtons && (
-            <Button
-              label="Create"
-              icon={PlusIcon}
-              href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-            />
-          )}
-        </div>
+        <DropdownMenuSearchbar
+          autoFocus
+          name="search-assistants"
+          placeholder="Search Agents"
+          value={searchText}
+          onChange={setSearchText}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && searchedAssistants.length > 0) {
+              onItemClick(searchedAssistants[0]);
+              setSearchText("");
+              setIsOpen(false);
+            }
+          }}
+          button={
+            showFooterButtons && (
+              <Button
+                label="Create"
+                icon={PlusIcon}
+                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+              />
+            )
+          }
+        />
         <DropdownMenuSeparator />
         <ScrollArea className="h-96">
           {searchedAssistants.length > 0 ? (

@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
@@ -54,15 +55,6 @@ export const InputBarAttachmentsPicker = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 0);
-    }
-  }, [isOpen]);
 
   const {
     inputValue: search,
@@ -158,29 +150,29 @@ export const InputBarAttachmentsPicker = ({
           }}
           multiple={true}
         />
-        <div className="flex gap-1.5 p-1.5">
-          <SearchInput
-            ref={searchInputRef}
-            name="search-files"
-            placeholder="Search knowledge"
-            value={search}
-            onChange={setSearch}
-            disabled={isLoading}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                const firstMenuItem =
-                  itemsContainerRef.current?.querySelector('[role="menuitem"]');
-                (firstMenuItem as HTMLElement)?.focus();
-              }
-            }}
-          />
-          <Button
-            icon={CloudArrowUpIcon}
-            label="Upload File"
-            onClick={() => fileInputRef.current?.click()}
-          />
-        </div>
+        <DropdownMenuSearchbar
+          autoFocus
+          name="search-files"
+          placeholder="Search knowledge"
+          value={search}
+          onChange={setSearch}
+          disabled={isLoading}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              const firstMenuItem =
+                itemsContainerRef.current?.querySelector('[role="menuitem"]');
+              (firstMenuItem as HTMLElement)?.focus();
+            }
+          }}
+          button={
+            <Button
+              icon={CloudArrowUpIcon}
+              label="Upload File"
+              onClick={() => fileInputRef.current?.click()}
+            />
+          }
+        />
         <DropdownMenuSeparator />
         <ScrollArea className="h-96">
           {searchQuery ? (
