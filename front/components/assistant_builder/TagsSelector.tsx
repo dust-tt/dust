@@ -20,7 +20,7 @@ import {
   ScrollArea,
   ScrollBar,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { useCreateTag, useTags } from "@app/lib/swr/tags";
