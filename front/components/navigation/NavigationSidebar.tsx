@@ -76,7 +76,7 @@ export const NavigationSidebar = React.forwardRef<
         )}
         {subscription.paymentFailingSince && <SubscriptionPastDueBanner />}
         {navs.length > 1 && (
-          <div className="pt-2">
+          <div className="pt-5">
             <Tabs value={currentTab?.id ?? "conversations"}>
               <TabsList className="px-2">
                 {navs.map((tab) => (
