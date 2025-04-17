@@ -67,7 +67,7 @@ import {
   generateRandomModelSId,
   getResourceIdFromSId,
 } from "@app/lib/resources/string_ids";
-import type { TagResource } from "@app/lib/resources/tags_resource";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import type {
   AgentConfigurationScope,
@@ -492,6 +492,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     reasoningActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
+    tagsPerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
     fetchAgentProcessActionConfigurations({ configurationIds, variant }),
@@ -504,6 +505,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
+    TagResource.listForAgents(auth, configurationIds),
   ]);
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -566,7 +568,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       model.reasoningEffort = agent.reasoningEffort;
     }
 
-    const tags: TagResource[] = [];
+    const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
