@@ -153,7 +153,7 @@ export function CreateMCPServerModal({
       <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>
-            {internalMCPServer ? "Add Toolset" : "Add MCP Server"}
+            {internalMCPServer ? "Add Tools" : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
