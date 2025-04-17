@@ -15,10 +15,12 @@ import {
   LightbulbIcon,
   LightModeIcon,
   LogoutIcon,
+  ScrollArea,
+  ScrollBar,
   StarIcon,
   UserIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import { BugIcon, TestTubeIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
@@ -101,130 +103,132 @@ export function UserMenu({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
-        <DropdownMenuLabel label="Beta" />
-        <DropdownMenuItem
-          label="Exploratory features"
-          icon={TestTubeIcon}
-          href={`/w/${owner.sId}/labs`}
-        />
+        <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
+          <DropdownMenuLabel label="Beta" />
+          <DropdownMenuItem
+            label="Exploratory features"
+            icon={TestTubeIcon}
+            href={`/w/${owner.sId}/labs`}
+          />
 
-        {showDebugTools(featureFlags) && (
-          <>
-            <DropdownMenuLabel label="Dev Tools" />
-            {router.route === "/w/[wId]/assistant/[cId]" && (
-              <DropdownMenuItem
-                label="Debug conversation"
-                onClick={() => {
-                  const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
-                  const match = window.location.href.match(regexp);
-                  if (match) {
-                    void router.push(
-                      `/poke/${match[1]}/conversations/${match[2]}`
-                    );
-                  }
-                }}
-                icon={BugIcon}
-              />
-            )}
-            {!isOnlyAdmin(owner) && (
-              <DropdownMenuItem
-                label="Become Admin"
-                onClick={() => forceRoleUpdate("admin")}
-                icon={StarIcon}
-              />
-            )}
-            {!isOnlyBuilder(owner) && (
-              <DropdownMenuItem
-                label="Become Builder"
-                onClick={() => forceRoleUpdate("builder")}
-                icon={LightbulbIcon}
-              />
-            )}
-            {!isOnlyUser(owner) && (
-              <DropdownMenuItem
-                label="Become User"
-                onClick={() => forceRoleUpdate("user")}
-                icon={UserIcon}
-              />
-            )}
-          </>
-        )}
+          {showDebugTools(featureFlags) && (
+            <>
+              <DropdownMenuLabel label="Dev Tools" />
+              {router.route === "/w/[wId]/assistant/[cId]" && (
+                <DropdownMenuItem
+                  label="Debug conversation"
+                  onClick={() => {
+                    const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
+                    const match = window.location.href.match(regexp);
+                    if (match) {
+                      void router.push(
+                        `/poke/${match[1]}/conversations/${match[2]}`
+                      );
+                    }
+                  }}
+                  icon={BugIcon}
+                />
+              )}
+              {!isOnlyAdmin(owner) && (
+                <DropdownMenuItem
+                  label="Become Admin"
+                  onClick={() => forceRoleUpdate("admin")}
+                  icon={StarIcon}
+                />
+              )}
+              {!isOnlyBuilder(owner) && (
+                <DropdownMenuItem
+                  label="Become Builder"
+                  onClick={() => forceRoleUpdate("builder")}
+                  icon={LightbulbIcon}
+                />
+              )}
+              {!isOnlyUser(owner) && (
+                <DropdownMenuItem
+                  label="Become User"
+                  onClick={() => forceRoleUpdate("user")}
+                  icon={UserIcon}
+                />
+              )}
+            </>
+          )}
 
-        <DropdownMenuLabel label="Preferences" />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
+          <DropdownMenuLabel label="Preferences" />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup value={theme}>
+                <DropdownMenuRadioItem
+                  value="light"
+                  label="Light"
+                  onClick={() => {
+                    localStorage.setItem("theme", "light");
+                    window.location.reload();
+                  }}
+                />
+                <DropdownMenuRadioItem
+                  value="dark"
+                  label="Dark"
+                  onClick={() => {
+                    localStorage.setItem("theme", "dark");
+                    window.location.reload();
+                  }}
+                />
+                <DropdownMenuRadioItem
+                  value="system"
+                  label="System"
+                  onClick={() => {
+                    localStorage.setItem("theme", "system");
+                    window.location.reload();
+                  }}
+                />
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
 
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup value={theme}>
-              <DropdownMenuRadioItem
-                value="light"
-                label="Light"
-                onClick={() => {
-                  localStorage.setItem("theme", "light");
-                  window.location.reload();
-                }}
-              />
-              <DropdownMenuRadioItem
-                value="dark"
-                label="Dark"
-                onClick={() => {
-                  localStorage.setItem("theme", "dark");
-                  window.location.reload();
-                }}
-              />
-              <DropdownMenuRadioItem
-                value="system"
-                label="System"
-                onClick={() => {
-                  localStorage.setItem("theme", "system");
-                  window.location.reload();
-                }}
-              />
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+          <DropdownMenuLabel label="Account" />
+          <DropdownMenuItem
+            label="Profile"
+            icon={UserIcon}
+            href={`/w/${owner.sId}/me`}
+          />
 
-        <DropdownMenuLabel label="Account" />
-        <DropdownMenuItem
-          label="Profile"
-          icon={UserIcon}
-          href={`/w/${owner.sId}/me`}
-        />
+          <DropdownMenuItem
+            onClick={() => {
+              void router.push("/api/auth/logout");
+            }}
+            icon={LogoutIcon}
+            label="Sign&nbsp;out"
+          />
 
-        <DropdownMenuItem
-          onClick={() => {
-            void router.push("/api/auth/logout");
-          }}
-          icon={LogoutIcon}
-          label="Sign&nbsp;out"
-        />
-
-        {hasMultipleWorkspaces && (
-          <>
-            <DropdownMenuLabel label="Workspaces" />
-            <DropdownMenuRadioGroup value={owner.name}>
-              {"workspaces" in user &&
-                user.workspaces.map((w) => (
-                  <DropdownMenuRadioItem
-                    key={w.sId}
-                    value={w.name}
-                    onClick={async () => {
-                      await setNavigationSelection({
-                        lastWorkspaceId: w.sId,
-                      });
-                      if (w.id !== owner.id) {
-                        await router
-                          .push(`/w/${w.sId}/assistant/new`)
-                          .then(() => router.reload());
-                      }
-                    }}
-                  >
-                    {w.name}
-                  </DropdownMenuRadioItem>
-                ))}
-            </DropdownMenuRadioGroup>
-          </>
-        )}
+          {hasMultipleWorkspaces && (
+            <>
+              <DropdownMenuLabel label="Workspaces" />
+              <DropdownMenuRadioGroup value={owner.name}>
+                {"workspaces" in user &&
+                  user.workspaces.map((w) => (
+                    <DropdownMenuRadioItem
+                      key={w.sId}
+                      value={w.name}
+                      onClick={async () => {
+                        await setNavigationSelection({
+                          lastWorkspaceId: w.sId,
+                        });
+                        if (w.id !== owner.id) {
+                          await router
+                            .push(`/w/${w.sId}/assistant/new`)
+                            .then(() => router.reload());
+                        }
+                      }}
+                    >
+                      {w.name}
+                    </DropdownMenuRadioItem>
+                  ))}
+              </DropdownMenuRadioGroup>
+            </>
+          )}
+          <ScrollBar className="py-0" />
+        </ScrollArea>
       </DropdownMenuContent>
     </DropdownMenu>
   );
