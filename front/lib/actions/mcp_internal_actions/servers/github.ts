@@ -319,10 +319,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         // their defauilt response type)
         const pullDiff = diffWithPositions(diff.data as string);
 
-        console.log("======================================================");
-        console.log(pullDiff);
-        console.log("======================================================");
-
         const content =
           `TITLE: ${pullTitle}\n\n` +
           `BODY:\n` +
