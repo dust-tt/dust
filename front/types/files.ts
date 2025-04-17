@@ -96,7 +96,7 @@ type FileFormat = {
 };
 
 // NOTE: if we add more content types, we need to update the public api package. (but the typechecker should catch it)
-const FILE_FORMATS = {
+export const FILE_FORMATS = {
   // Images
   "image/jpeg": { cat: "image", exts: [".jpg", ".jpeg"] },
   "image/png": { cat: "image", exts: [".png"] },

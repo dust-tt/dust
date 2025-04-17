@@ -10,6 +10,7 @@ import {
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -29,7 +30,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { OAuthProvider, OAuthUseCase } from "@app/types";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+  OAuthProvider,
+  OAuthUseCase,
+} from "@app/types";
 import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
 export type AuthorizationInfo = {
@@ -90,7 +97,18 @@ export type MCPConnectionParams =
 
 export const connectToMCPServer = async (
   auth: Authenticator,
-  params: MCPConnectionParams
+  params: MCPConnectionParams,
+  {
+    agentConfiguration,
+    actionConfiguration,
+    conversation,
+    agentMessage,
+  }: {
+    agentConfiguration?: AgentConfigurationType;
+    actionConfiguration?: MCPToolConfigurationType;
+    conversation?: ConversationType;
+    agentMessage?: AgentMessageType;
+  } = {}
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -108,7 +126,12 @@ export const connectToMCPServer = async (
           // Create a pair of linked in-memory transports
           // And connect the client to the server.
           const [client, server] = InMemoryTransport.createLinkedPair();
-          await connectToInternalMCPServer(params.mcpServerId, server, auth);
+          await connectToInternalMCPServer(params.mcpServerId, server, auth, {
+            agentConfiguration,
+            actionConfiguration,
+            conversation,
+            agentMessage,
+          });
           await mcpClient.connect(client);
           break;
 

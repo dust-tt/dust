@@ -1,6 +1,7 @@
 import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -10,6 +11,11 @@ import {
 import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+} from "@app/types";
 
 export const isEnabledForWorkspace = async (
   auth: Authenticator,
@@ -28,7 +34,18 @@ export const isEnabledForWorkspace = async (
 export const connectToInternalMCPServer = async (
   mcpServerId: string,
   transport: InMemoryTransport,
-  auth: Authenticator
+  auth: Authenticator,
+  {
+    agentConfiguration,
+    actionConfiguration,
+    conversation,
+    agentMessage,
+  }: {
+    agentConfiguration?: AgentConfigurationType;
+    actionConfiguration?: MCPToolConfigurationType;
+    conversation?: ConversationType;
+    agentMessage?: AgentMessageType;
+  }
 ): Promise<McpServer> => {
   const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
   if (res.isErr()) {
@@ -39,6 +56,10 @@ export const connectToInternalMCPServer = async (
   const server = getInternalMCPServer(auth, {
     internalMCPServerName: res.value.name,
     mcpServerId,
+    agentConfiguration,
+    actionConfiguration,
+    conversation,
+    agentMessage,
   });
 
   await server.connect(transport);

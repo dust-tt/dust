@@ -38,7 +38,14 @@ import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_m
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+  Result,
+  SupportedFileContentType,
+} from "@app/types";
+import { FILE_FORMATS } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
@@ -78,13 +85,48 @@ const EmbeddedResourceSchema = z.object({
   resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema]),
 });
 
-const Schema = z.union([
+const ActionGeneratedFileSchema = z.object({
+  type: z.literal("resource"),
+  resource: z.object({
+    text: z.string(),
+    uri: z.string(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE),
+    fileId: z.string(),
+    title: z.string(),
+    contentType: z.enum(
+      Object.keys(FILE_FORMATS) as [
+        SupportedFileContentType,
+        ...SupportedFileContentType[],
+      ]
+    ),
+    snippet: z.string().nullable(),
+  }),
+});
+
+export type ActionGeneratedFile = z.infer<typeof ActionGeneratedFileSchema>;
+
+export function isActionGeneratedFile(
+  content: MCPToolResultContent
+): content is ActionGeneratedFile {
+  return (
+    content.type === "resource" &&
+    content.resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE
+  );
+}
+
+const MCPToolResultContentSchema = z.union([
   TextContentSchema,
   ImageContentSchema,
   EmbeddedResourceSchema,
+  ActionGeneratedFileSchema,
 ]);
 
-export type MCPToolResultContent = z.infer<typeof Schema>;
+export type MCPToolResultContent = z.infer<typeof MCPToolResultContentSchema>;
+
+export type MCPToolResult = {
+  isError: boolean;
+  content: MCPToolResultContent[];
+};
 
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
@@ -157,32 +199,41 @@ function makeMCPToolConfigurations<T extends MCPServerConfigurationType>({
 export async function tryCallMCPTool(
   auth: Authenticator,
   {
-    conversationId,
     messageId,
     actionConfiguration,
     inputs,
+    agentConfiguration,
+    conversation,
+    agentMessage,
   }: {
-    conversationId: string;
     messageId: string;
     actionConfiguration: MCPToolConfigurationType;
     inputs: Record<string, unknown> | undefined;
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationType;
+    agentMessage: AgentMessageType;
   }
-): Promise<Result<MCPToolResultContent[], Error>> {
+): Promise<Result<MCPToolResult["content"], Error>> {
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
     actionConfiguration,
     {
-      conversationId,
+      conversationId: conversation.sId,
       messageId,
     }
   );
-
   if (connectionParamsRes.isErr()) {
     return connectionParamsRes;
   }
 
+  let mcpClient;
   try {
-    const mcpClient = await connectToMCPServer(auth, connectionParamsRes.value);
+    mcpClient = await connectToMCPServer(auth, connectionParamsRes.value, {
+      agentConfiguration,
+      conversation,
+      agentMessage,
+      actionConfiguration,
+    });
 
     const toolCallResult = await mcpClient.callTool(
       {
@@ -193,15 +244,13 @@ export async function tryCallMCPTool(
       { timeout: DEFAULT_MCP_REQUEST_TIMEOUT_MS }
     );
 
-    await mcpClient.close();
-
     // Do not raise an error here as it will break the conversation.
     // Let the model decide what to do.
     if (toolCallResult.isError) {
       logger.error(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          conversationId,
+          conversationId: conversation.sId,
           messageId,
           error: toolCallResult.error,
         },
@@ -225,6 +274,8 @@ export async function tryCallMCPTool(
     return new Ok(content);
   } catch (error) {
     return new Err(normalizeError(error));
+  } finally {
+    await mcpClient?.close();
   }
 }
 
@@ -344,11 +395,11 @@ export async function tryListMCPTools(
         tools,
       });
 
-      // This handle the case where the MCP server configuration is using pre-configured data sources
+      // This handles the case where the MCP server configuration is using pre-configured data sources
       // or tables.
       // We add the description of the data sources or tables to the tool description so that the model
       // has more information to make the right choice.
-      // This replicate the current behavior of the Retrieval action for example.
+      // This replicates the current behavior of the Retrieval action for example.
       let extraDescription: string = "";
 
       // Only do it when there is a single tool configuration as we only have one description to add.

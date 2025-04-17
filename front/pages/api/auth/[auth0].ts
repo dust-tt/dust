@@ -19,7 +19,7 @@ import {
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/withlogging";
+import { statsDClient } from "@app/logger/statsDClient";
 import { isString } from "@app/types";
 
 const afterCallback: AfterCallbackPageRoute = async (

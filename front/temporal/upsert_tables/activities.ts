@@ -8,7 +8,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertTable } from "@app/lib/upsert_queue";
 import mainLogger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/withlogging";
+import { statsDClient } from "@app/logger/statsDClient";
 import config from "@app/temporal/config";
 
 export async function upsertTableActivity(

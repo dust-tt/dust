@@ -7,7 +7,7 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import type { DustRegistryActionName } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/withlogging";
+import { statsDClient } from "@app/logger/statsDClient";
 import { Err, getHeaderFromGroupIds, Ok } from "@app/types";
 
 // Record an event and a log for the action error.
