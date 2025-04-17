@@ -7,6 +7,7 @@ import {
   EmotionLaughIcon,
   FolderTableIcon,
   GithubLogo,
+  LightbulbIcon,
   ImageIcon,
   LockIcon,
   PlanetIcon,
