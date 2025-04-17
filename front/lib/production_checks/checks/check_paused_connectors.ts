@@ -41,7 +41,8 @@ export const checkPausedConnectors: CheckFunction = async (
         COALESCE("plans"."code", 'NO_PLAN') AS "planCode"
         FROM "workspaces"
         LEFT JOIN "subscriptions" ON "workspaces"."id" = "subscriptions"."workspaceId"
-        LEFT JOIN "plans" ON "subscriptions"."planId" = "plans"."id" AND "subscriptions"."status" = 'active'`,
+        LEFT JOIN "plans" ON "subscriptions"."planId" = "plans"."id" AND "subscriptions"."status" = 'active'
+        WHERE ("workspaces"."metadata" ->> 'maintenance' IS NULL)`, // Exclude workspaces in maintenance mode (relocation or relocation done).
     {
       type: QueryTypes.SELECT,
       replacements: {
