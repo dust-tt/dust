@@ -34,6 +34,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ModelId, Result } from "@app/types";
 import {
   assertNever,
@@ -211,12 +212,17 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     });
 
     const filteredViews: MCPServerViewResource[] = [];
-    for (const view of views) {
-      const r = await view.init(auth);
-      if (r.isOk()) {
-        filteredViews.push(view);
-      }
-    }
+    await concurrentExecutor(
+      views,
+      async (view) => {
+        const r = await view.init(auth);
+        if (r.isOk()) {
+          filteredViews.push(view);
+        }
+      },
+      { concurrency: 10 }
+    );
+
     return filteredViews;
   }
 
