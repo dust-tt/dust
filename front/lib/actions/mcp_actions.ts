@@ -23,8 +23,10 @@ import {
   extractMetadataFromTools,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
+  isMCPActionConfiguration,
   isMCPServerConfiguration,
   isPlatformMCPServerConfiguration,
   isPlatformMCPToolConfiguration,
@@ -38,13 +40,7 @@ import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_m
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
-import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-  Result,
-  SupportedFileContentType,
-} from "@app/types";
+import type { Result, SupportedFileContentType } from "@app/types";
 import { FILE_FORMATS } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
@@ -198,28 +194,21 @@ function makeMCPToolConfigurations<T extends MCPServerConfigurationType>({
  */
 export async function tryCallMCPTool(
   auth: Authenticator,
-  {
-    messageId,
-    actionConfiguration,
-    inputs,
-    agentConfiguration,
-    conversation,
-    agentMessage,
-  }: {
-    messageId: string;
-    actionConfiguration: MCPToolConfigurationType;
-    inputs: Record<string, unknown> | undefined;
-    agentConfiguration: AgentConfigurationType;
-    conversation: ConversationType;
-    agentMessage: AgentMessageType;
-  }
+  inputs: Record<string, unknown> | undefined,
+  agentLoopContext: AgentLoopContextType
 ): Promise<Result<MCPToolResult["content"], Error>> {
+  if (!isMCPActionConfiguration(agentLoopContext.actionConfiguration)) {
+    return new Err(
+      new Error("Invalid action configuration: not an MCP action configuration")
+    );
+  }
+
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
-    actionConfiguration,
+    agentLoopContext.actionConfiguration,
     {
-      conversationId: conversation.sId,
-      messageId,
+      conversationId: agentLoopContext.conversation.sId,
+      messageId: agentLoopContext.agentMessage.sId,
     }
   );
   if (connectionParamsRes.isErr()) {
@@ -228,12 +217,11 @@ export async function tryCallMCPTool(
 
   let mcpClient;
   try {
-    const r = await connectToMCPServer(auth, connectionParamsRes.value, {
-      agentConfiguration,
-      conversation,
-      agentMessage,
-      actionConfiguration,
-    });
+    const r = await connectToMCPServer(
+      auth,
+      connectionParamsRes.value,
+      agentLoopContext
+    );
     if (r.isErr()) {
       return r;
     }
@@ -241,7 +229,7 @@ export async function tryCallMCPTool(
 
     const toolCallResult = await mcpClient.callTool(
       {
-        name: actionConfiguration.originalName,
+        name: agentLoopContext.actionConfiguration.originalName,
         arguments: inputs,
       },
       undefined,
@@ -254,11 +242,11 @@ export async function tryCallMCPTool(
       logger.error(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          conversationId: conversation.sId,
-          messageId,
-          error: toolCallResult.error,
+          conversationId: agentLoopContext.conversation.sId,
+          messageId: agentLoopContext.agentMessage.sId,
+          error: toolCallResult.content,
         },
-        `Error calling MCP tool`
+        `Error calling MCP tool in tryCallMCPTool().`
       );
     }
     // Type inference is not working here because of them using passthrough in the zod schema.

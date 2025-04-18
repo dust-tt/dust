@@ -1,7 +1,11 @@
+import { DocumentIcon } from "@dust-tt/sparkle";
+
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
 import type { RetrievalDocumentType } from "@app/lib/actions/retrieval";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type { ConnectorProvider } from "@app/types";
+import { isConnectorProvider } from "@app/types";
 
 type ConnectorProviderDocumentType =
   | Exclude<ConnectorProvider, "webcrawler">
@@ -61,4 +65,15 @@ export function makeDocumentCitations(
   isDark?: boolean
 ): MarkdownCitation[] {
   return documents.map((document) => makeDocumentCitation(document, isDark));
+}
+
+export function getDocumentIcon(provider: string | null | undefined) {
+  if (provider && isConnectorProvider(provider)) {
+    const IconComponent = getConnectorProviderLogoWithFallback({
+      provider,
+      fallback: DocumentIcon,
+    });
+    return <IconComponent />;
+  }
+  return <DocumentIcon />;
 }

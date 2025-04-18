@@ -1,7 +1,6 @@
 import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -9,13 +8,9 @@ import {
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-} from "@app/types";
 
 export const isEnabledForWorkspace = async (
   auth: Authenticator,
@@ -35,17 +30,7 @@ export const connectToInternalMCPServer = async (
   mcpServerId: string,
   transport: InMemoryTransport,
   auth: Authenticator,
-  {
-    agentConfiguration,
-    actionConfiguration,
-    conversation,
-    agentMessage,
-  }: {
-    agentConfiguration?: AgentConfigurationType;
-    actionConfiguration?: MCPToolConfigurationType;
-    conversation?: ConversationType;
-    agentMessage?: AgentMessageType;
-  }
+  agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> => {
   const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
   if (res.isErr()) {
@@ -53,14 +38,14 @@ export const connectToInternalMCPServer = async (
       `Internal MCPServer not found for id ${mcpServerId}`
     );
   }
-  const server = getInternalMCPServer(auth, {
-    internalMCPServerName: res.value.name,
-    mcpServerId,
-    agentConfiguration,
-    actionConfiguration,
-    conversation,
-    agentMessage,
-  });
+  const server = getInternalMCPServer(
+    auth,
+    {
+      internalMCPServerName: res.value.name,
+      mcpServerId,
+    },
+    agentLoopContext
+  );
 
   await server.connect(transport);
 

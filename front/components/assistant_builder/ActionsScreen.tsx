@@ -8,7 +8,6 @@ import {
   CardGrid,
   Chip,
   classNames,
-  CommandIcon,
   ContentMessage,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -1371,7 +1370,9 @@ function AddAction({
               return (
                 <DropdownMenuItem
                   key={view.id}
-                  icon={CommandIcon}
+                  icon={() => (
+                    <Avatar visual={getAvatar(view.server)} size="xs" />
+                  )}
                   label={asDisplayName(view.server.name)}
                   description={view.server.description}
                   onClick={() =>

@@ -70,6 +70,45 @@ export type ConfigurableToolInputType = z.infer<
   (typeof ConfigurableToolInputSchemas)[InternalToolInputMimeType]
 >;
 
+export type DataSourcesToolConfigurationType = z.infer<
+  (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]
+>;
+
+export const isDataSourcesToolConfiguration = (
+  input: ConfigurableToolInputType
+): input is DataSourcesToolConfigurationType => {
+  return (
+    Array.isArray(input) &&
+    input.every(
+      (item) =>
+        typeof item === "object" &&
+        "uri" in item &&
+        item.uri.match(DATA_SOURCE_CONFIGURATION_URI_PATTERN) &&
+        "mimeType" in item &&
+        item.mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+    )
+  );
+};
+
+export type TablesConfigurationToolType = z.infer<
+  (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE]
+>;
+
+export const isTablesToolConfiguration = (
+  input: ConfigurableToolInputType
+): input is TablesConfigurationToolType => {
+  return (
+    Array.isArray(input) &&
+    input.every(
+      (item) =>
+        typeof item === "object" &&
+        "uri" in item &&
+        item.uri.match(TABLE_CONFIGURATION_URI_PATTERN) &&
+        "mimeType" in item &&
+        item.mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
+    )
+  );
+};
 /**
  * Defines how we fill the actual inputs of the tool for each mime type.
  */
