@@ -59,7 +59,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
   },
   "web_search_&_browse_v2": {
-    id: 4,
+    id: 5,
     isDefault: true,
     flag: "mcp_actions",
   },
