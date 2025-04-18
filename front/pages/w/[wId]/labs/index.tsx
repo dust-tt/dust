@@ -63,7 +63,7 @@ const LABS_CONNECTIONS: LabsConnectionItemType[] = [
     id: "hubspot",
     label: "Hubspot",
     featureFlag: "labs_connection_hubspot",
-    visibleWithoutAccess: false,
+    visibleWithoutAccess: true,
     logo: HubspotLogo,
     description: "Import Hubspot account summaries into Dust.",
     authType: "apiKey",
