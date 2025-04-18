@@ -2,6 +2,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -22,7 +23,6 @@ import type {
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-
 /**
  * Hook to fetch a specific remote MCP server by ID
  */
@@ -477,7 +477,7 @@ export function useUpdateMCPServerToolsPermissions({
     permission,
   }: {
     toolName: string;
-    permission: string;
+    permission: RemoteMCPToolStakeLevelType;
   }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
     const response = await fetch(
       `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,
