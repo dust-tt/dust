@@ -407,6 +407,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
           [Op.is]: null,
         },
       },
+      transaction,
     });
 
     if (dataSourceViews.length > 0) {
