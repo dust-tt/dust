@@ -2,14 +2,17 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect } from "vitest";
 
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
+import type { WhitelistableFeature } from "@app/types";
 
 import handler from "./index";
 
@@ -39,6 +42,12 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
     const regularSpace = await SpaceFactory.regular(workspace, t);
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await FeatureFlagFactory.basic(
+      INTERNAL_MCP_SERVERS["authentication_debugger"]
+        .flag as WhitelistableFeature,
+      workspace
+    );
 
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
@@ -93,6 +102,13 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
   itInTransaction("only supports DELETE method", async (t) => {
     const { req, res, workspace, space } = await setupTest(t, "admin", "GET");
+
+    await FeatureFlagFactory.basic(
+      INTERNAL_MCP_SERVERS["authentication_debugger"]
+        .flag as WhitelistableFeature,
+      workspace
+    );
+
     const mcpServerId = internalMCPServerNameToSId({
       name: "authentication_debugger",
       workspaceId: workspace.id,

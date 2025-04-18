@@ -50,6 +50,11 @@ export class InternalMCPServerInMemoryResource {
       return null;
     }
 
+    const isEnabled = await isEnabledForWorkspace(auth, r.value.name);
+    if (!isEnabled) {
+      return null;
+    }
+
     const server = new InternalMCPServerInMemoryResource(id);
 
     // Getting the metadata is a relatively long operation, so we cache it for 5 minutes
