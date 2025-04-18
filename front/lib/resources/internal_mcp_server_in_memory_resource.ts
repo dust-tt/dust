@@ -10,6 +10,7 @@ import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_TOOLS_STAKE_LEVEL,
+  isDefaultInternalMCPServer,
   isDefaultInternalMCPServerByName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -26,7 +27,10 @@ import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import { removeNulls } from "@app/types";
+
+const METADATA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export class InternalMCPServerInMemoryResource {
   // SID of the internal MCP server, scoped to a workspace.
@@ -50,29 +54,49 @@ export class InternalMCPServerInMemoryResource {
 
     const server = new InternalMCPServerInMemoryResource(id);
 
-    const s = await connectToMCPServer(auth, {
-      type: "mcpServerId",
-      mcpServerId: id,
-    });
+    // Getting the metadata is a relatively long operation, so we cache it for 5 minutes
+    // as internal servers are not expected to change often.
+    // In any case, when actually running the action, the metadata will be fetched from the MCP server.
+    const getCachedMetadata = cacheWithRedis(
+      async (id: string) => {
+        const s = await connectToMCPServer(auth, {
+          type: "mcpServerId",
+          mcpServerId: id,
+        });
 
-    if (s.isErr()) {
+        if (s.isErr()) {
+          return null;
+        }
+
+        const mcpClient = s.value;
+        const md = extractMetadataFromServerVersion(
+          mcpClient.getServerVersion()
+        );
+
+        const metadata = {
+          ...md,
+          tools: extractMetadataFromTools(
+            (await mcpClient.listTools()).tools
+          ) as any,
+          isDefault: isInternalMCPServerName(md.name)
+            ? isDefaultInternalMCPServerByName(md.name)
+            : false,
+        };
+
+        await mcpClient.close();
+
+        return metadata;
+      },
+      (id) => `internal-mcp-server-metadata-${id}`,
+      METADATA_CACHE_TTL_MS
+    );
+
+    const cachedMetadata = await getCachedMetadata(id);
+    if (!cachedMetadata) {
       return null;
     }
 
-    const mcpClient = s.value;
-    const md = extractMetadataFromServerVersion(mcpClient.getServerVersion());
-
-    server.metadata = {
-      ...md,
-      tools: extractMetadataFromTools(
-        (await mcpClient.listTools()).tools
-      ) as any,
-      isDefault: isInternalMCPServerName(md.name)
-        ? isDefaultInternalMCPServerByName(md.name)
-        : false,
-    };
-
-    await mcpClient.close();
+    server.metadata = cachedMetadata;
 
     return server;
   }
@@ -154,26 +178,26 @@ export class InternalMCPServerInMemoryResource {
   }
 
   static async fetchById(auth: Authenticator, id: string) {
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    // Fast path : Do not check for default internal MCP servers as they are always available.
+    if (!isDefaultInternalMCPServer(id)) {
+      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    const server = await MCPServerViewModel.findOne({
-      attributes: ["internalMCPServerId"],
-      where: {
-        serverType: "internal",
-        internalMCPServerId: id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: systemSpace.id,
-      },
-    });
+      const server = await MCPServerViewModel.findOne({
+        attributes: ["internalMCPServerId"],
+        where: {
+          serverType: "internal",
+          internalMCPServerId: id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          vaultId: systemSpace.id,
+        },
+      });
 
-    if (!server || !server.internalMCPServerId) {
-      return null;
+      if (!server || !server.internalMCPServerId) {
+        return null;
+      }
     }
 
-    return InternalMCPServerInMemoryResource.init(
-      auth,
-      server.internalMCPServerId
-    );
+    return InternalMCPServerInMemoryResource.init(auth, id);
   }
 
   static async listAvailableInternalMCPServers(auth: Authenticator) {

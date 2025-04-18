@@ -126,8 +126,7 @@ export async function fetchMCPServerActionConfigurations(
       serverName = "Missing";
       serverDescription = "Missing";
     } else {
-      const { name, description } =
-        await mcpServerView.getMCPServerMetadata(auth);
+      const { name, description } = await mcpServerView.toJSON().server;
 
       serverName = name;
       serverDescription = description;

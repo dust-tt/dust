@@ -19,11 +19,12 @@ import {
   isDefaultInternalMCPServerByName,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
+import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -50,8 +51,8 @@ export interface MCPServerViewResource
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
   static model: ModelStatic<MCPServerViewModel> = MCPServerViewModel;
   readonly editedByUser?: Attributes<UserModel>;
-
-  private remoteMCPServer?: RemoteMCPServerResource;
+  readonly remoteMCPServer?: Attributes<RemoteMCPServerModel>;
+  private remoteMCPServerResource?: RemoteMCPServerResource;
   private internalMCPServer?: InternalMCPServerInMemoryResource;
 
   constructor(
@@ -67,19 +68,21 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   private async init(auth: Authenticator): Promise<Result<void, DustError>> {
     if (this.remoteMCPServerId) {
-      const remoteServer = await RemoteMCPServerResource.findByPk(
-        auth,
-        this.remoteMCPServerId
-      );
-      if (!remoteServer) {
+      if (!this.remoteMCPServer) {
         return new Err(
           new DustError(
             "remote_server_not_found",
-            "Remote server not found, should never happen as we are suppose to clear the view when deleting a remote server."
+            "Remote server not found, it should have been fetched by the base fetch."
           )
         );
       }
-      this.remoteMCPServer = remoteServer;
+      const remoteServerResource = new RemoteMCPServerResource(
+        RemoteMCPServerModel,
+        // @ts-expect-error - Typescript is confused because as it doesn't understand that RemoteMCPServerModel is a regular model
+        this.remoteMCPServer.get()
+      );
+
+      this.remoteMCPServerResource = remoteServerResource;
       return new Ok(undefined);
     }
 
@@ -199,6 +202,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         {
           model: UserModel,
           as: "editedByUser",
+        },
+        {
+          model: RemoteMCPServerModel,
+          as: "remoteMCPServer",
         },
       ],
     });
@@ -381,7 +388,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return new Ok(deletedCount);
   }
 
-  getRemoteMCPServer(): RemoteMCPServerResource {
+  getRemoteMCPServerResource(): RemoteMCPServerResource {
     if (this.serverType !== "remote") {
       throw new Error("This MCP server view is not a remote server view");
     }
@@ -390,16 +397,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       throw new Error("This MCP server view is missing a remote server ID");
     }
 
-    if (!this.remoteMCPServer) {
+    if (!this.remoteMCPServerResource) {
       throw new Error(
         "This MCP server view is referencing a non-existent remote server"
       );
     }
 
-    return this.remoteMCPServer;
+    return this.remoteMCPServerResource;
   }
 
-  getInternalMCPServer(): InternalMCPServerInMemoryResource {
+  getInternalMCPServerResource(): InternalMCPServerInMemoryResource {
     if (this.serverType !== "internal") {
       throw new Error("This MCP server view is not an internal server view");
     }
@@ -415,39 +422,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
 
     return this.internalMCPServer;
-  }
-
-  async getMCPServerMetadata(auth: Authenticator): Promise<MCPServerType> {
-    switch (this.serverType) {
-      case "remote": {
-        const remoteMCPServer = this.getRemoteMCPServer();
-
-        // Note: this won't attempt to connect to remote servers and will use the cached metadata.
-        return remoteMCPServer.toJSON();
-      }
-      case "internal": {
-        if (!this.internalMCPServerId) {
-          throw new Error(
-            `Internal MCP server ID is required for internal server type.`
-          );
-        }
-
-        const internalMCPServer =
-          await InternalMCPServerInMemoryResource.fetchById(
-            auth,
-            this.internalMCPServerId
-          );
-        if (!internalMCPServer) {
-          throw new Error(
-            `Internal MCP server with ID ${this.internalMCPServerId} not found.`
-          );
-        }
-        return internalMCPServer.toJSON();
-      }
-      default: {
-        assertNever(this.serverType);
-      }
-    }
   }
 
   get sId(): string {
@@ -616,11 +590,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       spaceId: this.space.sId,
       server:
         this.serverType === "remote"
-          ? this.getRemoteMCPServer().toJSON()
-          : this.getInternalMCPServer().toJSON(),
+          ? this.getRemoteMCPServerResource().toJSON()
+          : this.getInternalMCPServerResource().toJSON(),
       editedByUser: this.makeEditedBy(
         this.editedByUser,
-        this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
+        this.remoteMCPServerResource
+          ? this.remoteMCPServerResource.updatedAt
+          : this.updatedAt
       ),
     };
   }
