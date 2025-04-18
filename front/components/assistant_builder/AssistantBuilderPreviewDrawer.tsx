@@ -20,10 +20,10 @@ import {
 import { Separator } from "@radix-ui/react-select";
 import { useContext, useEffect } from "react";
 
+import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import {
