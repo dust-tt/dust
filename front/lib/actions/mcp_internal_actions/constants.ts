@@ -19,6 +19,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse_v2",
   "tables_query",
   "think",
+  "agent_discovery",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -66,7 +67,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     isDefault: true,
     flag: "experimental_mcp_actions",
   },
-
+  agent_discovery: {
+    id: 7,
+    isDefault: false,
+    flag: "agent_discovery",
+  },
   // Dev
   data_sources_debugger: {
     id: 1000,

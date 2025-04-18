@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { default as agentDiscoveryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_discovery";
 import { default as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/servers/authentication_debugger";
 import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/child_agent_debugger";
 import { default as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_debugger";
@@ -42,6 +43,8 @@ export function getInternalMCPServer(
   switch (internalMCPServerName) {
     case "authentication_debugger":
       return helloWorldServer(auth, mcpServerId);
+    case "agent_discovery":
+      return agentDiscoveryServer(auth);
     case "data_sources_debugger":
       return dataSourceUtilsServer();
     case "tables_debugger":
