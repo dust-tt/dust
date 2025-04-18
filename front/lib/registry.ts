@@ -131,7 +131,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "b4f205e453",
       appHash:
-        "f7b08e2039f62f0522bad2e6a4c946be1a1a77fc96aebc7c3af317d9db092c28",
+        "a54ff27cef09f44a8f8f17599abad200c4c4a981fd6e537d75380664438c1487",
     },
     config: {
       MODEL: {
