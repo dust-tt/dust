@@ -10,7 +10,6 @@ import {
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -19,6 +18,7 @@ import {
   isRemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_local";
 import apiConfig from "@app/lib/api/config";
 import type {
@@ -30,14 +30,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-  OAuthProvider,
-  OAuthUseCase,
-  Result,
-} from "@app/types";
+import type { OAuthProvider, OAuthUseCase, Result } from "@app/types";
 import {
   assertNever,
   Err,
@@ -104,19 +97,8 @@ export type MCPConnectionParams =
 export const connectToMCPServer = async (
   auth: Authenticator,
   params: MCPConnectionParams,
-  {
-    agentConfiguration,
-    actionConfiguration,
-    conversation,
-    agentMessage,
-  }: {
-    agentConfiguration?: AgentConfigurationType;
-    actionConfiguration?: MCPToolConfigurationType;
-    conversation?: ConversationType;
-    agentMessage?: AgentMessageType;
-  } = {}
+  agentLoopContext?: AgentLoopContextType
 ): Promise<Result<Client, Error>> => {
-  //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
     name: "dust-mcp-client",
@@ -132,12 +114,12 @@ export const connectToMCPServer = async (
           // Create a pair of linked in-memory transports
           // And connect the client to the server.
           const [client, server] = InMemoryTransport.createLinkedPair();
-          await connectToInternalMCPServer(params.mcpServerId, server, auth, {
-            agentConfiguration,
-            actionConfiguration,
-            conversation,
-            agentMessage,
-          });
+          await connectToInternalMCPServer(
+            params.mcpServerId,
+            server,
+            auth,
+            agentLoopContext
+          );
           await mcpClient.connect(client);
           break;
 

@@ -713,7 +713,7 @@ const RetrievalDocumentChunkTypeSchema = z.object({
   text: z.string(),
 });
 
-const RetrievalDocumentTypeSchema = z.object({
+export const RetrievalDocumentTypeSchema = z.object({
   chunks: z.array(RetrievalDocumentChunkTypeSchema),
   documentId: z.string(),
   dataSourceView: DataSourceViewSchema.nullable(),
@@ -2816,7 +2816,7 @@ export const ACTION_RUNNING_LABELS: Record<
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
-  tool_action: "Calling MCP Server",
+  tool_action: "Using a tool",
 };
 
 // MCP Related.

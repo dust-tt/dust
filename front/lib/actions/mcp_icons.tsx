@@ -8,6 +8,7 @@ import {
   ActionIcons,
   ActionImageIcon,
   ActionLockIcon,
+  ActionMagnifyingGlassIcon,
   ActionRobotIcon,
   ActionTableIcon,
   Avatar,
@@ -33,6 +34,7 @@ export const InternalActionIcons = {
   ActionEmotionLaughIcon,
   ActionTableIcon,
   ActionBrainIcon,
+  ActionMagnifyingGlassIcon,
   GithubLogo,
 };
 

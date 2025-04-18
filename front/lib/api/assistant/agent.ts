@@ -1368,6 +1368,9 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      stepActionIndex,
+      stepActions,
+      citationsRefsOffset,
     });
 
     for await (const event of eventStream) {
