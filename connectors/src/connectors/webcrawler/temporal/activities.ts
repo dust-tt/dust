@@ -133,6 +133,18 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             type: "pre_navigation",
           });
 
+          const response = await fetch(crawlingContext.request.url, {
+            method: "HEAD",
+            redirect: "manual",
+          });
+
+          if (response.status >= 300 && response.status < 400) {
+            const redirectUrl = response.headers.get("location");
+            if (redirectUrl != null) {
+              crawlingContext.request.url = redirectUrl;
+            }
+          }
+
           const { address, family } = await getIpAddressForUrl(
             crawlingContext.request.url
           );
@@ -168,6 +180,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       maxRequestsPerMinute: 20, // 1 request every 3 seconds average, to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
       async requestHandler({ $, request, enqueueLinks }) {
+        if (request.skipNavigation) {
+          childLogger.info({ url: request.url }, "Skipping page");
+          return;
+        }
+
         Context.current().heartbeat({
           type: "http_request",
         });
