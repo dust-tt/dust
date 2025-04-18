@@ -80,6 +80,7 @@ pub mod providers {
 }
 pub mod http {
     pub mod network;
+    pub mod replay;
     pub mod request;
 }
 pub mod blocks {
