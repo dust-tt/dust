@@ -14,11 +14,9 @@ import {
   DropdownMenuTrigger,
   Icon,
   LightbulbIcon,
-  LightModeIcon,
   LogoutIcon,
-  ScrollArea,
-  ScrollBar,
   StarIcon,
+  UserGroupIcon,
   UserIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -70,8 +68,6 @@ export function UserMenu({
     [owner, sendNotification, user, featureFlags]
   );
 
-  const theme = localStorage.getItem("theme") || "light";
-
   // Check if user has multiple workspaces
   const hasMultipleWorkspaces = useMemo(() => {
     return (
@@ -114,17 +110,65 @@ export function UserMenu({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
-        <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
-          <DropdownMenuLabel label="Beta" />
-          <DropdownMenuItem
-            label="Exploratory features"
-            icon={TestTubeIcon}
-            href={`/w/${owner.sId}/labs`}
-          />
+        <DropdownMenuLabel label="Beta" />
+        <DropdownMenuItem
+          label="Exploratory features"
+          icon={TestTubeIcon}
+          href={`/w/${owner.sId}/labs`}
+        />
 
-          {showDebugTools(featureFlags) && (
-            <>
-              <DropdownMenuLabel label="Dev Tools" />
+        <DropdownMenuLabel label="Account" />
+        <DropdownMenuItem
+          label="Profile"
+          icon={UserIcon}
+          href={`/w/${owner.sId}/me`}
+        />
+
+        <DropdownMenuItem
+          onClick={() => {
+            void router.push("/api/auth/logout");
+          }}
+          icon={LogoutIcon}
+          label="Sign&nbsp;out"
+        />
+
+        {(hasMultipleWorkspaces || showDebugTools(featureFlags)) && (
+          <DropdownMenuLabel label="Advanced" />
+        )}
+
+        {hasMultipleWorkspaces && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Workspace" icon={UserGroupIcon} />
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup value={owner.name}>
+                {"workspaces" in user &&
+                  user.workspaces.map((w) => (
+                    <DropdownMenuRadioItem
+                      key={w.sId}
+                      value={w.name}
+                      onClick={async () => {
+                        await setNavigationSelection({
+                          lastWorkspaceId: w.sId,
+                        });
+                        if (w.id !== owner.id) {
+                          await router
+                            .push(`/w/${w.sId}/assistant/new`)
+                            .then(() => router.reload());
+                        }
+                      }}
+                    >
+                      {w.name}
+                    </DropdownMenuRadioItem>
+                  ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
+
+        {showDebugTools(featureFlags) && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Dev Tools" icon={BugIcon} />
+            <DropdownMenuSubContent>
               {router.route === "/w/[wId]/assistant/[cId]" && (
                 <DropdownMenuItem
                   label="Debug conversation"
@@ -161,85 +205,9 @@ export function UserMenu({
                   icon={UserIcon}
                 />
               )}
-            </>
-          )}
-
-          <DropdownMenuLabel label="Preferences" />
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
-            <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup value={theme}>
-                <DropdownMenuRadioItem
-                  value="light"
-                  label="Light"
-                  onClick={() => {
-                    localStorage.setItem("theme", "light");
-                    window.location.reload();
-                  }}
-                />
-                <DropdownMenuRadioItem
-                  value="dark"
-                  label="Dark"
-                  onClick={() => {
-                    localStorage.setItem("theme", "dark");
-                    window.location.reload();
-                  }}
-                />
-                <DropdownMenuRadioItem
-                  value="system"
-                  label="System"
-                  onClick={() => {
-                    localStorage.setItem("theme", "system");
-                    window.location.reload();
-                  }}
-                />
-              </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-
-          <DropdownMenuLabel label="Account" />
-          <DropdownMenuItem
-            label="Profile"
-            icon={UserIcon}
-            href={`/w/${owner.sId}/me`}
-          />
-
-          <DropdownMenuItem
-            onClick={() => {
-              void router.push("/api/auth/logout");
-            }}
-            icon={LogoutIcon}
-            label="Sign&nbsp;out"
-          />
-
-          {hasMultipleWorkspaces && (
-            <>
-              <DropdownMenuLabel label="Workspaces" />
-              <DropdownMenuRadioGroup value={owner.name}>
-                {"workspaces" in user &&
-                  user.workspaces.map((w) => (
-                    <DropdownMenuRadioItem
-                      key={w.sId}
-                      value={w.name}
-                      onClick={async () => {
-                        await setNavigationSelection({
-                          lastWorkspaceId: w.sId,
-                        });
-                        if (w.id !== owner.id) {
-                          await router
-                            .push(`/w/${w.sId}/assistant/new`)
-                            .then(() => router.reload());
-                        }
-                      }}
-                    >
-                      {w.name}
-                    </DropdownMenuRadioItem>
-                  ))}
-              </DropdownMenuRadioGroup>
-            </>
-          )}
-          <ScrollBar className="py-0" />
-        </ScrollArea>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

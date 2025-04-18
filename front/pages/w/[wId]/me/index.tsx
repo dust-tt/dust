@@ -1,9 +1,10 @@
-import { Page, UserIcon } from "@dust-tt/sparkle";
+import { Page, Separator, UserIcon } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AccountSettings } from "@app/components/me/AccountSettings";
+import { ThemeSettings } from "@app/components/me/ThemeSettings";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -58,6 +59,11 @@ export default function ProfilePage({
               isUserLoading={isUserLoading}
               mutateUser={mutateUser}
             />
+
+            <Page.SectionHeader title="Preferences" />
+            <ThemeSettings />
+
+            <Separator />
 
             {hasFeature("mcp_actions") && (
               <>
