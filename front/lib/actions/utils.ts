@@ -288,7 +288,10 @@ export async function getExecutionStatusFromConfig(
     return { status: "pending" };
   }
 
-  if (actionConfiguration.isDefault || actionConfiguration.permission === "never_ask") {
+  if (
+    actionConfiguration.isDefault ||
+    actionConfiguration.permission === "never_ask"
+  ) {
     return { status: "allowed_implicitly" };
   }
 

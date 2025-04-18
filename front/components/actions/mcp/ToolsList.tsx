@@ -41,7 +41,10 @@ export function ToolsList({
     serverId,
   });
 
-  const handleClick = (name: string, permission: RemoteMCPToolStakeLevelType) => {
+  const handleClick = (
+    name: string,
+    permission: RemoteMCPToolStakeLevelType
+  ) => {
     void updateToolPermission({
       toolName: name,
       permission,

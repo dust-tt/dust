@@ -16,7 +16,11 @@ import type {
   PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { getInternalMCPServerNameAndWorkspaceId, INTERNAL_MCP_SERVERS, isDefaultInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getInternalMCPServerNameAndWorkspaceId,
+  INTERNAL_MCP_SERVERS,
+  isDefaultInternalMCPServer,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
@@ -32,7 +36,6 @@ import {
 import type { MCPToolType, MCPToolWithStakeLevelType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -520,7 +523,7 @@ async function listMCPServerTools(
           if (r.isErr()) {
             return r;
           }
-          toolsMetadata = INTERNAL_MCP_SERVERS[r.value.name].tools_stakes || {};
+          toolsMetadata = INTERNAL_MCP_SERVERS[r.value.name].tools_stakes;
           break;
         case "remote":
           toolsMetadata = (

@@ -51,9 +51,12 @@ export const DEFAULT_MCP_ACTION_DESCRIPTION =
 
 export const MCP_TOOL_STAKE_LEVELS = ["high", "low", "never_ask"] as const;
 export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
-export type RemoteMCPToolStakeLevelType = Exclude<MCPToolStakeLevelType, "never_ask">;
+export type RemoteMCPToolStakeLevelType = Exclude<
+  MCPToolStakeLevelType,
+  "never_ask"
+>;
 export const REMOTE_MCP_TOOL_STAKE_LEVELS = MCP_TOOL_STAKE_LEVELS.filter(
-  level => level !== "never_ask"
+  (level) => level !== "never_ask"
 ) as RemoteMCPToolStakeLevelType[];
 
 export const DEFAULT_MCP_TOOL_STAKE_LEVEL = "high" as const;
