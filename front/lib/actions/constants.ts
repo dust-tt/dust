@@ -49,15 +49,14 @@ export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
 
-export const MCP_TOOL_STAKE_LEVELS = ["high", "low", "never_ask"] as const;
+export const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export type RemoteMCPToolStakeLevelType =
+  (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
+export const MCP_TOOL_STAKE_LEVELS = [
+  ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "never_ask",
+] as const;
 export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
-export type RemoteMCPToolStakeLevelType = Exclude<
-  MCPToolStakeLevelType,
-  "never_ask"
->;
-export const REMOTE_MCP_TOOL_STAKE_LEVELS = MCP_TOOL_STAKE_LEVELS.filter(
-  (level) => level !== "never_ask"
-) as RemoteMCPToolStakeLevelType[];
 
 export const DEFAULT_MCP_TOOL_STAKE_LEVEL = "high" as const;
 
