@@ -106,6 +106,8 @@ export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
 export const O1_MODEL_ID = "o1" as const;
 export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const O3_MINI_MODEL_ID = "o3-mini" as const;
+export const O3_MODEL_ID = "o3" as const;
+
 export const O4_MINI_MODEL_ID = "o4-mini" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
@@ -168,6 +170,7 @@ export const MODEL_IDS = [
   GPT_4O_MINI_MODEL_ID,
   O1_MODEL_ID,
   O1_MINI_MODEL_ID,
+  O3_MODEL_ID,
   O3_MINI_MODEL_ID,
   O4_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -435,6 +438,26 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
   supportsResponseFormat: false,
 };
+
+export const O3_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O3_MODEL_ID,
+  displayName: "o3",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "OpenAI's most advanced reasoning model particularly good at coding, math, and science.",
+  shortDescription: "OpenAI's best reasoning model.",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: false,
+  supportsResponseFormat: true,
+  featureFlag: "openai_o1_feature",
+  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+};
+
 export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O3_MINI_MODEL_ID,
@@ -1079,6 +1102,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   O1_MODEL_CONFIG,
   O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
+  O3_MODEL_CONFIG,
   O3_MINI_MODEL_CONFIG,
   O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O4_MINI_MODEL_CONFIG,
@@ -1157,6 +1181,7 @@ export enum GLOBAL_AGENTS_SID {
   O1_MINI = "o1-mini",
   O1_HIGH_REASONING = "o1_high",
   O3_MINI = "o3-mini",
+  O3 = "o3",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
@@ -1180,6 +1205,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
     case GLOBAL_AGENTS_SID.O1_MINI:
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
     case GLOBAL_AGENTS_SID.O3_MINI:
+    case GLOBAL_AGENTS_SID.O3:
       return "OpenAI";
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
@@ -1211,6 +1237,7 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.GITHUB,
   GLOBAL_AGENTS_SID.INTERCOM,
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+  GLOBAL_AGENTS_SID.O3,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
   GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
