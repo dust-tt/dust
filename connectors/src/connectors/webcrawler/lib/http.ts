@@ -15,7 +15,14 @@ import {
   isPrivateIp,
 } from "@connectors/connectors/webcrawler/lib/utils";
 
-export type WebCrawlerErrorName = "PRIVATE_IP" | "NOT_IP_V4";
+const MAX_REDIRECTS = 20;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+export type WebCrawlerErrorName =
+  | "PRIVATE_IP"
+  | "NOT_IP_V4"
+  | "MAX_REDIRECTS"
+  | "REDIRECT_MISSING_LOCATION";
 
 export class WebCrawlerError extends NonRetryableError {
   constructor(
@@ -79,27 +86,45 @@ export class DustHttpClient extends GotScrapingHttpClient {
   ): Promise<Result<string | URL, WebCrawlerError>> {
     let url = initUrl;
     let foundEndOfRedirect = false;
+    let redirectCount = 0;
 
     do {
+      // Prevent infinite loops
+      if (redirectCount++ >= MAX_REDIRECTS) {
+        return new Err(
+          new WebCrawlerError(
+            "Maximum redirect count exceeded",
+            "MAX_REDIRECTS"
+          )
+        );
+      }
+
       const response = await fetch(url, {
         method: "HEAD",
         redirect: "manual",
       });
 
-      if (response.status >= 300 && response.status < 400) {
+      if (REDIRECT_STATUSES.has(response.status)) {
         const redirectUrl = response.headers.get("location");
-        if (redirectUrl != null) {
-          const checkIpRes = await this.checkIp(redirectUrl);
-          if (checkIpRes.isErr()) {
-            return checkIpRes;
-          }
-
-          url = redirectUrl;
-          continue;
+        if (!redirectUrl) {
+          // Server returned a redirect status without Location header
+          return new Err(
+            new WebCrawlerError(
+              `Invalid redirect: Missing Location header for status ${response.status}`,
+              "REDIRECT_MISSING_LOCATION"
+            )
+          );
         }
-      }
 
-      foundEndOfRedirect = true;
+        const checkIpRes = await this.checkIp(redirectUrl);
+        if (checkIpRes.isErr()) {
+          return checkIpRes;
+        }
+
+        url = redirectUrl;
+      } else {
+        foundEndOfRedirect = true;
+      }
     } while (!foundEndOfRedirect);
 
     return new Ok(url);
