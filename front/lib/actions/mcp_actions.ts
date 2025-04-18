@@ -16,7 +16,7 @@ import type {
   PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { isDefaultInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getInternalMCPServerNameAndWorkspaceId, INTERNAL_MCP_SERVERS, isDefaultInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
@@ -514,10 +514,13 @@ async function listMCPServerTools(
       let toolsMetadata: Record<string, MCPToolStakeLevelType> = {};
       switch (serverType) {
         case "internal":
-          toolsMetadata =
-            InternalMCPServerInMemoryResource.getToolsConfigByServerId(
-              connectionParams.mcpServerId
-            );
+          const r = getInternalMCPServerNameAndWorkspaceId(
+            connectionParams.mcpServerId
+          );
+          if (r.isErr()) {
+            return r;
+          }
+          toolsMetadata = INTERNAL_MCP_SERVERS[r.value.name].tools_stakes || {};
           break;
         case "remote":
           toolsMetadata = (

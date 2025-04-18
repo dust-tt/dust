@@ -8,10 +8,10 @@ import {
   InformationCircleIcon,
 } from "@dust-tt/sparkle";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_MCP_TOOL_STAKE_LEVEL,
-  MCP_TOOL_STAKE_LEVELS,
+  REMOTE_MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import {
   useMCPServerToolsPermissions,
@@ -41,14 +41,14 @@ export function ToolsList({
     serverId,
   });
 
-  const handleClick = (name: string, permission: MCPToolStakeLevelType) => {
+  const handleClick = (name: string, permission: RemoteMCPToolStakeLevelType) => {
     void updateToolPermission({
       toolName: name,
       permission,
     });
   };
 
-  const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
+  const toolPermissionLabel: Record<RemoteMCPToolStakeLevelType, string> = {
     high: "High (Update data, or sends information)",
     low: "Low (Retrieve data, or generates content)",
   };
@@ -102,7 +102,7 @@ export function ToolsList({
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          {MCP_TOOL_STAKE_LEVELS.map((permission) => (
+                          {REMOTE_MCP_TOOL_STAKE_LEVELS.map((permission) => (
                             <DropdownMenuItem
                               key={permission}
                               onClick={() => {

@@ -22,7 +22,7 @@ import type {
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-
+import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 /**
  * Hook to fetch a specific remote MCP server by ID
  */
@@ -477,7 +477,7 @@ export function useUpdateMCPServerToolsPermissions({
     permission,
   }: {
     toolName: string;
-    permission: string;
+    permission: RemoteMCPToolStakeLevelType;
   }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
     const response = await fetch(
       `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,

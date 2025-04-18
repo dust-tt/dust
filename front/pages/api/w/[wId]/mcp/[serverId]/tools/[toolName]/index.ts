@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -83,7 +83,7 @@ async function handler(
             {
               serverId: id,
               toolName,
-              permission: permission as MCPToolStakeLevelType,
+              permission: permission as RemoteMCPToolStakeLevelType,
             }
           );
           return res.status(200).json({ success: true });
