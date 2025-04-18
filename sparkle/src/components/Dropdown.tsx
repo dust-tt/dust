@@ -124,20 +124,12 @@ const ItemWithLabelIconAndDescription = <
   children,
 }: T) => {
   const labelRef = React.useRef<HTMLSpanElement>(null);
-  const descriptionRef = React.useRef<HTMLSpanElement>(null);
   const [showTooltip, setShowTooltip] = React.useState(false);
 
   const checkTruncation = React.useCallback(() => {
-    let isTruncated = false;
-
-    if (labelRef.current) {
-      isTruncated = labelRef.current.scrollWidth > labelRef.current.clientWidth;
-    }
-
-    if (descriptionRef.current && !isTruncated) {
-      isTruncated =
-        descriptionRef.current.scrollWidth > descriptionRef.current.clientWidth;
-    }
+    const isTruncated = labelRef.current
+      ? labelRef.current.scrollWidth > labelRef.current.clientWidth
+      : false;
 
     setShowTooltip(isTruncated);
   }, []);
@@ -153,11 +145,6 @@ const ItemWithLabelIconAndDescription = <
       observer.observe(labelRef.current);
     }
 
-    if (descriptionRef.current) {
-      observer.observe(descriptionRef.current);
-    }
-
-    // Initial check
     checkTruncation();
 
     return () => observer.disconnect();
@@ -244,7 +231,6 @@ const ItemWithLabelIconAndDescription = <
                   </span>
                   {description && (
                     <span
-                      ref={descriptionRef}
                       className={cn(
                         menuStyleClasses.description,
                         "s-line-clamp-1"
