@@ -65,9 +65,10 @@ export async function markSyncFailed(
   });
 }
 
-export function makeLabsConnectionWorkflowId(
-  connectionConfiguration: LabsConnectionsConfigurationResource,
-  isIncrementalSync: boolean = false
-): string {
+export function makeLabsConnectionWorkflowId(params: {
+  connectionConfiguration: LabsConnectionsConfigurationResource;
+  isIncrementalSync?: boolean;
+}): string {
+  const { connectionConfiguration, isIncrementalSync } = params;
   return `labs-connection-${isIncrementalSync ? "incremental" : "full"}-sync-${connectionConfiguration.id}`;
 }

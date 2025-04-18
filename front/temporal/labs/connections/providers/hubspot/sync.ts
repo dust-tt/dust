@@ -1,4 +1,5 @@
 import axios from "axios";
+import sanitizeHtml from "sanitize-html";
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -15,7 +16,6 @@ import {
   getCompanyDetails,
   getNotes,
   getRecentlyUpdatedCompanyIds,
-  stripHtmlTags,
 } from "@app/temporal/labs/connections/providers/hubspot/api";
 import type {
   Company,
@@ -135,8 +135,9 @@ async function upsertToDustDatasource(
       const formattedDate = nProps.hs_createdate
         ? formatDate(nProps.hs_createdate)
         : "Unknown date";
-      const cleanedNoteBody = stripHtmlTags(
-        nProps.hs_note_body || "Empty note"
+      const cleanedNoteBody = sanitizeHtml(
+        nProps.hs_note_body || "Empty note",
+        { allowedTags: [], allowedAttributes: {} }
       );
       return `- ${formattedDate}: ${cleanedNoteBody}`;
     })
@@ -201,7 +202,28 @@ ${props.notes_last_updated ? `Last Note Updated: ${props.notes_last_updated}` : 
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       documentId: documentId,
-      tags: ["hubspot", "company"],
+      tags: [
+        "hubspot",
+        ...(props.name ? [`company:${props.name}`] : []),
+        ...(props.industry ? [`industry:${props.industry}`] : []),
+        ...(props.lifecyclestage ? [`stage:${props.lifecyclestage}`] : []),
+        ...(props.hs_lead_status
+          ? [`lead_status:${props.hs_lead_status}`]
+          : []),
+        ...(props.type ? [`type:${props.type}`] : []),
+        ...(props.hs_pipeline ? [`pipeline:${props.hs_pipeline}`] : []),
+        ...(props.hs_analytics_source
+          ? [`source:${props.hs_analytics_source}`]
+          : []),
+        ...contacts
+          .map((c) => c.properties?.jobtitle)
+          .filter(Boolean)
+          .map((title) => `role:${title}`),
+        ...deals
+          .map((d) => d.properties?.dealstage)
+          .filter(Boolean)
+          .map((stage) => `deal_stage:${stage}`),
+      ],
       parentId: null,
       parents: [documentId],
       sourceUrl: `https://app.hubspot.com/contacts/${portalId}/company/${company.id}`,

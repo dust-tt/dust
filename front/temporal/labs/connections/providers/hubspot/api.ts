@@ -1,4 +1,5 @@
 import axios from "axios";
+import moment from "moment-timezone";
 
 import logger from "@app/logger/logger";
 import type {
@@ -13,12 +14,7 @@ import type {
 import { hubspotLimiter } from "@app/temporal/labs/connections/providers/hubspot/utils";
 
 export function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toISOString().split("T")[0];
-}
-
-export function stripHtmlTags(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim();
+  return moment(dateString).utc().format("YYYY-MM-DD");
 }
 
 export async function getRecentlyUpdatedCompanyIds({

@@ -17,7 +17,9 @@ export async function launchLabsConnectionWorkflow(
   connectionConfiguration: LabsConnectionsConfigurationResource
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
-  const workflowId = makeLabsConnectionWorkflowId(connectionConfiguration);
+  const workflowId = makeLabsConnectionWorkflowId({
+    connectionConfiguration,
+  });
 
   try {
     await client.workflow.start(fullSyncLabsConnectionWorkflow, {
@@ -52,10 +54,10 @@ export async function launchIncrementalSyncLabsConnectionWorkflow(
   connectionConfiguration: LabsConnectionsConfigurationResource
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
-  const workflowId = makeLabsConnectionWorkflowId(
+  const workflowId = makeLabsConnectionWorkflowId({
     connectionConfiguration,
-    true
-  );
+    isIncrementalSync: true,
+  });
 
   try {
     await client.workflow.start(incrementalSyncLabsConnectionWorkflow, {
@@ -87,7 +89,7 @@ export async function stopLabsConnectionWorkflow(
   setInactive: boolean = true
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
-  const workflowId = makeLabsConnectionWorkflowId(connectionConfiguration);
+  const workflowId = makeLabsConnectionWorkflowId({ connectionConfiguration });
 
   try {
     const handle: WorkflowHandle<typeof fullSyncLabsConnectionWorkflow> =
