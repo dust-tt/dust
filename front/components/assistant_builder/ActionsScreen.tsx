@@ -1343,7 +1343,7 @@ function AddAction({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
-        <ScrollArea>
+        <ScrollArea className="max-h-[40vh] overflow-y-auto">
           <DropdownMenuGroup>
             <DropdownMenuLabel label="Knowledge" />
             {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
