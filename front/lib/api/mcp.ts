@@ -20,7 +20,7 @@ export type MCPToolWithIsDefaultType = MCPToolType & {
 };
 
 export type MCPToolWithStakeLevelType = MCPToolWithIsDefaultType & {
-  stakeLevel?: MCPToolStakeLevelType;
+  stakeLevel: MCPToolStakeLevelType;
   toolServerId?: string;
 };
 

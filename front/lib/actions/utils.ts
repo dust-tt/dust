@@ -306,12 +306,6 @@ export async function getExecutionStatusFromConfig(
     }
     case "high":
       return { status: "pending" };
-    case undefined: {
-      if (actionConfiguration.isDefault) {
-        return { status: "allowed_implicitly" };
-      }
-      return { status: "pending" };
-    }
     default:
       assertNever(actionConfiguration.permission);
   }
