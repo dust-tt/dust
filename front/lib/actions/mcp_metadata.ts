@@ -196,12 +196,12 @@ export const connectToMCPServer = async (
     }
 
     case "localMCPServerId": {
+      const transport = new ClientSideRedisMCPTransport(auth, {
+        conversationId: params.conversationId,
+        mcpServerId: params.mcpServerId,
+        messageId: params.messageId,
+      });
       try {
-        const transport = new ClientSideRedisMCPTransport(auth, {
-          conversationId: params.conversationId,
-          mcpServerId: params.mcpServerId,
-          messageId: params.messageId,
-        });
         await mcpClient.connect(transport);
       } catch (e: unknown) {
         return new Err(
