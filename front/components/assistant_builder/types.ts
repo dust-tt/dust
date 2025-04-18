@@ -211,6 +211,7 @@ export type AssistantBuilderPendingAction =
     }
   | {
       action: null;
+      previousActionName: null;
     };
 
 export type AssistantBuilderState = {

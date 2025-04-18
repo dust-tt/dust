@@ -408,6 +408,7 @@ export default function ActionsScreen({
         isOpen={pendingAction.action !== null}
         builderState={builderState}
         initialAction={pendingAction.action}
+        isEditing={!!pendingAction.previousActionName}
         spacesUsedInActions={spaceIdToActions}
         onSave={(newAction) => {
           setEdited(true);
@@ -627,6 +628,7 @@ type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
   initialAction: AssistantBuilderActionConfigurationWithId | null;
+  isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
   onSave: (newAction: AssistantBuilderActionConfigurationWithId) => void;
   onClose: () => void;
@@ -643,6 +645,7 @@ type NewActionModalProps = {
 function NewActionModal({
   isOpen,
   initialAction,
+  isEditing,
   spacesUsedInActions,
   onSave,
   onClose,
@@ -797,6 +800,7 @@ function NewActionModal({
             {newActionConfig && (
               <ActionEditor
                 action={newActionConfig}
+                isEditing={isEditing}
                 spacesUsedInActions={spacesUsedInActions}
                 updateAction={updateAction}
                 owner={owner}
@@ -892,6 +896,7 @@ function ActionCard({
 interface ActionConfigEditorProps {
   owner: WorkspaceType;
   action: AssistantBuilderActionConfigurationWithId;
+  isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
   instructions: string | null;
   updateAction: (args: {
@@ -909,6 +914,7 @@ interface ActionConfigEditorProps {
 function ActionConfigEditor({
   owner,
   action,
+  isEditing,
   spacesUsedInActions,
   instructions,
   updateAction,
@@ -996,6 +1002,7 @@ function ActionConfigEditor({
         <MCPAction
           owner={owner}
           action={action}
+          isEditing={isEditing}
           allowedSpaces={allowedSpaces}
           updateAction={updateAction}
           setEdited={setEdited}
@@ -1054,6 +1061,7 @@ function ActionConfigEditor({
 
 interface ActionEditorProps {
   action: AssistantBuilderActionConfigurationWithId;
+  isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
   showInvalidActionNameError: string | null;
   showInvalidActionDescError: string | null;
@@ -1074,6 +1082,7 @@ interface ActionEditorProps {
 
 function ActionEditor({
   action,
+  isEditing,
   spacesUsedInActions,
   showInvalidActionNameError,
   showInvalidActionDescError,
@@ -1167,6 +1176,7 @@ function ActionEditor({
         <ActionConfigEditor
           owner={owner}
           action={action}
+          isEditing={isEditing}
           spacesUsedInActions={spacesUsedInActions}
           instructions={builderState.instructions}
           updateAction={updateAction}

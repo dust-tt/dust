@@ -5,6 +5,7 @@ import { AdditionalConfigurationSection } from "@app/components/assistant_builde
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
+import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
 import type {
@@ -27,7 +28,7 @@ interface NoActionAvailableProps {
 function NoActionAvailable({ owner }: NoActionAvailableProps) {
   return (
     <ContentMessage
-      title="You don't have any Actions available"
+      title="You don't have any Tools available"
       icon={InformationCircleIcon}
       variant="warning"
     >
@@ -65,6 +66,7 @@ interface MCPActionProps {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
   action: AssistantBuilderActionConfiguration;
+  isEditing: boolean;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
@@ -79,6 +81,7 @@ export function MCPAction({
   owner,
   allowedSpaces,
   action,
+  isEditing,
   updateAction,
   setEdited,
 }: MCPActionProps) {
@@ -246,19 +249,41 @@ export function MCPAction({
         />
       )}
       {/* Server selection */}
-      {isDefaultMCPServer ? (
-        <div className="text-sm text-foreground dark:text-foreground-night">
-          {selectedMCPServerView?.server.description}
+      {isEditing ? (
+        <div>
+          <div className="text-sm text-foreground dark:text-foreground-night">
+            <div>{selectedMCPServerView?.server.description}</div>
+
+            {isDefaultMCPServer ? (
+              ""
+            ) : (
+              <div>
+                Available to you via{" "}
+                <b>
+                  {
+                    allowedSpaces.find(
+                      (space) => space.sId === selectedMCPServerView?.spaceId
+                    )?.name
+                  }
+                </b>{" "}
+                space.
+              </div>
+            )}
+          </div>
+          <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
         </div>
       ) : (
-        <MCPServerSelector
-          owner={owner}
-          allowedSpaces={allowedSpaces}
-          mcpServerViews={mcpServerViews}
-          selectedMCPServerView={selectedMCPServerView}
-          handleServerSelection={handleServerSelection}
-        />
+        <>
+          <MCPServerSelector
+            owner={owner}
+            allowedSpaces={allowedSpaces}
+            mcpServerViews={mcpServerViews}
+            selectedMCPServerView={selectedMCPServerView}
+            handleServerSelection={handleServerSelection}
+          />
+        </>
       )}
+
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
