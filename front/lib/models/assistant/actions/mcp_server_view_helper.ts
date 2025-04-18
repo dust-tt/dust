@@ -3,7 +3,11 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import {
+  AgentChildAgentConfiguration,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import type { ModelId } from "@app/types";
 
 export const destroyMCPServerViewDependencies = async (
@@ -30,6 +34,26 @@ export const destroyMCPServerViewDependencies = async (
   ).map((view: AgentMCPServerConfiguration) => view.id);
 
   await AgentDataSourceConfiguration.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      mcpServerConfigurationId: {
+        [Op.in]: agentConfigurationIds,
+      },
+    },
+    transaction,
+  });
+
+  await AgentTablesQueryConfigurationTable.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      mcpServerConfigurationId: {
+        [Op.in]: agentConfigurationIds,
+      },
+    },
+    transaction,
+  });
+
+  await AgentChildAgentConfiguration.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       mcpServerConfigurationId: {
