@@ -6,7 +6,10 @@ import type { JSONSchema7 } from "json-schema";
 import { z } from "zod";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { DEFAULT_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
+import {
+  FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL,
+  FALLBACK_MCP_TOOL_STAKE_LEVEL,
+} from "@app/lib/actions/constants";
 import type {
   LocalMCPServerConfigurationType,
   LocalMCPToolConfigurationType,
@@ -479,6 +482,7 @@ async function listMCPServerTools(
       isConnectViaMCPServerId(connectionParams) &&
       isDefaultInternalMCPServer(connectionParams.mcpServerId);
 
+    let allToolsRaw: MCPToolType[] = [];
     let allTools: MCPToolWithStakeLevelType[] = [];
     let nextPageCursor;
 
@@ -486,11 +490,10 @@ async function listMCPServerTools(
     do {
       const { tools, nextCursor } = await mcpClient.listTools();
       nextPageCursor = nextCursor;
-      allTools = [
-        ...allTools,
+      allToolsRaw = [
+        ...allToolsRaw,
         ...extractMetadataFromTools(tools).map((tool) => ({
           ...tool,
-          isDefault,
         })),
       ];
     } while (nextPageCursor);
@@ -525,9 +528,13 @@ async function listMCPServerTools(
           assertNever(serverType);
       }
 
-      allTools = allTools.map((tool) => ({
+      allTools = allToolsRaw.map((tool) => ({
         ...tool,
-        stakeLevel: toolsMetadata[tool.name] || DEFAULT_MCP_TOOL_STAKE_LEVEL,
+        stakeLevel:
+          toolsMetadata[tool.name] || isDefault
+            ? FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL
+            : FALLBACK_MCP_TOOL_STAKE_LEVEL,
+        isDefault,
         toolServerId: connectionParams.mcpServerId,
       }));
     }
@@ -537,7 +544,7 @@ async function listMCPServerTools(
         workspaceId: owner.id,
         conversationId,
         messageId,
-        toolCount: allTools.length,
+        toolCount: allToolsRaw.length,
       },
       `Retrieved ${allTools.length} tools from MCP server`
     );

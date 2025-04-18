@@ -5,7 +5,7 @@ import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
-import { DEFAULT_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
+import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { isActionGeneratedFile } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
@@ -91,7 +91,7 @@ export type PlatformMCPToolConfigurationType = Omit<
   type: "mcp_configuration";
   inputSchema: JSONSchema;
   isDefault: boolean;
-  permission?: MCPToolStakeLevelType;
+  permission: MCPToolStakeLevelType;
   toolServerId?: string;
 };
 
@@ -344,7 +344,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         inputs: rawInputs,
         stake: isPlatformMCPToolConfiguration(actionConfiguration)
           ? actionConfiguration.permission
-          : DEFAULT_MCP_TOOL_STAKE_LEVEL,
+          : FALLBACK_MCP_TOOL_STAKE_LEVEL,
         metadata: {
           toolName: actionConfiguration.originalName,
           mcpServerName: actionConfiguration.mcpServerName,

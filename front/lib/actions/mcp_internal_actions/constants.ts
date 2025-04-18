@@ -42,6 +42,9 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1,
     isDefault: false,
     flag: "mcp_actions",
+    tools_stakes: {
+      get_pull_request: "never_ask",
+    },
   },
   image_generation: {
     id: 2,
