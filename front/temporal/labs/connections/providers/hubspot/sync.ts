@@ -1,4 +1,4 @@
-import axios from "axios";
+import moment from "moment-timezone";
 import sanitizeHtml from "sanitize-html";
 
 import config from "@app/lib/api/config";
@@ -6,21 +6,13 @@ import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import {
-  formatDate,
-  getAssociatedContacts,
-  getAssociatedDeals,
-  getAssociatedOrders,
-  getAssociatedTickets,
-  getCompanyDetails,
-  getNotes,
-  getRecentlyUpdatedCompanyIds,
-} from "@app/temporal/labs/connections/providers/hubspot/api";
+import { HubspotClient } from "@app/temporal/labs/connections/providers/hubspot/client";
 import type {
   Company,
-  Contact,
   Deal,
+  HubspotFilter,
   Note,
   Order,
   Ticket,
@@ -34,12 +26,16 @@ import type { ModelId, Result } from "@app/types";
 import { Err, isHubspotCredentials, OAuthAPI, Ok } from "@app/types";
 import { CoreAPI, dustManagedCredentials } from "@app/types";
 
+function formatDate(dateString: string): string {
+  return moment(dateString).utc().format("YYYY-MM-DD");
+}
+
 async function upsertToDustDatasource(
   coreAPI: CoreAPI,
   workspaceId: string,
   dataSourceViewId: ModelId,
   company: Company,
-  contacts: Contact[],
+  contacts: { id: string; properties: { [key: string]: string | null } }[],
   deals: Deal[],
   tickets: Ticket[],
   orders: Order[],
@@ -304,15 +300,7 @@ export async function syncHubspotConnection(
     }
 
     const credentials = credentialsRes.value.credential.content;
-
-    const hubspotApi = axios.create({
-      baseURL: "https://api.hubapi.com",
-      headers: {
-        Authorization: `Bearer ${credentials.accessToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-
+    const hubspotClient = new HubspotClient(credentials.accessToken);
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
     const since = isFullSync
@@ -320,10 +308,24 @@ export async function syncHubspotConnection(
       : cursor
         ? new Date(cursor)
         : new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const companyIds = await getRecentlyUpdatedCompanyIds({
-      accessToken: credentials.accessToken,
-      since,
+
+    // Get recently updated companies
+    const filters: HubspotFilter[] = [];
+    if (since) {
+      filters.push({
+        propertyName: "hs_lastmodifieddate",
+        operator: "GTE",
+        value: since.toISOString(),
+      });
+    }
+
+    const searchResponse = await hubspotClient.searchCompanies({
+      filterGroups: filters.length > 0 ? [{ filters }] : [],
+      properties: ["hs_object_id"],
+      limit: 100,
     });
+    const companyIds = searchResponse.results.map((company) => company.id);
+
     logger.info(
       { count: companyIds.length, isFullSync, since },
       "Found companies to sync"
@@ -331,13 +333,38 @@ export async function syncHubspotConnection(
 
     try {
       for (const companyId of companyIds) {
-        const company = await getCompanyDetails(hubspotApi, companyId);
+        const company = await hubspotClient.getCompanyDetails(companyId);
         if (company) {
-          const contacts = await getAssociatedContacts(hubspotApi, companyId);
-          const deals = await getAssociatedDeals(hubspotApi, companyId);
-          const tickets = await getAssociatedTickets(hubspotApi, companyId);
-          const orders = await getAssociatedOrders(hubspotApi, companyId);
-          const notes = await getNotes(hubspotApi, companyId);
+          const [contacts, deals, tickets, orders, notes] =
+            await concurrentExecutor(
+              [
+                async () => {
+                  const res =
+                    await hubspotClient.getAssociatedContacts(companyId);
+                  return res.results;
+                },
+                async () => {
+                  const res = await hubspotClient.getAssociatedDeals(companyId);
+                  return res.results;
+                },
+                async () => {
+                  const res =
+                    await hubspotClient.getAssociatedTickets(companyId);
+                  return res.results;
+                },
+                async () => {
+                  const res =
+                    await hubspotClient.getAssociatedOrders(companyId);
+                  return res.results;
+                },
+                async () => {
+                  const res = await hubspotClient.getNotes(companyId);
+                  return res.results;
+                },
+              ],
+              (task) => task(),
+              { concurrency: 5 }
+            );
 
           await upsertToDustDatasource(
             coreAPI,

@@ -1,5 +1,3 @@
-import axios from "axios";
-import Bottleneck from "bottleneck";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -8,13 +6,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { ConnectionCredentials, WithAPIErrorResponse } from "@app/types";
-import { HubspotCredentialsSchema, isHubspotCredentials } from "@app/types";
-
-const hubspotLimiter = new Bottleneck({
-  maxConcurrent: 1,
-  minTime: 100, // 10 requests per second
-});
+import { HubspotClient } from "@app/temporal/labs/connections/providers/hubspot/client";
+import type { WithAPIErrorResponse } from "@app/types";
+import { HubspotCredentialsSchema } from "@app/types";
 
 const TestCredentialsBodyCodec = t.type({
   provider: t.literal("hubspot"),
@@ -22,29 +16,19 @@ const TestCredentialsBodyCodec = t.type({
 });
 
 async function testHubspotCredentials(
-  credentials: ConnectionCredentials
+  credentials: t.TypeOf<typeof HubspotCredentialsSchema>
 ): Promise<{ success: boolean; error?: string }> {
-  if (!isHubspotCredentials(credentials)) {
-    return {
-      success: false,
-      error: "Invalid credentials type - expected hubspot credentials",
-    };
-  }
-
-  const hubspotApi = axios.create({
-    baseURL: "https://api.hubapi.com",
-    headers: {
-      Authorization: `Bearer ${credentials.accessToken}`,
-      "Content-Type": "application/json",
-    },
-  });
-
   try {
-    await hubspotLimiter.schedule(() =>
-      hubspotApi.get("/crm/v3/objects/companies", {
-        params: { limit: 1 },
-      })
-    );
+    const client = new HubspotClient(credentials.accessToken);
+    const result = await client.testCredentials();
+
+    if (result.isErr()) {
+      return {
+        success: false,
+        error: result.error.message,
+      };
+    }
+
     return { success: true };
   } catch (error) {
     logger.error({ error }, "Error testing HubSpot credentials");

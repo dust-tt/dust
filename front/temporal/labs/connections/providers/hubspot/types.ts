@@ -1,51 +1,70 @@
-export interface Company {
-  id: string;
-  properties: Record<string, unknown>;
-}
+import * as t from "io-ts";
 
-export interface Contact {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-  archived: boolean;
-}
+const CompanyCodec = t.type({
+  id: t.string,
+  properties: t.record(t.string, t.unknown),
+});
 
-export interface Deal {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-  archived: boolean;
-}
+const ContactCodec = t.type({
+  id: t.string,
+  properties: t.record(t.string, t.union([t.string, t.null])),
+  createdAt: t.string,
+  updatedAt: t.string,
+  archived: t.boolean,
+});
 
-export interface Ticket {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-}
+const DealCodec = t.type({
+  id: t.string,
+  properties: t.record(t.string, t.union([t.string, t.null])),
+  createdAt: t.string,
+  updatedAt: t.string,
+  archived: t.boolean,
+});
 
-export interface Order {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-}
+const TicketCodec = t.type({
+  id: t.string,
+  properties: t.record(t.string, t.union([t.string, t.null])),
+  createdAt: t.string,
+  updatedAt: t.string,
+  archived: t.boolean,
+});
 
-export interface Note {
-  id: string;
-  properties: {
-    [key: string]: string;
-  };
-}
+const OrderCodec = t.type({
+  id: t.string,
+  properties: t.record(t.string, t.union([t.string, t.null])),
+  createdAt: t.string,
+  updatedAt: t.string,
+  archived: t.boolean,
+});
 
-export interface HubspotFilter {
-  propertyName: string;
-  operator: string;
-  value: string;
-}
+const NoteCodec = t.type({
+  id: t.string,
+  properties: t.record(t.string, t.union([t.string, t.null])),
+  createdAt: t.string,
+  updatedAt: t.string,
+  archived: t.boolean,
+});
+
+const HubspotFilterCodec = t.type({
+  propertyName: t.string,
+  operator: t.string,
+  value: t.string,
+});
+
+export type Company = t.TypeOf<typeof CompanyCodec>;
+export type Contact = t.TypeOf<typeof ContactCodec>;
+export type Deal = t.TypeOf<typeof DealCodec>;
+export type Ticket = t.TypeOf<typeof TicketCodec>;
+export type Order = t.TypeOf<typeof OrderCodec>;
+export type Note = t.TypeOf<typeof NoteCodec>;
+export type HubspotFilter = t.TypeOf<typeof HubspotFilterCodec>;
+
+export {
+  CompanyCodec,
+  ContactCodec,
+  DealCodec,
+  HubspotFilterCodec,
+  NoteCodec,
+  OrderCodec,
+  TicketCodec,
+};
