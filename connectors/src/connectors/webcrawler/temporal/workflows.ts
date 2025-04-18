@@ -14,8 +14,8 @@ import type { ModelId } from "@connectors/types";
 // leeway to crawl on slow websites
 export const REQUEST_HANDLING_TIMEOUT = 420;
 // For each page crawl we have an heartbeat but some crawls seem to stall for longer periods. Giving
-// them 20mn to hearbeat.
-export const HEARTBEAT_TIMEOUT = 1200;
+// them 30mn to hearbeat.
+export const HEARTBEAT_TIMEOUT = 1800;
 
 export const MAX_TIME_TO_CRAWL_MINUTES = 240;
 export const MIN_EXTRACTED_TEXT_LENGTH = 1024;
