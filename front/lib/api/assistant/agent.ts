@@ -27,12 +27,10 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import {
-  constructPromptMultiActions,
-  renderConversationForModel,
-} from "@app/lib/api/assistant/generation";
+import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -66,7 +64,7 @@ const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
-// nor updating it (responsability of the caller based on the emitted events).
+// nor updating it (responsibility of the caller based on the emitted events).
 export async function* runAgent(
   auth: Authenticator,
   configuration: LightAgentConfigurationType,
@@ -148,7 +146,7 @@ async function* runMultiActionsAgentLoop(
     const isLastGenerationIteration = i === maxStepsPerRun;
 
     const actions =
-      // If we already executed the maximum number of actions, we don't run any more.
+      // If we already executed the maximum number of actions, we don't run anymore.
       // This will force the agent to run the generation.
       isLastGenerationIteration
         ? []
@@ -190,7 +188,7 @@ async function* runMultiActionsAgentLoop(
 
           // We received the actions to run, but will enforce a limit on the number of actions (16)
           // which is very high. Over that the latency will just be too high. This is a guardrail
-          // against the model outputing something unreasonable.
+          // against the model outputting something unreasonable.
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
           const eventStreamGenerators = event.actions.map(
@@ -233,7 +231,7 @@ async function* runMultiActionsAgentLoop(
             }
           }
 
-          // After we are done running actions we update the inter step refsOffset.
+          // After we are done running actions, we update the inter-step refsOffset.
           for (let j = 0; j < event.actions.length; j++) {
             citationsRefsOffset += getCitationsCount({
               agentConfiguration: configuration,
@@ -490,7 +488,7 @@ async function* runMultiActionsAgent(
     specifications.push(specRes.value);
   }
 
-  // If we have attachments inject a fake LS action to handle them.
+  // If we have attachments, inject a fake LS action to handle them.
 
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case
@@ -899,7 +897,6 @@ async function* runAction(
       auth,
       {
         agentConfiguration: configuration,
-        actionConfiguration,
         conversation,
         agentMessage,
         rawInputs: inputs,
@@ -977,7 +974,6 @@ async function* runAction(
       auth,
       {
         agentConfiguration: configuration,
-        actionConfiguration,
         conversation,
         agentMessage,
         rawInputs: inputs,
@@ -1032,7 +1028,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1080,7 +1075,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       userMessage,
       agentMessage,
@@ -1131,7 +1125,6 @@ async function* runAction(
       auth,
       {
         agentConfiguration: configuration,
-        actionConfiguration,
         conversation,
         agentMessage,
         rawInputs: inputs,
@@ -1185,7 +1178,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1233,7 +1225,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1281,7 +1272,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1324,7 +1314,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1374,7 +1363,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,

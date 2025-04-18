@@ -5,6 +5,7 @@ import {
   CardGrid,
   ChatBubbleLeftRightIcon,
   ChatBubbleThoughtIcon,
+  Chip,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +71,14 @@ function AssistantDetailsInfo({
 }) {
   return (
     <>
+      {agentConfiguration.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {agentConfiguration.tags.map((tag) => (
+            <Chip key={tag.sId} color="golden" label={tag.name} />
+          ))}
+        </div>
+      )}
+
       <div className="text-sm text-foreground dark:text-foreground-night">
         {agentConfiguration?.description}
       </div>

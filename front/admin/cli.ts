@@ -1,7 +1,7 @@
 import parseArgs from "minimist";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
 import { default as config } from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";

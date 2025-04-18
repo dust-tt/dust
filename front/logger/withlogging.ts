@@ -1,5 +1,4 @@
 import tracer from "dd-trace";
-import StatsD from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getSession } from "@app/lib/auth";
@@ -10,8 +9,7 @@ import type {
 import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
 
 import logger from "./logger";
-
-export const statsDClient = new StatsD();
+import { statsDClient } from "./statsDClient";
 
 export function withLogging<T>(
   handler: (

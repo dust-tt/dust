@@ -45,21 +45,21 @@ export const AddActionMenu = ({
         <Button label="Add Tools" variant="primary" icon={PlusIcon} size="sm" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[500px]">
-        <div className="flex flex-row items-center gap-2">
-          <DropdownMenuSearchbar
-            className="flex-grow"
-            placeholder="Search tools..."
-            name="search"
-            value={searchText}
-            onChange={setSearchText}
-            disabled={isAvailableMCPServersLoading}
-          />
-          <Button
-            icon={PlusIcon}
-            label="Add MCP Server"
-            onClick={createRemoteMCPServer}
-          />
-        </div>
+        <DropdownMenuSearchbar
+          className="flex-grow"
+          placeholder="Search tools..."
+          name="search"
+          value={searchText}
+          onChange={setSearchText}
+          disabled={isAvailableMCPServersLoading}
+          button={
+            <Button
+              icon={PlusIcon}
+              label="Add MCP Server"
+              onClick={createRemoteMCPServer}
+            />
+          }
+        />
         <ScrollArea className="max-h-[500px]">
           {isAvailableMCPServersLoading && (
             <div className="flex justify-center py-4">
