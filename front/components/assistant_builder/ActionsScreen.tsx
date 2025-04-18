@@ -1296,8 +1296,9 @@ function AdvancedSettings({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      variant="primary"
+                      variant="outline"
                       label={reasoningModel?.displayName}
+                      isSelect
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
