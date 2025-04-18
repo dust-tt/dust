@@ -45,7 +45,7 @@ export function ChildAgentConfigurationSection({
     );
   }
 
-  if (agentConfigurations.length === 0) {
+  if (!isAgentConfigurationsLoading && agentConfigurations.length === 0) {
     return (
       <ContentMessage
         title="No agents available"
