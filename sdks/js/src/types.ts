@@ -1333,7 +1333,7 @@ const MCPApproveExecutionEventSchema = z.object({
   messageId: z.string(),
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
-  stake: z.optional(z.enum(["low", "high"])),
+  stake: z.optional(z.enum(["low", "high", "never_ask"])),
   metadata: MCPValidationMetadataSchema,
 });
 
