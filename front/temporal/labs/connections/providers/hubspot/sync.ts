@@ -11,6 +11,7 @@ import logger from "@app/logger/logger";
 import { HubspotClient } from "@app/temporal/labs/connections/providers/hubspot/client";
 import type {
   Company,
+  Contact,
   Deal,
   HubspotFilter,
   Note,
@@ -35,7 +36,7 @@ async function upsertToDustDatasource(
   workspaceId: string,
   dataSourceViewId: ModelId,
   company: Company,
-  contacts: { id: string; properties: { [key: string]: string | null } }[],
+  contacts: Contact[],
   deals: Deal[],
   tickets: Ticket[],
   orders: Order[],
