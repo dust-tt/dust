@@ -1,11 +1,11 @@
 import {
+  ActionCommandIcon,
+  ActionMoonIcon,
+  ActionSunIcon,
   Card,
   CardGrid,
   Icon,
   Label,
-  ActionMoonIcon,
-  ActionSunIcon,
-  ActionCommandIcon,
 } from "@dust-tt/sparkle";
 import { Page } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
