@@ -47,7 +47,6 @@ import type {
 } from "@app/types";
 import { FILE_FORMATS } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
 const MAX_OUTPUT_ITEMS = 128;
 
