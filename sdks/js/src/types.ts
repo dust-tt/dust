@@ -35,6 +35,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4.1-mini-2025-04-14"
   | "o1"
   | "o1-mini"
+  | "o3"
   | "o3-mini"
   | "o4-mini"
   | "claude-3-opus-20240229"
