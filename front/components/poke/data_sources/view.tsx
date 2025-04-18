@@ -7,6 +7,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  ScrollArea,
+  ScrollBar,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
@@ -256,29 +258,32 @@ function RawObjectsModal({
         <DialogHeader>
           <DialogTitle>Data source raw objects</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
-          <span className="text-sm font-bold">dataSource</span>
-          <JsonViewer
-            theme={isDark ? "dark" : "light"}
-            value={dataSource}
-            rootName={false}
-            defaultInspectDepth={1}
-          />
-          <span className="text-sm font-bold">coreDataSource</span>
-          <JsonViewer
-            theme={isDark ? "dark" : "light"}
-            value={coreDataSource}
-            rootName={false}
-            defaultInspectDepth={1}
-          />
-          <span className="text-sm font-bold">connector</span>
-          <JsonViewer
-            theme={isDark ? "dark" : "light"}
-            value={connector}
-            rootName={false}
-            defaultInspectDepth={1}
-          />
-        </DialogContainer>
+        <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
+          <DialogContainer>
+            <span className="text-sm font-bold">dataSource</span>
+            <JsonViewer
+              theme={isDark ? "dark" : "light"}
+              value={dataSource}
+              rootName={false}
+              defaultInspectDepth={1}
+            />
+            <span className="text-sm font-bold">coreDataSource</span>
+            <JsonViewer
+              theme={isDark ? "dark" : "light"}
+              value={coreDataSource}
+              rootName={false}
+              defaultInspectDepth={1}
+            />
+            <span className="text-sm font-bold">connector</span>
+            <JsonViewer
+              theme={isDark ? "dark" : "light"}
+              value={connector}
+              rootName={false}
+              defaultInspectDepth={1}
+            />
+          </DialogContainer>
+          <ScrollBar className="py-0" />
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
