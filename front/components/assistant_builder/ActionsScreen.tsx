@@ -6,7 +6,6 @@ import {
   Card,
   CardActionButton,
   CardGrid,
-  ChevronDownIcon,
   Chip,
   classNames,
   CommandIcon,
@@ -1299,7 +1298,7 @@ function AdvancedSettings({
                     <Button
                       variant="outline"
                       label={reasoningModel?.displayName}
-                      icon={ChevronDownIcon}
+                      isSelect
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
