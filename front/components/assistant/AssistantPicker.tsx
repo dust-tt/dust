@@ -25,6 +25,7 @@ interface AssistantPickerProps {
   showFooterButtons?: boolean;
   size?: "xs" | "sm" | "md";
   isLoading?: boolean;
+  mountPortal?: boolean;
 }
 
 export function AssistantPicker({
@@ -35,6 +36,7 @@ export function AssistantPicker({
   showFooterButtons = true,
   size = "md",
   isLoading = false,
+  mountPortal = true,
 }: AssistantPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -65,7 +67,11 @@ export function AssistantPicker({
           />
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-96" align="end">
+      <DropdownMenuContent
+        className="w-96"
+        align="end"
+        mountPortal={mountPortal}
+      >
         <DropdownMenuSearchbar
           autoFocus
           name="search-assistants"
