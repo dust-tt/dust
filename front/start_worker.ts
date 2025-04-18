@@ -5,6 +5,7 @@ import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
+import { runLabsConnectionsWorker } from "@app/temporal/labs/connections/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
 import { runPermissionsWorker } from "@app/temporal/permissions_queue/worker";
@@ -27,6 +28,7 @@ type WorkerName =
   | "document_tracker"
   | "hard_delete"
   | "labs"
+  | "labs_connections"
   | "mentions_count"
   | "permissions_queue"
   | "poke"
@@ -43,6 +45,7 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   document_tracker: runTrackerWorker,
   hard_delete: runHardDeleteWorker,
   labs: runLabsTranscriptsWorker,
+  labs_connections: runLabsConnectionsWorker,
   mentions_count: runMentionsCountWorker,
   permissions_queue: runPermissionsWorker,
   poke: runPokeWorker,
