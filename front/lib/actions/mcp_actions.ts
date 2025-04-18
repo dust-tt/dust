@@ -228,12 +228,16 @@ export async function tryCallMCPTool(
 
   let mcpClient;
   try {
-    mcpClient = await connectToMCPServer(auth, connectionParamsRes.value, {
+    const r = await connectToMCPServer(auth, connectionParamsRes.value, {
       agentConfiguration,
       conversation,
       agentMessage,
       actionConfiguration,
     });
+    if (r.isErr()) {
+      return r;
+    }
+    mcpClient = r.value;
 
     const toolCallResult = await mcpClient.callTool(
       {
@@ -372,23 +376,24 @@ export async function tryListMCPTools(
   const configurations = await Promise.all(
     mcpServerActions.map(async (action) => {
       let tools: MCPToolWithStakeLevelType[] = [];
-      try {
-        tools = await listMCPServerTools(auth, action, {
-          conversationId,
-          messageId,
-        });
-      } catch (error) {
+      const toolsRes = await listMCPServerTools(auth, action, {
+        conversationId,
+        messageId,
+      });
+      if (toolsRes.isErr()) {
         logger.error(
           {
             workspaceId: owner.id,
             conversationId,
             messageId,
-            error,
+            error: toolsRes.error,
           },
-          `Error listing tools from MCP server: ${normalizeError(error)}`
+          `Error listing tools from MCP server: ${normalizeError(toolsRes.error)}`
         );
         return [];
       }
+
+      tools = toolsRes.value;
 
       const toolConfigurations = makeMCPToolConfigurations({
         config: action,
@@ -458,7 +463,7 @@ async function listMCPServerTools(
     conversationId: string;
     messageId: string;
   }
-): Promise<MCPToolWithStakeLevelType[]> {
+): Promise<Result<MCPToolWithStakeLevelType[], Error>> {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
@@ -468,13 +473,17 @@ async function listMCPServerTools(
   });
 
   if (connectionParamsRes.isErr()) {
-    throw connectionParamsRes.error;
+    return connectionParamsRes;
   }
 
   try {
     // Connect to the MCP server.
     const connectionParams = connectionParamsRes.value;
-    mcpClient = await connectToMCPServer(auth, connectionParams);
+    const r = await connectToMCPServer(auth, connectionParams);
+    if (r.isErr()) {
+      return r;
+    }
+    mcpClient = r.value;
     const isDefault =
       isConnectViaMCPServerId(connectionParams) &&
       isDefaultInternalMCPServer(connectionParams.mcpServerId);
@@ -539,7 +548,7 @@ async function listMCPServerTools(
       `Retrieved ${allTools.length} tools from MCP server`
     );
 
-    return allTools;
+    return new Ok(allTools);
   } catch (error) {
     logger.error(
       {
@@ -550,7 +559,7 @@ async function listMCPServerTools(
       },
       `Error listing tools from MCP server: ${normalizeError(error)}`
     );
-    throw error;
+    return new Err(normalizeError(error));
   } finally {
     // Ensure we always close the client connection
     if (mcpClient) {

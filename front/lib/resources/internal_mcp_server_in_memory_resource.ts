@@ -50,11 +50,16 @@ export class InternalMCPServerInMemoryResource {
 
     const server = new InternalMCPServerInMemoryResource(id);
 
-    const mcpClient = await connectToMCPServer(auth, {
+    const s = await connectToMCPServer(auth, {
       type: "mcpServerId",
       mcpServerId: id,
     });
 
+    if (s.isErr()) {
+      return null;
+    }
+
+    const mcpClient = s.value;
     const md = extractMetadataFromServerVersion(mcpClient.getServerVersion());
 
     server.metadata = {

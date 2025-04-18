@@ -36,8 +36,14 @@ import type {
   ConversationType,
   OAuthProvider,
   OAuthUseCase,
+  Result,
 } from "@app/types";
-import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
+import {
+  assertNever,
+  Err,
+  getOAuthConnectionAccessToken,
+  Ok,
+} from "@app/types";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
@@ -109,7 +115,7 @@ export const connectToMCPServer = async (
     conversation?: ConversationType;
     agentMessage?: AgentMessageType;
   } = {}
-) => {
+): Promise<Result<Client, Error>> => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
@@ -153,14 +159,21 @@ export const connectToMCPServer = async (
           );
 
           const url = new URL(remoteMCPServer.url);
-          const sseTransport = new SSEClientTransport(url, {
-            requestInit: {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
+
+          try {
+            const sseTransport = new SSEClientTransport(url, {
+              requestInit: {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
               },
-            },
-          });
-          await mcpClient.connect(sseTransport);
+            });
+            await mcpClient.connect(sseTransport);
+          } catch (e: unknown) {
+            return new Err(
+              new Error("Error establishing connection to remote MCP server.")
+            );
+          }
           break;
 
         default:
@@ -170,8 +183,15 @@ export const connectToMCPServer = async (
     }
     case "remoteMCPServerUrl": {
       const url = new URL(params.remoteMCPServerUrl);
-      const sseTransport = new SSEClientTransport(url);
-      await mcpClient.connect(sseTransport);
+
+      try {
+        const sseTransport = new SSEClientTransport(url);
+        await mcpClient.connect(sseTransport);
+      } catch (e: unknown) {
+        return new Err(
+          new Error("Error establishing connection to remote MCP server.")
+        );
+      }
       break;
     }
 
@@ -181,7 +201,13 @@ export const connectToMCPServer = async (
         mcpServerId: params.mcpServerId,
         messageId: params.messageId,
       });
-      await mcpClient.connect(transport);
+      try {
+        await mcpClient.connect(transport);
+      } catch (e: unknown) {
+        return new Err(
+          new Error("Error establishing connection to local MCP server.")
+        );
+      }
       break;
     }
 
@@ -190,7 +216,7 @@ export const connectToMCPServer = async (
     }
   }
 
-  return mcpClient;
+  return new Ok(mcpClient);
 };
 
 export function extractMetadataFromServerVersion(
@@ -247,11 +273,17 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
 export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
   url: string
-): Promise<Omit<MCPServerType, "id">> {
-  const mcpClient = await connectToMCPServer(auth, {
+): Promise<Result<Omit<MCPServerType, "id">, Error>> {
+  const r = await connectToMCPServer(auth, {
     type: "remoteMCPServerUrl",
     remoteMCPServerUrl: url,
   });
+
+  if (r.isErr()) {
+    return new Err(r.error);
+  }
+
+  const mcpClient = r.value;
 
   try {
     const serverVersion = mcpClient.getServerVersion();
@@ -260,11 +292,15 @@ export async function fetchRemoteServerMetaDataByURL(
     const toolsResult = await mcpClient.listTools();
     const serverTools = extractMetadataFromTools(toolsResult.tools);
 
-    return {
+    return new Ok({
       ...metadata,
       tools: serverTools,
       isDefault: false,
-    };
+    });
+  } catch (e: unknown) {
+    return new Err(
+      new Error("Error getting metadata from the remote MCP server.")
+    );
   } finally {
     await mcpClient.close();
   }
