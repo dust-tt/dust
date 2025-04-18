@@ -2,7 +2,10 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  ConfigurableToolInputSchemas,
+  isDataSourcesToolConfiguration,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { fetchAgentDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -30,9 +33,15 @@ function createServer(): McpServer {
         ],
     },
     async ({ dataSources }) => {
+      if (!isDataSourcesToolConfiguration(dataSources)) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Invalid data sources" }],
+        };
+      }
       const agentDataSourceConfigurations = await concurrentExecutor(
         dataSources,
-        async ({ uri }) => fetchAgentDataSourceConfiguration(uri),
+        async (dataSources) => fetchAgentDataSourceConfiguration(dataSources),
         { concurrency: 10 }
       );
       if (agentDataSourceConfigurations.some((res) => res.isErr())) {

@@ -4,6 +4,10 @@ import {
 } from "@dust-tt/client";
 import { Op } from "sequelize";
 
+import type {
+  DataSourcesToolConfigurationType,
+  TablesConfigurationToolType,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
@@ -18,12 +22,16 @@ import type {
 import { Err, Ok } from "@app/types";
 
 export async function fetchAgentDataSourceConfiguration(
-  uri: string
+  dataSourceConfiguration: DataSourcesToolConfigurationType[0]
 ): Promise<Result<AgentDataSourceConfiguration, Error>> {
-  const match = uri.match(DATA_SOURCE_CONFIGURATION_URI_PATTERN);
+  const match = dataSourceConfiguration.uri.match(
+    DATA_SOURCE_CONFIGURATION_URI_PATTERN
+  );
   if (!match) {
     return new Err(
-      new Error(`Invalid URI for a data source configuration: ${uri}`)
+      new Error(
+        `Invalid URI for a data source configuration: ${dataSourceConfiguration.uri}`
+      )
     );
   }
 
@@ -71,14 +79,16 @@ export async function fetchAgentDataSourceConfiguration(
 
 export async function fetchAgentTableConfigurations(
   auth: Authenticator,
-  uris: string[]
+  tablesConfiguration: TablesConfigurationToolType
 ): Promise<Result<AgentTablesQueryConfigurationTable[], Error>> {
   const configurationIds = [];
-  for (const uri of uris) {
-    const match = uri.match(TABLE_CONFIGURATION_URI_PATTERN);
+  for (const tableConfiguration of tablesConfiguration) {
+    const match = tableConfiguration.uri.match(TABLE_CONFIGURATION_URI_PATTERN);
     if (!match) {
       return new Err(
-        new Error(`Invalid URI for a table configuration: ${uri}`)
+        new Error(
+          `Invalid URI for a table configuration: ${tableConfiguration.uri}`
+        )
       );
     }
     // Safe to do because the inputs are already checked against the zod schema here.
@@ -134,9 +144,9 @@ type CoreSearchArgs = {
 // TODO(mcp): update to fetch multiple uris at once.
 export async function getCoreSearchArgs(
   auth: Authenticator,
-  uri: string
+  dataSourceConfiguration: DataSourcesToolConfigurationType[0]
 ): Promise<Result<CoreSearchArgs, Error>> {
-  const r = await fetchAgentDataSourceConfiguration(uri);
+  const r = await fetchAgentDataSourceConfiguration(dataSourceConfiguration);
 
   if (r.isErr()) {
     return r;

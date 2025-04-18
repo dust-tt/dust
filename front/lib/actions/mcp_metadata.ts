@@ -30,25 +30,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-<<<<<<< HEAD
-import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-  OAuthProvider,
-  OAuthUseCase,
-  Result,
-} from "@app/types";
+import type { OAuthProvider, OAuthUseCase, Result } from "@app/types";
 import {
   assertNever,
   Err,
   getOAuthConnectionAccessToken,
   Ok,
 } from "@app/types";
-=======
-import type { OAuthProvider, OAuthUseCase } from "@app/types";
-import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
->>>>>>> 71ff30afa1 (Add: retrieval as MCP action)
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
@@ -109,7 +97,7 @@ export type MCPConnectionParams =
 export const connectToMCPServer = async (
   auth: Authenticator,
   params: MCPConnectionParams,
-  agentLoopContext: AgentLoopContextType
+  agentLoopContext?: AgentLoopContextType
 ): Promise<Result<Client, Error>> => {
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
