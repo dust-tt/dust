@@ -1,11 +1,12 @@
+import React from "react";
+import { useRef, useState } from "react";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  SearchInput,
-} from "@dust-tt/sparkle";
-import React from "react";
-import { useRef, useState } from "react";
+} from "@sparkle/components/Dropdown";
+import { SearchInput } from "@sparkle/components/SearchInput";
 
 type SearchDropdownMenuProps = {
   searchInputValue: string;
