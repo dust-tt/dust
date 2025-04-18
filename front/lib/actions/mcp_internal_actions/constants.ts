@@ -28,6 +28,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: number;
     isDefault: boolean;
     flag: WhitelistableFeature | null;
+    tools_stakes?: Record<string, MCPToolStakeLevelType>;
   }
 > = {
   // Notes:
@@ -83,6 +84,9 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1002,
     isDefault: false,
     flag: "dev_mcp_actions",
+    tools_stakes: {
+      hello_world: "never_ask",
+    },
   },
   tables_debugger: {
     id: 1003,
@@ -98,14 +102,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1006,
     isDefault: true,
     flag: "dev_mcp_actions",
-  },
-};
-
-export const INTERNAL_TOOLS_STAKE_LEVEL: Partial<
-  Record<InternalMCPServerNameType, Record<string, MCPToolStakeLevelType>>
-> = {
-  authentication_debugger: {
-    hello_world: "low",
   },
 };
 

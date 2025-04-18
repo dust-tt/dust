@@ -280,29 +280,39 @@ export async function getExecutionStatusFromConfig(
     return { status: "pending" };
   }
 
-  if (actionConfiguration.isDefault) {
-    return { status: "allowed_implicitly" };
-  }
+  /**
+   * Permissions:
+   * - "never_ask": Automatically approved
+   * - "low": Ask user for approval and allow to automatically approve next time
+   * - "high": Ask for approval each time
+   * - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
+   */
+  switch (actionConfiguration.permission) {
+    case "never_ask":
+      return { status: "allowed_implicitly" };
+    case "low": {
+      const user = auth.getNonNullableUser();
+      const neverAskSetting = await user.getMetadata(
+        `toolsValidations:${actionConfiguration.toolServerId}`
+      );
 
-  if (
-    !actionConfiguration.permission ||
-    actionConfiguration.permission === "high"
-  ) {
-    return { status: "pending" };
+      if (
+        neverAskSetting &&
+        neverAskSetting.value.includes(`${actionConfiguration.name}`)
+      ) {
+        return { status: "allowed_implicitly" };
+      }
+      return { status: "pending" };
+    }
+    case "high":
+      return { status: "pending" };
+    case undefined: {
+      if (actionConfiguration.isDefault) {
+        return { status: "allowed_implicitly" };
+      }
+      return { status: "pending" };
+    }
+    default:
+      assertNever(actionConfiguration.permission);
   }
-
-  const user = auth.getNonNullableUser();
-  const neverAskSetting = await user.getMetadata(
-    `toolsValidations:${actionConfiguration.toolServerId}`
-  );
-  if (
-    neverAskSetting &&
-    neverAskSetting.value.includes(`${actionConfiguration.name}`)
-  ) {
-    return { status: "allowed_implicitly" };
-  }
-
-  return {
-    status: "pending",
-  };
 }
