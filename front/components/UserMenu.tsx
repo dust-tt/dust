@@ -16,6 +16,7 @@ import {
   LightbulbIcon,
   LogoutIcon,
   ScrollArea,
+  ScrollBar,
   StarIcon,
   UserGroupIcon,
   UserIcon,
@@ -210,6 +211,7 @@ export function UserMenu({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
+          <ScrollBar className="py-0" />
         </ScrollArea>
       </DropdownMenuContent>
     </DropdownMenu>
