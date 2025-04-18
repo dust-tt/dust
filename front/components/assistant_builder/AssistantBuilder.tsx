@@ -158,6 +158,7 @@ export default function AssistantBuilder({
   const [pendingAction, setPendingAction] =
     useState<AssistantBuilderPendingAction>({
       action: null,
+      previousActionName: null,
     });
 
   const {
@@ -316,7 +317,7 @@ export default function AssistantBuilder({
           previousActionName: p.action.name,
         });
       } else if (p.type === "clear_pending") {
-        setPendingAction({ action: null });
+        setPendingAction({ action: null, previousActionName: null });
       } else if (p.type === "insert") {
         if (builderState.actions.some((a) => a.name === p.action.name)) {
           return;
