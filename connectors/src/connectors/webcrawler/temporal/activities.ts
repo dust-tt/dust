@@ -8,9 +8,7 @@ import {
   getAllFoldersForUrl,
   getDisplayNameForFolder,
   getFolderForUrl,
-  getIpAddressForUrl,
   getParentsForPage,
-  isPrivateIp,
   isTopFolder,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
@@ -52,6 +50,8 @@ import {
   WEBCRAWLER_MAX_DEPTH,
   WEBCRAWLER_MAX_PAGES,
 } from "@connectors/types";
+
+import { DustHttpClient, WebCrawlerError } from "../lib/http";
 
 const CONCURRENCY = 1;
 
@@ -126,46 +126,13 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const crawler = new CheerioCrawler(
     {
+      httpClient: new DustHttpClient(),
       navigationTimeoutSecs: 10,
       preNavigationHooks: [
         async (crawlingContext) => {
           Context.current().heartbeat({
             type: "pre_navigation",
           });
-
-          const response = await fetch(crawlingContext.request.url, {
-            method: "HEAD",
-            redirect: "manual",
-          });
-
-          if (response.status >= 300 && response.status < 400) {
-            const redirectUrl = response.headers.get("location");
-            if (redirectUrl != null) {
-              crawlingContext.request.url = redirectUrl;
-            }
-          }
-
-          const { address, family } = await getIpAddressForUrl(
-            crawlingContext.request.url
-          );
-          if (family !== 4) {
-            crawlingContext.request.skipNavigation = true;
-            childLogger.error(
-              {
-                url: crawlingContext.request.url,
-              },
-              `IP address is not IPv4. Skipping.`
-            );
-          }
-          if (isPrivateIp(address)) {
-            crawlingContext.request.skipNavigation = true;
-            childLogger.error(
-              {
-                url: crawlingContext.request.url,
-              },
-              `Private IP address detected. Skipping.`
-            );
-          }
 
           if (!crawlingContext.request.headers) {
             crawlingContext.request.headers = {};
@@ -437,6 +404,15 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         Context.current().heartbeat({
           type: "failed_request",
         });
+
+        if (error instanceof WebCrawlerError) {
+          childLogger.error(
+            { url: context.request.url, type: error.type },
+            error.message
+          );
+          return;
+        }
+
         childLogger.error(
           {
             url: context.request.url,
