@@ -16,7 +16,7 @@ struct RequestSpec {
     url: String,
     headers: Value,
     body: Value,
-    scheme: String,
+    scheme: Option<String>,
     #[serde(rename = "workspaceId")]
     workspace_id: String,
 }
@@ -67,7 +67,14 @@ pub async fn analyze_requests_file(file_path: &Path) -> Result<()> {
     let requests: Vec<RequestSpec> = serde_json::from_str(&content)?;
 
     for request in requests {
-        let full_url = format!("{}://{}", request.scheme, request.url);
+        let full_url = format!(
+            "{}://{}",
+            match request.scheme {
+                Some(scheme) => scheme,
+                None => "http".to_string(),
+            },
+            request.url
+        );
         println!("Checking URL: {}", full_url);
 
         // First check if the initial URL points to a private IP
