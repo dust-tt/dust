@@ -10,7 +10,7 @@ import {
 
 import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
-  DEFAULT_MCP_TOOL_STAKE_LEVEL,
+  FALLBACK_MCP_TOOL_STAKE_LEVEL,
   REMOTE_MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import {
@@ -79,7 +79,7 @@ export function ToolsList({
             (tool: { name: string; description: string }, index: number) => {
               const toolPermission = toolsPermissions[tool.name]
                 ? toolsPermissions[tool.name]
-                : DEFAULT_MCP_TOOL_STAKE_LEVEL;
+                : FALLBACK_MCP_TOOL_STAKE_LEVEL;
               return (
                 <div
                   key={index}
