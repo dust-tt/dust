@@ -45,7 +45,7 @@ export function ChildAgentConfigurationSection({
     );
   }
 
-  if (agentConfigurations.length === 0) {
+  if (!isAgentConfigurationsLoading && agentConfigurations.length === 0) {
     return (
       <ContentMessage
         title="No agents available"
@@ -106,6 +106,7 @@ export function ChildAgentConfigurationSection({
                   />
                 }
                 showFooterButtons={false}
+                mountPortal={false}
               />
             </div>
           </div>
@@ -127,6 +128,7 @@ export function ChildAgentConfigurationSection({
                 />
               }
               showFooterButtons={false}
+              mountPortal={false}
             />
           </div>
         </Card>
