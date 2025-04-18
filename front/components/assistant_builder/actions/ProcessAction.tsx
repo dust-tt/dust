@@ -33,7 +33,7 @@ export function hasErrorActionProcess(
   }
   if (
     !action.configuration.jsonSchema ||
-    !isValidJsonSchema(action.configuration.jsonSchema).isValid
+    !isValidJsonSchema(action.configuration._jsonSchemaString).isValid
   ) {
     return errorMessage;
   }
@@ -101,7 +101,10 @@ export function ActionProcess({
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [schemaEdit, setSchemaEdit] = useState(
-    actionConfiguration?.jsonSchema ?? null
+    actionConfiguration?._jsonSchemaString ??
+      (actionConfiguration?.jsonSchema
+        ? JSON.stringify(actionConfiguration.jsonSchema, null, 2)
+        : null)
   );
   const sendNotification = useSendNotification();
   const toggleAdvancedSettings = () => {
@@ -147,12 +150,17 @@ export function ActionProcess({
         });
 
         if (res.isOk()) {
-          const schema = res.value ? JSON.stringify(res.value, null, 2) : null;
-          setSchemaEdit(schema);
+          const schemaObject = res.value;
+          const schemaString = schemaObject
+            ? JSON.stringify(schemaObject, null, 2)
+            : null;
+
+          setSchemaEdit(schemaString);
           setEdited(true);
           updateAction((previousAction) => ({
             ...previousAction,
-            jsonSchema: schema,
+            jsonSchema: schemaObject,
+            _jsonSchemaString: schemaString,
           }));
         } else {
           sendNotification({
@@ -176,6 +184,7 @@ export function ActionProcess({
       updateAction((previousAction) => ({
         ...previousAction,
         jsonSchema: null,
+        _jsonSchemaString: null,
       }));
     }
   };
@@ -267,7 +276,7 @@ export function ActionProcess({
           onClick={generateSchemaFromInstructions}
         />
         <TextArea
-          error={isValidJsonSchema(schemaEdit).error}
+          error={schemaEdit ? isValidJsonSchema(schemaEdit).error : undefined}
           showErrorLabel={true}
           placeholder={
             '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
@@ -275,12 +284,24 @@ export function ActionProcess({
           value={schemaEdit ?? ""}
           disabled={isGeneratingSchema}
           onChange={(e) => {
-            setSchemaEdit(e.target.value);
+            const newSchemaString = e.target.value;
+            setSchemaEdit(newSchemaString);
             setEdited(true);
-            updateAction((previousAction) => ({
-              ...previousAction,
-              jsonSchema: e.target.value ?? null,
-            }));
+
+            const parsedSchema = isValidJsonSchema(newSchemaString);
+            if (parsedSchema.isValid) {
+              updateAction((previousAction) => ({
+                ...previousAction,
+                jsonSchema: JSON.parse(newSchemaString),
+                _jsonSchemaString: newSchemaString,
+              }));
+            } else {
+              // If parsing fails, still update the string version but don't update the schema
+              updateAction((previousAction) => ({
+                ...previousAction,
+                _jsonSchemaString: newSchemaString,
+              }));
+            }
           }}
         />
       </div>

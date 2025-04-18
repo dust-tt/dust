@@ -42,6 +42,7 @@ export const PROCESS_SCHEMA_ALLOWED_TYPES = [
   "number",
   "boolean",
 ] as const;
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 // Properties in the process configuration table are stored as an array of objects.
 export type ProcessSchemaPropertyType = {
@@ -58,7 +59,7 @@ export type ProcessConfigurationType = {
 
   dataSources: DataSourceConfiguration[];
   relativeTimeFrame: RetrievalTimeframe;
-  jsonSchema: Record<string, any> | null;
+  jsonSchema: JSONSchema | null;
 
   name: string;
   description: string | null;
@@ -112,7 +113,7 @@ export class ProcessActionType extends BaseAction {
     tagsIn: string[] | null;
     tagsNot: string[] | null;
   };
-  readonly jsonSchema: Record<string, any> | null;
+  readonly jsonSchema: JSONSchema | null;
   readonly outputs: ProcessActionOutputsType | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;

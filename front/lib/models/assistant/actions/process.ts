@@ -1,3 +1,4 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -26,7 +27,7 @@ export class AgentProcessConfiguration extends WorkspaceAwareModel<AgentProcessC
   // Maintained for backward compatibility for old version of the process action
   // All saved process actions will used jsonSchema from now on
   declare schema: ProcessSchemaPropertyType[] | null;
-  declare jsonSchema: Record<string, any> | null;
+  declare jsonSchema: JSONSchema | null;
 
   declare name: string | null;
   declare description: string | null;
@@ -144,7 +145,7 @@ export class AgentProcessAction extends WorkspaceAwareModel<AgentProcessAction> 
   // Maintained for backward compatibility for old version of the process action
   // All saved process actions will used jsonSchema from now on
   declare schema: ProcessSchemaPropertyType[] | null;
-  declare jsonSchema: Record<string, any> | null;
+  declare jsonSchema: JSONSchema | null;
   declare outputs: ProcessActionOutputsType | null;
   declare functionCallId: string | null;
   declare functionCallName: string | null;

@@ -1,4 +1,5 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { uniqueId } from "lodash";
 import type React from "react";
 import type { SVGProps } from "react";
@@ -111,7 +112,8 @@ export type AssistantBuilderProcessConfiguration = {
 } & {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   tagsFilter: AssistantBuilderTagsFilter | null;
-  jsonSchema: string | null;
+  jsonSchema: JSONSchema | null;
+  _jsonSchemaString?: string | null;
 };
 
 // Websearch configuration (no configuration)
@@ -332,6 +334,7 @@ export function getDefaultProcessActionConfiguration() {
       timeFrame: null,
       tagsFilter: null,
       jsonSchema: null,
+      _jsonSchemaString: null,
     } as AssistantBuilderProcessConfiguration,
     name: DEFAULT_PROCESS_ACTION_NAME,
     description: "",

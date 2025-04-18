@@ -1,5 +1,6 @@
 import moment from "moment-timezone";
 import { z } from "zod";
+import type { JSONSchema7 } from "json-schema";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 
@@ -745,7 +746,7 @@ export type RetrievalActionPublicType = z.infer<
   typeof RetrievalActionTypeSchema
 >;
 
-const ProcessSchemaPropertySchema = z.union([z.record(z.string(), z.unknown()), z.null()])
+const ProcessSchemaPropertySchema = z.union([z.custom<JSONSchema7>(), z.null()]);
 
 const ProcessActionOutputsSchema = z.object({
   data: z.array(z.unknown()),
