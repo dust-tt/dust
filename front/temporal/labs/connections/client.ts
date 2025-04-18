@@ -1,5 +1,9 @@
 import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
+import {
+  ScheduleAlreadyRunning,
+  ScheduleOverlapPolicy,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import { getTemporalClient } from "@app/lib/temporal";
@@ -17,65 +21,57 @@ export async function launchLabsConnectionWorkflow(
   connectionConfiguration: LabsConnectionsConfigurationResource
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
-  const workflowId = makeLabsConnectionWorkflowId({
+  const scheduleId = makeLabsConnectionWorkflowId({
     connectionConfiguration,
   });
 
   try {
+    // First run a full sync
     await client.workflow.start(fullSyncLabsConnectionWorkflow, {
       args: [connectionConfiguration.id],
       taskQueue: CONNECTIONS_QUEUE_NAME,
-      workflowId: workflowId,
+      workflowId: `${scheduleId}-full`,
       memo: {
         configurationId: connectionConfiguration.id,
         dataSourceId: connectionConfiguration.dataSourceViewId,
       },
     });
-    logger.info(
-      {
-        workflowId,
-      },
-      "Labs connection sync workflow started."
-    );
-    return new Ok(workflowId);
-  } catch (e) {
-    logger.error(
-      {
-        workflowId,
-        error: e,
-      },
-      "Labs connection sync workflow failed."
-    );
-    return new Err(e as Error);
-  }
-}
 
-export async function launchIncrementalSyncLabsConnectionWorkflow(
-  connectionConfiguration: LabsConnectionsConfigurationResource
-): Promise<Result<string, Error>> {
-  const client = await getTemporalClient();
-  const workflowId = makeLabsConnectionWorkflowId({
-    connectionConfiguration,
-    isIncrementalSync: true,
-  });
-
-  try {
-    await client.workflow.start(incrementalSyncLabsConnectionWorkflow, {
-      args: [connectionConfiguration.id],
-      taskQueue: CONNECTIONS_QUEUE_NAME,
-      workflowId: workflowId,
+    // Then set up an hourly schedule for incremental syncs
+    await client.schedule.create({
+      action: {
+        type: "startWorkflow",
+        workflowType: incrementalSyncLabsConnectionWorkflow,
+        args: [connectionConfiguration.id],
+        taskQueue: CONNECTIONS_QUEUE_NAME,
+      },
+      scheduleId: `${scheduleId}-incremental`,
+      policies: {
+        overlap: ScheduleOverlapPolicy.SKIP,
+      },
+      spec: {
+        intervals: [{ every: "1h" }],
+      },
+      memo: {
+        configurationId: connectionConfiguration.id,
+        dataSourceId: connectionConfiguration.dataSourceViewId,
+      },
     });
+
     logger.info(
       {
-        workflowId,
+        scheduleId,
       },
-      "Labs connection incremental sync workflow started."
+      "Labs connection sync workflow and schedule started."
     );
-    return new Ok(workflowId);
+    return new Ok(scheduleId);
   } catch (e) {
+    if (e instanceof ScheduleAlreadyRunning) {
+      return new Ok(scheduleId);
+    }
     logger.error(
       {
-        workflowId,
+        scheduleId,
         error: e,
       },
       "Labs connection sync workflow failed."
@@ -89,18 +85,30 @@ export async function stopLabsConnectionWorkflow(
   setInactive: boolean = true
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
-  const workflowId = makeLabsConnectionWorkflowId({ connectionConfiguration });
+  const scheduleId = makeLabsConnectionWorkflowId({ connectionConfiguration });
 
   try {
-    const handle: WorkflowHandle<typeof fullSyncLabsConnectionWorkflow> =
-      client.workflow.getHandle(workflowId);
+    // Stop any running full sync workflow
     try {
+      const handle: WorkflowHandle<typeof fullSyncLabsConnectionWorkflow> =
+        client.workflow.getHandle(`${scheduleId}-full`);
       await handle.terminate();
     } catch (e) {
       if (!(e instanceof WorkflowNotFoundError)) {
         throw e;
       }
     }
+
+    // Delete the incremental sync schedule
+    try {
+      const handle = client.schedule.getHandle(`${scheduleId}-incremental`);
+      await handle.delete();
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+    }
+
     if (setInactive) {
       await connectionConfiguration.setIsEnabled(false);
     }
@@ -108,7 +116,7 @@ export async function stopLabsConnectionWorkflow(
   } catch (e) {
     logger.error(
       {
-        workflowId,
+        scheduleId,
         error: e,
       },
       "Failed stopping workflow."

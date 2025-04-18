@@ -1,5 +1,4 @@
 import { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
-import { launchIncrementalSyncLabsConnectionWorkflow } from "@app/temporal/labs/connections/client";
 import { getHubspotProvider } from "@app/temporal/labs/connections/providers/hubspot";
 import type { LabsConnectionProvider } from "@app/temporal/labs/connections/types";
 import type { ModelId } from "@app/types";
@@ -58,21 +57,5 @@ export async function incrementalSyncLabsConnectionActivity(
 
   if (result.value.cursor !== configuration.lastSyncCursor) {
     await configuration.setLastSyncCursor(result.value.cursor);
-  }
-}
-
-export async function startIncrementalSyncActivity(
-  configurationId: ModelId
-): Promise<void> {
-  const configuration =
-    await LabsConnectionsConfigurationResource.fetchByModelId(configurationId);
-  if (!configuration) {
-    throw new Error(`Configuration ${configurationId} not found`);
-  }
-
-  const result =
-    await launchIncrementalSyncLabsConnectionWorkflow(configuration);
-  if (result.isErr()) {
-    throw result.error;
   }
 }
