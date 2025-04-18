@@ -1523,12 +1523,10 @@ function Capabilities({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          label={
-            totalCapabilities
-              ? `Capabilities (${totalCapabilities})`
-              : "Capabilities"
-          }
+          label={"Capabilities"}
           size="sm"
+          isCounter={totalCapabilities > 0}
+          counterValue={`${totalCapabilities}`}
           isSelect
         />
       </DropdownMenuTrigger>
