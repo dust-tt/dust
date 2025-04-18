@@ -31,6 +31,219 @@ function formatDate(dateString: string): string {
   return moment(dateString).utc().format("YYYY-MM-DD");
 }
 
+interface Section {
+  prefix: string;
+  content: string;
+  sections: Section[];
+}
+
+function createContactSection(contact: Contact, documentId: string): Section {
+  const props = contact.properties || {};
+  const contactName = [props.firstname, props.lastname]
+    .filter(Boolean)
+    .join(" ");
+  const contactDetails = [
+    props.jobtitle && `Title: ${props.jobtitle}`,
+    props.email && `Email: ${props.email}`,
+    props.phone && `Phone: ${props.phone}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    prefix: `${documentId}-contact-${contact.id}`,
+    content: `${contactName}\n${contactDetails}`,
+    sections: [],
+  };
+}
+
+function createDealSection(deal: Deal, documentId: string): Section {
+  const props = deal.properties || {};
+  const dealDetails = [
+    props.dealname,
+    props.dealstage && `Stage: ${props.dealstage}`,
+    props.amount && `Amount: ${props.amount}`,
+    props.closedate && `Close Date: ${props.closedate}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    prefix: `${documentId}-deal-${deal.id}`,
+    content: dealDetails,
+    sections: [],
+  };
+}
+
+function createTicketSection(ticket: Ticket, documentId: string): Section {
+  return {
+    prefix: `${documentId}-ticket-${ticket.id}`,
+    content: [
+      ticket.properties.subject || "Untitled",
+      `Stage: ${ticket.properties.hs_pipeline_stage || "Unknown stage"}`,
+      `Priority: ${ticket.properties.hs_ticket_priority || "Unknown"}`,
+      `Created: ${ticket.properties.createdate || "Unknown"}`,
+    ].join("\n"),
+    sections: [],
+  };
+}
+
+function createOrderSection(order: Order, documentId: string): Section {
+  return {
+    prefix: `${documentId}-order-${order.id}`,
+    content: [
+      order.properties.name || "Untitled",
+      `Quantity: ${order.properties.quantity || "0"}`,
+      `Price: ${order.properties.price || "0"}`,
+      `Total: ${order.properties.amount || "0"}`,
+      `Date: ${order.properties.createdate || "Unknown"}`,
+    ].join("\n"),
+    sections: [],
+  };
+}
+
+function createNoteSection(note: Note, documentId: string): Section {
+  const props = note.properties || {};
+  const formattedDate = props.hs_createdate
+    ? formatDate(props.hs_createdate)
+    : "Unknown date";
+  const cleanedNoteBody = sanitizeHtml(props.hs_note_body || "Empty note", {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
+
+  return {
+    prefix: `${documentId}-note-${note.id}`,
+    content: `${formattedDate}: ${cleanedNoteBody}`,
+    sections: [],
+  };
+}
+
+function createCompanySection(
+  documentId: string,
+  company: Company,
+  contacts: Contact[],
+  deals: Deal[],
+  tickets: Ticket[],
+  orders: Order[],
+  notes: Note[]
+): Section {
+  const props = company.properties || {};
+  const companyDetails = [
+    `Company Name: ${props.name || "Unknown Company"}`,
+    props.industry && `Industry: ${props.industry}`,
+    props.annualrevenue && `Annual Revenue: ${props.annualrevenue}`,
+    props.numberofemployees &&
+      `Company Size: ${props.numberofemployees} employees`,
+    props.phone && `Phone: ${props.phone}`,
+    props.website && `Website: ${props.website}`,
+    props.description && `Description: ${props.description}`,
+    props.lifecyclestage && `Lifecycle Stage: ${props.lifecyclestage}`,
+    props.hubspot_owner_id && `Owner: ${props.hubspot_owner_id}`,
+    props.hs_lead_status && `Lead Status: ${props.hs_lead_status}`,
+    props.type && `Type: ${props.type}`,
+    props.address &&
+      `Address: ${props.address}, ${props.city || ""}, ${props.state || ""}, ${props.country || ""}, ${props.zip || ""}`,
+    props.facebook_company_page && `Facebook: ${props.facebook_company_page}`,
+    props.linkedin_company_page && `LinkedIn: ${props.linkedin_company_page}`,
+    props.twitterhandle && `Twitter: ${props.twitterhandle}`,
+    props.hs_analytics_source && `Source: ${props.hs_analytics_source}`,
+    props.hs_pipeline && `Pipeline: ${props.hs_pipeline}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const sections: Section[] = [
+    {
+      prefix: `${documentId}-details`,
+      content: companyDetails,
+      sections: [],
+    },
+  ];
+
+  if (contacts.length > 0) {
+    sections.push({
+      prefix: `${documentId}-contacts`,
+      content: "Key Contacts:",
+      sections: contacts.map((contact) =>
+        createContactSection(contact, documentId)
+      ),
+    });
+  }
+
+  if (deals.length > 0) {
+    sections.push({
+      prefix: `${documentId}-deals`,
+      content: "Deals:",
+      sections: deals.map((deal) => createDealSection(deal, documentId)),
+    });
+  }
+
+  if (tickets.length > 0) {
+    sections.push({
+      prefix: `${documentId}-tickets`,
+      content: "Tickets:",
+      sections: tickets.map((ticket) =>
+        createTicketSection(ticket, documentId)
+      ),
+    });
+  }
+
+  if (orders.length > 0) {
+    sections.push({
+      prefix: `${documentId}-orders`,
+      content: "Orders:",
+      sections: orders.map((order) => createOrderSection(order, documentId)),
+    });
+  }
+
+  if (notes.length > 0) {
+    sections.push({
+      prefix: `${documentId}-notes`,
+      content: "Notes:",
+      sections: notes.map((note) => createNoteSection(note, documentId)),
+    });
+  }
+
+  return {
+    prefix: documentId,
+    content: `Company Summary for ${props.name || "Unknown Company"}`,
+    sections,
+  };
+}
+
+function createCompanyTags(
+  company: Company,
+  contacts: Contact[],
+  deals: Deal[]
+): string[] {
+  const props = company.properties || {};
+
+  const baseTags = ["hubspot"];
+
+  const companyTags = [
+    props.name && `company:${props.name}`,
+    props.industry && `industry:${props.industry}`,
+    props.lifecyclestage && `stage:${props.lifecyclestage}`,
+    props.hs_lead_status && `lead_status:${props.hs_lead_status}`,
+    props.type && `type:${props.type}`,
+    props.hs_pipeline && `pipeline:${props.hs_pipeline}`,
+    props.hs_analytics_source && `source:${props.hs_analytics_source}`,
+  ].filter((tag): tag is string => Boolean(tag));
+
+  const contactRoleTags = contacts
+    .map((contact) => contact.properties?.jobtitle)
+    .filter((title): title is string => Boolean(title))
+    .map((title) => `role:${title}`);
+
+  const dealStageTags = deals
+    .map((deal) => deal.properties?.dealstage)
+    .filter((stage): stage is string => Boolean(stage))
+    .map((stage) => `deal_stage:${stage}`);
+
+  return [...baseTags, ...companyTags, ...contactRoleTags, ...dealStageTags];
+}
+
 async function upsertToDustDatasource(
   coreAPI: CoreAPI,
   workspaceId: string,
@@ -46,118 +259,15 @@ async function upsertToDustDatasource(
   const documentId = `company-${company.id}`;
   const props = company.properties || {};
 
-  const companyDetails = [
-    `Company Name: ${props.name || "Unknown Company"}`,
-    props.industry && `Industry: ${props.industry}`,
-    props.annualrevenue && `Annual Revenue: ${props.annualrevenue}`,
-    props.numberofemployees &&
-      `Company Size: ${props.numberofemployees} employees`,
-    props.phone && `Phone: ${props.phone}`,
-    props.website && `Website: ${props.website}`,
-    props.description && `Description: ${props.description}`,
-    props.lifecyclestage && `Lifecycle Stage: ${props.lifecyclestage}`,
-    props.hubspot_owner_id && `Owner: ${props.hubspot_owner_id}`,
-    props.hs_lead_status && `Lead Status: ${props.hs_lead_status}`,
-    props.type && `Type: ${props.type}`,
-    props.address &&
-      `Address: ${props.address}, ${props.city || ""}, ${props.state || ""}, ${
-        props.country || ""
-      }, ${props.zip || ""}`,
-    props.facebook_company_page && `Facebook: ${props.facebook_company_page}`,
-    props.linkedin_company_page && `LinkedIn: ${props.linkedin_company_page}`,
-    props.twitterhandle && `Twitter: ${props.twitterhandle}`,
-    props.hs_analytics_source && `Source: ${props.hs_analytics_source}`,
-    props.hs_pipeline && `Pipeline: ${props.hs_pipeline}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const contactsInfo = contacts
-    .map((contact) => {
-      const cProps = contact.properties || {};
-      const contactDetails = [
-        [cProps.firstname, cProps.lastname].filter(Boolean).join(" "),
-        cProps.jobtitle && `Title: ${cProps.jobtitle}`,
-        cProps.email && `Email: ${cProps.email}`,
-        cProps.phone && `Phone: ${cProps.phone}`,
-      ].filter(Boolean);
-
-      return contactDetails.length > 0
-        ? `- ${contactDetails.join(", ")}`
-        : null;
-    })
-    .filter(Boolean)
-    .join("\n");
-
-  const dealsInfo = deals
-    .map((deal) => {
-      const dProps = deal.properties || {};
-      const dealDetails = [
-        dProps.dealname && `${dProps.dealname}`,
-        dProps.dealstage && `Stage: ${dProps.dealstage}`,
-        dProps.amount && `Amount: ${dProps.amount}`,
-        dProps.closedate && `Close Date: ${dProps.closedate}`,
-      ].filter(Boolean);
-
-      return dealDetails.length > 0 ? `- ${dealDetails.join(", ")}` : null;
-    })
-    .filter(Boolean)
-    .join("\n");
-
-  const ticketsInfo = tickets
-    .map(
-      (ticket) =>
-        `- ${ticket.properties.subject || "Untitled"}: ${
-          ticket.properties.hs_pipeline_stage || "Unknown stage"
-        }, Priority: ${ticket.properties.hs_ticket_priority || "Unknown"}, Created: ${
-          ticket.properties.createdate || "Unknown"
-        }`
-    )
-    .join("\n");
-
-  const ordersInfo = orders
-    .map(
-      (order) =>
-        `- ${order.properties.name || "Untitled"}: Quantity: ${
-          order.properties.quantity || "0"
-        }, Price: ${order.properties.price || "0"}, Total: ${
-          order.properties.amount || "0"
-        }, Date: ${order.properties.createdate || "Unknown"}`
-    )
-    .join("\n");
-
-  const notesInfo = notes
-    .map((note) => {
-      const nProps = note.properties || {};
-      const formattedDate = nProps.hs_createdate
-        ? formatDate(nProps.hs_createdate)
-        : "Unknown date";
-      const cleanedNoteBody = sanitizeHtml(
-        nProps.hs_note_body || "Empty note",
-        { allowedTags: [], allowedAttributes: {} }
-      );
-      return `- ${formattedDate}: ${cleanedNoteBody}`;
-    })
-    .join("\n");
-
-  const content = `
-Company Summary for ${props.name || "Unknown Company"}
-
-Basic Company Details:
-${companyDetails}
-
-${contactsInfo ? `Key Contacts:\n${contactsInfo}` : ""}
-
-${dealsInfo ? `Deals:\n${dealsInfo}` : ""}
-
-${ticketsInfo ? `Tickets:\n${ticketsInfo}` : ""}
-
-${ordersInfo ? `Orders:\n${ordersInfo}` : ""}
-
-${notesInfo ? `Notes:\n${notesInfo}` : ""}
-
-${props.notes_last_updated ? `Last Note Updated: ${props.notes_last_updated}` : ""}
-  `.trim();
+  const section = createCompanySection(
+    documentId,
+    company,
+    contacts,
+    deals,
+    tickets,
+    orders,
+    notes
+  );
 
   try {
     const user = await UserResource.fetchByModelId(workspaceId);
@@ -199,37 +309,12 @@ ${props.notes_last_updated ? `Last Note Updated: ${props.notes_last_updated}` : 
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       documentId: documentId,
-      tags: [
-        "hubspot",
-        ...(props.name ? [`company:${props.name}`] : []),
-        ...(props.industry ? [`industry:${props.industry}`] : []),
-        ...(props.lifecyclestage ? [`stage:${props.lifecyclestage}`] : []),
-        ...(props.hs_lead_status
-          ? [`lead_status:${props.hs_lead_status}`]
-          : []),
-        ...(props.type ? [`type:${props.type}`] : []),
-        ...(props.hs_pipeline ? [`pipeline:${props.hs_pipeline}`] : []),
-        ...(props.hs_analytics_source
-          ? [`source:${props.hs_analytics_source}`]
-          : []),
-        ...contacts
-          .map((c) => c.properties?.jobtitle)
-          .filter(Boolean)
-          .map((title) => `role:${title}`),
-        ...deals
-          .map((d) => d.properties?.dealstage)
-          .filter(Boolean)
-          .map((stage) => `deal_stage:${stage}`),
-      ],
+      tags: createCompanyTags(company, contacts, deals),
       parentId: null,
       parents: [documentId],
       sourceUrl: `https://app.hubspot.com/contacts/${portalId}/company/${company.id}`,
       timestamp: null,
-      section: {
-        prefix: documentId,
-        content: content,
-        sections: [],
-      },
+      section,
       credentials: dustManagedCredentials(),
       lightDocumentOutput: true,
       title: `${props.name || company.id}`,
