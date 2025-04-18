@@ -23,6 +23,7 @@ async function testHubspotCredentials(
     const result = await client.testCredentials();
 
     if (result.isErr()) {
+      logger.error({ error: result.error }, "Hubspot test credentials failed");
       return {
         success: false,
         error: result.error.message,
@@ -58,6 +59,7 @@ async function handler(
   const bodyValidation = TestCredentialsBodyCodec.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
+    logger.error({ pathError }, "Test credentials request validation failed");
     return apiError(req, res, {
       status_code: 400,
       api_error: {

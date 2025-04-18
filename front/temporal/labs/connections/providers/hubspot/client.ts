@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
+import logger from "@app/logger/logger";
 import type { HubspotFilter } from "@app/temporal/labs/connections/providers/hubspot/types";
 import type { Contact } from "@app/temporal/labs/connections/providers/hubspot/types";
 import {
@@ -17,11 +18,24 @@ import { Err, Ok } from "@app/types";
 
 const CompanySearchResult = t.type({
   id: t.string,
+  properties: t.record(t.string, t.unknown),
+  createdAt: t.string,
+  updatedAt: t.string,
+  archived: t.boolean,
+});
+
+const PagingNext = t.type({
+  after: t.string,
+  link: t.string,
+});
+
+const Paging = t.type({
+  next: t.union([PagingNext, t.undefined]),
 });
 
 const CompanySearchResponse = t.type({
-  total: t.number,
   results: t.array(CompanySearchResult),
+  paging: t.union([Paging, t.undefined]),
 });
 
 const CompanyDetailsResponse = t.type({
@@ -143,6 +157,12 @@ export class HubspotClient {
         });
       }
 
+      const errorBody = await response.text();
+      logger.error(
+        { status: response.status, endpoint, errorBody },
+        "Hubspot API error response"
+      );
+
       throw new HubspotAPIError(
         `HubSpot API responded with status: ${response.status}`,
         {
@@ -157,6 +177,10 @@ export class HubspotClient {
 
     if (isLeft(result)) {
       const pathErrors = reporter.formatValidationErrors(result.left);
+      logger.error(
+        { endpoint, pathErrors, responseBody },
+        "Hubspot API response validation failed"
+      );
       throw HubspotAPIError.fromValidationError({
         endpoint,
         pathErrors,
