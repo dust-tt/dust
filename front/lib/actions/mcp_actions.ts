@@ -523,7 +523,7 @@ async function listMCPServerTools(
           if (r.isErr()) {
             return r;
           }
-          toolsMetadata = INTERNAL_MCP_SERVERS[r.value.name].tools_stakes;
+          toolsMetadata = INTERNAL_MCP_SERVERS[r.value.name].tools_stakes || {};
           break;
         case "remote":
           toolsMetadata = (
