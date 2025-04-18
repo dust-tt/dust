@@ -110,7 +110,10 @@ export function asDisplayName(name?: string | null) {
     return "";
   }
 
-  return name.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+  return name
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 // UUID utils.
