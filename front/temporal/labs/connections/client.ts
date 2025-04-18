@@ -1,6 +1,7 @@
 import type { WorkflowHandle } from "@temporalio/client";
 import {
   ScheduleAlreadyRunning,
+  ScheduleNotFoundError,
   ScheduleOverlapPolicy,
   WorkflowNotFoundError,
 } from "@temporalio/client";
@@ -105,7 +106,7 @@ export async function stopLabsConnectionWorkflow(
       const handle = client.schedule.getHandle(`${scheduleId}-incremental`);
       await handle.delete();
     } catch (e) {
-      if (!(e instanceof WorkflowNotFoundError)) {
+      if (!(e instanceof ScheduleNotFoundError)) {
         throw e;
       }
     }
