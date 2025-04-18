@@ -1,4 +1,5 @@
 import {
+  ActionGlobeAltIcon,
   Avatar,
   BookOpenIcon,
   Button,
@@ -35,6 +36,7 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import { uniqueId } from "lodash";
+import { BarChartIcon, LightbulbIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import React, {
   useCallback,
@@ -1434,12 +1436,14 @@ function Capabilities({
     name,
     description,
     enabled,
+    icon,
     onEnable,
     onDisable,
   }: {
     name: string;
     description: string;
     enabled: boolean;
+    icon?: React.ComponentType;
     onEnable: () => void;
     onDisable: () => void;
   }) => {
@@ -1449,7 +1453,7 @@ function Capabilities({
         onCheckedChange={enabled ? onDisable : onEnable}
         className="mb-0 mt-0 pb-0 pr-0 pt-0"
       >
-        <DropdownMenuItem label={name} description={description} />
+        <DropdownMenuItem icon={icon} label={name} description={description} />
       </DropdownMenuCheckboxItem>
     );
   };
@@ -1523,12 +1527,10 @@ function Capabilities({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          label={
-            totalCapabilities
-              ? `Capabilities (${totalCapabilities})`
-              : "Capabilities"
-          }
+          label={"Capabilities"}
           size="sm"
+          isCounter={totalCapabilities > 0}
+          counterValue={`${totalCapabilities}`}
           isSelect
         />
       </DropdownMenuTrigger>
@@ -1537,6 +1539,7 @@ function Capabilities({
           <Capability
             name="Web search & browse"
             description="Agent can search (Google) and retrieve information from specific websites."
+            icon={() => <Avatar icon={ActionGlobeAltIcon} size="sm" />}
             enabled={isWebNavigationEnabled}
             onEnable={() => {
               setEdited(true);
@@ -1560,6 +1563,7 @@ function Capabilities({
         <Capability
           name="Data visualization"
           description="Agent can generate charts and graphs."
+          icon={() => <Avatar icon={BarChartIcon} size="sm" />}
           enabled={builderState.visualizationEnabled}
           onEnable={() => {
             setEdited(true);
@@ -1581,6 +1585,7 @@ function Capabilities({
           <Capability
             name="Reasoning"
             description="Agent can decide to trigger a reasoning model for complex tasks"
+            icon={() => <Avatar icon={LightbulbIcon} size="sm" />}
             enabled={isReasoningEnabled}
             onEnable={() => {
               setEdited(true);
@@ -1605,6 +1610,7 @@ function Capabilities({
           return (
             <Capability
               key={view.id}
+              icon={() => getAvatar(view.server)}
               name={asDisplayName(view.server.name)}
               description={view.server.description}
               enabled={
