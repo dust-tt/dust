@@ -67,6 +67,11 @@ pub async fn analyze_requests_file(file_path: &Path) -> Result<()> {
     let requests: Vec<RequestSpec> = serde_json::from_str(&content)?;
 
     for request in requests {
+        if request.url.is_empty() {
+            println!("Skipping empty URL");
+            continue;
+        }
+
         let full_url = format!(
             "{}://{}",
             match request.scheme {
