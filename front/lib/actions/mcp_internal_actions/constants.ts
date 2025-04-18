@@ -72,7 +72,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   // Dev
   data_sources_debugger: {
     id: 1000,
-    isDefault: true,
+    isDefault: false,
     flag: "dev_mcp_actions",
   },
   child_agent_debugger: {
