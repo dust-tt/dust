@@ -24,6 +24,7 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
 
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
+  declare remoteMCPServer: NonAttribute<RemoteMCPServerModel>;
 }
 MCPServerViewModel.init(
   {
@@ -133,12 +134,12 @@ MCPServerViewModel.belongsTo(SpaceModel, {
 });
 
 RemoteMCPServerModel.hasMany(MCPServerViewModel, {
-  as: "remoteMCPServerForView",
+  as: "remoteMCPServer",
   foreignKey: { name: "remoteMCPServerId", allowNull: false },
   onDelete: "RESTRICT",
 });
 MCPServerViewModel.belongsTo(RemoteMCPServerModel, {
-  as: "remoteMCPServerForView",
+  as: "remoteMCPServer",
   foreignKey: { name: "remoteMCPServerId", allowNull: false },
 });
 

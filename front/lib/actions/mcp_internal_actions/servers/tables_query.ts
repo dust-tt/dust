@@ -1,42 +1,33 @@
-import {
-  INTERNAL_MIME_TYPES,
-  TABLE_CONFIGURATION_URI_PATTERN,
-} from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Op } from "sequelize";
 
 import {
   generateCSVFileAndSnippet,
   generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  ConfigurableToolInputSchemas,
+  isTablesToolConfiguration,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
-import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConnectorProvider,
-  ConversationType,
-  LightWorkspaceType,
-  Result,
-} from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import type { ConnectorProvider } from "@app/types";
+import { assertNever } from "@app/types";
 
 // We need a model with at least 54k tokens to run tables_query.
 const TABLES_QUERY_MIN_TOKEN = 50_000;
@@ -98,51 +89,6 @@ function getSectionColumnsPrefix(
   }
 }
 
-async function fetchAgentTableConfigurations(
-  owner: LightWorkspaceType,
-  uris: string[]
-): Promise<Result<AgentTablesQueryConfigurationTable[], Error>> {
-  const configurationIds = [];
-  for (const uri of uris) {
-    const match = uri.match(TABLE_CONFIGURATION_URI_PATTERN);
-    if (!match) {
-      return new Err(
-        new Error(`Invalid URI for a table configuration: ${uri}`)
-      );
-    }
-    // Safe to do because the inputs are already checked against the zod schema here.
-    const [, , tableConfigId] = match;
-    const sIdParts = getResourceNameAndIdFromSId(tableConfigId);
-    if (!sIdParts) {
-      return new Err(
-        new Error(`Invalid table configuration ID: ${tableConfigId}`)
-      );
-    }
-    if (sIdParts.resourceName !== "table_configuration") {
-      return new Err(
-        new Error(`ID is not a table configuration ID: ${tableConfigId}`)
-      );
-    }
-    if (sIdParts.workspaceModelId !== owner.id) {
-      return new Err(
-        new Error(
-          `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`
-        )
-      );
-    }
-    configurationIds.push(sIdParts.resourceModelId);
-  }
-
-  const agentTableConfigurations =
-    await AgentTablesQueryConfigurationTable.findAll({
-      where: {
-        id: { [Op.in]: configurationIds },
-      },
-    });
-
-  return new Ok(agentTableConfigurations);
-}
-
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "tables_query",
   version: "1.0.0",
@@ -153,44 +99,28 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 function createServer(
   auth: Authenticator,
-  {
-    agentConfiguration,
-    actionConfiguration,
-    conversation,
-    agentMessage,
-  }: {
-    agentConfiguration?: AgentConfigurationType;
-    actionConfiguration?: MCPToolConfigurationType;
-    conversation?: ConversationType;
-    agentMessage?: AgentMessageType;
-  }
+  agentLoopContext?: AgentLoopContextType
 ): McpServer {
   const server = new McpServer(serverInfo);
 
-  let actionDescription =
-    "Query data tables described below by executing a SQL query automatically generated from the conversation context. " +
-    "The function does not require any inputs, the SQL query will be inferred from the conversation history.";
-  if (actionConfiguration?.description) {
-    actionDescription += `\nDescription of the data tables:\n${actionConfiguration.description}`;
-  }
-
   server.tool(
     "tables_query",
-    actionDescription,
+    "Query data tables described below by executing a SQL query automatically generated from the conversation context. " +
+      "The function does not require any inputs, the SQL query will be inferred from the conversation history.",
     {
       tables:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
     async ({ tables }) => {
-      if (
-        !agentConfiguration ||
-        !conversation ||
-        !agentMessage ||
-        !actionConfiguration
-      ) {
-        throw new Error(
-          "Unreachable: missing agent configuration, conversation or agent message."
-        );
+      if (!agentLoopContext) {
+        throw new Error("Unreachable: missing agentLoopContext.");
+      }
+
+      if (!isTablesToolConfiguration(tables)) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Invalid table configurations" }],
+        };
       }
 
       const owner = auth.getNonNullableWorkspace();
@@ -198,7 +128,9 @@ function createServer(
       // TODO(mcp): if we stream events, here we want to inform that it has started.
 
       // Render conversation for the action.
-      const supportedModel = getSupportedModelConfig(agentConfiguration.model);
+      const supportedModel = getSupportedModelConfig(
+        agentLoopContext.agentConfiguration.model
+      );
       if (!supportedModel) {
         throw new Error("Unreachable: Supported model not found.");
       }
@@ -212,9 +144,9 @@ function createServer(
       }
 
       const renderedConversationRes = await renderConversationForModel(auth, {
-        conversation,
+        conversation: agentLoopContext.conversation,
         model: supportedModel,
-        prompt: agentConfiguration.instructions ?? "",
+        prompt: agentLoopContext.agentConfiguration.instructions ?? "",
         allowedTokenCount,
         excludeImages: true,
       });
@@ -232,8 +164,8 @@ function createServer(
       );
 
       const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
-        auth.getNonNullableWorkspace(),
-        tables.map(({ uri }) => uri)
+        auth,
+        tables
       );
       if (agentTableConfigurationsRes.isErr()) {
         return makeMCPToolTextError(
@@ -302,7 +234,7 @@ function createServer(
         type: "database",
         tables: configuredTables,
       };
-      const { model } = agentConfiguration;
+      const { model } = agentLoopContext.agentConfiguration;
       config.MODEL.provider_id = model.providerId;
       config.MODEL.model_id = model.modelId;
 
@@ -314,13 +246,13 @@ function createServer(
         [
           {
             conversation: renderedConversation.modelConversation.messages,
-            instructions: agentConfiguration.instructions,
+            instructions: agentLoopContext.agentConfiguration.instructions,
           },
         ],
         {
-          conversationId: conversation.sId,
-          workspaceId: conversation.owner.sId,
-          agentMessageId: agentMessage.sId,
+          conversationId: agentLoopContext.conversation.sId,
+          workspaceId: agentLoopContext.conversation.owner.sId,
+          agentMessageId: agentLoopContext.agentMessage.sId,
         }
       );
       if (res.isErr()) {
@@ -337,7 +269,7 @@ function createServer(
           logger.error(
             {
               workspaceId: owner.id,
-              conversationId: conversation.id,
+              conversationId: agentLoopContext.conversation.id,
               error: event.content.message,
             },
             "Error running query_tables app"
@@ -354,7 +286,7 @@ function createServer(
             logger.error(
               {
                 workspaceId: owner.id,
-                conversationId: conversation.id,
+                conversationId: agentLoopContext.conversation.id,
                 error: e.error,
               },
               "Error running query_tables app"
@@ -401,7 +333,7 @@ function createServer(
         // Generate the CSV file.
         const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
           title: queryTitle,
-          conversationId: conversation.sId,
+          conversationId: agentLoopContext.conversation.sId,
           results,
         });
 
@@ -450,7 +382,7 @@ function createServer(
           // Generate the section file.
           const sectionFile = await generateSectionFile(auth, {
             title: queryTitle,
-            conversationId: conversation.sId,
+            conversationId: agentLoopContext.conversation.sId,
             results,
             sectionColumnsPrefix,
           });

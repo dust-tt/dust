@@ -132,3 +132,13 @@ export abstract class BaseActionConfigurationServerRunner<
     customParams: Record<string, unknown>
   ): AsyncGenerator<unknown>;
 }
+
+export type AgentLoopContextType = {
+  agentConfiguration: AgentConfigurationType;
+  actionConfiguration: ActionConfigurationType;
+  conversation: ConversationType;
+  agentMessage: AgentMessageType;
+  stepActionIndex: number;
+  stepActions: ActionConfigurationType[];
+  citationsRefsOffset: number;
+};

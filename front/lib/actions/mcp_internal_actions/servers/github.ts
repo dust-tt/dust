@@ -35,8 +35,16 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       repo: z.string().describe("The name of the repository."),
       title: z.string().describe("The title of the issue."),
       body: z.string().describe("The contents of the issue (GitHub markdown)."),
+      assignees: z
+        .array(z.string())
+        .optional()
+        .describe("Logins for Users to assign to this issue."),
+      labels: z
+        .array(z.string())
+        .optional()
+        .describe("Labels to associate with this issue."),
     },
-    async ({ owner, repo, title, body }) => {
+    async ({ owner, repo, title, body, assignees, labels }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
         provider: "github",
@@ -52,6 +60,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             repo,
             title,
             body,
+            assignees,
+            labels,
           }
         );
 
@@ -209,7 +219,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             return {
               sha: n.commit.oid,
               message: n.commit.message,
-              author: n.commit.author.user.login,
+              author: n.commit.author.user?.login || "unknown",
             };
           }
         );
@@ -217,7 +227,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           (n) => {
             return {
               createdAt: new Date(n.createdAt).getTime(),
-              author: n.author.login,
+              author: n.author?.login || "unknown",
               body: n.body,
             };
           }
@@ -226,7 +236,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           (n) => {
             return {
               createdAt: new Date(n.createdAt).getTime(),
-              author: n.author.login,
+              author: n.author?.login || "unknown",
               body: n.body,
               state: n.state,
               comments: n.comments.nodes.map((c) => {
