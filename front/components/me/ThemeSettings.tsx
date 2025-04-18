@@ -1,6 +1,5 @@
-import { Card, CardGrid, Icon, Label } from "@dust-tt/sparkle";
+import { Card, CardGrid, Icon, Label, ActionMoonIcon, ActionSunIcon, ActionCommandIcon } from "@dust-tt/sparkle";
 import { Page } from "@dust-tt/sparkle";
-import { ComputerIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 export function ThemeSettings() {
   const [theme, setTheme] = useState("light");
@@ -26,7 +25,7 @@ export function ThemeSettings() {
           }}
         >
           <div className="flex flex-row items-center gap-2">
-            <Icon visual={SunIcon} />
+            <Icon visual={ActionSunIcon} />
             <p>Light</p>
           </div>
         </Card>
@@ -39,7 +38,7 @@ export function ThemeSettings() {
           }}
         >
           <div className="flex flex-row items-center gap-2">
-            <Icon visual={MoonIcon} />
+            <Icon visual={ActionMoonIcon} />
             <p>Dark</p>
           </div>
         </Card>
@@ -52,7 +51,7 @@ export function ThemeSettings() {
           }}
         >
           <div className="flex flex-row items-center gap-2">
-            <Icon visual={ComputerIcon} />
+            <Icon visual={ActionCommandIcon} />
             <p>System</p>
           </div>
         </Card>
