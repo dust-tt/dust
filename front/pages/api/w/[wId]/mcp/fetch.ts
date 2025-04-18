@@ -52,13 +52,9 @@ async function handler(
         });
       }
 
-      try {
-        const server = await fetchRemoteServerMetaDataByURL(auth, url);
-        return res.status(201).json({
-          success: true,
-          server,
-        });
-      } catch (e) {
+      const s = await fetchRemoteServerMetaDataByURL(auth, url);
+
+      if (s.isErr()) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -68,6 +64,13 @@ async function handler(
           },
         });
       }
+
+      const server = s.value;
+
+      return res.status(201).json({
+        success: true,
+        server,
+      });
     }
 
     default: {

@@ -29,8 +29,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { OAuthProvider, OAuthUseCase } from "@app/types";
-import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
+import {
+  assertNever,
+  getOAuthConnectionAccessToken,
+  OAuthProvider,
+  OAuthUseCase,
+  Ok,
+  Err,
+} from "@app/types";
+import type { Result } from "@app/types";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
@@ -224,7 +231,7 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
 export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
   url: string
-): Promise<Omit<MCPServerType, "id">> {
+): Promise<Result<Omit<MCPServerType, "id">, Error>> {
   let mcpClient: Client;
 
   try {
@@ -232,9 +239,10 @@ export async function fetchRemoteServerMetaDataByURL(
       type: "remoteMCPServerUrl",
       remoteMCPServerUrl: url,
     });
-  } catch (e) {
-    logger.error("Error establishing connection to MCP server");
-    throw e;
+  } catch (e: unknown) {
+    return new Err(
+      new Error("Error establishing connection to remote MCP server.")
+    );
   }
 
   try {
@@ -244,11 +252,11 @@ export async function fetchRemoteServerMetaDataByURL(
     const toolsResult = await mcpClient.listTools();
     const serverTools = extractMetadataFromTools(toolsResult.tools);
 
-    return {
+    return new Ok({
       ...metadata,
       tools: serverTools,
       isDefault: false,
-    };
+    });
   } finally {
     await mcpClient.close();
   }

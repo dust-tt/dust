@@ -65,20 +65,8 @@ async function handler(
     });
   }
 
-  try {
-    const metadata = await fetchRemoteServerMetaDataByURL(auth, server.url);
-    await server.updateMetadata(auth, {
-      cachedName: metadata.name,
-      cachedDescription: metadata.description,
-      cachedTools: metadata.tools,
-      lastSyncAt: new Date(),
-    });
-
-    return res.status(200).json({
-      success: true,
-      server: server.toJSON(),
-    });
-  } catch (e) {
+  const r = await fetchRemoteServerMetaDataByURL(auth, server.url);
+  if (r.isErr()) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -87,6 +75,20 @@ async function handler(
       },
     });
   }
+
+  const metadata = r.value;
+
+  await server.updateMetadata(auth, {
+    cachedName: metadata.name,
+    cachedDescription: metadata.description,
+    cachedTools: metadata.tools,
+    lastSyncAt: new Date(),
+  });
+
+  return res.status(200).json({
+    success: true,
+    server: server.toJSON(),
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
