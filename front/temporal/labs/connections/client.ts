@@ -50,6 +50,7 @@ export async function launchLabsConnectionWorkflow(
         overlap: ScheduleOverlapPolicy.SKIP,
       },
       spec: {
+        jitter: "30m",
         intervals: [{ every: "1h" }],
       },
       memo: {
