@@ -23,6 +23,7 @@ import { useContext, useEffect } from "react";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import {
@@ -159,33 +160,35 @@ export default function AssistantBuilderRightPanel({
             <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
               {draftAssistant ? (
                 <ConversationsNavigationProvider>
-                  <GenerationContextProvider>
-                    <div className="flex-grow overflow-y-auto">
-                      {conversation && (
-                        <ConversationViewer
+                  <ActionValidationProvider>
+                    <GenerationContextProvider>
+                      <div className="flex-grow overflow-y-auto">
+                        {conversation && (
+                          <ConversationViewer
+                            owner={owner}
+                            user={user}
+                            conversationId={conversation.sId}
+                            onStickyMentionsChange={setStickyMentions}
+                            isInModal
+                            isFading={isFading}
+                            key={conversation.sId}
+                          />
+                        )}
+                      </div>
+                      <div className="shrink-0">
+                        <AssistantInputBar
                           owner={owner}
-                          user={user}
-                          conversationId={conversation.sId}
-                          onStickyMentionsChange={setStickyMentions}
-                          isInModal
-                          isFading={isFading}
-                          key={conversation.sId}
+                          onSubmit={handleSubmit}
+                          stickyMentions={stickyMentions}
+                          conversationId={conversation?.sId || null}
+                          additionalAgentConfiguration={draftAssistant}
+                          actions={["attachment"]}
+                          disableAutoFocus
+                          isFloating={false}
                         />
-                      )}
-                    </div>
-                    <div className="shrink-0">
-                      <AssistantInputBar
-                        owner={owner}
-                        onSubmit={handleSubmit}
-                        stickyMentions={stickyMentions}
-                        conversationId={conversation?.sId || null}
-                        additionalAgentConfiguration={draftAssistant}
-                        actions={["attachment"]}
-                        disableAutoFocus
-                        isFloating={false}
-                      />
-                    </div>
-                  </GenerationContextProvider>
+                      </div>
+                    </GenerationContextProvider>
+                  </ActionValidationProvider>
                 </ConversationsNavigationProvider>
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
