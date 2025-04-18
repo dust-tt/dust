@@ -69,7 +69,7 @@ export function AssistantBrowserContainer({
         owner={owner}
         isBuilder={isBuilder}
         agents={agentConfigurations}
-        loadingStatus={isLoading ? "loading" : "finished"}
+        isLoading={isLoading}
         handleAssistantClick={handleAssistantClick}
       />
     </div>
