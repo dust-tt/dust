@@ -21,7 +21,6 @@ export const destroyMCPServerViewDependencies = async (
   }
 ) => {
   // Delete all dependencies.
-  // TODO(mcp) add table datasources etc when they are implemented in AB
   const agentConfigurationIds = (
     await AgentMCPServerConfiguration.findAll({
       attributes: ["id"],
