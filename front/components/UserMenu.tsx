@@ -14,11 +14,11 @@ import {
   DropdownMenuTrigger,
   Icon,
   LightbulbIcon,
-  LightModeIcon,
   LogoutIcon,
   ScrollArea,
   ScrollBar,
   StarIcon,
+  UserGroupIcon,
   UserIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -70,8 +70,6 @@ export function UserMenu({
     [owner, sendNotification, user, featureFlags]
   );
 
-  const theme = localStorage.getItem("theme") || "light";
-
   // Check if user has multiple workspaces
   const hasMultipleWorkspaces = useMemo(() => {
     return (
@@ -122,81 +120,6 @@ export function UserMenu({
             href={`/w/${owner.sId}/labs`}
           />
 
-          {showDebugTools(featureFlags) && (
-            <>
-              <DropdownMenuLabel label="Dev Tools" />
-              {router.route === "/w/[wId]/assistant/[cId]" && (
-                <DropdownMenuItem
-                  label="Debug conversation"
-                  onClick={() => {
-                    const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
-                    const match = window.location.href.match(regexp);
-                    if (match) {
-                      void router.push(
-                        `/poke/${match[1]}/conversations/${match[2]}`
-                      );
-                    }
-                  }}
-                  icon={BugIcon}
-                />
-              )}
-              {!isOnlyAdmin(owner) && (
-                <DropdownMenuItem
-                  label="Become Admin"
-                  onClick={() => forceRoleUpdate("admin")}
-                  icon={StarIcon}
-                />
-              )}
-              {!isOnlyBuilder(owner) && (
-                <DropdownMenuItem
-                  label="Become Builder"
-                  onClick={() => forceRoleUpdate("builder")}
-                  icon={LightbulbIcon}
-                />
-              )}
-              {!isOnlyUser(owner) && (
-                <DropdownMenuItem
-                  label="Become User"
-                  onClick={() => forceRoleUpdate("user")}
-                  icon={UserIcon}
-                />
-              )}
-            </>
-          )}
-
-          <DropdownMenuLabel label="Preferences" />
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
-            <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup value={theme}>
-                <DropdownMenuRadioItem
-                  value="light"
-                  label="Light"
-                  onClick={() => {
-                    localStorage.setItem("theme", "light");
-                    window.location.reload();
-                  }}
-                />
-                <DropdownMenuRadioItem
-                  value="dark"
-                  label="Dark"
-                  onClick={() => {
-                    localStorage.setItem("theme", "dark");
-                    window.location.reload();
-                  }}
-                />
-                <DropdownMenuRadioItem
-                  value="system"
-                  label="System"
-                  onClick={() => {
-                    localStorage.setItem("theme", "system");
-                    window.location.reload();
-                  }}
-                />
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-
           <DropdownMenuLabel label="Account" />
           <DropdownMenuItem
             label="Profile"
@@ -212,31 +135,81 @@ export function UserMenu({
             label="Sign&nbsp;out"
           />
 
+          {(hasMultipleWorkspaces || showDebugTools(featureFlags)) && (
+            <DropdownMenuLabel label="Advanced" />
+          )}
+
           {hasMultipleWorkspaces && (
-            <>
-              <DropdownMenuLabel label="Workspaces" />
-              <DropdownMenuRadioGroup value={owner.name}>
-                {"workspaces" in user &&
-                  user.workspaces.map((w) => (
-                    <DropdownMenuRadioItem
-                      key={w.sId}
-                      value={w.name}
-                      onClick={async () => {
-                        await setNavigationSelection({
-                          lastWorkspaceId: w.sId,
-                        });
-                        if (w.id !== owner.id) {
-                          await router
-                            .push(`/w/${w.sId}/assistant/new`)
-                            .then(() => router.reload());
-                        }
-                      }}
-                    >
-                      {w.name}
-                    </DropdownMenuRadioItem>
-                  ))}
-              </DropdownMenuRadioGroup>
-            </>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger label="Workspace" icon={UserGroupIcon} />
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value={owner.name}>
+                  {"workspaces" in user &&
+                    user.workspaces.map((w) => (
+                      <DropdownMenuRadioItem
+                        key={w.sId}
+                        value={w.name}
+                        onClick={async () => {
+                          await setNavigationSelection({
+                            lastWorkspaceId: w.sId,
+                          });
+                          if (w.id !== owner.id) {
+                            await router
+                              .push(`/w/${w.sId}/assistant/new`)
+                              .then(() => router.reload());
+                          }
+                        }}
+                      >
+                        {w.name}
+                      </DropdownMenuRadioItem>
+                    ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+
+          {showDebugTools(featureFlags) && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger label="Dev Tools" icon={BugIcon} />
+              <DropdownMenuSubContent>
+                {router.route === "/w/[wId]/assistant/[cId]" && (
+                  <DropdownMenuItem
+                    label="Debug conversation"
+                    onClick={() => {
+                      const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
+                      const match = window.location.href.match(regexp);
+                      if (match) {
+                        void router.push(
+                          `/poke/${match[1]}/conversations/${match[2]}`
+                        );
+                      }
+                    }}
+                    icon={BugIcon}
+                  />
+                )}
+                {!isOnlyAdmin(owner) && (
+                  <DropdownMenuItem
+                    label="Become Admin"
+                    onClick={() => forceRoleUpdate("admin")}
+                    icon={StarIcon}
+                  />
+                )}
+                {!isOnlyBuilder(owner) && (
+                  <DropdownMenuItem
+                    label="Become Builder"
+                    onClick={() => forceRoleUpdate("builder")}
+                    icon={LightbulbIcon}
+                  />
+                )}
+                {!isOnlyUser(owner) && (
+                  <DropdownMenuItem
+                    label="Become User"
+                    onClick={() => forceRoleUpdate("user")}
+                    icon={UserIcon}
+                  />
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           )}
           <ScrollBar className="py-0" />
         </ScrollArea>
