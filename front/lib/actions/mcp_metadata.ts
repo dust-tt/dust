@@ -115,7 +115,7 @@ export const connectToMCPServer = async (
     conversation?: ConversationType;
     agentMessage?: AgentMessageType;
   } = {}
-) => {
+): Promise<Result<Client, Error>> => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
@@ -159,14 +159,21 @@ export const connectToMCPServer = async (
           );
 
           const url = new URL(remoteMCPServer.url);
-          const sseTransport = new SSEClientTransport(url, {
-            requestInit: {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
+
+          try {
+            const sseTransport = new SSEClientTransport(url, {
+              requestInit: {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
               },
-            },
-          });
-          await mcpClient.connect(sseTransport);
+            });
+            await mcpClient.connect(sseTransport);
+          } catch (e: unknown) {
+            return new Err(
+              new Error("Error establishing connection to remote MCP server.")
+            );
+          }
           break;
 
         default:
@@ -176,18 +183,31 @@ export const connectToMCPServer = async (
     }
     case "remoteMCPServerUrl": {
       const url = new URL(params.remoteMCPServerUrl);
-      const sseTransport = new SSEClientTransport(url);
-      await mcpClient.connect(sseTransport);
+
+      try {
+        const sseTransport = new SSEClientTransport(url);
+        await mcpClient.connect(sseTransport);
+      } catch (e: unknown) {
+        return new Err(
+          new Error("Error establishing connection to remote MCP server.")
+        );
+      }
       break;
     }
 
     case "localMCPServerId": {
-      const transport = new ClientSideRedisMCPTransport(auth, {
-        conversationId: params.conversationId,
-        mcpServerId: params.mcpServerId,
-        messageId: params.messageId,
-      });
-      await mcpClient.connect(transport);
+      try {
+        const transport = new ClientSideRedisMCPTransport(auth, {
+          conversationId: params.conversationId,
+          mcpServerId: params.mcpServerId,
+          messageId: params.messageId,
+        });
+        await mcpClient.connect(transport);
+      } catch (e: unknown) {
+        return new Err(
+          new Error("Error establishing connection to local MCP server.")
+        );
+      }
       break;
     }
 
@@ -196,7 +216,7 @@ export const connectToMCPServer = async (
     }
   }
 
-  return mcpClient;
+  return new Ok(mcpClient);
 };
 
 export function extractMetadataFromServerVersion(
@@ -254,18 +274,16 @@ export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
   url: string
 ): Promise<Result<Omit<MCPServerType, "id">, Error>> {
-  let mcpClient: Client;
+  const r = await connectToMCPServer(auth, {
+    type: "remoteMCPServerUrl",
+    remoteMCPServerUrl: url,
+  });
 
-  try {
-    mcpClient = await connectToMCPServer(auth, {
-      type: "remoteMCPServerUrl",
-      remoteMCPServerUrl: url,
-    });
-  } catch (e: unknown) {
-    return new Err(
-      new Error("Error establishing connection to remote MCP server.")
-    );
+  if (r.isErr()) {
+    return new Err(r.error);
   }
+
+  const mcpClient = r.value;
 
   try {
     const serverVersion = mcpClient.getServerVersion();
@@ -279,6 +297,10 @@ export async function fetchRemoteServerMetaDataByURL(
       tools: serverTools,
       isDefault: false,
     });
+  } catch (e: unknown) {
+    return new Err(
+      new Error("Error getting metadata from the remote MCP server.")
+    );
   } finally {
     await mcpClient.close();
   }
