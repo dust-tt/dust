@@ -550,12 +550,23 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         await zendeskConfiguration.update({
           syncUnresolvedTickets: configValue === "true",
         });
+        const result = await launchZendeskTicketReSyncWorkflow(connector, {
+          forceResync: true,
+        });
+        if (result.isErr()) {
+          return result;
+        }
         break;
       }
       case HIDE_CUSTOMER_DETAILS_CONFIG_KEY: {
         await zendeskConfiguration.update({
           hideCustomerDetails: configValue === "true",
         });
+        // We need to full sync since this affects tickets and articles.
+        const result = await this.sync({ fromTs: null });
+        if (result.isErr()) {
+          return result;
+        }
         break;
       }
       default: {
@@ -563,12 +574,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    const result = await launchZendeskTicketReSyncWorkflow(connector, {
-      forceResync: true,
-    });
-    if (result.isErr()) {
-      return result;
-    }
 
     return new Ok(undefined);
   }
