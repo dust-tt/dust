@@ -87,6 +87,12 @@ export async function syncZendeskArticleUpdateBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -182,10 +188,8 @@ export async function syncZendeskArticleUpdateBatchActivity({
           category &&
           (category.permission === "read" || hasHelpCenterPermissions)
         ) {
-          return syncArticle({
-            connectorId,
+          return syncArticle(article, connector, configuration, {
             category,
-            article,
             section,
             user,
             helpCenterIsAllowed: hasHelpCenterPermissions,

@@ -519,6 +519,11 @@ export async function syncZendeskArticleBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -572,10 +577,8 @@ export async function syncZendeskArticleBatchActivity({
   await concurrentExecutor(
     articles,
     (article) =>
-      syncArticle({
-        connectorId,
+      syncArticle(article, connector, configuration, {
         category,
-        article,
         section:
           sections.find((section) => section.id === article.section_id) || null,
         user: users.find((user) => user.id === article.author_id) || null,
