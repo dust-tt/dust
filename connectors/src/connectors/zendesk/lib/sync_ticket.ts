@@ -195,7 +195,15 @@ export async function syncTicket(
           );
           author = null;
         }
-        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${(comment.plain_body || comment.body).replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
+        // Remove line and paragraph separators.
+        const commentContent = (comment.plain_body || comment.body).replace(
+          /[\u2028\u2029]/g,
+          ""
+        );
+        if (configuration.hideCustomerDetails) {
+          return `[${comment?.created_at}]:\n${commentContent}`;
+        }
+        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${commentContent}`;
       })
       .join("\n")}
 `.trim();
