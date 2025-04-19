@@ -563,7 +563,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    const result = await launchZendeskTicketReSyncWorkflow(connector);
+    const result = await launchZendeskTicketReSyncWorkflow(connector, {
+      forceResync: true,
+    });
     if (result.isErr()) {
       return result;
     }
