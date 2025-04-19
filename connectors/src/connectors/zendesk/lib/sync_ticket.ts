@@ -14,6 +14,7 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
@@ -89,27 +90,30 @@ export async function deleteTicket({
 /**
  * Syncs a ticket in the db and upserts it to the data sources.
  */
-export async function syncTicket({
-  connectorId,
-  ticket,
-  brandId,
-  currentSyncDateMs,
-  dataSourceConfig,
-  loggerArgs,
-  forceResync,
-  comments,
-  users,
-}: {
-  connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
-  ticket: ZendeskFetchedTicket;
-  brandId: number;
-  currentSyncDateMs: number;
-  loggerArgs: Record<string, string | number | null>;
-  forceResync: boolean;
-  comments: ZendeskFetchedTicketComment[];
-  users: ZendeskFetchedUser[];
-}) {
+export async function syncTicket(
+  ticket: ZendeskFetchedTicket,
+  connector: ConnectorResource,
+  configuration: ZendeskConfigurationResource,
+  {
+    brandId,
+    currentSyncDateMs,
+    dataSourceConfig,
+    loggerArgs,
+    forceResync,
+    comments,
+    users,
+  }: {
+    dataSourceConfig: DataSourceConfig;
+    brandId: number;
+    currentSyncDateMs: number;
+    loggerArgs: Record<string, string | number | null>;
+    forceResync: boolean;
+    comments: ZendeskFetchedTicketComment[];
+    users: ZendeskFetchedUser[];
+  }
+) {
+  const connectorId = connector.id;
+
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
     brandId,

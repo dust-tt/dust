@@ -684,10 +684,8 @@ export async function syncZendeskTicketBatchActivity({
         );
       }
 
-      return syncTicket({
-        connectorId,
+      return syncTicket(ticket, connector, configuration, {
         brandId,
-        ticket,
         dataSourceConfig,
         currentSyncDateMs,
         loggerArgs,

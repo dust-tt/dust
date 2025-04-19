@@ -272,9 +272,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
           brandSubdomain,
           userIds: comments.map((c) => c.author_id),
         });
-        return syncTicket({
-          connectorId,
-          ticket,
+        return syncTicket(ticket, connector, configuration, {
           brandId,
           users,
           comments,
