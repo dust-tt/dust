@@ -49,28 +49,29 @@ export async function deleteArticle(
 /**
  * Syncs an article from Zendesk to the postgres db and to the data sources.
  */
-export async function syncArticle(
-  article: ZendeskFetchedArticle,
-  connector: ConnectorResource,
-  configuration: ZendeskConfigurationResource,
-  {
-    category,
-    section,
-    user,
-    currentSyncDateMs,
-    helpCenterIsAllowed,
-    dataSourceConfig,
-    loggerArgs,
-  }: {
-    dataSourceConfig: DataSourceConfig;
-    section: ZendeskFetchedSection | null;
-    category: ZendeskCategoryResource;
-    user: ZendeskFetchedUser | null;
-    helpCenterIsAllowed: boolean;
-    currentSyncDateMs: number;
-    loggerArgs: Record<string, string | number | null>;
-  }
-) {
+export async function syncArticle({
+  article,
+  connector,
+  configuration,
+  category,
+  section,
+  user,
+  currentSyncDateMs,
+  helpCenterIsAllowed,
+  dataSourceConfig,
+  loggerArgs,
+}: {
+  article: ZendeskFetchedArticle;
+  connector: ConnectorResource;
+  configuration: ZendeskConfigurationResource;
+  dataSourceConfig: DataSourceConfig;
+  section: ZendeskFetchedSection | null;
+  category: ZendeskCategoryResource;
+  user: ZendeskFetchedUser | null;
+  helpCenterIsAllowed: boolean;
+  currentSyncDateMs: number;
+  loggerArgs: Record<string, string | number | null>;
+}) {
   const connectorId = connector.id;
   let articleInDb = await ZendeskArticleResource.fetchByArticleId({
     connectorId,

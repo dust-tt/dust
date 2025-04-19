@@ -90,28 +90,29 @@ export async function deleteTicket({
 /**
  * Syncs a ticket in the db and upserts it to the data sources.
  */
-export async function syncTicket(
-  ticket: ZendeskFetchedTicket,
-  connector: ConnectorResource,
-  configuration: ZendeskConfigurationResource,
-  {
-    brandId,
-    currentSyncDateMs,
-    dataSourceConfig,
-    loggerArgs,
-    forceResync,
-    comments,
-    users,
-  }: {
-    dataSourceConfig: DataSourceConfig;
-    brandId: number;
-    currentSyncDateMs: number;
-    loggerArgs: Record<string, string | number | null>;
-    forceResync: boolean;
-    comments: ZendeskFetchedTicketComment[];
-    users: ZendeskFetchedUser[];
-  }
-) {
+export async function syncTicket({
+  ticket,
+  connector,
+  configuration,
+  brandId,
+  currentSyncDateMs,
+  dataSourceConfig,
+  loggerArgs,
+  forceResync,
+  comments,
+  users,
+}: {
+  ticket: ZendeskFetchedTicket;
+  connector: ConnectorResource;
+  configuration: ZendeskConfigurationResource;
+  dataSourceConfig: DataSourceConfig;
+  brandId: number;
+  currentSyncDateMs: number;
+  loggerArgs: Record<string, string | number | null>;
+  forceResync: boolean;
+  comments: ZendeskFetchedTicketComment[];
+  users: ZendeskFetchedUser[];
+}) {
   const connectorId = connector.id;
 
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({

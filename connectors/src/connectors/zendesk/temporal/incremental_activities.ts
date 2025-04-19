@@ -188,7 +188,10 @@ export async function syncZendeskArticleUpdateBatchActivity({
           category &&
           (category.permission === "read" || hasHelpCenterPermissions)
         ) {
-          return syncArticle(article, connector, configuration, {
+          return syncArticle({
+            article,
+            connector,
+            configuration,
             category,
             section,
             user,
@@ -276,7 +279,10 @@ export async function syncZendeskTicketUpdateBatchActivity({
           brandSubdomain,
           userIds: comments.map((c) => c.author_id),
         });
-        return syncTicket(ticket, connector, configuration, {
+        return syncTicket({
+          ticket,
+          connector,
+          configuration,
           brandId,
           users,
           comments,

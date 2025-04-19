@@ -577,7 +577,10 @@ export async function syncZendeskArticleBatchActivity({
   await concurrentExecutor(
     articles,
     (article) =>
-      syncArticle(article, connector, configuration, {
+      syncArticle({
+        article,
+        connector,
+        configuration,
         category,
         section:
           sections.find((section) => section.id === article.section_id) || null,
@@ -687,7 +690,10 @@ export async function syncZendeskTicketBatchActivity({
         );
       }
 
-      return syncTicket(ticket, connector, configuration, {
+      return syncTicket({
+        ticket,
+        connector,
+        configuration,
         brandId,
         dataSourceConfig,
         currentSyncDateMs,
