@@ -22,7 +22,9 @@ export type WebCrawlerErrorName =
   | "PRIVATE_IP"
   | "NOT_IP_V4"
   | "MAX_REDIRECTS"
-  | "REDIRECT_MISSING_LOCATION";
+  | "REDIRECT_MISSING_LOCATION"
+  | "CIRCULAR_REDIRECT"
+  | "PROTOCOL_DOWNGRADE";
 
 export class WebCrawlerError extends NonRetryableError {
   constructor(
@@ -87,8 +89,20 @@ export class DustHttpClient extends GotScrapingHttpClient {
     let url = initUrl;
     let foundEndOfRedirect = false;
     let redirectCount = 0;
+    const visitedUrls = new Set<string | URL>();
 
     do {
+      // Fail fast if it get into a loop
+      if (visitedUrls.has(url)) {
+        return new Err(
+          new WebCrawlerError(
+            "Invalid redirect: Circular redirect detected",
+            "CIRCULAR_REDIRECT"
+          )
+        );
+      }
+      visitedUrls.add(url);
+
       // Prevent infinite loops
       if (redirectCount++ >= MAX_REDIRECTS) {
         return new Err(
@@ -99,31 +113,60 @@ export class DustHttpClient extends GotScrapingHttpClient {
         );
       }
 
-      const response = await fetch(url, {
-        method: "HEAD",
-        redirect: "manual",
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      if (REDIRECT_STATUSES.has(response.status)) {
-        const redirectUrl = response.headers.get("location");
-        if (!redirectUrl) {
-          // Server returned a redirect status without Location header
-          return new Err(
-            new WebCrawlerError(
-              `Invalid redirect: Missing Location header for status ${response.status}`,
-              "REDIRECT_MISSING_LOCATION"
-            )
-          );
+      try {
+        const response = await fetch(url, {
+          method: "HEAD",
+          redirect: "manual",
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (REDIRECT_STATUSES.has(response.status)) {
+          const redirectUrl = response.headers
+            .get("location")
+            ?.trim()
+            .replace(/[\r\n\t]/g, ""); // Sanitize location, avoid header injection
+          if (!redirectUrl) {
+            // Server returned a redirect status without Location header
+            return new Err(
+              new WebCrawlerError(
+                `Invalid redirect: Missing Location header for status ${response.status}`,
+                "REDIRECT_MISSING_LOCATION"
+              )
+            );
+          }
+
+          const resolvedUrl = new URL(redirectUrl);
+
+          if (
+            new URL(initUrl).protocol === "https:" &&
+            resolvedUrl.protocol !== "https:"
+          ) {
+            return new Err(
+              new WebCrawlerError(
+                "Invalid redirect: going from https to http",
+                "PROTOCOL_DOWNGRADE"
+              )
+            );
+          }
+
+          const checkIpRes = await this.checkIp(resolvedUrl);
+          if (checkIpRes.isErr()) {
+            return checkIpRes;
+          }
+
+          url = redirectUrl;
+        } else {
+          foundEndOfRedirect = true;
         }
-
-        const checkIpRes = await this.checkIp(redirectUrl);
-        if (checkIpRes.isErr()) {
-          return checkIpRes;
-        }
-
-        url = redirectUrl;
-      } else {
-        foundEndOfRedirect = true;
+      } catch (err) {
+        // try catch only to make sure we clear the timeout in case fetch failed
+        clearTimeout(timeoutId);
+        throw err;
       }
     } while (!foundEndOfRedirect);
 
@@ -133,11 +176,17 @@ export class DustHttpClient extends GotScrapingHttpClient {
   /**
    * Check if IP behind url is ipv4 and is not a private ip
    */
-  async checkIp(url: string): Promise<Result<void, WebCrawlerError>> {
-    const { address, family } = await getIpAddressForUrl(url);
+  async checkIp(url: URL): Promise<Result<void, WebCrawlerError>> {
+    const { address, family } = await getIpAddressForUrl(url.toString());
     if (family !== 4) {
       return new Err(
         new WebCrawlerError("IP address is not IPv4", "NOT_IP_V4")
+      );
+    }
+
+    if (url.hostname === "localhost") {
+      return new Err(
+        new WebCrawlerError("No localhost authorized", "PRIVATE_IP")
       );
     }
 
