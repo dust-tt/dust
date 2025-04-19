@@ -25,7 +25,7 @@ const createServer = (auth: Authenticator): McpServer => {
 
   server.tool(
     "generate_image",
-    "Generate an image from a text prompt",
+    "Generate an image in PNG format from a text prompt",
     {
       prompt: z
         .string()
