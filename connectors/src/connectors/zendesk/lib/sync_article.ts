@@ -14,7 +14,10 @@ import {
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ZendeskCategoryResource, ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
+import type {
+  ZendeskCategoryResource,
+  ZendeskConfigurationResource,
+} from "@connectors/resources/zendesk_resources";
 import { ZendeskArticleResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -46,23 +49,28 @@ export async function deleteArticle(
 /**
  * Syncs an article from Zendesk to the postgres db and to the data sources.
  */
-export async function syncArticle(article: ZendeskFetchedArticle, connector: ConnectorResource, configuration: ZendeskConfigurationResource, {
-  category,
-  section,
-  user,
-  currentSyncDateMs,
-  helpCenterIsAllowed,
-  dataSourceConfig,
-  loggerArgs,
-}: {
-  dataSourceConfig: DataSourceConfig;
-  section: ZendeskFetchedSection | null;
-  category: ZendeskCategoryResource;
-  user: ZendeskFetchedUser | null;
-  helpCenterIsAllowed: boolean;
-  currentSyncDateMs: number;
-  loggerArgs: Record<string, string | number | null>;
-}) {
+export async function syncArticle(
+  article: ZendeskFetchedArticle,
+  connector: ConnectorResource,
+  configuration: ZendeskConfigurationResource,
+  {
+    category,
+    section,
+    user,
+    currentSyncDateMs,
+    helpCenterIsAllowed,
+    dataSourceConfig,
+    loggerArgs,
+  }: {
+    dataSourceConfig: DataSourceConfig;
+    section: ZendeskFetchedSection | null;
+    category: ZendeskCategoryResource;
+    user: ZendeskFetchedUser | null;
+    helpCenterIsAllowed: boolean;
+    currentSyncDateMs: number;
+    loggerArgs: Record<string, string | number | null>;
+  }
+) {
   const connectorId = connector.id;
   let articleInDb = await ZendeskArticleResource.fetchByArticleId({
     connectorId,
