@@ -89,11 +89,11 @@ export class DustHttpClient extends GotScrapingHttpClient {
     let url = initUrl;
     let foundEndOfRedirect = false;
     let redirectCount = 0;
-    const visitedUrls = new Set<string | URL>();
+    const visitedUrls = new Set<string>();
 
     do {
       // Fail fast if it get into a loop
-      if (visitedUrls.has(url)) {
+      if (visitedUrls.has(url.toString())) {
         return new Err(
           new WebCrawlerError(
             "Invalid redirect: Circular redirect detected",
@@ -101,7 +101,7 @@ export class DustHttpClient extends GotScrapingHttpClient {
           )
         );
       }
-      visitedUrls.add(url);
+      visitedUrls.add(url.toString());
 
       // Prevent infinite loops
       if (redirectCount++ >= MAX_REDIRECTS) {
@@ -165,7 +165,7 @@ export class DustHttpClient extends GotScrapingHttpClient {
             return checkIpRes;
           }
 
-          url = redirectUrl;
+          url = resolvedUrl;
         } else {
           foundEndOfRedirect = true;
         }
