@@ -55,6 +55,10 @@ import type {
 } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 
+const SYNC_UNRESOLVED_TICKETS_CONFIG_KEY =
+  "zendeskSyncUnresolvedTicketsEnabled";
+const HIDE_PII_CONFIG_KEY = "zendeskHidePII";
+
 export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   static async create({
     dataSourceConfig,
@@ -529,33 +533,39 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       throw new Error("[Zendesk] Connector not found.");
     }
 
-    switch (configKey) {
-      case "zendeskSyncUnresolvedTicketsEnabled": {
-        const zendeskConfiguration =
-          await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
-        if (!zendeskConfiguration) {
-          logger.error({ connectorId }, "[Zendesk] Configuration not found.");
-          throw new Error(
-            "Error retrieving Zendesk configuration to update connector configuration."
-          );
-        }
+    const zendeskConfiguration =
+      await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+    if (!zendeskConfiguration) {
+      logger.error({ connectorId }, "[Zendesk] Configuration not found.");
+      throw new Error(
+        "Error retrieving Zendesk configuration to update connector configuration."
+      );
+    }
 
+    switch (configKey) {
+      case SYNC_UNRESOLVED_TICKETS_CONFIG_KEY: {
         await zendeskConfiguration.update({
           syncUnresolvedTickets: configValue === "true",
         });
-
-        const result = await launchZendeskTicketReSyncWorkflow(connector);
-        if (result.isErr()) {
-          return result;
-        }
-
-        return new Ok(undefined);
+        break;
       }
-
+      case HIDE_PII_CONFIG_KEY: {
+        await zendeskConfiguration.update({
+          syncUnresolvedTickets: configValue === "true",
+        });
+        break;
+      }
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
     }
+
+    const result = await launchZendeskTicketReSyncWorkflow(connector);
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok(undefined);
   }
 
   async getConfigurationKey({
