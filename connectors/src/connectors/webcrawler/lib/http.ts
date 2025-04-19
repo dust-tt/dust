@@ -140,7 +140,13 @@ export class DustHttpClient extends GotScrapingHttpClient {
             );
           }
 
-          const resolvedUrl = new URL(redirectUrl);
+          let resolvedUrl: URL;
+          // relative redirect
+          if (redirectUrl.startsWith("/")) {
+            resolvedUrl = new URL(redirectUrl, url);
+          } else {
+            resolvedUrl = new URL(redirectUrl);
+          }
 
           if (
             new URL(initUrl).protocol === "https:" &&
@@ -180,7 +186,7 @@ export class DustHttpClient extends GotScrapingHttpClient {
     const { address, family } = await getIpAddressForUrl(url.toString());
     if (family !== 4) {
       return new Err(
-        new WebCrawlerError("IP address is not IPv4", "NOT_IP_V4")
+        new WebCrawlerError(`IP address is not IPv4: ${address}`, "NOT_IP_V4")
       );
     }
 
