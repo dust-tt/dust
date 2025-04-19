@@ -2018,6 +2018,10 @@ export class CoreAPI {
     dataSourceId: string;
     folderId: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
+    if (!this._isValidId(projectId) || !this._isValidId(dataSourceId) || !this._isValidId(folderId)) {
+      throw new Error("Invalid input: projectId, dataSourceId, or folderId is not valid.");
+    }
+
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
@@ -2030,6 +2034,12 @@ export class CoreAPI {
     );
 
     return this._resultFromResponse(response);
+  }
+
+  private _isValidId(id: string): boolean {
+    // Example validation: ensure the ID is alphanumeric and between 1-64 characters
+    const idRegex = /^[a-zA-Z0-9_-]{1,64}$/;
+    return idRegex.test(id);
   }
   private async _fetchWithError(
     url: string,
