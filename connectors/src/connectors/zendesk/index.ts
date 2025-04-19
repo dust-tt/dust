@@ -57,7 +57,7 @@ import type { DataSourceConfig } from "@connectors/types";
 
 const SYNC_UNRESOLVED_TICKETS_CONFIG_KEY =
   "zendeskSyncUnresolvedTicketsEnabled";
-const HIDE_PII_CONFIG_KEY = "zendeskHidePII";
+const HIDE_CUSTOMER_DETAILS_CONFIG_KEY = "zendeskHideCustomerDetails";
 
 export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -87,7 +87,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
       },
-      { subdomain, retentionPeriodDays: 180, syncUnresolvedTickets: false }
+      {
+        subdomain,
+        retentionPeriodDays: 180,
+        syncUnresolvedTickets: false,
+        hideCustomerDetails: false,
+      }
     );
     const loggerArgs = {
       workspaceId: dataSourceConfig.workspaceId,
@@ -537,9 +542,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
     if (!zendeskConfiguration) {
       logger.error({ connectorId }, "[Zendesk] Configuration not found.");
-      throw new Error(
-        "Error retrieving Zendesk configuration to update connector configuration."
-      );
+      throw new Error("[Zendesk] Configuration not found.");
     }
 
     switch (configKey) {
@@ -549,9 +552,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         });
         break;
       }
-      case HIDE_PII_CONFIG_KEY: {
+      case HIDE_CUSTOMER_DETAILS_CONFIG_KEY: {
         await zendeskConfiguration.update({
-          syncUnresolvedTickets: configValue === "true",
+          hideCustomerDetails: configValue === "true",
         });
         break;
       }
@@ -576,23 +579,23 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
-      throw new Error(`Connector not found (connectorId: ${connectorId})`);
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      throw new Error("[Zendesk] Connector not found.");
+    }
+
+    const zendeskConfiguration =
+      await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+    if (!zendeskConfiguration) {
+      logger.error({ connectorId }, "[Zendesk] Configuration not found.");
+      throw new Error("[Zendesk] Configuration not found.");
     }
 
     switch (configKey) {
-      case "zendeskSyncUnresolvedTicketsEnabled": {
-        const zendeskConfiguration =
-          await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
-        if (!zendeskConfiguration) {
-          logger.error({ connectorId }, "[Zendesk] Configuration not found.");
-          return new Err(
-            new Error(
-              "Error retrieving Zendesk configuration to get connector configuration."
-            )
-          );
-        }
-
+      case SYNC_UNRESOLVED_TICKETS_CONFIG_KEY: {
         return new Ok(zendeskConfiguration.syncUnresolvedTickets.toString());
+      }
+      case HIDE_CUSTOMER_DETAILS_CONFIG_KEY: {
+        return new Ok(zendeskConfiguration.hideCustomerDetails.toString());
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
