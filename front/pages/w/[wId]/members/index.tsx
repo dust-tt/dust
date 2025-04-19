@@ -42,9 +42,12 @@ import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
   UserType,
+  UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { useSearchMembers } from "@app/lib/swr/memberships";
+import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -243,10 +246,10 @@ export default function WorkspaceAdmin({
           />
         </div>
         <InvitationsList owner={owner} searchText={searchTerm} />
-        <MembersList
+        <WorkspaceMembersList
           currentUserId={user.sId}
           owner={owner}
-          searchText={searchTerm}
+          searchTerm={searchTerm}
         />
         {popup}
       </Page.Vertical>
@@ -338,5 +341,42 @@ function DomainAutoJoinModal({
         />
       </DialogContent>
     </Dialog>
+  );
+}
+
+function WorkspaceMembersList({
+  currentUserId,
+  owner,
+  searchTerm,
+}: {
+  currentUserId: string;
+  owner: WorkspaceType;
+  searchTerm: string;
+}) {
+  const membersData = useSearchMembers({
+    workspaceId: owner.sId,
+    searchTerm,
+    pageIndex: 0,
+    pageSize: 25,
+  });
+
+  const [selectedMember, setSelectedMember] =
+    useState<UserTypeWithWorkspaces | null>(null);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Page.H variant="h5">Members</Page.H>
+      <MembersList
+        currentUserId={currentUserId}
+        membersData={membersData}
+        onRowClick={(user) => setSelectedMember(user)}
+        showColumns={["name", "email", "role"]}
+      />
+      <ChangeMemberModal
+        onClose={() => setSelectedMember(null)}
+        member={selectedMember}
+        mutateMembers={membersData.mutateRegardlessOfQueryParams}
+      />
+    </div>
   );
 }
