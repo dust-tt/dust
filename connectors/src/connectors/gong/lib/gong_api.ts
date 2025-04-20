@@ -139,8 +139,10 @@ export class GongClient {
       // https://gong.app.gong.io/settings/api/documentation#overview
       if (response.status === 429) {
         const xHeaders = Object.fromEntries(
-          Array.from(response.headers.entries()).filter(([key]) =>
-            key.toLowerCase().startsWith("x-") || key.toLowerCase().startsWith("rate-")
+          Array.from(response.headers.entries()).filter(
+            ([key]) =>
+              key.toLowerCase().startsWith("x-") ||
+              key.toLowerCase().startsWith("rate-")
           )
         );
 
