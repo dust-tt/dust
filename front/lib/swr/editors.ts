@@ -3,11 +3,13 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
+import {
+  isTemplateAgentConfiguration,
+  UserType,
+  type LightAgentConfigurationType,
+  type LightWorkspaceType,
+  type TemplateAgentConfigurationType,
 } from "@app/types";
-import type { TagType } from "@app/types/tag";
 import { GetAgentEditorsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
 
 export function useEditors({
@@ -16,13 +18,18 @@ export function useEditors({
   disabled,
 }: {
   owner: LightWorkspaceType;
-  agentConfiguration: LightAgentConfigurationType;
+  agentConfiguration:
+    | LightAgentConfigurationType
+    | TemplateAgentConfigurationType
+    | null;
   disabled?: boolean;
 }) {
   const editorsFetcher: Fetcher<GetAgentEditorsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/editors`,
+    !agentConfiguration || isTemplateAgentConfiguration(agentConfiguration)
+      ? null
+      : `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/editors`,
     editorsFetcher,
     {
       disabled,
@@ -30,7 +37,16 @@ export function useEditors({
   );
 
   return {
-    editors: useMemo(() => (data ? data.editors : []), [data]),
+    editorsMap: useMemo(
+      () =>
+        data
+          ? data.editors.reduce(
+              (acc, val) => acc.set(val.sId, val),
+              new Map<string, UserType>()
+            )
+          : undefined,
+      [data]
+    ),
     isEditorsLoading: !error && !data && !disabled,
     isEditorsError: !!error,
     mutateEditors: mutate,

@@ -30,6 +30,9 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { useEditors } from "@app/lib/swr/editors";
+import _ from "lodash";
+import { useMemo } from "react";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;
@@ -153,6 +156,10 @@ export default function CreateAssistant({
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
+  const { editorsMap } = useEditors({
+    owner,
+    agentConfiguration,
+  });
 
   if (agentConfiguration) {
     throwIfInvalidAgentConfiguration(agentConfiguration);
@@ -203,7 +210,7 @@ export default function CreateAssistant({
                 visualizationEnabled: agentConfiguration.visualizationEnabled,
                 templateId: templateId,
                 tags: agentConfiguration.tags,
-                editors: new Map<string, UserType>(),
+                editors: editorsMap,
               }
             : null
         }
