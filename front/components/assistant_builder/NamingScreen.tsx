@@ -863,18 +863,16 @@ function EditorsMembersList({
 
   const editorsData = useEditors({ owner, agentConfigurationId });
 
-  const onRemoveMember = useCallback((member) =>
+  const onRemoveMember = useCallback((removed) =>
           setBuilderState((s) => ({
             ...s,
-            editors: s.editors?.delete(member.sId),
+            editors: s.editors
+              ? s.editors.filter((m) => m.sId != removed.sId)
+              : [],
           })), [setBuilderState]);
-  const members = useMemo(() => {
-    const members = editorsData.editorsMap
-      ? [...editorsData.editorsMap.values()]
-      : [];
-    return members.map((m) => ({ ...m, workspaces: [owner] }));
-  }, []);
-
+  const members =
+    editorsData.editors?.map((m) => ({ ...m, workspaces: [owner] })) ?? [];
+	
   const membersData = {
     members,
     totalMembersCount: members.length,

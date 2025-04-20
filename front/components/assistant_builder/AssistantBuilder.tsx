@@ -241,18 +241,14 @@ export default function AssistantBuilder({
     }
     if (agentConfigurationId && initialBuilderState?.editors) {
       assert(
-        initialBuilderState.editors.get(user.sId),
+        initialBuilderState.editors.some((m) => m.sId === user.sId),
         "Unreachable: User is not in editors"
       );
     }
     if (!agentConfigurationId) {
-      if (!builderState.editors) {
-        builderState.editors = new Map<string, UserType>();
-      }
-      builderState.editors.set(user.sId, user);
       setBuilderState({
         ...builderState,
-        editors: builderState.editors,
+        editors: [...(builderState.editors ?? []), user],
       });
     }
   }, [
