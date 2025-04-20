@@ -657,6 +657,7 @@ export default function NamingScreen({
               currentUserId={currentUserId}
               owner={owner}
               agentConfigurationId={agentConfigurationId}
+              setBuilderState={setBuilderState}
             />
           </>
         )}
@@ -838,15 +839,19 @@ const membersData = {
 };
 
 const onRowClick = () => {};
-const onRemoveMemberClick = () => {};
+
 function EditorsMembersList({
   currentUserId,
   owner,
   agentConfigurationId,
+  setBuilderState,
 }: {
   currentUserId: string | null;
   owner: WorkspaceType;
   agentConfigurationId: string | null;
+  setBuilderState: (
+    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
 }) {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -858,6 +863,11 @@ function EditorsMembersList({
 
   const editorsData = useEditors({ owner, agentConfigurationId });
 
+  const onRemoveMember = useCallback((member) =>
+          setBuilderState((s) => ({
+            ...s,
+            editors: s.editors?.delete(member.sId),
+          })), [setBuilderState]);
   const members = useMemo(() => {
     const members = editorsData.editorsMap
       ? [...editorsData.editorsMap.values()]
