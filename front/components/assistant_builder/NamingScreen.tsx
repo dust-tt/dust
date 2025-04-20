@@ -516,6 +516,7 @@ export default function NamingScreen({
               currentUserId={currentUserId}
               owner={owner}
               agentConfigurationId={agentConfigurationId}
+              setBuilderState={setBuilderState}
             />
           </>
         )}
@@ -613,10 +614,14 @@ function EditorsMembersList({
   currentUserId,
   owner,
   agentConfigurationId,
+  setBuilderState,
 }: {
   currentUserId: string | null;
   owner: WorkspaceType;
   agentConfigurationId: string | null;
+  setBuilderState: (
+    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
 }) {
   const editorsData = useEditors({ owner, agentConfigurationId });
 
@@ -648,7 +653,12 @@ function EditorsMembersList({
         currentUserId={currentUserId ?? "current-user-not-loaded"}
         membersData={membersData}
         onRowClick={() => {}}
-        onRemoveMemberClick={() => {}}
+        onRemoveMemberClick={(member) =>
+          setBuilderState((s) => ({
+            ...s,
+            editors: s.editors?.delete(member.sId),
+          }))
+        }
         showColumns={["name", "email", "remove"]}
       />
     </div>
