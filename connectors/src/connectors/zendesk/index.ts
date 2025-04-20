@@ -574,7 +574,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-
     return new Ok(undefined);
   }
 
