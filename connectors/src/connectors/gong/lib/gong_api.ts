@@ -146,17 +146,15 @@ export class GongClient {
           )
         );
 
-        if (Object.keys(headers).length > 0) {
-          logger.info(
-            {
-              connectorId: this.connectorId,
-              endpoint,
-              headers,
-              provider: "gong",
-            },
-            "Rate limit hit on Gong API."
-          );
-        }
+        logger.info(
+          {
+            connectorId: this.connectorId,
+            endpoint,
+            headers,
+            provider: "gong",
+          },
+          "Rate limit hit on Gong API."
+        );
       }
 
       if (response.status === 404) {
