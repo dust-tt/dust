@@ -241,7 +241,7 @@ export default function AssistantBuilder({
     }
     if (agentConfigurationId && initialBuilderState?.editors) {
       assert(
-        user.sId in initialBuilderState.editors,
+        initialBuilderState.editors.get(user.sId),
         "Unreachable: User is not in editors"
       );
     }
