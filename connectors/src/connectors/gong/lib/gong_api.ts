@@ -140,7 +140,7 @@ export class GongClient {
       if (response.status === 429) {
         const xHeaders = Object.fromEntries(
           Array.from(response.headers.entries()).filter(([key]) =>
-            key.toLowerCase().startsWith("x-")
+            key.toLowerCase().startsWith("x-") || key.toLowerCase().startsWith("rate-")
           )
         );
 
