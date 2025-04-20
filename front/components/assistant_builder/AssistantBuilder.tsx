@@ -15,7 +15,7 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import assert from "assert";
-import { initial, uniqueId } from "lodash";
+import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, {
   useCallback,

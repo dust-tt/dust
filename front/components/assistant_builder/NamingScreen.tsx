@@ -58,6 +58,9 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, isAdmin, Ok } from "@app/types";
+import { useEditors } from "@app/lib/swr/editors";
+import { LightAgentConfigurationType } from "@dust-tt/client";
+import { m } from "motion/react";
 import type { TagType } from "@app/types/tag";
 
 export function removeLeadingAt(handle: string) {
@@ -648,7 +651,11 @@ export default function NamingScreen({
                 </div>
               </div>
             </div>
-            <EditorsMembersList currentUserId={"mock1"} owner={owner} />
+            <EditorsMembersList
+              currentUserId={"mock1"}
+              owner={owner}
+              agentConfigurationId={agentConfigurationId}
+            />
           </>
         )}
       </div>
@@ -833,9 +840,11 @@ const onRemoveMemberClick = () => {};
 function EditorsMembersList({
   currentUserId,
   owner,
+  agentConfigurationId,
 }: {
   currentUserId: string;
   owner: WorkspaceType;
+  agentConfigurationId: string | null;
 }) {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -844,6 +853,22 @@ function EditorsMembersList({
   useEffect(() => {
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }, [setPagination]);
+
+  const editorsData = useEditors({ owner, agentConfigurationId });
+
+  const members = useMemo(() => {
+    const members = editorsData.editorsMap
+      ? [...editorsData.editorsMap.values()]
+      : [];
+    return members.map((m) => ({ ...m, workspaces: [owner] }));
+  }, []);
+
+  const membersData = {
+    members,
+    totalMembersCount: members.length,
+    isLoading: editorsData.isEditorsLoading,
+    mutateRegardlessOfQueryParams: editorsData.mutateEditors,
+  };
 
   return (
     <div className="flex flex-col gap-2">

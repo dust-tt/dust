@@ -1,5 +1,7 @@
+import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
+import { useMemo } from "react";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
@@ -20,20 +22,19 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
-import type {
-  AgentConfigurationType,
-  AppType,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  SubscriptionType,
-  TemplateAgentConfigurationType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
 import { useEditors } from "@app/lib/swr/editors";
-import _ from "lodash";
-import { useMemo } from "react";
+import {
+  isTemplateAgentConfiguration,
+  type AgentConfigurationType,
+  type AppType,
+  type DataSourceViewType,
+  type PlanType,
+  type SpaceType,
+  type SubscriptionType,
+  type TemplateAgentConfigurationType,
+  type UserType,
+  type WorkspaceType,
+} from "@app/types";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;
@@ -170,7 +171,10 @@ export default function CreateAssistant({
   const { assistantTemplate } = useAssistantTemplate({ templateId });
   const { editorsMap } = useEditors({
     owner,
-    agentConfiguration,
+    agentConfigurationId:
+      agentConfiguration && !isTemplateAgentConfiguration(agentConfiguration)
+        ? agentConfiguration.sId
+        : null,
   });
 
   if (agentConfiguration) {
