@@ -572,6 +572,7 @@ export default function AssistantBuilder({
                         slackChannelSelected={selectedSlackChannels || []}
                         slackDataSource={slackDataSource}
                         setSelectedSlackChannels={setSelectedSlackChannels}
+                        currentUserId={user?.sId ?? null}
                       />
                     );
                   default:

@@ -177,6 +177,7 @@ type NamingScreenProps = {
   slackChannelSelected: SlackChannel[];
   slackDataSource: DataSourceType | undefined;
   setSelectedSlackChannels: (channels: SlackChannel[]) => void;
+  currentUserId: string | null;
 };
 
 export default function NamingScreen({
@@ -193,6 +194,7 @@ export default function NamingScreen({
   slackChannelSelected,
   slackDataSource,
   setSelectedSlackChannels,
+  currentUserId,
 }: NamingScreenProps) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
@@ -652,7 +654,7 @@ export default function NamingScreen({
               </div>
             </div>
             <EditorsMembersList
-              currentUserId={"mock1"}
+              currentUserId={currentUserId}
               owner={owner}
               agentConfigurationId={agentConfigurationId}
             />
@@ -842,7 +844,7 @@ function EditorsMembersList({
   owner,
   agentConfigurationId,
 }: {
-  currentUserId: string;
+  currentUserId: string | null;
   owner: WorkspaceType;
   agentConfigurationId: string | null;
 }) {
@@ -881,7 +883,7 @@ function EditorsMembersList({
         />
       </div>
       <MembersList
-        currentUserId={currentUserId}
+        currentUserId={currentUserId ?? "current-user-not-loaded"}
         membersData={membersData}
         onRowClick={onRowClick}
         onRemoveMemberClick={onRemoveMemberClick}
