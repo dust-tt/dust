@@ -877,7 +877,7 @@ function AddEditorDropdown({
 }) {
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const itemsContainerRef = React.useRef<HTMLDivElement>(null);
 
   const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
     useSearchMembers({
@@ -906,12 +906,11 @@ function AddEditorDropdown({
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
-              ref={searchInputRef}
               name="search"
               onChange={(value) => setSearchTerm(value)}
               placeholder="Search members"
               value={searchTerm}
-              button={<Button icon={PlusIcon} label="Create" />}
+              button={<Button icon={PlusIcon} label="Add member" />}
             />
             <DropdownMenuSeparator />
           </>
