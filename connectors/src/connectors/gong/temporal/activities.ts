@@ -133,12 +133,14 @@ export async function gongSyncTranscriptsActivity({
     callIds: transcriptsToSync.map((t) => t.callId),
     connector,
   });
+  const callsMetadataMap = new Map(
+    callsMetadata.map((c) => [c.metaData.id, c])
+  );
+
   await concurrentExecutor(
     transcriptsToSync,
     async (transcript) => {
-      const transcriptMetadata = callsMetadata.find(
-        (c) => c.metaData.id === transcript.callId
-      );
+      const transcriptMetadata = callsMetadataMap.get(transcript.callId);
       if (!transcriptMetadata) {
         logger.warn(
           { ...loggerArgs, callId: transcript.callId },
