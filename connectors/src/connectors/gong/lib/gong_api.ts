@@ -8,6 +8,7 @@ import {
   HTTPError,
   isNotFoundError,
 } from "@connectors/lib/error";
+import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 
 // Pass-through codec that is used to allow unknown properties.
@@ -137,7 +138,24 @@ export class GongClient {
       // Handle rate limiting
       // https://gong.app.gong.io/settings/api/documentation#overview
       if (response.status === 429) {
-        // TODO(2025-03-04) - Implement this, we can read the Retry-After header.
+        const headers = Object.fromEntries(
+          Array.from(response.headers.entries()).filter(
+            ([key]) =>
+              key.toLowerCase().startsWith("x-") ||
+              key.toLowerCase().startsWith("rate-")
+          )
+        );
+
+        if (Object.keys(headers).length > 0) {
+          logger.info(
+            {
+              connectorId: this.connectorId,
+              endpoint,
+              headers,
+            },
+            "Rate limit hit on Gong API."
+          );
+        }
       }
 
       if (response.status === 404) {
