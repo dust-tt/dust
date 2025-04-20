@@ -6,6 +6,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
+import assert from "assert";
 import _ from "lodash";
 import React, { useEffect, useMemo } from "react";
 import type { KeyedMutator } from "swr";
@@ -13,7 +14,6 @@ import type { KeyedMutator } from "swr";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { RoleType, UserTypeWithWorkspaces } from "@app/types";
-import assert from "assert";
 
 type RowData = {
   icon: string;

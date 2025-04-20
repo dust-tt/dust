@@ -23,6 +23,7 @@ import { InvitationsList } from "@app/components/members/InvitationsList";
 import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
 import config from "@app/lib/api/config";
@@ -37,6 +38,7 @@ import {
 } from "@app/lib/api/workspace";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useSearchMembers } from "@app/lib/swr/memberships";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
@@ -46,8 +48,6 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
-import { useSearchMembers } from "@app/lib/swr/memberships";
-import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;

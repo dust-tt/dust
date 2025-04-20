@@ -38,6 +38,7 @@ import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
+import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
@@ -49,7 +50,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { useSearchMembers } from "@app/lib/swr/memberships";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -701,10 +701,6 @@ function AddEditorDropdown({
       pageSize: 25,
     });
 
-  const addEditor = useCallback(async () => {
-    // TODO: use new endpoint
-  }, []);
-
   return (
     <DropdownMenu
       open={isEditorPickerOpen}
@@ -719,8 +715,8 @@ function AddEditorDropdown({
           label="Add editor"
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="s-w-[380px]">
-        <div className="s-flex s-gap-1.5 s-p-1.5">
+      <DropdownMenuContent className="w-[380px]">
+        <div className="flex gap-1.5 p-1.5">
           <SearchInput
             ref={searchInputRef}
             name="search"
@@ -731,7 +727,7 @@ function AddEditorDropdown({
           <Button icon={PlusIcon} label="Create" />
         </div>
         <DropdownMenuSeparator />
-        <ScrollArea className="s-h-[380px]" ref={itemsContainerRef}>
+        <ScrollArea className="h-[380px]" ref={itemsContainerRef}>
           {isWorkspaceMembersLoading ? (
             <Spinner size="sm" />
           ) : (
@@ -743,7 +739,6 @@ function AddEditorDropdown({
                   description={member.email}
                   icon={() => <Avatar size="sm" visual={member.image} />}
                   onClick={async () => {
-                    await addEditor(member);
                     setSearchTerm("");
                     setIsEditorPickerOpen(false);
                     await onAddEditor(member);
