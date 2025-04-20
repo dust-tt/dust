@@ -27,6 +27,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { useEditors } from "@app/lib/swr/editors";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];
@@ -121,6 +122,11 @@ export default function EditAssistant({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   throwIfInvalidAgentConfiguration(agentConfiguration);
 
+  const { editorsMap } = useEditors({
+    owner,
+    agentConfiguration,
+  });
+
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global agent");
   }
@@ -161,7 +167,7 @@ export default function EditAssistant({
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
           tags: agentConfiguration.tags,
-          editors: new Map<string, UserType>(),
+          editors: editorsMap,
         }}
         agentConfigurationId={agentConfiguration.sId}
         baseUrl={baseUrl}

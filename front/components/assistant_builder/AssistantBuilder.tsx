@@ -70,6 +70,7 @@ import type {
   AgentConfigurationScope,
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
+  UserType,
 } from "@app/types";
 import {
   assertNever,
@@ -238,14 +239,21 @@ export default function AssistantBuilder({
     if (isUserError || isUserLoading || !user) {
       return;
     }
-    if (agentConfigurationId && initialBuilderState) {
+    if (agentConfigurationId && initialBuilderState?.editors) {
       assert(
         user.sId in initialBuilderState.editors,
         "Unreachable: User is not in editors"
       );
     }
     if (!agentConfigurationId) {
+      if (!builderState.editors) {
+        builderState.editors = new Map<string, UserType>();
+      }
       builderState.editors.set(user.sId, user);
+      setBuilderState({
+        ...builderState,
+        editors: builderState.editors,
+      });
     }
   }, [
     isUserLoading,
