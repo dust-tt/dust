@@ -690,7 +690,6 @@ function AddEditorDropdown({
 }) {
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const searchInputRef = React.useRef<HTMLInputElement>(null);
   const itemsContainerRef = React.useRef<HTMLDivElement>(null);
 
   const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
@@ -718,10 +717,9 @@ function AddEditorDropdown({
       <DropdownMenuContent className="w-[380px]">
         <div className="flex gap-1.5 p-1.5">
           <SearchInput
-            ref={searchInputRef}
             name="search"
             onChange={(value) => setSearchTerm(value)}
-            placeholder="Search members"
+            placeholder="Search by email"
             value={searchTerm}
           />
           <Button icon={PlusIcon} label="Create" />
