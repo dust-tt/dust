@@ -152,6 +152,7 @@ export class GongClient {
               connectorId: this.connectorId,
               endpoint,
               headers,
+              provider: "gong",
             },
             "Rate limit hit on Gong API."
           );
