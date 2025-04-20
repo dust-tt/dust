@@ -1,4 +1,3 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 

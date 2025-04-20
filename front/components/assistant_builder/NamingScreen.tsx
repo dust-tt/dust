@@ -154,6 +154,7 @@ export default function NamingScreen({
   assistantHandleError,
   descriptionError,
   agentConfigurationId,
+  currentUserId,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -165,6 +166,7 @@ export default function NamingScreen({
   assistantHandleError: string | null;
   descriptionError: string | null;
   agentConfigurationId: string | null;
+  currentUserId: string | null;
 }) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
@@ -511,7 +513,7 @@ export default function NamingScreen({
               </div>
             </div>
             <EditorsMembersList
-              currentUserId={"mock1"}
+              currentUserId={currentUserId}
               owner={owner}
               agentConfigurationId={agentConfigurationId}
             />
@@ -612,66 +614,10 @@ function EditorsMembersList({
   owner,
   agentConfigurationId,
 }: {
-  currentUserId: string;
+  currentUserId: string | null;
   owner: WorkspaceType;
   agentConfigurationId: string | null;
 }) {
-  const mockMembersData = {
-    members: [
-      {
-        sId: "mock1",
-        fullName: "Mock User 1",
-        email: "mock1@test.com",
-        image: "https://example.com/image.png",
-        workspaces: [
-          {
-            role: "admin" as const,
-            sId: "mock1",
-            name: "Mock Workspace 1",
-            id: 1,
-            segmentation: null,
-            whiteListedProviders: null,
-            defaultEmbeddingProvider: null,
-            metadata: null,
-          },
-        ],
-        id: 1,
-        createdAt: 0,
-        provider: null,
-        username: "mock1",
-        firstName: "Mock",
-        lastName: "User 1",
-      },
-      {
-        sId: "mock2",
-        fullName: "Mock User 2",
-        email: "mock2@test.com",
-        image: "https://example.com/image.png",
-        workspaces: [
-          {
-            role: "admin" as const,
-            sId: "mock1",
-            name: "Mock Workspace 1",
-            id: 1,
-            segmentation: null,
-            whiteListedProviders: null,
-            defaultEmbeddingProvider: null,
-            metadata: null,
-          },
-        ],
-        id: 2,
-        createdAt: 0,
-        provider: null,
-        username: "mock2",
-        firstName: "Mock",
-        lastName: "User 2",
-      },
-    ],
-    totalMembersCount: 2,
-    isLoading: false,
-    mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
-  };
-
   const editorsData = useEditors({ owner, agentConfigurationId });
 
   const members = useMemo(() => {
@@ -699,7 +645,7 @@ function EditorsMembersList({
         />
       </div>
       <MembersList
-        currentUserId={currentUserId}
+        currentUserId={currentUserId ?? "current-user-not-loaded"}
         membersData={membersData}
         onRowClick={() => {}}
         onRemoveMemberClick={() => {}}

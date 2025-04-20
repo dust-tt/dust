@@ -552,6 +552,7 @@ export default function AssistantBuilder({
                         assistantHandleError={assistantHandleError}
                         descriptionError={descriptionError}
                         agentConfigurationId={agentConfigurationId}
+                        currentUserId={user?.sId ?? null}
                       />
                     );
                   default:
