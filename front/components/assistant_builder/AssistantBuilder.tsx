@@ -14,7 +14,8 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { uniqueId } from "lodash";
+import assert from "assert";
+import { initial, uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, {
   useCallback,
@@ -63,6 +64,7 @@ import {
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
+import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
@@ -94,6 +96,7 @@ export default function AssistantBuilder({
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
+  const { user, isUserLoading, isUserError } = useUser();
 
   const { killSwitches } = useKillSwitches();
   const { models, reasoningModels } = useModels({ owner });
@@ -154,6 +157,7 @@ export default function AssistantBuilder({
           visualizationEnabled: initialBuilderState.visualizationEnabled,
           templateId: initialBuilderState.templateId,
           tags: initialBuilderState.tags,
+          editors: initialBuilderState.editors,
         }
       : {
           ...getDefaultAssistantState(),
@@ -227,6 +231,29 @@ export default function AssistantBuilder({
       triggerPreviewButtonAnimation();
     }
   }, [isBuilderStateEmpty]);
+
+  // If agent is created, the user creating it should be added to the builder
+  // editors list. If not, then the user should be in this list.
+  useEffect(() => {
+    if (isUserError || isUserLoading || !user) {
+      return;
+    }
+    if (agentConfigurationId && initialBuilderState) {
+      assert(
+        user.sId in initialBuilderState.editors,
+        "Unreachable: User is not in editors"
+      );
+    }
+    if (!agentConfigurationId) {
+      builderState.editors.set(user.sId, user);
+    }
+  }, [
+    isUserLoading,
+    isUserError,
+    user,
+    agentConfigurationId,
+    initialBuilderState,
+  ]);
 
   const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {
     setRightPanelStatus({
