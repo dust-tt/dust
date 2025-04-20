@@ -138,7 +138,7 @@ export class GongClient {
       // Handle rate limiting
       // https://gong.app.gong.io/settings/api/documentation#overview
       if (response.status === 429) {
-        const xHeaders = Object.fromEntries(
+        const headers = Object.fromEntries(
           Array.from(response.headers.entries()).filter(
             ([key]) =>
               key.toLowerCase().startsWith("x-") ||
@@ -146,12 +146,12 @@ export class GongClient {
           )
         );
 
-        if (Object.keys(xHeaders).length > 0) {
+        if (Object.keys(headers).length > 0) {
           logger.info(
             {
               connectorId: this.connectorId,
               endpoint,
-              xHeaders,
+              headers,
             },
             "Rate limit hit on Gong API."
           );
