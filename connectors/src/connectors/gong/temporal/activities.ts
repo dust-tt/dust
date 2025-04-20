@@ -116,12 +116,25 @@ export async function gongSyncTranscriptsActivity({
     return { nextPageCursor: null };
   }
 
+  const transcriptsInDb = await GongTranscriptResource.fetchByCallIds(
+    transcripts.map((t) => t.callId),
+    connector
+  );
+  const transcriptsInDbMap = new Map(transcriptsInDb.map((t) => [t.callId, t]));
+
+  let transcriptsToSync = transcripts;
+  if (!forceResync) {
+    transcriptsToSync = transcripts.filter(
+      (t) => !transcriptsInDbMap.has(t.callId)
+    );
+  }
+
   const callsMetadata = await getTranscriptsMetadata({
-    callIds: transcripts.map((t) => t.callId),
+    callIds: transcriptsToSync.map((t) => t.callId),
     connector,
   });
   await concurrentExecutor(
-    transcripts,
+    transcriptsToSync,
     async (transcript) => {
       const transcriptMetadata = callsMetadata.find(
         (c) => c.metaData.id === transcript.callId
