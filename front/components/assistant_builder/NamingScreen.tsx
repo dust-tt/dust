@@ -21,6 +21,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -50,6 +51,9 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { useEditors } from "@app/lib/swr/editors";
+import { LightAgentConfigurationType } from "@dust-tt/client";
+import { m } from "motion/react";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -149,6 +153,7 @@ export default function NamingScreen({
   setEdited,
   assistantHandleError,
   descriptionError,
+  agentConfigurationId,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -159,6 +164,7 @@ export default function NamingScreen({
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
   descriptionError: string | null;
+  agentConfigurationId: string | null;
 }) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
@@ -504,7 +510,11 @@ export default function NamingScreen({
                 </div>
               </div>
             </div>
-            <EditorsMembersList currentUserId={"mock1"} owner={owner} />
+            <EditorsMembersList
+              currentUserId={"mock1"}
+              owner={owner}
+              agentConfigurationId={agentConfigurationId}
+            />
           </>
         )}
       </div>
@@ -600,11 +610,13 @@ async function fetchWithErr<T>(
 function EditorsMembersList({
   currentUserId,
   owner,
+  agentConfigurationId,
 }: {
   currentUserId: string;
   owner: WorkspaceType;
+  agentConfigurationId: string | null;
 }) {
-  const membersData = {
+  const mockMembersData = {
     members: [
       {
         sId: "mock1",
@@ -658,6 +670,22 @@ function EditorsMembersList({
     totalMembersCount: 2,
     isLoading: false,
     mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
+  };
+
+  const editorsData = useEditors({ owner, agentConfigurationId });
+
+  const members = useMemo(() => {
+    const members = editorsData.editorsMap
+      ? [...editorsData.editorsMap.values()]
+      : [];
+    return members.map((m) => ({ ...m, workspaces: [owner] }));
+  }, []);
+
+  const membersData = {
+    members,
+    totalMembersCount: members.length,
+    isLoading: editorsData.isEditorsLoading,
+    mutateRegardlessOfQueryParams: editorsData.mutateEditors,
   };
 
   return (

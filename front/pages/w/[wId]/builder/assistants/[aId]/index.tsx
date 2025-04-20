@@ -17,6 +17,7 @@ import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { useEditors } from "@app/lib/swr/editors";
 import type {
   AgentConfigurationType,
   AppType,
@@ -27,7 +28,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { useEditors } from "@app/lib/swr/editors";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];
@@ -124,7 +124,7 @@ export default function EditAssistant({
 
   const { editorsMap } = useEditors({
     owner,
-    agentConfiguration,
+    agentConfigurationId: agentConfiguration.sId,
   });
 
   if (agentConfiguration.scope === "global") {

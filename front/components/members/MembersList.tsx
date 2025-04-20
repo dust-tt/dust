@@ -14,6 +14,7 @@ import type { KeyedMutator } from "swr";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { RoleType, UserTypeWithWorkspaces } from "@app/types";
+import { GetAgentEditorsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
 
 type RowData = {
   icon: string;
@@ -55,7 +56,9 @@ type MembersData = {
   members: UserTypeWithWorkspaces[];
   totalMembersCount: number;
   isLoading: boolean;
-  mutateRegardlessOfQueryParams: KeyedMutator<SearchMembersResponseBody>;
+  mutateRegardlessOfQueryParams:
+    | KeyedMutator<SearchMembersResponseBody>
+    | KeyedMutator<GetAgentEditorsResponseBody>;
 };
 
 const memberColumns = [
