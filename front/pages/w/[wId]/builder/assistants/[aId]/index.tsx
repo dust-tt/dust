@@ -24,6 +24,7 @@ import type {
   PlanType,
   SpaceType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -160,6 +161,7 @@ export default function EditAssistant({
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
           tags: agentConfiguration.tags,
+          editors: new Map<string, UserType>(),
         }}
         agentConfigurationId={agentConfiguration.sId}
         baseUrl={baseUrl}

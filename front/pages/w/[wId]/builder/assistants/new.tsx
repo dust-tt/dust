@@ -27,6 +27,7 @@ import type {
   SpaceType,
   SubscriptionType,
   TemplateAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -202,6 +203,7 @@ export default function CreateAssistant({
                 visualizationEnabled: agentConfiguration.visualizationEnabled,
                 templateId: templateId,
                 tags: agentConfiguration.tags,
+                editors: new Map<string, UserType>(),
               }
             : null
         }
