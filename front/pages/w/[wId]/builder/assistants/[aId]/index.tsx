@@ -122,7 +122,7 @@ export default function EditAssistant({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   throwIfInvalidAgentConfiguration(agentConfiguration);
 
-  const { editorsMap } = useEditors({
+  const { editors } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -167,7 +167,7 @@ export default function EditAssistant({
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
           tags: agentConfiguration.tags,
-          editors: editorsMap,
+          editors,
         }}
         agentConfigurationId={agentConfiguration.sId}
         baseUrl={baseUrl}

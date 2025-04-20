@@ -3,7 +3,6 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentEditorsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
-import type { UserType } from "@app/types";
 import type { LightWorkspaceType } from "@app/types";
 
 export function useEditors({
@@ -29,16 +28,7 @@ export function useEditors({
   );
 
   return {
-    editorsMap: useMemo(
-      () =>
-        data
-          ? data.editors.reduce(
-              (acc, val) => acc.set(val.sId, val),
-              new Map<string, UserType>()
-            )
-          : undefined,
-      [data]
-    ),
+    editors: useMemo(() => (data ? data.editors : undefined), [data]),
     isEditorsLoading: !error && !data && !disabled,
     isEditorsError: !!error,
     mutateEditors: mutate,

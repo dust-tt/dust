@@ -157,7 +157,7 @@ export default function CreateAssistant({
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
-  const { editorsMap } = useEditors({
+  const { editors } = useEditors({
     owner,
     agentConfigurationId:
       agentConfiguration && !isTemplateAgentConfiguration(agentConfiguration)
@@ -214,7 +214,7 @@ export default function CreateAssistant({
                 visualizationEnabled: agentConfiguration.visualizationEnabled,
                 templateId: templateId,
                 tags: agentConfiguration.tags,
-                editors: editorsMap,
+                editors,
               }
             : null
         }
