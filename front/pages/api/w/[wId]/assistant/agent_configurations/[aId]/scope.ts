@@ -14,6 +14,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentStatus, WithAPIErrorResponse } from "@app/types";
+import { GroupResource } from "@app/lib/resources/group_resource";
 
 export const PostAgentScopeRequestBodySchema = t.type({
   scope: t.union([
@@ -92,6 +93,27 @@ async function handler(
         }
       }
 
+      // This won't stay long since Agent Discovery initiative removes the scope
+      // endpoint.
+      const groupRes = await GroupResource.fetchByAgentConfiguration(
+        auth,
+        assistant
+      );
+
+      if (groupRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "assistant_saving_error",
+            message: `Error fetching group for agent ${assistant.sId}: ${groupRes.error}`,
+          },
+        });
+      }
+
+      const group = groupRes.value;
+
+      const editors = await group.getActiveMembers(auth);
+
       // Cast the assistant to ensure TypeScript understands the correct types.
       const typedAssistant = {
         ...assistant,
@@ -110,6 +132,7 @@ async function handler(
 
           return action;
         }),
+        editors,
       };
 
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
