@@ -25,7 +25,6 @@ import type {
   PlanType,
   SpaceType,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@app/types";
 

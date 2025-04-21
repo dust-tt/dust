@@ -48,13 +48,9 @@ import type {
   BuilderSuggestionsType,
   Result,
   UserType,
-  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { useEditors } from "@app/lib/swr/editors";
-import { LightAgentConfigurationType } from "@dust-tt/client";
-import { m } from "motion/react";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -628,7 +624,7 @@ function EditorsMembersList({
   const members = useMemo(
     () =>
       builderState.editors?.map((m) => ({ ...m, workspaces: [owner] })) ?? [],
-    [builderState]
+    [builderState, owner]
   );
 
   const membersData = {
