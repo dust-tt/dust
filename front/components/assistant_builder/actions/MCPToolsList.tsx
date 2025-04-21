@@ -1,5 +1,3 @@
-import { cn, CollapsibleComponent } from "@dust-tt/sparkle";
-
 import { asDisplayName } from "@app/types";
 
 export function MCPToolsList({
