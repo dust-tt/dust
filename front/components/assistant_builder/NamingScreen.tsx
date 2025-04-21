@@ -644,12 +644,16 @@ function EditorsMembersList({
         <div className="flex flex-grow" />
         <AddEditorDropdown
           owner={owner}
-          onAddEditor={(added) =>
+          editors={builderState.editors ?? []}
+          onAddEditor={(added) => {
+            if (builderState.editors?.some((e) => e.sId === added.sId)) {
+              return;
+            }
             setBuilderState((s) => ({
               ...s,
               editors: [...(s.editors ?? []), added],
-            }))
-          }
+            }));
+          }}
         />
       </div>
       <MembersList
@@ -672,9 +676,11 @@ function EditorsMembersList({
 
 function AddEditorDropdown({
   owner,
+  editors,
   onAddEditor,
 }: {
   owner: WorkspaceType;
+  editors: UserType[];
   onAddEditor: (member: UserType) => void;
 }) {
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
@@ -731,6 +737,7 @@ function AddEditorDropdown({
                     onAddEditor(member);
                   }}
                   truncateText
+                  disabled={editors.some((e) => e.sId === member.sId)}
                 />
               );
             })
