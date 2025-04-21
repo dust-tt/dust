@@ -62,6 +62,7 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useEditors } from "@app/lib/swr/editors";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
@@ -70,7 +71,6 @@ import type {
   AgentConfigurationScope,
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
-  UserType,
 } from "@app/types";
 import {
   assertNever,
@@ -79,7 +79,6 @@ import {
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { useEditors } from "@app/lib/swr/editors";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -260,6 +259,7 @@ export default function AssistantBuilder({
     user,
     agentConfigurationId,
     initialBuilderState,
+    builderState,
   ]);
 
   const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {

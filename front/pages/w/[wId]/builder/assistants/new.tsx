@@ -1,7 +1,6 @@
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
-import { useMemo } from "react";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
@@ -23,18 +22,17 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
-import {
-  isTemplateAgentConfiguration,
-  type AgentConfigurationType,
-  type AppType,
-  type DataSourceViewType,
-  type PlanType,
-  type SpaceType,
-  type SubscriptionType,
-  type TemplateAgentConfigurationType,
-  type UserType,
-  type WorkspaceType,
+import type {
+  AgentConfigurationType,
+  AppType,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  SubscriptionType,
+  TemplateAgentConfigurationType,
+  WorkspaceType,
 } from "@app/types";
+import { isTemplateAgentConfiguration } from "@app/types";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;

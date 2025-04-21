@@ -21,6 +21,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -37,7 +38,6 @@ import {
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types";
-import { UserResource } from "@app/lib/resources/user_resource";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];

@@ -19,7 +19,6 @@ import type {
   RetrievalTimeframe,
 } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
-import editors from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
 import type {
   AgentConfigurationType,
   DataSourceViewSelectionConfigurations,

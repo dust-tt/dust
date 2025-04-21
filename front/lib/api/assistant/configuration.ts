@@ -940,7 +940,7 @@ export async function createAgentConfiguration(
             agentConfigurationInstance,
             { transaction: t }
           );
-          group.setMembers(auth, editors, { transaction });
+          await group.setMembers(auth, editors, { transaction });
         } else {
           const groupRes = await GroupResource.fetchByAgentConfiguration(
             auth,
@@ -962,7 +962,7 @@ export async function createAgentConfiguration(
                 `Error adding group to agent ${existingAgent.sId}: ${result.error}`
               );
             }
-            group.setMembers(auth, editors, { transaction });
+            await group.setMembers(auth, editors, { transaction });
           } else {
             logger.warn(
               {

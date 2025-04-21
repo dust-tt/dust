@@ -55,7 +55,6 @@ import type {
   DataSourceType,
   Result,
   UserType,
-  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
 import { Err, isAdmin, Ok } from "@app/types";
@@ -877,7 +876,7 @@ function EditorsMembersList({
   const members = useMemo(
     () =>
       builderState.editors?.map((m) => ({ ...m, workspaces: [owner] })) ?? [],
-    [builderState]
+    [builderState, owner]
   );
 	
   const membersData = {
