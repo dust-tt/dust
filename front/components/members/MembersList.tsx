@@ -58,7 +58,7 @@ type MembersData = {
   isLoading: boolean;
   mutateRegardlessOfQueryParams:
     | KeyedMutator<SearchMembersResponseBody>
-    | KeyedMutator<GetAgentEditorsResponseBody>;
+    | (() => void);
 };
 
 const memberColumns = [

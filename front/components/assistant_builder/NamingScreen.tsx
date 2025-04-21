@@ -47,6 +47,7 @@ import type {
   BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
   Result,
+  UserType,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
@@ -515,7 +516,7 @@ export default function NamingScreen({
             <EditorsMembersList
               currentUserId={currentUserId}
               owner={owner}
-              agentConfigurationId={agentConfigurationId}
+              builderState={builderState}
               setBuilderState={setBuilderState}
             />
           </>
@@ -613,26 +614,27 @@ async function fetchWithErr<T>(
 function EditorsMembersList({
   currentUserId,
   owner,
-  agentConfigurationId,
+  builderState,
   setBuilderState,
 }: {
   currentUserId: string | null;
   owner: WorkspaceType;
-  agentConfigurationId: string | null;
+  builderState: AssistantBuilderState;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
 }) {
-  const editorsData = useEditors({ owner, agentConfigurationId });
-
-  const members =
-    editorsData.editors?.map((m) => ({ ...m, workspaces: [owner] })) ?? [];
+  const members = useMemo(
+    () =>
+      builderState.editors?.map((m) => ({ ...m, workspaces: [owner] })) ?? [],
+    [builderState]
+  );
 
   const membersData = {
     members,
     totalMembersCount: members.length,
-    isLoading: editorsData.isEditorsLoading,
-    mutateRegardlessOfQueryParams: editorsData.mutateEditors,
+    isLoading: false,
+    mutateRegardlessOfQueryParams: () => {},
   };
 
   return (
@@ -642,7 +644,12 @@ function EditorsMembersList({
         <div className="flex flex-grow" />
         <AddEditorDropdown
           owner={owner}
-          onAddEditor={() => membersData.mutateRegardlessOfQueryParams()}
+          onAddEditor={(added) =>
+            setBuilderState((s) => ({
+              ...s,
+              editors: [...(s.editors ?? []), added],
+            }))
+          }
         />
       </div>
       <MembersList
@@ -668,7 +675,7 @@ function AddEditorDropdown({
   onAddEditor,
 }: {
   owner: WorkspaceType;
-  onAddEditor: (member: UserTypeWithWorkspaces) => Promise<void>;
+  onAddEditor: (member: UserType) => void;
 }) {
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -721,7 +728,7 @@ function AddEditorDropdown({
                   onClick={async () => {
                     setSearchTerm("");
                     setIsEditorPickerOpen(false);
-                    await onAddEditor(member);
+                    onAddEditor(member);
                   }}
                   truncateText
                 />
