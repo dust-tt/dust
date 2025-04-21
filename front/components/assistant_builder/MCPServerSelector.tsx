@@ -59,7 +59,6 @@ export function MCPServerSelector({
         </a>{" "}
         made available to you by your Admin.
       </div>
-      <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
       <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
         Pick a Toolset
       </div>
@@ -138,6 +137,7 @@ export function MCPServerSelector({
           }}
         />
       )}
+      <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
     </div>
   );
 }

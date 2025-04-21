@@ -270,7 +270,9 @@ export function MCPAction({
               </div>
             )}
           </div>
-          <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
+          <div className="pt-2">
+            <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
+          </div>
         </div>
       ) : (
         <>
