@@ -102,7 +102,7 @@ export const SpaceActionsList = ({
           <DataTable.MoreButton
             menuItems={[
               {
-                label: "Remove toolset from space",
+                label: "Remove tools from space",
                 onClick: async () => onRemoveServer(info.row.original.id),
                 kind: "item",
               },
