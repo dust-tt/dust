@@ -40,7 +40,7 @@ export default function SpaceManagedActionsViewsModel({
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
-          label="Add Toolset"
+          label="Add Tools"
           variant="primary"
           icon={PlusIcon}
           size="sm"

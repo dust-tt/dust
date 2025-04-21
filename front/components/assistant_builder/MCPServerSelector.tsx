@@ -76,7 +76,7 @@ export function MCPServerSelector({
               mcpServerViewsInSpace.length === 0 ||
               hasNoMCPServerViewsInAllowedSpaces
             ) {
-              return <>No Toolsets available.</>;
+              return <>No tools available.</>;
             }
 
             return (
