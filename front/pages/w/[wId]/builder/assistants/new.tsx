@@ -1,4 +1,3 @@
-import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
