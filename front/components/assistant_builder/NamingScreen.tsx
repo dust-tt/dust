@@ -154,7 +154,6 @@ export default function NamingScreen({
   setEdited,
   assistantHandleError,
   descriptionError,
-  agentConfigurationId,
   currentUserId,
 }: {
   owner: WorkspaceType;
@@ -166,7 +165,6 @@ export default function NamingScreen({
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
   descriptionError: string | null;
-  agentConfigurationId: string | null;
   currentUserId: string | null;
 }) {
   const confirm = useContext(ConfirmContext);
@@ -518,6 +516,7 @@ export default function NamingScreen({
               owner={owner}
               builderState={builderState}
               setBuilderState={setBuilderState}
+              setEdited={setEdited}
             />
           </>
         )}
@@ -616,6 +615,7 @@ function EditorsMembersList({
   owner,
   builderState,
   setBuilderState,
+  setEdited,
 }: {
   currentUserId: string | null;
   owner: WorkspaceType;
@@ -623,6 +623,7 @@ function EditorsMembersList({
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
+  setEdited: (edited: boolean) => void;
 }) {
   const members = useMemo(
     () =>
@@ -653,6 +654,7 @@ function EditorsMembersList({
               ...s,
               editors: [...(s.editors ?? []), added],
             }));
+            setEdited(true);
           }}
         />
       </div>
@@ -660,14 +662,15 @@ function EditorsMembersList({
         currentUserId={currentUserId ?? "current-user-not-loaded"}
         membersData={membersData}
         onRowClick={() => {}}
-        onRemoveMemberClick={(removed) =>
+        onRemoveMemberClick={(removed) => {
           setBuilderState((s) => ({
             ...s,
             editors: s.editors
               ? s.editors.filter((m) => m.sId != removed.sId)
               : [],
-          }))
-        }
+          }));
+          setEdited(true);
+        }}
         showColumns={["name", "email", "remove"]}
       />
     </div>
