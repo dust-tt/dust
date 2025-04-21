@@ -79,6 +79,7 @@ import {
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { useEditors } from "@app/lib/swr/editors";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -171,6 +172,8 @@ export default function AssistantBuilder({
           },
         }
   );
+
+  const { mutateEditors } = useEditors({ owner, agentConfigurationId });
 
   const [pendingAction, setPendingAction] =
     useState<AssistantBuilderPendingAction>({
@@ -409,6 +412,7 @@ export default function AssistantBuilder({
           type: "error",
         });
       } else {
+        void mutateEditors();
         if (slackDataSource) {
           await mutateSlackChannels();
         }

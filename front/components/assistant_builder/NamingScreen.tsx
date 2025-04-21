@@ -659,6 +659,7 @@ export default function NamingScreen({
               owner={owner}
               builderState={builderState}
               setBuilderState={setBuilderState}
+              setEdited={setEdited}
             />
           </>
         )}
@@ -846,6 +847,7 @@ function EditorsMembersList({
   owner,
   builderState,
   setBuilderState,
+  setEdited,
 }: {
   currentUserId: string | null;
   owner: WorkspaceType;
@@ -853,6 +855,7 @@ function EditorsMembersList({
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
+  setEdited: (edited: boolean) => void;
 }) {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -900,6 +903,7 @@ function EditorsMembersList({
               ...s,
               editors: [...(s.editors ?? []), added],
             }));
+            setEdited(true);
           }}
         />
       </div>
