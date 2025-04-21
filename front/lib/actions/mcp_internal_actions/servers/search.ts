@@ -4,10 +4,7 @@ import assert from "assert";
 import { trim } from "lodash";
 import { z } from "zod";
 
-import {
-  ConfigurableToolInputSchemas,
-  isDataSourcesToolConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   SearchQueryResourceType,
   SearchResultResourceType,
@@ -96,13 +93,6 @@ function createServer(
         ],
     },
     async ({ query, relativeTimeFrame, dataSources, tagsIn, tagsNot }) => {
-      if (!isDataSourcesToolConfiguration(dataSources)) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "Invalid data sources" }],
-        };
-      }
-
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const credentials = dustManagedCredentials();
       const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -293,14 +283,6 @@ function createServer(
         ],
     },
     async ({ query, dataSources }) => {
-      if (!isDataSourcesToolConfiguration(dataSources)) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "Invalid data sources" }],
-        };
-      }
-
-      // Get the core search args for each data source, fail if any of them are invalid.
       const coreSearchArgsResults = await concurrentExecutor(
         dataSources,
         async (dataSourceConfiguration) =>
