@@ -7,10 +7,7 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
-import {
-  ConfigurableToolInputSchemas,
-  isTablesToolConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -114,13 +111,6 @@ function createServer(
     async ({ tables }) => {
       if (!agentLoopContext) {
         throw new Error("Unreachable: missing agentLoopContext.");
-      }
-
-      if (!isTablesToolConfiguration(tables)) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "Invalid table configurations" }],
-        };
       }
 
       const owner = auth.getNonNullableWorkspace();
