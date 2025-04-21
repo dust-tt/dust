@@ -37,6 +37,7 @@ import {
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];
@@ -320,6 +321,10 @@ export async function createOrUpgradeAgentConfiguration({
     }
   }
 
+  const editors = (
+    await UserResource.fetchByIds(assistant.editors.map((e) => e.sId))
+  ).map((e) => e.toJSON());
+
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
     description: assistant.description,
@@ -337,6 +342,7 @@ export async function createOrUpgradeAgentConfiguration({
       actions
     ),
     tags: assistant.tags,
+    editors,
   });
 
   if (agentConfigurationRes.isErr()) {
