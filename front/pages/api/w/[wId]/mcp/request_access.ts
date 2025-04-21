@@ -102,7 +102,7 @@ async function handler(
   const result = await sendEmailWithTemplate({
     to: userRecipient.email,
     from: { name: "Dust team", email: "support@dust.help" },
-    subject: `[Dust] Request Toolset from ${emailRequester}`,
+    subject: `[Dust] Tools request from ${emailRequester}`,
     body,
   });
 

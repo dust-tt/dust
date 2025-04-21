@@ -44,7 +44,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         await deleteMetadata(`:${mcpServerId}`);
         sendNotification({
           title: "Success!",
-          description: "Tool approbation history deleted for this toolset.",
+          description: "Tool approbation history deleted.",
           type: "success",
         });
       } catch (error) {
@@ -137,7 +137,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       <div className="relative mb-4">
         <SearchInput
           name="search"
-          placeholder="Search toolsets"
+          placeholder="Search tools"
           value={searchQuery}
           onChange={setSearchQuery}
         />
@@ -151,7 +151,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         <DataTable data={actionsTableData} columns={actionColumns} />
       ) : (
         <Label>
-          {searchQuery ? "No matching toolsets found" : "No toolsets available"}
+          {searchQuery ? "No matching tools found" : "No tools available"}
         </Label>
       )}
     </>
