@@ -52,15 +52,8 @@ export function MCPServerSelector({
 
   return (
     <div>
-      <div className="text-sm text-foreground dark:text-foreground-night">
-        The agent will be able to execute tools from the{" "}
-        <a className="font-bold" href="https://docs.dust.tt" target="_blank">
-          Toolset
-        </a>{" "}
-        made available to you by your Admin.
-      </div>
       <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
-        Pick a Toolset
+        Pick a set of tools
       </div>
       {isSpacesLoading ? (
         <Spinner />

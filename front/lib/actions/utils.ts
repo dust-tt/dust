@@ -90,7 +90,7 @@ export const ACTION_SPECIFICATIONS: Record<
   },
   MCP: {
     label: "More...",
-    description: "Pick from Toolsets added by your Admin",
+    description: "Add additional sets of tools",
     cardIcon: SuitcaseIcon,
     dropDownIcon: SuitcaseIcon,
     flag: "mcp_actions",

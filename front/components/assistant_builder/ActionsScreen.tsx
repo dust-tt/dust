@@ -1132,7 +1132,7 @@ function ActionEditor({
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
           <Page.Header
-            title={actionDisplayName(action) || "Select a tool"}
+            title={actionDisplayName(action) || "Select tools"}
             icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
           />
           {shouldDisplayAdvancedSettings && (
