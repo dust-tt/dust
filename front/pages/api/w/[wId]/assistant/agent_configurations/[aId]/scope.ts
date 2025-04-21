@@ -11,10 +11,10 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentStatus, WithAPIErrorResponse } from "@app/types";
-import { GroupResource } from "@app/lib/resources/group_resource";
 
 export const PostAgentScopeRequestBodySchema = t.type({
   scope: t.union([

@@ -235,10 +235,10 @@ export default function AssistantBuilder({
       );
     }
     if (!agentConfigurationId) {
-      setBuilderState({
-        ...builderState,
-        editors: [...(builderState.editors ?? []), user],
-      });
+      setBuilderState((state) => ({
+        ...state,
+        editors: [...(state.editors ?? []), user],
+      }));
     }
   }, [
     isUserLoading,
@@ -246,7 +246,6 @@ export default function AssistantBuilder({
     user,
     agentConfigurationId,
     initialBuilderState,
-    builderState,
   ]);
 
   const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {
