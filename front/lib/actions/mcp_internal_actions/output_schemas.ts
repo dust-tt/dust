@@ -71,6 +71,21 @@ export function isThinkingOutput(
   return resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.THINKING;
 }
 
+// SQL query generated during the tool execution.
+
+const SqlQueryOutputSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.SQL_QUERY),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type SqlQueryOutput = z.infer<typeof SqlQueryOutputSchema>;
+
+export function isSqlQueryOutput(
+  resource: EmbeddedResourceType
+): resource is SqlQueryOutput {
+  return resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.SQL_QUERY;
+}
 // Resource with a name.
 
 type ResourceWithName = {

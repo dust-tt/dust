@@ -223,6 +223,7 @@ const TOOL_MIME_TYPES = {
       "DATA_SOURCE_SEARCH_RESULT",
       "FILE",
       "THINKING",
+      "SQL_QUERY",
     ],
   }),
 };

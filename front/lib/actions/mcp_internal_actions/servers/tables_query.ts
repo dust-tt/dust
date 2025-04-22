@@ -308,6 +308,17 @@ function createServer(
         });
       }
 
+      if (typeof output?.query === "string") {
+        content.push({
+          type: "resource",
+          resource: {
+            text: output.query,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.SQL_QUERY,
+            uri: "",
+          },
+        });
+      }
+
       const rawResults =
         "results" in sanitizedOutput ? sanitizedOutput.results : [];
 
