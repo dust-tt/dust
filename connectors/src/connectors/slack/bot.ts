@@ -27,6 +27,7 @@ import {
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import {
+  isSlackWebAPIPlatformError,
   SlackExternalUserError,
   SlackMessageError,
 } from "@connectors/connectors/slack/lib/errors";
@@ -128,6 +129,10 @@ export async function botAnswerMessage(
       },
       "Unexpected exception answering to Slack Chat Bot message"
     );
+    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
+      // This means that the message has been deleted, so we don't need to send an error message.
+      return new Ok(undefined);
+    }
     const slackClient = await getSlackClient(connector.id);
     try {
       await slackClient.chat.postMessage({
