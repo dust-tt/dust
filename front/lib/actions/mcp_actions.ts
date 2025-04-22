@@ -451,18 +451,29 @@ export async function tryListMCPTools(
   return configurations.flat();
 }
 
-async function getMCPServerToolsMetadata(
+async function augmentToolsWithMetadata(
   auth: Authenticator,
-  connectionParams: MCPConnectionParams
-): Promise<Result<Record<string, MCPToolStakeLevelType>, Error>> {
-  // Only get metadata for server-side MCP servers.
+  connectionParams: MCPConnectionParams,
+  tools: MCPToolType[]
+): Promise<Result<MCPToolWithStakeLevelType[], Error>> {
+  // For non-server-side MCP servers, just add default metadata
   if (!isConnectViaMCPServerId(connectionParams)) {
-    return new Ok({});
+    return new Ok(
+      tools.map((tool) => ({
+        ...tool,
+        stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
+        isDefault: false,
+        toolServerId: undefined,
+      }))
+    );
   }
 
+  const isDefault = isDefaultInternalMCPServer(connectionParams.mcpServerId);
   const { serverType, id } = getServerTypeAndIdFromSId(
     connectionParams.mcpServerId
   );
+
+  let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
 
   switch (serverType) {
     case "internal": {
@@ -473,27 +484,37 @@ async function getMCPServerToolsMetadata(
         return r;
       }
       const serverName = r.value.name;
-      const toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes;
-      return new Ok(toolsStakes || {});
+      toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes || {};
+      break;
     }
-
     case "remote": {
       const metadata =
         await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
-      return new Ok(
-        metadata.reduce<Record<string, MCPToolStakeLevelType>>(
-          (acc, metadata) => {
-            acc[metadata.toolName] = metadata.permission;
-            return acc;
-          },
-          {}
-        )
+      toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
+        (acc, metadata) => {
+          acc[metadata.toolName] = metadata.permission;
+          return acc;
+        },
+        {}
       );
+      break;
     }
-
     default:
       assertNever(serverType);
   }
+
+  return new Ok(
+    tools.map((tool) => ({
+      ...tool,
+      stakeLevel:
+        toolsStakes[tool.name] ||
+        (isDefault
+          ? FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL
+          : FALLBACK_MCP_TOOL_STAKE_LEVEL),
+      isDefault,
+      toolServerId: connectionParams.mcpServerId,
+    }))
+  );
 }
 
 async function listMCPServerTools(
@@ -527,9 +548,6 @@ async function listMCPServerTools(
       return r;
     }
     mcpClient = r.value;
-    const isDefault =
-      isConnectViaMCPServerId(connectionParams) &&
-      isDefaultInternalMCPServer(connectionParams.mcpServerId);
 
     let allToolsRaw: MCPToolType[] = [];
     let nextPageCursor;
@@ -546,27 +564,17 @@ async function listMCPServerTools(
       ];
     } while (nextPageCursor);
 
-    // Get tools metadata if available.
-    const toolsMetadataRes = await getMCPServerToolsMetadata(
+    // Enrich tool metadata (if available) with permissions and serverId to avoid re-fetching at
+    // validation modal level.
+    const toolsMetadataRes = await augmentToolsWithMetadata(
       auth,
-      connectionParams
+      connectionParams,
+      allToolsRaw
     );
     if (toolsMetadataRes.isErr()) {
       return toolsMetadataRes;
     }
     const toolsMetadata = toolsMetadataRes.value;
-
-    const allTools: MCPToolWithStakeLevelType[] = allToolsRaw.map((tool) => ({
-      ...tool,
-      stakeLevel:
-        toolsMetadata[tool.name] || isDefault
-          ? FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL
-          : FALLBACK_MCP_TOOL_STAKE_LEVEL,
-      isDefault,
-      toolServerId: isConnectViaMCPServerId(connectionParams)
-        ? connectionParams.mcpServerId
-        : undefined,
-    }));
 
     logger.debug(
       {
@@ -575,10 +583,10 @@ async function listMCPServerTools(
         messageId,
         toolCount: allToolsRaw.length,
       },
-      `Retrieved ${allTools.length} tools from MCP server`
+      `Retrieved ${toolsMetadata.length} tools from MCP server`
     );
 
-    return new Ok(allTools);
+    return new Ok(toolsMetadata);
   } catch (error) {
     logger.error(
       {
