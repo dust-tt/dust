@@ -202,7 +202,7 @@ export async function syncTicket({
           ""
         );
         if (configuration.hideCustomerDetails) {
-          return `[${comment?.created_at}]:\n${commentContent}`;
+          return `[${comment?.created_at}] User ${comment.author_id}:\n${commentContent}`;
         }
         return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${commentContent}`;
       })
