@@ -6,7 +6,7 @@ import {
   createContact,
   getContactByEmail,
   getContactByName,
-  getContactCreateableProperties,
+  getProperties,
   updateContact,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot_api_helper";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -27,20 +27,18 @@ const serverInfo: InternalMCPServerDefinitionType = {
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   const server = new McpServer(serverInfo);
 
-  /**
-   * Tools for the contact object.
-   */
-
   server.tool(
-    "get_contact_object_properties",
-    "Get the properties availablefor a contact object",
-    {},
-    async () => {
+    "get_object_properties",
+    "Get the properties available for an object. If creatableOnly is true (default), only the properties that can be created will be returned (i.e. form fields, not hidden, not calculated fields, value can be modified, and not file uploads).",
+    {
+      objectType: z.enum(["contacts", "companies", "deals", "leads"]),
+      creatableOnly: z.boolean().optional(),
+    },
+    async ({ objectType, creatableOnly = true }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
         provider: "hubspot",
       });
-
       if (!accessToken) {
         return {
           isError: true,
@@ -49,30 +47,32 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       }
 
       try {
-        const properties = await getContactCreateableProperties(accessToken);
+        const properties = await getProperties({
+          accessToken,
+          objectType,
+          creatableOnly,
+        });
         const content = JSON.stringify(properties, null, 2);
 
         return {
           isError: false,
           content: [
-            { type: "text", text: "Contact properties fetched successfully" },
+            { type: "text", text: "Object properties fetched successfully" },
             { type: "text", text: content },
           ],
         };
       } catch (error) {
         logger.error(
           {
-            error: error,
+            error,
             mcpServerId,
             server: "hubspot",
           },
-          "[Hubspot MCP Server] Error fetching Contact properties."
+          "[Hubspot MCP Server] Error fetching object properties."
         );
         return {
           isError: true,
-          content: [
-            { type: "text", text: "Error fetching Contact properties" },
-          ],
+          content: [{ type: "text", text: "Error fetching object properties" }],
         };
       }
     }
@@ -91,7 +91,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         mcpServerId,
         provider: "hubspot",
       });
-
       if (!accessToken) {
         return {
           isError: true,
@@ -115,7 +114,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       } catch (error: any) {
         logger.error(
           {
-            error: error,
+            error,
             mcpServerId,
             server: "hubspot",
           },
@@ -141,7 +140,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         mcpServerId,
         provider: "hubspot",
       });
-
       if (!accessToken) {
         return {
           isError: true,
@@ -154,6 +152,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           properties,
           associations: [],
         });
+
         return {
           isError: false,
           content: [
@@ -212,7 +211,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       } catch (error: any) {
         logger.error(
           {
-            error: error,
+            error,
             mcpServerId,
             server: "hubspot",
           },
@@ -265,7 +264,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       } catch (error: any) {
         logger.error(
           {
-            error: error,
+            error,
             mcpServerId,
             server: "hubspot",
           },

@@ -4,28 +4,56 @@ import type { SimplePublicObject } from "@hubspot/api-client/lib/codegen/crm/obj
 import type { SimplePublicObjectInputForCreate } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObjectInputForCreate";
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
+const MAX_ENUM_OPTIONS_DISPLAYED = 10;
+
 /**
- * Get all createable properties for a contact.
- * We filter out properties that are not createable, hidden, calculated, read-only or file uploads.
+ * Get all createable properties for an object.
+ * creatableOnly = true: filter out properties that are not createable, hidden, calculated, read-only or file uploads.
+ * creatableOnly = false: return all properties.
  */
-export const getContactCreateableProperties = async (accessToken: string) => {
+export const getProperties = async ({
+  accessToken,
+  objectType,
+  creatableOnly,
+}: {
+  accessToken: string;
+  objectType: "contacts" | "companies" | "deals" | "leads";
+  creatableOnly: boolean;
+}) => {
   const hubspotClient = new Client({ accessToken });
-  const props = await hubspotClient.crm.properties.coreApi.getAll("contacts");
+  const props = await hubspotClient.crm.properties.coreApi.getAll(objectType);
   const isCreateableProperty = (property: Property) =>
     property.formField === true && // Can be used in forms.
     !property.hidden && // Not hidden.
     !property.calculated && // Not auto-calculated.
     !property.modificationMetadata?.readOnlyValue && // Value can be modified.
     property.type !== "file"; // Exclude file uploads if any.
-  const createableProperties = props.results.filter(isCreateableProperty);
 
-  return createableProperties.map((p) => ({
-    name: p.name,
-    label: p.label,
-    type: p.type,
-    description: p.description,
-    options: p.options,
-  }));
+  const createableProperties = creatableOnly
+    ? props.results.filter(isCreateableProperty)
+    : props.results;
+
+  return createableProperties.map((p) => {
+    let options = p.options;
+    let description = p.description;
+
+    // Some properties have a lot of options (Ex: language, time zone), we only display the first MAX_ENUM_OPTIONS_DISPLAYED.
+    if (
+      p.type === "enumeration" &&
+      p.options.length > MAX_ENUM_OPTIONS_DISPLAYED
+    ) {
+      options = p.options.slice(0, MAX_ENUM_OPTIONS_DISPLAYED);
+      description = `${description} (displaying the first ${MAX_ENUM_OPTIONS_DISPLAYED} options among ${p.options.length} possible options)`;
+    }
+
+    return {
+      name: p.name,
+      label: p.label,
+      type: p.type,
+      description,
+      options,
+    };
+  });
 };
 
 /**
