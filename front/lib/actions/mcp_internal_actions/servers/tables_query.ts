@@ -298,7 +298,14 @@ function createServer(
       const content: MCPToolResultContent[] = [];
 
       if (typeof output?.thinking === "string") {
-        content.push({ type: "text", text: output.thinking });
+        content.push({
+          type: "resource",
+          resource: {
+            text: output.thinking,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.THINKING,
+            uri: "",
+          },
+        });
       }
 
       const rawResults =

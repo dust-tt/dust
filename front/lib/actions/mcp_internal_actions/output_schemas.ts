@@ -80,6 +80,16 @@ export type MCPToolResult = {
   content: MCPToolResultContent[];
 };
 
+// Thinking tokens generated during the tool execution.
+
+const ThinkingOutputSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.THINKING),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type ThinkingOutput = z.infer<typeof ThinkingOutputSchema>;
+
 // Resource with a name.
 
 type ResourceWithName = {
