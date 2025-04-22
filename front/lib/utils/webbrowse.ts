@@ -1,65 +1,88 @@
-import type { Result } from "@app/types";
-import { dustManagedCredentials, Err, Ok } from "@app/types";
+import type { ScrapeResponse } from "@mendable/firecrawl-js";
+import FirecrawlApp from "@mendable/firecrawl-js";
+
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { dustManagedCredentials } from "@app/types";
 
 const credentials = dustManagedCredentials();
 
-const BROWSERLESS_BASE_URL =
-  "https://production-sfo.browserless.io/chromium/bql";
-
-export type BrowseScrapeResponse = {
-  data: Record<string, any>;
-  response: {
-    status: string | null;
-    url: string | null;
-  };
+type BrowserScrapeMetadata = {
+  status: number;
+  url: string;
 };
 
+export type BrowseScrapeSuccessResponse = BrowserScrapeMetadata & {
+  markdown: string;
+};
+
+export type BrowseScrapeErrorResponse = BrowserScrapeMetadata & {
+  error: string;
+};
+
+export function isBrowseScrapeSuccessResponse(
+  response: BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse
+): response is BrowseScrapeSuccessResponse {
+  return "markdown" in response;
+}
+
+/**
+ * Fetches the content of a URL and returns it as markdown using Firecrawl
+ */
 export const browseUrl = async (
   url: string
-): Promise<Result<BrowseScrapeResponse, Error>> => {
-  if (credentials.BROWSERLESS_API_KEY == null) {
-    return new Err(
-      new Error(
-        "util/webbrowse: a DUST_MANAGED_BROWSERLESS_API_KEY is required"
-      )
+): Promise<BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse> => {
+  if (!credentials.FIRECRAWL_API_KEY) {
+    throw new Error(
+      "util/webbrowse: a DUST_MANAGED_FIRECRAWL_API_KEY is required"
     );
   }
 
-  const res = await fetch(
-    `${BROWSERLESS_BASE_URL}?token=${credentials.BROWSERLESS_API_KEY}&proxy=residential&proxyCountry=us`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-cache",
-      },
-      body: JSON.stringify({
-        query: `
-mutation ScrapeWebsite {
-  goto(url: "${url}", waitUntil: firstMeaningfulPaint) {
-    status
-    time
+  const fc = new FirecrawlApp({
+    apiKey: credentials.FIRECRAWL_API_KEY,
+  });
+
+  const scrapeResult = (await fc.scrapeUrl(url, {
+    formats: ["markdown"],
+  })) as ScrapeResponse;
+
+  if (!scrapeResult.success) {
+    const errorMessage = scrapeResult.error || "Unknown error.";
+    return {
+      error: errorMessage,
+      status: scrapeResult.metadata?.statusCode || 500,
+      url: url,
+    };
   }
-  body: html(selector: "body") {
-    html
+
+  if (scrapeResult.markdown) {
+    return {
+      markdown: scrapeResult.markdown,
+      status: scrapeResult.metadata?.statusCode ?? 200,
+      url: url,
+    };
   }
-}
-`,
-      }),
-    }
+
+  return {
+    error: "Unknown error: No content found in the response",
+    status: scrapeResult.metadata?.statusCode ?? 500,
+    url: url,
+  };
+};
+
+/**
+ * Processes multiple URLs concurrently in chunks
+ */
+export const browseUrls = async (
+  urls: string[],
+  chunkSize = 8
+): Promise<Array<BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse>> => {
+  const results = await concurrentExecutor(
+    urls,
+    async (url) => {
+      return browseUrl(url);
+    },
+    { concurrency: chunkSize }
   );
 
-  if (!res.ok) {
-    return new Err(new Error("Bad request scraping url"));
-  }
-
-  const json = await res.json();
-
-  return new Ok({
-    data: json.data.body.html as Record<string, any>,
-    response: {
-      status: json.data.goto.status ?? null,
-      url: json.data.goto.url ?? null,
-    },
-  });
+  return results;
 };
