@@ -92,9 +92,12 @@ async function handler(
       const { name: postSecretName } = req.body;
       const secretValue = req.body.value;
 
+      // Sanitize the secret name to be alphanumeric and underscores only
+      const sanitizedSecretName = postSecretName.replace(/[^a-zA-Z0-9_]/g, "_");
+
       const encryptedValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
 
-      let postSecret = await getDustAppSecret(auth, postSecretName);
+      let postSecret = await getDustAppSecret(auth, sanitizedSecretName);
 
       if (postSecret) {
         await postSecret.update({
@@ -104,14 +107,14 @@ async function handler(
         postSecret = await DustAppSecret.create({
           userId: user.id,
           workspaceId: owner.id,
-          name: postSecretName,
+          name: sanitizedSecretName,
           hash: encryptedValue,
         });
       }
 
       res.status(201).json({
         secret: {
-          name: postSecretName,
+          name: sanitizedSecretName,
           value: secretValue,
         },
       });
