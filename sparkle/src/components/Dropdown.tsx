@@ -215,26 +215,55 @@ DropdownMenuSubContent.displayName =
 interface DropdownMenuContentProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
   mountPortal?: boolean;
+  mountPortalContainer?: HTMLElement;
 }
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   DropdownMenuContentProps
->(({ className, sideOffset = 4, mountPortal = true, ...props }, ref) => {
-  const content = (
-    <DropdownMenuPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn(menuStyleClasses.container, "s-shadow-md", className)}
-      {...props}
-    />
-  );
-  return mountPortal ? (
-    <DropdownMenuPrimitive.Portal>{content}</DropdownMenuPrimitive.Portal>
-  ) : (
-    content
-  );
-});
+>(
+  (
+    {
+      className,
+      sideOffset = 4,
+      mountPortal = true,
+      mountPortalContainer,
+      ...props
+    },
+    ref
+  ) => {
+    const content = (
+      <DropdownMenuPrimitive.Content
+        ref={ref}
+        sideOffset={sideOffset}
+        className={cn(menuStyleClasses.container, "s-shadow-md", className)}
+        {...props}
+      />
+    );
+
+    const [container, setContainer] = React.useState<Element | undefined>(
+      mountPortalContainer
+    );
+
+    React.useEffect(() => {
+      if (mountPortal && !container) {
+        const dialogElements = document.querySelectorAll(
+          ".s-sheet[role=dialog][data-state=open]"
+        );
+        const defaultContainer = dialogElements[dialogElements.length - 1];
+        setContainer(defaultContainer);
+      }
+    }, []);
+
+    return mountPortal ? (
+      <DropdownMenuPrimitive.Portal container={container}>
+        {content}
+      </DropdownMenuPrimitive.Portal>
+    ) : (
+      content
+    );
+  }
+);
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
 export type DropdownMenuItemProps = MutuallyExclusiveProps<
