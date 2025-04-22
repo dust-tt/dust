@@ -239,6 +239,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       dataSourceIds,
       {
         includeEditedBy: fetchDataSourceViewOptions?.includeEditedBy,
+        includeDeleted,
       }
     );
 
