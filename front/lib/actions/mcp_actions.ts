@@ -49,15 +49,8 @@ import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_m
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
-import type { Result, SupportedFileContentType } from "@app/types";
-import {
-  assertNever,
-  Err,
-  FILE_FORMATS,
-  normalizeError,
-  Ok,
-  slugify,
-} from "@app/types";
+import type { Result } from "@app/types";
+import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
 
