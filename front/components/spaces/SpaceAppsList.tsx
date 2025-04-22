@@ -209,26 +209,15 @@ export const SpaceAppsList = ({
   const actionButtons = (
     <>
       {canWriteInSpace && (
-        <>
-          <Button
-            label="New App"
-            variant="primary"
-            icon={PlusIcon}
-            size="sm"
-            onClick={() => {
-              setIsCreateAppModalOpened(true);
-            }}
-          />
-          <Button
-            label="Dev secrets"
-            variant="primary"
-            icon={BracesIcon}
-            size="sm"
-            onClick={() => {
-              void router.push(`/w/${owner.sId}/developers/dev-secrets`);
-            }}
-          />
-        </>
+        <Button
+          label="New App"
+          variant="primary"
+          icon={PlusIcon}
+          size="sm"
+          onClick={() => {
+            setIsCreateAppModalOpened(true);
+          }}
+        />
       )}
     </>
   );

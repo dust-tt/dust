@@ -2,6 +2,7 @@ import {
   BookOpenIcon,
   BracesIcon,
   Button,
+  ClipboardIcon,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -11,8 +12,10 @@ import {
   Input,
   Page,
   PlusIcon,
+  TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { PencilIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -45,6 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
+      isAdmin: auth.isAdmin(),
     },
   };
 });
@@ -52,6 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function SecretsPage({
   owner,
   subscription,
+  isAdmin,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
   const defaultSecret = { name: "", value: "" };
@@ -169,7 +174,7 @@ export default function SecretsPage({
         <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>
-              {isInputNameDisabled ? "Update" : "New"} Developer Secret
+              {isInputNameDisabled ? "Update" : "New"} Dust App Secret
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
@@ -222,7 +227,7 @@ export default function SecretsPage({
       >
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header
-            title="Developer Secrets"
+            title="Dust Apps Secrets"
             icon={BracesIcon}
             description="Secrets usable in Dust apps to avoid showing sensitive data in blocks definitions."
           />{" "}
@@ -241,17 +246,19 @@ export default function SecretsPage({
                   );
                 }}
               />
-              <Button
-                label="Create Developer Secret"
-                variant="primary"
-                onClick={async () => {
-                  setNewDustAppSecret(defaultSecret);
-                  setIsInputNameDisabled(false);
-                  setIsNewSecretPromptOpen(true);
-                }}
-                icon={PlusIcon}
-                disabled={isGenerating || isRevoking}
-              />
+              {isAdmin && (
+                <Button
+                  label="Create Secret"
+                  variant="primary"
+                  onClick={async () => {
+                    setNewDustAppSecret(defaultSecret);
+                    setIsInputNameDisabled(false);
+                    setIsNewSecretPromptOpen(true);
+                  }}
+                  icon={PlusIcon}
+                  disabled={isGenerating || isRevoking}
+                />
+              )}
             </Page.Horizontal>
             <div className="w-full space-y-4 divide-y divide-separator dark:divide-separator-night">
               <div className="flex w-full flex-col space-y-4 pt-4">
@@ -262,37 +269,49 @@ export default function SecretsPage({
                       key={secret.name}
                       className="flex items-center space-x-4"
                     >
-                      <div className="flex-none">
-                        <pre className="bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
-                          secrets.{secret.name}
+                      <div className="flex items-center space-x-2">
+                        <pre className="rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
+                          env.SECRETS.{secret.name}
                         </pre>
-                      </div>
-                      <div className="flex-none">→</div>
-                      <div className="flex-grow overflow-hidden">
-                        <p className="truncate font-mono text-sm text-muted-foreground dark:text-muted-foreground-night">
-                          {secret.value}
-                        </p>
-                      </div>
-                      <div className="flex-none px-2">
                         <Button
                           variant="outline"
-                          disabled={isRevoking || isGenerating}
-                          onClick={async () => {
-                            handleUpdate(secret);
+                          icon={ClipboardIcon}
+                          onClick={() => {
+                            const text = `env.SECRETS.${secret.name}`;
+                            void navigator.clipboard.writeText(text);
+                            sendNotification({
+                              type: "success",
+                              title: "Copied to clipboard",
+                              description: `Copied ${text} to clipboard.`,
+                            });
                           }}
-                          label="Update"
                         />
                       </div>
-                      <div className="flex-none">
-                        <Button
-                          variant="warning"
-                          disabled={isRevoking || isGenerating}
-                          onClick={async () => {
-                            setSecretToRevoke(secret);
-                          }}
-                          label="Delete"
-                        />
-                      </div>
+                      <div className="flex-grow overflow-hidden"></div>
+                      {isAdmin && (
+                        <>
+                          <div className="flex-none px-2">
+                            <Button
+                              variant="outline"
+                              disabled={isRevoking || isGenerating}
+                              onClick={async () => {
+                                handleUpdate(secret);
+                              }}
+                              icon={PencilIcon}
+                            />
+                          </div>
+                          <div className="flex-none">
+                            <Button
+                              variant="warning"
+                              disabled={isRevoking || isGenerating}
+                              onClick={async () => {
+                                setSecretToRevoke(secret);
+                              }}
+                              icon={TrashIcon}
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
               </div>
