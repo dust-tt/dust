@@ -24,9 +24,9 @@ import type { ActionDetailsComponentBaseProps } from "@app/components/actions/ty
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import type {
   SearchResultResourceType,
-  SqlQueryOutput,
-  ThinkingOutput,
-  ToolGeneratedFile,
+  SqlQueryOutputType,
+  ThinkingOutputType,
+  ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isSearchResultResourceType,
@@ -128,7 +128,7 @@ function SearchResultActionDetails({
   );
 }
 
-function ThinkingBlock({ resource }: { resource: ThinkingOutput }) {
+function ThinkingBlock({ resource }: { resource: ThinkingOutputType }) {
   return (
     <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
       <ContentMessage
@@ -149,7 +149,7 @@ function ThinkingBlock({ resource }: { resource: ThinkingOutput }) {
   );
 }
 
-function SqlQueryBlock({ resource }: { resource: SqlQueryOutput }) {
+function SqlQueryBlock({ resource }: { resource: SqlQueryOutputType }) {
   return (
     <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
       <ContentBlockWrapper content={resource.text}>
@@ -169,7 +169,7 @@ function ToolGeneratedFileDetails({
   icon,
   owner,
 }: {
-  resource: ToolGeneratedFile;
+  resource: ToolGeneratedFileType;
   icon: React.ComponentType<{ className?: string }>;
   owner: LightWorkspaceType;
 }) {
@@ -237,7 +237,7 @@ function TablesQueryActionDetails({
   const thinkingBlocks =
     output
       ?.filter(
-        (o): o is { type: "resource"; resource: ThinkingOutput } =>
+        (o): o is { type: "resource"; resource: ThinkingOutputType } =>
           o.type === "resource" && isThinkingOutput(o.resource)
       )
       .map((o) => o.resource) ?? [];
@@ -245,7 +245,7 @@ function TablesQueryActionDetails({
   const sqlQueryBlocks =
     output
       ?.filter(
-        (o): o is { type: "resource"; resource: SqlQueryOutput } =>
+        (o): o is { type: "resource"; resource: SqlQueryOutputType } =>
           o.type === "resource" && isSqlQueryOutput(o.resource)
       )
       .map((o) => o.resource) ?? [];
@@ -253,7 +253,7 @@ function TablesQueryActionDetails({
   const generatedFiles =
     output
       ?.filter(
-        (o): o is { type: "resource"; resource: ToolGeneratedFile } =>
+        (o): o is { type: "resource"; resource: ToolGeneratedFileType } =>
           o.type === "resource" && isToolGeneratedFile(o.resource)
       )
       .map((o) => o.resource) ?? [];

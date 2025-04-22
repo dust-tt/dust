@@ -47,11 +47,11 @@ const ToolGeneratedFileSchema = z.object({
   snippet: z.string().nullable(),
 });
 
-export type ToolGeneratedFile = z.infer<typeof ToolGeneratedFileSchema>;
+export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
 
 export function isToolGeneratedFile(
   resource: EmbeddedResourceType
-): resource is ToolGeneratedFile {
+): resource is ToolGeneratedFileType {
   return resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE;
 }
 
@@ -63,11 +63,11 @@ const ThinkingOutputSchema = z.object({
   uri: z.literal(""),
 });
 
-export type ThinkingOutput = z.infer<typeof ThinkingOutputSchema>;
+export type ThinkingOutputType = z.infer<typeof ThinkingOutputSchema>;
 
 export function isThinkingOutput(
   resource: EmbeddedResourceType
-): resource is ThinkingOutput {
+): resource is ThinkingOutputType {
   return resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.THINKING;
 }
 
@@ -79,11 +79,11 @@ const SqlQueryOutputSchema = z.object({
   uri: z.literal(""),
 });
 
-export type SqlQueryOutput = z.infer<typeof SqlQueryOutputSchema>;
+export type SqlQueryOutputType = z.infer<typeof SqlQueryOutputSchema>;
 
 export function isSqlQueryOutput(
   resource: EmbeddedResourceType
-): resource is SqlQueryOutput {
+): resource is SqlQueryOutputType {
   return resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.SQL_QUERY;
 }
 
