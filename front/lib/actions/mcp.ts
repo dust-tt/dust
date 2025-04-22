@@ -6,13 +6,13 @@ import type {
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
 import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
-import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
-import { isActionGeneratedFile } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
   augmentInputsWithConfiguration,
   hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPToolResultContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isActionGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isResourceWithName } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";

@@ -1,6 +1,83 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
+import type { SupportedFileContentType } from "@app/types";
+import { FILE_FORMATS } from "@app/types";
+
+// Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
+// See https://github.com/colinhacks/zod/issues/2938
+const ResourceContentsSchema = z.object({
+  uri: z.string(),
+  mimeType: z.optional(z.string()),
+});
+
+const TextResourceContentsSchema = ResourceContentsSchema.extend({
+  text: z.string(),
+});
+
+const BlobResourceContentsSchema = ResourceContentsSchema.extend({
+  blob: z.string().base64(),
+});
+
+const TextContentSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
+
+const ImageContentSchema = z.object({
+  type: z.literal("image"),
+  data: z.string().base64(),
+  mimeType: z.string(),
+});
+
+const EmbeddedResourceSchema = z.object({
+  type: z.literal("resource"),
+  resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema]),
+});
+
+const ActionGeneratedFileSchema = z.object({
+  type: z.literal("resource"),
+  resource: z.object({
+    text: z.string(),
+    uri: z.string(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE),
+    fileId: z.string(),
+    title: z.string(),
+    contentType: z.enum(
+      Object.keys(FILE_FORMATS) as [
+        SupportedFileContentType,
+        ...SupportedFileContentType[],
+      ]
+    ),
+    snippet: z.string().nullable(),
+  }),
+});
+
+export type ActionGeneratedFile = z.infer<typeof ActionGeneratedFileSchema>;
+
+export function isActionGeneratedFile(
+  content: MCPToolResultContent
+): content is ActionGeneratedFile {
+  return (
+    content.type === "resource" &&
+    content.resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE
+  );
+}
+
+const MCPToolResultContentSchema = z.union([
+  TextContentSchema,
+  ImageContentSchema,
+  EmbeddedResourceSchema,
+  ActionGeneratedFileSchema,
+]);
+
+export type MCPToolResultContent = z.infer<typeof MCPToolResultContentSchema>;
+
+export type MCPToolResult = {
+  isError: boolean;
+  content: MCPToolResultContent[];
+};
+
 type ResourceWithName = {
   name: string;
 };

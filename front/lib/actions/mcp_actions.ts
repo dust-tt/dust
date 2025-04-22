@@ -3,7 +3,6 @@ import {
   INTERNAL_MIME_TYPES,
 } from "@dust-tt/client";
 import type { JSONSchema7 } from "json-schema";
-import { z } from "zod";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
@@ -24,6 +23,10 @@ import {
   INTERNAL_MCP_SERVERS,
   isDefaultInternalMCPServer,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  MCPToolResult,
+  MCPToolResultContent,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
@@ -61,80 +64,6 @@ const MAX_OUTPUT_ITEMS = 128;
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
-
-// Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
-// See https://github.com/colinhacks/zod/issues/2938
-const ResourceContentsSchema = z.object({
-  uri: z.string(),
-  mimeType: z.optional(z.string()),
-});
-
-const TextResourceContentsSchema = ResourceContentsSchema.extend({
-  text: z.string(),
-});
-
-const BlobResourceContentsSchema = ResourceContentsSchema.extend({
-  blob: z.string().base64(),
-});
-
-const TextContentSchema = z.object({
-  type: z.literal("text"),
-  text: z.string(),
-});
-
-const ImageContentSchema = z.object({
-  type: z.literal("image"),
-  data: z.string().base64(),
-  mimeType: z.string(),
-});
-
-const EmbeddedResourceSchema = z.object({
-  type: z.literal("resource"),
-  resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema]),
-});
-
-const ActionGeneratedFileSchema = z.object({
-  type: z.literal("resource"),
-  resource: z.object({
-    text: z.string(),
-    uri: z.string(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE),
-    fileId: z.string(),
-    title: z.string(),
-    contentType: z.enum(
-      Object.keys(FILE_FORMATS) as [
-        SupportedFileContentType,
-        ...SupportedFileContentType[],
-      ]
-    ),
-    snippet: z.string().nullable(),
-  }),
-});
-
-export type ActionGeneratedFile = z.infer<typeof ActionGeneratedFileSchema>;
-
-export function isActionGeneratedFile(
-  content: MCPToolResultContent
-): content is ActionGeneratedFile {
-  return (
-    content.type === "resource" &&
-    content.resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE
-  );
-}
-
-const MCPToolResultContentSchema = z.union([
-  TextContentSchema,
-  ImageContentSchema,
-  EmbeddedResourceSchema,
-  ActionGeneratedFileSchema,
-]);
-
-export type MCPToolResultContent = z.infer<typeof MCPToolResultContentSchema>;
-
-export type MCPToolResult = {
-  isError: boolean;
-  content: MCPToolResultContent[];
-};
 
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
