@@ -15,6 +15,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -161,7 +162,22 @@ export async function hardDeleteDataSource(
     await Promise.all(
       chunk.map((f) => {
         return (async () => {
-          await f.delete();
+          try {
+            await f.delete();
+          } catch (error) {
+            if (isGCSNotFoundError(error)) {
+              logger.warn(
+                {
+                  path: f.name,
+                  dataSourceId: dataSource.sId,
+                  dustAPIProjectId,
+                },
+                "File not found during deletion, skipping"
+              );
+            } else {
+              throw error;
+            }
+          }
         })();
       })
     );

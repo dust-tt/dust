@@ -13,7 +13,11 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
-import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  ZendeskCategoryResource,
+  ZendeskConfigurationResource,
+} from "@connectors/resources/zendesk_resources";
 import { ZendeskArticleResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -46,8 +50,9 @@ export async function deleteArticle(
  * Syncs an article from Zendesk to the postgres db and to the data sources.
  */
 export async function syncArticle({
-  connectorId,
   article,
+  connector,
+  configuration,
   category,
   section,
   user,
@@ -56,9 +61,10 @@ export async function syncArticle({
   dataSourceConfig,
   loggerArgs,
 }: {
-  connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
   article: ZendeskFetchedArticle;
+  connector: ConnectorResource;
+  configuration: ZendeskConfigurationResource;
+  dataSourceConfig: DataSourceConfig;
   section: ZendeskFetchedSection | null;
   category: ZendeskCategoryResource;
   user: ZendeskFetchedUser | null;
@@ -66,6 +72,7 @@ export async function syncArticle({
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
 }) {
+  const connectorId = connector.id;
   let articleInDb = await ZendeskArticleResource.fetchByArticleId({
     connectorId,
     brandId: category.brandId,
@@ -125,7 +132,9 @@ export async function syncArticle({
     `CATEGORY: ${category.name} ${category?.description ? ` - ${category.description}` : ""}`,
     section &&
       `SECTION: ${section.name} ${section?.description ? ` - ${section.description}` : ""}`,
-    user && `USER: ${user.name} ${user?.email ? ` - ${user.email}` : ""}`,
+    !configuration.hideCustomerDetails &&
+      user &&
+      `USER: ${user.name} ${user?.email ? ` - ${user.email}` : ""}`,
     `SUM OF VOTES: ${article.vote_sum}`,
     article.label_names?.length ? `LABELS: ${article.label_names.join()}` : "",
   ]

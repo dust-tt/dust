@@ -14,6 +14,7 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
@@ -90,8 +91,9 @@ export async function deleteTicket({
  * Syncs a ticket in the db and upserts it to the data sources.
  */
 export async function syncTicket({
-  connectorId,
   ticket,
+  connector,
+  configuration,
   brandId,
   currentSyncDateMs,
   dataSourceConfig,
@@ -100,9 +102,10 @@ export async function syncTicket({
   comments,
   users,
 }: {
-  connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
   ticket: ZendeskFetchedTicket;
+  connector: ConnectorResource;
+  configuration: ZendeskConfigurationResource;
+  dataSourceConfig: DataSourceConfig;
   brandId: number;
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
@@ -110,6 +113,8 @@ export async function syncTicket({
   comments: ZendeskFetchedTicketComment[];
   users: ZendeskFetchedUser[];
 }) {
+  const connectorId = connector.id;
+
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
     brandId,
@@ -181,20 +186,19 @@ export async function syncTicket({
 
     const ticketContent = `Conversation:\n${comments
       .map((comment) => {
-        let author;
-        try {
-          author = users.find((user) => user.id === comment.author_id);
-        } catch (e) {
-          logger.warn(
-            { connectorId, e, usersType: typeof users, ...loggerArgs },
-            "[Zendesk] Error finding the author of a comment."
-          );
-          author = null;
+        // Remove line and paragraph separators.
+        const commentContent = (comment.plain_body || comment.body).replace(
+          /[\u2028\u2029]/g,
+          ""
+        );
+        if (configuration.hideCustomerDetails) {
+          return `[${comment?.created_at}] User ${comment.author_id}:\n${commentContent}`;
         }
-        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${(comment.plain_body || comment.body).replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
+        const author =
+          users.find((user) => user.id === comment.author_id) ?? null;
+        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${commentContent}`;
       })
-      .join("\n")}
-`.trim();
+      .join("\n")}`.trim();
 
     const ticketContentInMarkdown = turndownService.turndown(ticketContent);
 

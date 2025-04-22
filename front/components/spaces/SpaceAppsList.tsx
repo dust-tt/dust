@@ -1,5 +1,4 @@
 import {
-  BracesIcon,
   Button,
   CommandLineIcon,
   DataTable,
@@ -10,7 +9,6 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { sortBy } from "lodash";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
 import { useState } from "react";
@@ -160,7 +158,6 @@ export const SpaceAppsList = ({
   onSelect,
   registryApps,
 }: SpaceAppsListProps) => {
-  const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const { q: searchParam } = useQueryParams(["q"]);
@@ -209,26 +206,15 @@ export const SpaceAppsList = ({
   const actionButtons = (
     <>
       {isBuilder && (
-        <>
-          <Button
-            label="New App"
-            variant="primary"
-            icon={PlusIcon}
-            size="sm"
-            onClick={() => {
-              setIsCreateAppModalOpened(true);
-            }}
-          />
-          <Button
-            label="Dev secrets"
-            variant="primary"
-            icon={BracesIcon}
-            size="sm"
-            onClick={() => {
-              void router.push(`/w/${owner.sId}/developers/dev-secrets`);
-            }}
-          />
-        </>
+        <Button
+          label="New App"
+          variant="primary"
+          icon={PlusIcon}
+          size="sm"
+          onClick={() => {
+            setIsCreateAppModalOpened(true);
+          }}
+        />
       )}
     </>
   );

@@ -62,6 +62,15 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "You do not have the required permissions.",
+          },
+        });
+      }
       const secrets = await getDustAppSecrets(auth);
 
       res.status(200).json({
@@ -70,6 +79,16 @@ async function handler(
       return;
 
     case "POST":
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "You do not have the required permissions.",
+          },
+        });
+      }
+
       const { name: postSecretName } = req.body;
       const secretValue = req.body.value;
 
@@ -104,7 +123,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET, POST or DELETE is expected.",
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }
