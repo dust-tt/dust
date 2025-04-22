@@ -198,8 +198,7 @@ export async function syncTicket({
         }
         return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${commentContent}`;
       })
-      .join("\n")}
-`.trim();
+      .join("\n")}`.trim();
 
     const ticketContentInMarkdown = turndownService.turndown(ticketContent);
 
