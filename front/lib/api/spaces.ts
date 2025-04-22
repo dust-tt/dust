@@ -242,7 +242,9 @@ export async function createRegularSpaceAndGroup(
       const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
         user.toJSON()
       );
-      const groupsResult = await group.addMembers(auth, users);
+      const groupsResult = await group.addMembers(auth, users, {
+        transaction: t,
+      });
       if (groupsResult.isErr()) {
         logger.error(
           {
