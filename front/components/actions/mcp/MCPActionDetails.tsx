@@ -132,7 +132,7 @@ function ThinkingBlock({ resource }: { resource: ThinkingOutput }) {
   return (
     <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
       <ContentMessage
-        title="Reasoning"
+        title="Reasoning" // TODO(mcp): to be challenged by the design team (could be "Thoughts")
         variant="primary"
         icon={InformationCircleIcon}
         size="lg"
