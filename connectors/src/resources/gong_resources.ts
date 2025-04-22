@@ -332,6 +332,20 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     };
   }
 
+  static async fetchByCallIds(
+    callIds: string[],
+    connector: ConnectorResource
+  ): Promise<GongTranscriptResource[]> {
+    const transcripts = await GongTranscriptModel.findAll({
+      where: {
+        callId: callIds,
+        connectorId: connector.id,
+      },
+    });
+
+    return transcripts.map((t) => new this(this.model, t.get()));
+  }
+
   static async fetchByCallId(
     callId: string,
     connector: ConnectorResource
