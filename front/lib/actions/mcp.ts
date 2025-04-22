@@ -43,6 +43,7 @@ import {
 } from "@app/lib/models/assistant/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
@@ -156,6 +157,40 @@ type MCPErrorEvent = {
     message: string;
   };
 };
+
+function getContentForModel({
+  fileId,
+  content,
+  workspaceId,
+}: AgentMCPActionOutputItem): MCPToolResultContent {
+  // We want to hide the original file url from the model.
+  if (fileId) {
+    const sid = makeSId("file", {
+      workspaceId: workspaceId,
+      id: fileId,
+    });
+    let contentType = "unknown";
+    switch (content.type) {
+      case "text":
+        contentType = "text/plain";
+        break;
+      case "image":
+        contentType = content.mimeType;
+        break;
+      case "resource":
+        contentType = content.resource.mimeType ?? "unknown";
+        break;
+      default:
+        contentType = "unknown";
+        break;
+    }
+    return {
+      type: "text",
+      text: `A file of type ${contentType} with id ${sid} was generated successfully and made available to the conversation.`,
+    };
+  }
+  return content;
+}
 
 export type MCPActionRunningEvents = MCPParamsEvent | MCPApproveExecutionEvent;
 
@@ -589,7 +624,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         executionState: status,
         id: action.id,
         isError: false,
-        output: outputItems.map((o) => o.getContentForModel()),
+        output: outputItems.map((o) => getContentForModel(o)),
         type: "tool_action",
       }),
     };
@@ -631,7 +666,7 @@ export async function mcpActionTypesFromAgentMessageIds(
     return new MCPActionType({
       id: action.id,
       params: action.params,
-      output: action.outputItems.map((o) => o.getContentForModel()),
+      output: action.outputItems.map((o) => getContentForModel(o)),
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
