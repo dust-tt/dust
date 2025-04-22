@@ -519,6 +519,11 @@ export async function syncZendeskArticleBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -563,22 +568,25 @@ export async function syncZendeskArticleBatchActivity({
     brandSubdomain,
     categoryId,
   });
-  const users = await listZendeskUsers({
-    accessToken,
-    brandSubdomain,
-    userIds: articles.map((article) => article.author_id),
-  });
+  const users = configuration.hideCustomerDetails
+    ? []
+    : await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds: articles.map((article) => article.author_id),
+      });
 
   await concurrentExecutor(
     articles,
     (article) =>
       syncArticle({
-        connectorId,
-        category,
         article,
+        connector,
+        configuration,
+        category,
         section:
-          sections.find((section) => section.id === article.section_id) || null,
-        user: users.find((user) => user.id === article.author_id) || null,
+          sections.find((section) => section.id === article.section_id) ?? null,
+        user: users.find((user) => user.id === article.author_id) ?? null,
         dataSourceConfig,
         helpCenterIsAllowed,
         currentSyncDateMs,
@@ -665,15 +673,17 @@ export async function syncZendeskTicketBatchActivity({
       }),
     { concurrency: 3, onBatchComplete: heartbeat }
   );
-  const users = await listZendeskUsers({
-    accessToken,
-    brandSubdomain,
-    userIds: [
-      ...new Set(
-        comments2d.flatMap((comments) => comments.map((c) => c.author_id))
-      ),
-    ],
-  });
+  const users = configuration.hideCustomerDetails
+    ? []
+    : await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds: [
+          ...new Set(
+            comments2d.flatMap((comments) => comments.map((c) => c.author_id))
+          ),
+        ],
+      });
 
   const res = await concurrentExecutor(
     _.zip(ticketsToSync, comments2d),
@@ -685,9 +695,10 @@ export async function syncZendeskTicketBatchActivity({
       }
 
       return syncTicket({
-        connectorId,
-        brandId,
         ticket,
+        connector,
+        configuration,
+        brandId,
         dataSourceConfig,
         currentSyncDateMs,
         loggerArgs,
