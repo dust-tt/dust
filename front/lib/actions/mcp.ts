@@ -164,7 +164,6 @@ function getContentForModel({
   content,
   workspaceId,
 }: AgentMCPActionOutputItem): MCPToolResultContent {
-  // We want to hide the original file url from the model.
   if (
     !fileId ||
     // For tool-generated files, we keep the resource as is.
@@ -173,6 +172,7 @@ function getContentForModel({
   ) {
     return content;
   }
+  // We want to hide the original file url from the model.
   const sid = makeSId("file", {
     workspaceId: workspaceId,
     id: fileId,
