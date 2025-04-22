@@ -25,6 +25,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
+import { isAdmin } from "@app/types";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -74,7 +75,9 @@ export const NavigationSidebar = React.forwardRef<
         {subscription.endDate && (
           <SubscriptionEndBanner endDate={subscription.endDate} />
         )}
-        {subscription.paymentFailingSince && <SubscriptionPastDueBanner />}
+        {subscription.paymentFailingSince && isAdmin(owner) && (
+          <SubscriptionPastDueBanner />
+        )}
         {navs.length > 1 && (
           <Tabs value={currentTab?.id ?? "conversations"}>
             <TabsList className="px-2">
