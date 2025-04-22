@@ -136,9 +136,11 @@ export async function getMembers(
   {
     roles,
     activeOnly,
+    transaction,
   }: {
     roles?: MembershipRoleType[];
     activeOnly?: boolean;
+    transaction?: Transaction;
   } = {},
   paginationParams?: MembershipsPaginationParams
 ): Promise<{
@@ -156,11 +158,13 @@ export async function getMembers(
         workspace: owner,
         roles,
         paginationParams,
+        transaction,
       })
     : await MembershipResource.getLatestMemberships({
         workspace: owner,
         roles,
         paginationParams,
+        transaction,
       });
 
   const usersWithWorkspaces = await Promise.all(
@@ -180,7 +184,7 @@ export async function getMembers(
 
       let user: UserResource | null;
       if (!m.user) {
-        user = await UserResource.fetchByModelId(m.userId);
+        user = await UserResource.fetchByModelId(m.userId, transaction);
       } else {
         user = new UserResource(UserModel, m.user);
       }
