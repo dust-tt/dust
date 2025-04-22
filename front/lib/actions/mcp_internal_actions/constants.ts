@@ -67,14 +67,14 @@ export const INTERNAL_MCP_SERVERS: Record<
     isDefault: true,
     flag: "mcp_actions",
   },
-  hubspot: {
-    id: 6,
-    isDefault: false,
-    flag: "experimental_mcp_actions",
-  },
   think: {
     id: 6,
     isDefault: true,
+    flag: "experimental_mcp_actions",
+  },
+  hubspot: {
+    id: 7,
+    isDefault: false,
     flag: "experimental_mcp_actions",
   },
 
