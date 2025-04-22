@@ -7,6 +7,10 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  getWorkspaceByModelId,
+  renderLightWorkspaceType,
+} from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { HubspotClient } from "@app/temporal/labs/connections/providers/hubspot/client";
 import type {
@@ -246,7 +250,8 @@ function createCompanyTags(
 
 async function upsertToDustDatasource(
   coreAPI: CoreAPI,
-  workspaceId: string,
+  userId: ModelId,
+  workspaceId: ModelId,
   dataSourceViewId: ModelId,
   company: Company,
   contacts: Contact[],
@@ -270,17 +275,31 @@ async function upsertToDustDatasource(
   );
 
   try {
-    const user = await UserResource.fetchByModelId(workspaceId);
-
+    const user = await UserResource.fetchByModelId(userId);
     if (!user) {
       logger.error({ workspaceId }, "User not found");
       return;
     }
 
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    const workspace = await getWorkspaceByModelId(workspaceId);
+    if (!workspace) {
+      logger.error({ workspaceId }, "Workspace not found");
+      return;
+    }
+
+    const workspaceLight = renderLightWorkspaceType({ workspace });
+
+    const authRes = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspaceId
+      workspaceLight.sId
     );
+
+    if (authRes.isErr()) {
+      logger.error({ error: authRes.error }, "Error creating authenticator");
+      return;
+    }
+
+    const auth = authRes.value;
 
     const [datasourceView] = await DataSourceViewResource.fetchByModelIds(
       auth,
@@ -454,7 +473,8 @@ export async function syncHubspotConnection(
 
           await upsertToDustDatasource(
             coreAPI,
-            configuration.workspaceId.toString(),
+            configuration.userId,
+            configuration.workspaceId,
             dataSourceViewId,
             company,
             contacts,
