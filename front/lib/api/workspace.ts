@@ -1,3 +1,4 @@
+import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -29,7 +30,16 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@app/types";
-import { ACTIVE_ROLES, assertNever, Err, Ok, removeNulls } from "@app/types";
+import {
+  ACTIVE_ROLES,
+  assertNever,
+  Err,
+  md5,
+  Ok,
+  removeNulls,
+} from "@app/types";
+
+import { frontSequelize } from "../resources/storage";
 
 export async function getWorkspaceInfos(
   wId: string
@@ -605,4 +615,35 @@ export async function checkSeatCountForWorkspace(
     return new Ok(`Correctly found ${activeSeats} active seats on Stripe.`);
   }
   return new Err(new Error(`${REPORT_USAGE_METADATA_KEY} metadata not found.`));
+}
+
+/**
+ * Advisory lock to be used in admin related request on workspace
+ *
+ * To avoid deadlocks when using Postgresql advisory locks, please make sure to not issue any other
+ * SQL query outside of the transaction `t` that is holding the lock.
+ * Otherwise, the other query will be competing for a connection in the database connection pool,
+ * resulting in a potential deadlock when the pool is fully occupied.
+ */
+export async function getWorkspaceAdministrationVersionLock(
+  workspace: WorkspaceType,
+  t: Transaction
+) {
+  const now = new Date();
+
+  const hash = md5(`workspace_admininsation_${workspace.id}`);
+  const lockKey = parseInt(hash, 16) % 9999999999;
+  await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
+    transaction: t,
+    replacements: { key: lockKey },
+  });
+
+  logger.info(
+    {
+      workspaceId: workspace.id,
+      duration: new Date().getTime() - now.getTime(),
+      lockKey,
+    },
+    "[WORKSPACE_TRACE] Advisory lock acquired"
+  );
 }
