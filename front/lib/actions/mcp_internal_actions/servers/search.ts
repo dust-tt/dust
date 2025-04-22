@@ -9,7 +9,6 @@ import type {
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { SearchQueryResourceMimeType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
@@ -226,7 +225,7 @@ function createServer(
         assert(dataSourceView, "DataSource view not found");
 
         return res.documents.map((doc) => ({
-          mimeType: "application/vnd.dust.search_result",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_RESULT,
           uri: doc.source_url ?? "",
           text: getDisplayNameForDocument(doc),
 
@@ -242,7 +241,7 @@ function createServer(
       });
 
       const queryResource: SearchQueryResourceType = {
-        mimeType: SearchQueryResourceMimeType,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_QUERY,
         text: makeQueryDescription(query, timeFrame, tagsIn, tagsNot),
         uri: "",
       };
