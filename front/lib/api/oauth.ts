@@ -2,15 +2,20 @@ import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
 import config from "@app/lib/api/config";
-import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import type { OAuthAPIError, OAuthConnectionType, Result } from "@app/types";
-import type { OAuthProvider, OAuthUseCase } from "@app/types";
+import type {
+  OAuthAPIError,
+  OAuthConnectionType,
+  OAuthProvider,
+  OAuthUseCase,
+  Result,
+} from "@app/types";
 import {
+  ConnectorsAPI,
   Err,
   isValidSalesforceDomain,
   isValidZendeskSubdomain,
@@ -439,16 +444,23 @@ const PROVIDER_STRATEGIES: Record<
         if (!isManaged(dataSource)) {
           return null;
         }
-        const augmentedDataSource =
-          await augmentDataSourceWithConnectorDetails(dataSource);
-        if (!augmentedDataSource.connector) {
+
+        const connectorsAPI = new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        );
+        const connectorRes =
+          await connectorsAPI.getConnectorFromDataSource(dataSource);
+        if (connectorRes.isErr()) {
           return null;
         }
+
+        const connector = connectorRes.value;
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
         const connectionRes = await oauthApi.getAccessToken({
           provider: "salesforce",
-          connectionId: augmentedDataSource.connector.connectionId,
+          connectionId: connector.connectionId,
         });
         if (connectionRes.isErr()) {
           return null;
@@ -629,4 +641,25 @@ export async function finalizeConnection(
   }
 
   return new Ok(cRes.value.connection);
+}
+
+export async function checkConnectionOwnership(
+  auth: Authenticator,
+  provider: OAuthProvider,
+  connectionId: string
+) {
+  // Ensure the connectionId has been created by the current user and is not being stolen.
+  const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+  const connectionRes = await oauthAPI.getAccessToken({
+    provider,
+    connectionId,
+  });
+  if (
+    connectionRes.isErr() ||
+    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
+  ) {
+    return new Err(new Error("Invalid connection"));
+  }
+
+  return new Ok(undefined);
 }

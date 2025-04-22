@@ -213,7 +213,6 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       sId: this.sId,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      connectionId: this.connectionId,
       connectionType: this.connectionType,
       serverType: this.serverType,
       internalMCPServerId: this.internalMCPServerId,
@@ -243,7 +242,6 @@ export interface MCPServerConnectionType {
     email: string | null;
     userId: string | null;
   };
-  connectionId: string;
   connectionType: string;
   serverType: string;
   remoteMCPServerId: string | null;

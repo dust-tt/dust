@@ -5,15 +5,18 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { apiError } from "@app/logger/withlogging";
+import { ConnectorProviderCodec } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { WithAPIErrorResponse } from "@app/types";
 
 const PostConnectionBodySchema = t.type({
   connectionId: t.string,
   mcpServerId: t.string,
+  provider: ConnectorProviderCodec,
 });
 export type PostConnectionBodyType = t.TypeOf<typeof PostConnectionBodySchema>;
 
@@ -58,7 +61,24 @@ async function handler(
       }
 
       const validatedBody = bodyValidation.right;
-      const { connectionId, mcpServerId } = validatedBody;
+      const { connectionId, mcpServerId, provider } = validatedBody;
+
+      if (connectionId) {
+        const checkConnectionOwnershipRes = await checkConnectionOwnership(
+          auth,
+          provider,
+          connectionId
+        );
+        if (checkConnectionOwnershipRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Failed to get the access token for the connector.",
+            },
+          });
+        }
+      }
 
       const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
