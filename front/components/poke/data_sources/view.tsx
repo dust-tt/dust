@@ -153,6 +153,18 @@ export function ViewDataSourceTable({
                       </PokeTableCell>
                     </PokeTableRow>
                     <PokeTableRow>
+                      <PokeTableCell>Error type</PokeTableCell>
+                      <PokeTableCell>
+                        {connector?.errorType ? (
+                          <span className="font-bold text-warning-500">
+                            {connector.errorType}
+                          </span>
+                        ) : (
+                          <span className="font-bold text-green-600">none</span>
+                        )}
+                      </PokeTableCell>
+                    </PokeTableRow>
+                    <PokeTableRow>
                       <PokeTableCell>Last sync start</PokeTableCell>
                       <PokeTableCell>
                         {connector?.lastSyncStartTime ? (
