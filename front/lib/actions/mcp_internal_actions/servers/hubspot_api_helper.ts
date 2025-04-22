@@ -142,8 +142,15 @@ export const getObjectById = async (
   accessToken: string,
   objectType: SupportedObjectTypeRead,
   objectId: string
-): Promise<SimplePublicObject | null> => {
+): Promise<SimplePublicObject | PublicOwner | null> => {
   const hubspotClient = new Client({ accessToken });
+
+  if (objectType === "owners") {
+    const owner = await hubspotClient.crm.owners.ownersApi.getById(
+      parseInt(objectId)
+    );
+    return owner;
+  }
 
   const object = await hubspotClient.crm.objects.basicApi.getById(
     objectType,
