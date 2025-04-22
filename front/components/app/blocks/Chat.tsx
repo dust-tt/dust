@@ -394,12 +394,28 @@ export default function Chat({
                           readOnly={readOnly}
                           value={responseFormatText}
                           language="json"
-                          placeholder="Define a structured format for chat responses"
+                          placeholder={
+                            "{\n" +
+                            '  "type": "json_schema",\n' +
+                            '  "json_schema": {\n' +
+                            '    "name": "YourSchemaName",\n' +
+                            '    "strict": true,\n' +
+                            '    "schema": {\n' +
+                            '      "type": "object",\n' +
+                            '      "properties": {\n' +
+                            '        "property1":\n' +
+                            '          { "type":"string" }\n' +
+                            "      },\n" +
+                            '      "required": ["property1"],\n' +
+                            '      "additionalProperties": false\n' +
+                            "    }\n" +
+                            "  }\n" +
+                            "}"
+                          }
                           onChange={(e) =>
                             handleResponseFormatChange(e.target.value)
                           }
                           padding={3}
-                          minHeight={80}
                           className={classNames(
                             "rounded-lg",
                             isResponseFormatJsonValid
@@ -410,6 +426,8 @@ export default function Chat({
                             fontSize: 13,
                             fontFamily:
                               "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                            overflowY: "auto",
+                            height: "400px",
                           }}
                         />
                       </div>
