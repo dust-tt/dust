@@ -3,8 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import type { MCPServerDefinitionType } from "@app/lib/api/mcp";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { browseUrl } from "@app/lib/utils/webbrowse";
+import { browseUrls } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
 import type { OAuthProvider } from "@app/types";
 
@@ -68,25 +67,13 @@ const createServer = (): McpServer => {
       urls: z.string().array().describe("List of urls to browse"),
     },
     async ({ urls }) => {
-      const content: CallToolResult["content"] = await concurrentExecutor(
-        urls,
-        async (url) => {
-          const res = await browseUrl(url);
-
-          if (res.isErr()) {
-            return {
-              type: "text",
-              text: `Failed to fetch url "${url}": ${res.error.message}`,
-            };
-          }
-
-          return {
-            type: "text",
-            text: JSON.stringify(res.value),
-          };
-        },
-        { concurrency: 4 }
-      );
+      const results = await browseUrls(urls);
+      const content: CallToolResult["content"] = results.map((result) => {
+        return {
+          type: "text",
+          text: JSON.stringify(result),
+        };
+      });
 
       return {
         isError: false,
