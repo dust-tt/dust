@@ -48,24 +48,27 @@ async function searchPokeWorkspaces(
 async function searchPokeConnectors(
   searchTerm: string
 ): Promise<PokeItemBase[]> {
-  const connectorsAPI = new ConnectorsAPI(
-    config.getConnectorsAPIConfig(),
-    logger
-  );
-  const cRes = await connectorsAPI.getConnector(searchTerm);
-  if (cRes.isOk()) {
-    const connector: ConnectorType = {
-      ...cRes.value,
-      connectionId: null,
-    };
+  const connectorModelId = parseInt(searchTerm);
+  if (!isNaN(connectorModelId)) {
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsAPIConfig(),
+      logger
+    );
+    const cRes = await connectorsAPI.getConnector(searchTerm);
+    if (cRes.isOk()) {
+      const connector: ConnectorType = {
+        ...cRes.value,
+        connectionId: null,
+      };
 
-    return [
-      {
-        id: parseInt(connector.id),
-        name: "Connector",
-        link: `${config.getClientFacingUrl()}/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
-      },
-    ];
+      return [
+        {
+          id: parseInt(connector.id),
+          name: "Connector",
+          link: `${config.getClientFacingUrl()}/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
+        },
+      ];
+    }
   }
 
   return [];
