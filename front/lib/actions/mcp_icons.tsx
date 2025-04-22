@@ -13,6 +13,7 @@ import {
   ActionTableIcon,
   Avatar,
   GithubLogo,
+  HubspotLogo,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
@@ -36,6 +37,7 @@ export const InternalActionIcons = {
   ActionBrainIcon,
   ActionMagnifyingGlassIcon,
   GithubLogo,
+  HubspotLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
