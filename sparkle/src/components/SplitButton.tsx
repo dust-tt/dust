@@ -1,4 +1,3 @@
-import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
 import {
@@ -9,29 +8,10 @@ import {
   DropdownMenuTrigger,
   RegularButtonProps,
 } from "@sparkle/components/";
-import {
-  Button,
-  ButtonSizeType,
-  ButtonVariantType,
-} from "@sparkle/components/Button";
+import { Button, ButtonVariantType } from "@sparkle/components/Button";
 import { Separator } from "@sparkle/components/Separator";
 import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
-
-const separatorSizeVariants: Record<
-  Exclude<ButtonSizeType, "mini" | "xmini">,
-  string
-> = {
-  xs: "s-h-3",
-  sm: "s-h-5",
-  md: "s-h-7",
-};
-
-const separatorVariants = cva("s--ml-[1px]", {
-  variants: {
-    size: separatorSizeVariants,
-  },
-});
 
 interface SplitButtonActionProps {
   label: string;
@@ -104,7 +84,7 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
           ref={ref}
           className={cn("s-rounded-r-none s-border-r-0", className)}
         />
-        <div className={separatorVariants({ size })}>
+        <div className="sm">
           <Separator orientation="vertical" />
         </div>
         <DropdownMenu>
