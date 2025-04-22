@@ -160,9 +160,7 @@ export function ViewDataSourceTable({
                             {connector.errorType}
                           </span>
                         ) : (
-                          <span className="font-bold text-green-600">
-                            "none"
-                          </span>
+                          <span className="font-bold text-green-600">none</span>
                         )}
                       </PokeTableCell>
                     </PokeTableRow>
