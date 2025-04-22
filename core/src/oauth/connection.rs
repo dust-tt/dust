@@ -3,10 +3,10 @@ use crate::oauth::{
     providers::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
-        intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
-        mock::MockConnectionProvider, notion::NotionConnectionProvider,
-        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
-        zendesk::ZendeskConnectionProvider,
+        hubspot::HubspotConnectionProvider, intercom::IntercomConnectionProvider,
+        microsoft::MicrosoftConnectionProvider, mock::MockConnectionProvider,
+        notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
+        slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -96,6 +96,7 @@ pub enum ConnectionProvider {
     Mock,
     Zendesk,
     Salesforce,
+    Hubspot,
 }
 
 impl FromStr for ConnectionProvider {
@@ -228,6 +229,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Mock => Box::new(MockConnectionProvider::new()),
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
+        ConnectionProvider::Hubspot => Box::new(HubspotConnectionProvider::new()),
     }
 }
 
