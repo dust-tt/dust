@@ -314,6 +314,14 @@ export class GongClient {
     callIds: string[];
     pageCursor?: string | null;
   }) {
+    // Calling the endpoint with an empty array of callIds causes a 400 error.
+    if (callIds.length === 0) {
+      return {
+        callsMetadata: [],
+        nextPageCursor: null,
+      };
+    }
+
     try {
       const callsMetadata = await this.postRequest(
         `/calls/extensive`,

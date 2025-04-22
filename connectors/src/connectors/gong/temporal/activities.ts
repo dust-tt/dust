@@ -128,6 +128,9 @@ export async function gongSyncTranscriptsActivity({
       (t) => !transcriptsInDbMap.has(t.callId)
     );
   }
+  if (transcriptsToSync.length === 0) {
+    return { nextPageCursor: null };
+  }
 
   const callsMetadata = await getTranscriptsMetadata({
     callIds: transcriptsToSync.map((t) => t.callId),
