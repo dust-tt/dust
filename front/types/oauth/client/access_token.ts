@@ -21,12 +21,10 @@ const CACHE = new Map<
 export async function getOAuthConnectionAccessToken({
   config,
   logger,
-  provider,
   connectionId,
 }: {
   config: { url: string; apiKey: string | null };
   logger: LoggerInterface;
-  provider: OAuthProvider;
   connectionId: string;
 }): Promise<
   Result<
@@ -46,7 +44,6 @@ export async function getOAuthConnectionAccessToken({
   }
 
   const res = await new OAuthAPI(config, logger).getAccessToken({
-    provider,
     connectionId,
   });
 
