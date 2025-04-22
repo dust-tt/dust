@@ -185,21 +185,21 @@ function generateToolMimeTypes<
   category: P;
   resourceTypes: T;
 }): {
-  [K in T[number]]: `application/vnd.dust.${Lowercase<P>}.${Lowercase<
-    UnderscoreToDash<K>
-  >}`;
+  [K in T[number]]: `application/vnd.dust.${Lowercase<
+    UnderscoreToDash<P>
+  >}.${Lowercase<UnderscoreToDash<K>>}`;
 } {
   return resourceTypes.reduce(
     (acc, s) => ({
       ...acc,
-      [s]: `application/vnd.dust.${category.toLowerCase()}.${s
+      [s]: `application/vnd.dust.${category
         .replace(/_/g, "-")
-        .toLowerCase()}`,
+        .toLowerCase()}.${s.replace(/_/g, "-").toLowerCase()}`,
     }),
     {} as {
-      [K in T[number]]: `application/vnd.dust.${Lowercase<P>}.${Lowercase<
-        UnderscoreToDash<K>
-      >}`;
+      [K in T[number]]: `application/vnd.dust.${Lowercase<
+        UnderscoreToDash<P>
+      >}.${Lowercase<UnderscoreToDash<K>>}`;
     }
   );
 }
