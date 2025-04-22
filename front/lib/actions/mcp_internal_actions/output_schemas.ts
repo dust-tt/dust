@@ -50,7 +50,7 @@ const ToolGeneratedFileSchema = z.object({
 export type ToolGeneratedFile = z.infer<typeof ToolGeneratedFileSchema>;
 
 export function isToolGeneratedFile(
-  resource: EmbeddedResourceType["resource"]
+  resource: EmbeddedResourceType
 ): resource is ToolGeneratedFile {
   return resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE;
 }
@@ -64,6 +64,12 @@ const ThinkingOutputSchema = z.object({
 });
 
 export type ThinkingOutput = z.infer<typeof ThinkingOutputSchema>;
+
+export function isThinkingOutput(
+  resource: EmbeddedResourceType
+): resource is ThinkingOutput {
+  return resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.THINKING;
+}
 
 // Resource with a name.
 
@@ -122,24 +128,24 @@ export const isSearchResultResourceType = (
 
 // Generic output types and schemas.
 
-const EmbeddedResourceSchema = z.object({
-  type: z.literal("resource"),
-  resource: z.union([
-    BlobResourceContentsSchema,
-    SearchQueryResourceSchema,
-    SearchResultResourceSchema,
-    TextResourceContentsSchema,
-    ThinkingOutputSchema,
-    ToolGeneratedFileSchema,
-  ]),
-});
+const EmbeddedResourceSchema = z.union([
+  BlobResourceContentsSchema,
+  SearchQueryResourceSchema,
+  SearchResultResourceSchema,
+  TextResourceContentsSchema,
+  ThinkingOutputSchema,
+  ToolGeneratedFileSchema,
+]);
 
-export type EmbeddedResourceType = z.infer<typeof EmbeddedResourceSchema>;
+type EmbeddedResourceType = z.infer<typeof EmbeddedResourceSchema>;
 
 const MCPToolResultContentSchema = z.union([
   TextContentSchema,
   ImageContentSchema,
-  EmbeddedResourceSchema,
+  z.object({
+    type: z.literal("resource"),
+    resource: EmbeddedResourceSchema,
+  }),
 ]);
 
 export type MCPToolResultContent = z.infer<typeof MCPToolResultContentSchema>;
