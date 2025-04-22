@@ -10,6 +10,17 @@ To install the Dust CLI globally, run:
 npm install -g @dust-tt/dust-cli
 ```
 
+### Linux
+
+Dust CLI depends on [`keytar`](https://www.npmjs.com/package/keytar) for storing credentials. On
+Linux, `keytar` requires `libsecret` to be installed.
+
+Depending on your distribution, you will need to run the following command:
+
+- Debian/Ubuntu: `sudo apt-get install libsecret-1-dev`
+- Red Hat-based: `sudo yum install libsecret-devel`
+- Arch Linux: `sudo pacman -S libsecret`
+
 ## Usage
 
 The Dust CLI allows you to manage your Dust authentication session (no features yet).
