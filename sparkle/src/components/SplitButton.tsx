@@ -18,7 +18,10 @@ import { Separator } from "@sparkle/components/Separator";
 import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
 
-const separatorSizeVariants: Record<Exclude<ButtonSizeType, "mini">, string> = {
+const separatorSizeVariants: Record<
+  Exclude<ButtonSizeType, "mini" | "xmini">,
+  string
+> = {
   xs: "s-h-3",
   sm: "s-h-5",
   md: "s-h-7",
