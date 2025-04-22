@@ -164,17 +164,7 @@ const ProcessActionConfigurationSchema = t.type({
       unit: TimeframeUnitCodec,
     }),
   ]),
-  schema: t.array(
-    t.type({
-      name: t.string,
-      type: t.union([
-        t.literal("string"),
-        t.literal("number"),
-        t.literal("boolean"),
-      ]),
-      description: t.string,
-    })
-  ),
+  jsonSchema: t.union([t.record(t.unknown, t.unknown), t.null]),
 });
 
 const multiActionsCommonFields = {
