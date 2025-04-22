@@ -186,16 +186,8 @@ export async function syncTicket({
 
     const ticketContent = `Conversation:\n${comments
       .map((comment) => {
-        let author;
-        try {
-          author = users.find((user) => user.id === comment.author_id);
-        } catch (e) {
-          logger.warn(
-            { connectorId, e, usersType: typeof users, ...loggerArgs },
-            "[Zendesk] Error finding the author of a comment."
-          );
-          author = null;
-        }
+        const author =
+          users.find((user) => user.id === comment.author_id) ?? null;
         // Remove line and paragraph separators.
         const commentContent = (comment.plain_body || comment.body).replace(
           /[\u2028\u2029]/g,
