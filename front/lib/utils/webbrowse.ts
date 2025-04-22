@@ -41,7 +41,7 @@ export const browseUrl = async (
     apiKey: credentials.FIRECRAWL_API_KEY,
   });
 
-  const scrapeResult = (await fc.scrapeUrl("firecrawl.dev", {
+  const scrapeResult = (await fc.scrapeUrl(url, {
     formats: ["markdown"],
   })) as ScrapeResponse;
 
