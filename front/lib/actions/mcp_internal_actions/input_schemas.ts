@@ -2,11 +2,11 @@ import type { InternalToolInputMimeType } from "@dust-tt/client";
 import {
   assertNever,
   CHILD_AGENT_CONFIGURATION_URI_PATTERN,
+  ConfigurableToolInputJSONSchemas,
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   INTERNAL_MIME_TYPES,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@dust-tt/client";
-import { ConfigurableToolInputJSONSchemas } from "@dust-tt/client/src/tool_input_schemas";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
