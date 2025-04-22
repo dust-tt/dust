@@ -47,8 +47,14 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { Result, SupportedFileContentType } from "@app/types";
-import { FILE_FORMATS } from "@app/types";
-import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
+import {
+  assertNever,
+  Err,
+  FILE_FORMATS,
+  normalizeError,
+  Ok,
+  slugify,
+} from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
 
@@ -369,7 +375,6 @@ export async function tryListMCPTools(
   // Discover all the tools exposed by all the mcp servers available.
   const configurations = await Promise.all(
     mcpServerActions.map(async (action) => {
-      let tools: MCPToolWithStakeLevelType[] = [];
       const toolsRes = await listMCPServerTools(auth, action, {
         conversationId,
         messageId,
@@ -387,8 +392,7 @@ export async function tryListMCPTools(
         return [];
       }
 
-      tools = toolsRes.value;
-
+      const tools = toolsRes.value;
       const toolConfigurations = makeMCPToolConfigurations({
         config: action,
         tools,
@@ -447,6 +451,51 @@ export async function tryListMCPTools(
   return configurations.flat();
 }
 
+async function getMCPServerToolsMetadata(
+  auth: Authenticator,
+  connectionParams: MCPConnectionParams
+): Promise<Result<Record<string, MCPToolStakeLevelType>, Error>> {
+  // Only get metadata for server-side MCP servers.
+  if (!isConnectViaMCPServerId(connectionParams)) {
+    return new Ok({});
+  }
+
+  const { serverType, id } = getServerTypeAndIdFromSId(
+    connectionParams.mcpServerId
+  );
+
+  switch (serverType) {
+    case "internal": {
+      const r = getInternalMCPServerNameAndWorkspaceId(
+        connectionParams.mcpServerId
+      );
+      if (r.isErr()) {
+        return r;
+      }
+      const serverName = r.value.name;
+      const toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes;
+      return new Ok(toolsStakes || {});
+    }
+
+    case "remote": {
+      const metadata =
+        await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
+      return new Ok(
+        metadata.reduce<Record<string, MCPToolStakeLevelType>>(
+          (acc, metadata) => {
+            acc[metadata.toolName] = metadata.permission;
+            return acc;
+          },
+          {}
+        )
+      );
+    }
+
+    default:
+      assertNever(serverType);
+  }
+}
+
 async function listMCPServerTools(
   auth: Authenticator,
   config: MCPServerConfigurationType,
@@ -483,7 +532,6 @@ async function listMCPServerTools(
       isDefaultInternalMCPServer(connectionParams.mcpServerId);
 
     let allToolsRaw: MCPToolType[] = [];
-    let allTools: MCPToolWithStakeLevelType[] = [];
     let nextPageCursor;
 
     // Fetch all tools, handling pagination if supported by the MCP server.
@@ -498,46 +546,27 @@ async function listMCPServerTools(
       ];
     } while (nextPageCursor);
 
-    // Enrich tool metadata with permissions and serverId to avoid re-fetching at validation modal
-    // level.
-    if (connectionParams.type === "mcpServerId") {
-      const { serverType, id } = getServerTypeAndIdFromSId(
-        connectionParams.mcpServerId
-      );
-
-      let toolsMetadata: Record<string, MCPToolStakeLevelType> = {};
-      switch (serverType) {
-        case "internal":
-          const r = getInternalMCPServerNameAndWorkspaceId(
-            connectionParams.mcpServerId
-          );
-          if (r.isErr()) {
-            return r;
-          }
-          toolsMetadata = INTERNAL_MCP_SERVERS[r.value.name].tools_stakes || {};
-          break;
-        case "remote":
-          toolsMetadata = (
-            await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id)
-          ).reduce<Record<string, MCPToolStakeLevelType>>((acc, metadata) => {
-            acc[metadata.toolName] = metadata.permission;
-            return acc;
-          }, {});
-          break;
-        default:
-          assertNever(serverType);
-      }
-
-      allTools = allToolsRaw.map((tool) => ({
-        ...tool,
-        stakeLevel:
-          toolsMetadata[tool.name] || isDefault
-            ? FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL
-            : FALLBACK_MCP_TOOL_STAKE_LEVEL,
-        isDefault,
-        toolServerId: connectionParams.mcpServerId,
-      }));
+    // Get tools metadata if available.
+    const toolsMetadataRes = await getMCPServerToolsMetadata(
+      auth,
+      connectionParams
+    );
+    if (toolsMetadataRes.isErr()) {
+      return toolsMetadataRes;
     }
+    const toolsMetadata = toolsMetadataRes.value;
+
+    const allTools: MCPToolWithStakeLevelType[] = allToolsRaw.map((tool) => ({
+      ...tool,
+      stakeLevel:
+        toolsMetadata[tool.name] || isDefault
+          ? FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL
+          : FALLBACK_MCP_TOOL_STAKE_LEVEL,
+      isDefault,
+      toolServerId: isConnectViaMCPServerId(connectionParams)
+        ? connectionParams.mcpServerId
+        : undefined,
+    }));
 
     logger.debug(
       {
