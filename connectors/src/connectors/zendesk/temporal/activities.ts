@@ -568,11 +568,13 @@ export async function syncZendeskArticleBatchActivity({
     brandSubdomain,
     categoryId,
   });
-  const users = await listZendeskUsers({
-    accessToken,
-    brandSubdomain,
-    userIds: articles.map((article) => article.author_id),
-  });
+  const users = configuration.hideCustomerDetails
+    ? []
+    : await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds: articles.map((article) => article.author_id),
+      });
 
   await concurrentExecutor(
     articles,
@@ -583,8 +585,8 @@ export async function syncZendeskArticleBatchActivity({
         configuration,
         category,
         section:
-          sections.find((section) => section.id === article.section_id) || null,
-        user: users.find((user) => user.id === article.author_id) || null,
+          sections.find((section) => section.id === article.section_id) ?? null,
+        user: users.find((user) => user.id === article.author_id) ?? null,
         dataSourceConfig,
         helpCenterIsAllowed,
         currentSyncDateMs,

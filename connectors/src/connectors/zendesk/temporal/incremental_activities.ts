@@ -132,11 +132,13 @@ export async function syncZendeskArticleUpdateBatchActivity({
         brandSubdomain,
         sectionId: article.section_id,
       });
-      const user = await fetchZendeskUser({
-        accessToken,
-        brandSubdomain,
-        userId: article.author_id,
-      });
+      const user = configuration.hideCustomerDetails
+        ? null
+        : await fetchZendeskUser({
+            accessToken,
+            brandSubdomain,
+            userId: article.author_id,
+          });
 
       if (section && section.category_id) {
         let category = await ZendeskCategoryResource.fetchByCategoryId({
