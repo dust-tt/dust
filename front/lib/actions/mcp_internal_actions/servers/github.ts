@@ -47,7 +47,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ owner, repo, title, body, assignees, labels }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "github",
       });
 
       const octokit = new Octokit({ auth: accessToken });
@@ -104,7 +103,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ owner, repo, pullNumber }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "github",
       });
 
       const octokit = new Octokit({ auth: accessToken });
@@ -423,7 +421,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ owner, repo, pullNumber, body, event, comments = [] }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "github",
       });
 
       const octokit = new Octokit({ auth: accessToken });
@@ -499,7 +496,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ owner, repo, issueNumber, projectId, field }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "github",
       });
 
       const octokit = new Octokit({ auth: accessToken });
