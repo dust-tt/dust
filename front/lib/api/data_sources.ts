@@ -450,7 +450,7 @@ export async function upsertDocument({
   const owner = auth.getNonNullableWorkspace();
 
   const result = await Lock.executeWithLock(
-    `upsert_documents_${owner.id}`,
+    `upsert_documents_${owner.id}_${dataSource.id}`,
     async () => {
       // Enforce plan limits: DataSource documents count.
       // We only load the number of documents if the limit is not -1 (unlimited).
