@@ -631,7 +631,7 @@ export async function getWorkspaceAdministrationVersionLock(
 ) {
   const now = new Date();
 
-  const hash = md5(`workspace_admininsation_${workspace.id}`);
+  const hash = md5(`workspace_administration_${workspace.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
   await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
