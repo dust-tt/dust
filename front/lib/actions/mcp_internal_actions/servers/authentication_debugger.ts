@@ -23,7 +23,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   server.tool("hello_world", "A simple hello world tool", async () => {
     const accessToken = await getAccessTokenForInternalMCPServer(auth, {
       mcpServerId,
-      provider,
     });
 
     return {

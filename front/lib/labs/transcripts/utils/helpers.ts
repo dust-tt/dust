@@ -35,7 +35,6 @@ export async function getTranscriptsGoogleAuth(
   const tokRes = await getOAuthConnectionAccessToken({
     config: apiConfig.getOAuthAPIConfig(),
     logger,
-    provider,
     connectionId,
   });
 
