@@ -55,13 +55,6 @@ export function isToolGeneratedFile(
   return resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE;
 }
 
-export type MCPToolResultContent = z.infer<typeof MCPToolResultContentSchema>;
-
-export type MCPToolResult = {
-  isError: boolean;
-  content: MCPToolResultContent[];
-};
-
 // Thinking tokens generated during the tool execution.
 
 const ThinkingOutputSchema = z.object({
@@ -148,3 +141,10 @@ const MCPToolResultContentSchema = z.union([
   ImageContentSchema,
   EmbeddedResourceSchema,
 ]);
+
+export type MCPToolResultContent = z.infer<typeof MCPToolResultContentSchema>;
+
+export type MCPToolResult = {
+  isError: boolean;
+  content: MCPToolResultContent[];
+};
