@@ -282,21 +282,19 @@ export class Authenticator {
     let groups: GroupResource[] = [];
     let subscription: SubscriptionResource | null = null;
 
-    if (user && workspace) {
-      [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveMembershipOfUserInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-        }).then((m) => m?.role ?? "none"),
-        GroupResource.listUserGroupsInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-        }),
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace })
-        ),
-      ]);
-    }
+    [role, groups, subscription] = await Promise.all([
+      MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user,
+        workspace: renderLightWorkspaceType({ workspace }),
+      }).then((m) => m?.role ?? "none"),
+      GroupResource.listUserGroupsInWorkspace({
+        user,
+        workspace: renderLightWorkspaceType({ workspace }),
+      }),
+      SubscriptionResource.fetchActiveByWorkspace(
+        renderLightWorkspaceType({ workspace })
+      ),
+    ]);
 
     return new Ok(
       new Authenticator({
