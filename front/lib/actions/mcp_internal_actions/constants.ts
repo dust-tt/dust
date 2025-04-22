@@ -62,15 +62,15 @@ export const INTERNAL_MCP_SERVERS: Record<
     isDefault: true,
     flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
   },
-  hubspot: {
-    id: 5,
-    isDefault: false,
-    flag: "dev_mcp_actions",
-  },
   "web_search_&_browse_v2": {
     id: 5,
     isDefault: true,
     flag: "mcp_actions",
+  },
+  hubspot: {
+    id: 6,
+    isDefault: false,
+    flag: "dev_mcp_actions",
   },
   think: {
     id: 6,

@@ -2,6 +2,7 @@ import { Client } from "@hubspot/api-client";
 import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/contacts";
 import type { SimplePublicObject } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObject";
 import type { SimplePublicObjectInputForCreate } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObjectInputForCreate";
+import type { PublicOwner } from "@hubspot/api-client/lib/codegen/crm/owners/models/PublicOwner";
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
 const MAX_ENUM_OPTIONS_DISPLAYED = 10;
@@ -164,8 +165,16 @@ export const getObjectByEmail = async (
   accessToken: string,
   objectType: SupportedObjectTypeRead,
   email: string
-): Promise<SimplePublicObject | null> => {
+): Promise<SimplePublicObject | PublicOwner | null> => {
   const hubspotClient = new Client({ accessToken });
+
+  if (objectType === "owners") {
+    const owners = await hubspotClient.crm.owners.ownersApi.getPage();
+    const owner = owners.results.find((owner) => owner.email === email);
+    if (owner) {
+      return owner;
+    }
+  }
 
   const properties =
     await hubspotClient.crm.properties.coreApi.getAll(objectType);

@@ -511,9 +511,9 @@ const PROVIDER_STRATEGIES: Record<
         "crm.objects.leads.read",
         "crm.objects.leads.write",
         "crm.objects.owners.read",
+        "crm.schemas.companies.read",
         "crm.schemas.contacts.read",
         "crm.schemas.custom.read",
-        "crm.schemas.companies.read",
         "crm.schemas.deals.read",
         "oauth",
       ];
