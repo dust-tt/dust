@@ -90,7 +90,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "tables_query",
   version: "1.0.0",
   description: "Tables, Spreadsheets, Notion DBs (quantitative).",
-  icon: "GithubLogo",
+  icon: "ActionTableIcon",
   authorization: null,
 };
 
