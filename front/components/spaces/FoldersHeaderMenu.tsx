@@ -110,29 +110,31 @@ const AddDataDropDownButton = ({
           disabled={!canWriteInSpace}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuItem
-          icon={DocumentTextIcon}
-          onClick={() => {
-            contentActionsRef.current?.callAction("DocumentUploadOrEdit");
-          }}
-          label="Create a document"
-        />
-        <DropdownMenuItem
-          icon={TableIcon}
-          onClick={() => {
-            contentActionsRef.current?.callAction("TableUploadOrEdit");
-          }}
-          label="Create a table"
-        />
-        <DropdownMenuItem
-          icon={CloudArrowUpIcon}
-          onClick={() => {
-            contentActionsRef.current?.callAction("MultipleDocumentsUpload");
-          }}
-          label="Upload multiple documents"
-        />
-      </DropdownMenuContent>
+      {canWriteInSpace && (
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            icon={DocumentTextIcon}
+            onClick={() => {
+              contentActionsRef.current?.callAction("DocumentUploadOrEdit");
+            }}
+            label="Create a document"
+          />
+          <DropdownMenuItem
+            icon={TableIcon}
+            onClick={() => {
+              contentActionsRef.current?.callAction("TableUploadOrEdit");
+            }}
+            label="Create a table"
+          />
+          <DropdownMenuItem
+            icon={CloudArrowUpIcon}
+            onClick={() => {
+              contentActionsRef.current?.callAction("MultipleDocumentsUpload");
+            }}
+            label="Upload multiple documents"
+          />
+        </DropdownMenuContent>
+      )}
     </DropdownMenu>
   );
 };

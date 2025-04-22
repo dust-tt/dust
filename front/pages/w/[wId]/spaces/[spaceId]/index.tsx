@@ -45,12 +45,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   }
 
   const canWriteInSpace = space.canWrite(auth);
+  const isBuilder = auth.isBuilder();
 
   return {
     props: {
       canReadInSpace: space.canRead(auth),
       canWriteInSpace,
       isAdmin,
+      isBuilder,
       owner,
       plan,
       space: space.toJSON(),
@@ -62,6 +64,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
 export default function Space({
   isAdmin,
+  isBuilder,
   canWriteInSpace,
   owner,
   userId,
@@ -105,6 +108,7 @@ export default function Space({
           );
         }}
         isAdmin={isAdmin}
+        isBuilder={isBuilder}
         onButtonClick={() => setShowSpaceEditionModal(true)}
       />
       <CreateOrEditSpaceModal

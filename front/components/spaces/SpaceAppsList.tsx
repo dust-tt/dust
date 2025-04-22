@@ -146,7 +146,7 @@ const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
 };
 
 interface SpaceAppsListProps {
-  canWriteInSpace: boolean;
+  isBuilder: boolean;
   onSelect: (sId: string) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
@@ -155,7 +155,7 @@ interface SpaceAppsListProps {
 
 export const SpaceAppsList = ({
   owner,
-  canWriteInSpace,
+  isBuilder,
   space,
   onSelect,
   registryApps,
@@ -208,7 +208,7 @@ export const SpaceAppsList = ({
 
   const actionButtons = (
     <>
-      {canWriteInSpace && (
+      {isBuilder && (
         <>
           <Button
             label="New App"
@@ -240,7 +240,7 @@ export const SpaceAppsList = ({
         <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-muted-background dark:bg-muted-background-night">
           <Button
             label="Create App"
-            disabled={!canWriteInSpace}
+            disabled={!isBuilder}
             onClick={() => {
               setIsCreateAppModalOpened(true);
             }}

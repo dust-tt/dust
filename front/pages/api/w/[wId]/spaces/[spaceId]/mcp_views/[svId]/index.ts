@@ -77,6 +77,16 @@ async function handler(
         });
       }
 
+      if (!auth.isAdmin() && space.kind === "global") {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "mcp_auth_error",
+            message:
+              "You are not authorized to remove tools from a space.",
+          },
+        });
+      }
       await r.value.delete(auth, { hardDelete: true });
 
       return res.status(200).json({

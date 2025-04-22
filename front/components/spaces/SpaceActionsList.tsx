@@ -105,6 +105,7 @@ export const SpaceActionsList = ({
                 label: "Remove tools from space",
                 onClick: async () => onRemoveServer(info.row.original.id),
                 kind: "item",
+                disabled: !isAdmin && space.kind === "global",
               },
             ]}
           />
