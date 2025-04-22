@@ -452,7 +452,6 @@ function SearchResultsTable({
   onClearSearch,
 }: SearchResultsTableProps) {
   const router = useRouter();
-  const { q: searchParam } = useQueryParams(["q"]);
 
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
