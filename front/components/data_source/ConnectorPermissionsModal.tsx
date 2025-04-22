@@ -800,7 +800,7 @@ export function ConnectorPermissionsModal({
                     <>
                       <div className="heading-xl p-1">Connector options</div>
                       <div className="p-1">
-                        <div className="border-y">
+                        <div className="border-y border-border dark:border-border-night">
                           <OptionsComponent
                             {...{ owner, readOnly, isAdmin, dataSource, plan }}
                           />

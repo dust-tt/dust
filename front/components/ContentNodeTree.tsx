@@ -196,7 +196,7 @@ function ContentNodeTreeChildren({
   }
 
   const tree = (
-    <Tree isLoading={isResourcesLoading}>
+    <Tree isLoading={isResourcesLoading} isBoxed={isRoundedBackground}>
       {filteredNodes &&
         filteredNodes.length === 0 &&
         (emptyComponent || <Tree.Empty label="No documents" />)}
@@ -363,15 +363,7 @@ function ContentNodeTreeChildren({
           </div>
         </>
       )}
-      <div className="overflow-y-auto p-1">
-        {isRoundedBackground ? (
-          <div className="rounded-xl border bg-muted-background p-4 dark:bg-muted-background-night">
-            {tree}
-          </div>
-        ) : (
-          tree
-        )}
-      </div>
+      <div className="overflow-y-auto p-1">{tree}</div>
     </>
   );
 }
