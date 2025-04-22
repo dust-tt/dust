@@ -87,6 +87,10 @@ async function handler(
           credentialId: c.credentialId,
           dataSourceViewId: c.dataSourceViewId,
           provider: c.provider,
+          syncStatus: c.syncStatus,
+          lastSyncStartedAt: c.lastSyncStartedAt,
+          lastSyncCompletedAt: c.lastSyncCompletedAt,
+          lastSyncError: c.lastSyncError,
         }))
       );
       return;

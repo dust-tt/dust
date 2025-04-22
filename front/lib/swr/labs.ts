@@ -494,7 +494,10 @@ export function useLabsConnectionConfigurations({
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/labs/connections`,
-    configurationsFetcher
+    configurationsFetcher,
+    {
+      refreshInterval: 10000,
+    }
   );
 
   return {
