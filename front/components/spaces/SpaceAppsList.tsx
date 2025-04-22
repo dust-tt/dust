@@ -1,5 +1,4 @@
 import {
-  BracesIcon,
   Button,
   CommandLineIcon,
   DataTable,
@@ -10,7 +9,6 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { sortBy } from "lodash";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
 import { useState } from "react";
@@ -160,7 +158,6 @@ export const SpaceAppsList = ({
   onSelect,
   registryApps,
 }: SpaceAppsListProps) => {
-  const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const { q: searchParam } = useQueryParams(["q"]);
