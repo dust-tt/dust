@@ -168,7 +168,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       order,
       where,
       includeDeleted,
-    }: ResourceFindOptions<SpaceModel> = {}
+    }: ResourceFindOptions<SpaceModel> = {},
+    t?: Transaction
   ) {
     const includeClauses: Includeable[] = [
       {
@@ -186,6 +187,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       limit,
       order,
       includeDeleted,
+      transaction: t,
     });
 
     return spacesModels.map(this.fromModel);
@@ -193,11 +195,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async listWorkspaceSpaces(
     auth: Authenticator,
-    options?: { includeConversationsSpace?: boolean; includeDeleted?: boolean }
+    options?: { includeConversationsSpace?: boolean; includeDeleted?: boolean },
+    t?: Transaction
   ): Promise<SpaceResource[]> {
-    const spaces = await this.baseFetch(auth, {
-      includeDeleted: options?.includeDeleted,
-    });
+    const spaces = await this.baseFetch(
+      auth,
+      {
+        includeDeleted: options?.includeDeleted,
+      },
+      t
+    );
 
     if (!options?.includeConversationsSpace) {
       return spaces.filter((s) => !s.isConversations());
@@ -327,7 +334,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async isNameAvailable(
     auth: Authenticator,
-    name: string
+    name: string,
+    t?: Transaction
   ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -336,6 +344,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         name,
         workspaceId: owner.id,
       },
+      transaction: t,
     });
 
     return !space;
