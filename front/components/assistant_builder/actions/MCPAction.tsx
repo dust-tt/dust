@@ -286,7 +286,8 @@ export function MCPAction({
             />
           </>
         ))}
-
+      {/* List of tools */}
+      <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
