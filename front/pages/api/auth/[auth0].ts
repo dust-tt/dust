@@ -187,11 +187,23 @@ export default handleAuth({
     }
   },
   logout: handleLogout((req) => {
+    const returnTo =
+      ("query" in req && (req.query.returnTo as string)) ||
+      config.getClientFacingUrl();
+
+    // Construct the full logout URL with all necessary parameters
+    const logoutUrl = new URL(
+      `https://${config.getAuth0TenantUrl()}/v2/logout`
+    );
+    logoutUrl.searchParams.append(
+      "client_id",
+      config.getAuth0WebApplicationId()
+    );
+    logoutUrl.searchParams.append("returnTo", returnTo);
+
     return {
-      returnTo:
-        "query" in req
-          ? (req.query.returnTo as string)
-          : config.getClientFacingUrl(),
+      returnTo: logoutUrl.toString(),
+      clearSession: true,
     };
   }),
 });
