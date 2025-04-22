@@ -447,89 +447,98 @@ export async function upsertDocument({
 
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const plan = auth.getNonNullablePlan();
-  // Enforce plan limits: DataSource documents count.
-  // We only load the number of documents if the limit is not -1 (unlimited).
-  // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
-  // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
-  if (plan.limits.dataSources.documents.count !== -1) {
-    const documents = await coreAPI.getDataSourceDocuments(
-      {
+  const owner = auth.getNonNullableWorkspace();
+
+  const result = await Lock.executeWithLock(
+    `upsert_documents_${owner.id}`,
+    async () => {
+      // Enforce plan limits: DataSource documents count.
+      // We only load the number of documents if the limit is not -1 (unlimited).
+      // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
+      // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
+      if (plan.limits.dataSources.documents.count !== -1) {
+        const documents = await coreAPI.getDataSourceDocuments(
+          {
+            projectId: dataSource.dustAPIProjectId,
+            dataSourceId: dataSource.dustAPIDataSourceId,
+          },
+          { limit: 1, offset: 0 }
+        );
+        if (documents.isErr()) {
+          return new Err(
+            new DustError(
+              "core_api_error",
+              "There was an error retrieving the data source."
+            )
+          );
+        }
+
+        if (
+          plan.limits.dataSources.documents.count != -1 &&
+          documents.value.total >= plan.limits.dataSources.documents.count
+        ) {
+          return new Err(
+            new DustError(
+              "data_source_quota_error",
+              `Data sources are limited to ${plan.limits.dataSources.documents.count} ` +
+                `documents on your current plan. Contact support@dust.tt if you want to increase this limit.`
+            )
+          );
+        }
+      }
+
+      // Enforce plan limits: DataSource document size.
+      if (
+        plan.limits.dataSources.documents.sizeMb != -1 &&
+        fullText.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
+      ) {
+        return new Err(
+          new DustError(
+            "data_source_quota_error",
+            `Data sources document upload size is limited to ` +
+              `${plan.limits.dataSources.documents.sizeMb}MB on your current plan. ` +
+              `You are attempting to upload ${fullText.length} bytes. ` +
+              `Contact support@dust.tt if you want to increase it.`
+          )
+        );
+      }
+
+      // Data source operations are performed with our credentials.
+      const credentials = dustManagedCredentials();
+
+      // Create document with the Dust internal API.
+      const upsertRes = await coreAPI.upsertDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
-      },
-      { limit: 1, offset: 0 }
-    );
-    if (documents.isErr()) {
-      return new Err(
-        new DustError(
-          "core_api_error",
-          "There was an error retrieving the data source."
-        )
-      );
+        documentId,
+        tags: nonNullTags,
+        parentId: documentParentId,
+        parents: documentParents,
+        sourceUrl,
+        // TEMPORARY -- need to unstuck a specific entry
+        // TODO(FONTANIERH): remove this once the entry is unstuck
+        timestamp: timestamp ? Math.floor(timestamp) : null,
+        section: generatedSection,
+        credentials,
+        lightDocumentOutput: light_document_output === true,
+        title,
+        mimeType: mime_type,
+      });
+
+      if (upsertRes.isErr()) {
+        return new Err(
+          new DustError(
+            "core_api_error",
+            "There was an error upserting the document."
+          )
+        );
+      }
+
+      return new Ok(upsertRes.value);
     }
+  );
 
-    if (
-      plan.limits.dataSources.documents.count != -1 &&
-      documents.value.total >= plan.limits.dataSources.documents.count
-    ) {
-      return new Err(
-        new DustError(
-          "data_source_quota_error",
-          `Data sources are limited to ${plan.limits.dataSources.documents.count} ` +
-            `documents on your current plan. Contact support@dust.tt if you want to increase this limit.`
-        )
-      );
-    }
-  }
-
-  // Enforce plan limits: DataSource document size.
-  if (
-    plan.limits.dataSources.documents.sizeMb != -1 &&
-    fullText.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
-  ) {
-    return new Err(
-      new DustError(
-        "data_source_quota_error",
-        `Data sources document upload size is limited to ` +
-          `${plan.limits.dataSources.documents.sizeMb}MB on your current plan. ` +
-          `You are attempting to upload ${fullText.length} bytes. ` +
-          `Contact support@dust.tt if you want to increase it.`
-      )
-    );
-  }
-
-  // Data source operations are performed with our credentials.
-  const credentials = dustManagedCredentials();
-
-  // Create document with the Dust internal API.
-  const upsertRes = await coreAPI.upsertDataSourceDocument({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId,
-    tags: nonNullTags,
-    parentId: documentParentId,
-    parents: documentParents,
-    sourceUrl,
-    // TEMPORARY -- need to unstuck a specific entry
-    // TODO(FONTANIERH): remove this once the entry is unstuck
-    timestamp: timestamp ? Math.floor(timestamp) : null,
-    section: generatedSection,
-    credentials,
-    lightDocumentOutput: light_document_output === true,
-    title,
-    mimeType: mime_type,
-  });
-
-  if (upsertRes.isErr()) {
-    return new Err(
-      new DustError(
-        "core_api_error",
-        "There was an error upserting the document."
-      )
-    );
-  }
-
-  return new Ok(upsertRes.value);
+  return result;
 }
 
 export async function handleDataSourceSearch({
