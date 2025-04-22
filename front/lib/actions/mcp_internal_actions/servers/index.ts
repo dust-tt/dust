@@ -6,7 +6,6 @@ import { default as childAgentDebuggerServer } from "@app/lib/actions/mcp_intern
 import { default as dataSourceDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_debugger";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
-import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
@@ -38,8 +37,6 @@ export function getInternalMCPServer(
       return tableDebuggerServer();
     case "github":
       return githubServer(auth, mcpServerId);
-    case "hubspot":
-      return hubspotServer(auth, mcpServerId);
     case "image_generation":
       return imageGenerationDallEServer(auth);
     case "file_generation":
