@@ -32,7 +32,6 @@ export interface SpaceLayoutPageProps {
   category?: DataSourceViewCategory;
   dataSourceView?: DataSourceViewType;
   isAdmin: boolean;
-  isBuilder: boolean;
   owner: WorkspaceType;
   parentId?: string;
   plan: PlanType;

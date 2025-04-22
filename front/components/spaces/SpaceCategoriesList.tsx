@@ -187,7 +187,7 @@ export const SpaceCategoriesList = ({
             label="Scrape a website"
           />
           <DropdownMenuItem
-            disabled={!isBuilder}
+            disabled={!isBuilder && !canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
             icon={CommandLineIcon}
             label="Create a Dust App"

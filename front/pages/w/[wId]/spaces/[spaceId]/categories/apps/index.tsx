@@ -14,6 +14,7 @@ import type { DataSourceViewCategory, SpaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
+    isBuilder: boolean;
     category: DataSourceViewCategory;
     registryApps: ActionApp[] | null;
     space: SpaceType;
