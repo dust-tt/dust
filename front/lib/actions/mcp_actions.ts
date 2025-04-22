@@ -456,7 +456,7 @@ async function augmentToolsWithMetadata(
   connectionParams: MCPConnectionParams,
   tools: MCPToolType[]
 ): Promise<Result<MCPToolWithStakeLevelType[], Error>> {
-  // For non-server-side MCP servers, just add default metadata
+  // For non-server-side MCP servers, just add default metadata.
   if (!isConnectViaMCPServerId(connectionParams)) {
     return new Ok(
       tools.map((tool) => ({
