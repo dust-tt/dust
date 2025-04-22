@@ -497,6 +497,41 @@ const PROVIDER_STRATEGIES: Record<
       }
     },
   },
+  hubspot: {
+    setupUri: ({ connection }) => {
+      const scopes = [
+        "crm.objects.companies.read",
+        "crm.objects.companies.write",
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
+        "crm.objects.deals.read",
+        "crm.objects.deals.write",
+        "crm.objects.leads.read",
+        "crm.objects.leads.write",
+        "crm.objects.owners.read",
+        "crm.schemas.contacts.read",
+        "crm.schemas.companies.read",
+        "crm.schemas.deals.read",
+        "oauth",
+      ];
+      return (
+        `https://app.hubspot.com/oauth/authorize` +
+        `?client_id=${config.getOAuthHubspotClientId()}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("hubspot"))}` +
+        `&state=${connection.connection_id}`
+      );
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
+    },
+  },
 };
 
 export async function createConnectionAndGetSetupUrl(
