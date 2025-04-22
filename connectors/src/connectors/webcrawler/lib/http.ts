@@ -52,6 +52,7 @@ export class DustHttpClient extends GotScrapingHttpClient {
     return super.sendRequest({
       ...request,
       url: res.value,
+      followRedirect: false,
     });
   }
 
@@ -72,6 +73,7 @@ export class DustHttpClient extends GotScrapingHttpClient {
       {
         ...request,
         url: res.value,
+        followRedirect: false,
       },
       handleRedirect
     );
@@ -118,7 +120,7 @@ export class DustHttpClient extends GotScrapingHttpClient {
 
       try {
         const response = await fetch(url, {
-          method: "HEAD",
+          method: "GET",
           redirect: "manual",
           signal: controller.signal,
         });
