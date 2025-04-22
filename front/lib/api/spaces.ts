@@ -29,6 +29,8 @@ import type {
 } from "@app/types";
 import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
+import { getWorkspaceAdministrationVersionLock } from "./workspace";
+
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
   space: SpaceResource
@@ -178,72 +180,85 @@ export async function createRegularSpaceAndGroup(
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
 ): Promise<Result<SpaceResource, DustError | Error>> {
   const owner = auth.getNonNullableWorkspace();
-
   const plan = auth.getNonNullablePlan();
-  const all = await SpaceResource.listWorkspaceSpaces(auth);
-  const isLimitReached = isPrivateSpacesLimitReached(
-    all.map((v) => v.toJSON()),
-    plan
-  );
 
-  if (isLimitReached && !ignoreWorkspaceLimit) {
-    return new Err(
-      new DustError(
-        "limit_reached",
-        "The maximum number of spaces has been reached."
-      )
+  const result = await frontSequelize.transaction(async (t) => {
+    await getWorkspaceAdministrationVersionLock(owner, t);
+
+    const all = await SpaceResource.listWorkspaceSpaces(auth, undefined, t);
+    const isLimitReached = isPrivateSpacesLimitReached(
+      all.map((v) => v.toJSON()),
+      plan
     );
-  }
 
-  const nameAvailable = await SpaceResource.isNameAvailable(auth, name);
-  if (!nameAvailable) {
-    return new Err(
-      new DustError("space_already_exists", "This space name is already used.")
+    if (isLimitReached && !ignoreWorkspaceLimit) {
+      return new Err(
+        new DustError(
+          "limit_reached",
+          "The maximum number of spaces has been reached."
+        )
+      );
+    }
+
+    const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
+    if (!nameAvailable) {
+      return new Err(
+        new DustError(
+          "space_already_exists",
+          "This space name is already used."
+        )
+      );
+    }
+
+    const group = await GroupResource.makeNew(
+      {
+        name: `Group for space ${name}`,
+        workspaceId: owner.id,
+        kind: "regular",
+      },
+      { transaction: t }
     );
-  }
 
-  const group = await GroupResource.makeNew({
-    name: `Group for space ${name}`,
-    workspaceId: owner.id,
-    kind: "regular",
+    const globalGroupRes = isRestricted
+      ? null
+      : await GroupResource.fetchWorkspaceGlobalGroup(auth);
+
+    const groups = removeNulls([
+      group,
+      globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
+    ]);
+
+    const space = await SpaceResource.makeNew(
+      {
+        name,
+        kind: "regular",
+        workspaceId: owner.id,
+      },
+      groups,
+      t
+    );
+
+    if (memberIds) {
+      const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
+        user.toJSON()
+      );
+      const groupsResult = await group.addMembers(auth, users);
+      if (groupsResult.isErr()) {
+        logger.error(
+          {
+            error: groupsResult.error,
+          },
+          "The space cannot be created - group members could not be added"
+        );
+
+        return new Err(new Error("The space cannot be created."));
+      }
+    }
+
+    return new Ok(space);
   });
 
-  const globalGroupRes = isRestricted
-    ? null
-    : await GroupResource.fetchWorkspaceGlobalGroup(auth);
-
-  const groups = removeNulls([
-    group,
-    globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
-  ]);
-
-  const space = await SpaceResource.makeNew(
-    {
-      name,
-      kind: "regular",
-      workspaceId: owner.id,
-    },
-    groups
-  );
-
-  if (memberIds) {
-    const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
-      user.toJSON()
-    );
-    const groupsResult = await group.addMembers(auth, users);
-    if (groupsResult.isErr()) {
-      logger.error(
-        {
-          error: groupsResult.error,
-        },
-        "The space cannot be created - group members could not be added"
-      );
-
-      return new Err(new Error("The space cannot be created."));
-    }
-  }
-
-  return new Ok(space);
+  return result;
 }
 
 export async function searchContenNodesInSpace(
