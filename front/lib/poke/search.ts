@@ -54,7 +54,10 @@ async function searchPokeConnectors(
   );
   const cRes = await connectorsAPI.getConnector(searchTerm);
   if (cRes.isOk()) {
-    const connector: ConnectorType = cRes.value;
+    const connector: ConnectorType = {
+      ...cRes.value,
+      connectionId: null,
+    };
 
     return [
       {

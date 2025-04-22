@@ -1,4 +1,5 @@
-import type { ConnectorType } from "./connectors/connectors_api";
+import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
+
 import type { DataSourceViewType } from "./data_source_view";
 import type { ModelId } from "./shared/model_id";
 import type { Result } from "./shared/result";
@@ -44,6 +45,10 @@ export type DataSourceType = {
 export type WithConnector = {
   connectorProvider: ConnectorProvider;
   connectorId: string;
+};
+
+export type ConnectorType = Omit<InternalConnectorType, "connectionId"> & {
+  connectionId?: null;
 };
 
 export type ConnectorStatusDetails = {

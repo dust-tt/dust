@@ -66,7 +66,7 @@ export function isConnectorError(val: string): val is ConnectorErrorType {
   return (CONNECTORS_ERROR_TYPES as unknown as string[]).includes(val);
 }
 
-export type ConnectorType = {
+export type InternalConnectorType = {
   id: string;
   type: ConnectorProvider;
   workspaceId: string;
@@ -179,7 +179,7 @@ export class ConnectorsAPI {
     dataSourceId: string;
     connectionId: string;
     configuration: ConnectorConfiguration;
-  }): Promise<ConnectorsAPIResponse<ConnectorType>> {
+  }): Promise<ConnectorsAPIResponse<InternalConnectorType>> {
     const res = await this._fetchWithError(
       `${this._url}/connectors/create/${encodeURIComponent(provider)}`,
       {
@@ -204,7 +204,7 @@ export class ConnectorsAPI {
   }: {
     connectorId: string;
     configuration: UpdateConnectorConfigurationType;
-  }): Promise<ConnectorsAPIResponse<ConnectorType>> {
+  }): Promise<ConnectorsAPIResponse<InternalConnectorType>> {
     const res = await this._fetchWithError(
       `${this._url}/connectors/${encodeURIComponent(
         connectorId
@@ -408,7 +408,7 @@ export class ConnectorsAPI {
 
   async getConnector(
     connectorId: string
-  ): Promise<ConnectorsAPIResponse<ConnectorType>> {
+  ): Promise<ConnectorsAPIResponse<InternalConnectorType>> {
     const parsedId = parseInt(connectorId, 10);
     if (isNaN(parsedId)) {
       const err: ConnectorsAPIError = {
@@ -432,7 +432,7 @@ export class ConnectorsAPI {
   // TODO(jules): remove after debugging
   async getConnectorFromDataSource(
     dataSource: DataSourceType
-  ): Promise<ConnectorsAPIResponse<ConnectorType>> {
+  ): Promise<ConnectorsAPIResponse<InternalConnectorType>> {
     const res = await this._fetchWithError(
       `${this._url}/connectors/${encodeURIComponent(
         dataSource.connectorId ?? ""
@@ -449,7 +449,7 @@ export class ConnectorsAPI {
   async getConnectors(
     provider: ConnectorProvider,
     connectorIds: string[]
-  ): Promise<ConnectorsAPIResponse<ConnectorType[]>> {
+  ): Promise<ConnectorsAPIResponse<InternalConnectorType[]>> {
     if (connectorIds.length === 0) {
       return new Ok([]);
     }
