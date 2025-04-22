@@ -94,6 +94,7 @@ export function CreateMCPServerModal({
           await createMCPServerConnection({
             connectionId: cRes.value.connection_id,
             mcpServerId: createServerRes.server.id,
+            provider: authorization.provider,
           });
         } else {
           sendNotification({

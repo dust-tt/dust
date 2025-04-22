@@ -41,6 +41,7 @@ import {
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
   ioTsParsePayload,
+  OAuthAPI,
   sendUserOperationMessage,
   WebCrawlerConfigurationTypeSchema,
 } from "@app/types";
@@ -55,9 +56,11 @@ function getConnectorProviderCodec(): t.Mixed {
   ]);
 }
 
+export const ConnectorProviderCodec = getConnectorProviderCodec();
+
 export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
   t.type({
-    provider: getConnectorProviderCodec(),
+    provider: ConnectorProviderCodec,
     name: t.union([t.string, t.undefined]),
     configuration: ConnectorConfigurationTypeSchema,
   }),
@@ -421,6 +424,27 @@ const handleDataSourceWithProvider = async ({
     config.getConnectorsAPIConfig(),
     logger
   );
+
+  if (connectionId) {
+    // Ensure the connectionId has been created by the current user and is not being stolen.
+    const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+    const connectionRes = await oauthAPI.getAccessToken({
+      provider,
+      connectionId,
+    });
+    if (
+      connectionRes.isErr() ||
+      connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
+    ) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Failed to get the access token for the connector.",
+        },
+      });
+    }
+  }
 
   const connectorsRes = await connectorsAPI.createConnector({
     provider,

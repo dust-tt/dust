@@ -283,7 +283,7 @@ export async function augmentDataSourceWithConnectorDetails(
       fetchConnectorError = true;
       fetchConnectorErrorMessage = statusRes.error.message;
     } else {
-      connector = statusRes.value;
+      connector = { ...statusRes.value, connectionId: null };
     }
   } catch (e) {
     // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying

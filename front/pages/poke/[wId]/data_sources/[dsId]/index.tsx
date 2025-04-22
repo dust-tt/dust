@@ -133,7 +133,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       dataSource.connectorId
     );
     if (connectorRes.isOk()) {
-      connector = connectorRes.value;
+      connector = {
+        ...connectorRes.value,
+        connectionId: null,
+      };
       const temporalClient = await getTemporalConnectorsNamespaceConnection();
 
       const res = temporalClient.workflow.list({

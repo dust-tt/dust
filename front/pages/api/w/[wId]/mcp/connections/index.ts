@@ -5,15 +5,20 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import { ConnectorProviderCodec } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { WithAPIErrorResponse } from "@app/types";
+import { OAuthAPI } from "@app/types";
 
 const PostConnectionBodySchema = t.type({
   connectionId: t.string,
   mcpServerId: t.string,
+  provider: ConnectorProviderCodec,
 });
 export type PostConnectionBodyType = t.TypeOf<typeof PostConnectionBodySchema>;
 
@@ -58,7 +63,28 @@ async function handler(
       }
 
       const validatedBody = bodyValidation.right;
-      const { connectionId, mcpServerId } = validatedBody;
+      const { connectionId, mcpServerId, provider } = validatedBody;
+
+      if (connectionId) {
+        // Ensure the connectionId has been created by the current user and is not being stolen.
+        const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+        const connectionRes = await oauthAPI.getAccessToken({
+          provider,
+          connectionId,
+        });
+        if (
+          connectionRes.isErr() ||
+          connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
+        ) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Failed to get the access token for the connector.",
+            },
+          });
+        }
+      }
 
       const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
