@@ -2,7 +2,8 @@ import type { ScrapeResponse } from "@mendable/firecrawl-js";
 import FirecrawlApp from "@mendable/firecrawl-js";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { dustManagedCredentials } from "@app/types";
+import logger from "@app/logger/logger";
+import { dustManagedCredentials, errorToString } from "@app/types";
 
 const credentials = dustManagedCredentials();
 
@@ -41,9 +42,22 @@ export const browseUrl = async (
     apiKey: credentials.FIRECRAWL_API_KEY,
   });
 
-  const scrapeResult = (await fc.scrapeUrl(url, {
-    formats: ["markdown"],
-  })) as ScrapeResponse;
+  let scrapeResult: ScrapeResponse;
+  try {
+    scrapeResult = (await fc.scrapeUrl(url, {
+      formats: ["markdown"],
+    })) as ScrapeResponse;
+  } catch (error) {
+    logger.error(`[Fircrawl] Error scraping URL`, {
+      error,
+      url: url,
+    });
+    return {
+      error: `Unexpected error: ${errorToString(error)}`,
+      status: 500,
+      url: url,
+    };
+  }
 
   if (!scrapeResult.success) {
     const errorMessage = scrapeResult.error || "Unknown error.";
