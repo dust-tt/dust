@@ -32,18 +32,18 @@ const createServer = (): McpServer => {
         .describe(
           "The query used to perform the google search. If requested by the user, use the google syntax `site:` to restrict the the search to a particular website or domain."
         ),
-      offset: z
+      page: z
         .number()
         .optional()
         .describe(
-          "The offset of the search results. Should only be defined if necessary to go deeper into the search results for a specific query."
+          "A 1-indexed page number used to paginate through the search results. Should only be provided if page is stricly greater than 1 in order to go deeper into the search results for a specific query."
         ),
     },
-    async ({ query, offset }) => {
+    async ({ query, page }) => {
       const websearchRes = await webSearch({
         provider: "serpapi",
         query,
-        offset,
+        page,
       });
 
       if (websearchRes.isErr()) {
