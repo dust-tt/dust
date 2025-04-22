@@ -19,7 +19,7 @@ This document outlines a comprehensive implementation plan for adding Snowflake 
 ### Current Authentication Method
 
 Currently, Dust's Snowflake integration uses username/password authentication, which:
-- Requires users to store and manage Snowflake credentials
+- Requires users to store and manage Snowflake passwords
 - Transmits passwords during authentication
 - Requires credential updates when passwords change
 - Has limited security compared to key-based approaches
@@ -40,13 +40,12 @@ We propose implementing Snowflake key pair authentication to:
 The changes will involve four main components:
 
 1. **Front-End (UI)**: 
-   - Add UI components for key pair generation and management
    - Modify the Snowflake connection form to support both authentication methods
+   - Add UI for uploading/pasting private keys
 
 2. **OAuth Service**: 
    - Enhance the credential storage model to support different authentication types
    - Implement secure private key storage
-   - Add support for key rotation
 
 3. **Connector Services**: 
    - Update connector creation and management to support key-based authentication
@@ -63,10 +62,8 @@ The changes will involve four main components:
 
 1. **`front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx`**:
    - Add authentication method selector (password vs key pair)
-   - Create UI for generating or uploading key pairs
-   - Implement key pair generation in the browser using Web Crypto API
-   - Add fields for public/private key input or file upload
-   - Support key rotation UI
+   - Add fields for private key input and passphrase
+   - Include instructions for users on how to generate keys in Snowflake
 
 2. **`front/types/index.ts`**:
    - Add new types for Snowflake key pair authentication:
@@ -97,7 +94,6 @@ The changes will involve four main components:
 
 3. **`front/lib/connector_providers.ts`**:
    - Update Snowflake provider configuration to include key pair authentication options
-   - Add helper functions for key pair generation and management
 
 ### UI Components
 
@@ -113,132 +109,63 @@ The changes will involve four main components:
    </RadioGroup>
    ```
 
-2. **Key Pair Generation UI**:
+2. **Key Pair Input UI**:
    ```jsx
    {authMethod === 'keypair' && (
      <div className="space-y-4">
-       <Tabs>
-         <Tab label="Generate New Key Pair">
-           <Button
-             onClick={generateKeyPair}
-             label="Generate 2048-bit RSA Key Pair"
-             loading={isGenerating}
-           />
-           {generatedKeys && (
-             <div className="mt-4 space-y-2">
-               <div className="text-sm font-medium">Public Key (to register with Snowflake)</div>
-               <TextArea
-                 value={generatedKeys.publicKey}
-                 readOnly
-                 rows={5}
-               />
-               <div className="text-sm font-medium">Private Key (keep secure)</div>
-               <TextArea
-                 value={generatedKeys.privateKey}
-                 readOnly
-                 rows={5}
-               />
-               <Button
-                 onClick={downloadPrivateKey}
-                 label="Download Private Key"
-                 variant="outline"
-               />
-             </div>
-           )}
-         </Tab>
-         <Tab label="Upload Existing Key">
-           <Input
-             label="Private Key"
-             type="file"
-             accept=".p8,.pem"
-             onChange={handlePrivateKeyUpload}
-           />
-           <div className="mt-2">
-             <Input
-               label="Private Key Passphrase (if encrypted)"
-               type="password"
-               value={privateKeyPassphrase}
-               onChange={(e) => setPrivateKeyPassphrase(e.target.value)}
-             />
-           </div>
-         </Tab>
-       </Tabs>
-     </div>
-   )}
-   ```
-
-3. **Key Rotation UI** (for existing connections):
-   ```jsx
-   {isUpdatingConnection && authMethod === 'keypair' && (
-     <div className="mt-4">
-       <Checkbox
-         label="Rotate Key (add new key while keeping the old one active)"
-         checked={isRotatingKey}
-         onChange={setIsRotatingKey}
+       <Alert
+         type="info"
+         message="You must first generate an RSA key pair and register the public key with your Snowflake user account. Then provide the private key here to authenticate."
        />
-       {isRotatingKey && (
-         <div className="mt-2">
-           <Alert
-             type="info"
-             message="Key rotation will add a second key to your Snowflake user while keeping the existing key active. This enables a seamless transition."
-           />
-           {/* Key generation UI */}
-         </div>
-       )}
+       
+       <div className="mt-4 space-y-2">
+         <TextArea
+           label="Private Key (PKCS8 format)"
+           placeholder="-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAAS...
+-----END PRIVATE KEY-----"
+           value={privateKey}
+           onChange={(e) => setPrivateKey(e.target.value)}
+           rows={8}
+         />
+         
+         <Input
+           label="Private Key Passphrase (if encrypted)"
+           type="password"
+           value={privateKeyPassphrase}
+           onChange={(e) => setPrivateKeyPassphrase(e.target.value)}
+         />
+         
+         <Link
+           href="https://docs.snowflake.com/en/user-guide/key-pair-auth"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           Learn how to generate a key pair and register it with Snowflake
+         </Link>
+       </div>
      </div>
    )}
    ```
 
 ### Client-Side Logic
 
-1. **Key Pair Generation Function**:
+1. **Form Validation Logic**:
    ```typescript
-   async function generateKeyPair() {
-     setIsGenerating(true);
-     try {
-       // Generate 2048-bit RSA key pair using Web Crypto API
-       const keyPair = await window.crypto.subtle.generateKey(
-         {
-           name: "RSASSA-PKCS1-v1_5",
-           modulusLength: 2048,
-           publicExponent: new Uint8Array([0x01, 0x00, 0x01]), // 65537
-           hash: { name: "SHA-256" },
-         },
-         true, // extractable
-         ["sign", "verify"]
-       );
+   function validateForm() {
+     const commonValid = 
+       credentials.username?.trim() !== '' && 
+       credentials.account?.trim() !== '' &&
+       credentials.role?.trim() !== '' &&
+       credentials.warehouse?.trim() !== '';
        
-       // Export public key in SPKI format
-       const publicKeyBuffer = await window.crypto.subtle.exportKey(
-         "spki",
-         keyPair.publicKey
-       );
-       
-       // Export private key in PKCS8 format
-       const privateKeyBuffer = await window.crypto.subtle.exportKey(
-         "pkcs8",
-         keyPair.privateKey
-       );
-       
-       // Convert to base64 PEM format
-       const publicKeyPem = convertToPem(publicKeyBuffer, "PUBLIC KEY");
-       const privateKeyPem = convertToPem(privateKeyBuffer, "PRIVATE KEY");
-       
-       setGeneratedKeys({ publicKey: publicKeyPem, privateKey: privateKeyPem });
-     } catch (error) {
-       setError("Failed to generate key pair: " + error.message);
-     } finally {
-       setIsGenerating(false);
+     if (!commonValid) return false;
+     
+     if (authMethod === 'password') {
+       return credentials.password?.trim() !== '';
+     } else {
+       return privateKey?.trim() !== '';
      }
-   }
-   
-   function convertToPem(buffer: ArrayBuffer, label: string): string {
-     const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-     const pemLines = [];
-     for (let i = 0; i < base64.length; i += 64) {
-       pemLines.push(base64.substring(i, i + 64));
-     }
-     return `-----BEGIN ${label}-----\n${pemLines.join('\n')}\n-----END ${label}-----`;
    }
    ```
 
@@ -578,8 +505,8 @@ The changes will involve four main components:
 
 1. **Front-end Component Tests**:
    - Test UI rendering of both authentication methods
-   - Test key pair generation
-   - Test form validation with different credentials
+   - Test form validation with different credential types
+   - Test validation of private key format
 
 2. **OAuth Service Tests**:
    - Test credential validation for both auth methods
@@ -589,7 +516,7 @@ The changes will involve four main components:
 3. **Connector Tests**:
    - Test connection creation with both auth methods
    - Test error handling for invalid credentials
-   - Test key rotation scenarios
+   - Test compatibility with existing connectors
 
 4. **Core Engine Tests**:
    - Test Snowflake connection with both auth methods
@@ -601,7 +528,7 @@ The changes will involve four main components:
 1. **End-to-end Workflow Tests**:
    - Test complete workflow from UI to query execution
    - Test connector creation and management
-   - Test credential rotation
+   - Test various credential scenarios
 
 2. **Connection Reliability Tests**:
    - Test connection resilience with key pair auth
@@ -620,15 +547,15 @@ The changes will involve four main components:
    - Use envelope encryption with workspace-specific keys
    - Avoid logging or exposing private keys in error messages
 
-2. **Key Rotation Support**:
-   - Support Snowflake's dual-key approach for seamless rotation
-   - Implement UI and backend logic for key rotation
-   - Support tracking key age and suggesting rotation
+2. **Error Handling**:
+   - Create specific error messages for key pair auth failures
+   - Implement validators for private key format
+   - Add guidance in error messages for users
 
 3. **Audit Trail**:
    - Add logging for key pair operations
-   - Track key fingerprints for auditing
-   - Log authentication method used for connections
+   - Track authentication method used for connections
+   - Do not log sensitive key material
 
 4. **Compliance Requirements**:
    - Document compliance benefits of key pair auth
@@ -640,7 +567,7 @@ The changes will involve four main components:
 ### Phase 1: Development
 
 1. Implement core functionality:
-   - Front-end UI components for key pair management
+   - Front-end UI components for key pair input
    - OAuth service enhancements
    - Connector service updates
    - Core engine modifications
@@ -659,7 +586,7 @@ The changes will involve four main components:
 
 2. Document the functionality:
    - Update user documentation
-   - Create tutorial for key pair setup
+   - Create tutorial for setting up key pair auth
    - Add troubleshooting guides
 
 ### Phase 3: General Availability
@@ -670,9 +597,9 @@ The changes will involve four main components:
    - Support both auth methods for backward compatibility
 
 2. Consider future enhancements:
-   - Automated key rotation reminders
-   - Hardware security module (HSM) support
    - Enhanced admin controls for key management
+   - Improved error handling and user guidance
+   - Support for additional Snowflake authentication methods
 
 ## Conclusion
 
