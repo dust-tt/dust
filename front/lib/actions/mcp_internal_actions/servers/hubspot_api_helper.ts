@@ -5,19 +5,31 @@ import type { SimplePublicObjectInputForCreate } from "@hubspot/api-client/lib/c
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
 const MAX_ENUM_OPTIONS_DISPLAYED = 10;
+export const SUPPORTED_OBJECT_TYPES_WRITE = [
+  "contacts",
+  "companies",
+  "deals",
+] as const;
+type SupportedObjectTypeWrite = (typeof SUPPORTED_OBJECT_TYPES_WRITE)[number];
+
+export const SUPPORTED_OBJECT_TYPES_READ = [
+  ...SUPPORTED_OBJECT_TYPES_WRITE,
+  "owners",
+] as const;
+type SupportedObjectTypeRead = (typeof SUPPORTED_OBJECT_TYPES_READ)[number];
 
 /**
  * Get all createable properties for an object.
  * creatableOnly = true: filter out properties that are not createable, hidden, calculated, read-only or file uploads.
  * creatableOnly = false: return all properties.
  */
-export const getProperties = async ({
+export const getObjectProperties = async ({
   accessToken,
   objectType,
   creatableOnly,
 }: {
   accessToken: string;
-  objectType: "contacts" | "companies" | "deals" | "leads";
+  objectType: SupportedObjectTypeRead;
   creatableOnly: boolean;
 }) => {
   const hubspotClient = new Client({ accessToken });
@@ -57,52 +69,109 @@ export const getProperties = async ({
 };
 
 /**
- * Create a contact from a list of properties.
- * The contact will be created with the properties passed in the `contactProperties` parameter.
+ * Create an object from a list of properties.
+ * The object will be created with the properties passed in the `objectProperties` parameter.
  */
-export const createContact = async (
-  accessToken: string,
-  contactProperties: SimplePublicObjectInputForCreate
-) => {
+export const createObject = async ({
+  accessToken,
+  objectType,
+  objectProperties,
+}: {
+  accessToken: string;
+  objectType: SupportedObjectTypeWrite;
+  objectProperties: SimplePublicObjectInputForCreate;
+}): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
-  const contact =
-    await hubspotClient.crm.contacts.basicApi.create(contactProperties);
-  return contact;
+
+  switch (objectType) {
+    case "contacts":
+      return hubspotClient.crm.contacts.basicApi.create(objectProperties);
+    case "companies":
+      return hubspotClient.crm.companies.basicApi.create(objectProperties);
+    case "deals":
+      return hubspotClient.crm.deals.basicApi.create(objectProperties);
+    default:
+      throw new Error(`Unsupported object type: ${objectType}`);
+  }
 };
 
 /**
  * Update a contact.
  * The contact will be updated with the properties passed in the `contactProperties` parameter.
  */
-export const updateContact = async (
-  accessToken: string,
-  contactId: string,
-  contactProperties: SimplePublicObjectInputForCreate
-) => {
+export const updateObject = async ({
+  accessToken,
+  objectType,
+  objectId,
+  objectProperties,
+}: {
+  accessToken: string;
+  objectType: SupportedObjectTypeWrite;
+  objectId: string;
+  objectProperties: SimplePublicObjectInputForCreate;
+}): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
-  const contact = await hubspotClient.crm.contacts.basicApi.update(
-    contactId,
-    contactProperties
-  );
-  return contact;
+
+  switch (objectType) {
+    case "contacts":
+      return hubspotClient.crm.contacts.basicApi.update(
+        objectId,
+        objectProperties
+      );
+    case "companies":
+      return hubspotClient.crm.companies.basicApi.update(
+        objectId,
+        objectProperties
+      );
+    case "deals":
+      return hubspotClient.crm.deals.basicApi.update(
+        objectId,
+        objectProperties
+      );
+    default:
+      throw new Error(`Unsupported object type: ${objectType}`);
+  }
 };
 
 /**
- * Get a contact by email.
- * A email is unique, so there will only be zero or one contact with a given email.
+ * Get an object by ID.
+ * An object ID is unique, so there will only be zero or one object with a given ID.
  */
-export const getContactByEmail = async (
+export const getObjectById = async (
   accessToken: string,
+  objectType: SupportedObjectTypeRead,
+  objectId: string
+): Promise<SimplePublicObject | null> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const object = await hubspotClient.crm.objects.basicApi.getById(
+    objectType,
+    objectId
+  );
+
+  if (!object) {
+    return null;
+  }
+
+  return object;
+};
+
+/**
+ * Get an object by email.
+ * An email is unique, so there will only be zero or one object with a given email.
+ */
+export const getObjectByEmail = async (
+  accessToken: string,
+  objectType: SupportedObjectTypeRead,
   email: string
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
 
-  // First get all available properties.
   const properties =
-    await hubspotClient.crm.properties.coreApi.getAll("contacts");
+    await hubspotClient.crm.properties.coreApi.getAll(objectType);
   const propertyNames = properties.results.map((p) => p.name);
 
-  const contact = await hubspotClient.crm.contacts.searchApi.doSearch({
+  const object = await hubspotClient.crm.contacts.searchApi.doSearch({
     filterGroups: [
       {
         filters: [
@@ -117,18 +186,18 @@ export const getContactByEmail = async (
     properties: propertyNames,
   });
 
-  if (contact.results.length === 0) {
+  if (object.results.length === 0) {
     return null;
   }
 
-  return contact.results[0];
+  return object.results[0];
 };
 
 /**
  * Get a contact by name.
  * A name is not unique, so there may be multiple contacts with the same name.
  */
-export const getContactByName = async (
+export const getContactsByName = async (
   accessToken: string,
   firstname: string,
   lastname: string
@@ -161,4 +230,37 @@ export const getContactByName = async (
   });
 
   return contacts.results;
+};
+
+/**
+ * Get a contact by email.
+ * A email is unique, so there will only be zero or one contact with a given email.
+ */
+export const getCompaniesByName = async (
+  accessToken: string,
+  name: string
+): Promise<SimplePublicObject[]> => {
+  const hubspotClient = new Client({ accessToken });
+
+  // First get all available properties.
+  const properties =
+    await hubspotClient.crm.properties.coreApi.getAll("contacts");
+  const propertyNames = properties.results.map((p) => p.name);
+
+  const companies = await hubspotClient.crm.companies.searchApi.doSearch({
+    filterGroups: [
+      {
+        filters: [
+          {
+            propertyName: "name",
+            operator: FilterOperatorEnum.ContainsToken,
+            value: name,
+          },
+        ],
+      },
+    ],
+    properties: propertyNames,
+  });
+
+  return companies.results;
 };
