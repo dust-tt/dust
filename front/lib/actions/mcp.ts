@@ -159,7 +159,7 @@ type MCPErrorEvent = {
   };
 };
 
-function getContentForModel({
+function hideFileContentForModel({
   fileId,
   content,
   workspaceId,
@@ -630,7 +630,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         executionState: status,
         id: action.id,
         isError: false,
-        output: outputItems.map(getContentForModel),
+        output: outputItems.map(hideFileContentForModel),
         type: "tool_action",
       }),
     };
@@ -672,7 +672,7 @@ export async function mcpActionTypesFromAgentMessageIds(
     return new MCPActionType({
       id: action.id,
       params: action.params,
-      output: action.outputItems.map(getContentForModel),
+      output: action.outputItems.map(hideFileContentForModel),
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
