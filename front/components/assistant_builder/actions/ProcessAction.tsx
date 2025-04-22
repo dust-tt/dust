@@ -292,7 +292,9 @@ export function ActionProcess({
             if (parsedSchema.isValid) {
               updateAction((previousAction) => ({
                 ...previousAction,
-                jsonSchema: JSON.parse(newSchemaString),
+                jsonSchema: newSchemaString
+                  ? JSON.parse(newSchemaString)
+                  : null,
                 _jsonSchemaString: newSchemaString,
               }));
             } else {
