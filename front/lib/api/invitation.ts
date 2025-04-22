@@ -1,11 +1,15 @@
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
+import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { getAuth0UsersFromEmail } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import { getMembers } from "@app/lib/api/workspace";
+import {
+  getMembers,
+  getWorkspaceAdministrationVersionLock,
+} from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
@@ -24,6 +28,8 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
+
+import { frontSequelize } from "../resources/storage";
 
 // Make token expires after 7 days
 const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;
@@ -109,7 +115,8 @@ export async function updateInvitationStatusAndRole(
 export async function updateOrCreateInvitation(
   owner: WorkspaceType,
   inviteEmail: string,
-  initialRole: ActiveRoleType
+  initialRole: ActiveRoleType,
+  transaction?: Transaction
 ): Promise<MembershipInvitationType> {
   // check for prior existing pending invitation
   const existingInvitation = await MembershipInvitation.findOne({
@@ -118,6 +125,7 @@ export async function updateOrCreateInvitation(
       inviteEmail: sanitizeString(inviteEmail),
       status: "pending",
     },
+    transaction,
   });
 
   if (existingInvitation) {
@@ -129,13 +137,16 @@ export async function updateOrCreateInvitation(
 
   return typeFromModel(
     owner,
-    await MembershipInvitation.create({
-      sId: generateRandomModelSId(),
-      workspaceId: owner.id,
-      inviteEmail: sanitizeString(inviteEmail),
-      status: "pending",
-      initialRole,
-    })
+    await MembershipInvitation.create(
+      {
+        sId: generateRandomModelSId(),
+        workspaceId: owner.id,
+        inviteEmail: sanitizeString(inviteEmail),
+        status: "pending",
+        initialRole,
+      },
+      { transaction }
+    )
   );
 }
 
@@ -242,7 +253,8 @@ export async function getPendingInvitations(
  */
 
 export async function getRecentPendingAndRevokedInvitations(
-  auth: Authenticator
+  auth: Authenticator,
+  transaction?: Transaction
 ): Promise<{
   pending: MembershipInvitationType[];
   revoked: MembershipInvitationType[];
@@ -269,6 +281,7 @@ export async function getRecentPendingAndRevokedInvitations(
         [Op.gt]: oneDayAgo,
       },
     },
+    transaction,
   });
 
   const groupedInvitations: Record<
@@ -297,7 +310,8 @@ export async function getRecentPendingAndRevokedInvitations(
 
 export async function batchUnrevokeInvitations(
   auth: Authenticator,
-  invitationIds: string[]
+  invitationIds: string[],
+  transaction?: Transaction
 ) {
   const owner = auth.workspace();
   if (!owner || !auth.isAdmin()) {
@@ -317,6 +331,7 @@ export async function batchUnrevokeInvitations(
         },
         workspaceId: owner.id,
       },
+      transaction,
     }
   );
 }
@@ -347,146 +362,174 @@ export async function handleMembershipInvitations(
   }
 ): Promise<Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>> {
   const { maxUsers } = subscription.plan.limits.users;
-  const availableSeats =
-    maxUsers -
-    (await MembershipResource.getMembersCountForWorkspace({
-      workspace: owner,
-      activeOnly: true,
-    }));
-  if (maxUsers !== -1 && availableSeats < invitationRequests.length) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "plan_limit_error",
-        message: `Not enough seats lefts (${availableSeats} seats remaining). Please upgrade or remove inactive members to add more.`,
-      },
-    });
-  }
 
-  const invalidEmails = invitationRequests.filter(
-    (b) => !isEmailValid(b.email)
-  );
-  if (invalidEmails.length > 0) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid email address(es): " + invalidEmails.join(", "),
-      },
-    });
-  }
+  const result = await frontSequelize.transaction(
+    async (
+      t
+    ): Promise<
+      Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>
+    > => {
+      await getWorkspaceAdministrationVersionLock(owner, t);
 
-  const { members: existingMembers } = await getMembers(auth, {
-    activeOnly: true,
-  });
+      const availableSeats =
+        maxUsers -
+        (await MembershipResource.getMembersCountForWorkspace({
+          workspace: owner,
+          activeOnly: true,
+          transaction: t,
+        }));
 
-  const auth0Users = await getAuth0UsersFromEmail(
-    invitationRequests.map((invite) => invite.email)
-  );
-
-  const otherRegionUsers = auth0Users
-    .filter(
-      (user) =>
-        // Type isn't accurate, user.app_metadata can be undefined.
-        typeof user.app_metadata === "object" &&
-        "region" in user.app_metadata &&
-        user.app_metadata.region !== regionConfig.getCurrentRegion()
-    )
-    .map((user) => user.email);
-
-  const unconsumedInvitations =
-    await getRecentPendingAndRevokedInvitations(auth);
-  if (
-    unconsumedInvitations.pending.length >=
-    MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY
-  ) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Too many pending invitations. Please ask your members to consume their invitations before sending more.`,
-      },
-    });
-  }
-
-  const emailsWithRecentUnconsumedInvitations = new Set([
-    ...unconsumedInvitations.pending.map((i) =>
-      i.inviteEmail.toLowerCase().trim()
-    ),
-    ...unconsumedInvitations.revoked.map((i) =>
-      i.inviteEmail.toLowerCase().trim()
-    ),
-  ]);
-  const requestedEmails = new Set(
-    invitationRequests.map((r) => r.email.toLowerCase().trim())
-  );
-  const emailsToSendInvitations = invitationRequests.filter(
-    (r) =>
-      !emailsWithRecentUnconsumedInvitations.has(r.email.toLowerCase().trim())
-  );
-  const invitationsToUnrevoke = unconsumedInvitations.revoked.filter((i) =>
-    requestedEmails.has(i.inviteEmail.toLowerCase().trim())
-  );
-
-  if (
-    !emailsToSendInvitations.length &&
-    !invitationsToUnrevoke.length &&
-    invitationRequests.length > 0
-  ) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invitation_already_sent_recently",
-        message: `These emails have already received an invitation in the last 24 hours. Please wait before sending another invitation.`,
-      },
-    });
-  }
-  await batchUnrevokeInvitations(
-    auth,
-    invitationsToUnrevoke.map((i) => i.sId)
-  );
-  const invitationResults = await Promise.all(
-    emailsToSendInvitations.map(async ({ email, role }) => {
-      if (existingMembers.find((m) => m.email === email)) {
-        return {
-          success: false,
-          email,
-          error_message: "Cannot send invitation to existing active member.",
-        };
-      }
-
-      if (otherRegionUsers.find((m) => m === email)) {
-        return {
-          success: false,
-          email,
-          error_message: "Cannot send invitation to members in other regions.",
-        };
-      }
-      try {
-        const invitation = await updateOrCreateInvitation(owner, email, role);
-        await sendWorkspaceInvitationEmail(owner, user, invitation);
-      } catch (e) {
-        logger.error(
-          {
-            error: e,
-            message: "Failed to send invitation email",
-            email,
+      if (maxUsers !== -1 && availableSeats < invitationRequests.length) {
+        return new Err({
+          status_code: 400,
+          api_error: {
+            type: "plan_limit_error",
+            message: `Not enough seats lefts (${availableSeats} seats remaining). Please upgrade or remove inactive members to add more.`,
           },
-          "Failed to send invitation email"
-        );
-
-        return {
-          success: false,
-          email,
-          error_message: e instanceof Error ? e.message : "Unknown error",
-        };
+        });
       }
-      return {
-        success: true,
-        email,
-      };
-    })
+
+      const invalidEmails = invitationRequests.filter(
+        (b) => !isEmailValid(b.email)
+      );
+      if (invalidEmails.length > 0) {
+        return new Err({
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid email address(es): " + invalidEmails.join(", "),
+          },
+        });
+      }
+
+      const { members: existingMembers } = await getMembers(auth, {
+        activeOnly: true,
+        transaction: t,
+      });
+
+      const auth0Users = await getAuth0UsersFromEmail(
+        invitationRequests.map((invite) => invite.email)
+      );
+
+      const otherRegionUsers = auth0Users
+        .filter(
+          (user) =>
+            // Type isn't accurate, user.app_metadata can be undefined.
+            typeof user.app_metadata === "object" &&
+            "region" in user.app_metadata &&
+            user.app_metadata.region !== regionConfig.getCurrentRegion()
+        )
+        .map((user) => user.email);
+
+      const unconsumedInvitations = await getRecentPendingAndRevokedInvitations(
+        auth,
+        t
+      );
+      if (
+        unconsumedInvitations.pending.length >=
+        MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY
+      ) {
+        return new Err({
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Too many pending invitations. Please ask your members to consume their invitations before sending more.`,
+          },
+        });
+      }
+
+      const emailsWithRecentUnconsumedInvitations = new Set([
+        ...unconsumedInvitations.pending.map((i) =>
+          i.inviteEmail.toLowerCase().trim()
+        ),
+        ...unconsumedInvitations.revoked.map((i) =>
+          i.inviteEmail.toLowerCase().trim()
+        ),
+      ]);
+      const requestedEmails = new Set(
+        invitationRequests.map((r) => r.email.toLowerCase().trim())
+      );
+      const emailsToSendInvitations = invitationRequests.filter(
+        (r) =>
+          !emailsWithRecentUnconsumedInvitations.has(
+            r.email.toLowerCase().trim()
+          )
+      );
+      const invitationsToUnrevoke = unconsumedInvitations.revoked.filter((i) =>
+        requestedEmails.has(i.inviteEmail.toLowerCase().trim())
+      );
+
+      if (
+        !emailsToSendInvitations.length &&
+        !invitationsToUnrevoke.length &&
+        invitationRequests.length > 0
+      ) {
+        return new Err({
+          status_code: 400,
+          api_error: {
+            type: "invitation_already_sent_recently",
+            message: `These emails have already received an invitation in the last 24 hours. Please wait before sending another invitation.`,
+          },
+        });
+      }
+      await batchUnrevokeInvitations(
+        auth,
+        invitationsToUnrevoke.map((i) => i.sId),
+        t
+      );
+      const invitationResults = await Promise.all(
+        emailsToSendInvitations.map(async ({ email, role }) => {
+          if (existingMembers.find((m) => m.email === email)) {
+            return {
+              success: false,
+              email,
+              error_message:
+                "Cannot send invitation to existing active member.",
+            };
+          }
+
+          if (otherRegionUsers.find((m) => m === email)) {
+            return {
+              success: false,
+              email,
+              error_message:
+                "Cannot send invitation to members in other regions.",
+            };
+          }
+          try {
+            const invitation = await updateOrCreateInvitation(
+              owner,
+              email,
+              role,
+              t
+            );
+            await sendWorkspaceInvitationEmail(owner, user, invitation);
+          } catch (e) {
+            logger.error(
+              {
+                error: e,
+                message: "Failed to send invitation email",
+                email,
+              },
+              "Failed to send invitation email"
+            );
+
+            return {
+              success: false,
+              email,
+              error_message: e instanceof Error ? e.message : "Unknown error",
+            };
+          }
+          return {
+            success: true,
+            email,
+          };
+        })
+      );
+
+      return new Ok(invitationResults);
+    }
   );
 
-  return new Ok(invitationResults);
+  return result;
 }
