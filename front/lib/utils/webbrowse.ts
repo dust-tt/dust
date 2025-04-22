@@ -48,10 +48,13 @@ export const browseUrl = async (
       formats: ["markdown"],
     })) as ScrapeResponse;
   } catch (error) {
-    logger.error(`[Fircrawl] Error scraping URL`, {
-      error,
-      url: url,
-    });
+    logger.error(
+      {
+        error,
+        url: url,
+      },
+      "[Firecrawl] Error scraping URL"
+    );
     return {
       error: `Unexpected error: ${errorToString(error)}`,
       status: 500,
