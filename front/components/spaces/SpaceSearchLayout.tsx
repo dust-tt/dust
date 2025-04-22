@@ -194,6 +194,11 @@ function BackendSearch({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
+  const handleClearSearch = React.useCallback(() => {
+    searchParam.setParam(undefined);
+    setSearchValue("");
+  }, [searchParam, setSearchValue]);
+
   const handleSearchChange = (value: string) => {
     searchParam.setParam(value);
     setSearchValue(value);
@@ -341,6 +346,7 @@ function BackendSearch({
               isLoading={isSearchLoading}
               onOpenDocument={handleOpenDocument}
               setEffectiveContentNode={setEffectiveContentNode}
+              onClearSearch={handleClearSearch}
             />
           </div>
         ) : (
@@ -428,6 +434,7 @@ interface SearchResultsTableProps {
   isLoading: boolean;
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
   setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
+  onClearSearch: () => void;
 }
 
 function SearchResultsTable({
@@ -442,6 +449,7 @@ function SearchResultsTable({
   isLoading,
   onOpenDocument,
   setEffectiveContentNode,
+  onClearSearch,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -535,8 +543,8 @@ function SearchResultsTable({
                 node.mimeType === DATA_SOURCE_MIME_TYPE
                   ? baseUrl
                   : `${baseUrl}?parentId=${parentId}`;
-
               void router.push(url);
+              onClearSearch();
             }
           },
         }),
