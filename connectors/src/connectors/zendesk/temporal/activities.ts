@@ -671,15 +671,17 @@ export async function syncZendeskTicketBatchActivity({
       }),
     { concurrency: 3, onBatchComplete: heartbeat }
   );
-  const users = await listZendeskUsers({
-    accessToken,
-    brandSubdomain,
-    userIds: [
-      ...new Set(
-        comments2d.flatMap((comments) => comments.map((c) => c.author_id))
-      ),
-    ],
-  });
+  const users = configuration.hideCustomerDetails
+    ? []
+    : await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds: [
+          ...new Set(
+            comments2d.flatMap((comments) => comments.map((c) => c.author_id))
+          ),
+        ],
+      });
 
   const res = await concurrentExecutor(
     _.zip(ticketsToSync, comments2d),
