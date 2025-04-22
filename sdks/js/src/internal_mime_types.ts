@@ -204,7 +204,7 @@ function generateToolMimeTypes<
   );
 }
 
-const TOOL_INPUT_MIME_TYPES = {
+const TOOL_MIME_TYPES = {
   TOOL_INPUT: generateToolMimeTypes({
     category: "TOOL_INPUT",
     resourceTypes: [
@@ -228,7 +228,7 @@ const TOOL_INPUT_MIME_TYPES = {
 
 export const INTERNAL_MIME_TYPES = {
   ...CONTENT_NODE_MIME_TYPES,
-  ...TOOL_INPUT_MIME_TYPES,
+  ...TOOL_MIME_TYPES,
 };
 
 export const INTERNAL_MIME_TYPES_VALUES = Object.values(
