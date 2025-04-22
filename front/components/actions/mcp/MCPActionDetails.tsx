@@ -128,71 +128,38 @@ function SearchResultActionDetails({
   );
 }
 
-function ThinkingBlocks({ action }: { action: MCPActionType }) {
-  const { output } = action;
-  const thinkingBlocksContent =
-    output
-      ?.filter(
-        (o): o is { type: "resource"; resource: ThinkingOutput } =>
-          o.type === "resource" && isThinkingOutput(o.resource)
-      )
-      .map((o) => o.resource) ?? [];
-
+function ThinkingBlock({ resource }: { resource: ThinkingOutput }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Reasoning
-      </span>
-      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-        <ContentMessage
-          title="Reasoning"
-          variant="primary"
-          icon={InformationCircleIcon}
-          size="lg"
-        >
-          {thinkingBlocksContent.map((o, i) => (
-            <Markdown
-              content={o.text}
-              isStreaming={false}
-              forcedTextSize="text-sm"
-              textColor="text-muted-foreground"
-              isLastMessage={false}
-              key={`thinking-block-${i}`}
-            />
-          ))}
-        </ContentMessage>
-      </div>
+    <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+      <ContentMessage
+        title="Reasoning"
+        variant="primary"
+        icon={InformationCircleIcon}
+        size="lg"
+      >
+        <Markdown
+          content={resource.text}
+          isStreaming={false}
+          forcedTextSize="text-sm"
+          textColor="text-muted-foreground"
+          isLastMessage={false}
+        />
+      </ContentMessage>
     </div>
   );
 }
 
-function SqlQueryBlocks({ action }: { action: MCPActionType }) {
-  const { output } = action;
-  const sqlQueryBlocksContent =
-    output
-      ?.filter(
-        (o): o is { type: "resource"; resource: SqlQueryOutput } =>
-          o.type === "resource" && isSqlQueryOutput(o.resource)
-      )
-      .map((o) => o.resource) ?? [];
-
+function SqlQueryBlock({ resource }: { resource: SqlQueryOutput }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Query
-      </span>
-      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-        {sqlQueryBlocksContent.map((o, i) => (
-          <ContentBlockWrapper content={o.text} key={`sql-query-block-${i}`}>
-            <CodeBlock
-              className="language-sql max-h-60 overflow-y-auto"
-              wrapLongLines={true}
-            >
-              {o.text}
-            </CodeBlock>
-          </ContentBlockWrapper>
-        ))}
-      </div>
+    <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+      <ContentBlockWrapper content={resource.text}>
+        <CodeBlock
+          className="language-sql max-h-60 overflow-y-auto"
+          wrapLongLines={true}
+        >
+          {resource.text}
+        </CodeBlock>
+      </ContentBlockWrapper>
     </div>
   );
 }
@@ -225,10 +192,7 @@ function ToolGeneratedFileDetails({
   }, [resource.fileId, sendNotification, owner.sId]);
 
   return (
-    <div className="flex flex-col">
-      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Results
-      </span>
+    <>
       <div>
         <Citation
           className="w-48 min-w-48 max-w-48"
@@ -242,7 +206,6 @@ function ToolGeneratedFileDetails({
           <CitationTitle>{resource.title}</CitationTitle>
         </Citation>
       </div>
-
       <CollapsibleComponent
         rootProps={{ defaultOpen: false }}
         triggerChildren={
@@ -261,7 +224,7 @@ function ToolGeneratedFileDetails({
           </div>
         }
       />
-    </div>
+    </>
   );
 }
 
@@ -271,6 +234,22 @@ function TablesQueryActionDetails({
   owner,
 }: ActionDetailsComponentBaseProps<MCPActionType>) {
   const { output } = action;
+  const thinkingBlocks =
+    output
+      ?.filter(
+        (o): o is { type: "resource"; resource: ThinkingOutput } =>
+          o.type === "resource" && isThinkingOutput(o.resource)
+      )
+      .map((o) => o.resource) ?? [];
+
+  const sqlQueryBlocks =
+    output
+      ?.filter(
+        (o): o is { type: "resource"; resource: SqlQueryOutput } =>
+          o.type === "resource" && isSqlQueryOutput(o.resource)
+      )
+      .map((o) => o.resource) ?? [];
+
   const generatedFiles =
     output
       ?.filter(
@@ -286,16 +265,37 @@ function TablesQueryActionDetails({
       visual={TableIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <ThinkingBlocks action={action} />
-        <SqlQueryBlocks action={action} />
-        {generatedFiles.map((file) => (
-          <ToolGeneratedFileDetails
-            key={file.fileId}
-            resource={file}
-            icon={TableIcon}
-            owner={owner}
-          />
-        ))}
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            Reasoning
+          </span>
+          {thinkingBlocks.map((block) => (
+            <ThinkingBlock key={block.text} resource={block} />
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            Query
+          </span>
+          {sqlQueryBlocks.map((block) => (
+            <SqlQueryBlock key={block.text} resource={block} />
+          ))}
+        </div>
+
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            Results
+          </span>
+          {generatedFiles.map((file) => (
+            <ToolGeneratedFileDetails
+              key={file.fileId}
+              resource={file}
+              icon={TableIcon}
+              owner={owner}
+            />
+          ))}
+        </div>
       </div>
     </ActionDetailsWrapper>
   );
