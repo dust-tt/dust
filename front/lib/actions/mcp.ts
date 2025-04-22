@@ -57,6 +57,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -164,32 +165,37 @@ function getContentForModel({
   workspaceId,
 }: AgentMCPActionOutputItem): MCPToolResultContent {
   // We want to hide the original file url from the model.
-  if (fileId) {
-    const sid = makeSId("file", {
-      workspaceId: workspaceId,
-      id: fileId,
-    });
-    let contentType = "unknown";
-    switch (content.type) {
-      case "text":
-        contentType = "text/plain";
-        break;
-      case "image":
-        contentType = content.mimeType;
-        break;
-      case "resource":
-        contentType = content.resource.mimeType ?? "unknown";
-        break;
-      default:
-        contentType = "unknown";
-        break;
-    }
-    return {
-      type: "text",
-      text: `A file of type ${contentType} with id ${sid} was generated successfully and made available to the conversation.`,
-    };
+  if (
+    !fileId ||
+    // For tool-generated files, we keep the resource as is.
+    (content.type === "resource" &&
+      content.resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE)
+  ) {
+    return content;
   }
-  return content;
+  const sid = makeSId("file", {
+    workspaceId: workspaceId,
+    id: fileId,
+  });
+  let contentType = "unknown";
+  switch (content.type) {
+    case "text":
+      contentType = "text/plain";
+      break;
+    case "image":
+      contentType = content.mimeType;
+      break;
+    case "resource":
+      contentType = content.resource.mimeType ?? "unknown";
+      break;
+    default:
+      contentType = "unknown";
+      break;
+  }
+  return {
+    type: "text",
+    text: `A file of type ${contentType} with id ${sid} was generated successfully and made available to the conversation.`,
+  };
 }
 
 export type MCPActionRunningEvents = MCPParamsEvent | MCPApproveExecutionEvent;
