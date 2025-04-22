@@ -7,7 +7,7 @@ export function MCPToolsList({
 }) {
   return (
     <>
-      <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
+      <div className="heading-xl flex-grow pt-4 text-foreground dark:text-foreground-night">
         Available tools
       </div>
 
@@ -20,7 +20,7 @@ export function MCPToolsList({
                   key={index}
                   className="flex flex-col gap-2 border-b border-border py-3 last:border-b-0 last:pb-0"
                 >
-                  <h4 className="flex-grow text-foreground dark:text-foreground-night">
+                  <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
                     {asDisplayName(tool.name)}
                   </h4>
                   {tool.description && (
