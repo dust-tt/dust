@@ -249,42 +249,43 @@ export function MCPAction({
         />
       )}
       {/* Server selection */}
-      {isEditing ? (
-        <div>
-          <div className="text-sm text-foreground dark:text-foreground-night">
-            <div>{selectedMCPServerView?.server.description}</div>
+      {!selectedMCPServerView?.server.isDefault &&
+        (isEditing ? (
+          <div>
+            <div className="text-sm text-foreground dark:text-foreground-night">
+              <div>{selectedMCPServerView?.server.description}</div>
 
-            {isDefaultMCPServer ? (
-              ""
-            ) : (
-              <div>
-                Available to you via{" "}
-                <b>
-                  {
-                    allowedSpaces.find(
-                      (space) => space.sId === selectedMCPServerView?.spaceId
-                    )?.name
-                  }
-                </b>{" "}
-                space.
-              </div>
-            )}
+              {isDefaultMCPServer ? (
+                ""
+              ) : (
+                <div>
+                  Available to you via{" "}
+                  <b>
+                    {
+                      allowedSpaces.find(
+                        (space) => space.sId === selectedMCPServerView?.spaceId
+                      )?.name
+                    }
+                  </b>{" "}
+                  space.
+                </div>
+              )}
+            </div>
+            <div className="pt-2">
+              <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
+            </div>
           </div>
-          <div className="pt-2">
-            <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
-          </div>
-        </div>
-      ) : (
-        <>
-          <MCPServerSelector
-            owner={owner}
-            allowedSpaces={allowedSpaces}
-            mcpServerViews={mcpServerViews}
-            selectedMCPServerView={selectedMCPServerView}
-            handleServerSelection={handleServerSelection}
-          />
-        </>
-      )}
+        ) : (
+          <>
+            <MCPServerSelector
+              owner={owner}
+              allowedSpaces={allowedSpaces}
+              mcpServerViews={mcpServerViews}
+              selectedMCPServerView={selectedMCPServerView}
+              handleServerSelection={handleServerSelection}
+            />
+          </>
+        ))}
 
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
