@@ -684,6 +684,10 @@ export async function checkConnectionOwnership(
   auth: Authenticator,
   connectionId: string
 ) {
+  if (!connectionId || !connectionId.startsWith("con_")) {
+    return new Ok(undefined);
+  }
+
   // Ensure the connectionId has been created by the current user and is not being stolen.
   const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
   const connectionRes = await oauthAPI.getAccessToken({
