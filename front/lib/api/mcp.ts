@@ -21,6 +21,7 @@ export type MCPToolWithIsDefaultType = MCPToolType & {
 
 export type MCPToolWithStakeLevelType = MCPToolWithIsDefaultType & {
   stakeLevel: MCPToolStakeLevelType;
+  // TODO(2025-04-22 Adrien): Make this required.
   toolServerId?: string;
 };
 
