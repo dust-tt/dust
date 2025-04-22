@@ -186,8 +186,6 @@ export async function syncTicket({
 
     const ticketContent = `Conversation:\n${comments
       .map((comment) => {
-        const author =
-          users.find((user) => user.id === comment.author_id) ?? null;
         // Remove line and paragraph separators.
         const commentContent = (comment.plain_body || comment.body).replace(
           /[\u2028\u2029]/g,
@@ -196,6 +194,8 @@ export async function syncTicket({
         if (configuration.hideCustomerDetails) {
           return `[${comment?.created_at}] User ${comment.author_id}:\n${commentContent}`;
         }
+        const author =
+          users.find((user) => user.id === comment.author_id) ?? null;
         return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${commentContent}`;
       })
       .join("\n")}`.trim();
