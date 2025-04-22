@@ -27,6 +27,18 @@ export const OAUTH_PROVIDERS = [
   "hubspot",
 ] as const;
 
+// Sorcery: Create a union type with at least two elements to satisfy t.union
+function getOauthProviderCodec(): t.Mixed {
+  const [first, second, ...rest] = OAUTH_PROVIDERS;
+  return t.union([
+    t.literal(first),
+    t.literal(second),
+    ...rest.map((value) => t.literal(value)),
+  ]);
+}
+
+export const OauthProviderCodec = getOauthProviderCodec();
+
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   github: "GitHub",

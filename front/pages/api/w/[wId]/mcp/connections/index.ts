@@ -10,13 +10,13 @@ import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { apiError } from "@app/logger/withlogging";
-import { ConnectorProviderCodec } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { WithAPIErrorResponse } from "@app/types";
+import { OauthProviderCodec } from "@app/types";
 
 const PostConnectionBodySchema = t.type({
   connectionId: t.string,
   mcpServerId: t.string,
-  provider: ConnectorProviderCodec,
+  provider: OauthProviderCodec,
 });
 export type PostConnectionBodyType = t.TypeOf<typeof PostConnectionBodySchema>;
 
