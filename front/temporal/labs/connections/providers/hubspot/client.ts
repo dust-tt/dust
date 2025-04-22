@@ -26,7 +26,7 @@ const CompanySearchResult = t.type({
 
 const PagingNext = t.type({
   after: t.string,
-  link: t.string,
+  link: t.union([t.string, t.undefined]),
 });
 
 const Paging = t.type({
