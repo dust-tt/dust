@@ -1,7 +1,7 @@
 import type { ScrapeResponse } from "@mendable/firecrawl-js";
 import FirecrawlApp from "@mendable/firecrawl-js";
-import { chunk } from "lodash";
 
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { dustManagedCredentials } from "@app/types";
 
 const credentials = dustManagedCredentials();
@@ -76,18 +76,13 @@ export const browseUrls = async (
   urls: string[],
   chunkSize = 8
 ): Promise<Array<BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse>> => {
-  const urlChunks = chunk(urls, chunkSize);
-  const results: Array<
-    BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse
-  > = [];
-
-  for (const urlChunk of urlChunks) {
-    const chunkResults = await Promise.all(
-      urlChunk.map((url) => browseUrl(url))
-    );
-
-    results.push(...chunkResults);
-  }
+  const results = await concurrentExecutor(
+    urls,
+    async (url) => {
+      return browseUrl(url);
+    },
+    { concurrency: chunkSize }
+  );
 
   return results;
 };
