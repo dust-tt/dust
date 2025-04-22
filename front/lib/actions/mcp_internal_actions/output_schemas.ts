@@ -1,3 +1,4 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
 type ResourceWithName = {
@@ -10,21 +11,16 @@ export const isResourceWithName = (
   return "name" in resource && typeof resource.name === "string";
 };
 
-export const SearchQueryResourceMimeType = "application/vnd.dust.search_query";
-
 export const SearchQueryResourceSchema = z.object({
-  mimeType: z.literal(SearchQueryResourceMimeType),
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_QUERY),
   text: z.string(),
   uri: z.literal(""),
 });
 
 export type SearchQueryResourceType = z.infer<typeof SearchQueryResourceSchema>;
 
-export const SearchResultResourceMimeType =
-  "application/vnd.dust.search_result";
-
 export const SearchResultResourceSchema = z.object({
-  mimeType: z.literal(SearchResultResourceMimeType),
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_RESULT),
   uri: z.string(),
   text: z.string(),
 
@@ -48,7 +44,7 @@ export const isSearchResultResourceType = (
 ): resource is SearchResultResourceType => {
   return (
     "mimeType" in resource &&
-    resource.mimeType === SearchResultResourceMimeType &&
+    resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_RESULT &&
     SearchResultResourceSchema.safeParse(resource).success
   );
 };

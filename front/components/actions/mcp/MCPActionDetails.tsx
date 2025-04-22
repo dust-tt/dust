@@ -1,3 +1,4 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   cn,
   CodeBlock,
@@ -13,7 +14,6 @@ import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isSearchResultResourceType,
-  SearchQueryResourceMimeType,
   SearchQueryResourceSchema,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
@@ -52,7 +52,7 @@ function SearchResultActionDetails({
     action.output?.map((o) => {
       if (
         o.type === "resource" &&
-        o.resource.mimeType === SearchQueryResourceMimeType
+        o.resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_QUERY
       ) {
         return SearchQueryResourceSchema.safeParse(o.resource).data;
       }
