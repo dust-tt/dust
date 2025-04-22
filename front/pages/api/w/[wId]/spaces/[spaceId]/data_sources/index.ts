@@ -56,11 +56,9 @@ function getConnectorProviderCodec(): t.Mixed {
   ]);
 }
 
-export const ConnectorProviderCodec = getConnectorProviderCodec();
-
 export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
   t.type({
-    provider: ConnectorProviderCodec,
+    provider: getConnectorProviderCodec(),
     name: t.union([t.string, t.undefined]),
     configuration: ConnectorConfigurationTypeSchema,
   }),
@@ -428,7 +426,6 @@ const handleDataSourceWithProvider = async ({
   if (connectionId) {
     const checkConnectionOwnershipRes = await checkConnectionOwnership(
       auth,
-      provider,
       connectionId
     );
     if (checkConnectionOwnershipRes.isErr()) {

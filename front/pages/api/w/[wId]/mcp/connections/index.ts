@@ -10,13 +10,11 @@ import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { apiError } from "@app/logger/withlogging";
-import { ConnectorProviderCodec } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { WithAPIErrorResponse } from "@app/types";
 
 const PostConnectionBodySchema = t.type({
   connectionId: t.string,
   mcpServerId: t.string,
-  provider: ConnectorProviderCodec,
 });
 export type PostConnectionBodyType = t.TypeOf<typeof PostConnectionBodySchema>;
 
@@ -61,12 +59,11 @@ async function handler(
       }
 
       const validatedBody = bodyValidation.right;
-      const { connectionId, mcpServerId, provider } = validatedBody;
+      const { connectionId, mcpServerId } = validatedBody;
 
       if (connectionId) {
         const checkConnectionOwnershipRes = await checkConnectionOwnership(
           auth,
-          provider,
           connectionId
         );
         if (checkConnectionOwnershipRes.isErr()) {

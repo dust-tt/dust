@@ -459,7 +459,6 @@ const PROVIDER_STRATEGIES: Record<
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
         const connectionRes = await oauthApi.getAccessToken({
-          provider: "salesforce",
           connectionId: connector.connectionId,
         });
         if (connectionRes.isErr()) {
@@ -683,13 +682,11 @@ export async function finalizeConnection(
 
 export async function checkConnectionOwnership(
   auth: Authenticator,
-  provider: OAuthProvider,
   connectionId: string
 ) {
   // Ensure the connectionId has been created by the current user and is not being stolen.
   const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
   const connectionRes = await oauthAPI.getAccessToken({
-    provider,
     connectionId,
   });
   if (

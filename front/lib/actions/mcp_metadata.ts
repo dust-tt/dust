@@ -58,7 +58,6 @@ async function getAccessTokenForRemoteMCPServer(
       const token = await getOAuthConnectionAccessToken({
         config: apiConfig.getOAuthAPIConfig(),
         logger,
-        provider: metadata.authorization.provider,
         connectionId: connection.value.connectionId,
       });
       return token.isOk() ? token.value.access_token : null;

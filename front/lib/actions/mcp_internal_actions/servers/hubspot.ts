@@ -41,7 +41,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ objectType, creatableOnly = true }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "hubspot",
       });
       if (!accessToken) {
         return {
@@ -95,7 +94,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ objectType, properties }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "hubspot",
       });
       if (!accessToken) {
         return {
@@ -150,7 +148,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ objectType, objectId, properties }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "hubspot",
       });
       if (!accessToken) {
         return {
@@ -206,7 +203,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ objectType, objectId }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "hubspot",
       });
 
       if (!accessToken) {
@@ -257,7 +253,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ objectType, email }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "hubspot",
       });
 
       if (!accessToken) {
@@ -307,7 +302,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ firstname, lastname }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "hubspot",
       });
 
       if (!accessToken) {
@@ -359,7 +353,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ name }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "hubspot",
       });
 
       if (!accessToken) {
