@@ -1,5 +1,4 @@
 import { Button, Cog6ToothIcon } from "@dust-tt/sparkle";
-import type { KeyedMutator } from "swr";
 
 import { ConfigureLabsConnectionModal } from "@app/components/labs/modals/ConfigureLabsConnectionModal";
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
