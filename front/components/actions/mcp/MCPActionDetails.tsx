@@ -3,23 +3,33 @@ import {
   cn,
   CodeBlock,
   CollapsibleComponent,
+  ContentBlockWrapper,
+  ContentMessage,
+  InformationCircleIcon,
   MagnifyingGlassIcon,
+  Markdown,
   PaginatedCitationsGrid,
+  TableIcon,
 } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  SearchResultResourceType,
+  SqlQueryOutput,
+  ThinkingOutput,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isSearchResultResourceType,
+  isSqlQueryOutput,
+  isThinkingOutput,
   SearchQueryResourceSchema,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { isSupportedImageContentType, removeNulls } from "@app/types";
 
-// TODO(mcp): add nicer display for the tables_query server.
 export function MCPActionDetails(
   props: ActionDetailsComponentBaseProps<MCPActionType>
 ) {
@@ -31,11 +41,17 @@ export function MCPActionDetails(
       return null;
     }) ?? []
   );
+  // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
+  const isTablesQuery = props.action.output?.some(
+    (o) => o.type === "resource" && isSqlQueryOutput(o.resource)
+  );
 
   if (searchResults.length > 0) {
     return (
       <SearchResultActionDetails {...props} searchResults={searchResults} />
     );
+  } else if (isTablesQuery) {
+    return <TablesQueryActionDetails {...props} />;
   } else {
     return <GenericActionDetails {...props} />;
   }
@@ -98,6 +114,93 @@ function SearchResultActionDetails({
             }
           />
         </div>
+      </div>
+    </ActionDetailsWrapper>
+  );
+}
+
+function ThinkingBlocks({ action }: { action: MCPActionType }) {
+  const { output } = action;
+  const thinkingBlocksContent =
+    output
+      ?.filter(
+        (o): o is { type: "resource"; resource: ThinkingOutput } =>
+          o.type === "resource" && isThinkingOutput(o.resource)
+      )
+      .map((o) => o.resource) ?? [];
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        Reasoning
+      </span>
+      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+        <ContentMessage
+          title="Reasoning"
+          variant="primary"
+          icon={InformationCircleIcon}
+          size="lg"
+        >
+          {thinkingBlocksContent.map((o, i) => (
+            <Markdown
+              content={o.text}
+              isStreaming={false}
+              forcedTextSize="text-sm"
+              textColor="text-muted-foreground"
+              isLastMessage={false}
+              key={`thinking-block-${i}`}
+            />
+          ))}
+        </ContentMessage>
+      </div>
+    </div>
+  );
+}
+
+function SqlQueryBlocks({ action }: { action: MCPActionType }) {
+  const { output } = action;
+  const sqlQueryBlocksContent =
+    output
+      ?.filter(
+        (o): o is { type: "resource"; resource: SqlQueryOutput } =>
+          o.type === "resource" && isSqlQueryOutput(o.resource)
+      )
+      .map((o) => o.resource) ?? [];
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        Query
+      </span>
+      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+        {sqlQueryBlocksContent.map((o, i) => (
+          <ContentBlockWrapper content={o.text} key={`sql-query-block-${i}`}>
+            <CodeBlock
+              className="language-sql max-h-60 overflow-y-auto"
+              wrapLongLines={true}
+            >
+              {o.text}
+            </CodeBlock>
+          </ContentBlockWrapper>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TablesQueryActionDetails({
+  action,
+  defaultOpen,
+}: ActionDetailsComponentBaseProps<MCPActionType>) {
+  return (
+    <ActionDetailsWrapper
+      actionName="Query tables"
+      defaultOpen={defaultOpen}
+      visual={TableIcon}
+    >
+      <div className="flex flex-col gap-4 pl-6 pt-4">
+        <ThinkingBlocks action={action} />
+        <SqlQueryBlocks action={action} />
       </div>
     </ActionDetailsWrapper>
   );

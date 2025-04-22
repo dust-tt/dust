@@ -86,6 +86,7 @@ export function isSqlQueryOutput(
 ): resource is SqlQueryOutput {
   return resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.SQL_QUERY;
 }
+
 // Resource with a name.
 
 type ResourceWithName = {
