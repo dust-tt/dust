@@ -24,7 +24,6 @@ export const OAUTH_PROVIDERS = [
   "microsoft",
   "zendesk",
   "salesforce",
-  "hubspot",
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
@@ -38,7 +37,6 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   microsoft: "Microsoft",
   zendesk: "Zendesk",
   salesforce: "Salesforce",
-  hubspot: "Hubspot",
 };
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
