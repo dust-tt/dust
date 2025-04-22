@@ -854,7 +854,7 @@ export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
 export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
-  displayName: "Gemini Flash 2.5 Pro Preview",
+  displayName: "Gemini 2.5 Pro Preview",
   contextSize: 1_000_000,
   recommendedTopK: 64,
   recommendedExhaustiveTopK: 128,
