@@ -15,7 +15,7 @@ import {
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import type { DataSourceViewContentNodeType } from "@dust-tt/client";
 import { isFolder, isWebsite } from "@dust-tt/client";
-import { DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 interface FileAttachmentsProps {
@@ -102,7 +102,7 @@ export function InputBarAttachments({
   }
 
   return (
-    <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
+    <CitationGrid className="mr-3 border-b border-separator pb-3 pt-3">
       {allAttachments.map((attachment) => {
         const attachmentCitation = attachmentToAttachmentCitation(attachment);
         return (
@@ -113,6 +113,6 @@ export function InputBarAttachments({
           />
         );
       })}
-    </div>
+    </CitationGrid>
   );
 }
