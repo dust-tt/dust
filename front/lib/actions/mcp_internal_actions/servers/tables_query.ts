@@ -284,10 +284,6 @@ function createServer(
             return makeMCPToolTextError(getTablesQueryError(e.error).message);
           }
 
-          if (event.content.block_name === "MODEL_OUTPUT") {
-            // TODO(mcp): if we stream events, here we can yield an event with the model output.
-          }
-
           if (event.content.block_name === "OUTPUT" && e.value) {
             output = JSON.parse(e.value as string);
           }
@@ -299,9 +295,11 @@ function createServer(
         unknown
       >;
 
-      const content: MCPToolResultContent[] = [
-        { type: "text", text: JSON.stringify(sanitizedOutput) },
-      ];
+      const content: MCPToolResultContent[] = [];
+
+      if (typeof output?.thinking === "string") {
+        content.push({ type: "text", text: output.thinking });
+      }
 
       const rawResults =
         "results" in sanitizedOutput ? sanitizedOutput.results : [];
