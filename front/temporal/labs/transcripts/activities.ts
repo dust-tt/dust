@@ -221,10 +221,17 @@ export async function processTranscriptActivity(
     );
   }
 
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+  const authRes = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId
   );
+
+  if (authRes.isErr()) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    throw authRes.error;
+  }
+
+  const auth = authRes.value;
   const owner = auth.workspace();
   if (!owner) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);

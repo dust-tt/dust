@@ -71,10 +71,20 @@ async function createTestWorkspaces(
       role: "admin",
     });
 
-    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+    const authenticatorRes = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
+
+    if (authenticatorRes.isErr()) {
+      logger.error(
+        { error: authenticatorRes.error },
+        "Error creating authenticator"
+      );
+      continue;
+    }
+
+    const authenticator = authenticatorRes.value;
 
     await SubscriptionResource.pokeUpgradeWorkspaceToPlan(
       authenticator,

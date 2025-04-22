@@ -258,7 +258,9 @@ export class Authenticator {
   static async fromUserIdAndWorkspaceId(
     uId: string,
     wId: string
-  ): Promise<Authenticator> {
+  ): Promise<
+    Result<Authenticator, { code: "user_not_found" | "workspace_not_found" }>
+  > {
     const [workspace, user] = await Promise.all([
       Workspace.findOne({
         where: {
@@ -267,6 +269,14 @@ export class Authenticator {
       }),
       UserResource.fetchById(uId),
     ]);
+
+    if (!user) {
+      return new Err({ code: "user_not_found" });
+    }
+
+    if (!workspace) {
+      return new Err({ code: "workspace_not_found" });
+    }
 
     let role: RoleType = "none";
     let groups: GroupResource[] = [];
@@ -288,13 +298,15 @@ export class Authenticator {
       ]);
     }
 
-    return new Authenticator({
-      workspace,
-      user,
-      role,
-      groups,
-      subscription,
-    });
+    return new Ok(
+      new Authenticator({
+        workspace,
+        user,
+        role,
+        groups,
+        subscription,
+      })
+    );
   }
 
   /**

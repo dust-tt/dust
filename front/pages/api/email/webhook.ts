@@ -213,10 +213,20 @@ async function handler(
       }
 
       for (const { workspace, targetEmails } of workspacesAndEmails) {
-        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        const authRes = await Authenticator.fromUserIdAndWorkspaceId(
           user.sId,
           workspace.sId
         );
+
+        if (authRes.isErr()) {
+          logger.error(
+            { error: authRes.error },
+            "Error creating authenticator"
+          );
+          return;
+        }
+
+        const auth = authRes.value;
 
         const agentConfigurations = removeNulls(
           await Promise.all(

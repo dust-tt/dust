@@ -100,10 +100,16 @@ async function setupTest(
     role: requestUserRole,
     method: method,
   });
-  let requestUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+  let requestUserAuthRes = await Authenticator.fromUserIdAndWorkspaceId(
     requestUser.sId,
     workspace.sId
   );
+
+  if (requestUserAuthRes.isErr()) {
+    throw requestUserAuthRes.error;
+  }
+
+  let requestUserAuth = requestUserAuthRes.value;
 
   // Create agent owner (might be the same as requestUser or different)
   let agentOwner: UserResource;
@@ -116,24 +122,42 @@ async function setupTest(
   } else {
     agentOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, agentOwner, agentOwnerRole);
-    agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    const agentOwnerAuthRes = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,
       workspace.sId
     );
+
+    if (agentOwnerAuthRes.isErr()) {
+      throw agentOwnerAuthRes.error;
+    }
+
+    agentOwnerAuth = agentOwnerAuthRes.value;
   }
 
   // Create agent owned by agentOwner
   const agent = await createTestAgent(agentOwnerAuth, t);
 
   // Regenerate the agentOwnerAuth who's now in the agent editors group.
-  agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+  const agentOwnerAuthRes = await Authenticator.fromUserIdAndWorkspaceId(
     agentOwner.sId,
     workspace.sId
   );
-  requestUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+
+  if (agentOwnerAuthRes.isErr()) {
+    throw agentOwnerAuthRes.error;
+  }
+
+  agentOwnerAuth = agentOwnerAuthRes.value;
+  requestUserAuthRes = await Authenticator.fromUserIdAndWorkspaceId(
     requestUser.sId,
     workspace.sId
   );
+
+  if (requestUserAuthRes.isErr()) {
+    throw requestUserAuthRes.error;
+  }
+
+  requestUserAuth = requestUserAuthRes.value;
 
   // Set up query parameters for the agent
   req.query = { ...req.query, wId: workspace.sId, aId: agent.sId };
@@ -235,10 +259,16 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     // Add another editor first
     const editorToRemove = await UserFactory.basic();
     await MembershipFactory.associate(workspace, editorToRemove, "builder");
-    const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    const agentOwnerAuthRes = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,
       workspace.sId
     );
+
+    if (agentOwnerAuthRes.isErr()) {
+      throw agentOwnerAuthRes.error;
+    }
+
+    const agentOwnerAuth = agentOwnerAuthRes.value;
     const updateRes = await updateAgentPermissions(agentOwnerAuth, {
       agent,
       usersToAdd: [editorToRemove.toJSON()],
@@ -290,10 +320,16 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     // Add another editor first
     const editorToRemove = await UserFactory.basic();
     await MembershipFactory.associate(workspace, editorToRemove, "admin");
-    const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    const agentOwnerAuthRes = await Authenticator.fromUserIdAndWorkspaceId(
       requestUser.sId,
       workspace.sId
     );
+
+    if (agentOwnerAuthRes.isErr()) {
+      throw agentOwnerAuthRes.error;
+    }
+
+    const agentOwnerAuth = agentOwnerAuthRes.value;
 
     const updateRes = await updateAgentPermissions(agentOwnerAuth, {
       agent,
