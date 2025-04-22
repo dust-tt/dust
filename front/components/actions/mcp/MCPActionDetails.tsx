@@ -52,7 +52,8 @@ function SearchResultActionDetails({
     action.output?.map((o) => {
       if (
         o.type === "resource" &&
-        o.resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_QUERY
+        o.resource.mimeType ===
+          INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY
       ) {
         return SearchQueryResourceSchema.safeParse(o.resource).data;
       }

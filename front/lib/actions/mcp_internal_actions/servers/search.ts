@@ -225,7 +225,7 @@ function createServer(
         assert(dataSourceView, "DataSource view not found");
 
         return res.documents.map((doc) => ({
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_RESULT,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
           uri: doc.source_url ?? "",
           text: getDisplayNameForDocument(doc),
 
@@ -241,7 +241,7 @@ function createServer(
       });
 
       const queryResource: SearchQueryResourceType = {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_QUERY,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
         text: makeQueryDescription(query, timeFrame, tagsIn, tagsNot),
         uri: "",
       };

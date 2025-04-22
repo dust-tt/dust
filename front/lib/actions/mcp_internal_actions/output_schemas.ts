@@ -12,7 +12,7 @@ export const isResourceWithName = (
 };
 
 export const SearchQueryResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_QUERY),
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY),
   text: z.string(),
   uri: z.literal(""),
 });
@@ -20,7 +20,9 @@ export const SearchQueryResourceSchema = z.object({
 export type SearchQueryResourceType = z.infer<typeof SearchQueryResourceSchema>;
 
 export const SearchResultResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_RESULT),
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT
+  ),
   uri: z.string(),
   text: z.string(),
 
@@ -44,7 +46,8 @@ export const isSearchResultResourceType = (
 ): resource is SearchResultResourceType => {
   return (
     "mimeType" in resource &&
-    resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.SEARCH_RESULT &&
+    resource.mimeType ===
+      INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT &&
     SearchResultResourceSchema.safeParse(resource).success
   );
 };

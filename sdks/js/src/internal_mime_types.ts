@@ -218,7 +218,11 @@ const TOOL_INPUT_MIME_TYPES = {
   }),
   TOOL_OUTPUT: generateToolMimeTypes({
     category: "TOOL_OUTPUT",
-    resourceTypes: ["FILE", "SEARCH_QUERY", "SEARCH_RESULT"],
+    resourceTypes: [
+      "FILE",
+      "DATA_SOURCE_SEARCH_QUERY",
+      "DATA_SOURCE_SEARCH_RESULT",
+    ],
   }),
 };
 
