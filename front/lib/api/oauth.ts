@@ -642,3 +642,24 @@ export async function finalizeConnection(
 
   return new Ok(cRes.value.connection);
 }
+
+export async function checkConnectionOwnership(
+  auth: Authenticator,
+  provider: OAuthProvider,
+  connectionId: string
+) {
+  // Ensure the connectionId has been created by the current user and is not being stolen.
+  const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+  const connectionRes = await oauthAPI.getAccessToken({
+    provider,
+    connectionId,
+  });
+  if (
+    connectionRes.isErr() ||
+    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
+  ) {
+    return new Err(new Error("Invalid connection"));
+  }
+
+  return new Ok(undefined);
+}

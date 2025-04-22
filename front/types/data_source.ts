@@ -1,8 +1,4 @@
-import type { ConnectorConfiguration } from "@app/types/connectors/configuration";
-import type {
-  ConnectorErrorType,
-  ConnectorSyncStatus,
-} from "@app/types/connectors/connectors_api";
+import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 
 import type { DataSourceViewType } from "./data_source_view";
 import type { ModelId } from "./shared/model_id";
@@ -51,23 +47,8 @@ export type WithConnector = {
   connectorId: string;
 };
 
-export type ConnectorType = {
-  id: string;
-  type: ConnectorProvider;
-  workspaceId: string;
-  dataSourceId: string;
+export type ConnectorType = Omit<InternalConnectorType, "connectionId"> & {
   connectionId?: null;
-  useProxy: boolean;
-  lastSyncStatus?: ConnectorSyncStatus;
-  lastSyncStartTime?: number;
-  lastSyncFinishTime?: number;
-  lastSyncSuccessfulTime?: number;
-  firstSuccessfulSyncTime?: number;
-  firstSyncProgress?: string;
-  errorType?: ConnectorErrorType;
-  configuration: ConnectorConfiguration;
-  pausedAt?: number;
-  updatedAt: number;
 };
 
 export type ConnectorStatusDetails = {

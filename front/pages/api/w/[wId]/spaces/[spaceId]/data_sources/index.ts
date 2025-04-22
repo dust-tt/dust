@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { createDataSourceWithoutProvider } from "@app/lib/api/data_sources";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
@@ -426,16 +427,12 @@ const handleDataSourceWithProvider = async ({
   );
 
   if (connectionId) {
-    // Ensure the connectionId has been created by the current user and is not being stolen.
-    const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-    const connectionRes = await oauthAPI.getAccessToken({
+    const checkConnectionOwnershipRes = await checkConnectionOwnership(
+      auth,
       provider,
-      connectionId,
-    });
-    if (
-      connectionRes.isErr() ||
-      connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
-    ) {
+      connectionId
+    );
+    if (checkConnectionOwnershipRes.isErr()) {
       return apiError(req, res, {
         status_code: 400,
         api_error: {
