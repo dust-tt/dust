@@ -51,6 +51,7 @@ import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   AgentActionSuccessEvent,
+  AgentContextWindowUtilizationEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -533,6 +534,7 @@ export async function* postUserMessage(
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
+  | AgentContextWindowUtilizationEvent
   | ConversationTitleEvent,
   void
 > {
@@ -961,7 +963,8 @@ export async function* editUserMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentContextWindowUtilizationEvent,
   void
 > {
   const user = auth.user();
@@ -1389,7 +1392,8 @@ export async function* retryAgentMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentContextWindowUtilizationEvent,
   void
 > {
   class AgentMessageError extends Error {}
@@ -1713,7 +1717,8 @@ async function* streamRunAgentEvents(
     | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationCancelledEvent
-    | AgentMessageSuccessEvent,
+    | AgentMessageSuccessEvent
+    | AgentContextWindowUtilizationEvent,
     void
   >,
   agentMessage: AgentMessageType,
@@ -1724,7 +1729,8 @@ async function* streamRunAgentEvents(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentContextWindowUtilizationEvent,
   void
 > {
   if (!canReadMessage(auth, agentMessage)) {
@@ -1806,6 +1812,7 @@ async function* streamRunAgentEvents(
       case "tables_query_started":
       case "websearch_params":
       case "tool_params":
+      case "agent_context_window_utilization":
         yield event;
         break;
 

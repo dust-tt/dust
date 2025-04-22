@@ -34,7 +34,9 @@ import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMessageContextWindowUtilization } from "@app/lib/models/assistant/agent_context_window_utilization";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -46,6 +48,7 @@ import type {
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentContentEvent,
+  AgentContextWindowUtilizationEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
@@ -77,12 +80,14 @@ export async function* runAgent(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentContextWindowUtilizationEvent,
   void
 > {
-  const [fullConfiguration, killSwitches] = await Promise.all([
+  const [fullConfiguration, killSwitches, featureFlags] = await Promise.all([
     getAgentConfiguration(auth, configuration.sId, "full"),
     KillSwitchResource.listEnabledKillSwitches(),
+    getFeatureFlags(auth.getNonNullableWorkspace()),
   ]);
 
   if (!fullConfiguration) {
@@ -102,7 +107,8 @@ export async function* runAgent(
     conversation,
     userMessage,
     agentMessage,
-    killSwitches
+    killSwitches,
+    featureFlags
   );
 
   for await (const event of stream) {
@@ -116,7 +122,8 @@ async function* runMultiActionsAgentLoop(
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType,
-  killSwitches: KillSwitchType[]
+  killSwitches: KillSwitchType[],
+  featureFlags: string[]
 ): AsyncGenerator<
   | AgentErrorEvent
   | AgentActionSpecificEvent
@@ -124,6 +131,7 @@ async function* runMultiActionsAgentLoop(
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
+  | AgentContextWindowUtilizationEvent
 > {
   const now = Date.now();
 
@@ -161,6 +169,8 @@ async function* runMultiActionsAgentLoop(
       agentActions: actions,
       isLastGenerationIteration,
       isLegacyAgent,
+      loopIteration: i,
+      featureFlags,
     });
 
     const runIds = [];
@@ -258,6 +268,10 @@ async function* runMultiActionsAgentLoop(
           processedContent += event.processedContent;
           break;
 
+        case "agent_context_window_utilization":
+          yield event;
+          break;
+
         // Generation events
         case "generation_tokens":
           yield event;
@@ -319,6 +333,8 @@ async function* runMultiActionsAgent(
     agentActions,
     isLastGenerationIteration,
     isLegacyAgent,
+    loopIteration,
+    featureFlags,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
@@ -327,6 +343,8 @@ async function* runMultiActionsAgent(
     agentActions: AgentActionConfigurationType[];
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
+    loopIteration: number;
+    featureFlags: string[];
   }
 ): AsyncGenerator<
   | AgentErrorEvent
@@ -336,6 +354,7 @@ async function* runMultiActionsAgent(
   | AgentActionsEvent
   | AgentChainOfThoughtEvent
   | AgentContentEvent
+  | AgentContextWindowUtilizationEvent
 > {
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
@@ -447,6 +466,51 @@ async function* runMultiActionsAgent(
     } satisfies AgentErrorEvent;
 
     return;
+  }
+
+  if (featureFlags.includes("context_window_compactor")) {
+    const conversationTokens = modelConversationRes.value.tokensUsed;
+    const contextSize = model.contextSize;
+    const reservedGenerationTokens = MIN_GENERATION_TOKENS;
+    const usableContextSize = contextSize - reservedGenerationTokens;
+    const usagePercentage = (conversationTokens / usableContextSize) * 100;
+
+    const owner = auth.getNonNullableWorkspace();
+
+    logger.info(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        multiActionLoopIteration: loopIteration,
+        contextWindowUsage: {
+          percentage: usagePercentage,
+          usedTokens: conversationTokens,
+          availableTokens: usableContextSize,
+          reservedForGeneration: reservedGenerationTokens,
+          totalContextSize: contextSize,
+        },
+      },
+      "Context window usage"
+    );
+
+    await AgentMessageContextWindowUtilization.create({
+      agentMessageId: agentMessage.agentMessageId,
+      step: loopIteration,
+      usedTokens: conversationTokens,
+      availableTokens: usableContextSize,
+      workspaceId: owner.id,
+    });
+
+    yield {
+      type: "agent_context_window_utilization",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      usagePercentage,
+      usedTokens: conversationTokens,
+      availableTokens: usableContextSize,
+      totalContextSize: contextSize,
+    } satisfies AgentContextWindowUtilizationEvent;
   }
 
   const specifications: AgentActionSpecification[] = [];
