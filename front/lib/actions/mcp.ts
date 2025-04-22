@@ -1,3 +1,4 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -57,7 +58,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
