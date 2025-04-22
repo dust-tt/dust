@@ -12,6 +12,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "file_generation",
   "github",
   "search",
+  "hubspot",
   "data_sources_debugger",
   "authentication_debugger",
   "tables_debugger",
@@ -69,6 +70,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   think: {
     id: 6,
     isDefault: true,
+    flag: "experimental_mcp_actions",
+  },
+  hubspot: {
+    id: 7,
+    isDefault: false,
     flag: "experimental_mcp_actions",
   },
 
