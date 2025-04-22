@@ -289,17 +289,10 @@ async function upsertToDustDatasource(
 
     const workspaceLight = renderLightWorkspaceType({ workspace });
 
-    const authRes = await Authenticator.fromUserIdAndWorkspaceId(
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspaceLight.sId
     );
-
-    if (authRes.isErr()) {
-      logger.error({ error: authRes.error }, "Error creating authenticator");
-      return;
-    }
-
-    const auth = authRes.value;
 
     const [datasourceView] = await DataSourceViewResource.fetchByModelIds(
       auth,
