@@ -70,7 +70,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   hubspot: {
     id: 6,
     isDefault: false,
-    flag: "dev_mcp_actions",
+    flag: "experimental_mcp_actions",
   },
   think: {
     id: 6,
