@@ -32,9 +32,19 @@ const createServer = (): McpServer => {
         .describe(
           "The query used to perform the google search. If requested by the user, use the google syntax `site:` to restrict the the search to a particular website or domain."
         ),
+      offset: z
+        .number()
+        .optional()
+        .describe(
+          "The offset of the search results. Should only be defined if necessary to go deeper into the search results for a specific query."
+        ),
     },
-    async ({ query }) => {
-      const websearchRes = await webSearch({ provider: "serpapi", query });
+    async ({ query, offset }) => {
+      const websearchRes = await webSearch({
+        provider: "serpapi",
+        query,
+        offset,
+      });
 
       if (websearchRes.isErr()) {
         return {

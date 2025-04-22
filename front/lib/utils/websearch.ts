@@ -20,6 +20,7 @@ export type SerpapiParams = {
   location?: string;
   output?: "json" | "html";
   api_key?: string;
+  offset?: number;
 };
 
 export type SerperParams = {
@@ -47,7 +48,7 @@ export type SearchResponse = SearchResultItem[];
 
 const serpapiSearch = async (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  { provider, query, ...options }: BaseWebSearchParams & SerpapiParams
+  { provider, query, offset, ...options }: BaseWebSearchParams & SerpapiParams
 ): Promise<Result<SearchResponse, Error>> => {
   if (options.api_key == null) {
     return new Err(
@@ -59,6 +60,7 @@ const serpapiSearch = async (
     _.omitBy(
       {
         q: query,
+        start: offset,
         ...options,
       },
       _.isNil
