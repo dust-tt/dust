@@ -29,7 +29,7 @@ export const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const BUTTON_SIZES = ["mini", "xs", "sm", "md"] as const;
+export const BUTTON_SIZES = ["xmini", "mini", "xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 // Define button styling with cva
@@ -97,10 +97,11 @@ const buttonVariants = cva(
         ),
       },
       size: {
-        mini: "s-h-7 s-p-1.5 s-rounded-lg s-label-xs s-gap-1.5",
-        xs: "s-h-7 s-px-2.5 s-rounded-lg s-label-xs s-gap-1.5",
-        sm: "s-h-9 s-px-3 s-rounded-xl s-label-sm s-gap-2",
-        md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-label-base s-gap-2.5",
+        xmini: "s-h-6 s-w-6 s-rounded-lg s-label-xs s-gap-1 s-shrink-0",
+        mini: "s-h-7 s-w-7 s-rounded-lg s-label-xs s-gap-1.5 s-shrink-0",
+        xs: "s-h-7 s-px-2.5 s-rounded-lg s-label-xs s-gap-1.5 s-shrink-0",
+        sm: "s-h-9 s-px-3 s-rounded-xl s-label-sm s-gap-2 s-shrink-0",
+        md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-label-base s-gap-2.5 s-shrink-0",
       },
     },
     defaultVariants: {
@@ -113,7 +114,8 @@ const buttonVariants = cva(
 const labelVariants = cva("", {
   variants: {
     size: {
-      mini: "s-label-xs",
+      xmini: "s-label-xs s-hidden",
+      mini: "s-label-xs s-hidden",
       xs: "s-label-xs",
       sm: "s-label-sm",
       md: "s-label-base",
@@ -166,6 +168,25 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 );
 MetaButton.displayName = "MetaButton";
 
+type IconSizeType = "xs" | "sm" | "md";
+type CounterSizeType = "xs" | "sm" | "md";
+
+const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
+  xmini: "xs",
+  mini: "sm",
+  xs: "xs",
+  sm: "sm",
+  md: "md",
+};
+
+const COUNTER_SIZE_MAP: Record<ButtonSizeType, CounterSizeType> = {
+  xmini: "xs",
+  mini: "xs",
+  xs: "xs",
+  sm: "sm",
+  md: "md",
+};
+
 type CommonButtonProps = Omit<MetaButtonProps, "children"> &
   Omit<LinkWrapperProps, "children"> & {
     isSelect?: boolean;
@@ -214,17 +235,16 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const iconsSize = size === "mini" ? "sm" : size;
-    const spinnerVariant =
-      (variant && spinnerVariantsMap[variant]) || "gray400";
+    const iconSize = ICON_SIZE_MAP[size];
+    const counterSize = COUNTER_SIZE_MAP[size];
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
-      <Icon visual={visual} size={iconsSize} className={cn(extraClass)} />
+      <Icon visual={visual} size={iconSize} className={cn(extraClass)} />
     );
     const renderChevron = (visual: React.ComponentType, extraClass = "") => (
       <Icon
         visual={visual}
-        size={iconsSize}
+        size={iconSize}
         className={cn(variant ? chevronVariantMap[variant] : "", extraClass)}
       />
     );
@@ -235,8 +255,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const content = (
       <>
         {isLoading ? (
-          <div className="-s-mx-0.5">
-            <Spinner size={iconsSize} variant={spinnerVariant} />
+          <div
+            className={cn(
+              "-s-mx-0.5",
+              size === "mini" && "s-w-5 s-px-0.5",
+              size === "xmini" && "s-w-5 s-px-0.5"
+            )}
+          >
+            <Spinner
+              size={size === "mini" || size === "xmini" ? "xs" : iconSize}
+              variant={(variant && spinnerVariantsMap[variant]) || "gray400"}
+            />
           </div>
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
@@ -254,7 +283,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
               <Counter
                 value={Number(counterValue)}
                 variant={variant || "primary"}
-                size={size === "mini" ? "xs" : size}
+                size={counterSize}
                 isInButton={true}
               />
             )}
