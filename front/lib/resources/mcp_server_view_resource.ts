@@ -24,7 +24,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
-import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -68,7 +67,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   private async init(auth: Authenticator): Promise<Result<void, DustError>> {
     if (this.remoteMCPServerId) {
-      const remoteServer = await RemoteMCPServerResource.findByPk(auth, this.remoteMCPServerId);
+      const remoteServer = await RemoteMCPServerResource.findByPk(
+        auth,
+        this.remoteMCPServerId
+      );
       if (!remoteServer) {
         return new Err(
           new DustError(
@@ -591,9 +593,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           : this.getInternalMCPServerResource().toJSON(),
       editedByUser: this.makeEditedBy(
         this.editedByUser,
-        this.remoteMCPServer
-          ? this.remoteMCPServer.updatedAt
-          : this.updatedAt
+        this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
       ),
     };
   }
