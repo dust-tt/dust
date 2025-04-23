@@ -47,6 +47,7 @@ async function createTestAgent(
   const providerId = overrides.model?.providerId ?? "openai";
   const modelId = overrides.model?.modelId ?? "gpt-4-turbo";
   const temperature = overrides.model?.temperature ?? 0.7;
+  const user = auth.user()?.toJSON();
 
   const result = await createAgentConfiguration(
     auth,
@@ -67,6 +68,7 @@ async function createTestAgent(
       templateId: null,
       requestedGroupIds: [], // Let createAgentConfiguration handle group creation
       tags: [], // Added missing tags property
+      editors: user ? [user] : [],
     },
     t
   );

@@ -247,7 +247,7 @@ export default function WorkspaceAdmin({
         </div>
         <InvitationsList owner={owner} searchText={searchTerm} />
         <WorkspaceMembersList
-          currentUserId={user.sId}
+          currentUser={user}
           owner={owner}
           searchTerm={searchTerm}
         />
@@ -345,11 +345,11 @@ function DomainAutoJoinModal({
 }
 
 function WorkspaceMembersList({
-  currentUserId,
+  currentUser,
   owner,
   searchTerm,
 }: {
-  currentUserId: string;
+  currentUser: UserType | null;
   owner: WorkspaceType;
   searchTerm: string;
 }) {
@@ -367,7 +367,7 @@ function WorkspaceMembersList({
     <div className="flex flex-col gap-2">
       <Page.H variant="h5">Members</Page.H>
       <MembersList
-        currentUserId={currentUserId}
+        currentUser={currentUser}
         membersData={membersData}
         onRowClick={(user) => setSelectedMember(user)}
         showColumns={["name", "email", "role"]}

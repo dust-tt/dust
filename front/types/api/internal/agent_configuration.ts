@@ -216,6 +216,10 @@ const TagSchema = t.type({
   name: t.string,
 });
 
+const EditorSchema = t.type({
+  sId: t.string,
+});
+
 export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
   assistant: t.type({
     name: t.string,
@@ -238,6 +242,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     maxStepsPerRun: t.union([t.number, t.undefined]),
     visualizationEnabled: t.boolean,
     tags: t.array(TagSchema),
+    editors: t.array(EditorSchema),
   }),
 });
 
