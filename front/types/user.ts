@@ -32,6 +32,20 @@ export function isActiveRoleType(role: string): role is ActiveRoleType {
   return ACTIVE_ROLES.includes(role as ActiveRoleType);
 }
 
+type PublicAPILimitsEnabled = {
+  enabled: true;
+  monthlyLimit: number;
+  billingDay: number; // Best-effort, represents the day of the month when the billing period starts.
+};
+
+type PublicAPILimitsDisabled = {
+  enabled: false;
+};
+
+export type PublicAPILimitsType =
+  | PublicAPILimitsEnabled
+  | PublicAPILimitsDisabled;
+
 export type LightWorkspaceType = {
   id: ModelId;
   sId: string;
@@ -40,7 +54,10 @@ export type LightWorkspaceType = {
   segmentation: WorkspaceSegmentationType;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
-  metadata: Record<string, string | number | boolean | object> | null;
+  metadata: {
+    publicApiLimits?: PublicAPILimitsType;
+    [key: string]: string | number | boolean | object | undefined;
+  } | null;
 };
 
 export type WorkspaceType = LightWorkspaceType & {

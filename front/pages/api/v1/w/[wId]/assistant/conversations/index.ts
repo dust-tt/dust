@@ -16,6 +16,7 @@ import { toFileContentFragment } from "@app/lib/api/assistant/conversation/conte
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -128,6 +129,19 @@ async function handler(
         contentFragments,
         blocking,
       } = r.data;
+
+      const hasReachedLimits = await hasReachedPublicAPILimits(auth);
+      if (hasReachedLimits) {
+        return apiError(req, res, {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              "Monthly API usage limit exceeded. Please upgrade your plan or wait until your " +
+              "limit resets next billing period.",
+          },
+        });
+      }
 
       if (message) {
         if (isEmptyString(message.context.username)) {

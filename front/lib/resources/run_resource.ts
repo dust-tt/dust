@@ -93,6 +93,20 @@ export class RunResource extends BaseResource<RunModel> {
     return runs.map((r) => new this(this.model, r.get()));
   }
 
+  static async listByDustRunIds(
+    auth: Authenticator,
+    { dustRunIds }: { dustRunIds: string[] }
+  ) {
+    const runs = await this.model.findAll({
+      where: {
+        dustRunId: { [Op.in]: dustRunIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return runs.map((r) => new this(this.model, r.get()));
+  }
+
   static async countByAppAndRunType(
     workspace: LightWorkspaceType,
     { appId, runType }: { appId: ModelId; runType: string | string[] }
@@ -185,6 +199,7 @@ export class RunResource extends BaseResource<RunModel> {
   /**
    * Run usage.
    */
+
   async recordRunUsage(usages: RunUsageType[]) {
     await RunUsageModel.bulkCreate(
       usages.map((usage) => ({
@@ -193,6 +208,22 @@ export class RunResource extends BaseResource<RunModel> {
         ...usage,
       }))
     );
+  }
+
+  async listRunUsages(auth: Authenticator): Promise<RunUsageType[]> {
+    const usages = await RunUsageModel.findAll({
+      where: {
+        runId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return usages.map((usage) => ({
+      completionTokens: usage.completionTokens,
+      modelId: usage.modelId as ModelIdType,
+      promptTokens: usage.promptTokens,
+      providerId: usage.providerId as ModelProviderIdType,
+    }));
   }
 }
 
@@ -206,8 +237,8 @@ function addCreatedAtClause(where: WhereOptions<RunModel>) {
 }
 
 export interface RunUsageType {
-  providerId: ModelProviderIdType;
+  completionTokens: number;
   modelId: ModelIdType;
   promptTokens: number;
-  completionTokens: number;
+  providerId: ModelProviderIdType;
 }

@@ -7,6 +7,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -93,6 +94,19 @@ async function handler(
         });
       }
 
+      const hasReachedLimits = await hasReachedPublicAPILimits(auth);
+      if (hasReachedLimits) {
+        return apiError(req, res, {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              "Monthly API usage limit exceeded. Please upgrade your plan or wait until your " +
+              "limit resets next billing period.",
+          },
+        });
+      }
+
       const { content, context, mentions, blocking } = r.data;
 
       if (isEmptyString(context.username)) {
@@ -125,6 +139,11 @@ async function handler(
       );
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);
+      }
+
+      if (blocking) {
+        const allRunsIds = messageRes.value.agentMessages?.map((m) => m.runId);
+        const run = await getRun(auth, messageRes.value.runId);
       }
 
       res.status(200).json({
