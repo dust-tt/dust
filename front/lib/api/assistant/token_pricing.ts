@@ -5,7 +5,7 @@ import type { ModelIdType as BaseModelIdType } from "@app/types";
 // usage for historical runs even when models are deprecated or removed from the base type.
 type ModelIdType = BaseModelIdType | string;
 
-// Pricing per million of tokens by model.
+// Pricing (in USD) per million of tokens by model.
 export const MODEL_PRICING: Record<
   ModelIdType,
   {
@@ -259,6 +259,7 @@ export const MODEL_PRICING: Record<
   },
 };
 
+// If model is not found in the MODEL_PRICING, use the default pricing.
 const DEFAULT_PRICING_MODEL_ID = "gpt-4o";
 
 const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
