@@ -25,10 +25,17 @@ pub struct SnowflakeRemoteDatabase {
 #[derive(Deserialize)]
 struct SnowflakeConnectionDetails {
     username: String,
-    password: String,
+    #[serde(default)]
+    password: Option<String>,
     account: String,
     role: String,
     warehouse: String,
+    #[serde(default)]
+    private_key: Option<String>,
+    #[serde(default)]
+    private_key_passphrase: Option<String>,
+    #[serde(default)]
+    authenticator: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -143,9 +150,40 @@ impl SnowflakeRemoteDatabase {
                 QueryDatabaseError::GenericError(anyhow!("Error deserializing credentials: {}", e))
             })?;
 
+        // Determine authentication method based on provided credentials
+        let auth_method = if connection_details.authenticator == Some("SNOWFLAKE_JWT".to_string()) {
+            if let Some(private_key) = &connection_details.private_key {
+                SnowflakeAuthMethod::KeyPair {
+                    private_key: private_key.clone(),
+                    passphrase: connection_details.private_key_passphrase.clone(),
+                }
+            } else {
+                return Err(QueryDatabaseError::GenericError(
+                    anyhow!("Key pair authentication selected but no private key provided")
+                ));
+            }
+        } else {
+            if let Some(password) = &connection_details.password {
+                SnowflakeAuthMethod::Password(password.clone())
+            } else {
+                return Err(QueryDatabaseError::GenericError(
+                    anyhow!("No authentication credentials provided (missing password)")
+                ));
+            }
+        };
+        
+        // Log authentication method (without sensitive details)
+        if let SnowflakeAuthMethod::KeyPair { .. } = &auth_method {
+            info!(
+                username = connection_details.username, 
+                account = connection_details.account,
+                "Using key pair authentication for Snowflake"
+            );
+        }
+        
         let mut client = SnowflakeClient::new(
             &connection_details.username,
-            SnowflakeAuthMethod::Password(connection_details.password),
+            auth_method,
             SnowflakeClientConfig {
                 warehouse: Some(connection_details.warehouse.clone()),
                 account: connection_details.account,

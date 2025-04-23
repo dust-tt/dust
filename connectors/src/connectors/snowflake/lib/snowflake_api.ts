@@ -123,19 +123,45 @@ export async function connectToSnowflake(
     logLevel: "OFF",
   });
   try {
+    // Prepare connection options with common parameters
+    const connectionOptions: any = {
+      username: credentials.username,
+      account: credentials.account,
+      role: credentials.role,
+      warehouse: credentials.warehouse,
+
+      // Use proxy if defined to have all requests coming from the same IP.
+      proxyHost: process.env.PROXY_HOST,
+      proxyPort: process.env.PROXY_PORT
+        ? parseInt(process.env.PROXY_PORT)
+        : undefined,
+      proxyUser: process.env.PROXY_USER_NAME,
+      proxyPassword: process.env.PROXY_USER_PASSWORD,
+    };
+    
+    // Add authentication method
+    if ("privateKey" in credentials && credentials.authenticator === "SNOWFLAKE_JWT") {
+      logger.info(
+        { account: credentials.account, username: credentials.username },
+        "Using key pair authentication for Snowflake"
+      );
+      connectionOptions.authenticator = "SNOWFLAKE_JWT";
+      connectionOptions.privateKey = credentials.privateKey;
+      
+      // Only include passphrase if provided
+      if (credentials.privateKeyPassphrase) {
+        connectionOptions.privateKeyPass = credentials.privateKeyPassphrase;
+      }
+    } else if ("password" in credentials) {
+      // Standard password authentication
+      connectionOptions.password = credentials.password;
+    } else {
+      return new Err(new Error("Invalid Snowflake credentials: missing authentication method"));
+    }
+
     const connection = await new Promise<Connection>((resolve, reject) => {
       snowflake
-        .createConnection({
-          ...credentials,
-
-          // Use proxy if defined to have all requests coming from the same IP.
-          proxyHost: process.env.PROXY_HOST,
-          proxyPort: process.env.PROXY_PORT
-            ? parseInt(process.env.PROXY_PORT)
-            : undefined,
-          proxyUser: process.env.PROXY_USER_NAME,
-          proxyPassword: process.env.PROXY_USER_PASSWORD,
-        })
+        .createConnection(connectionOptions)
         .connect((err: SnowflakeError | undefined, conn: Connection) => {
           if (err) {
             reject(err);

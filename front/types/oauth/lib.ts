@@ -135,13 +135,31 @@ export function isProviderWithDefaultWorkspaceConfiguration(
 
 // Credentials
 
-export const SnowflakeCredentialsSchema = t.type({
+export const SnowflakePasswordCredentialsSchema = t.type({
   username: t.string,
   password: t.string,
   account: t.string,
   role: t.string,
   warehouse: t.string,
+  authenticator: t.union([t.undefined, t.literal("SNOWFLAKE")]),
 });
+export type SnowflakePasswordCredentials = t.TypeOf<typeof SnowflakePasswordCredentialsSchema>;
+
+export const SnowflakeKeyPairCredentialsSchema = t.type({
+  username: t.string,
+  privateKey: t.string,
+  privateKeyPassphrase: t.union([t.string, t.undefined]),
+  account: t.string,
+  role: t.string,
+  warehouse: t.string,
+  authenticator: t.literal("SNOWFLAKE_JWT"),
+});
+export type SnowflakeKeyPairCredentials = t.TypeOf<typeof SnowflakeKeyPairCredentialsSchema>;
+
+export const SnowflakeCredentialsSchema = t.union([
+  SnowflakePasswordCredentialsSchema,
+  SnowflakeKeyPairCredentialsSchema,
+]);
 export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
 
 export const CheckBigQueryCredentialsSchema = t.type({
@@ -212,7 +230,26 @@ export type ConnectionCredentials =
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
 ): credentials is SnowflakeCredentials {
-  return "username" in credentials && "password" in credentials;
+  const hasCommonFields = "username" in credentials && 
+    "account" in credentials && 
+    "role" in credentials && 
+    "warehouse" in credentials;
+  
+  if (!hasCommonFields) return false;
+
+  // Check for password-based auth (default)
+  if ("password" in credentials) {
+    return true;
+  }
+  
+  // Check for key pair auth
+  if ("privateKey" in credentials && 
+      "authenticator" in credentials && 
+      credentials.authenticator === "SNOWFLAKE_JWT") {
+    return true;
+  }
+  
+  return false;
 }
 
 export function isModjoCredentials(

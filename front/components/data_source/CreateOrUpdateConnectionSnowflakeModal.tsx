@@ -22,6 +22,8 @@ import type {
   ConnectorType,
   DataSourceType,
   SnowflakeCredentials,
+  SnowflakeKeyPairCredentials,
+  SnowflakePasswordCredentials,
   WorkspaceType,
 } from "@app/types";
 
@@ -53,13 +55,21 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [credentials, setCredentials] = useState<SnowflakeCredentials>({
+  const [authMethod, setAuthMethod] = useState<"password" | "keypair">("password");
+  
+  // For password authentication
+  const [passwordCredentials, setPasswordCredentials] = useState<SnowflakePasswordCredentials>({
     username: "",
     password: "",
     account: "",
     role: "",
     warehouse: "",
+    authenticator: "SNOWFLAKE",
   });
+  
+  // For key pair authentication
+  const [privateKey, setPrivateKey] = useState<string>("");
+  const [privateKeyPassphrase, setPrivateKeyPassphrase] = useState<string>("");
 
   if (connectorProviderConfiguration.connectorProvider !== "snowflake") {
     // Should never happen.
@@ -67,17 +77,34 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   }
 
   const areCredentialsValid = () => {
-    return Object.values(credentials).every((value) => value.length > 0);
+    const commonFieldsValid = 
+      passwordCredentials.username.trim() !== "" &&
+      passwordCredentials.account.trim() !== "" &&
+      passwordCredentials.role.trim() !== "" &&
+      passwordCredentials.warehouse.trim() !== "";
+    
+    if (!commonFieldsValid) return false;
+    
+    if (authMethod === "password") {
+      return passwordCredentials.password.trim() !== "";
+    } else {
+      return privateKey.trim() !== "";
+    }
   };
 
   function onSuccess(ds: DataSourceType) {
-    setCredentials({
+    // Reset all form fields
+    setPasswordCredentials({
       username: "",
       password: "",
       account: "",
       role: "",
       warehouse: "",
+      authenticator: "SNOWFLAKE",
     });
+    setPrivateKey("");
+    setPrivateKeyPassphrase("");
+    setAuthMethod("password");
     _onSuccess(ds);
     onClose();
   }
@@ -90,6 +117,24 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
     setIsLoading(true);
 
+    // Prepare credentials based on authentication method
+    let snowflakeCredentials: SnowflakeCredentials;
+    if (authMethod === "password") {
+      snowflakeCredentials = {
+        ...passwordCredentials
+      };
+    } else {
+      snowflakeCredentials = {
+        username: passwordCredentials.username,
+        account: passwordCredentials.account,
+        role: passwordCredentials.role,
+        warehouse: passwordCredentials.warehouse,
+        privateKey: privateKey,
+        privateKeyPassphrase: privateKeyPassphrase || undefined,
+        authenticator: "SNOWFLAKE_JWT",
+      };
+    }
+
     // First we post the credentials to OAuth service.
     const createCredentialsRes = await fetch(
       `/api/w/${owner.sId}/credentials`,
@@ -100,7 +145,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         },
         body: JSON.stringify({
           provider: "snowflake",
-          credentials,
+          credentials: snowflakeCredentials,
         }),
       }
     );
@@ -155,6 +200,24 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
     setIsLoading(true);
 
+    // Prepare credentials based on authentication method
+    let snowflakeCredentials: SnowflakeCredentials;
+    if (authMethod === "password") {
+      snowflakeCredentials = {
+        ...passwordCredentials
+      };
+    } else {
+      snowflakeCredentials = {
+        username: passwordCredentials.username,
+        account: passwordCredentials.account,
+        role: passwordCredentials.role,
+        warehouse: passwordCredentials.warehouse,
+        privateKey: privateKey,
+        privateKeyPassphrase: privateKeyPassphrase || undefined,
+        authenticator: "SNOWFLAKE_JWT",
+      };
+    }
+
     // First we post the credentials to OAuth service.
     const credentialsRes = await fetch(`/api/w/${owner.sId}/credentials`, {
       method: "POST",
@@ -163,7 +226,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       },
       body: JSON.stringify({
         provider: "snowflake",
-        credentials,
+        credentials: snowflakeCredentials,
       }),
     });
 
@@ -254,57 +317,173 @@ export function CreateOrUpdateConnectionSnowflakeModal({
             {error && <Chip color="warning" label={error} />}
 
             <div className="w-full space-y-4">
+              {/* Common fields */}
               <Input
                 label="Snowflake Account identifier"
                 name="account_identifier"
-                value={credentials.account}
+                value={passwordCredentials.account}
                 placeholder="au12345.us-east-1"
                 onChange={(e) => {
-                  setCredentials({ ...credentials, account: e.target.value });
+                  setPasswordCredentials({ 
+                    ...passwordCredentials, 
+                    account: e.target.value 
+                  });
                   setError(null);
                 }}
               />
               <Input
                 label="Role"
                 name="role"
-                value={credentials.role}
+                value={passwordCredentials.role}
                 placeholder="dev_role"
                 onChange={(e) => {
-                  setCredentials({ ...credentials, role: e.target.value });
+                  setPasswordCredentials({ 
+                    ...passwordCredentials, 
+                    role: e.target.value 
+                  });
                   setError(null);
                 }}
               />
               <Input
                 label="Warehouse"
                 name="warehouse"
-                value={credentials.warehouse}
+                value={passwordCredentials.warehouse}
                 placeholder="dev_warehouse"
                 onChange={(e) => {
-                  setCredentials({ ...credentials, warehouse: e.target.value });
+                  setPasswordCredentials({ 
+                    ...passwordCredentials, 
+                    warehouse: e.target.value 
+                  });
                   setError(null);
                 }}
               />
               <Input
                 label="Username"
                 name="username"
-                value={credentials.username}
+                value={passwordCredentials.username}
                 placeholder="dev_user"
                 onChange={(e) => {
-                  setCredentials({ ...credentials, username: e.target.value });
+                  setPasswordCredentials({ 
+                    ...passwordCredentials, 
+                    username: e.target.value 
+                  });
                   setError(null);
                 }}
               />
-              <Input
-                label="Password"
-                name="password"
-                type="password"
-                value={credentials.password}
-                placeholder=""
-                onChange={(e) => {
-                  setCredentials({ ...credentials, password: e.target.value });
-                  setError(null);
-                }}
-              />
+              
+              {/* Authentication Method Selection */}
+              <div className="flex flex-col gap-2 pt-2">
+                <div className="text-sm font-medium">Authentication Method</div>
+                <div className="flex space-x-4">
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      id="auth-password"
+                      name="auth-method"
+                      checked={authMethod === "password"}
+                      onChange={() => {
+                        setAuthMethod("password");
+                        setError(null);
+                      }}
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <label
+                      htmlFor="auth-password"
+                      className="ml-2 block text-sm text-gray-600 dark:text-gray-300"
+                    >
+                      Username & Password
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      id="auth-keypair"
+                      name="auth-method"
+                      checked={authMethod === "keypair"}
+                      onChange={() => {
+                        setAuthMethod("keypair");
+                        setError(null);
+                      }}
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <label
+                      htmlFor="auth-keypair"
+                      className="ml-2 block text-sm text-gray-600 dark:text-gray-300"
+                    >
+                      Key Pair Authentication (more secure)
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Conditional fields based on authentication method */}
+              {authMethod === "password" ? (
+                <Input
+                  label="Password"
+                  name="password"
+                  type="password"
+                  value={passwordCredentials.password}
+                  placeholder=""
+                  onChange={(e) => {
+                    setPasswordCredentials({ 
+                      ...passwordCredentials, 
+                      password: e.target.value 
+                    });
+                    setError(null);
+                  }}
+                />
+              ) : (
+                <div className="space-y-4 pt-2">
+                  <div className="rounded-md bg-blue-50 p-4 dark:bg-blue-950">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          You must first generate an RSA key pair and register the public key with your Snowflake user account.
+                          <a
+                            href="https://docs.snowflake.com/en/user-guide/key-pair-auth"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-1 whitespace-nowrap font-medium text-blue-700 underline dark:text-blue-300"
+                          >
+                            Learn more
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Private Key (PKCS8 format)</label>
+                    <textarea
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm placeholder-gray-500 shadow-sm focus:border-primary focus:ring-primary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                      placeholder="-----BEGIN PRIVATE KEY-----&#10;MIIEvQIBADANBgkqhkiG9w0BAQEFAAS...&#10;-----END PRIVATE KEY-----"
+                      value={privateKey}
+                      onChange={(e) => {
+                        setPrivateKey(e.target.value);
+                        setError(null);
+                      }}
+                      rows={8}
+                    />
+                  </div>
+                  
+                  <Input
+                    label="Private Key Passphrase (if encrypted)"
+                    name="private_key_passphrase"
+                    type="password"
+                    value={privateKeyPassphrase}
+                    placeholder=""
+                    onChange={(e) => {
+                      setPrivateKeyPassphrase(e.target.value);
+                      setError(null);
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </SheetContainer>
