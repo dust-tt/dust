@@ -23,6 +23,7 @@ export { default as Gpt4Logo } from "./Gpt4";
 export { default as HubspotLogo } from "./Hubspot";
 export { default as HuggingFaceLogo } from "./HuggingFace";
 export { default as IntercomLogo } from "./Intercom";
+export { default as JiraLogo } from "./Jira";
 export { default as LinearLogo } from "./Linear";
 export { default as LinearWhiteLogo } from "./LinearWhite";
 export { default as MicrosoftLogo } from "./Microsoft";
