@@ -13,7 +13,7 @@ import type { KeyedMutator } from "swr";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { RoleType, UserTypeWithWorkspaces } from "@app/types";
+import type { RoleType, UserType, UserTypeWithWorkspaces } from "@app/types";
 
 type RowData = {
   icon: string;
@@ -122,7 +122,7 @@ const memberColumns = [
 ];
 
 export function MembersList({
-  currentUserId,
+  currentUser,
   membersData,
   onRowClick,
   onRemoveMemberClick,
@@ -130,7 +130,7 @@ export function MembersList({
   pagination,
   setPagination,
 }: {
-  currentUserId: string;
+  currentUser: UserType | null;
   membersData: MembersData;
   onRowClick: (user: UserTypeWithWorkspaces) => void;
   onRemoveMemberClick?: (user: UserTypeWithWorkspaces) => void;
@@ -155,9 +155,9 @@ export function MembersList({
       allUsers: filteredMembers,
       onClick: onRowClick,
       onRemoveMemberClick,
-      currentUserId,
+      currentUserId: currentUser?.sId ?? "current-user-not-loaded",
     });
-  }, [members, onRowClick, onRemoveMemberClick, currentUserId]);
+  }, [members, onRowClick, onRemoveMemberClick, currentUser]);
 
   return (
     <>

@@ -177,7 +177,7 @@ type NamingScreenProps = {
   slackChannelSelected: SlackChannel[];
   slackDataSource: DataSourceType | undefined;
   setSelectedSlackChannels: (channels: SlackChannel[]) => void;
-  currentUserId: string | null;
+  currentUser: UserType | null;
 };
 
 export default function NamingScreen({
@@ -194,7 +194,7 @@ export default function NamingScreen({
   slackChannelSelected,
   slackDataSource,
   setSelectedSlackChannels,
-  currentUserId,
+  currentUser,
 }: NamingScreenProps) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
@@ -654,7 +654,7 @@ export default function NamingScreen({
               </div>
             </div>
             <EditorsMembersList
-              currentUserId={currentUserId}
+              currentUser={currentUser}
               owner={owner}
               builderState={builderState}
               setBuilderState={setBuilderState}
@@ -842,13 +842,13 @@ const membersData = {
 const onRowClick = () => {};
 
 function EditorsMembersList({
-  currentUserId,
+  currentUser,
   owner,
   builderState,
   setBuilderState,
   setEdited,
 }: {
-  currentUserId: string | null;
+  currentUser: UserType | null;
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   setBuilderState: (
@@ -907,7 +907,7 @@ function EditorsMembersList({
         />
       </div>
       <MembersList
-        currentUserId={currentUserId ?? "current-user-not-loaded"}
+        currentUser={currentUser}
         membersData={membersData}
         onRowClick={onRowClick}
         onRemoveMemberClick={onRemoveMemberClick}
