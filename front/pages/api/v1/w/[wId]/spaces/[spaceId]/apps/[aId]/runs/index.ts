@@ -44,30 +44,35 @@ type Trace = [[BlockType, string], TraceType[][]];
 
 function extractUsageFromExecutions(
   block: { provider_id: ModelProviderIdType; model_id: ModelIdType },
-  traces: TraceType[][],
-  usages: RunUsageType[]
-) {
-  if (block) {
-    traces.forEach((tracesInner) => {
-      tracesInner.forEach((trace) => {
-        if (trace?.meta) {
-          const { token_usage } = trace.meta as {
-            token_usage: { prompt_tokens: number; completion_tokens: number };
-          };
-          if (token_usage) {
-            const promptTokens = token_usage.prompt_tokens;
-            const completionTokens = token_usage.completion_tokens;
-            usages.push({
-              providerId: block.provider_id,
-              modelId: block.model_id,
-              promptTokens,
-              completionTokens,
-            });
-          }
-        }
-      });
-    });
+  traces: TraceType[][]
+): RunUsageType[] {
+  if (!block) {
+    return [];
   }
+
+  const usages: RunUsageType[] = [];
+
+  traces.forEach((tracesInner) => {
+    tracesInner.forEach((trace) => {
+      if (trace?.meta) {
+        const { token_usage } = trace.meta as {
+          token_usage: { prompt_tokens: number; completion_tokens: number };
+        };
+        if (token_usage) {
+          const promptTokens = token_usage.prompt_tokens;
+          const completionTokens = token_usage.completion_tokens;
+          usages.push({
+            providerId: block.provider_id,
+            modelId: block.model_id,
+            promptTokens,
+            completionTokens,
+          });
+        }
+      }
+    });
+  });
+
+  return usages;
 }
 
 /**
@@ -369,6 +374,7 @@ async function handler(
 
       const usages: RunUsageType[] = [];
       const traces: Trace[] = [];
+      let dustRunId: string | undefined;
 
       try {
         // Intercept block_execution events to store token usages.
@@ -386,11 +392,12 @@ async function handler(
                     ]);
                   }
                   const block = config[data.content.block_name];
-                  extractUsageFromExecutions(
+
+                  const blockUsages = extractUsageFromExecutions(
                     block,
-                    data.content.execution,
-                    usages
+                    data.content.execution
                   );
+                  usages.push(...blockUsages);
                 }
               } catch (err) {
                 logger.error(
@@ -410,6 +417,18 @@ async function handler(
             res.flush();
           }
         }
+
+        // TODO(2025-04-23): We should record usage earlier, as soon as we get the runId. So we know
+        // that the run is available before we yield the "agent_message_success" event.
+        dustRunId = await runRes.value.dustRunId;
+        const run = await RunResource.makeNew({
+          dustRunId,
+          appId: app.id,
+          runType: "deploy",
+          workspaceId: keyWorkspaceId,
+        });
+
+        await run.recordRunUsage(usages);
       } catch (err) {
         logger.error(
           {
@@ -424,17 +443,6 @@ async function handler(
 
         throw err;
       }
-
-      const dustRunId = await runRes.value.dustRunId;
-
-      const run = await RunResource.makeNew({
-        dustRunId,
-        appId: app.id,
-        runType: "deploy",
-        workspaceId: keyWorkspaceId,
-      });
-
-      await run.recordRunUsage(usages);
 
       switch (runFlavor) {
         case "streaming":
