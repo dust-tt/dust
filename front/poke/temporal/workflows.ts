@@ -2,26 +2,30 @@ import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "@app/poke/temporal/activities";
 
-// Create a single proxy with all activities
-const activityProxies = proxyActivities<typeof activities>({
+// Create a single proxy with all normal and long activities
+const normalActivityProxies = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minute",
+});
+const longActivityProxies = proxyActivities<typeof activities>({
+  startToCloseTimeout: "180 minute",
 });
 
 const {
   deleteAgentsActivity,
   deleteAppsActivity,
-  deleteConversationsActivity,
   deleteMembersActivity,
   deletePluginRunsActivity,
   deleteRunOnDustAppsActivity,
   deleteSpacesActivity,
   deleteTrackersActivity,
   deleteTranscriptsActivity,
-  deleteWorkspaceActivity,
   isWorkflowDeletableActivity,
   scrubDataSourceActivity,
   scrubSpaceActivity,
-} = activityProxies;
+} = normalActivityProxies;
+
+const { deleteConversationsActivity, deleteWorkspaceActivity } =
+  longActivityProxies;
 
 export async function scrubDataSourceWorkflow({
   dataSourceId,
