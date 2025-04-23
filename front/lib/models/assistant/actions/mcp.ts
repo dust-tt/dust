@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { MCPToolResultContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
@@ -220,12 +220,12 @@ export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPAction
   declare updatedAt: CreationOptional<Date>;
 
   declare agentMCPActionId: ForeignKey<AgentMCPAction["id"]>;
-  declare content: MCPToolResultContent;
+  declare content: MCPToolResultContentType;
   declare fileId: ForeignKey<FileModel["id"]> | null;
 
   declare file: NonAttribute<FileModel>;
 
-  getContentForModel(): MCPToolResultContent {
+  getContentForModel(): MCPToolResultContentType {
     // We want to hide the original file url from the model.
     if (this.fileId) {
       const sid = makeSId("file", {

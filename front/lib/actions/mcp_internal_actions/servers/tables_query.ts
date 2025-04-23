@@ -7,7 +7,7 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPToolResultContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -295,7 +295,7 @@ function createServer(
         unknown
       >;
 
-      const content: MCPToolResultContent[] = [];
+      const content: MCPToolResultContentType[] = [];
 
       if (typeof output?.thinking === "string") {
         content.push({

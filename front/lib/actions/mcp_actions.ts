@@ -25,7 +25,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPToolResult,
-  MCPToolResultContent,
+  MCPToolResultContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import {
@@ -184,8 +184,8 @@ export async function tryCallMCPTool(
       );
     }
     // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: MCPToolResultContent[] = (toolCallResult.content ??
-      []) as MCPToolResultContent[];
+    const content: MCPToolResultContentType[] = (toolCallResult.content ??
+      []) as MCPToolResultContentType[];
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
       return new Err(

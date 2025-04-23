@@ -51,9 +51,7 @@ export function MCPActionDetails(
     }) ?? []
   );
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
-  const isTablesQuery = props.action.output?.some(
-    (o) => o.type === "resource" && isSqlQueryOutput(o.resource)
-  );
+  const isTablesQuery = props.action.output?.some(isSqlQueryOutput);
 
   if (searchResults.length > 0) {
     return (
@@ -245,28 +243,13 @@ function TablesQueryActionDetails({
 }: ActionDetailsComponentBaseProps<MCPActionType>) {
   const { output } = action;
   const thinkingBlocks =
-    output
-      ?.filter(
-        (o): o is { type: "resource"; resource: ThinkingOutputType } =>
-          o.type === "resource" && isThinkingOutput(o.resource)
-      )
-      .map((o) => o.resource) ?? [];
+    output?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
 
   const sqlQueryBlocks =
-    output
-      ?.filter(
-        (o): o is { type: "resource"; resource: SqlQueryOutputType } =>
-          o.type === "resource" && isSqlQueryOutput(o.resource)
-      )
-      .map((o) => o.resource) ?? [];
+    output?.filter(isSqlQueryOutput).map((o) => o.resource) ?? [];
 
   const generatedFiles =
-    output
-      ?.filter(
-        (o): o is { type: "resource"; resource: ToolGeneratedFileType } =>
-          o.type === "resource" && isToolGeneratedFile(o.resource)
-      )
-      .map((o) => o.resource) ?? [];
+    output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
   return (
     <ActionDetailsWrapper
