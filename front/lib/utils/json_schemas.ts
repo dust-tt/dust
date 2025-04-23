@@ -29,9 +29,13 @@ export function schemaMatchesMimeType(
     return schemasAreEqual(schema, fixedSchema);
   }
   // If the mime type is not in the ConfigurableToolInputJSONSchemas, it is a flexible mime type.
-  // We only check that the schema has a mimeType property with the correct value.
+  // We only check that the schema has a value property and a mimeType property with the correct value.
   const mimeTypeProperty = schema.properties?.mimeType;
-  if (mimeTypeProperty && isJSONSchemaObject(mimeTypeProperty)) {
+  if (
+    schema.properties?.value &&
+    mimeTypeProperty &&
+    isJSONSchemaObject(mimeTypeProperty)
+  ) {
     return (
       mimeTypeProperty.type === "string" && mimeTypeProperty.const === mimeType
     );
@@ -57,18 +61,18 @@ function schemasAreEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
 }
 
 /**
- * Recursively finds all property keys in a schema that match a specific sub-schema.
+ * Recursively finds all property keys and subschemas match a specific sub-schema.
  * This function handles nested objects and arrays.
- * @returns An array of property keys that match the schema comparison. Empty array if no matches found.
+ * @returns A record of property keys that match the schema comparison. Empty record if no matches found.
  */
-export function findMatchingSchemaKeys(
+export function findMatchingSubSchemas(
   inputSchema: JSONSchema,
   mimeType: InternalToolInputMimeType
-): string[] {
-  const matchingKeys: string[] = [];
+): Record<string, JSONSchema> {
+  const matches: Record<string, JSONSchema> = {};
 
   if (!isJSONSchemaObject(inputSchema)) {
-    return matchingKeys;
+    return matches;
   }
 
   // Check properties in object schemas
@@ -77,7 +81,7 @@ export function findMatchingSchemaKeys(
       if (isJSONSchemaObject(propSchema)) {
         // Check if this property's schema matches the target
         if (schemaMatchesMimeType(propSchema, mimeType)) {
-          matchingKeys.push(key);
+          matches[key] = propSchema;
         }
 
         // Following references within the main schema.
@@ -85,17 +89,17 @@ export function findMatchingSchemaKeys(
         if (propSchema.$ref) {
           const refSchema = followInternalRef(inputSchema, propSchema.$ref);
           if (refSchema && schemaMatchesMimeType(refSchema, mimeType)) {
-            matchingKeys.push(key);
+            matches[key] = refSchema;
           }
         }
 
         // Recursively check this property's schema
-        const nestedMatches = findMatchingSchemaKeys(propSchema, mimeType);
+        const nestedMatches = findMatchingSubSchemas(propSchema, mimeType);
         // For nested matches, prefix with the current property key
-        for (const match of nestedMatches) {
+        for (const match of Object.keys(nestedMatches)) {
           if (match !== "") {
             // Skip the empty string from direct matches
-            matchingKeys.push(`${key}.${match}`);
+            matches[`${key}.${match}`] = nestedMatches[match];
           }
         }
       }
@@ -106,13 +110,13 @@ export function findMatchingSchemaKeys(
   if (inputSchema.type === "array" && inputSchema.items) {
     if (isJSONSchemaObject(inputSchema.items)) {
       // Single schema for all items
-      const itemMatches = findMatchingSchemaKeys(inputSchema.items, mimeType);
+      const itemMatches = findMatchingSubSchemas(inputSchema.items, mimeType);
       // For array items, we use the 'items' key as a prefix
-      for (const match of itemMatches) {
+      for (const match of Object.keys(itemMatches)) {
         if (match !== "") {
-          matchingKeys.push(`items.${match}`);
+          matches[`items.${match}`] = itemMatches[match];
         } else {
-          matchingKeys.push("items");
+          matches["items"] = itemMatches[match];
         }
       }
     } else if (Array.isArray(inputSchema.items)) {
@@ -120,13 +124,13 @@ export function findMatchingSchemaKeys(
       for (let i = 0; i < inputSchema.items.length; i++) {
         const item = inputSchema.items[i];
         if (isJSONSchemaObject(item)) {
-          const itemMatches = findMatchingSchemaKeys(item, mimeType);
+          const itemMatches = findMatchingSubSchemas(item, mimeType);
           // For tuple items, we use the index as part of the key
-          for (const match of itemMatches) {
+          for (const match of Object.keys(itemMatches)) {
             if (match !== "") {
-              matchingKeys.push(`items[${i}].${match}`);
+              matches[`items[${i}].${match}`] = itemMatches[match];
             } else {
-              matchingKeys.push(`items[${i}]`);
+              matches[`items[${i}]`] = itemMatches[match];
             }
           }
         }
@@ -145,14 +149,14 @@ export function findMatchingSchemaKeys(
     }
 
     if (isJSONSchemaObject(value) && schemaMatchesMimeType(value, mimeType)) {
-      matchingKeys.push(key);
+      matches[key] = value;
     } else if (isJSONSchemaObject(value)) {
-      const nestedMatches = findMatchingSchemaKeys(value, mimeType);
-      for (const match of nestedMatches) {
+      const nestedMatches = findMatchingSubSchemas(value, mimeType);
+      for (const match of Object.keys(nestedMatches)) {
         if (match !== "") {
-          matchingKeys.push(`${key}.${match}`);
+          matches[`${key}.${match}`] = nestedMatches[match];
         } else {
-          matchingKeys.push(key);
+          matches[key] = nestedMatches[match];
         }
       }
     }
@@ -161,7 +165,7 @@ export function findMatchingSchemaKeys(
   // Note: we don't handle anyOf, allOf, oneOf yet as we cannot disambiguate whether to inject the configuration
   // since we entirely hide the configuration from the agent.
 
-  return matchingKeys;
+  return matches;
 }
 
 /**

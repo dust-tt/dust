@@ -19,7 +19,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
-  findMatchingSchemaKeys,
+  findMatchingSubSchemas,
   findSchemaAtPath,
   followInternalRef,
   isJSONSchemaObject,
@@ -183,7 +183,7 @@ export function generateConfiguredInput({
 
 /**
  * Returns all paths in a server's tools' inputSchemas that match the schema for the specified mimeType.
- * @returns An array of paths where the schema matches the specified mimeType
+ * @returns A record of paths where the schema matches the specified mimeType
  */
 export function findPathsToConfiguration({
   mcpServer,
@@ -191,10 +191,17 @@ export function findPathsToConfiguration({
 }: {
   mcpServer: MCPServerType;
   mimeType: InternalToolInputMimeType;
-}): string[] {
-  return mcpServer.tools.flatMap((tool) =>
-    tool.inputSchema ? findMatchingSchemaKeys(tool.inputSchema, mimeType) : []
-  );
+}): Record<string, JSONSchema> {
+  let matches: Record<string, JSONSchema> = {};
+  for (const tool of mcpServer.tools) {
+    if (tool.inputSchema) {
+      matches = {
+        ...matches,
+        ...findMatchingSubSchemas(tool.inputSchema, mimeType),
+      };
+    }
+  }
+  return matches;
 }
 
 /**
@@ -361,6 +368,7 @@ export function getMCPServerRequirements(
   requiredStrings: string[];
   requiredNumbers: string[];
   requiredBooleans: string[];
+  requiredEnums: Record<string, string[]>;
   noRequirement: boolean;
 } {
   if (!mcpServerView) {
@@ -371,43 +379,74 @@ export function getMCPServerRequirements(
       requiredStrings: [],
       requiredNumbers: [],
       requiredBooleans: [],
+      requiredEnums: {},
       noRequirement: false,
     };
   }
   const { server } = mcpServerView;
 
   const requiresDataSourceConfiguration =
-    findPathsToConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-    }).length > 0;
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      })
+    ).length > 0;
 
   const requiresTableConfiguration =
-    findPathsToConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
-    }).length > 0;
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
+      })
+    ).length > 0;
 
   const requiresChildAgentConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT,
+      })
+    ).length > 0;
+
+  const requiredStrings = Object.keys(
     findPathsToConfiguration({
       mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT,
-    }).length > 0;
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+    })
+  );
 
-  const requiredStrings = findPathsToConfiguration({
-    mcpServer: server,
-    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-  });
+  const requiredNumbers = Object.keys(
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
+    })
+  );
 
-  const requiredNumbers = findPathsToConfiguration({
-    mcpServer: server,
-    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
-  });
+  const requiredBooleans = Object.keys(
+    findPathsToConfiguration({
+      mcpServer: server,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
+    })
+  );
 
-  const requiredBooleans = findPathsToConfiguration({
-    mcpServer: server,
-    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-  });
+  const requiredEnums = Object.fromEntries(
+    Object.entries(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+      })
+    ).map(([key, schema]) => {
+      const valueProperty = schema.properties?.value;
+      if (!valueProperty || !isJSONSchemaObject(valueProperty)) {
+        return [key, []];
+      }
+      return [
+        key,
+        valueProperty.enum?.filter((v) => typeof v === "string") ?? [],
+      ];
+    })
+  );
 
   return {
     requiresDataSourceConfiguration,
@@ -416,6 +455,7 @@ export function getMCPServerRequirements(
     requiredStrings,
     requiredNumbers,
     requiredBooleans,
+    requiredEnums,
 
     noRequirement:
       !requiresDataSourceConfiguration &&
@@ -423,6 +463,7 @@ export function getMCPServerRequirements(
       !requiresChildAgentConfiguration &&
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
-      requiredBooleans.length === 0,
+      requiredBooleans.length === 0 &&
+      Object.keys(requiredEnums).length === 0,
   };
 }

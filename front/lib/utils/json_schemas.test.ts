@@ -2,7 +2,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
 
-import { findMatchingSchemaKeys } from "./json_schemas";
+import { findMatchingSubSchemas } from "./json_schemas";
 
 describe("JSON Schema Utilities", () => {
   describe("findMatchingSchemaKeys", () => {
@@ -90,7 +90,7 @@ describe("JSON Schema Utilities", () => {
       };
 
       // Look for STRING configuration schema
-      const result = findMatchingSchemaKeys(
+      const result = findMatchingSubSchemas(
         mainSchema,
         INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
       );
@@ -159,7 +159,7 @@ describe("JSON Schema Utilities", () => {
       };
 
       // Look for TABLE configuration schema
-      const result = findMatchingSchemaKeys(
+      const result = findMatchingSubSchemas(
         mainSchema,
         INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
       );
@@ -211,7 +211,7 @@ describe("JSON Schema Utilities", () => {
       };
 
       // Look for CHILD_AGENT configuration schema
-      const result = findMatchingSchemaKeys(
+      const result = findMatchingSubSchemas(
         mainSchema,
         INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
       );
