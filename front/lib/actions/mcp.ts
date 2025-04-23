@@ -163,7 +163,7 @@ function hideFileContentForModel({
   fileId,
   content,
   workspaceId,
-}: AgentMCPActionOutputItem): MCPToolResultContent {
+}: AgentMCPActionOutputItem): MCPToolResultContentType {
   if (
     !fileId ||
     // For tool-generated files, we keep the resource as is.
