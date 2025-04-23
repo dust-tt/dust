@@ -9,6 +9,7 @@ import {
   concurrentExecutor,
   setTimeoutAsync,
 } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types";
 
 const PUBLIC_API_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
@@ -139,6 +140,11 @@ export async function maybeTrackTokenUsageCost(
     },
     { concurrency: 10 }
   );
+
+  // There is a race condition where the run is not created before we emit the event.
+  if (runUsages.length === 0 && dustRunIds.length > 0) {
+    logger.error({ dustRunIds }, "No run usages found for the given run ids");
+  }
 
   // Compute the price for all the runs.
   const runsCost = calculateTokenUsageCost(runUsages.flat());
