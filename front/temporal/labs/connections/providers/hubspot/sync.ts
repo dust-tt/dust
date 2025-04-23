@@ -61,13 +61,27 @@ function createContactSection(contact: Contact, documentId: string): Section {
   };
 }
 
-function createDealSection(deal: Deal, documentId: string): Section {
+async function createDealSection(
+  deal: Deal,
+  documentId: string,
+  hubspotClient: HubspotClient
+): Promise<Section> {
   const props = deal.properties || {};
+
+  // Get all activities
+  const activities = await hubspotClient.getDealActivities(deal.id);
+
+  // Format all properties
+  const propertyEntries = Object.entries(props)
+    .filter(([, value]) => value !== null)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join("\n");
+
   const dealDetails = [
-    props.dealname,
-    props.dealstage && `Stage: ${props.dealstage}`,
-    props.amount && `Amount: ${props.amount}`,
-    props.closedate && `Close Date: ${props.closedate}`,
+    "Deal Details:",
+    propertyEntries,
+    activities.results.length > 0 ? "Activities:" : null,
+    ...activities.results.map((activity) => `Meeting: ${activity.id}`),
   ]
     .filter(Boolean)
     .join("\n");
@@ -108,10 +122,13 @@ function createOrderSection(order: Order, documentId: string): Section {
 
 function createNoteSection(note: Note, documentId: string): Section {
   const props = note.properties || {};
-  const formattedDate = props.hs_createdate
-    ? formatDate(props.hs_createdate)
-    : "Unknown date";
-  const cleanedNoteBody = sanitizeHtml(props.hs_note_body || "Empty note", {
+  const formattedDate =
+    typeof props.hs_createdate === "string"
+      ? formatDate(props.hs_createdate)
+      : "Unknown date";
+  const noteBody =
+    typeof props.hs_note_body === "string" ? props.hs_note_body : "Empty note";
+  const cleanedNoteBody = sanitizeHtml(noteBody, {
     allowedTags: [],
     allowedAttributes: {},
   });
@@ -123,18 +140,19 @@ function createNoteSection(note: Note, documentId: string): Section {
   };
 }
 
-function createCompanySection(
+async function createCompanySection(
   documentId: string,
   company: Company,
   contacts: Contact[],
   deals: Deal[],
   tickets: Ticket[],
   orders: Order[],
-  notes: Note[]
-): Section {
+  notes: Note[],
+  hubspotClient: HubspotClient
+): Promise<Section> {
   const props = company.properties || {};
   const companyDetails = [
-    `Company Name: ${props.name || "Unknown Company"}`,
+    `Company Name: ${typeof props.name === "string" ? props.name : "Unknown Company"}`,
     props.industry && `Industry: ${props.industry}`,
     props.annualrevenue && `Annual Revenue: ${props.annualrevenue}`,
     props.numberofemployees &&
@@ -154,7 +172,7 @@ function createCompanySection(
     props.hs_analytics_source && `Source: ${props.hs_analytics_source}`,
     props.hs_pipeline && `Pipeline: ${props.hs_pipeline}`,
   ]
-    .filter(Boolean)
+    .filter((line) => typeof line === "string")
     .join("\n");
 
   const sections: Section[] = [
@@ -179,7 +197,9 @@ function createCompanySection(
     sections.push({
       prefix: `${documentId}-deals`,
       content: "Deals:",
-      sections: deals.map((deal) => createDealSection(deal, documentId)),
+      sections: await Promise.all(
+        deals.map((deal) => createDealSection(deal, documentId, hubspotClient))
+      ),
     });
   }
 
@@ -211,7 +231,7 @@ function createCompanySection(
 
   return {
     prefix: documentId,
-    content: `Company Summary for ${props.name || "Unknown Company"}`,
+    content: `Company Summary for ${typeof props.name === "string" ? props.name : "Unknown Company"}`,
     sections,
   };
 }
@@ -259,19 +279,21 @@ async function upsertToDustDatasource(
   tickets: Ticket[],
   orders: Order[],
   notes: Note[],
-  portalId: string
+  portalId: string,
+  hubspotClient: HubspotClient
 ): Promise<void> {
   const documentId = `company-${company.id}`;
   const props = company.properties || {};
 
-  const section = createCompanySection(
+  const section = await createCompanySection(
     documentId,
     company,
     contacts,
     deals,
     tickets,
     orders,
-    notes
+    notes,
+    hubspotClient
   );
 
   try {
@@ -410,11 +432,37 @@ export async function syncHubspotConnection(
     // Get recently updated companies
     const filters: HubspotFilter[] = [];
     if (since) {
-      filters.push({
-        propertyName: "hs_lastmodifieddate",
-        operator: "GTE",
-        value: since.toISOString(),
-      });
+      filters.push(
+        {
+          propertyName: "hs_lastmodifieddate",
+          operator: "GTE",
+          value: since.toISOString(),
+        },
+        // Also check for companies with deals modified since last sync
+        {
+          propertyName: "associations.deal.hs_lastmodifieddate",
+          operator: "GTE",
+          value: since.toISOString(),
+        },
+        // Check for companies with contacts modified since last sync
+        {
+          propertyName: "associations.contact.hs_lastmodifieddate",
+          operator: "GTE",
+          value: since.toISOString(),
+        },
+        // Check for companies with notes modified since last sync
+        {
+          propertyName: "notes_last_updated",
+          operator: "GTE",
+          value: since.toISOString(),
+        },
+        // Check for companies with tickets modified since last sync
+        {
+          propertyName: "associations.ticket.hs_lastmodifieddate",
+          operator: "GTE",
+          value: since.toISOString(),
+        }
+      );
     }
 
     const searchResponse = await hubspotClient.searchCompanies({
@@ -475,7 +523,8 @@ export async function syncHubspotConnection(
             tickets,
             orders,
             notes,
-            credentials.portalId
+            credentials.portalId,
+            hubspotClient
           );
         }
       }
@@ -483,13 +532,13 @@ export async function syncHubspotConnection(
       await markSyncCompleted(configuration);
       return new Ok(undefined);
     } catch (error) {
-      const errorMsg = `Error during sync: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `${error instanceof Error ? error.message : String(error)}`;
       logger.error({ error }, errorMsg);
       await markSyncFailed(configuration, errorMsg);
       return new Err(error as Error);
     }
   } catch (error) {
-    const errorMsg = `Unexpected error during sync: ${error instanceof Error ? error.message : String(error)}`;
+    const errorMsg = `${error instanceof Error ? error.message : String(error)}`;
     logger.error({ error }, errorMsg);
     await markSyncFailed(configuration, errorMsg);
     return new Err(error as Error);
