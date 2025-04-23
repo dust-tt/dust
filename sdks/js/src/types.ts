@@ -1,6 +1,6 @@
+import type { JSONSchema7 } from "json-schema";
 import moment from "moment-timezone";
 import { z } from "zod";
-import type { JSONSchema7 } from "json-schema";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 
@@ -748,7 +748,10 @@ export type RetrievalActionPublicType = z.infer<
   typeof RetrievalActionTypeSchema
 >;
 
-const ProcessSchemaPropertySchema = z.union([z.custom<JSONSchema7>(), z.null()]);
+const ProcessSchemaPropertySchema = z.union([
+  z.custom<JSONSchema7>(),
+  z.null(),
+]);
 
 const ProcessActionOutputsSchema = z.object({
   data: z.array(z.unknown()),
@@ -802,6 +805,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "index_private_slack_channel"
   | "labs_connection_hubspot"
   | "labs_connection_linear"
+  | "labs_connection_jira"
   | "labs_salesforce_personal_connections"
   | "labs_trackers"
   | "labs_transcripts"

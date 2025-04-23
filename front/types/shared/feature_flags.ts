@@ -13,6 +13,7 @@ export const WHITELISTABLE_FEATURES = [
   "index_private_slack_channel",
   "labs_connection_hubspot",
   "labs_connection_linear",
+  "labs_connection_jira",
   "labs_salesforce_personal_connections",
   "labs_trackers",
   "labs_transcripts",

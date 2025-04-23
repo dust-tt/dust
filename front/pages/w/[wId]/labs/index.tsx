@@ -5,6 +5,7 @@ import {
   EyeIcon,
   HubspotLogo,
   Icon,
+  JiraLogo,
   LinearLogo,
   Page,
   SalesforceLogo,
@@ -79,6 +80,15 @@ const LABS_CONNECTIONS: LabsConnectionItemType[] = [
     description: "Import Linear issues summaries into Dust.",
     authType: "apiKey",
   },
+  {
+    id: "jira",
+    label: "Jira",
+    featureFlag: "labs_connection_jira",
+    visibleWithoutAccess: false,
+    logo: JiraLogo,
+    description: "Import Jira issues into Dust.",
+    authType: "apiKey",
+  },
 ];
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -121,7 +131,7 @@ const getVisibleConnections = (featureFlags: WhitelistableFeature[]) => {
     (connection) =>
       connection.visibleWithoutAccess ||
       featureFlags.includes(connection.featureFlag)
-  );
+  ).sort((a, b) => a.id.localeCompare(b.id));
 };
 export default function LabsTranscriptsIndex({
   owner,
