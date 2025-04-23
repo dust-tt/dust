@@ -34,6 +34,18 @@ export const createWorkspacePlugin = createPlugin({
         label: "Is Business",
         description: "Is the workspace a business workspace (Pro plan 39€)",
       },
+      planCode: {
+        type: "string",
+        label: "Plan Code",
+        description: "The code of the plan to subscribe the workspace to",
+        required: false,
+      },
+      endDate: {
+        type: "string",
+        label: "End Date (YYYY-MM-DD)",
+        description: "The end date of the subscription",
+        required: false,
+      },
     },
   },
   execute: async (auth, _, args) => {
@@ -54,6 +66,8 @@ export const createWorkspacePlugin = createPlugin({
       name,
       isVerified: enableAutoJoin,
       isBusiness: args.isBusiness,
+      planCode: args.planCode,
+      endDate: args.endDate ? new Date(args.endDate) : null,
     });
 
     const newWorkspaceAuth = await Authenticator.internalAdminForWorkspace(
