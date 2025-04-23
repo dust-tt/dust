@@ -80,7 +80,6 @@ async function createDealSection(
   const dealDetails = [
     "Deal Details:",
     propertyEntries,
-    "",
     activities.results.length > 0 ? "Activities:" : null,
     ...activities.results.map((activity) => `Meeting: ${activity.id}`),
   ]
