@@ -66,7 +66,7 @@ export function AssistantPicker({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-96"
+        className="h-96 w-96"
         align="end"
         mountPortal={mountPortal}
         dropdownHeaders={
