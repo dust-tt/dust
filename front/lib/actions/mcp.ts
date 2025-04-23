@@ -1,4 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
