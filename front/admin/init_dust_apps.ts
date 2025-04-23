@@ -35,6 +35,7 @@ async function main() {
     await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
       workspaceId: w.sId,
       planCode: "FREE_UPGRADED_PLAN",
+      endDate: null,
     });
   }
   const lightWorkspace = renderLightWorkspaceType({ workspace: w });

@@ -76,10 +76,11 @@ async function createTestWorkspaces(
       workspace.sId
     );
 
-    await SubscriptionResource.pokeUpgradeWorkspaceToPlan(
-      authenticator,
-      FREE_UPGRADED_PLAN_CODE
-    );
+    await SubscriptionResource.pokeUpgradeWorkspaceToPlan({
+      auth: authenticator,
+      planCode: FREE_UPGRADED_PLAN_CODE,
+      endDate: null,
+    });
   }
 }
 

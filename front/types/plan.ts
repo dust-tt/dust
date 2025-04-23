@@ -121,6 +121,22 @@ export type EnterpriseUpgradeFormType = t.TypeOf<
   typeof EnterpriseUpgradeFormSchema
 >;
 
+export const FreePlanUpgradeFormSchema = t.type({
+  planCode: NonEmptyString,
+  endDate: t.union([
+    t.refinement(
+      t.string,
+      (s) => /^\d{4}-\d{2}-\d{2}$/.test(s),
+      "YYYY-MM-DD date string"
+    ),
+    t.undefined,
+  ]),
+});
+
+export type FreePlanUpgradeFormType = t.TypeOf<
+  typeof FreePlanUpgradeFormSchema
+>;
+
 export type CheckoutUrlResult = {
   checkoutUrl: string;
   plan: PlanType;
