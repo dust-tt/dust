@@ -215,7 +215,7 @@ export const getObjectByEmail = async (
  */
 export const getContactsByName = async (
   accessToken: string,
-  firstname: string,
+  firstname: string | undefined,
   lastname: string
 ): Promise<SimplePublicObject[]> => {
   const hubspotClient = new Client({ accessToken });
@@ -225,21 +225,26 @@ export const getContactsByName = async (
     await hubspotClient.crm.properties.coreApi.getAll("contacts");
   const propertyNames = properties.results.map((p) => p.name);
 
+  const filters = [
+    {
+      propertyName: "lastname",
+      operator: FilterOperatorEnum.ContainsToken,
+      value: lastname,
+    },
+  ];
+
+  if (firstname) {
+    filters.push({
+      propertyName: "firstname",
+      operator: FilterOperatorEnum.ContainsToken,
+      value: firstname,
+    });
+  }
+
   const contacts = await hubspotClient.crm.contacts.searchApi.doSearch({
     filterGroups: [
       {
-        filters: [
-          {
-            propertyName: "firstname",
-            operator: FilterOperatorEnum.ContainsToken,
-            value: firstname,
-          },
-          {
-            propertyName: "lastname",
-            operator: FilterOperatorEnum.ContainsToken,
-            value: lastname,
-          },
-        ],
+        filters,
       },
     ],
     properties: propertyNames,

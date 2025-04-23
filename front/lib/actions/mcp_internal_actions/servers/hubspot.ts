@@ -33,7 +33,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "get_object_properties",
-    "Get the properties available for an object. If creatableOnly is true (default), only the properties that can be created will be returned (i.e. form fields, not hidden, not calculated fields, value can be modified, and not file uploads).",
+    "Lists all available properties for a Hubspot object. When creatableOnly is true, returns only properties that can be modified through forms (excludes hidden, calculated, read-only and file upload fields).",
     {
       objectType: z.enum(SUPPORTED_OBJECT_TYPES_READ),
       creatableOnly: z.boolean().optional(),
@@ -84,7 +84,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "create_object",
-    "Create a new object in Hubspot",
+    `Creates a new object in Hubspot. Supports ${SUPPORTED_OBJECT_TYPES_WRITE.join(", ")}.`,
     {
       objectType: z.enum(SUPPORTED_OBJECT_TYPES_WRITE),
       properties: z
@@ -139,7 +139,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "update_object",
-    "Update an object in Hubspot",
+    `Updates an existing object in Hubspot. Supports ${SUPPORTED_OBJECT_TYPES_WRITE.join(", ")}.`,
     {
       objectType: z.enum(SUPPORTED_OBJECT_TYPES_WRITE),
       objectId: z.string().describe("The ID of the object to update."),
@@ -195,7 +195,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "get_object_by_id",
-    "Get the information of an object in Hubspot by ID",
+    `Retrieves a Hubspot object using its unique ID. Supports ${SUPPORTED_OBJECT_TYPES_READ.join(", ")}.`,
     {
       objectType: z.enum(SUPPORTED_OBJECT_TYPES_READ),
       objectId: z.string().describe("The ID of the object to get."),
@@ -245,7 +245,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "get_object_by_email",
-    "Get the information of an object in Hubspot by email",
+    `Retrieves a Hubspot object using an email address. Supports ${SUPPORTED_OBJECT_TYPES_READ.join(", ")}.`,
     {
       objectType: z.enum(SUPPORTED_OBJECT_TYPES_READ),
       email: z.string().describe("The email address of the object."),
@@ -294,9 +294,12 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "get_contact_by_name",
-    "Get the information of a contact in Hubspot by name",
+    "Searches for contacts in Hubspot matching a first and last name. May return multiple results.",
     {
-      firstname: z.string().describe("The first name of the contact."),
+      firstname: z
+        .string()
+        .optional()
+        .describe("The first name of the contact (optional)."),
       lastname: z.string().describe("The last name of the contact."),
     },
     async ({ firstname, lastname }) => {
@@ -346,7 +349,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "get_company_by_name",
-    "Get the information of a company in Hubspot by name",
+    "Searches for companies in Hubspot matching a name. May return multiple results.",
     {
       name: z.string().describe("The name of the company."),
     },
