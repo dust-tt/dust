@@ -1,13 +1,13 @@
 import type { Client } from "@temporalio/client";
+import type { LoggerOptions } from "pino";
+import type pino from "pino";
 import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
-import logger from "@app/logger/logger";
 import { getNotionWorkflowId } from "@app/types";
 import { withRetries } from "@app/types";
-import pino, { LoggerOptions } from "pino";
 
 interface NotionConnector {
   id: number;
