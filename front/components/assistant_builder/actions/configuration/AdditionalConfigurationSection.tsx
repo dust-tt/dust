@@ -285,7 +285,7 @@ export const AdditionalConfigurationSection: React.FC<
     () => groupKeysByPrefix(requiredBooleans),
     [requiredBooleans]
   );
-  const groupedEnumsByPrefix = useMemo(() => {
+  const groupedEnums = useMemo(() => {
     const groups: Record<string, Record<string, string[]>> = {};
     Object.entries(requiredEnums).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
@@ -304,12 +304,10 @@ export const AdditionalConfigurationSection: React.FC<
     Object.keys(groupedStrings).forEach((prefix) => prefixSet.add(prefix));
     Object.keys(groupedNumbers).forEach((prefix) => prefixSet.add(prefix));
     Object.keys(groupedBooleans).forEach((prefix) => prefixSet.add(prefix));
-    Object.keys(groupedEnumsByPrefix).forEach((prefix) =>
-      prefixSet.add(prefix)
-    );
+    Object.keys(groupedEnums).forEach((prefix) => prefixSet.add(prefix));
 
     return Array.from(prefixSet).sort();
-  }, [groupedStrings, groupedNumbers, groupedBooleans, groupedEnumsByPrefix]);
+  }, [groupedStrings, groupedNumbers, groupedBooleans, groupedEnums]);
 
   const hasConfiguration =
     Object.keys(requiredStrings).length > 0 ||
@@ -340,7 +338,7 @@ export const AdditionalConfigurationSection: React.FC<
           requiredStrings={groupedStrings[prefix] || []}
           requiredNumbers={groupedNumbers[prefix] || []}
           requiredBooleans={groupedBooleans[prefix] || []}
-          requiredEnums={groupedEnumsByPrefix[prefix] || {}}
+          requiredEnums={groupedEnums[prefix] || {}}
           additionalConfiguration={additionalConfiguration}
           onConfigUpdate={onConfigUpdate}
         />
