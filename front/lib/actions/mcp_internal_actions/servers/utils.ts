@@ -22,7 +22,7 @@ import type {
 import { Err, Ok } from "@app/types";
 
 export async function fetchAgentDataSourceConfiguration(
-  dataSourceConfiguration: DataSourcesToolConfigurationType[0]
+  dataSourceConfiguration: DataSourcesToolConfigurationType[number]
 ): Promise<Result<AgentDataSourceConfiguration, Error>> {
   const match = dataSourceConfiguration.uri.match(
     DATA_SOURCE_CONFIGURATION_URI_PATTERN
@@ -141,10 +141,11 @@ type CoreSearchArgs = {
   view_filter: CoreAPISearchFilter;
   dataSourceView: DataSourceViewType;
 };
+
 // TODO(mcp): update to fetch multiple uris at once.
 export async function getCoreSearchArgs(
   auth: Authenticator,
-  dataSourceConfiguration: DataSourcesToolConfigurationType[0]
+  dataSourceConfiguration: DataSourcesToolConfigurationType[number]
 ): Promise<Result<CoreSearchArgs, Error>> {
   const r = await fetchAgentDataSourceConfiguration(dataSourceConfiguration);
 

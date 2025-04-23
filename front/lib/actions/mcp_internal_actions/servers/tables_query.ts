@@ -6,11 +6,8 @@ import {
   generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
-import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
-import {
-  ConfigurableToolInputSchemas,
-  isTablesToolConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -93,7 +90,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "tables_query",
   version: "1.0.0",
   description: "Tables, Spreadsheets, Notion DBs (quantitative).",
-  icon: "GithubLogo",
+  icon: "ActionTableIcon",
   authorization: null,
 };
 
@@ -114,13 +111,6 @@ function createServer(
     async ({ tables }) => {
       if (!agentLoopContext) {
         throw new Error("Unreachable: missing agentLoopContext.");
-      }
-
-      if (!isTablesToolConfiguration(tables)) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "Invalid table configurations" }],
-        };
       }
 
       const owner = auth.getNonNullableWorkspace();
@@ -294,10 +284,6 @@ function createServer(
             return makeMCPToolTextError(getTablesQueryError(e.error).message);
           }
 
-          if (event.content.block_name === "MODEL_OUTPUT") {
-            // TODO(mcp): if we stream events, here we can yield an event with the model output.
-          }
-
           if (event.content.block_name === "OUTPUT" && e.value) {
             output = JSON.parse(e.value as string);
           }
@@ -309,9 +295,29 @@ function createServer(
         unknown
       >;
 
-      const content: MCPToolResultContent[] = [
-        { type: "text", text: JSON.stringify(sanitizedOutput) },
-      ];
+      const content: MCPToolResultContentType[] = [];
+
+      if (typeof output?.thinking === "string") {
+        content.push({
+          type: "resource",
+          resource: {
+            text: output.thinking,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.THINKING,
+            uri: "",
+          },
+        });
+      }
+
+      if (typeof output?.query === "string") {
+        content.push({
+          type: "resource",
+          resource: {
+            text: output.query,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.SQL_QUERY,
+            uri: "",
+          },
+        });
+      }
 
       const rawResults =
         "results" in sanitizedOutput ? sanitizedOutput.results : [];

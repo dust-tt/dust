@@ -185,26 +185,26 @@ function generateToolMimeTypes<
   category: P;
   resourceTypes: T;
 }): {
-  [K in T[number]]: `application/vnd.dust.${Lowercase<P>}.${Lowercase<
-    UnderscoreToDash<K>
-  >}`;
+  [K in T[number]]: `application/vnd.dust.${Lowercase<
+    UnderscoreToDash<P>
+  >}.${Lowercase<UnderscoreToDash<K>>}`;
 } {
   return resourceTypes.reduce(
     (acc, s) => ({
       ...acc,
-      [s]: `application/vnd.dust.${category.toLowerCase()}.${s
+      [s]: `application/vnd.dust.${category
         .replace(/_/g, "-")
-        .toLowerCase()}`,
+        .toLowerCase()}.${s.replace(/_/g, "-").toLowerCase()}`,
     }),
     {} as {
-      [K in T[number]]: `application/vnd.dust.${Lowercase<P>}.${Lowercase<
-        UnderscoreToDash<K>
-      >}`;
+      [K in T[number]]: `application/vnd.dust.${Lowercase<
+        UnderscoreToDash<P>
+      >}.${Lowercase<UnderscoreToDash<K>>}`;
     }
   );
 }
 
-const TOOL_INPUT_MIME_TYPES = {
+const TOOL_MIME_TYPES = {
   TOOL_INPUT: generateToolMimeTypes({
     category: "TOOL_INPUT",
     resourceTypes: [
@@ -218,13 +218,19 @@ const TOOL_INPUT_MIME_TYPES = {
   }),
   TOOL_OUTPUT: generateToolMimeTypes({
     category: "TOOL_OUTPUT",
-    resourceTypes: ["FILE"],
+    resourceTypes: [
+      "DATA_SOURCE_SEARCH_QUERY",
+      "DATA_SOURCE_SEARCH_RESULT",
+      "FILE",
+      "THINKING",
+      "SQL_QUERY",
+    ],
   }),
 };
 
 export const INTERNAL_MIME_TYPES = {
   ...CONTENT_NODE_MIME_TYPES,
-  ...TOOL_INPUT_MIME_TYPES,
+  ...TOOL_MIME_TYPES,
 };
 
 export const INTERNAL_MIME_TYPES_VALUES = Object.values(
