@@ -95,7 +95,7 @@ export type PlatformMCPToolConfigurationType = Omit<
   inputSchema: JSONSchema;
   isDefault: boolean;
   permission: MCPToolStakeLevelType;
-  toolServerId?: string;
+  toolServerId: string;
 };
 
 export type LocalMCPToolConfigurationType = Omit<

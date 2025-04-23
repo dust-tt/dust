@@ -10,6 +10,7 @@ import type {
 } from "@app/lib/actions/conversation/include_file";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type {
+  LocalMCPServerConfigurationType,
   MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
@@ -169,7 +170,11 @@ export function isMCPServerConfiguration(
 export function isPlatformMCPServerConfiguration(
   arg: unknown
 ): arg is PlatformMCPServerConfigurationType {
-  return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
+  return (
+    isMCPServerConfiguration(arg) &&
+    (arg as PlatformMCPServerConfigurationType).type === "mcp_server_configuration" &&
+    (arg as PlatformMCPServerConfigurationType).mcpServerViewId !== undefined
+  );
 }
 
 export function isWebsearchActionType(

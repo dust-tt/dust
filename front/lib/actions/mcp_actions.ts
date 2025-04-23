@@ -41,7 +41,12 @@ import {
   isPlatformMCPServerConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { MCPToolType, MCPToolWithStakeLevelType } from "@app/lib/api/mcp";
+import type {
+  MCPToolType,
+  MCPToolWithStakeLevelType,
+  PlatformMCPToolTypeWithStakeLevel,
+  LocalMCPToolTypeWithStakeLevel,
+} from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -49,8 +54,15 @@ import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_m
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
+import type { Result, SupportedFileContentType } from "@app/types";
+import {
+  assertNever,
+  Err,
+  FILE_FORMATS,
+  normalizeError,
+  Ok,
+  slugify,
+} from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
 
@@ -60,7 +72,7 @@ const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
-  tools: MCPToolWithStakeLevelType[]
+  tools: PlatformMCPToolTypeWithStakeLevel[]
 ): PlatformMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
@@ -82,7 +94,7 @@ function makePlatformMCPToolConfigurations(
 
 function makeLocalMCPToolConfigurations(
   config: LocalMCPServerConfigurationType,
-  tools: MCPToolType[]
+  tools: LocalMCPToolTypeWithStakeLevel[]
 ): LocalMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
@@ -101,18 +113,25 @@ type MCPToolConfigurationResult<T> =
     ? PlatformMCPToolConfigurationType[]
     : LocalMCPToolConfigurationType[];
 
-function makeMCPToolConfigurations<T extends MCPServerConfigurationType>({
-  config,
-  tools,
-}: {
-  config: T;
-  tools: MCPToolWithStakeLevelType[];
-}): MCPToolConfigurationResult<T> {
+type MCPToolTypeWithStakeLevel<T extends MCPServerConfigurationType> =
+  T extends PlatformMCPServerConfigurationType
+    ? PlatformMCPToolTypeWithStakeLevel[]
+    : LocalMCPToolTypeWithStakeLevel[];
+
+function makeMCPToolConfigurations<T extends MCPServerConfigurationType>(
+  config: T,
+  tools: MCPToolTypeWithStakeLevel<T>
+): MCPToolConfigurationResult<T> {
+  if ("mcpServerViewId" in config) {
+    return makePlatformMCPToolConfigurations(config, tools) as MCPToolConfigurationResult<T>;
+  }
+
   if (isPlatformMCPServerConfiguration(config)) {
-    return makePlatformMCPToolConfigurations(
-      config,
-      tools
-    ) as MCPToolConfigurationResult<T>;
+    const a = config as PlatformMCPServerConfigurationType;
+    const b = tools as MCPToolTypeWithStakeLevel<
+      PlatformMCPServerConfigurationType
+    >;
+    return makePlatformMCPToolConfigurations(config, b) as MCPToolConfigurationResult<T>;
   }
 
   return makeLocalMCPToolConfigurations(
