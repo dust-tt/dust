@@ -19,7 +19,7 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { assertNever, slugify } from "@app/types";
+import { asDisplayName, assertNever, slugify } from "@app/types";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
