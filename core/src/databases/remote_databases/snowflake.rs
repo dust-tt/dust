@@ -154,8 +154,11 @@ impl SnowflakeRemoteDatabase {
         let auth_method = if connection_details.authenticator == Some("SNOWFLAKE_JWT".to_string()) {
             if let Some(private_key) = &connection_details.private_key {
                 SnowflakeAuthMethod::KeyPair {
-                    private_key: private_key.clone(),
-                    passphrase: connection_details.private_key_passphrase.clone(),
+                    encrypted_pem: private_key.clone(),
+                    password: connection_details.private_key_passphrase
+                        .as_ref()
+                        .map(|s| s.as_bytes().to_vec())
+                        .unwrap_or_default(),
                 }
             } else {
                 return Err(QueryDatabaseError::GenericError(
