@@ -371,6 +371,11 @@ export function hasErrorActionMCP(
         return `Please fill in all required numeric fields.`;
       }
     }
+    for (const key in requirements.requiredEnums) {
+      if (!(key in action.configuration.additionalConfiguration)) {
+        return `Please fill in all required fields.`;
+      }
+    }
 
     return null;
   }
