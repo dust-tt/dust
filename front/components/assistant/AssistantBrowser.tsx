@@ -23,6 +23,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
+import React from "react";
 
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
@@ -50,6 +51,40 @@ const ALL_AGENTS_TABS = [
 ] as const;
 
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
+
+type AgentGridProps = {
+  agents: LightAgentConfigurationType[];
+  handleAssistantClick: (agent: LightAgentConfigurationType) => void;
+  handleMoreClick: (agent: LightAgentConfigurationType) => void;
+};
+export const AgentGrid = ({
+  agents,
+  handleAssistantClick,
+  handleMoreClick,
+}: AgentGridProps) => {
+  return (
+    <CardGrid>
+      {agents.map((agent) => (
+        <AssistantCard
+          key={agent.sId}
+          title={agent.name}
+          pictureUrl={agent.pictureUrl}
+          subtitle={agent.lastAuthors?.join(", ") ?? ""}
+          description={agent.description}
+          onClick={() => handleAssistantClick(agent)}
+          action={
+            <AssistantCardMore
+              onClick={(e: Event) => {
+                e.stopPropagation();
+                handleMoreClick(agent);
+              }}
+            />
+          }
+        />
+      ))}
+    </CardGrid>
+  );
+};
 
 interface AssistantBrowserProps {
   owner: WorkspaceType;
@@ -98,32 +133,18 @@ export function AssistantBrowser({
       favorites: allAgents.filter((a) => a.userFavorite),
       editable_by_me: allAgents.filter(
         (a) =>
-          isAdmin(owner) || a.scope === "published" || a.scope === "private" // TODO: add/replace with editors group check
+          isAdmin(owner) ||
+          (a.scope === "published" && isBuilder) ||
+          a.scope === "private" // TODO: add/replace with editors group check
       ),
       most_popular: allAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(
           (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
-        ),
+        )
+        .slice(0, 6),
     };
-  }, [isLoading, agents, selectedTags, owner]);
-
-  // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
-  const visibleTabs = useMemo(() => {
-    return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
-  }, [agentsByTab]);
-
-  // check the query string for the tab to show, the query param to look for is called "selectedTab"
-  // if it's not found, show the first tab with agents
-  const viewTab = useMemo(() => {
-    return selectedTab &&
-      isValidTab(
-        selectedTab,
-        visibleTabs.map((tab) => tab.id)
-      )
-      ? selectedTab
-      : visibleTabs[0]?.id;
-  }, [selectedTab, visibleTabs]);
+  }, [isLoading, agents, selectedTags, owner, isBuilder]);
 
   const { filteredAgents, filteredTags, uniqueTags } = useMemo(() => {
     const tags = agents.flatMap((a) => a.tags);
@@ -158,6 +179,30 @@ export function AssistantBrowser({
 
     return { filteredAgents, filteredTags, uniqueTags };
   }, [agents, assistantSearch]);
+
+  // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
+  const visibleTabs = useMemo(() => {
+    return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
+  }, [agentsByTab]);
+  // check the query string for the tab to show, the query param to look for is called "selectedTab"
+  // if it's not found, show the first tab with agents
+  const viewTab = useMemo(() => {
+    return selectedTab &&
+      isValidTab(
+        selectedTab,
+        visibleTabs.map((tab) => tab.id)
+      )
+      ? selectedTab
+      : visibleTabs[0]?.id;
+  }, [selectedTab, visibleTabs]);
+
+  const handleMoreClick = (agent: LightAgentConfigurationType) => {
+    setQueryParam(router, "assistantDetails", agent.sId);
+  };
+
+  const untaggedAgents = useMemo(() => {
+    return agentsByTab.all.filter((a) => a.tags.length === 0);
+  }, [agentsByTab]);
 
   return (
     <>
@@ -283,7 +328,7 @@ export function AssistantBrowser({
         </ScrollArea>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="mb-2 flex flex-wrap gap-2">
         {uniqueTags.map((tag) => (
           <Button
             size="xs"
@@ -301,33 +346,53 @@ export function AssistantBrowser({
         ))}
       </div>
 
-      {!viewTab && (
-        <div className="my-12 text-center text-sm text-muted-foreground">
-          No agents found. Try adjusting your search criteria.
-        </div>
-      )}
-
-      {viewTab && (
-        <CardGrid className="mb-12">
-          {agentsByTab[viewTab].map((agent) => (
-            <AssistantCard
-              key={agent.sId}
-              title={agent.name}
-              pictureUrl={agent.pictureUrl}
-              subtitle={agent.lastAuthors?.join(", ") ?? ""}
-              description={agent.description}
-              onClick={() => handleAssistantClick(agent)}
-              action={
-                <AssistantCardMore
-                  onClick={(e: Event) => {
-                    e.stopPropagation();
-                    setQueryParam(router, "assistantDetails", agent.sId);
-                  }}
+      {viewTab === "all" ? (
+        <div className="flex flex-col gap-4">
+          {selectedTags.length === 0 && (
+            <>
+              <span className="heading-base">Most popular</span>
+              <AgentGrid
+                agents={agentsByTab.most_popular}
+                handleAssistantClick={handleAssistantClick}
+                handleMoreClick={handleMoreClick}
+              />
+            </>
+          )}
+          {uniqueTags
+            .filter(
+              (t) => selectedTags.length === 0 || selectedTags.includes(t.sId)
+            )
+            .map((tag) => (
+              <React.Fragment key={tag.sId}>
+                <span className="heading-base">{tag.name}</span>
+                <AgentGrid
+                  agents={agentsByTab.all.filter((a) =>
+                    a.tags.some((t) => t.sId === tag.sId)
+                  )}
+                  handleAssistantClick={handleAssistantClick}
+                  handleMoreClick={handleMoreClick}
                 />
-              }
-            />
-          ))}
-        </CardGrid>
+              </React.Fragment>
+            ))}
+          {selectedTags.length === 0 && untaggedAgents.length > 0 && (
+            <React.Fragment>
+              <span className="heading-base">Others</span>
+              <AgentGrid
+                agents={untaggedAgents}
+                handleAssistantClick={handleAssistantClick}
+                handleMoreClick={handleMoreClick}
+              />
+            </React.Fragment>
+          )}
+        </div>
+      ) : (
+        viewTab && (
+          <AgentGrid
+            agents={agentsByTab[viewTab]}
+            handleAssistantClick={handleAssistantClick}
+            handleMoreClick={handleMoreClick}
+          />
+        )
       )}
     </>
   );
