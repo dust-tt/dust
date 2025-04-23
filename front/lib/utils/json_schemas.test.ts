@@ -94,7 +94,7 @@ describe("JSON Schema Utilities", () => {
         mainSchema,
         INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
       );
-      expect(result).toContain("config.userPreferences.theme");
+      expect(Object.keys(result)).toContain("config.userPreferences.theme");
     });
 
     it("should return array item keys when array items match the target schema", () => {
@@ -163,7 +163,9 @@ describe("JSON Schema Utilities", () => {
         mainSchema,
         INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
       );
-      expect(result).toContain("dataSourceConfigs.items.settings.tables");
+      expect(Object.keys(result)).toContain(
+        "dataSourceConfigs.items.settings.tables"
+      );
     });
 
     it("should handle complex nested schemas with CHILD_AGENT configuration", () => {
@@ -215,7 +217,9 @@ describe("JSON Schema Utilities", () => {
         mainSchema,
         INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
       );
-      expect(result).toContain("workflow.steps.items.action.executor");
+      expect(Object.keys(result)).toContain(
+        "workflow.steps.items.action.executor"
+      );
     });
   });
 });
