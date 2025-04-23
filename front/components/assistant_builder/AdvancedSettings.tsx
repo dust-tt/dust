@@ -57,15 +57,6 @@ function isBestPerformingModel(modelId: ModelIdType) {
   return BEST_PERFORMING_MODELS_ID.includes(modelId);
 }
 
-const getCreativityLevelFromTemperature = (temperature: number) => {
-  const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
-    Math.abs(curr.value - temperature) < Math.abs(prev.value - temperature)
-      ? curr
-      : prev
-  );
-  return closest;
-};
-
 const isInvalidJson = (value: string | null | undefined): boolean => {
   if (!value) {
     return false;
@@ -197,11 +188,7 @@ export function AdvancedSettings({
             <DropdownMenuSubTrigger label="Creativity level" />
             <DropdownMenuSubContent>
               <DropdownMenuRadioGroup
-                value={
-                  getCreativityLevelFromTemperature(
-                    generationSettings?.temperature
-                  ).label
-                }
+                value={generationSettings?.temperature.toString()}
               >
                 {CREATIVITY_LEVELS.map(({ label, value }) => (
                   <DropdownMenuRadioItem

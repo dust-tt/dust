@@ -39,7 +39,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
   itInTransaction("should delete a server view", async (t) => {
     const { req, res, workspace } = await setupTest(t, "admin", "DELETE");
 
-    const regularSpace = await SpaceFactory.regular(workspace, t);
+    const globalSpace = await SpaceFactory.global(workspace, t);
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
@@ -58,10 +58,10 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
     const serverView = await MCPServerViewFactory.create(
       workspace,
       internalServer.id,
-      regularSpace
+      globalSpace
     );
     req.query.svId = serverView.sId;
-    req.query.spaceId = regularSpace.sId;
+    req.query.spaceId = globalSpace.sId;
 
     await handler(req, res);
 
@@ -76,6 +76,48 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 
     expect(deletedServerView.isErr()).toBe(true);
   });
+
+  itInTransaction(
+    "should return 403 when user is not authorized to delete a server view",
+    async (t) => {
+      const { req, res, workspace } = await setupTest(t, "admin", "DELETE");
+
+      const regularSpace = await SpaceFactory.regular(workspace, t);
+
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      await FeatureFlagFactory.basic(
+        INTERNAL_MCP_SERVERS["authentication_debugger"]
+          .flag as WhitelistableFeature,
+        workspace
+      );
+
+      const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+        auth,
+        "authentication_debugger",
+        t
+      );
+
+      const serverView = await MCPServerViewFactory.create(
+        workspace,
+        internalServer.id,
+        regularSpace
+      );
+      req.query.svId = serverView.sId;
+      req.query.spaceId = regularSpace.sId;
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(403);
+      const responseData = res._getJSONData();
+      expect(responseData).toHaveProperty("error");
+      expect(responseData.error).toHaveProperty("type", "mcp_auth_error");
+      expect(responseData.error).toHaveProperty(
+        "message",
+        "User is not authorized to remove tools from a space."
+      );
+    }
+  );
 
   itInTransaction(
     "should return 404 when server view doesn't exist",
