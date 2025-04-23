@@ -102,8 +102,10 @@ export const createWorkspacePlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "textWithLink",
       value: `Workspace created (id: ${workspace.sId}) and invitation sent to ${result.email}.`,
+      link: `poke/${workspace.sId}`,
+      linkText: "View Workspace",
     });
   },
 });
