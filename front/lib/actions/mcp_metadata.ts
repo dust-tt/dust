@@ -145,7 +145,9 @@ export const connectToMCPServer = async (
             const req = {
               requestInit: {
                 headers: {
-                  ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                  ...(accessToken
+                    ? { Authorization: `Bearer ${accessToken}` }
+                    : {}),
                 },
               },
             };
