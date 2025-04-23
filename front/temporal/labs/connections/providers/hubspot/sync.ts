@@ -533,13 +533,13 @@ export async function syncHubspotConnection(
       await markSyncCompleted(configuration);
       return new Ok(undefined);
     } catch (error) {
-      const errorMsg = `Error during sync: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `${error instanceof Error ? error.message : String(error)}`;
       logger.error({ error }, errorMsg);
       await markSyncFailed(configuration, errorMsg);
       return new Err(error as Error);
     }
   } catch (error) {
-    const errorMsg = `Unexpected error during sync: ${error instanceof Error ? error.message : String(error)}`;
+    const errorMsg = `${error instanceof Error ? error.message : String(error)}`;
     logger.error({ error }, errorMsg);
     await markSyncFailed(configuration, errorMsg);
     return new Err(error as Error);
