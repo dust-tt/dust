@@ -72,7 +72,10 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
   });
 }
 
-async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
+async function destroyMessageRelatedResources(
+  messageIds: Array<ModelId>,
+  softDeleteAndEmptyContent: boolean
+) {
   await MessageReaction.destroy({
     where: { messageId: messageIds },
   });
@@ -80,9 +83,11 @@ async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
     where: { messageId: messageIds },
   });
   // TODO: We should also destroy the parent message
-  await Message.destroy({
-    where: { id: messageIds },
-  });
+  if (!softDeleteAndEmptyContent) {
+    await Message.destroy({
+      where: { id: messageIds },
+    });
+  }
 }
 
 async function destroyContentFragments(
@@ -247,7 +252,7 @@ export async function destroyConversation(
       conversationId: conversation.sId,
     });
 
-    await destroyMessageRelatedResources(messageIds);
+    await destroyMessageRelatedResources(messageIds, softDeleteAndEmptyContent);
   }
 
   await destroyConversationDataSource(auth, { conversation });
