@@ -251,29 +251,24 @@ export function MCPAction({
       {/* Server selection */}
       {!selectedMCPServerView?.server.isDefault &&
         (isEditing ? (
-          <div>
-            <div className="text-sm text-foreground dark:text-foreground-night">
-              <div>{selectedMCPServerView?.server.description}</div>
+          <div className="text-sm text-foreground dark:text-foreground-night">
+            <div>{selectedMCPServerView?.server.description}</div>
 
-              {isDefaultMCPServer ? (
-                ""
-              ) : (
-                <div>
-                  Available to you via{" "}
-                  <b>
-                    {
-                      allowedSpaces.find(
-                        (space) => space.sId === selectedMCPServerView?.spaceId
-                      )?.name
-                    }
-                  </b>{" "}
-                  space.
-                </div>
-              )}
-            </div>
-            <div className="pt-2">
-              <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
-            </div>
+            {isDefaultMCPServer ? (
+              ""
+            ) : (
+              <div>
+                Available to you via{" "}
+                <b>
+                  {
+                    allowedSpaces.find(
+                      (space) => space.sId === selectedMCPServerView?.spaceId
+                    )?.name
+                  }
+                </b>{" "}
+                space.
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -287,7 +282,9 @@ export function MCPAction({
           </>
         ))}
       {/* List of tools */}
-      <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
+      {selectedMCPServerView && (
+        <MCPToolsList tools={selectedMCPServerView.server.tools} />
+      )}
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
