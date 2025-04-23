@@ -43,13 +43,14 @@ const CompanyDetailsResponse = t.type({
   properties: t.record(t.string, t.unknown),
 });
 
-const AssociationResult = t.type({
-  id: t.string,
-});
-
 const AssociationsResponse = t.type({
-  results: t.array(AssociationResult),
+  results: t.array(
+    t.type({
+      id: t.string,
+    })
+  ),
 });
+export type AssociationsResponseType = t.TypeOf<typeof AssociationsResponse>;
 
 const ContactResponse = t.type({
   results: t.array(ContactCodec),
@@ -94,6 +95,28 @@ const PropertyResponse = t.type({
   ),
 });
 
+const DealSearchResponse = t.type({
+  results: t.array(
+    t.type({
+      id: t.string,
+      properties: t.record(t.string, t.unknown),
+    })
+  ),
+});
+export type DealSearchResponseType = t.TypeOf<typeof DealSearchResponse>;
+
+const ContactSearchResponse = t.type({
+  results: t.array(
+    t.type({
+      id: t.string,
+      properties: t.record(t.string, t.unknown),
+    })
+  ),
+});
+export type ContactSearchResponseType = t.TypeOf<typeof ContactSearchResponse>;
+
+export { AssociationsResponse, ContactSearchResponse, DealSearchResponse };
+
 export class HubspotAPIError extends Error {
   readonly status?: number;
   readonly endpoint: string;
@@ -136,7 +159,7 @@ export class HubspotClient {
 
   constructor(private readonly accessToken: string) {}
 
-  private async makeRequest<T>(
+  async makeRequest<T>(
     endpoint: string,
     codec: t.Type<T>,
     options: RequestInit & { params?: Record<string, unknown> } = {}

@@ -12,7 +12,13 @@ import {
   renderLightWorkspaceType,
 } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { HubspotClient } from "@app/temporal/labs/connections/providers/hubspot/client";
+import type { AssociationsResponseType } from "@app/temporal/labs/connections/providers/hubspot/client";
+import {
+  AssociationsResponse,
+  ContactSearchResponse,
+  DealSearchResponse,
+  HubspotClient,
+} from "@app/temporal/labs/connections/providers/hubspot/client";
 import type {
   Company,
   Contact,
@@ -299,13 +305,13 @@ async function upsertToDustDatasource(
   try {
     const user = await UserResource.fetchByModelId(userId);
     if (!user) {
-      logger.error({ workspaceId }, "User not found");
+      logger.error({ workspaceId }, "[labs-hubspot] User not found");
       return;
     }
 
     const workspace = await getWorkspaceByModelId(workspaceId);
     if (!workspace) {
-      logger.error({ workspaceId }, "Workspace not found");
+      logger.error({ workspaceId }, "[labs-hubspot] Workspace not found");
       return;
     }
 
@@ -322,20 +328,14 @@ async function upsertToDustDatasource(
     );
 
     if (!datasourceView) {
-      logger.error(
-        {},
-        "[processTranscriptActivity] No datasource view found. Stopping."
-      );
+      logger.error({}, "[labs-hubspot] No datasource view found. Stopping.");
       return;
     }
 
     const dataSource = datasourceView.dataSource;
 
     if (!dataSource) {
-      logger.error(
-        {},
-        "[processTranscriptActivity] No datasource found. Stopping."
-      );
+      logger.error({}, "[labs-hubspot] No datasource found. Stopping.");
       return;
     }
 
@@ -362,19 +362,19 @@ async function upsertToDustDatasource(
           companyId: company.id,
           companyName: props.name,
         },
-        `Error upserting company to Dust datasource`
+        `[labs-hubspot] Error upserting company to Dust datasource`
       );
       return;
     }
 
     logger.info(
       { companyId: company.id, companyName: props.name },
-      `Upserted hubspot company to Dust datasource`
+      `[labs-hubspot] Upserted hubspot company to Dust datasource`
     );
   } catch (error) {
     logger.error(
       { error, companyId: company.id, companyName: props.name },
-      `Error upserting company to Dust datasource`
+      `[labs-hubspot] Error upserting company to Dust datasource`
     );
   }
 }
@@ -429,7 +429,6 @@ export async function syncHubspotConnection(
         ? new Date(cursor)
         : new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // Get recently updated companies
     const filters: HubspotFilter[] = [];
     if (since) {
       filters.push(
@@ -438,27 +437,8 @@ export async function syncHubspotConnection(
           operator: "GTE",
           value: since.toISOString(),
         },
-        // Also check for companies with deals modified since last sync
-        {
-          propertyName: "associations.deal.hs_lastmodifieddate",
-          operator: "GTE",
-          value: since.toISOString(),
-        },
-        // Check for companies with contacts modified since last sync
-        {
-          propertyName: "associations.contact.hs_lastmodifieddate",
-          operator: "GTE",
-          value: since.toISOString(),
-        },
-        // Check for companies with notes modified since last sync
         {
           propertyName: "notes_last_updated",
-          operator: "GTE",
-          value: since.toISOString(),
-        },
-        // Check for companies with tickets modified since last sync
-        {
-          propertyName: "associations.ticket.hs_lastmodifieddate",
           operator: "GTE",
           value: since.toISOString(),
         }
@@ -467,10 +447,92 @@ export async function syncHubspotConnection(
 
     const searchResponse = await hubspotClient.searchCompanies({
       filterGroups: filters.length > 0 ? [{ filters }] : [],
-      properties: ["hs_object_id"],
+      properties: ["hs_object_id", "hs_lastmodifieddate", "notes_last_updated"],
       limit: 100,
     });
-    const companyIds = searchResponse.results.map((company) => company.id);
+
+    // Get additional companies that have modified associations
+    const additionalCompanyIds = new Set<string>();
+
+    if (since) {
+      // Get companies with modified deals
+      const modifiedDeals = await hubspotClient.makeRequest(
+        "/crm/v3/objects/deals/search",
+        DealSearchResponse,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            filterGroups: [
+              {
+                filters: [
+                  {
+                    propertyName: "hs_lastmodifieddate",
+                    operator: "GTE",
+                    value: since.toISOString(),
+                  },
+                ],
+              },
+            ],
+            properties: ["hs_object_id"],
+            limit: 100,
+          }),
+        }
+      );
+
+      for (const deal of modifiedDeals.results) {
+        const associations =
+          await hubspotClient.makeRequest<AssociationsResponseType>(
+            `/crm/v3/objects/deals/${deal.id}/associations/companies`,
+            AssociationsResponse,
+            { params: { limit: 100 } }
+          );
+        associations.results.forEach((assoc: { id: string }) =>
+          additionalCompanyIds.add(assoc.id)
+        );
+      }
+
+      // Get companies with modified contacts
+      const modifiedContacts = await hubspotClient.makeRequest(
+        "/crm/v3/objects/contacts/search",
+        ContactSearchResponse,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            filterGroups: [
+              {
+                filters: [
+                  {
+                    propertyName: "hs_lastmodifieddate",
+                    operator: "GTE",
+                    value: since.toISOString(),
+                  },
+                ],
+              },
+            ],
+            properties: ["hs_object_id"],
+            limit: 100,
+          }),
+        }
+      );
+
+      for (const contact of modifiedContacts.results) {
+        const associations =
+          await hubspotClient.makeRequest<AssociationsResponseType>(
+            `/crm/v3/objects/contacts/${contact.id}/associations/companies`,
+            AssociationsResponse,
+            { params: { limit: 100 } }
+          );
+        associations.results.forEach((assoc: { id: string }) =>
+          additionalCompanyIds.add(assoc.id)
+        );
+      }
+    }
+
+    // Combine company IDs from direct search and associations
+    const companyIds = [
+      ...searchResponse.results.map((company) => company.id),
+      ...Array.from(additionalCompanyIds),
+    ];
 
     logger.info(
       { count: companyIds.length, isFullSync, since },
