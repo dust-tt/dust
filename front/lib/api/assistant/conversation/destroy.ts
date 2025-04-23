@@ -157,8 +157,10 @@ export async function destroyConversation(
   auth: Authenticator,
   {
     conversationId,
+    softDeleteAndEmptyContent = false,
   }: {
     conversationId: string;
+    softDeleteAndEmptyContent?: boolean;
   }
 ) {
   const workspace = auth.getNonNullableWorkspace();
@@ -204,18 +206,41 @@ export async function destroyConversation(
 
     await destroyActionsRelatedResources(agentMessageIds);
 
-    await UserMessage.destroy({
-      where: { id: userMessageIds },
-    });
-    await AgentMessageContent.destroy({
-      where: { agentMessageId: agentMessageIds },
-    });
+    if (softDeleteAndEmptyContent) {
+      await UserMessage.update(
+        {
+          content: "DELETED CONTENT - DATA RETENTION POLICY",
+        },
+        {
+          where: { id: userMessageIds },
+        }
+      );
+      await AgentMessageContent.update(
+        {
+          content: "DELETED CONTENT - DATA RETENTION POLICY",
+        },
+        {
+          where: { agentMessageId: agentMessageIds },
+        }
+      );
+    } else {
+      await UserMessage.destroy({
+        where: { id: userMessageIds },
+      });
+      await AgentMessageContent.destroy({
+        where: { agentMessageId: agentMessageIds },
+      });
+    }
+
     await AgentMessageFeedback.destroy({
       where: { agentMessageId: agentMessageIds },
     });
-    await AgentMessage.destroy({
-      where: { id: agentMessageIds },
-    });
+
+    if (!softDeleteAndEmptyContent) {
+      await AgentMessage.destroy({
+        where: { id: agentMessageIds },
+      });
+    }
 
     await destroyContentFragments(messageAndContentFragmentIds, {
       workspaceId: workspace.sId,
@@ -232,6 +257,11 @@ export async function destroyConversation(
     includeTest: true,
   });
   if (c) {
-    await c.delete(auth);
+    if (softDeleteAndEmptyContent) {
+      const title = "DELETED CONTENT - DATA RETENTION POLICY";
+      await c.updateVisiblity("deleted", title);
+    } else {
+      await c.delete(auth);
+    }
   }
 }

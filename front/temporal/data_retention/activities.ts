@@ -80,7 +80,11 @@ export async function purgeConversationsBatchActivity({
 
     await concurrentExecutor(
       conversations,
-      async (c) => destroyConversation(auth, { conversationId: c.sId }),
+      async (c) =>
+        destroyConversation(auth, {
+          conversationId: c.sId,
+          softDeleteAndEmptyContent: true,
+        }),
       {
         concurrency: 4,
       }
