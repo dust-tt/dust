@@ -14,7 +14,6 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import assert from "assert";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, {
@@ -62,10 +61,8 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useEditors } from "@app/lib/swr/editors";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
-import { useUser } from "@app/lib/swr/user";
 import type {
   AgentConfigurationScope,
   AssistantBuilderRightPanelStatus,
@@ -96,7 +93,6 @@ export default function AssistantBuilder({
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
-  const { user, isUserLoading, isUserError } = useUser();
 
   const { killSwitches } = useKillSwitches();
   const { models, reasoningModels } = useModels({ owner });
@@ -146,7 +142,6 @@ export default function AssistantBuilder({
           visualizationEnabled: initialBuilderState.visualizationEnabled,
           templateId: initialBuilderState.templateId,
           tags: initialBuilderState.tags,
-          editors: initialBuilderState.editors,
         }
       : {
           ...getDefaultAssistantState(),
@@ -159,8 +154,6 @@ export default function AssistantBuilder({
           },
         }
   );
-
-  const { mutateEditors } = useEditors({ owner, agentConfigurationId });
 
   const [pendingAction, setPendingAction] =
     useState<AssistantBuilderPendingAction>({
@@ -221,32 +214,6 @@ export default function AssistantBuilder({
       triggerPreviewButtonAnimation();
     }
   }, [isBuilderStateEmpty]);
-
-  // If agent is created, the user creating it should be added to the builder
-  // editors list. If not, then the user should be in this list.
-  useEffect(() => {
-    if (isUserError || isUserLoading || !user) {
-      return;
-    }
-    if (agentConfigurationId && initialBuilderState?.editors) {
-      assert(
-        initialBuilderState.editors.some((m) => m.sId === user.sId),
-        "Unreachable: User is not in editors"
-      );
-    }
-    if (!agentConfigurationId) {
-      setBuilderState((state) => ({
-        ...state,
-        editors: [...(state.editors ?? []), user],
-      }));
-    }
-  }, [
-    isUserLoading,
-    isUserError,
-    user,
-    agentConfigurationId,
-    initialBuilderState,
-  ]);
 
   const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {
     setRightPanelStatus({
@@ -398,7 +365,6 @@ export default function AssistantBuilder({
           type: "error",
         });
       } else {
-        void mutateEditors();
         if (slackDataSource) {
           await mutateSlackChannels();
         }
@@ -550,7 +516,6 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         assistantHandleError={assistantHandleError}
                         descriptionError={descriptionError}
-                        currentUser={user}
                       />
                     );
                   default:

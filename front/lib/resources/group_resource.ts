@@ -25,7 +25,6 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
-  AgentConfigurationType,
   GroupKind,
   GroupType,
   LightAgentConfigurationType,
@@ -398,7 +397,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async fetchByAgentConfiguration(
     auth: Authenticator,
-    agentConfiguration: AgentConfiguration | AgentConfigurationType
+    agentConfiguration: AgentConfiguration
   ): Promise<Result<GroupResource, DustError>> {
     const workspace = auth.getNonNullableWorkspace();
     const groupAgent = await GroupAgentModel.findOne({
