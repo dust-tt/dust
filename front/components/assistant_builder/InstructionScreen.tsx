@@ -6,7 +6,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Page,
-  ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
 import { CharacterCount } from "@tiptap/extension-character-count";
@@ -401,17 +400,15 @@ function PromptHistory({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <ScrollArea className="flex max-h-72 flex-col">
-          {history.map((config) => (
-            <DropdownMenuItem
-              key={config.version}
-              label={getStringRepresentation(config)}
-              onClick={() => {
-                onConfigChange(config);
-              }}
-            />
-          ))}
-        </ScrollArea>
+        {history.map((config) => (
+          <DropdownMenuItem
+            key={config.version}
+            label={getStringRepresentation(config)}
+            onClick={() => {
+              onConfigChange(config);
+            }}
+          />
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -14,11 +14,11 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Icon,
   Input,
   Label,
+  MagnifyingGlassIcon,
   PlusIcon,
-  ScrollArea,
-  ScrollBar,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -202,40 +202,44 @@ export const TagsSelector = ({
               tooltip="Select a tag"
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-72">
-            <DropdownMenuSearchbar
-              autoFocus
-              placeholder="Search"
-              name="input"
-              value={searchText}
-              onChange={setSearchText}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && filteredTags.length > 0) {
-                  setBuilderState((state) => ({
-                    ...state,
-                    tags: [...state.tags, filteredTags[0]],
-                  }));
-                  setEdited(true);
-                  onMenuOpenChange(false);
+          <DropdownMenuContent
+            className="h-96 min-w-72"
+            dropdownHeaders={
+              <DropdownMenuSearchbar
+                autoFocus
+                placeholder="Search"
+                name="input"
+                value={searchText}
+                onChange={setSearchText}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && filteredTags.length > 0) {
+                    setBuilderState((state) => ({
+                      ...state,
+                      tags: [...state.tags, filteredTags[0]],
+                    }));
+                    setEdited(true);
+                    onMenuOpenChange(false);
+                  }
+                }}
+                button={
+                  isAdmin(owner) ? (
+                    <Button
+                      label="Create"
+                      variant="primary"
+                      icon={PlusIcon}
+                      onClick={() => {
+                        onMenuOpenChange(false);
+                        setIsDialogOpen(true);
+                      }}
+                    />
+                  ) : undefined
                 }
-              }}
-              button={
-                isAdmin(owner) ? (
-                  <Button
-                    label="Create"
-                    variant="primary"
-                    icon={PlusIcon}
-                    onClick={() => {
-                      onMenuOpenChange(false);
-                      setIsDialogOpen(true);
-                    }}
-                  />
-                ) : undefined
-              }
-            />
+              />
+            }
+          >
             <DropdownMenuSeparator />
-            <ScrollArea className="flex max-h-[300px] flex-col" hideScrollBar>
-              {filteredTags.map((c) => (
+            {searchText ? (
+              filteredTags.map((c) => (
                 <DropdownMenuItem
                   className="p-1"
                   key={`assistant-picker-${c.sId}`}
@@ -249,9 +253,15 @@ export const TagsSelector = ({
                 >
                   <Chip size="sm" color="golden" label={c.name} />
                 </DropdownMenuItem>
-              ))}
-              <ScrollBar className="py-0" />
-            </ScrollArea>
+              ))
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
+                  <Icon visual={MagnifyingGlassIcon} size="sm" />
+                  Search Tags
+                </div>
+              </div>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -10,8 +10,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  ScrollArea,
-  ScrollBar,
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
 import React from "react";
@@ -123,63 +121,54 @@ export function AdvancedSettings({
             <DropdownMenuSubTrigger label="Model selection" />
             <DropdownMenuSubContent className="w-80">
               <DropdownMenuLabel label="Best performing models" />
-              <ScrollArea className="flex max-h-72 flex-col" hideScrollBar>
-                <DropdownMenuRadioGroup
-                  value={`${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`}
-                >
-                  {bestPerformingModelConfigs.map((modelConfig) => (
-                    <DropdownMenuRadioItem
-                      key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
-                      value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
-                      icon={getModelProviderLogo(
-                        modelConfig.providerId,
-                        isDark
-                      )}
-                      description={modelConfig.shortDescription}
-                      label={modelConfig.displayName}
-                      onClick={() => {
-                        setGenerationSettings({
-                          ...generationSettings,
-                          modelSettings: {
-                            modelId: modelConfig.modelId,
-                            providerId: modelConfig.providerId,
-                            reasoningEffort: modelConfig.reasoningEffort,
-                          },
-                        });
-                      }}
-                    />
-                  ))}
-                </DropdownMenuRadioGroup>
+              <DropdownMenuRadioGroup
+                value={`${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`}
+              >
+                {bestPerformingModelConfigs.map((modelConfig) => (
+                  <DropdownMenuRadioItem
+                    key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                    value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                    icon={getModelProviderLogo(modelConfig.providerId, isDark)}
+                    description={modelConfig.shortDescription}
+                    label={modelConfig.displayName}
+                    onClick={() => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings: {
+                          modelId: modelConfig.modelId,
+                          providerId: modelConfig.providerId,
+                          reasoningEffort: modelConfig.reasoningEffort,
+                        },
+                      });
+                    }}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
 
-                <DropdownMenuLabel label="Other models" />
-                <DropdownMenuRadioGroup
-                  value={`${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`}
-                >
-                  {otherModelConfigs.map((modelConfig) => (
-                    <DropdownMenuRadioItem
-                      key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
-                      value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
-                      icon={getModelProviderLogo(
-                        modelConfig.providerId,
-                        isDark
-                      )}
-                      description={modelConfig.shortDescription}
-                      label={modelConfig.displayName}
-                      onClick={() => {
-                        setGenerationSettings({
-                          ...generationSettings,
-                          modelSettings: {
-                            modelId: modelConfig.modelId,
-                            providerId: modelConfig.providerId,
-                            reasoningEffort: modelConfig.reasoningEffort,
-                          },
-                        });
-                      }}
-                    />
-                  ))}
-                </DropdownMenuRadioGroup>
-                <ScrollBar className="py-0" />
-              </ScrollArea>
+              <DropdownMenuLabel label="Other models" />
+              <DropdownMenuRadioGroup
+                value={`${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`}
+              >
+                {otherModelConfigs.map((modelConfig) => (
+                  <DropdownMenuRadioItem
+                    key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                    value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                    icon={getModelProviderLogo(modelConfig.providerId, isDark)}
+                    description={modelConfig.shortDescription}
+                    label={modelConfig.displayName}
+                    onClick={() => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings: {
+                          modelId: modelConfig.modelId,
+                          providerId: modelConfig.providerId,
+                          reasoningEffort: modelConfig.reasoningEffort,
+                        },
+                      });
+                    }}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
@@ -211,54 +200,51 @@ export function AdvancedSettings({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger label="Structured Response Format" />
               <DropdownMenuSubContent className="w-96">
-                <ScrollArea className="h-96">
-                  <CodeEditor
-                    data-color-mode={isDark ? "dark" : "light"}
-                    value={generationSettings?.responseFormat ?? ""}
-                    placeholder={
-                      "Example:\n\n" +
-                      "{\n" +
-                      '  "type": "json_schema",\n' +
-                      '  "json_schema": {\n' +
-                      '    "name": "YourSchemaName",\n' +
-                      '    "strict": true,\n' +
-                      '    "schema": {\n' +
-                      '      "type": "object",\n' +
-                      '      "properties": {\n' +
-                      '        "property1":\n' +
-                      '          { "type":"string" }\n' +
-                      "      },\n" +
-                      '      "required": ["property1"],\n' +
-                      '      "additionalProperties": false\n' +
-                      "    }\n" +
-                      "  }\n" +
-                      "}"
-                    }
-                    name="responseFormat"
-                    onChange={(e) => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        responseFormat: e.target.value,
-                      });
-                    }}
-                    minHeight={380}
-                    className={cn(
-                      "rounded-lg",
-                      isInvalidJson(generationSettings?.responseFormat)
-                        ? "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
-                        : "bg-slate-100 dark:bg-slate-100-night"
-                    )}
-                    style={{
-                      fontSize: 13,
-                      fontFamily:
-                        "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                      overflowY: "auto",
-                      height: "400px",
-                    }}
-                    language="json"
-                  />
-                  <ScrollBar orientation="vertical" />
-                </ScrollArea>
+                <CodeEditor
+                  data-color-mode={isDark ? "dark" : "light"}
+                  value={generationSettings?.responseFormat ?? ""}
+                  placeholder={
+                    "Example:\n\n" +
+                    "{\n" +
+                    '  "type": "json_schema",\n' +
+                    '  "json_schema": {\n' +
+                    '    "name": "YourSchemaName",\n' +
+                    '    "strict": true,\n' +
+                    '    "schema": {\n' +
+                    '      "type": "object",\n' +
+                    '      "properties": {\n' +
+                    '        "property1":\n' +
+                    '          { "type":"string" }\n' +
+                    "      },\n" +
+                    '      "required": ["property1"],\n' +
+                    '      "additionalProperties": false\n' +
+                    "    }\n" +
+                    "  }\n" +
+                    "}"
+                  }
+                  name="responseFormat"
+                  onChange={(e) => {
+                    setGenerationSettings({
+                      ...generationSettings,
+                      responseFormat: e.target.value,
+                    });
+                  }}
+                  minHeight={380}
+                  className={cn(
+                    "rounded-lg",
+                    isInvalidJson(generationSettings?.responseFormat)
+                      ? "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
+                      : "bg-slate-100 dark:bg-slate-100-night"
+                  )}
+                  style={{
+                    fontSize: 13,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    overflowY: "auto",
+                    height: "400px",
+                  }}
+                  language="json"
+                />
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
