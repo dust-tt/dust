@@ -2,6 +2,7 @@ import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu";
 import type { Meta } from "@storybook/react";
 import React from "react";
 
+import { SimpleDoubleIcon } from "@sparkle/components/DoubleIcon";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -530,8 +531,13 @@ function AttachFileDemo() {
                     key={item}
                     label={item}
                     description="Company Space/Notion"
-                    icon={randomMainIcon}
-                    extraIcon={randomExtraIcon}
+                    icon={
+                      <SimpleDoubleIcon
+                        size="lg"
+                        mainIcon={randomMainIcon}
+                        secondaryIcon={randomExtraIcon}
+                      />
+                    }
                     onClick={() => {
                       setSelectedItem(item);
                       setSearchText("");

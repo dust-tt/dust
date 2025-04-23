@@ -3,7 +3,6 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useRef } from "react";
 
-import { DoubleIcon } from "@sparkle/components/DoubleIcon";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
@@ -84,7 +83,7 @@ const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 interface LabelAndIconProps {
   label: string;
-  icon?: React.ComponentType;
+  icon?: React.ComponentType | React.ReactNode;
 }
 
 type Simplify<T> = { [K in keyof T]: T[K] };
@@ -99,19 +98,27 @@ type MutuallyExclusiveProps<BaseProps, ExtraProps> = Simplify<
 
 interface ItemWithLabelIconAndDescriptionProps {
   label?: string;
-  icon?: React.ComponentType;
-  extraIcon?: React.ComponentType;
+  icon?: React.ComponentType | React.ReactNode;
   description?: string;
   children?: React.ReactNode;
   truncate?: boolean;
 }
+
+const renderIcon = (
+  icon: React.ComponentType | React.ReactNode,
+  size: "xs" | "sm" = "xs"
+) => {
+  if (!icon) {
+    return null;
+  }
+  return typeof icon === "function" ? <Icon size={size} visual={icon} /> : icon;
+};
 
 const ItemWithLabelIconAndDescription = <
   T extends ItemWithLabelIconAndDescriptionProps,
 >({
   label,
   icon,
-  extraIcon,
   description,
   truncate,
   children,
@@ -120,30 +127,7 @@ const ItemWithLabelIconAndDescription = <
     <>
       {label && (
         <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
-          {(icon || extraIcon) && (
-            <div
-              className={cn(
-                "s-flex",
-                description ? "s-items-start s-pt-0.5" : "s-items-center"
-              )}
-            >
-              {icon && extraIcon ? (
-                <DoubleIcon
-                  mainIconProps={{
-                    visual: icon,
-                    size: "sm",
-                  }}
-                  secondaryIconProps={{
-                    visual: extraIcon,
-                    size: "xs",
-                  }}
-                  position="bottom-right"
-                />
-              ) : icon ? (
-                <Icon size="sm" visual={icon} />
-              ) : null}
-            </div>
-          )}
+          {renderIcon(icon, "sm")}
           <div className="s-flex s-flex-col">
             <span className={truncate ? "s-line-clamp-1" : undefined}>
               {label}
@@ -186,7 +170,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
   >
     {label && (
       <>
-        {icon && <Icon size="xs" visual={icon} />}
+        {renderIcon(icon)}
         {label}
         <span className={menuStyleClasses.subTrigger.default}>
           <Icon size="xs" visual={ChevronRightIcon} />
@@ -273,7 +257,6 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
   } & Omit<LinkWrapperProps, "children" | "className">,
   LabelAndIconProps & {
     description?: string;
-    extraIcon?: React.ComponentType;
     truncateText?: boolean;
   }
 >;
@@ -290,7 +273,6 @@ const DropdownMenuItem = React.forwardRef<
       className,
       inset,
       icon,
-      extraIcon,
       truncateText,
       label,
       href,
@@ -326,7 +308,6 @@ const DropdownMenuItem = React.forwardRef<
           <ItemWithLabelIconAndDescription
             label={label}
             icon={icon}
-            extraIcon={extraIcon}
             description={description}
             truncate={truncateText}
           >
