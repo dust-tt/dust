@@ -142,13 +142,15 @@ export const connectToMCPServer = async (
           const url = new URL(remoteMCPServer.url);
 
           try {
-            const sseTransport = new SSEClientTransport(url, {
+            const req = {
               requestInit: {
                 headers: {
-                  Authorization: `Bearer ${accessToken}`,
+                  ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
                 },
               },
-            });
+            };
+
+            const sseTransport = new SSEClientTransport(url, req);
             await mcpClient.connect(sseTransport);
           } catch (e: unknown) {
             return new Err(
