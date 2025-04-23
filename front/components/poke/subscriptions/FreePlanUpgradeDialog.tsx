@@ -20,12 +20,12 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
-import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
-import type { EnterpriseUpgradeFormType, WorkspaceType } from "@app/types";
-import { EnterpriseUpgradeFormSchema, removeNulls } from "@app/types";
+import type { FreePlanUpgradeFormType, WorkspaceType } from "@app/types";
+import { FreePlanUpgradeFormSchema, removeNulls } from "@app/types";
 
-export default function EnterpriseUpgradeDialog({
+export default function FreePlanUpgradeDialog({
   owner,
 }: {
   owner: WorkspaceType;
@@ -37,15 +37,15 @@ export default function EnterpriseUpgradeDialog({
   const { plans } = usePokePlans();
   const router = useRouter();
 
-  const form = useForm<EnterpriseUpgradeFormType>({
-    resolver: ioTsResolver(EnterpriseUpgradeFormSchema),
+  const form = useForm<FreePlanUpgradeFormType>({
+    resolver: ioTsResolver(FreePlanUpgradeFormSchema),
     defaultValues: {
-      stripeSubscriptionId: "",
       planCode: "",
+      endDate: undefined,
     },
   });
 
-  const onSubmit = (values: EnterpriseUpgradeFormType) => {
+  const onSubmit = (values: FreePlanUpgradeFormType) => {
     const cleanedValues = Object.fromEntries(
       removeNulls(
         Object.entries(values).map(([key, value]) => {
@@ -65,16 +65,13 @@ export default function EnterpriseUpgradeDialog({
       setIsSubmitting(true);
       setError(null);
       try {
-        const r = await fetch(
-          `/api/poke/workspaces/${owner.sId}/upgrade_enterprise`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(cleanedValues),
-          }
-        );
+        const r = await fetch(`/api/poke/workspaces/${owner.sId}/upgrade`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(cleanedValues),
+        });
 
         if (!r.ok) {
           throw new Error(
@@ -98,14 +95,14 @@ export default function EnterpriseUpgradeDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" label="🏢 Upgrade to Enterprise" />
+        <Button variant="outline" label="🙌🏻 Upgrade to a Free Plan" />
       </DialogTrigger>
       <DialogContent className="bg-primary-50 sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Upgrade {owner.name} to Enterprise.</DialogTitle>
+          <DialogTitle>Upgrade {owner.name} to a Free Plan.</DialogTitle>
           <DialogDescription>
-            Select the enterprise plan and provide the Stripe subscription id of
-            the customer.
+            Select the free plan and provide the end date (optional) of the free
+            plan.
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
@@ -126,9 +123,9 @@ export default function EnterpriseUpgradeDialog({
                     <SelectField
                       control={form.control}
                       name="planCode"
-                      title="Enterprise Plan"
+                      title="Free Plan"
                       options={plans
-                        .filter((plan) => isEntreprisePlan(plan.code))
+                        .filter((plan) => isFreePlan(plan.code))
                         .map((plan) => ({
                           value: plan.code,
                           display: `${plan.name} (${plan.code})`,
@@ -138,9 +135,9 @@ export default function EnterpriseUpgradeDialog({
                   <div className="grid-cols grid items-center gap-4">
                     <InputField
                       control={form.control}
-                      name="stripeSubscriptionId"
-                      title="Stripe Subscription id"
-                      placeholder="sub_1234567890"
+                      name="endDate"
+                      title="End Date"
+                      placeholder="Optional, will downgrade to no plan after this date if set. Format: YYYY-MM-DD"
                     />
                   </div>
                 </div>

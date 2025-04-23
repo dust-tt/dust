@@ -1,3 +1,5 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -7,6 +9,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
+import { FreePlanUpgradeFormSchema } from "@app/types";
 
 export type UpgradeWorkspaceResponseBody = {
   workspace: LightWorkspaceType;
@@ -35,18 +38,26 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const planCode = req.query.planCode;
-      if (!planCode || typeof planCode !== "string") {
+      const bodyValidation = FreePlanUpgradeFormSchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "The planCode parameter is missing.",
+            message: `The request body is invalid: ${pathError}`,
           },
         });
       }
+      const body = bodyValidation.right;
+      const planCode = body.planCode;
+      const endDate = body.endDate;
 
-      await SubscriptionResource.pokeUpgradeWorkspaceToPlan(auth, planCode);
+      await SubscriptionResource.pokeUpgradeWorkspaceToPlan({
+        auth,
+        planCode,
+        endDate: endDate ? new Date(endDate) : null,
+      });
 
       return res.status(200).json({
         workspace: renderLightWorkspaceType({
