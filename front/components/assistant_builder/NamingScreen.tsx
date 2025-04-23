@@ -150,7 +150,7 @@ export default function NamingScreen({
   setEdited,
   assistantHandleError,
   descriptionError,
-  currentUserId,
+  currentUser,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -161,7 +161,7 @@ export default function NamingScreen({
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
   descriptionError: string | null;
-  currentUserId: string | null;
+  currentUser: UserType | null;
 }) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
@@ -508,7 +508,7 @@ export default function NamingScreen({
               </div>
             </div>
             <EditorsMembersList
-              currentUserId={currentUserId}
+              currentUser={currentUser}
               owner={owner}
               builderState={builderState}
               setBuilderState={setBuilderState}
@@ -607,13 +607,13 @@ async function fetchWithErr<T>(
 }
 
 function EditorsMembersList({
-  currentUserId,
+  currentUser,
   owner,
   builderState,
   setBuilderState,
   setEdited,
 }: {
-  currentUserId: string | null;
+  currentUser: UserType | null;
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   setBuilderState: (
@@ -655,7 +655,7 @@ function EditorsMembersList({
         />
       </div>
       <MembersList
-        currentUserId={currentUserId ?? "current-user-not-loaded"}
+        currentUser={currentUser}
         membersData={membersData}
         onRowClick={() => {}}
         onRemoveMemberClick={(removed) => {

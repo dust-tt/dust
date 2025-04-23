@@ -550,7 +550,7 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         assistantHandleError={assistantHandleError}
                         descriptionError={descriptionError}
-                        currentUserId={user?.sId ?? null}
+                        currentUser={user}
                       />
                     );
                   default:
