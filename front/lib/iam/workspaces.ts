@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { Plan } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
@@ -38,6 +39,23 @@ export async function createWorkspaceInternal({
   planCode: string | null;
   endDate: Date | null;
 }) {
+  // If planCode is provided, it must be a free plan that exists in the database.
+  if (planCode) {
+    if (!isFreePlan(planCode)) {
+      throw new Error(
+        `Invalid plan code: ${planCode}. Only free plans are supported.`
+      );
+    }
+    const plan = await Plan.findOne({
+      where: {
+        code: planCode,
+      },
+    });
+    if (!plan) {
+      throw new Error(`Plan with code ${planCode} not found.`);
+    }
+  }
+
   const [, emailDomain] = email.split("@");
 
   // Use domain only when email is verified and non-disposable.
@@ -79,11 +97,6 @@ export async function createWorkspaceInternal({
   }
 
   if (planCode) {
-    if (!isFreePlan(planCode)) {
-      throw new Error(
-        `Invalid plan code: ${planCode}. Only free plans are supported.`
-      );
-    }
     await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
       workspaceId: workspace.sId,
       planCode,
