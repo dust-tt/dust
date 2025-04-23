@@ -36,7 +36,7 @@ import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessageContextWindowUtilization } from "@app/lib/models/assistant/agent_context_window_utilization";
+import { AgentMessageCompactCheckpoint } from "@app/lib/models/assistant/agent_message_compact_checkpoint";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -493,7 +493,7 @@ async function* runMultiActionsAgent(
       "Context window usage"
     );
 
-    await AgentMessageContextWindowUtilization.create({
+    await AgentMessageCompactCheckpoint.create({
       agentMessageId: agentMessage.agentMessageId,
       step: loopIteration,
       usedTokens: conversationTokens,

@@ -5,7 +5,7 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentMessageContextWindowUtilization extends WorkspaceAwareModel<AgentMessageContextWindowUtilization> {
+export class AgentMessageCompactCheckpoint extends WorkspaceAwareModel<AgentMessageCompactCheckpoint> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -18,7 +18,7 @@ export class AgentMessageContextWindowUtilization extends WorkspaceAwareModel<Ag
   declare agentMessage?: NonAttribute<AgentMessage>;
 }
 
-AgentMessageContextWindowUtilization.init(
+AgentMessageCompactCheckpoint.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -44,7 +44,7 @@ AgentMessageContextWindowUtilization.init(
     },
   },
   {
-    modelName: "agent_message_context_window_utilization",
+    modelName: "agent_message_compact_checkpoint",
     sequelize: frontSequelize,
     indexes: [
       {
@@ -57,11 +57,11 @@ AgentMessageContextWindowUtilization.init(
   }
 );
 
-AgentMessage.hasMany(AgentMessageContextWindowUtilization, {
+AgentMessage.hasMany(AgentMessageCompactCheckpoint, {
   foreignKey: { name: "agentMessageId", allowNull: false },
   onDelete: "RESTRICT",
 });
 
-AgentMessageContextWindowUtilization.belongsTo(AgentMessage, {
+AgentMessageCompactCheckpoint.belongsTo(AgentMessage, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });

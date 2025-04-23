@@ -258,7 +258,6 @@ export type AgentContentEvent = {
   processedContent: string;
 };
 
-// Event sent with context window utilization information before each agent run
 export type AgentContextWindowUtilizationEvent = {
   type: "agent_context_window_utilization";
   created: number;
