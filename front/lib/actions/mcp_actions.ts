@@ -60,6 +60,7 @@ import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
+import assert from "assert";
 
 const MAX_OUTPUT_ITEMS = 128;
 
@@ -70,7 +71,10 @@ const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
   tools: PlatformMCPToolTypeWithStakeLevel[]
-): PlatformMCPToolConfigurationType[] {
+): (PlatformMCPToolConfigurationType & {
+  originalName: string;
+  mcpServerName: string;
+})[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -86,13 +90,18 @@ function makePlatformMCPToolConfigurations(
     additionalConfiguration: config.additionalConfiguration,
     permission: tool.stakeLevel,
     toolServerId: tool.toolServerId,
+    originalName: tool.name,
+    mcpServerName: config.name,
   }));
 }
 
 function makeLocalMCPToolConfigurations(
   config: LocalMCPServerConfigurationType,
   tools: LocalMCPToolTypeWithStakeLevel[]
-): LocalMCPToolConfigurationType[] {
+): (LocalMCPToolConfigurationType & {
+  originalName: string;
+  mcpServerName: string;
+})[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -102,6 +111,8 @@ function makeLocalMCPToolConfigurations(
     id: config.id,
     localMcpServerId: config.localMcpServerId,
     isDefault: false, // can't be default for local MCP servers.
+    originalName: tool.name,
+    mcpServerName: config.name,
   }));
 }
 
@@ -381,15 +392,7 @@ async function listToolsForLocalMCPServer(
 
   // Create the configurations directly here
   const localToolConfigs = makeLocalMCPToolConfigurations(config, allTools);
-
-  // Add the required properties to match MCPToolConfigurationType
-  const toolConfigurations = localToolConfigs.map((toolConfig) => ({
-    ...toolConfig,
-    originalName: toolConfig.name,
-    mcpServerName: config.name,
-  }));
-
-  return new Ok(toolConfigurations);
+  return new Ok(localToolConfigs);
 }
 
 async function listToolsForPlatformMCPServer(
@@ -426,13 +429,7 @@ async function listToolsForPlatformMCPServer(
       config,
       rawTools
     );
-    const toolConfigurations = platformToolConfigs.map((toolConfig) => ({
-      ...toolConfig,
-      originalName: toolConfig.name,
-      mcpServerName: config.name,
-    }));
-
-    return new Ok(toolConfigurations);
+    return new Ok(platformToolConfigs);
   }
 
   const isDefault = isDefaultInternalMCPServer(connectionParams.mcpServerId);
@@ -482,18 +479,11 @@ async function listToolsForPlatformMCPServer(
     toolServerId: connectionParams.mcpServerId,
   }));
 
-  // Create configurations and add required properties
   const platformToolConfigs = makePlatformMCPToolConfigurations(
     config,
     toolsWithStakes
   );
-  const toolConfigurations = platformToolConfigs.map((toolConfig) => ({
-    ...toolConfig,
-    originalName: toolConfig.name,
-    mcpServerName: config.name,
-  }));
-
-  return new Ok(toolConfigurations);
+  return new Ok(platformToolConfigs);
 }
 
 async function listMCPServerTools(
@@ -530,14 +520,10 @@ async function listMCPServerTools(
 
     let toolsRes: Result<MCPToolConfigurationType[], Error>;
     if (isConnectViaLocalMCPServer(connectionParams)) {
-      if (isPlatformMCPServerConfiguration(config)) {
-        return new Err(new Error("Should never happen"));
-      }
+      assert(!isPlatformMCPServerConfiguration(config), "Should never happen");
       toolsRes = await listToolsForLocalMCPServer(mcpClient, config);
     } else {
-      if (!isPlatformMCPServerConfiguration(config)) {
-        return new Err(new Error("Should never happen"));
-      }
+      assert(isPlatformMCPServerConfiguration(config), "Should never happen");
       toolsRes = await listToolsForPlatformMCPServer(
         auth,
         connectionParams,
