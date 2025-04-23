@@ -443,7 +443,8 @@ export function getMCPServerRequirements(
       }
       return [
         key,
-        valueProperty.enum?.filter((v) => typeof v === "string") ?? [],
+        valueProperty.enum?.filter((v): v is string => typeof v === "string") ??
+          [],
       ];
     })
   );
