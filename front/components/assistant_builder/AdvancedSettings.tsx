@@ -3,7 +3,6 @@ import {
   cn,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -25,7 +24,6 @@ import type {
   AssistantCreativityLevel,
   ModelConfigurationType,
   ModelIdType,
-  SupportedModel,
 } from "@app/types";
 import {
   ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
@@ -280,35 +278,5 @@ export function AdvancedSettings({
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-interface ModelListProps {
-  modelConfigs: ModelConfigurationType[];
-  onClick: (modelSettings: SupportedModel) => void;
-}
-
-function ModelList({ modelConfigs, onClick }: ModelListProps) {
-  const { isDark } = useTheme();
-  const handleClick = (modelConfig: ModelConfigurationType) => {
-    onClick({
-      modelId: modelConfig.modelId,
-      providerId: modelConfig.providerId,
-      reasoningEffort: modelConfig.reasoningEffort,
-    });
-  };
-
-  return (
-    <>
-      {modelConfigs.map((modelConfig) => (
-        <DropdownMenuItem
-          key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
-          icon={getModelProviderLogo(modelConfig.providerId, isDark)}
-          description={modelConfig.shortDescription}
-          label={modelConfig.displayName}
-          onClick={() => handleClick(modelConfig)}
-        />
-      ))}
-    </>
   );
 }
