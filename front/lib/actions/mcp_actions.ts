@@ -2,6 +2,7 @@ import {
   ConfigurableToolInputJSONSchemas,
   INTERNAL_MIME_TYPES,
 } from "@dust-tt/client";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { JSONSchema7 } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -42,10 +43,10 @@ import {
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import type {
+  LocalMCPToolTypeWithStakeLevel,
   MCPToolType,
   MCPToolWithStakeLevelType,
   PlatformMCPToolTypeWithStakeLevel,
-  LocalMCPToolTypeWithStakeLevel,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -392,22 +393,53 @@ export async function tryListMCPTools(
   return configurations.flat();
 }
 
-async function augmentToolsWithMetadata(
+async function listTooksForLocalMCPServer(
+  mcpClient: Client
+): Promise<Result<LocalMCPToolTypeWithStakeLevel[], Error>> {
+  let allTools: LocalMCPToolTypeWithStakeLevel[] = [];
+  let nextPageCursor;
+
+  // Fetch all tools, handling pagination if supported by the MCP server.
+  do {
+    const { tools, nextCursor } = await mcpClient.listTools();
+
+    for (const t of tools) {
+      t.inputSchema;
+    }
+
+    nextPageCursor = nextCursor;
+    allTools = [
+      ...allTools,
+      ...extractMetadataFromTools(tools).map((tool) => ({
+        ...tool,
+        isDefault: false,
+        stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
+      })),
+    ];
+  } while (nextPageCursor);
+
+  return new Ok(allTools);
+}
+
+async function listTooksForPlatformMCPServer(
   auth: Authenticator,
   connectionParams: MCPConnectionParams,
-  tools: MCPToolType[]
-): Promise<Result<MCPToolWithStakeLevelType[], Error>> {
-  // For non-server-side MCP servers, just add default metadata.
-  if (!isConnectViaMCPServerId(connectionParams)) {
-    return new Ok(
-      tools.map((tool) => ({
+  mcpClient: Client
+): Promise<Result<PlatformMCPToolTypeWithStakeLevel[], Error>> {
+  let allToolsRaw: MCPToolType[] = [];
+  let nextPageCursor;
+
+  // Fetch all tools, handling pagination if supported by the MCP server.
+  do {
+    const { tools, nextCursor } = await mcpClient.listTools();
+    nextPageCursor = nextCursor;
+    allToolsRaw = [
+      ...allToolsRaw,
+      ...extractMetadataFromTools(tools).map((tool) => ({
         ...tool,
-        stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
-        isDefault: false,
-        toolServerId: undefined,
-      }))
-    );
-  }
+      })),
+    ];
+  } while (nextPageCursor);
 
   const isDefault = isDefaultInternalMCPServer(connectionParams.mcpServerId);
   const { serverType, id } = getServerTypeAndIdFromSId(
@@ -428,6 +460,7 @@ async function augmentToolsWithMetadata(
       toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes || {};
       break;
     }
+
     case "remote": {
       const metadata =
         await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
@@ -445,7 +478,7 @@ async function augmentToolsWithMetadata(
   }
 
   return new Ok(
-    tools.map((tool) => ({
+    allToolsRaw.map((tool) => ({
       ...tool,
       stakeLevel:
         toolsStakes[tool.name] ||
@@ -490,44 +523,32 @@ async function listMCPServerTools(
     }
     mcpClient = r.value;
 
-    let allToolsRaw: MCPToolType[] = [];
-    let nextPageCursor;
+    const toolsRes =
+      connectionParams.type === "localMCPServerId"
+        ? await listTooksForLocalMCPServer(mcpClient)
+        : await listTooksForPlatformMCPServer(
+            auth,
+            connectionParams,
+            mcpClient
+          );
 
-    // Fetch all tools, handling pagination if supported by the MCP server.
-    do {
-      const { tools, nextCursor } = await mcpClient.listTools();
-      nextPageCursor = nextCursor;
-      allToolsRaw = [
-        ...allToolsRaw,
-        ...extractMetadataFromTools(tools).map((tool) => ({
-          ...tool,
-        })),
-      ];
-    } while (nextPageCursor);
-
-    // Enrich tool metadata (if available) with permissions and serverId to avoid re-fetching at
-    // validation modal level.
-    const toolsMetadataRes = await augmentToolsWithMetadata(
-      auth,
-      connectionParams,
-      allToolsRaw
-    );
-    if (toolsMetadataRes.isErr()) {
-      return toolsMetadataRes;
+    if (toolsRes.isErr()) {
+      return toolsRes;
     }
-    const toolsMetadata = toolsMetadataRes.value;
+
+    const tools = toolsRes.value;
 
     logger.debug(
       {
         workspaceId: owner.id,
         conversationId,
         messageId,
-        toolCount: allToolsRaw.length,
+        toolCount: tools.length,
       },
-      `Retrieved ${toolsMetadata.length} tools from MCP server`
+      `Retrieved ${tools.length} tools from MCP server`
     );
 
-    return new Ok(toolsMetadata);
+    return new Ok(tools);
   } catch (error) {
     logger.error(
       {
