@@ -9,6 +9,7 @@ import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { ScrollArea } from "@sparkle/components/ScrollArea";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
@@ -21,7 +22,7 @@ export const menuStyleClasses = {
     "s-border s-border-border dark:s-border-border-night",
     "s-bg-background dark:s-bg-muted-background-night",
     "s-text-foreground dark:s-text-foreground-night",
-    "s-z-50 s-min-w-[8rem] s-overflow-hidden",
+    "s-z-50 s-min-w-[8rem]",
     "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
   ),
   item: cva(
@@ -228,6 +229,7 @@ const DropdownMenuContent = React.forwardRef<
       sideOffset = 4,
       mountPortal = true,
       mountPortalContainer,
+      children,
       ...props
     },
     ref
@@ -236,9 +238,22 @@ const DropdownMenuContent = React.forwardRef<
       <DropdownMenuPrimitive.Content
         ref={ref}
         sideOffset={sideOffset}
-        className={cn(menuStyleClasses.container, "s-shadow-md", className)}
+        className={cn(
+          menuStyleClasses.container,
+          "s-h-fit s-p-0 s-shadow-md",
+          className
+        )}
         {...props}
-      />
+      >
+        <ScrollArea
+          className="s-w-full"
+          viewportClassName={cn(
+            "s-max-h-[var(--radix-dropdown-menu-content-available-height)]"
+          )}
+        >
+          {children}
+        </ScrollArea>
+      </DropdownMenuPrimitive.Content>
     );
 
     const [container, setContainer] = React.useState<Element | undefined>(
