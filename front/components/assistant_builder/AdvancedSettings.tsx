@@ -5,11 +5,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  Label,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
   ScrollArea,
   ScrollBar,
 } from "@dust-tt/sparkle";
@@ -117,77 +118,93 @@ export function AdvancedSettings({
   }
 
   return (
-    <PopoverRoot>
-      <PopoverTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           label="Advanced settings"
           variant="outline"
           size="sm"
           isSelect
         />
-      </PopoverTrigger>
-      <PopoverContent className="w-96 p-4" align="end">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col items-start gap-2">
-            <Label>Model selection</Label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  isSelect
-                  label={
-                    getSupportedModelConfig(generationSettings.modelSettings)
-                      .displayName
-                  }
-                  variant="outline"
-                  size="sm"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel label="Best performing models" />
-                <ScrollArea className="flex max-h-72 flex-col" hideScrollBar>
-                  <ModelList
-                    modelConfigs={bestPerformingModelConfigs}
-                    onClick={(modelSettings) => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        modelSettings,
-                      });
-                    }}
-                  />
-                  <DropdownMenuLabel label="Other models" />
-                  <ModelList
-                    modelConfigs={otherModelConfigs}
-                    onClick={(modelSettings) => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        modelSettings,
-                      });
-                    }}
-                  />
-                  <ScrollBar className="py-0" />
-                </ScrollArea>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div className="flex flex-col items-start gap-2">
-            <Label>Creativity level</Label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  isSelect
-                  label={
-                    getCreativityLevelFromTemperature(
-                      generationSettings?.temperature
-                    ).label
-                  }
-                  variant="outline"
-                  size="sm"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <div className="flex flex-col gap-1 p-1">
+          {/* Model Selection */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Model selection" />
+            <DropdownMenuSubContent className="w-80">
+              <DropdownMenuLabel label="Best performing models" />
+              <ScrollArea className="flex max-h-72 flex-col" hideScrollBar>
+                <DropdownMenuRadioGroup
+                  value={`${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`}
+                >
+                  {bestPerformingModelConfigs.map((modelConfig) => (
+                    <DropdownMenuRadioItem
+                      key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                      value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                      icon={getModelProviderLogo(
+                        modelConfig.providerId,
+                        isDark
+                      )}
+                      description={modelConfig.shortDescription}
+                      label={modelConfig.displayName}
+                      onClick={() => {
+                        setGenerationSettings({
+                          ...generationSettings,
+                          modelSettings: {
+                            modelId: modelConfig.modelId,
+                            providerId: modelConfig.providerId,
+                            reasoningEffort: modelConfig.reasoningEffort,
+                          },
+                        });
+                      }}
+                    />
+                  ))}
+                </DropdownMenuRadioGroup>
+
+                <DropdownMenuLabel label="Other models" />
+                <DropdownMenuRadioGroup
+                  value={`${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`}
+                >
+                  {otherModelConfigs.map((modelConfig) => (
+                    <DropdownMenuRadioItem
+                      key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                      value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                      icon={getModelProviderLogo(
+                        modelConfig.providerId,
+                        isDark
+                      )}
+                      description={modelConfig.shortDescription}
+                      label={modelConfig.displayName}
+                      onClick={() => {
+                        setGenerationSettings({
+                          ...generationSettings,
+                          modelSettings: {
+                            modelId: modelConfig.modelId,
+                            providerId: modelConfig.providerId,
+                            reasoningEffort: modelConfig.reasoningEffort,
+                          },
+                        });
+                      }}
+                    />
+                  ))}
+                </DropdownMenuRadioGroup>
+                <ScrollBar className="py-0" />
+              </ScrollArea>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
+          {/* Creativity Level */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Creativity level" />
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup
+                value={generationSettings.temperature.toString()}
+              >
                 {CREATIVITY_LEVELS.map(({ label, value }) => (
-                  <DropdownMenuItem
-                    key={label}
+                  <DropdownMenuRadioItem
+                    key={value}
+                    value={value.toString()}
                     label={label}
                     onClick={() => {
                       setGenerationSettings({
@@ -197,65 +214,68 @@ export function AdvancedSettings({
                     }}
                   />
                 ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
           {supportsResponseFormat && (
-            <div className="flex flex-col gap-2">
-              <Label>Structured Response Format</Label>
-              <ScrollArea className="h-96">
-                <CodeEditor
-                  data-color-mode={isDark ? "dark" : "light"}
-                  value={generationSettings?.responseFormat ?? ""}
-                  placeholder={
-                    "Example:\n\n" +
-                    "{\n" +
-                    '  "type": "json_schema",\n' +
-                    '  "json_schema": {\n' +
-                    '    "name": "YourSchemaName",\n' +
-                    '    "strict": true,\n' +
-                    '    "schema": {\n' +
-                    '      "type": "object",\n' +
-                    '      "properties": {\n' +
-                    '        "property1":\n' +
-                    '          { "type":"string" }\n' +
-                    "      },\n" +
-                    '      "required": ["property1"],\n' +
-                    '      "additionalProperties": false\n' +
-                    "    }\n" +
-                    "  }\n" +
-                    "}"
-                  }
-                  name="responseFormat"
-                  onChange={(e) => {
-                    setGenerationSettings({
-                      ...generationSettings,
-                      responseFormat: e.target.value,
-                    });
-                  }}
-                  minHeight={380}
-                  className={cn(
-                    "rounded-lg",
-                    isInvalidJson(generationSettings?.responseFormat)
-                      ? "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
-                      : "bg-slate-100 dark:bg-slate-100-night"
-                  )}
-                  style={{
-                    fontSize: 13,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                    overflowY: "auto",
-                    height: "400px",
-                  }}
-                  language="json"
-                />
-                <ScrollBar orientation="vertical" />
-              </ScrollArea>
-            </div>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger label="Structured Response Format" />
+              <DropdownMenuSubContent className="w-96">
+                <ScrollArea className="h-96">
+                  <CodeEditor
+                    data-color-mode={isDark ? "dark" : "light"}
+                    value={generationSettings?.responseFormat ?? ""}
+                    placeholder={
+                      "Example:\n\n" +
+                      "{\n" +
+                      '  "type": "json_schema",\n' +
+                      '  "json_schema": {\n' +
+                      '    "name": "YourSchemaName",\n' +
+                      '    "strict": true,\n' +
+                      '    "schema": {\n' +
+                      '      "type": "object",\n' +
+                      '      "properties": {\n' +
+                      '        "property1":\n' +
+                      '          { "type":"string" }\n' +
+                      "      },\n" +
+                      '      "required": ["property1"],\n' +
+                      '      "additionalProperties": false\n' +
+                      "    }\n" +
+                      "  }\n" +
+                      "}"
+                    }
+                    name="responseFormat"
+                    onChange={(e) => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        responseFormat: e.target.value,
+                      });
+                    }}
+                    minHeight={380}
+                    className={cn(
+                      "rounded-lg",
+                      isInvalidJson(generationSettings?.responseFormat)
+                        ? "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
+                        : "bg-slate-100 dark:bg-slate-100-night"
+                    )}
+                    style={{
+                      fontSize: 13,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                      overflowY: "auto",
+                      height: "400px",
+                    }}
+                    language="json"
+                  />
+                  <ScrollBar orientation="vertical" />
+                </ScrollArea>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           )}
         </div>
-      </PopoverContent>
-    </PopoverRoot>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
