@@ -158,6 +158,10 @@ async function destroyConversationDataSource(
 
 // This belongs to the ConversationResource. The authenticator is expected to have access to the
 // groups involved in the conversation.
+//
+// softDeleteAndEmptyContent is used in the data retention policy to keep the conversation and messages in the DB
+// but empty the content of the messages (and the title of the conversation). We still delete all other
+// resources associated with the conversation.
 export async function destroyConversation(
   auth: Authenticator,
   {
