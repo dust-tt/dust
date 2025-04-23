@@ -1,10 +1,13 @@
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { Plan } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
@@ -16,6 +19,8 @@ export async function createWorkspace(session: SessionWithUser) {
     name: externalUser.nickname,
     isVerified: externalUser.email_verified,
     isBusiness: false,
+    planCode: null,
+    endDate: null,
   });
 }
 
@@ -24,12 +29,33 @@ export async function createWorkspaceInternal({
   name,
   isVerified,
   isBusiness,
+  planCode,
+  endDate,
 }: {
   email: string;
   name: string;
   isVerified: boolean;
   isBusiness: boolean;
+  planCode: string | null;
+  endDate: Date | null;
 }) {
+  // If planCode is provided, it must be a free plan that exists in the database.
+  if (planCode) {
+    if (!isFreePlan(planCode)) {
+      throw new Error(
+        `Invalid plan code: ${planCode}. Only free plans are supported.`
+      );
+    }
+    const plan = await Plan.findOne({
+      where: {
+        code: planCode,
+      },
+    });
+    if (!plan) {
+      throw new Error(`Plan with code ${planCode} not found.`);
+    }
+  }
+
   const [, emailDomain] = email.split("@");
 
   // Use domain only when email is verified and non-disposable.
@@ -68,6 +94,14 @@ export async function createWorkspaceInternal({
       // `WorkspaceHasDomain` table has a unique constraint on the domain column.
       // Suppress any creation errors to prevent disruption of the login process.
     }
+  }
+
+  if (planCode) {
+    await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
+      workspaceId: workspace.sId,
+      planCode,
+      endDate,
+    });
   }
 
   return workspace;
