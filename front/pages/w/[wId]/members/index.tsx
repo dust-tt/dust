@@ -77,7 +77,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails =
     {
       callbackUrl: config.getAuth0TenantUrl(),
-      initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(owner.sId),
+      initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(
+        owner.sId,
+        null
+      ),
       // SAML specific.
       audienceUri: makeAudienceUri(owner),
       samlAcsUrl: makeSamlAcsUrl(owner),

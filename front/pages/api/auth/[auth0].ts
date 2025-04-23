@@ -115,7 +115,7 @@ const afterCallback: AfterCallbackPageRoute = async (
 
 type QueryParam = string | string[] | undefined;
 type AuthQuery = Record<
-  "connection" | "screen_hint" | "login_hint" | "prompt",
+  "connection" | "screen_hint" | "login_hint" | "prompt" | "returnTo",
   QueryParam
 >;
 
@@ -150,7 +150,10 @@ export default handleAuth({
 
     return {
       authorizationParams: defaultAuthorizationParams,
-      returnTo: "/api/login", // Note from seb, I think this is not used
+      returnTo:
+        query.returnTo && typeof query.returnTo === "string"
+          ? query.returnTo
+          : "/api/login",
     };
   }),
   callback: async (req: NextApiRequest, res: NextApiResponse) => {
