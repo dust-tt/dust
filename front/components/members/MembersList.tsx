@@ -1,16 +1,19 @@
-import { Chip, DataTable, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  Chip,
+  DataTable,
+  IconButton,
+  Spinner,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
+import assert from "assert";
 import _ from "lodash";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
+import type { KeyedMutator } from "swr";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
-import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
-import { useSearchMembers } from "@app/lib/swr/memberships";
-import type {
-  RoleType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
+import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import type { RoleType, UserTypeWithWorkspaces } from "@app/types";
 
 type RowData = {
   icon: string;
@@ -18,112 +21,143 @@ type RowData = {
   userId: string;
   email: string;
   role: RoleType;
+  isCurrentUser: boolean;
   onClick: () => void;
+  onRemoveMemberClick?: () => void;
 };
 
 type Info = CellContext<RowData, string>;
 
-function getTableRows(
-  allUsers: UserTypeWithWorkspaces[],
-  onClick: (user: UserTypeWithWorkspaces) => void
-): RowData[] {
+function getTableRows({
+  allUsers,
+  onClick,
+  onRemoveMemberClick,
+  currentUserId,
+}: {
+  allUsers: UserTypeWithWorkspaces[];
+  onClick: (user: UserTypeWithWorkspaces) => void;
+  onRemoveMemberClick?: (user: UserTypeWithWorkspaces) => void;
+  currentUserId: string;
+}): RowData[] {
   return allUsers.map((user) => ({
     icon: user.image ?? "",
     name: user.fullName,
     userId: user.sId,
     email: user.email ?? "",
     role: user.workspaces[0].role,
+    isCurrentUser: user.sId === currentUserId,
     onClick: () => onClick(user),
+    onRemoveMemberClick: () => onRemoveMemberClick?.(user),
   }));
 }
 
+type MembersData = {
+  members: UserTypeWithWorkspaces[];
+  totalMembersCount: number;
+  isLoading: boolean;
+  mutateRegardlessOfQueryParams: KeyedMutator<SearchMembersResponseBody>;
+};
+
+const memberColumns = [
+  {
+    id: "name" as const,
+    header: "Name",
+    cell: (info: Info) => (
+      <DataTable.CellContent avatarUrl={info.row.original.icon}>
+        {info.row.original.name}{" "}
+        {info.row.original.isCurrentUser ? " (you)" : ""}
+      </DataTable.CellContent>
+    ),
+    enableSorting: false,
+  },
+  {
+    id: "email" as const,
+    accessorKey: "email",
+    header: "Email",
+    cell: (info: Info) => (
+      <DataTable.CellContent>{info.row.original.email}</DataTable.CellContent>
+    ),
+  },
+  {
+    id: "role" as const,
+    header: "Role",
+    accessorFn: (row: RowData) => row.role,
+    cell: (info: Info) => (
+      <DataTable.CellContent>
+        <Chip
+          label={_.capitalize(displayRole(info.row.original.role))}
+          color={
+            info.row.original.role !== "none"
+              ? ROLES_DATA[info.row.original.role]["color"]
+              : undefined
+          }
+        />
+      </DataTable.CellContent>
+    ),
+    meta: {
+      className: "w-32",
+    },
+  },
+  {
+    id: "remove" as const,
+    header: "",
+    cell: (info: Info) => (
+      <DataTable.CellContent>
+        <IconButton
+          icon={XMarkIcon}
+          onClick={info.row.original.onRemoveMemberClick}
+        />
+      </DataTable.CellContent>
+    ),
+    meta: {
+      className: "w-12",
+    },
+  },
+];
+
 export function MembersList({
-  owner,
   currentUserId,
-  searchText,
+  membersData,
+  onRowClick,
+  onRemoveMemberClick,
+  showColumns,
 }: {
-  owner: WorkspaceType;
   currentUserId: string;
-  searchText: string;
+  membersData: MembersData;
+  onRowClick: (user: UserTypeWithWorkspaces) => void;
+  onRemoveMemberClick?: (user: UserTypeWithWorkspaces) => void;
+  showColumns: ("name" | "email" | "role" | "remove")[];
 }) {
+  assert(
+    !showColumns.includes("remove") || onRemoveMemberClick,
+    "onRemoveMemberClick is required if remove column is shown"
+  );
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 25,
   });
   useEffect(() => {
     setPagination({ pageIndex: 0, pageSize: 25 });
-  }, [searchText, setPagination]);
+  }, [setPagination]);
 
-  const [selectedMember, setSelectedMember] =
-    useState<UserTypeWithWorkspaces | null>(null);
-  const {
-    members,
-    totalMembersCount,
-    isLoading,
-    mutateRegardlessOfQueryParams: mutateMembers,
-  } = useSearchMembers({
-    workspaceId: owner.sId,
-    searchTerm: searchText,
-    pageIndex: pagination.pageIndex,
-    pageSize: pagination.pageSize,
-  });
-  const columns = [
-    {
-      id: "name",
-      header: "Name",
-      cell: (info: Info) => (
-        <DataTable.CellContent avatarUrl={info.row.original.icon}>
-          {info.row.original.name}{" "}
-          {info.row.original.userId === currentUserId ? " (you)" : ""}
-        </DataTable.CellContent>
-      ),
-      enableSorting: false,
-    },
-    {
-      id: "email",
-      accessorKey: "email",
-      header: "Email",
-      cell: (info: Info) => (
-        <DataTable.CellContent>{info.row.original.email}</DataTable.CellContent>
-      ),
-    },
-    {
-      id: "role",
-      header: "Role",
-      accessorFn: (row: RowData) => row.role,
-      cell: (info: Info) => (
-        <DataTable.CellContent>
-          <Chip
-            label={_.capitalize(displayRole(info.row.original.role))}
-            color={
-              info.row.original.role !== "none"
-                ? ROLES_DATA[info.row.original.role]["color"]
-                : undefined
-            }
-          />
-        </DataTable.CellContent>
-      ),
-      meta: {
-        className: "w-32",
-      },
-    },
-  ];
+  const { members, totalMembersCount, isLoading } = membersData;
+
+  const columns = memberColumns.filter((c) => showColumns.includes(c.id));
 
   const rows = useMemo(() => {
     const filteredMembers = members.filter(
       (m) => m.workspaces[0].role !== "none"
     );
-    return getTableRows(
-      filteredMembers,
-      (user: UserTypeWithWorkspaces | null) => {
-        setSelectedMember(user);
-      }
-    );
-  }, [members]);
+    return getTableRows({
+      allUsers: filteredMembers,
+      onClick: onRowClick,
+      onRemoveMemberClick,
+      currentUserId,
+    });
+  }, [members, onRowClick, onRemoveMemberClick, currentUserId]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <Page.H variant="h5">Members</Page.H>
+    <>
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
           <Spinner size="lg" />
@@ -137,11 +171,6 @@ export function MembersList({
           totalRowCount={totalMembersCount}
         />
       )}
-      <ChangeMemberModal
-        onClose={() => setSelectedMember(null)}
-        member={selectedMember}
-        mutateMembers={mutateMembers}
-      />
-    </div>
+    </>
   );
 }

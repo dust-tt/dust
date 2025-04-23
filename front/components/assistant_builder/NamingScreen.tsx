@@ -1,10 +1,18 @@
 import {
   Avatar,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   IconButton,
   Input,
   Page,
   PencilSquareIcon,
+  PlusIcon,
+  ScrollArea,
+  SearchInput,
   SparklesIcon,
   Spinner,
   useSendNotification,
@@ -29,6 +37,8 @@ import {
 import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import { MembersList } from "@app/components/members/MembersList";
+import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
@@ -36,6 +46,7 @@ import type {
   BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
   Result,
+  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -475,23 +486,26 @@ export default function NamingScreen({
           </div>
         </div>
         {featureFlags.includes("agent_discovery") && (
-          <div className="flex flex-row gap-4">
-            <div className="flex flex-[1_0_0] flex-col gap-4">
-              <Page.SectionHeader title="Visibility" />
-              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night"></div>
-            </div>
-            <div className="flex flex-[1_0_0] flex-col gap-4">
-              <Page.SectionHeader title="Tags" />
-              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                <TagsSelector
-                  owner={owner}
-                  builderState={builderState}
-                  setBuilderState={setBuilderState}
-                  setEdited={setEdited}
-                />
+          <>
+            <div className="flex flex-row gap-4">
+              <div className="flex flex-[1_0_0] flex-col gap-4">
+                <Page.SectionHeader title="Visibility" />
+                <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night"></div>
+              </div>
+              <div className="flex flex-[1_0_0] flex-col gap-4">
+                <Page.SectionHeader title="Tags" />
+                <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                  <TagsSelector
+                    owner={owner}
+                    builderState={builderState}
+                    setBuilderState={setBuilderState}
+                    setEdited={setEdited}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+            <EditorsMembersList currentUserId={"mock1"} owner={owner} />
+          </>
         )}
       </div>
     </>
@@ -581,4 +595,161 @@ async function fetchWithErr<T>(
       message: `Failed to fetch.\nError: ${e}`,
     });
   }
+}
+
+function EditorsMembersList({
+  currentUserId,
+  owner,
+}: {
+  currentUserId: string;
+  owner: WorkspaceType;
+}) {
+  const membersData = {
+    members: [
+      {
+        sId: "mock1",
+        fullName: "Mock User 1",
+        email: "mock1@test.com",
+        image: "https://example.com/image.png",
+        workspaces: [
+          {
+            role: "admin" as const,
+            sId: "mock1",
+            name: "Mock Workspace 1",
+            id: 1,
+            segmentation: null,
+            whiteListedProviders: null,
+            defaultEmbeddingProvider: null,
+            metadata: null,
+          },
+        ],
+        id: 1,
+        createdAt: 0,
+        provider: null,
+        username: "mock1",
+        firstName: "Mock",
+        lastName: "User 1",
+      },
+      {
+        sId: "mock2",
+        fullName: "Mock User 2",
+        email: "mock2@test.com",
+        image: "https://example.com/image.png",
+        workspaces: [
+          {
+            role: "admin" as const,
+            sId: "mock1",
+            name: "Mock Workspace 1",
+            id: 1,
+            segmentation: null,
+            whiteListedProviders: null,
+            defaultEmbeddingProvider: null,
+            metadata: null,
+          },
+        ],
+        id: 2,
+        createdAt: 0,
+        provider: null,
+        username: "mock2",
+        firstName: "Mock",
+        lastName: "User 2",
+      },
+    ],
+    totalMembersCount: 2,
+    isLoading: false,
+    mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-row items-center gap-2">
+        <Page.SectionHeader title="Editors" />
+        <div className="flex flex-grow" />
+        <AddEditorDropdown
+          owner={owner}
+          onAddEditor={() => membersData.mutateRegardlessOfQueryParams()}
+        />
+      </div>
+      <MembersList
+        currentUserId={currentUserId}
+        membersData={membersData}
+        onRowClick={() => {}}
+        onRemoveMemberClick={() => {}}
+        showColumns={["name", "email", "remove"]}
+      />
+    </div>
+  );
+}
+
+function AddEditorDropdown({
+  owner,
+  onAddEditor,
+}: {
+  owner: WorkspaceType;
+  onAddEditor: (member: UserTypeWithWorkspaces) => Promise<void>;
+}) {
+  const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const itemsContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
+    useSearchMembers({
+      workspaceId: owner.sId,
+      searchTerm,
+      pageIndex: 0,
+      pageSize: 25,
+    });
+
+  return (
+    <DropdownMenu
+      open={isEditorPickerOpen}
+      onOpenChange={setIsEditorPickerOpen}
+    >
+      <DropdownMenuTrigger asChild>
+        <Button
+          icon={PlusIcon}
+          variant="outline"
+          size="sm"
+          isSelect
+          label="Add editor"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-[380px]">
+        <div className="flex gap-1.5 p-1.5">
+          <SearchInput
+            ref={searchInputRef}
+            name="search"
+            onChange={(value) => setSearchTerm(value)}
+            placeholder="Search members"
+            value={searchTerm}
+          />
+          <Button icon={PlusIcon} label="Create" />
+        </div>
+        <DropdownMenuSeparator />
+        <ScrollArea className="h-[380px]" ref={itemsContainerRef}>
+          {isWorkspaceMembersLoading ? (
+            <Spinner size="sm" />
+          ) : (
+            workspaceMembers.map((member) => {
+              return (
+                <DropdownMenuItem
+                  key={member.sId}
+                  label={member.fullName}
+                  description={member.email}
+                  icon={() => <Avatar size="sm" visual={member.image} />}
+                  onClick={async () => {
+                    setSearchTerm("");
+                    setIsEditorPickerOpen(false);
+                    await onAddEditor(member);
+                  }}
+                  truncateText
+                />
+              );
+            })
+          )}
+        </ScrollArea>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
