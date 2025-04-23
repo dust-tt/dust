@@ -56,7 +56,6 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   RobotIcon,
-  ScrollArea,
   SearchInput,
   SuitcaseIcon,
   UserGroupIcon,
@@ -519,37 +518,35 @@ function AttachFileDemo() {
             <Button icon={ArrowUpOnSquareIcon} label="Upload File" />
           </div>
           <DropdownMenuSeparator />
-          <ScrollArea className="s-h-[380px]">
-            {searchText ? (
-              filteredItems.map((item) => {
-                const randomMainIcon =
-                  mainIcons[Math.floor(Math.random() * mainIcons.length)];
-                const randomExtraIcon =
-                  extraIcons[Math.floor(Math.random() * extraIcons.length)];
-                return (
-                  <DropdownMenuItem
-                    key={item}
-                    label={item}
-                    description="Company Space/Notion"
-                    icon={randomMainIcon}
-                    extraIcon={randomExtraIcon}
-                    onClick={() => {
-                      setSelectedItem(item);
-                      setSearchText("");
-                    }}
-                    truncateText
-                  />
-                );
-              })
-            ) : (
-              <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-py-8">
-                <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-text-center s-text-base s-font-semibold s-text-primary-400">
-                  <Icon visual={MagnifyingGlassIcon} size="sm" />
-                  Search in Dust
-                </div>
+          {searchText ? (
+            filteredItems.map((item) => {
+              const randomMainIcon =
+                mainIcons[Math.floor(Math.random() * mainIcons.length)];
+              const randomExtraIcon =
+                extraIcons[Math.floor(Math.random() * extraIcons.length)];
+              return (
+                <DropdownMenuItem
+                  key={item}
+                  label={item}
+                  description="Company Space/Notion"
+                  icon={randomMainIcon}
+                  extraIcon={randomExtraIcon}
+                  onClick={() => {
+                    setSelectedItem(item);
+                    setSearchText("");
+                  }}
+                  truncateText
+                />
+              );
+            })
+          ) : (
+            <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-py-8">
+              <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-text-center s-text-base s-font-semibold s-text-primary-400">
+                <Icon visual={MagnifyingGlassIcon} size="sm" />
+                Search in Dust
               </div>
-            )}
-          </ScrollArea>
+            </div>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <DropdownMenu open={openAgents} onOpenChange={setOpenAgents}>
@@ -603,36 +600,36 @@ function AttachFileDemo() {
             size="sm"
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-[380px]">
-          <div className="s-flex s-gap-1.5 s-p-1.5">
-            <SearchInput
+        <DropdownMenuContent
+          className="s-h-96 s-w-[380px]"
+          dropdownHeaders={
+            <DropdownMenuSearchbar
               ref={toolsetsSearchInputRef}
               name="search"
               onChange={() => {}}
               onKeyDown={() => {}}
               placeholder="Search Tools"
               value=""
+              button={<Button icon={PlusIcon} label="Add MCP Server" />}
             />
-            <Button icon={PlusIcon} label="Add MCP Server" />
-          </div>
+          }
+        >
           <DropdownMenuSeparator />
-          <ScrollArea className="s-h-[380px]">
-            {filteredToolsetList.map((toolset) => {
-              return (
-                <DropdownMenuItem
-                  key={toolset.name}
-                  label={toolset.name}
-                  description={toolset.description}
-                  icon={() => <Avatar size="sm" icon={toolset.icon} />}
-                  onClick={() => {
-                    setSelectedItem(toolset.name);
-                    setSearchText("");
-                  }}
-                  truncateText
-                />
-              );
-            })}
-          </ScrollArea>
+          {filteredToolsetList.map((toolset) => {
+            return (
+              <DropdownMenuItem
+                key={toolset.name}
+                label={toolset.name}
+                description={toolset.description}
+                icon={() => <Avatar size="sm" icon={toolset.icon} />}
+                onClick={() => {
+                  setSelectedItem(toolset.name);
+                  setSearchText("");
+                }}
+                truncateText
+              />
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
