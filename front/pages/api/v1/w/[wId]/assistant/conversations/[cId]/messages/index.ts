@@ -141,11 +141,6 @@ async function handler(
         return apiError(req, res, messageRes.error);
       }
 
-      if (blocking) {
-        const allRunsIds = messageRes.value.agentMessages?.map((m) => m.runId);
-        const run = await getRun(auth, messageRes.value.runId);
-      }
-
       res.status(200).json({
         message: messageRes.value.userMessage,
         agentMessages: messageRes.value.agentMessages ?? undefined,
