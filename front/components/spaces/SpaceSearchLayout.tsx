@@ -565,6 +565,7 @@ function SearchResultsTable({
       };
     });
   }, [
+    onClearSearch,
     addToSpace,
     canReadInSpace,
     canWriteInSpace,
