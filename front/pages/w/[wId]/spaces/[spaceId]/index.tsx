@@ -13,7 +13,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  SpaceLayoutPageProps & { userId: string; canWriteInSpace: boolean }
+  SpaceLayoutPageProps & {
+    userId: string;
+    canWriteInSpace: boolean;
+    isBuilder: boolean;
+  }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
@@ -45,12 +49,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   }
 
   const canWriteInSpace = space.canWrite(auth);
+  const isBuilder = auth.isBuilder();
 
   return {
     props: {
       canReadInSpace: space.canRead(auth),
       canWriteInSpace,
       isAdmin,
+      isBuilder,
       owner,
       plan,
       space: space.toJSON(),
@@ -62,6 +68,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
 export default function Space({
   isAdmin,
+  isBuilder,
   canWriteInSpace,
   owner,
   userId,
@@ -105,6 +112,7 @@ export default function Space({
           );
         }}
         isAdmin={isAdmin}
+        isBuilder={isBuilder}
         onButtonClick={() => setShowSpaceEditionModal(true)}
       />
       <CreateOrEditSpaceModal

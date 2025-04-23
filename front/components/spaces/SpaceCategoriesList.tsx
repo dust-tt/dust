@@ -89,6 +89,7 @@ const getTableColumns = () => {
 
 type SpaceCategoriesListProps = {
   isAdmin: boolean;
+  isBuilder: boolean;
   canWriteInSpace: boolean;
   onButtonClick?: () => void;
   onSelect: (category: string) => void;
@@ -98,6 +99,7 @@ type SpaceCategoriesListProps = {
 
 export const SpaceCategoriesList = ({
   isAdmin,
+  isBuilder,
   onButtonClick,
   canWriteInSpace,
   onSelect,
@@ -185,7 +187,7 @@ export const SpaceCategoriesList = ({
             label="Scrape a website"
           />
           <DropdownMenuItem
-            disabled={!canWriteInSpace}
+            disabled={!isBuilder || !canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
             icon={CommandLineIcon}
             label="Create a Dust App"

@@ -14,8 +14,8 @@ import type { DataSourceViewCategory, SpaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
+    isBuilder: boolean;
     category: DataSourceViewCategory;
-    isAdmin: boolean;
     registryApps: ActionApp[] | null;
     space: SpaceType;
   }
@@ -69,7 +69,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 });
 
 export default function Space({
-  canWriteInSpace,
+  isBuilder,
   owner,
   space,
   registryApps,
@@ -80,7 +80,7 @@ export default function Space({
     <SpaceAppsList
       owner={owner}
       space={space}
-      canWriteInSpace={canWriteInSpace}
+      isBuilder={isBuilder}
       onSelect={(sId) => {
         void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
       }}
