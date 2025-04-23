@@ -5,13 +5,12 @@ import {
   Button,
   CardGrid,
   Chip,
-  CompanyIcon,
   DropdownMenuItem,
   DropdownMenuLabel,
-  LockIcon,
+  MoreIcon,
+  PencilSquareIcon,
   PlusIcon,
   RobotIcon,
-  RocketIcon,
   ScrollArea,
   ScrollBar,
   SearchDropdownMenu,
@@ -21,7 +20,6 @@ import {
   TabsList,
   TabsTrigger,
   useHashParam,
-  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
@@ -29,19 +27,26 @@ import { useMemo, useState } from "react";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
 }
 
+// const ALL_AGENTS_TABS = [
+//   // default shown tab = earliest in this list with non-empty agents
+//   { label: "Favorites", icon: StarIcon, id: "favorites" },
+//   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
+//   { label: "Company", icon: CompanyIcon, id: "workspace" },
+//   { label: "Shared", icon: UserGroupIcon, id: "published" },
+//   { label: "Personal", icon: LockIcon, id: "personal" },
+//   { label: "All", icon: RobotIcon, id: "all" },
+// ] as const;
+
 const ALL_AGENTS_TABS = [
-  // default shown tab = earliest in this list with non-empty agents
   { label: "Favorites", icon: StarIcon, id: "favorites" },
-  { label: "Most popular", icon: RocketIcon, id: "most_popular" },
-  { label: "Company", icon: CompanyIcon, id: "workspace" },
-  { label: "Shared", icon: UserGroupIcon, id: "published" },
-  { label: "Personal", icon: LockIcon, id: "personal" },
-  { label: "All", icon: RobotIcon, id: "all" },
+  { label: "All agents", icon: RobotIcon, id: "all" },
+  { label: "Editable by me", icon: PencilSquareIcon, id: "editable_by_me" },
 ] as const;
 
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
@@ -71,7 +76,7 @@ export function AssistantBrowser({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const agentsByTab = useMemo(() => {
-    const filteredAgents: LightAgentConfigurationType[] = agents
+    const allAgents: LightAgentConfigurationType[] = agents
       .filter((a) => a.status === "active")
       .filter((a) => {
         if (selectedTags.length === 0) {
@@ -89,19 +94,19 @@ export function AssistantBrowser({
 
     return {
       // do not show the "all" tab while still loading all agents
-      all: isLoading ? [] : filteredAgents,
-      published: filteredAgents.filter((a) => a.scope === "published"),
-      workspace: filteredAgents.filter((a) => a.scope === "workspace"),
-      personal: filteredAgents.filter((a) => a.scope === "private"),
-      favorites: filteredAgents.filter((a) => a.userFavorite),
-      most_popular: filteredAgents
+      all: isLoading ? [] : allAgents,
+      favorites: allAgents.filter((a) => a.userFavorite),
+      editable_by_me: allAgents.filter(
+        (a) =>
+          isAdmin(owner) || a.scope === "published" || a.scope === "private" // TODO: add/replace with editors group check
+      ),
+      most_popular: allAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(
           (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
         ),
-      search: isLoading ? [] : filteredAgents,
     };
-  }, [isLoading, agents, selectedTags]);
+  }, [isLoading, agents, selectedTags, owner]);
 
   // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
   const visibleTabs = useMemo(() => {
@@ -192,14 +197,32 @@ export function AssistantBrowser({
                 {filteredAgents.map((agent) => (
                   <DropdownMenuItem
                     key={agent.sId}
-                    label={agent.name}
-                    description={agent.description}
-                    icon={() => <Avatar visual={agent.pictureUrl} />}
                     onClick={() => {
                       handleAssistantClick(agent);
                       setAssistantSearch("");
                     }}
-                  />
+                  >
+                    <div className="flex items-center gap-2">
+                      <Avatar visual={agent.pictureUrl} />
+                      <div className="flex flex-col">
+                        <div>{agent.name}</div>
+                        <div className="text-sm text-gray-500">
+                          {agent.description}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-grow flex-row items-center justify-end">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        icon={MoreIcon}
+                        onClick={(e: Event) => {
+                          e.stopPropagation();
+                          setQueryParam(router, "assistantDetails", agent.sId);
+                        }}
+                      />
+                    </div>
+                  </DropdownMenuItem>
                 ))}
               </>
             ) : isLoading ? (

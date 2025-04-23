@@ -699,6 +699,12 @@ export async function getAgentConfigurations<V extends "light" | "full">({
           )
         );
 
+  console.log(
+    "agentsGetView",
+    agentsGetView,
+    allowedAgentConfigurations.flat().map((a) => a.name)
+  );
+
   return applySortAndLimit(allowedAgentConfigurations.flat());
 }
 

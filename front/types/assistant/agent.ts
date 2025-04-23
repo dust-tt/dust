@@ -63,6 +63,7 @@ export type AgentConfigurationScope =
  *   users. Intended strictly for internal use with necessary superuser or admin
  *   authorization.
  */
+// TODO(agent-discovery) remove workspace, published, global
 export type AgentsGetViewType =
   | { agentIds: string[]; allVersions?: boolean }
   | "current_user"
