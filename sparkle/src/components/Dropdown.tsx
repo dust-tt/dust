@@ -217,6 +217,7 @@ interface DropdownMenuContentProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
+  dropdownHeaders?: React.ReactNode;
 }
 
 const DropdownMenuContent = React.forwardRef<
@@ -229,6 +230,7 @@ const DropdownMenuContent = React.forwardRef<
       sideOffset = 4,
       mountPortal = true,
       mountPortalContainer,
+      dropdownHeaders,
       children,
       ...props
     },
@@ -245,6 +247,7 @@ const DropdownMenuContent = React.forwardRef<
         )}
         {...props}
       >
+        {dropdownHeaders && dropdownHeaders}
         <ScrollArea
           className="s-w-full"
           viewportClassName={cn(
