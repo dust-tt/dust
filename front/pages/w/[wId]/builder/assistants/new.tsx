@@ -19,7 +19,6 @@ import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
-import { useEditors } from "@app/lib/swr/editors";
 import type {
   AgentConfigurationType,
   AppType,
@@ -30,7 +29,6 @@ import type {
   TemplateAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { isTemplateAgentConfiguration } from "@app/types";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;
@@ -154,13 +152,6 @@ export default function CreateAssistant({
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
-  const { editors } = useEditors({
-    owner,
-    agentConfigurationId:
-      agentConfiguration && !isTemplateAgentConfiguration(agentConfiguration)
-        ? agentConfiguration.sId
-        : null,
-  });
 
   if (agentConfiguration) {
     throwIfInvalidAgentConfiguration(agentConfiguration);
@@ -211,7 +202,6 @@ export default function CreateAssistant({
                 visualizationEnabled: agentConfiguration.visualizationEnabled,
                 templateId: templateId,
                 tags: agentConfiguration.tags,
-                editors,
               }
             : null
         }

@@ -21,7 +21,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -319,10 +318,6 @@ export async function createOrUpgradeAgentConfiguration({
     }
   }
 
-  const editors = (
-    await UserResource.fetchByIds(assistant.editors.map((e) => e.sId))
-  ).map((e) => e.toJSON());
-
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
     description: assistant.description,
@@ -340,7 +335,6 @@ export async function createOrUpgradeAgentConfiguration({
       actions
     ),
     tags: assistant.tags,
-    editors,
   });
 
   if (agentConfigurationRes.isErr()) {

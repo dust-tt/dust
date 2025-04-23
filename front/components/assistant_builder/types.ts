@@ -28,7 +28,6 @@ import type {
   SubscriptionType,
   SupportedModel,
   TimeframeUnit,
-  UserType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -232,7 +231,6 @@ export type AssistantBuilderState = {
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
-  editors?: UserType[];
 };
 
 export type AssistantBuilderInitialState = {
@@ -251,7 +249,6 @@ export type AssistantBuilderInitialState = {
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
-  editors?: UserType[];
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
@@ -274,7 +271,6 @@ export function getDefaultAssistantState() {
     visualizationEnabled: true,
     templateId: null,
     tags: [],
-    editors: [],
   } satisfies AssistantBuilderState;
 }
 

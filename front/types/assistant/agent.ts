@@ -161,19 +161,6 @@ export interface TemplateAgentConfigurationType {
   tags: TagType[];
 }
 
-export function isTemplateAgentConfiguration(
-  agentConfiguration:
-    | LightAgentConfigurationType
-    | TemplateAgentConfigurationType
-    | null
-): agentConfiguration is TemplateAgentConfigurationType {
-  return !!(
-    agentConfiguration &&
-    "isTemplate" in agentConfiguration &&
-    agentConfiguration.isTemplate === true
-  );
-}
-
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 12;
 
