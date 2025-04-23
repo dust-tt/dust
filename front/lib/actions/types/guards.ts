@@ -10,7 +10,6 @@ import type {
 } from "@app/lib/actions/conversation/include_file";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type {
-  LocalMCPServerConfigurationType,
   MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
@@ -172,7 +171,8 @@ export function isPlatformMCPServerConfiguration(
 ): arg is PlatformMCPServerConfigurationType {
   return (
     isMCPServerConfiguration(arg) &&
-    (arg as PlatformMCPServerConfigurationType).type === "mcp_server_configuration" &&
+    (arg as PlatformMCPServerConfigurationType).type ===
+      "mcp_server_configuration" &&
     (arg as PlatformMCPServerConfigurationType).mcpServerViewId !== undefined
   );
 }
