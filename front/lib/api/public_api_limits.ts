@@ -140,8 +140,6 @@ export async function maybeTrackTokenUsageCost(
     { concurrency: 10 }
   );
 
-  await setTimeoutAsync(1000);
-
   // Compute the price for all the runs.
   const runsCost = calculateTokenUsageCost(runUsages.flat());
 
