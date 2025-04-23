@@ -2,7 +2,6 @@ import type { InternalToolInputMimeType } from "@dust-tt/client";
 import {
   assertNever,
   CHILD_AGENT_CONFIGURATION_URI_PATTERN,
-  ConfigurableToolInputJSONSchemas,
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   INTERNAL_MIME_TYPES,
   TABLE_CONFIGURATION_URI_PATTERN,
@@ -24,7 +23,7 @@ import {
   findSchemaAtPath,
   followInternalRef,
   isJSONSchemaObject,
-  schemasAreEqual,
+  schemaMatchesMimeType,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
@@ -34,6 +33,7 @@ import type { WorkspaceType } from "@app/types";
 
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
+ * Not all mime types have a fixed schema, for instance the ENUM mime type is flexible.
  */
 export const ConfigurableToolInputSchemas = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]: z.array(
@@ -64,11 +64,23 @@ export const ConfigurableToolInputSchemas = {
     value: z.boolean(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN),
   }),
-} as const satisfies Record<InternalToolInputMimeType, z.ZodType>;
+  // Partial because all mime types do not necessarily have a fixed schema,
+  // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
+} as const satisfies Partial<Record<InternalToolInputMimeType, z.ZodType>>;
 
-export type ConfigurableToolInputType = z.infer<
-  (typeof ConfigurableToolInputSchemas)[InternalToolInputMimeType]
->;
+// Type for the tool inputs that have a flexible schema.
+type FlexibleConfigurableToolInput = {
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM]: {
+    value: string | number | boolean;
+    mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM;
+  };
+};
+
+export type ConfigurableToolInputType =
+  | z.infer<
+      (typeof ConfigurableToolInputSchemas)[keyof typeof ConfigurableToolInputSchemas]
+    >
+  | FlexibleConfigurableToolInput[keyof FlexibleConfigurableToolInput];
 
 export type DataSourcesToolConfigurationType = z.infer<
   (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]
@@ -159,6 +171,11 @@ export function generateConfiguredInput({
       return { value, mimeType };
     }
 
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
+      const value = actionConfiguration.additionalConfiguration[keyPath];
+      return { value, mimeType };
+    }
+
     default:
       assertNever(mimeType);
   }
@@ -176,12 +193,7 @@ export function findPathsToConfiguration({
   mimeType: InternalToolInputMimeType;
 }): string[] {
   return mcpServer.tools.flatMap((tool) =>
-    tool.inputSchema
-      ? findMatchingSchemaKeys(
-          tool.inputSchema,
-          ConfigurableToolInputJSONSchemas[mimeType]
-        )
-      : []
+    tool.inputSchema ? findMatchingSchemaKeys(tool.inputSchema, mimeType) : []
   );
 }
 
@@ -201,14 +213,14 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
       let shouldInclude = true;
 
       if (isJSONSchemaObject(property)) {
-        for (const schema of Object.values(ConfigurableToolInputJSONSchemas)) {
+        for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
           // Check if the property matches the schema, following references if $ref points to a schema internally.
-          let schemasMatch = schemasAreEqual(property, schema);
+          let schemasMatch = schemaMatchesMimeType(property, mimeType);
 
           if (!schemasMatch && property.$ref) {
             const refSchema = followInternalRef(inputSchema, property.$ref);
             if (refSchema) {
-              schemasMatch = schemasAreEqual(refSchema, schema);
+              schemasMatch = schemaMatchesMimeType(refSchema, mimeType);
             }
           }
 
@@ -319,12 +331,7 @@ export function augmentInputsWithConfiguration({
       // If we found a schema and it has a matching MIME type, inject the value
       if (propSchema) {
         for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
-          if (
-            schemasAreEqual(
-              propSchema,
-              ConfigurableToolInputJSONSchemas[mimeType]
-            )
-          ) {
+          if (schemaMatchesMimeType(propSchema, mimeType)) {
             // We found a matching mimeType, augment the inputs
             setValueAtPath(
               inputs,

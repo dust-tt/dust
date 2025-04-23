@@ -1,7 +1,4 @@
-import {
-  ConfigurableToolInputJSONSchemas,
-  INTERNAL_MIME_TYPES,
-} from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
 
@@ -93,10 +90,10 @@ describe("JSON Schema Utilities", () => {
       };
 
       // Look for STRING configuration schema
-      const targetSchema =
-        ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING];
-
-      const result = findMatchingSchemaKeys(mainSchema, targetSchema);
+      const result = findMatchingSchemaKeys(
+        mainSchema,
+        INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+      );
       expect(result).toContain("config.userPreferences.theme");
     });
 
@@ -162,10 +159,10 @@ describe("JSON Schema Utilities", () => {
       };
 
       // Look for TABLE configuration schema
-      const targetSchema =
-        ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE];
-
-      const result = findMatchingSchemaKeys(mainSchema, targetSchema);
+      const result = findMatchingSchemaKeys(
+        mainSchema,
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
+      );
       expect(result).toContain("dataSourceConfigs.items.settings.tables");
     });
 
@@ -214,12 +211,10 @@ describe("JSON Schema Utilities", () => {
       };
 
       // Look for CHILD_AGENT configuration schema
-      const targetSchema =
-        ConfigurableToolInputJSONSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
-        ];
-
-      const result = findMatchingSchemaKeys(mainSchema, targetSchema);
+      const result = findMatchingSchemaKeys(
+        mainSchema,
+        INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
+      );
       expect(result).toContain("workflow.steps.items.action.executor");
     });
   });

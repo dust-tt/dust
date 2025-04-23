@@ -1,4 +1,8 @@
-import type { ConfigurableToolInputType } from "@dust-tt/client";
+import type {
+  ConfigurableToolInputType,
+  InternalToolInputMimeType,
+} from "@dust-tt/client";
+import { ConfigurableToolInputJSONSchemas } from "@dust-tt/client";
 import Ajv from "ajv";
 import type {
   JSONSchema7 as JSONSchema,
@@ -15,14 +19,29 @@ export function isJSONSchemaObject(
   return value !== null && typeof value === "object";
 }
 
+export function schemaMatchesMimeType(
+  schema: JSONSchema,
+  mimeType: InternalToolInputMimeType
+): boolean {
+  if (ConfigurableToolInputJSONSchemas[mimeType]) {
+    return schemasAreEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
+  }
+  // If the mime type is not in the ConfigurableToolInputJSONSchemas, it is a flexible mime type.
+  // We only check that the schema has a mimeType property with the correct value.
+  const mimeTypeProperty = schema.properties?.mimeType;
+  if (mimeTypeProperty && isJSONSchemaObject(mimeTypeProperty)) {
+    return (
+      mimeTypeProperty.type === "string" && mimeTypeProperty.const === mimeType
+    );
+  }
+  return false;
+}
+
 /**
  * Compares two JSON schemas for equality, only checking the properties, items and required fields.
  * In particular, it ignores the $schema field.
  */
-export function schemasAreEqual(
-  schemaA: JSONSchema,
-  schemaB: JSONSchema
-): boolean {
+function schemasAreEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
   if (schemaA.type !== schemaB.type) {
     return false;
   }
@@ -42,7 +61,7 @@ export function schemasAreEqual(
  */
 export function findMatchingSchemaKeys(
   inputSchema: JSONSchema,
-  targetSubSchema: JSONSchema
+  mimeType: InternalToolInputMimeType
 ): string[] {
   const matchingKeys: string[] = [];
 
@@ -55,7 +74,7 @@ export function findMatchingSchemaKeys(
     for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
       if (isJSONSchemaObject(propSchema)) {
         // Check if this property's schema matches the target
-        if (schemasAreEqual(propSchema, targetSubSchema)) {
+        if (schemaMatchesMimeType(propSchema, mimeType)) {
           matchingKeys.push(key);
         }
 
@@ -63,16 +82,13 @@ export function findMatchingSchemaKeys(
         // zodToJsonSchema generates references if the same subSchema is repeated.
         if (propSchema.$ref) {
           const refSchema = followInternalRef(inputSchema, propSchema.$ref);
-          if (refSchema && schemasAreEqual(refSchema, targetSubSchema)) {
+          if (refSchema && schemaMatchesMimeType(refSchema, mimeType)) {
             matchingKeys.push(key);
           }
         }
 
         // Recursively check this property's schema
-        const nestedMatches = findMatchingSchemaKeys(
-          propSchema,
-          targetSubSchema
-        );
+        const nestedMatches = findMatchingSchemaKeys(propSchema, mimeType);
         // For nested matches, prefix with the current property key
         for (const match of nestedMatches) {
           if (match !== "") {
@@ -88,10 +104,7 @@ export function findMatchingSchemaKeys(
   if (inputSchema.type === "array" && inputSchema.items) {
     if (isJSONSchemaObject(inputSchema.items)) {
       // Single schema for all items
-      const itemMatches = findMatchingSchemaKeys(
-        inputSchema.items,
-        targetSubSchema
-      );
+      const itemMatches = findMatchingSchemaKeys(inputSchema.items, mimeType);
       // For array items, we use the 'items' key as a prefix
       for (const match of itemMatches) {
         if (match !== "") {
@@ -105,7 +118,7 @@ export function findMatchingSchemaKeys(
       for (let i = 0; i < inputSchema.items.length; i++) {
         const item = inputSchema.items[i];
         if (isJSONSchemaObject(item)) {
-          const itemMatches = findMatchingSchemaKeys(item, targetSubSchema);
+          const itemMatches = findMatchingSchemaKeys(item, mimeType);
           // For tuple items, we use the index as part of the key
           for (const match of itemMatches) {
             if (match !== "") {
@@ -129,13 +142,10 @@ export function findMatchingSchemaKeys(
       continue;
     }
 
-    if (
-      value === targetSubSchema ||
-      (isJSONSchemaObject(value) && schemasAreEqual(value, targetSubSchema))
-    ) {
+    if (isJSONSchemaObject(value) && schemaMatchesMimeType(value, mimeType)) {
       matchingKeys.push(key);
     } else if (isJSONSchemaObject(value)) {
-      const nestedMatches = findMatchingSchemaKeys(value, targetSubSchema);
+      const nestedMatches = findMatchingSchemaKeys(value, mimeType);
       for (const match of nestedMatches) {
         if (match !== "") {
           matchingKeys.push(`${key}.${match}`);
