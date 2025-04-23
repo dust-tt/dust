@@ -15,7 +15,12 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   InformationCircleIcon,
   Input,
@@ -1258,75 +1263,60 @@ function AdvancedSettings({
     ) ?? reasoningModels?.[0];
 
   return (
-    <Popover
-      popoverTriggerAsChild
-      trigger={
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           label="Advanced settings"
           variant="outline"
           size="sm"
           isSelect
         />
-      }
-      content={
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-col items-start justify-start">
-              <div className="w-full grow text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
-                Max steps per run
-              </div>
-              <div className="w-full grow text-sm text-muted-foreground dark:text-muted-foreground-night">
-                up to {MAX_STEPS_USE_PER_RUN_LIMIT}
-              </div>
-            </div>
-            <Input
-              value={maxStepsPerRun?.toString() ?? ""}
-              placeholder=""
-              name="maxStepsPerRun"
-              onChange={(e) => {
-                if (!e.target.value || e.target.value === "") {
-                  setMaxStepsPerRun(null);
-                  return;
-                }
-                const value = parseInt(e.target.value);
-                if (
-                  !isNaN(value) &&
-                  value >= 0 &&
-                  value <= MAX_STEPS_USE_PER_RUN_LIMIT
-                ) {
-                  setMaxStepsPerRun(value);
-                }
-              }}
-            />
-            {(reasoningModels?.length ?? 0) > 1 && setReasoningModel && (
-              <div className="flex flex-col gap-2">
-                <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                  Reasoning model
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      label={reasoningModel?.displayName}
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {(reasoningModels ?? []).map((model) => (
-                      <DropdownMenuItem
-                        key={model.modelId + (model.reasoningEffort ?? "")}
-                        label={model.displayName}
-                        onClick={() => setReasoningModel(model)}
-                      />
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
-          </div>
-        </div>
-      }
-    />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-60 p-2" align="end">
+        <DropdownMenuLabel
+          label={`Max steps per run (up to ${MAX_STEPS_USE_PER_RUN_LIMIT})`}
+        />
+        <Input
+          value={maxStepsPerRun?.toString() ?? ""}
+          placeholder=""
+          name="maxStepsPerRun"
+          onChange={(e) => {
+            if (!e.target.value || e.target.value === "") {
+              setMaxStepsPerRun(null);
+              return;
+            }
+            const value = parseInt(e.target.value);
+            if (
+              !isNaN(value) &&
+              value >= 0 &&
+              value <= MAX_STEPS_USE_PER_RUN_LIMIT
+            ) {
+              setMaxStepsPerRun(value);
+            }
+          }}
+        />
+
+        {(reasoningModels?.length ?? 0) > 1 && setReasoningModel && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Reasoning model" className="mt-1" />
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup
+                value={`${reasoningModel?.modelId}-${reasoningModel?.providerId}-${reasoningModel?.reasoningEffort ?? ""}`}
+              >
+                {(reasoningModels ?? []).map((model) => (
+                  <DropdownMenuRadioItem
+                    key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
+                    value={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
+                    label={model.displayName}
+                    onClick={() => setReasoningModel(model)}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -1549,7 +1539,7 @@ function Capabilities({
           isSelect
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="start">
         {shouldShowOldWebCapabilities && (
           <Capability
             name="Web search & browse"
