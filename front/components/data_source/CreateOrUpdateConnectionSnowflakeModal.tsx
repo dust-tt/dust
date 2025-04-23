@@ -476,7 +476,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                     name="private_key_passphrase"
                     type="password"
                     value={privateKeyPassphrase}
-                    placeholder=""
                     onChange={(e) => {
                       setPrivateKeyPassphrase(e.target.value);
                       setError(null);
