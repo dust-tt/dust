@@ -7,7 +7,7 @@ const CompanyCodec = t.type({
 
 const ContactCodec = t.type({
   id: t.string,
-  properties: t.record(t.string, t.union([t.string, t.null])),
+  properties: t.record(t.string, t.unknown),
   createdAt: t.string,
   updatedAt: t.string,
   archived: t.boolean,
@@ -15,7 +15,7 @@ const ContactCodec = t.type({
 
 const DealCodec = t.type({
   id: t.string,
-  properties: t.record(t.string, t.union([t.string, t.null])),
+  properties: t.record(t.string, t.unknown),
   createdAt: t.string,
   updatedAt: t.string,
   archived: t.boolean,

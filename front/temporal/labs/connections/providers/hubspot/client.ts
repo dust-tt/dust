@@ -71,6 +71,29 @@ const NoteResponse = t.type({
   results: t.array(NoteCodec),
 });
 
+const PropertyResponse = t.type({
+  results: t.array(
+    t.type({
+      name: t.string,
+      label: t.string,
+      type: t.string,
+      fieldType: t.string,
+      description: t.union([t.string, t.undefined]),
+      groupName: t.string,
+      options: t.array(t.unknown),
+      displayOrder: t.number,
+      calculated: t.boolean,
+      externalOptions: t.boolean,
+      hasUniqueValue: t.boolean,
+      hidden: t.boolean,
+      hubspotDefined: t.union([t.boolean, t.undefined]),
+      modificationMetadata: t.record(t.string, t.unknown),
+      formField: t.boolean,
+      dataSensitivity: t.string,
+    })
+  ),
+});
+
 export class HubspotAPIError extends Error {
   readonly status?: number;
   readonly endpoint: string;
@@ -247,13 +270,36 @@ export class HubspotClient {
       return { results: [] };
     }
 
+    // First get all deal properties
+    const propertiesResponse = await this.makeRequest(
+      "/crm/v3/properties/deals",
+      PropertyResponse,
+      { method: "GET" }
+    );
+
+    const propertyNames = propertiesResponse.results.map((p) => p.name);
+
     return this.makeRequest("/crm/v3/objects/deals/batch/read", DealResponse, {
       method: "POST",
       body: JSON.stringify({
-        properties: ["dealname", "dealstage", "amount", "closedate"],
+        properties: propertyNames,
         inputs: dealIds.map((id) => ({ id })),
       }),
     });
+  }
+
+  async getDealActivities(dealId: string) {
+    return this.makeRequest(
+      `/crm/v3/objects/deals/${dealId}/associations/meetings`,
+      AssociationsResponse,
+      {
+        params: {
+          limit: 100,
+          // Sort by timestamp descending to get most recent activities first
+          sorts: [{ propertyName: "hs_timestamp", direction: "DESCENDING" }],
+        },
+      }
+    );
   }
 
   async getAssociatedTickets(companyId: string) {

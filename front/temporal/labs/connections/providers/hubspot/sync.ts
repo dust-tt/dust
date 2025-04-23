@@ -61,13 +61,28 @@ function createContactSection(contact: Contact, documentId: string): Section {
   };
 }
 
-function createDealSection(deal: Deal, documentId: string): Section {
+async function createDealSection(
+  deal: Deal,
+  documentId: string,
+  hubspotClient: HubspotClient
+): Promise<Section> {
   const props = deal.properties || {};
+
+  // Get all activities
+  const activities = await hubspotClient.getDealActivities(deal.id);
+
+  // Format all properties
+  const propertyEntries = Object.entries(props)
+    .filter(([, value]) => value !== null)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join("\n");
+
   const dealDetails = [
-    props.dealname,
-    props.dealstage && `Stage: ${props.dealstage}`,
-    props.amount && `Amount: ${props.amount}`,
-    props.closedate && `Close Date: ${props.closedate}`,
+    "Deal Details:",
+    propertyEntries,
+    "",
+    activities.results.length > 0 ? "Activities:" : null,
+    ...activities.results.map((activity) => `Meeting: ${activity.id}`),
   ]
     .filter(Boolean)
     .join("\n");
@@ -123,15 +138,16 @@ function createNoteSection(note: Note, documentId: string): Section {
   };
 }
 
-function createCompanySection(
+async function createCompanySection(
   documentId: string,
   company: Company,
   contacts: Contact[],
   deals: Deal[],
   tickets: Ticket[],
   orders: Order[],
-  notes: Note[]
-): Section {
+  notes: Note[],
+  hubspotClient: HubspotClient
+): Promise<Section> {
   const props = company.properties || {};
   const companyDetails = [
     `Company Name: ${props.name || "Unknown Company"}`,
@@ -179,7 +195,9 @@ function createCompanySection(
     sections.push({
       prefix: `${documentId}-deals`,
       content: "Deals:",
-      sections: deals.map((deal) => createDealSection(deal, documentId)),
+      sections: await Promise.all(
+        deals.map((deal) => createDealSection(deal, documentId, hubspotClient))
+      ),
     });
   }
 
@@ -259,19 +277,21 @@ async function upsertToDustDatasource(
   tickets: Ticket[],
   orders: Order[],
   notes: Note[],
-  portalId: string
+  portalId: string,
+  hubspotClient: HubspotClient
 ): Promise<void> {
   const documentId = `company-${company.id}`;
   const props = company.properties || {};
 
-  const section = createCompanySection(
+  const section = await createCompanySection(
     documentId,
     company,
     contacts,
     deals,
     tickets,
     orders,
-    notes
+    notes,
+    hubspotClient
   );
 
   try {
@@ -475,7 +495,8 @@ export async function syncHubspotConnection(
             tickets,
             orders,
             notes,
-            credentials.portalId
+            credentials.portalId,
+            hubspotClient
           );
         }
       }
