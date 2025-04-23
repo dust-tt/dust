@@ -6,11 +6,9 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   PlusIcon,
-  ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
-import React from "react";
+import React, { useState } from "react";
 
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -60,27 +58,25 @@ export const AddActionMenu = ({
             />
           }
         />
-        <ScrollArea className="max-h-[500px]">
-          {isAvailableMCPServersLoading && (
-            <div className="flex justify-center py-4">
-              <Spinner size="sm" />{" "}
-            </div>
-          )}
-          {availableMCPServers
-            .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.id))
-            .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
-            .map((mcpServer) => (
-              <DropdownMenuItem
-                key={mcpServer.id}
-                label={asDisplayName(mcpServer.name)}
-                icon={() => getAvatar(mcpServer, "xs")}
-                description={mcpServer.description}
-                onClick={async () => {
-                  createInternalMCPServer(mcpServer);
-                }}
-              />
-            ))}
-        </ScrollArea>
+        {isAvailableMCPServersLoading && (
+          <div className="flex justify-center py-4">
+            <Spinner size="sm" />{" "}
+          </div>
+        )}
+        {availableMCPServers
+          .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.id))
+          .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
+          .map((mcpServer) => (
+            <DropdownMenuItem
+              key={mcpServer.id}
+              label={asDisplayName(mcpServer.name)}
+              icon={() => getAvatar(mcpServer, "xs")}
+              description={mcpServer.description}
+              onClick={async () => {
+                createInternalMCPServer(mcpServer);
+              }}
+            />
+          ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

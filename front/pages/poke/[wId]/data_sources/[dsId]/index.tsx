@@ -12,8 +12,6 @@ import {
   Input,
   LockIcon,
   MagnifyingGlassIcon,
-  ScrollArea,
-  ScrollBar,
   SliderToggle,
   Spinner,
   TableIcon,
@@ -1250,21 +1248,18 @@ function SlackWhitelistBot({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="min-w-72">
-              <ScrollArea className="flex max-h-72 flex-col" hideScrollBar>
-                <DropdownMenuRadioGroup
-                  value={selectedGroup ?? undefined}
-                  onValueChange={setSelectedGroup}
-                >
-                  {groups.map((group) => (
-                    <DropdownMenuRadioItem
-                      value={group.sId}
-                      key={group.sId}
-                      label={group.name}
-                    />
-                  ))}
-                </DropdownMenuRadioGroup>
-                <ScrollBar className="py-0" />
-              </ScrollArea>
+              <DropdownMenuRadioGroup
+                value={selectedGroup ?? undefined}
+                onValueChange={setSelectedGroup}
+              >
+                {groups.map((group) => (
+                  <DropdownMenuRadioItem
+                    value={group.sId}
+                    key={group.sId}
+                    label={group.name}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

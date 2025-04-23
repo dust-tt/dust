@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
@@ -11,8 +12,6 @@ import {
   Page,
   PencilSquareIcon,
   PlusIcon,
-  ScrollArea,
-  SearchInput,
   SparklesIcon,
   Spinner,
   useSendNotification,
@@ -691,7 +690,6 @@ function AddEditorDropdown({
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
-  const itemsContainerRef = React.useRef<HTMLDivElement>(null);
 
   const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
     useSearchMembers({
@@ -715,40 +713,42 @@ function AddEditorDropdown({
           label="Add editor"
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[380px]">
-        <div className="flex gap-1.5 p-1.5">
-          <SearchInput
-            ref={searchInputRef}
-            name="search"
-            onChange={(value) => setSearchTerm(value)}
-            placeholder="Search members"
-            value={searchTerm}
-          />
-          <Button icon={PlusIcon} label="Create" />
-        </div>
-        <DropdownMenuSeparator />
-        <ScrollArea className="h-[380px]" ref={itemsContainerRef}>
-          {isWorkspaceMembersLoading ? (
-            <Spinner size="sm" />
-          ) : (
-            workspaceMembers.map((member) => {
-              return (
-                <DropdownMenuItem
-                  key={member.sId}
-                  label={member.fullName}
-                  description={member.email}
-                  icon={() => <Avatar size="sm" visual={member.image} />}
-                  onClick={async () => {
-                    setSearchTerm("");
-                    setIsEditorPickerOpen(false);
-                    await onAddEditor(member);
-                  }}
-                  truncateText
-                />
-              );
-            })
-          )}
-        </ScrollArea>
+      <DropdownMenuContent
+        className="h-96 w-[380px]"
+        dropdownHeaders={
+          <>
+            <DropdownMenuSearchbar
+              ref={searchInputRef}
+              name="search"
+              onChange={(value) => setSearchTerm(value)}
+              placeholder="Search members"
+              value={searchTerm}
+              button={<Button icon={PlusIcon} label="Create" />}
+            />
+            <DropdownMenuSeparator />
+          </>
+        }
+      >
+        {isWorkspaceMembersLoading ? (
+          <Spinner size="sm" />
+        ) : (
+          workspaceMembers.map((member) => {
+            return (
+              <DropdownMenuItem
+                key={member.sId}
+                label={member.fullName}
+                description={member.email}
+                icon={() => <Avatar size="sm" visual={member.image} />}
+                onClick={async () => {
+                  setSearchTerm("");
+                  setIsEditorPickerOpen(false);
+                  await onAddEditor(member);
+                }}
+                truncateText
+              />
+            );
+          })
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
