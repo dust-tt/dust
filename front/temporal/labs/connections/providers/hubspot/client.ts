@@ -249,10 +249,16 @@ export class HubspotClient {
 
     return {
       results: response.results.map((contact) => ({
-        ...contact,
-        createdAt: contact.properties?.createdate || new Date().toISOString(),
+        id: contact.id,
+        properties: contact.properties || {},
+        createdAt:
+          typeof contact.properties?.createdate === "string"
+            ? contact.properties.createdate
+            : new Date().toISOString(),
         updatedAt:
-          contact.properties?.lastmodifieddate || new Date().toISOString(),
+          typeof contact.properties?.lastmodifieddate === "string"
+            ? contact.properties.lastmodifieddate
+            : new Date().toISOString(),
         archived: false,
       })),
     };

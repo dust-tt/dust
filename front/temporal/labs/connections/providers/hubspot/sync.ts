@@ -123,10 +123,13 @@ function createOrderSection(order: Order, documentId: string): Section {
 
 function createNoteSection(note: Note, documentId: string): Section {
   const props = note.properties || {};
-  const formattedDate = props.hs_createdate
-    ? formatDate(props.hs_createdate)
-    : "Unknown date";
-  const cleanedNoteBody = sanitizeHtml(props.hs_note_body || "Empty note", {
+  const formattedDate =
+    typeof props.hs_createdate === "string"
+      ? formatDate(props.hs_createdate)
+      : "Unknown date";
+  const noteBody =
+    typeof props.hs_note_body === "string" ? props.hs_note_body : "Empty note";
+  const cleanedNoteBody = sanitizeHtml(noteBody, {
     allowedTags: [],
     allowedAttributes: {},
   });
@@ -150,7 +153,7 @@ async function createCompanySection(
 ): Promise<Section> {
   const props = company.properties || {};
   const companyDetails = [
-    `Company Name: ${props.name || "Unknown Company"}`,
+    `Company Name: ${typeof props.name === "string" ? props.name : "Unknown Company"}`,
     props.industry && `Industry: ${props.industry}`,
     props.annualrevenue && `Annual Revenue: ${props.annualrevenue}`,
     props.numberofemployees &&
@@ -170,7 +173,7 @@ async function createCompanySection(
     props.hs_analytics_source && `Source: ${props.hs_analytics_source}`,
     props.hs_pipeline && `Pipeline: ${props.hs_pipeline}`,
   ]
-    .filter(Boolean)
+    .filter((line): line is string => Boolean(line))
     .join("\n");
 
   const sections: Section[] = [
@@ -229,7 +232,7 @@ async function createCompanySection(
 
   return {
     prefix: documentId,
-    content: `Company Summary for ${props.name || "Unknown Company"}`,
+    content: `Company Summary for ${typeof props.name === "string" ? props.name : "Unknown Company"}`,
     sections,
   };
 }
@@ -430,11 +433,37 @@ export async function syncHubspotConnection(
     // Get recently updated companies
     const filters: HubspotFilter[] = [];
     if (since) {
-      filters.push({
-        propertyName: "hs_lastmodifieddate",
-        operator: "GTE",
-        value: since.toISOString(),
-      });
+      filters.push(
+        {
+          propertyName: "hs_lastmodifieddate",
+          operator: "GTE",
+          value: since.toISOString(),
+        },
+        // Also check for companies with deals modified since last sync
+        {
+          propertyName: "associations.deal.hs_lastmodifieddate",
+          operator: "GTE",
+          value: since.toISOString(),
+        },
+        // Check for companies with contacts modified since last sync
+        {
+          propertyName: "associations.contact.hs_lastmodifieddate",
+          operator: "GTE",
+          value: since.toISOString(),
+        },
+        // Check for companies with notes modified since last sync
+        {
+          propertyName: "notes_last_updated",
+          operator: "GTE",
+          value: since.toISOString(),
+        },
+        // Check for companies with tickets modified since last sync
+        {
+          propertyName: "associations.ticket.hs_lastmodifieddate",
+          operator: "GTE",
+          value: since.toISOString(),
+        }
+      );
     }
 
     const searchResponse = await hubspotClient.searchCompanies({
