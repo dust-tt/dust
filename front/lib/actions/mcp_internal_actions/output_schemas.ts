@@ -118,6 +118,15 @@ export const SearchQueryResourceSchema = z.object({
 
 export type SearchQueryResourceType = z.infer<typeof SearchQueryResourceSchema>;
 
+export const isSearchQueryResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: SearchQueryResourceType } => {
+  return (
+    outputBlock.type === "resource" &&
+    SearchQueryResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 export const SearchResultResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT
@@ -141,13 +150,11 @@ export type SearchResultResourceType = z.infer<
 >;
 
 export const isSearchResultResourceType = (
-  outputBlock: object
-): outputBlock is SearchResultResourceType => {
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: SearchResultResourceType } => {
   return (
-    "mimeType" in outputBlock &&
-    outputBlock.mimeType ===
-      INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT &&
-    SearchResultResourceSchema.safeParse(outputBlock).success
+    outputBlock.type === "resource" &&
+    SearchResultResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 
