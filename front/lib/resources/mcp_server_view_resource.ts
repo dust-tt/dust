@@ -24,7 +24,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
-import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -52,8 +51,7 @@ export interface MCPServerViewResource
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
   static model: ModelStatic<MCPServerViewModel> = MCPServerViewModel;
   readonly editedByUser?: Attributes<UserModel>;
-  readonly remoteMCPServer?: Attributes<RemoteMCPServerModel>;
-  private remoteMCPServerResource?: RemoteMCPServerResource;
+  private remoteMCPServer?: RemoteMCPServerResource;
   private internalMCPServer?: InternalMCPServerInMemoryResource;
 
   constructor(
@@ -69,7 +67,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   private async init(auth: Authenticator): Promise<Result<void, DustError>> {
     if (this.remoteMCPServerId) {
-      if (!this.remoteMCPServer) {
+      const remoteServer = await RemoteMCPServerResource.findByPk(
+        auth,
+        this.remoteMCPServerId
+      );
+      if (!remoteServer) {
         return new Err(
           new DustError(
             "remote_server_not_found",
@@ -77,13 +79,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           )
         );
       }
-      const remoteServerResource = new RemoteMCPServerResource(
-        RemoteMCPServerModel,
-        // @ts-expect-error - Typescript is confused because as it doesn't understand that RemoteMCPServerModel is a regular model
-        this.remoteMCPServer.get()
-      );
 
-      this.remoteMCPServerResource = remoteServerResource;
+      this.remoteMCPServer = remoteServer;
       return new Ok(undefined);
     }
 
@@ -119,7 +116,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       "editedAt" | "editedByUserId" | "vaultId" | "workspaceId"
     >,
     space: SpaceResource,
-    editedByUser?: UserResource | null,
+    editedByUser?: UserResource,
     transaction?: Transaction
   ) {
     assert(auth.isAdmin(), "Only the admin can create an MCP server view");
@@ -186,7 +183,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         remoteMCPServerId: serverType === "remote" ? id : null,
       },
       space,
-      auth.user(),
+      auth.user() ?? undefined,
       transaction
     );
   }
@@ -203,10 +200,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         {
           model: UserModel,
           as: "editedByUser",
-        },
-        {
-          model: RemoteMCPServerModel,
-          as: "remoteMCPServer",
         },
       ],
     });
@@ -403,13 +396,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       throw new Error("This MCP server view is missing a remote server ID");
     }
 
-    if (!this.remoteMCPServerResource) {
+    if (!this.remoteMCPServer) {
       throw new Error(
         "This MCP server view is referencing a non-existent remote server"
       );
     }
 
-    return this.remoteMCPServerResource;
+    return this.remoteMCPServer;
   }
 
   getInternalMCPServerResource(): InternalMCPServerInMemoryResource {
@@ -600,9 +593,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           : this.getInternalMCPServerResource().toJSON(),
       editedByUser: this.makeEditedBy(
         this.editedByUser,
-        this.remoteMCPServerResource
-          ? this.remoteMCPServerResource.updatedAt
-          : this.updatedAt
+        this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
       ),
     };
   }
