@@ -155,6 +155,14 @@ function ComplexDropdownDemo() {
                 />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem icon={UserIcon} label="More..." />
+                <DropdownMenuItem icon={UserIcon} label="More.." />
+                <DropdownMenuItem icon={UserIcon} label="More..." />
+                <DropdownMenuItem icon={UserIcon} label="More.." />
+                <DropdownMenuItem icon={UserIcon} label="More" />
+                <DropdownMenuItem icon={UserIcon} label="More....." />
+                <DropdownMenuItem icon={UserIcon} label="More.." />
+                <DropdownMenuItem icon={UserIcon} label="More" />
+                <DropdownMenuItem icon={UserIcon} label="More...." />
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>

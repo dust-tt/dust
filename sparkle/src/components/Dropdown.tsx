@@ -203,12 +203,28 @@ DropdownMenuSubTrigger.displayName =
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
-    className={cn(menuStyleClasses.container, "s-shadow-lg", className)}
+    className={cn(
+      menuStyleClasses.container,
+      "s-flex s-flex-col s-p-0 s-shadow-lg",
+      className
+    )}
     {...props}
-  />
+  >
+    <ScrollArea
+      className="s-w-full s-flex-1"
+      hideScrollBar={false}
+      orientation="vertical"
+      viewportClassName={cn(
+        "s-flex-1",
+        "s-max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
+      )}
+    >
+      <div className="s-p-1">{children}</div>
+    </ScrollArea>
+  </DropdownMenuPrimitive.SubContent>
 ));
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
@@ -254,7 +270,7 @@ const DropdownMenuContent = React.forwardRef<
           className="s-w-full s-flex-1"
           viewportClassName={cn(
             "s-flex-1",
-            "s-max-h-[var(--radix-dropdown-menu-content-available-height)]"
+            "s-max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
           )}
         >
           {children}
