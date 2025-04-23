@@ -84,7 +84,7 @@ const LABS_CONNECTIONS: LabsConnectionItemType[] = [
     id: "jira",
     label: "Jira",
     featureFlag: "labs_connection_jira",
-    visibleWithoutAccess: false,
+    visibleWithoutAccess: true,
     logo: JiraLogo,
     description: "Import Jira issues into Dust.",
     authType: "apiKey",
