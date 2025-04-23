@@ -62,10 +62,7 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
-import {
-  SearchResultResourceSchema,
-  validateResourceOutput,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import {
@@ -552,9 +549,7 @@ export function AgentMessage({
         .filter(isMCPActionType)
         .flatMap((action) =>
           action.output
-            ?.filter((o) =>
-              validateResourceOutput(o, SearchResultResourceSchema)
-            )
+            ?.filter(isSearchResultResourceType)
             .map((o) => o.resource)
         )
     );

@@ -28,12 +28,11 @@ import type {
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  SearchQueryResourceSchema,
-  SearchResultResourceSchema,
-  SqlQueryOutputSchema,
-  ThinkingOutputSchema,
-  ToolGeneratedFileSchema,
-  validateResourceOutput,
+  isSearchQueryResourceType,
+  isSearchResultResourceType,
+  isSqlQueryOutput,
+  isThinkingOutput,
+  isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { LightWorkspaceType } from "@app/types";
@@ -44,12 +43,10 @@ export function MCPActionDetails(
 ) {
   const searchResults =
     props.action.output
-      ?.filter((o) => validateResourceOutput(o, SearchResultResourceSchema))
+      ?.filter(isSearchResultResourceType)
       .map((o) => o.resource) ?? [];
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
-  const isTablesQuery = props.action.output?.some((o) =>
-    validateResourceOutput(o, SqlQueryOutputSchema)
-  );
+  const isTablesQuery = props.action.output?.some(isSqlQueryOutput);
 
   if (searchResults.length > 0) {
     return (
@@ -70,9 +67,8 @@ function SearchResultActionDetails({
   searchResults: SearchResultResourceType[];
 }) {
   const queryResources =
-    action.output
-      ?.filter((o) => validateResourceOutput(o, SearchQueryResourceSchema))
-      .map((o) => o.resource) ?? [];
+    action.output?.filter(isSearchQueryResourceType).map((o) => o.resource) ??
+    [];
 
   return (
     <ActionDetailsWrapper
@@ -233,19 +229,13 @@ function TablesQueryActionDetails({
 }: ActionDetailsComponentBaseProps<MCPActionType>) {
   const { output } = action;
   const thinkingBlocks =
-    output
-      ?.filter((o) => validateResourceOutput(o, ThinkingOutputSchema))
-      .map((o) => o.resource) ?? [];
+    output?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
 
   const sqlQueryBlocks =
-    output
-      ?.filter((o) => validateResourceOutput(o, SqlQueryOutputSchema))
-      .map((o) => o.resource) ?? [];
+    output?.filter(isSqlQueryOutput).map((o) => o.resource) ?? [];
 
   const generatedFiles =
-    output
-      ?.filter((o) => validateResourceOutput(o, ToolGeneratedFileSchema))
-      .map((o) => o.resource) ?? [];
+    output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
   return (
     <ActionDetailsWrapper
