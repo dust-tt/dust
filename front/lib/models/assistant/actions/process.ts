@@ -1,5 +1,5 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type {
@@ -9,6 +9,7 @@ import type {
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { TimeframeUnit } from "@app/types";
 
@@ -153,6 +154,10 @@ export class AgentProcessAction extends WorkspaceAwareModel<AgentProcessAction> 
   declare step: number;
 
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+
+  declare jsonFileId: ForeignKey<FileModel["id"]> | null;
+  declare jsonFileSnippet: string | null;
+  declare jsonFile: NonAttribute<FileModel>;
 }
 AgentProcessAction.init(
   {
@@ -225,6 +230,10 @@ AgentProcessAction.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    jsonFileSnippet: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_process_action",
@@ -232,6 +241,10 @@ AgentProcessAction.init(
     indexes: [
       {
         fields: ["agentMessageId"],
+        concurrently: true,
+      },
+      {
+        fields: ["jsonFileId"],
         concurrently: true,
       },
     ],
@@ -256,6 +269,16 @@ AgentProcessAction.belongsTo(AgentMessage, {
 });
 AgentMessage.hasMany(AgentProcessAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+FileModel.hasMany(AgentProcessAction, {
+  foreignKey: { name: "jsonFileId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AgentProcessAction.belongsTo(FileModel, {
+  as: "jsonFile",
+  foreignKey: { name: "jsonFileId", allowNull: true },
+  onDelete: "SET NULL",
 });
 
 function renderSchemaPropertiesAsJSONSchema(

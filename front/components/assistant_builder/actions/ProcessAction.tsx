@@ -31,10 +31,7 @@ export function hasErrorActionProcess(
   if (action.type !== "PROCESS") {
     return "Invalid action type.";
   }
-  if (
-    !action.configuration.jsonSchema ||
-    !isValidJsonSchema(action.configuration._jsonSchemaString).isValid
-  ) {
+  if (!isValidJsonSchema(action.configuration._jsonSchemaString).isValid) {
     return errorMessage;
   }
   if (Object.keys(action.configuration.dataSourceConfigurations).length === 0) {
@@ -247,7 +244,8 @@ export function ActionProcess({
             Tool description
           </div>
           <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Clarify what the tool should do. For example:
+            Clarify what the tool should do and what data it should extract. For
+            example:
             <span className="block text-muted-foreground dark:text-muted-foreground-night">
               "Extract from the #reading slack channel a list of books,
               including their title, author, and the reason why they were
@@ -263,52 +261,6 @@ export function ActionProcess({
       )}
 
       <div className="flex flex-col gap-4 pt-8">
-        <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-          Schema
-        </div>
-        <Button
-          tooltip="Automatically re-generate the extraction schema based on Instructions"
-          label="Re-generate from Instructions"
-          variant="primary"
-          icon={SparklesIcon}
-          size="sm"
-          disabled={isGeneratingSchema || !instructions}
-          onClick={generateSchemaFromInstructions}
-        />
-        <TextArea
-          error={schemaEdit ? isValidJsonSchema(schemaEdit).error : undefined}
-          showErrorLabel={true}
-          placeholder={
-            '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
-          }
-          value={schemaEdit ?? ""}
-          disabled={isGeneratingSchema}
-          onChange={(e) => {
-            const newSchemaString = e.target.value;
-            setSchemaEdit(newSchemaString);
-            setEdited(true);
-
-            const parsedSchema = isValidJsonSchema(newSchemaString);
-            if (parsedSchema.isValid) {
-              updateAction((previousAction) => ({
-                ...previousAction,
-                jsonSchema: newSchemaString
-                  ? JSON.parse(newSchemaString)
-                  : null,
-                _jsonSchemaString: newSchemaString,
-              }));
-            } else {
-              // If parsing fails, still update the string version but don't update the schema
-              updateAction((previousAction) => ({
-                ...previousAction,
-                _jsonSchemaString: newSchemaString,
-              }));
-            }
-          }}
-        />
-      </div>
-
-      <div className="flex flex-col gap-4 pt-8">
         <div className="-ml-3 flex flex-row items-center text-lg font-bold text-foreground dark:text-foreground-night">
           <div className="flex items-center">
             <IconButton
@@ -322,55 +274,112 @@ export function ActionProcess({
       </div>
 
       {showAdvancedSettings && (
-        <div className={"flex flex-row items-center gap-4 pb-4"}>
-          <Checkbox
-            checked={!!actionConfiguration.timeFrame}
-            onCheckedChange={(checked) => {
-              setEdited(true);
-              updateAction((previousAction) => ({
-                ...previousAction,
-                timeFrame: checked ? defaultTimeFrame : undefined,
-              }));
-            }}
-          />
-          <div
-            className={classNames(
-              "text-sm font-semibold",
-              timeFrameDisabled ? "text-slate-400" : "text-element-900"
-            )}
-          >
-            Process data from the last
+        <>
+          <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
+            Time Range
           </div>
-          <Input
-            type="text"
-            messageStatus={timeFrameError ? "error" : "default"}
-            value={
-              timeFrame.value && !isNaN(timeFrame.value)
-                ? timeFrame.value.toString()
-                : ""
-            }
-            onChange={(e) => {
-              const value = parseInt(e.target.value, 10);
-              if (!isNaN(value) || !e.target.value) {
+          <div className={"flex flex-row items-center gap-4 pb-4"}>
+            <Checkbox
+              checked={!!actionConfiguration.timeFrame}
+              onCheckedChange={(checked) => {
                 setEdited(true);
                 updateAction((previousAction) => ({
                   ...previousAction,
-                  timeFrame: {
-                    value,
-                    unit: timeFrame.unit,
-                  },
+                  timeFrame: checked ? defaultTimeFrame : undefined,
                 }));
+              }}
+            />
+            <div
+              className={classNames(
+                "text-sm font-semibold",
+                timeFrameDisabled ? "text-slate-400" : "text-element-900"
+              )}
+            >
+              Process data from the last
+            </div>
+            <Input
+              type="text"
+              messageStatus={timeFrameError ? "error" : "default"}
+              value={
+                timeFrame.value && !isNaN(timeFrame.value)
+                  ? timeFrame.value.toString()
+                  : ""
               }
-            }}
-            disabled={timeFrameDisabled}
-          />
-          <TimeUnitDropdown
-            timeFrame={timeFrame}
-            updateAction={updateAction}
-            onEdit={() => setEdited(true)}
-            disabled={timeFrameDisabled}
-          />
-        </div>
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (!isNaN(value) || !e.target.value) {
+                  setEdited(true);
+                  updateAction((previousAction) => ({
+                    ...previousAction,
+                    timeFrame: {
+                      value,
+                      unit: timeFrame.unit,
+                    },
+                  }));
+                }
+              }}
+              disabled={timeFrameDisabled}
+            />
+            <TimeUnitDropdown
+              timeFrame={timeFrame}
+              updateAction={updateAction}
+              onEdit={() => setEdited(true)}
+              disabled={timeFrameDisabled}
+            />
+          </div>
+          <>
+            <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
+              Schema
+            </div>
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Optionally, provide a schema for the data to be extracted. If you
+              do not specify a schema, the tool will determine the schema based
+              on the message in a conversation.
+            </div>
+            <Button
+              tooltip="Automatically re-generate the extraction schema based on Instructions"
+              label="Re-generate from Instructions"
+              variant="primary"
+              icon={SparklesIcon}
+              size="sm"
+              disabled={isGeneratingSchema || !instructions}
+              onClick={generateSchemaFromInstructions}
+            />
+            <TextArea
+              error={
+                schemaEdit ? isValidJsonSchema(schemaEdit).error : undefined
+              }
+              showErrorLabel={true}
+              placeholder={
+                '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
+              }
+              value={schemaEdit ?? ""}
+              disabled={isGeneratingSchema}
+              onChange={(e) => {
+                const newSchemaString = e.target.value;
+                setSchemaEdit(newSchemaString);
+                setEdited(true);
+
+                const parsedSchema = isValidJsonSchema(newSchemaString);
+                if (parsedSchema.isValid) {
+                  updateAction((previousAction) => ({
+                    ...previousAction,
+                    jsonSchema: newSchemaString
+                      ? JSON.parse(newSchemaString)
+                      : null,
+                    _jsonSchemaString: newSchemaString,
+                  }));
+                } else {
+                  // If parsing fails, still update the string version but don't update the schema
+                  updateAction((previousAction) => ({
+                    ...previousAction,
+                    _jsonSchemaString: newSchemaString,
+                  }));
+                }
+              }}
+            />
+          </>
+        </>
       )}
     </>
   );

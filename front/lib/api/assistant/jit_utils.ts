@@ -69,6 +69,15 @@ function isSearchableContentType(
   return true;
 }
 
+function isExtractableContentType(
+  contentType: SupportedContentFragmentType
+): boolean {
+  if (isSupportedImageContentType(contentType)) {
+    return false;
+  }
+  return true;
+}
+
 function isListableContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
@@ -105,16 +114,19 @@ export function listFiles(
           // Tables from knowledge are not materialized as raw content. As such, they cannot be
           // included.
           !isContentNodeTable;
+        // Tables from knowledge are not materialized as raw content. As such, they cannot be
+        // searched--except for notion databases, that may have children.
+        const isTableMaterializable =
+          isContentNodeTable &&
+          m.contentType !== CONTENT_NODE_MIME_TYPES.NOTION.DATABASE;
         const isSearchable =
           canDoJIT &&
           isSearchableContentType(m.contentType) &&
-          // Tables from knowledge are not materialized as raw content. As such, they cannot be
-          // searched--except for notion databases, that may have children.
-          !(
-            isContentNodeTable &&
-            m.contentType !== CONTENT_NODE_MIME_TYPES.NOTION.DATABASE
-          );
-
+          isTableMaterializable;
+        const isExtractable =
+          canDoJIT &&
+          isExtractableContentType(m.contentType) &&
+          isTableMaterializable;
         const baseAttachment: BaseConversationAttachmentType = {
           title: m.title,
           contentType: m.contentType,
@@ -135,6 +147,7 @@ export function listFiles(
           isIncludable,
           isQueryable,
           isSearchable,
+          isExtractable,
         };
 
         if (isContentNodeAttachment(m)) {
@@ -164,6 +177,8 @@ export function listFiles(
         );
         const isQueryable = canDoJIT && isQueryableContentType(f.contentType);
         const isSearchable = canDoJIT && isSearchableContentType(f.contentType);
+        const isExtractable =
+          canDoJIT && isExtractableContentType(f.contentType);
 
         files.push({
           fileId: f.fileId,
@@ -176,6 +191,7 @@ export function listFiles(
           isIncludable,
           isQueryable,
           isSearchable,
+          isExtractable,
         });
       }
     }
