@@ -173,10 +173,10 @@ export const InputBarAttachmentsPicker = ({
                 />
               }
             />
+            <DropdownMenuSeparator />
           </>
         }
       >
-        <DropdownMenuSeparator />
         {searchQuery ? (
           <div ref={itemsContainerRef}>
             {pickedSpaceNodes.map((item, index) => (

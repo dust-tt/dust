@@ -41,8 +41,10 @@ export default function SpaceManagedActionsViewsModel({
         <Button label="Add Tools" variant="primary" icon={PlusIcon} size="sm" />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-[500px]" align="end">
-        <div className="flex flex-row items-center gap-2">
+      <DropdownMenuContent
+        className="w-[500px]"
+        align="end"
+        dropdownHeaders={
           <DropdownMenuSearchbar
             autoFocus
             className="flex-grow"
@@ -52,7 +54,8 @@ export default function SpaceManagedActionsViewsModel({
             onChange={setSearchText}
             disabled={isAvailableMCPServersLoading}
           />
-        </div>
+        }
+      >
         {isAvailableMCPServersLoading && (
           <div className="flex justify-center py-4">
             <Spinner size="sm" />{" "}

@@ -205,39 +205,41 @@ export const TagsSelector = ({
           <DropdownMenuContent
             className="h-96 min-w-72"
             dropdownHeaders={
-              <DropdownMenuSearchbar
-                autoFocus
-                placeholder="Search"
-                name="input"
-                value={searchText}
-                onChange={setSearchText}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && filteredTags.length > 0) {
-                    setBuilderState((state) => ({
-                      ...state,
-                      tags: [...state.tags, filteredTags[0]],
-                    }));
-                    setEdited(true);
-                    onMenuOpenChange(false);
+              <>
+                <DropdownMenuSearchbar
+                  autoFocus
+                  placeholder="Search"
+                  name="input"
+                  value={searchText}
+                  onChange={setSearchText}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && filteredTags.length > 0) {
+                      setBuilderState((state) => ({
+                        ...state,
+                        tags: [...state.tags, filteredTags[0]],
+                      }));
+                      setEdited(true);
+                      onMenuOpenChange(false);
+                    }
+                  }}
+                  button={
+                    isAdmin(owner) ? (
+                      <Button
+                        label="Create"
+                        variant="primary"
+                        icon={PlusIcon}
+                        onClick={() => {
+                          onMenuOpenChange(false);
+                          setIsDialogOpen(true);
+                        }}
+                      />
+                    ) : undefined
                   }
-                }}
-                button={
-                  isAdmin(owner) ? (
-                    <Button
-                      label="Create"
-                      variant="primary"
-                      icon={PlusIcon}
-                      onClick={() => {
-                        onMenuOpenChange(false);
-                        setIsDialogOpen(true);
-                      }}
-                    />
-                  ) : undefined
-                }
-              />
+                />
+                <DropdownMenuSeparator />
+              </>
             }
           >
-            <DropdownMenuSeparator />
             {searchText ? (
               filteredTags.map((c) => (
                 <DropdownMenuItem

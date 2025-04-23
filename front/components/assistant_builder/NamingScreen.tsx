@@ -716,17 +716,19 @@ function AddEditorDropdown({
       <DropdownMenuContent
         className="h-96 w-[380px]"
         dropdownHeaders={
-          <DropdownMenuSearchbar
-            ref={searchInputRef}
-            name="search"
-            onChange={(value) => setSearchTerm(value)}
-            placeholder="Search members"
-            value={searchTerm}
-            button={<Button icon={PlusIcon} label="Create" />}
-          />
+          <>
+            <DropdownMenuSearchbar
+              ref={searchInputRef}
+              name="search"
+              onChange={(value) => setSearchTerm(value)}
+              placeholder="Search members"
+              value={searchTerm}
+              button={<Button icon={PlusIcon} label="Create" />}
+            />
+            <DropdownMenuSeparator />
+          </>
         }
       >
-        <DropdownMenuSeparator />
         {isWorkspaceMembersLoading ? (
           <Spinner size="sm" />
         ) : (

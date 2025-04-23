@@ -70,32 +70,34 @@ export function AssistantPicker({
         align="end"
         mountPortal={mountPortal}
         dropdownHeaders={
-          <DropdownMenuSearchbar
-            autoFocus
-            name="search-assistants"
-            placeholder="Search Agents"
-            value={searchText}
-            onChange={setSearchText}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && searchedAssistants.length > 0) {
-                onItemClick(searchedAssistants[0]);
-                setSearchText("");
-                setIsOpen(false);
+          <>
+            <DropdownMenuSearchbar
+              autoFocus
+              name="search-assistants"
+              placeholder="Search Agents"
+              value={searchText}
+              onChange={setSearchText}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchedAssistants.length > 0) {
+                  onItemClick(searchedAssistants[0]);
+                  setSearchText("");
+                  setIsOpen(false);
+                }
+              }}
+              button={
+                showFooterButtons && (
+                  <Button
+                    label="Create"
+                    icon={PlusIcon}
+                    href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+                  />
+                )
               }
-            }}
-            button={
-              showFooterButtons && (
-                <Button
-                  label="Create"
-                  icon={PlusIcon}
-                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-                />
-              )
-            }
-          />
+            />
+            <DropdownMenuSeparator />
+          </>
         }
       >
-        <DropdownMenuSeparator />
         {searchedAssistants.length > 0 ? (
           searchedAssistants.map((c) => (
             <DropdownMenuItem
