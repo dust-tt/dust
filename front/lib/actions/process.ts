@@ -42,6 +42,7 @@ export const PROCESS_SCHEMA_ALLOWED_TYPES = [
   "number",
   "boolean",
 ] as const;
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 // Properties in the process configuration table are stored as an array of objects.
 export type ProcessSchemaPropertyType = {
@@ -49,33 +50,6 @@ export type ProcessSchemaPropertyType = {
   type: (typeof PROCESS_SCHEMA_ALLOWED_TYPES)[number];
   description: string;
 };
-
-function renderSchemaPropertiesAsJSONSchema(
-  schema: ProcessSchemaPropertyType[]
-): { [name: string]: { type: string; description: string } } {
-  let jsonSchema: { [name: string]: { type: string; description: string } } =
-    {};
-
-  if (schema.length > 0) {
-    schema.forEach((f) => {
-      jsonSchema[f.name] = {
-        type: f.type,
-        description: f.description,
-      };
-    });
-  } else {
-    // Default schema for extraction.
-    jsonSchema = {
-      required_data: {
-        type: "string",
-        description:
-          "Minimal (short and concise) piece of information extracted to follow instructions",
-      },
-    };
-  }
-
-  return jsonSchema;
-}
 
 export type ProcessConfigurationType = {
   id: ModelId;
@@ -85,7 +59,7 @@ export type ProcessConfigurationType = {
 
   dataSources: DataSourceConfiguration[];
   relativeTimeFrame: RetrievalTimeframe;
-  schema: ProcessSchemaPropertyType[];
+  jsonSchema: JSONSchema | null;
 
   name: string;
   description: string | null;
@@ -139,7 +113,7 @@ export class ProcessActionType extends BaseAction {
     tagsIn: string[] | null;
     tagsNot: string[] | null;
   };
-  readonly schema: ProcessSchemaPropertyType[];
+  readonly jsonSchema: JSONSchema | null;
   readonly outputs: ProcessActionOutputsType | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
@@ -151,7 +125,7 @@ export class ProcessActionType extends BaseAction {
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
-    this.schema = blob.schema;
+    this.jsonSchema = blob.jsonSchema;
     this.outputs = blob.outputs;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
@@ -300,7 +274,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       relativeTimeFrameDuration: relativeTimeFrame?.duration ?? null,
       relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
       processConfigurationId: actionConfiguration.sId,
-      schema: actionConfiguration.schema,
+      jsonSchema: actionConfiguration.jsonSchema,
       functionCallId,
       functionCallName: actionConfiguration.name,
       tagsIn: globalTagsIn,
@@ -326,7 +300,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           tagsIn: globalTagsIn,
           tagsNot: globalTagsNot,
         },
-        schema: action.schema,
+        jsonSchema: action.jsonSchema,
         outputs: null,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -397,9 +371,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         {
           context_size: contextSize,
           prompt,
-          schema: renderSchemaPropertiesAsJSONSchema(
-            actionConfiguration.schema
-          ),
+          schema: actionConfiguration.jsonSchema,
           objective,
         },
       ],
@@ -516,7 +488,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           tagsIn: globalTagsIn,
           tagsNot: globalTagsNot,
         },
-        schema: action.schema,
+        jsonSchema: action.jsonSchema,
         outputs,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -599,7 +571,7 @@ export async function processActionTypesFromAgentMessageIds(
         tagsIn: action.tagsIn,
         tagsNot: action.tagsNot,
       },
-      schema: action.schema,
+      jsonSchema: action.jsonSchema,
       outputs: action.outputs,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,

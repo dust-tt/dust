@@ -161,17 +161,14 @@ export default function AppLayout({
             )}
           >
             <div
-              className={classNames(
-                "flex w-full flex-col pl-12 lg:pl-0",
-                !hideSidebar
-                  ? "border-b border-primary-300/30 bg-white/80 backdrop-blur dark:border-primary-300-night/30 dark:bg-primary-950/80"
-                  : "",
+              className={cn(
+                "flex h-14 w-full shrink-0 flex-col px-4 pl-14 lg:pl-4",
+                !hideSidebar &&
+                  "border-b border-border bg-background dark:border-border-night dark:bg-background-night",
                 titleChildren ? "" : "lg:hidden"
               )}
             >
-              <div className="h-16 grow px-6">
-                {loaded && titleChildren && titleChildren}
-              </div>
+              {loaded && titleChildren && titleChildren}
             </div>
 
             <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 sm:px-8">

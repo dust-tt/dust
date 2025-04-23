@@ -67,7 +67,7 @@ export function Tree({
       className={cn(
         "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
         isBoxed &&
-          "s-rounded-xl s-border s-border-border s-bg-muted-background s-p-4 dark:s-border-border-night dark:s-bg-muted-background-night",
+          "s-rounded-xl s-border s-border-border s-bg-muted-background s-px-3 s-py-2 dark:s-border-border-night dark:s-bg-muted-background-night",
         className
       )}
     >
@@ -79,7 +79,7 @@ export function Tree({
 const treeItemStyleClasses = {
   base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-h-9",
   isNavigatableBase:
-    "s-rounded-xl s-pl-1 s-pr-3 s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
+    "s-rounded-xl s-pl-1.5 s-pr-3 s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
   isNavigatableUnselected: cn(
     "s-bg-primary-100/0 dark:s-bg-primary-100-night/0",
     "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night"
@@ -235,7 +235,7 @@ Tree.Item = React.forwardRef<
           {type === "node" && (
             <Button
               icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
-              size="xs"
+              size="xmini"
               variant="ghost-secondary"
               disabled={!effectiveOnChevronClick}
               onClick={(e) => {
@@ -313,7 +313,7 @@ Tree.Empty = function ({ label, onItemClick }: TreeEmptyProps) {
   return (
     <div
       className={cn(
-        "s-font-regular s-py-1.5 s-pl-6 s-text-sm",
+        "s-copy-sm s-py-1.5 s-pl-6 s-italic",
         "s-text-muted-foreground dark:s-text-muted-foreground-night",
         onItemClick ? "s-cursor-pointer" : ""
       )}

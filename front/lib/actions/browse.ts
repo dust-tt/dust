@@ -1,8 +1,6 @@
-import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 
 import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/actions/constants";
-import { runActionStreamed } from "@app/lib/actions/server";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
 import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
@@ -11,7 +9,10 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import {
+  browseUrls,
+  isBrowseScrapeSuccessResponse,
+} from "@app/lib/utils/webbrowse";
 import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
@@ -237,118 +238,29 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       }),
     };
 
-    const config = cloneBaseConfig(
-      getDustProdAction("assistant-v2-browse").config
-    );
+    const browseResults = await browseUrls(urls);
 
-    // Execute the browse action.
-    const browseRes = await runActionStreamed(
-      auth,
-      "assistant-v2-browse",
-      config,
-      [{ urls }],
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        agentMessageId: agentMessage.sId,
-      }
-    );
-    if (browseRes.isErr()) {
-      yield {
-        type: "browse_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "browse_execution_error",
-          message: browseRes.error.message,
-        },
+    const results = urls.map((url, index) => {
+      const browseResult = browseResults[index];
+
+      const [markdown, error] = isBrowseScrapeSuccessResponse(browseResult)
+        ? [browseResult.markdown, undefined]
+        : [undefined, browseResult.error];
+
+      return {
+        requestedUrl: url,
+        browsedUrl: url,
+        content: markdown ?? "",
+        responseCode: browseResult.status.toString(),
+        errorMessage: error ?? "",
       };
-      return;
-    }
+    });
 
-    const { eventStream, dustRunId } = browseRes.value;
-    let output: BrowseActionOutputType | null = null;
+    const output: BrowseActionOutputType = { results };
 
-    for await (const event of eventStream) {
-      if (event.type === "error") {
-        logger.error(
-          {
-            workspaceId: owner.id,
-            conversationId: conversation.id,
-            error: event.content.message,
-          },
-          "Error running browse action"
-        );
-        yield {
-          type: "browse_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "browse_execution_error",
-            message: event.content.message,
-          },
-        };
-        return;
-      }
-
-      if (event.type === "block_execution") {
-        const e = event.content.execution[0][0];
-        if (e.error) {
-          logger.error(
-            {
-              workspaceId: owner.id,
-              conversationId: conversation.id,
-              error: e.error,
-            },
-            "Error running browse action"
-          );
-          yield {
-            type: "browse_error",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: "browse_execution_error",
-              message: e.error,
-            },
-          };
-          return;
-        }
-
-        if (event.content.block_name === "BROWSE_FINAL" && e.value) {
-          const outputValidation = BrowseActionOutputSchema.decode(e.value);
-          if (isLeft(outputValidation)) {
-            logger.error(
-              {
-                workspaceId: owner.id,
-                conversationId: conversation.id,
-                error: outputValidation.left,
-              },
-              "Error running browse action"
-            );
-            yield {
-              type: "browse_error",
-              created: Date.now(),
-              configurationId: agentConfiguration.sId,
-              messageId: agentMessage.sId,
-              error: {
-                code: "browse_execution_error",
-                message: `Invalid output from browse action: ${outputValidation.left}`,
-              },
-            };
-            return;
-          }
-          output = outputValidation.right;
-        }
-      }
-    }
-
-    // Update ProcessAction with the output of the last block.
     await action.update({
       output,
-      runId: await dustRunId,
+      runId: null,
     });
 
     logger.info(

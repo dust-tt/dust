@@ -22,7 +22,7 @@ import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { LightWorkspaceType, OAuthProvider, SpaceType } from "@app/types";
 /**
  * Hook to fetch a specific remote MCP server by ID
  */
@@ -346,9 +346,11 @@ export function useCreateMCPServerConnection({
   const createMCPServerConnection = async ({
     connectionId,
     mcpServerId,
+    provider,
   }: {
     connectionId: string;
     mcpServerId: string;
+    provider: OAuthProvider;
   }): Promise<PostConnectionResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp/connections`, {
       method: "POST",
@@ -358,6 +360,7 @@ export function useCreateMCPServerConnection({
       body: JSON.stringify({
         connectionId,
         mcpServerId,
+        provider,
       }),
     });
     if (response.ok) {

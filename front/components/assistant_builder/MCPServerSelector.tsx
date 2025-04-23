@@ -8,7 +8,6 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
-import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -51,17 +50,9 @@ export function MCPServerSelector({
   }, [mcpServerViews, allowedSpaces]);
 
   return (
-    <div>
-      <div className="text-sm text-foreground dark:text-foreground-night">
-        The agent will be able to execute tools from the{" "}
-        <a className="font-bold" href="https://docs.dust.tt" target="_blank">
-          Toolset
-        </a>{" "}
-        made available to you by your Admin.
-      </div>
-      <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
+    <>
       <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
-        Pick a Toolset
+        Pick a set of tools
       </div>
       {isSpacesLoading ? (
         <Spinner />
@@ -84,7 +75,7 @@ export function MCPServerSelector({
               mcpServerViewsInSpace.length === 0 ||
               hasNoMCPServerViewsInAllowedSpaces
             ) {
-              return <>No Toolsets available.</>;
+              return <>No tools available.</>;
             }
 
             return (
@@ -138,6 +129,6 @@ export function MCPServerSelector({
           }}
         />
       )}
-    </div>
+    </>
   );
 }

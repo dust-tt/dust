@@ -18,7 +18,12 @@ import type {
   LightWorkspaceType,
   ModelId,
 } from "@app/types";
-import { assertNever, isOAuthProvider, setupOAuthConnection } from "@app/types";
+import {
+  assertNever,
+  isHubspotCredentials,
+  isOAuthProvider,
+  setupOAuthConnection,
+} from "@app/types";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
@@ -328,6 +333,16 @@ export function useCreateLabsConnectionConfiguration({
   }) => {
     switch (provider) {
       case "hubspot":
+        if (!isHubspotCredentials(credentials)) {
+          sendNotification({
+            type: "error",
+            title: "Invalid credentials format",
+            description:
+              "The provided credentials are not in the correct Hubspot format.",
+          });
+          return false;
+        }
+
         const testRes = await fetch(
           `/api/w/${workspaceId}/labs/connections/test-credentials`,
           {
@@ -479,7 +494,10 @@ export function useLabsConnectionConfigurations({
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/labs/connections`,
-    configurationsFetcher
+    configurationsFetcher,
+    {
+      refreshInterval: 10000,
+    }
   );
 
   return {

@@ -1184,7 +1184,7 @@ export async function createAgentActionConfiguration(
               ? action.relativeTimeFrame.unit
               : null,
             agentConfigurationId: agentConfiguration.id,
-            schema: action.schema,
+            jsonSchema: action.jsonSchema,
             name: action.name,
             description: action.description,
             workspaceId: owner.id,
@@ -1203,7 +1203,7 @@ export async function createAgentActionConfiguration(
           sId: processConfig.sId,
           type: "process_configuration",
           relativeTimeFrame: action.relativeTimeFrame,
-          schema: action.schema,
+          jsonSchema: action.jsonSchema,
           dataSources: action.dataSources,
           name: action.name || DEFAULT_PROCESS_ACTION_NAME,
           description: action.description,

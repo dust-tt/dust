@@ -58,7 +58,6 @@ async function getAccessTokenForRemoteMCPServer(
       const token = await getOAuthConnectionAccessToken({
         config: apiConfig.getOAuthAPIConfig(),
         logger,
-        provider: metadata.authorization.provider,
         connectionId: connection.value.connectionId,
       });
       return token.isOk() ? token.value.access_token : null;
@@ -143,13 +142,17 @@ export const connectToMCPServer = async (
           const url = new URL(remoteMCPServer.url);
 
           try {
-            const sseTransport = new SSEClientTransport(url, {
+            const req = {
               requestInit: {
                 headers: {
-                  Authorization: `Bearer ${accessToken}`,
+                  ...(accessToken
+                    ? { Authorization: `Bearer ${accessToken}` }
+                    : {}),
                 },
               },
-            });
+            };
+
+            const sseTransport = new SSEClientTransport(url, req);
             await mcpClient.connect(sseTransport);
           } catch (e: unknown) {
             return new Err(

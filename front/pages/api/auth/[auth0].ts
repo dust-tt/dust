@@ -192,6 +192,7 @@ export default handleAuth({
         "query" in req
           ? (req.query.returnTo as string)
           : config.getClientFacingUrl(),
+      clearSession: true,
     };
   }),
 });

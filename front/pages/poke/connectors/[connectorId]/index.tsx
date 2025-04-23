@@ -25,7 +25,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
       };
     }
 
-    const connector: ConnectorType = cRes.value;
+    const connector: ConnectorType = {
+      ...cRes.value,
+      connectionId: null,
+    };
 
     return {
       redirect: {

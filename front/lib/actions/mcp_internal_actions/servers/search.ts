@@ -4,15 +4,11 @@ import assert from "assert";
 import { trim } from "lodash";
 import { z } from "zod";
 
-import {
-  ConfigurableToolInputSchemas,
-  isDataSourcesToolConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { SearchQueryResourceMimeType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
@@ -96,13 +92,6 @@ function createServer(
         ],
     },
     async ({ query, relativeTimeFrame, dataSources, tagsIn, tagsNot }) => {
-      if (!isDataSourcesToolConfiguration(dataSources)) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "Invalid data sources" }],
-        };
-      }
-
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const credentials = dustManagedCredentials();
       const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -236,7 +225,7 @@ function createServer(
         assert(dataSourceView, "DataSource view not found");
 
         return res.documents.map((doc) => ({
-          mimeType: "application/vnd.dust.search_result",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
           uri: doc.source_url ?? "",
           text: getDisplayNameForDocument(doc),
 
@@ -252,7 +241,7 @@ function createServer(
       });
 
       const queryResource: SearchQueryResourceType = {
-        mimeType: SearchQueryResourceMimeType,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
         text: makeQueryDescription(query, timeFrame, tagsIn, tagsNot),
         uri: "",
       };
@@ -293,14 +282,6 @@ function createServer(
         ],
     },
     async ({ query, dataSources }) => {
-      if (!isDataSourcesToolConfiguration(dataSources)) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "Invalid data sources" }],
-        };
-      }
-
-      // Get the core search args for each data source, fail if any of them are invalid.
       const coreSearchArgsResults = await concurrentExecutor(
         dataSources,
         async (dataSourceConfiguration) =>

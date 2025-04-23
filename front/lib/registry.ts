@@ -63,7 +63,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "953b79fe89",
       appHash:
-        "3240c3804948d0587b1f4051e0101b9f2731c212856b8c3cd46d5268b3479fb0",
+        "689c0cde9d4962a57b5a38caab6244fdd4b30ce5e52af0f40333a03a847a91f1",
     },
     config: {
       DATASOURCE: {
@@ -131,7 +131,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "b4f205e453",
       appHash:
-        "f7b08e2039f62f0522bad2e6a4c946be1a1a77fc96aebc7c3af317d9db092c28",
+        "241a3f26bf8fcec4d728583420ad4424dcdf2e9554b6d1180affbdba49bf30b7",
     },
     config: {
       MODEL: {
@@ -223,7 +223,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "b36c7416bd",
       appHash:
-        "1ca7b9568681b06ef6cc0830239a479644a3ecc203c812983f3386a72e214d48",
+        "decdb1f2c554b78fee580f826adefc06fac9c936a3c71980d5cdf81aa33bdcc8",
     },
     config: {
       MODEL: {

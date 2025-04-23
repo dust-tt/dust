@@ -3,7 +3,6 @@ import {
   INTERNAL_MIME_TYPES,
 } from "@dust-tt/client";
 import type { JSONSchema7 } from "json-schema";
-import { z } from "zod";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
@@ -24,6 +23,10 @@ import {
   INTERNAL_MCP_SERVERS,
   isDefaultInternalMCPServer,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  MCPToolResult,
+  MCPToolResultContentType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
@@ -46,8 +49,7 @@ import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_m
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
-import type { Result, SupportedFileContentType } from "@app/types";
-import { FILE_FORMATS } from "@app/types";
+import type { Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
@@ -55,80 +57,6 @@ const MAX_OUTPUT_ITEMS = 128;
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
-
-// Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
-// See https://github.com/colinhacks/zod/issues/2938
-const ResourceContentsSchema = z.object({
-  uri: z.string(),
-  mimeType: z.optional(z.string()),
-});
-
-const TextResourceContentsSchema = ResourceContentsSchema.extend({
-  text: z.string(),
-});
-
-const BlobResourceContentsSchema = ResourceContentsSchema.extend({
-  blob: z.string().base64(),
-});
-
-const TextContentSchema = z.object({
-  type: z.literal("text"),
-  text: z.string(),
-});
-
-const ImageContentSchema = z.object({
-  type: z.literal("image"),
-  data: z.string().base64(),
-  mimeType: z.string(),
-});
-
-const EmbeddedResourceSchema = z.object({
-  type: z.literal("resource"),
-  resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema]),
-});
-
-const ActionGeneratedFileSchema = z.object({
-  type: z.literal("resource"),
-  resource: z.object({
-    text: z.string(),
-    uri: z.string(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE),
-    fileId: z.string(),
-    title: z.string(),
-    contentType: z.enum(
-      Object.keys(FILE_FORMATS) as [
-        SupportedFileContentType,
-        ...SupportedFileContentType[],
-      ]
-    ),
-    snippet: z.string().nullable(),
-  }),
-});
-
-export type ActionGeneratedFile = z.infer<typeof ActionGeneratedFileSchema>;
-
-export function isActionGeneratedFile(
-  content: MCPToolResultContent
-): content is ActionGeneratedFile {
-  return (
-    content.type === "resource" &&
-    content.resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE
-  );
-}
-
-const MCPToolResultContentSchema = z.union([
-  TextContentSchema,
-  ImageContentSchema,
-  EmbeddedResourceSchema,
-  ActionGeneratedFileSchema,
-]);
-
-export type MCPToolResultContent = z.infer<typeof MCPToolResultContentSchema>;
-
-export type MCPToolResult = {
-  isError: boolean;
-  content: MCPToolResultContent[];
-};
 
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
@@ -256,8 +184,8 @@ export async function tryCallMCPTool(
       );
     }
     // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: MCPToolResultContent[] = (toolCallResult.content ??
-      []) as MCPToolResultContent[];
+    const content: MCPToolResultContentType[] = (toolCallResult.content ??
+      []) as MCPToolResultContentType[];
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
       return new Err(
@@ -369,7 +297,6 @@ export async function tryListMCPTools(
   // Discover all the tools exposed by all the mcp servers available.
   const configurations = await Promise.all(
     mcpServerActions.map(async (action) => {
-      let tools: MCPToolWithStakeLevelType[] = [];
       const toolsRes = await listMCPServerTools(auth, action, {
         conversationId,
         messageId,
@@ -387,8 +314,7 @@ export async function tryListMCPTools(
         return [];
       }
 
-      tools = toolsRes.value;
-
+      const tools = toolsRes.value;
       const toolConfigurations = makeMCPToolConfigurations({
         config: action,
         tools,
@@ -447,6 +373,72 @@ export async function tryListMCPTools(
   return configurations.flat();
 }
 
+async function augmentToolsWithMetadata(
+  auth: Authenticator,
+  connectionParams: MCPConnectionParams,
+  tools: MCPToolType[]
+): Promise<Result<MCPToolWithStakeLevelType[], Error>> {
+  // For non-server-side MCP servers, just add default metadata.
+  if (!isConnectViaMCPServerId(connectionParams)) {
+    return new Ok(
+      tools.map((tool) => ({
+        ...tool,
+        stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
+        isDefault: false,
+        toolServerId: undefined,
+      }))
+    );
+  }
+
+  const isDefault = isDefaultInternalMCPServer(connectionParams.mcpServerId);
+  const { serverType, id } = getServerTypeAndIdFromSId(
+    connectionParams.mcpServerId
+  );
+
+  let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
+
+  switch (serverType) {
+    case "internal": {
+      const r = getInternalMCPServerNameAndWorkspaceId(
+        connectionParams.mcpServerId
+      );
+      if (r.isErr()) {
+        return r;
+      }
+      const serverName = r.value.name;
+      toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes || {};
+      break;
+    }
+    case "remote": {
+      const metadata =
+        await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
+      toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
+        (acc, metadata) => {
+          acc[metadata.toolName] = metadata.permission;
+          return acc;
+        },
+        {}
+      );
+      break;
+    }
+    default:
+      assertNever(serverType);
+  }
+
+  return new Ok(
+    tools.map((tool) => ({
+      ...tool,
+      stakeLevel:
+        toolsStakes[tool.name] ||
+        (isDefault
+          ? FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL
+          : FALLBACK_MCP_TOOL_STAKE_LEVEL),
+      isDefault,
+      toolServerId: connectionParams.mcpServerId,
+    }))
+  );
+}
+
 async function listMCPServerTools(
   auth: Authenticator,
   config: MCPServerConfigurationType,
@@ -478,12 +470,8 @@ async function listMCPServerTools(
       return r;
     }
     mcpClient = r.value;
-    const isDefault =
-      isConnectViaMCPServerId(connectionParams) &&
-      isDefaultInternalMCPServer(connectionParams.mcpServerId);
 
     let allToolsRaw: MCPToolType[] = [];
-    let allTools: MCPToolWithStakeLevelType[] = [];
     let nextPageCursor;
 
     // Fetch all tools, handling pagination if supported by the MCP server.
@@ -498,46 +486,17 @@ async function listMCPServerTools(
       ];
     } while (nextPageCursor);
 
-    // Enrich tool metadata with permissions and serverId to avoid re-fetching at validation modal
-    // level.
-    if (connectionParams.type === "mcpServerId") {
-      const { serverType, id } = getServerTypeAndIdFromSId(
-        connectionParams.mcpServerId
-      );
-
-      let toolsMetadata: Record<string, MCPToolStakeLevelType> = {};
-      switch (serverType) {
-        case "internal":
-          const r = getInternalMCPServerNameAndWorkspaceId(
-            connectionParams.mcpServerId
-          );
-          if (r.isErr()) {
-            return r;
-          }
-          toolsMetadata = INTERNAL_MCP_SERVERS[r.value.name].tools_stakes || {};
-          break;
-        case "remote":
-          toolsMetadata = (
-            await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id)
-          ).reduce<Record<string, MCPToolStakeLevelType>>((acc, metadata) => {
-            acc[metadata.toolName] = metadata.permission;
-            return acc;
-          }, {});
-          break;
-        default:
-          assertNever(serverType);
-      }
-
-      allTools = allToolsRaw.map((tool) => ({
-        ...tool,
-        stakeLevel:
-          toolsMetadata[tool.name] || isDefault
-            ? FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL
-            : FALLBACK_MCP_TOOL_STAKE_LEVEL,
-        isDefault,
-        toolServerId: connectionParams.mcpServerId,
-      }));
+    // Enrich tool metadata (if available) with permissions and serverId to avoid re-fetching at
+    // validation modal level.
+    const toolsMetadataRes = await augmentToolsWithMetadata(
+      auth,
+      connectionParams,
+      allToolsRaw
+    );
+    if (toolsMetadataRes.isErr()) {
+      return toolsMetadataRes;
     }
+    const toolsMetadata = toolsMetadataRes.value;
 
     logger.debug(
       {
@@ -546,10 +505,10 @@ async function listMCPServerTools(
         messageId,
         toolCount: allToolsRaw.length,
       },
-      `Retrieved ${allTools.length} tools from MCP server`
+      `Retrieved ${toolsMetadata.length} tools from MCP server`
     );
 
-    return new Ok(allTools);
+    return new Ok(toolsMetadata);
   } catch (error) {
     logger.error(
       {

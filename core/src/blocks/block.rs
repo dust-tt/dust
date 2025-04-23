@@ -254,13 +254,20 @@ pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result
     // looking for them).
     let context = Context::from_value(json!(env.state))?;
 
-    let mut result = match Tera::one_off(text, &context, false) {
+    // Create a Tera instance and remove access to built-ins `get_env` (which gives access to
+    // environment variables containing secrets).
+    let mut tera = Tera::default();
+    tera.register_function(
+        "get_env",
+        Box::new(|_: &HashMap<String, Value>| Err("get_env function is disabled".into())),
+    );
+
+    let mut result = match tera.render_str(text, &context) {
         Ok(r) => r,
         Err(e) => {
             let err_msg = e
                 .source()
-                .unwrap()
-                .to_string()
+                .map_or_else(|| "Unknown error".to_string(), |s| s.to_string())
                 .replace("__tera_one_off", field);
 
             Err(anyhow!("Templating error: {}", err_msg))?

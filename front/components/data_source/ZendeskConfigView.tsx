@@ -9,7 +9,7 @@ import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
-import type { APIError, DataSourceType, WorkspaceType } from "@app/types";
+import type { DataSourceType, WorkspaceType } from "@app/types";
 
 export function ZendeskConfigView({
   owner,
@@ -24,19 +24,37 @@ export function ZendeskConfigView({
 }) {
   const { isDark } = useTheme();
 
-  const configKey = "zendeskSyncUnresolvedTicketsEnabled";
+  const unresolvedTicketsConfigKey = "zendeskSyncUnresolvedTicketsEnabled";
+  const hideCustomerDetailsConfigKey = "zendeskHideCustomerDetails";
 
-  const { configValue, mutateConfig } = useConnectorConfig({
+  const {
+    configValue: syncUnresolvedTicketsConfigValue,
+    mutateConfig: mutateSyncUnresolvedTicketsConfig,
+  } = useConnectorConfig({
     owner,
     dataSource,
-    configKey,
+    configKey: unresolvedTicketsConfigKey,
   });
-  const syncUnresolvedTicketsEnabled = configValue === "true";
+  const {
+    configValue: hideCustomerDetailsConfigValue,
+    mutateConfig: mutateHideCustomerDetailsConfig,
+  } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: hideCustomerDetailsConfigKey,
+  });
+
+  const syncUnresolvedTicketsEnabled =
+    syncUnresolvedTicketsConfigValue === "true";
+  const hideCustomerDetailsEnabled = hideCustomerDetailsConfigValue === "true";
 
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
 
-  const handleSetNewConfig = async (configValue: boolean) => {
+  const handleSetNewConfig = async (
+    configKey: string,
+    configValue: boolean
+  ) => {
     setLoading(true);
     const res = await fetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
@@ -47,15 +65,16 @@ export function ZendeskConfigView({
       }
     );
     if (res.ok) {
-      await mutateConfig();
+      await mutateSyncUnresolvedTicketsConfig();
+      await mutateHideCustomerDetailsConfig();
       setLoading(false);
     } else {
       setLoading(false);
-      const err = (await res.json()) as { error: APIError };
+      const err = await res.json();
       sendNotification({
         type: "error",
         title: "Failed to edit Zendesk configuration",
-        description: err.error.message,
+        description: err.error?.message || "An unknown error occurred",
       });
     }
     return true;
@@ -75,7 +94,10 @@ export function ZendeskConfigView({
             <SliderToggle
               size="xs"
               onClick={async () => {
-                await handleSetNewConfig(!syncUnresolvedTicketsEnabled);
+                await handleSetNewConfig(
+                  unresolvedTicketsConfigKey,
+                  !syncUnresolvedTicketsEnabled
+                );
               }}
               selected={syncUnresolvedTicketsEnabled}
               disabled={readOnly || !isAdmin || loading}
@@ -85,10 +107,41 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground dark:text-muted-foreground-night">
-            If activated, Dust will also sync the unresolved tickets.
-            <br /> Be aware that this may significantly increase the number of
-            synced tickets, potentially negatively affecting the response
-            quality due to the added noise.
+            If activated, Dust will also sync the unresolved tickets. This may
+            significantly increase the number of synced tickets, potentially
+            negatively affecting the response quality due to the added noise.
+          </div>
+        </ContextItem.Description>
+      </ContextItem>
+
+      <ContextItem
+        title="Hide Customer Information"
+        visual={
+          <ContextItem.Visual
+            visual={isDark ? ZendeskWhiteLogo : ZendeskLogo}
+          />
+        }
+        action={
+          <div className="relative">
+            <SliderToggle
+              size="xs"
+              onClick={async () => {
+                await handleSetNewConfig(
+                  hideCustomerDetailsConfigKey,
+                  !hideCustomerDetailsEnabled
+                );
+              }}
+              selected={hideCustomerDetailsEnabled}
+              disabled={readOnly || !isAdmin || loading}
+            />
+          </div>
+        }
+      >
+        <ContextItem.Description>
+          <div className="text-muted-foreground dark:text-muted-foreground-night">
+            Enable this option to prevent customer names and email addresses
+            from being synced with Dust. This does not impact data within
+            tickets, only the metadata attached to tickets.
           </div>
         </ContextItem.Description>
       </ContextItem>
