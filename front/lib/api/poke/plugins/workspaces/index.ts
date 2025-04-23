@@ -6,6 +6,7 @@ export * from "./delete_workspace";
 export * from "./disable_sso_enforcement";
 export * from "./extend_trial";
 export * from "./extension_blacklist_domains";
+export * from "./get_remaining_public_api_limits";
 export * from "./invite_user";
 export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
