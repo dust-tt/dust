@@ -16,6 +16,7 @@ import {
   AttachmentIcon,
   Button,
   CloudArrowUpIcon,
+  DoubleIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,7 +26,6 @@ import {
   Input,
   ScrollArea,
   ScrollBar,
-  SimpleDoubleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useRef, useState } from "react";
@@ -181,7 +181,7 @@ export const InputBarAttachmentsPicker = ({
                     key={index}
                     label={item.title}
                     icon={
-                      <SimpleDoubleIcon
+                      <DoubleIcon
                         mainIcon={getVisualForDataSourceViewContentNode(item)}
                         secondaryIcon={getConnectorProviderLogoWithFallback({
                           provider:

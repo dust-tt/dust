@@ -15,7 +15,7 @@ import {
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import type { DataSourceViewContentNodeType } from "@dust-tt/client";
 import { isFolder, isWebsite } from "@dust-tt/client";
-import { CitationGrid, Icon, SimpleDoubleIcon } from "@dust-tt/sparkle";
+import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 interface FileAttachmentsProps {
@@ -69,7 +69,7 @@ export function InputBarAttachments({
         const visual = isWebsiteOrFolder ? (
           <Icon visual={logo} size="md" />
         ) : (
-          <SimpleDoubleIcon
+          <DoubleIcon
             mainIcon={getVisualForDataSourceViewContentNode(node)}
             secondaryIcon={logo}
           />
