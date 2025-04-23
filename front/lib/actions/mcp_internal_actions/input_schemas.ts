@@ -375,33 +375,39 @@ export function getMCPServerRequirements(
     };
   }
   const { server } = mcpServerView;
+
   const requiresDataSourceConfiguration =
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
     }).length > 0;
+
   const requiresTableConfiguration =
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
     }).length > 0;
+
   const requiresChildAgentConfiguration =
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT,
     }).length > 0;
+
   const requiredStrings = Object.fromEntries(
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
     }).map((path) => [path, ""])
   );
+
   const requiredNumbers = Object.fromEntries(
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
     }).map((path) => [path, null])
   );
+
   const requiredBooleans = Object.fromEntries(
     findPathsToConfiguration({
       mcpServer: server,

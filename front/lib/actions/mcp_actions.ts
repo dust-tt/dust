@@ -1,7 +1,4 @@
-import {
-  ConfigurableToolInputJSONSchemas,
-  INTERNAL_MIME_TYPES,
-} from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import assert from "assert";
 import type { JSONSchema7 } from "json-schema";
@@ -318,17 +315,13 @@ export async function tryListMCPTools(
         const hasDataSourceConfiguration =
           findMatchingSchemaKeys(
             toolConfigurations[0].inputSchema,
-            ConfigurableToolInputJSONSchemas[
-              INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-            ]
+            INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
           ).length > 0;
 
         const hasTableConfiguration =
           findMatchingSchemaKeys(
             toolConfigurations[0].inputSchema,
-            ConfigurableToolInputJSONSchemas[
-              INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
-            ]
+            INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
           ).length > 0;
 
         if (hasDataSourceConfiguration && hasTableConfiguration) {

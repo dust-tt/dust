@@ -23,8 +23,10 @@ export function schemaMatchesMimeType(
   schema: JSONSchema,
   mimeType: InternalToolInputMimeType
 ): boolean {
-  if (ConfigurableToolInputJSONSchemas[mimeType]) {
-    return schemasAreEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
+  // If the mime type is in the ConfigurableToolInputJSONSchemas, we check that the schema matches the fixed schema.
+  const fixedSchema = ConfigurableToolInputJSONSchemas[mimeType];
+  if (fixedSchema) {
+    return schemasAreEqual(schema, fixedSchema);
   }
   // If the mime type is not in the ConfigurableToolInputJSONSchemas, it is a flexible mime type.
   // We only check that the schema has a mimeType property with the correct value.
