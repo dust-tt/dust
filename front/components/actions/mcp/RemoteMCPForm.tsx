@@ -33,9 +33,9 @@ import {
   useSyncRemoteMCPServer,
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
+import { formatSecret } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
-import { formatSecret } from "@app/lib/utils";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -326,49 +326,50 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
       <div className="heading-lg">Advanced</div>
       <p>
-          For more details on the advanced settings, please refer to the Dust{" "}
-          <LinkWrapper href="https://docs.dust.tt/docs/remote-mcp-server"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            documentation <ExternalLinkIcon className="inline" />
-          </LinkWrapper>
-          .
-        </p>
+        For more details on the advanced settings, please refer to the Dust{" "}
+        <LinkWrapper
+          href="https://docs.dust.tt/docs/remote-mcp-server"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          documentation <ExternalLinkIcon className="inline" />
+        </LinkWrapper>
+        .
+      </p>
       <div className="space-y-2">
-       {sharedSecret && (
-        <>
-          <div className="space-y-2">
-            <Label htmlFor="sharedSecret">Shared Secret</Label>
-            <div className="flex items-center justify-between">
-              <p className="overflow-hidden text-ellipsis whitespace-nowrap">
-                {isSecretVisible ? sharedSecret : formatSecret(sharedSecret)}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleSecretVisibility}
-                  tooltip={isSecretVisible ? "Hide secret" : "Show secret"}
-                />
-                <Button
-                  icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                  variant="outline"
-                  size="sm"
-                  onClick={copyToClipboard}
-                  tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-                />
+        {sharedSecret && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="sharedSecret">Shared Secret</Label>
+              <div className="flex items-center justify-between">
+                <p className="overflow-hidden text-ellipsis whitespace-nowrap">
+                  {isSecretVisible ? sharedSecret : formatSecret(sharedSecret)}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleSecretVisibility}
+                    tooltip={isSecretVisible ? "Hide secret" : "Show secret"}
+                  />
+                  <Button
+                    icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                    variant="outline"
+                    size="sm"
+                    onClick={copyToClipboard}
+                    tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+                  />
+                </div>
               </div>
+              <p className="text-xs text-gray-500">
+                This is the secret key used to authenticate your MCP server with
+                Dust. Keep it secure.
+              </p>
             </div>
-            <p className="text-xs text-gray-500">
-              This is the secret key used to authenticate your MCP server with
-              Dust. Keep it secure.
-            </p>
-          </div>
-          <Separator />
-        </>
-      )}
+            <Separator />
+          </>
+        )}
       </div>
     </div>
   );
