@@ -690,7 +690,6 @@ function AddEditorDropdown({
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
-  const itemsContainerRef = React.useRef<HTMLDivElement>(null);
 
   const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
     useSearchMembers({
