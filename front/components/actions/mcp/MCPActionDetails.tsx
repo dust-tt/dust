@@ -128,7 +128,11 @@ function SearchResultActionDetails({
   );
 }
 
-function ThinkingBlock({ resource }: { resource: ThinkingOutputType }) {
+interface ThinkingBlockProps {
+  resource: ThinkingOutputType;
+}
+
+function ThinkingBlock({ resource }: ThinkingBlockProps) {
   return (
     <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
       <ContentMessage
@@ -149,7 +153,11 @@ function ThinkingBlock({ resource }: { resource: ThinkingOutputType }) {
   );
 }
 
-function SqlQueryBlock({ resource }: { resource: SqlQueryOutputType }) {
+interface SqlQueryBlockProps {
+  resource: SqlQueryOutputType;
+}
+
+function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
   return (
     <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
       <ContentBlockWrapper content={resource.text}>
@@ -164,15 +172,17 @@ function SqlQueryBlock({ resource }: { resource: SqlQueryOutputType }) {
   );
 }
 
+interface ToolGeneratedFileDetailsProps {
+  resource: ToolGeneratedFileType;
+  icon: React.ComponentType<{ className?: string }>;
+  owner: LightWorkspaceType;
+}
+
 function ToolGeneratedFileDetails({
   resource,
   icon,
   owner,
-}: {
-  resource: ToolGeneratedFileType;
-  icon: React.ComponentType<{ className?: string }>;
-  owner: LightWorkspaceType;
-}) {
+}: ToolGeneratedFileDetailsProps) {
   const sendNotification = useSendNotification();
 
   const handleDownload = useCallback(() => {
