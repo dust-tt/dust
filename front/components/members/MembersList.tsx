@@ -13,7 +13,7 @@ import type { KeyedMutator } from "swr";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { RoleType, UserTypeWithWorkspaces } from "@app/types";
+import type { RoleType, UserType, UserTypeWithWorkspaces } from "@app/types";
 
 type RowData = {
   icon: string;
@@ -55,7 +55,9 @@ type MembersData = {
   members: UserTypeWithWorkspaces[];
   totalMembersCount: number;
   isLoading: boolean;
-  mutateRegardlessOfQueryParams: KeyedMutator<SearchMembersResponseBody>;
+  mutateRegardlessOfQueryParams:
+    | KeyedMutator<SearchMembersResponseBody>
+    | (() => void);
 };
 
 const memberColumns = [
@@ -103,10 +105,14 @@ const memberColumns = [
     header: "",
     cell: (info: Info) => (
       <DataTable.CellContent>
-        <IconButton
-          icon={XMarkIcon}
-          onClick={info.row.original.onRemoveMemberClick}
-        />
+        {info.row.original.isCurrentUser ? (
+          <></>
+        ) : (
+          <IconButton
+            icon={XMarkIcon}
+            onClick={info.row.original.onRemoveMemberClick}
+          />
+        )}
       </DataTable.CellContent>
     ),
     meta: {
@@ -116,13 +122,13 @@ const memberColumns = [
 ];
 
 export function MembersList({
-  currentUserId,
+  currentUser,
   membersData,
   onRowClick,
   onRemoveMemberClick,
   showColumns,
 }: {
-  currentUserId: string;
+  currentUser: UserType | null;
   membersData: MembersData;
   onRowClick: (user: UserTypeWithWorkspaces) => void;
   onRemoveMemberClick?: (user: UserTypeWithWorkspaces) => void;
@@ -152,9 +158,9 @@ export function MembersList({
       allUsers: filteredMembers,
       onClick: onRowClick,
       onRemoveMemberClick,
-      currentUserId,
+      currentUserId: currentUser?.sId ?? "current-user-not-loaded",
     });
-  }, [members, onRowClick, onRemoveMemberClick, currentUserId]);
+  }, [members, onRowClick, onRemoveMemberClick, currentUser]);
 
   return (
     <>
