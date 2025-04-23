@@ -53,6 +53,8 @@ import { isEmptyString } from "@app/types";
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
+ *       429:
+ *         description: Rate limit exceeded.
  *       500:
  *         description: Internal Server Error.
  */

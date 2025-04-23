@@ -24,7 +24,7 @@ import type {
   ModelProviderIdType,
   Result,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 
@@ -192,7 +192,7 @@ export class RunResource extends BaseResource<RunModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

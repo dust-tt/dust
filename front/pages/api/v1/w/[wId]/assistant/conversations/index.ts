@@ -94,6 +94,8 @@ import {
  *         description: Bad Request
  *       401:
  *         description: Unauthorized
+ *       429:
+ *         description: Rate limit exceeded.
  *       500:
  *         description: Internal Server Error
  */
