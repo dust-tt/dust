@@ -1,8 +1,7 @@
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
-import { CheerioCrawler, Configuration, LogLevel } from "crawlee";
+import { BasicCrawler, Configuration, LogLevel } from "crawlee";
 import { Op } from "sequelize";
-import turndown from "turndown";
 
 import {
   getAllFoldersForUrl,
@@ -10,7 +9,9 @@ import {
   getFolderForUrl,
   getParentsForPage,
   isTopFolder,
+  shouldCrawlLink,
   stableIdForUrl,
+  verifyRedirect,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import {
   MAX_BLOCKED_RATIO,
@@ -28,6 +29,7 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
+import { firecrawlApp } from "@connectors/lib/firecrawl";
 import {
   WebCrawlerFolder,
   WebCrawlerPage,
@@ -47,11 +49,14 @@ import {
   INTERNAL_MIME_TYPES,
   stripNullBytes,
   validateUrl,
-  WEBCRAWLER_MAX_DEPTH,
   WEBCRAWLER_MAX_PAGES,
 } from "@connectors/types";
 
-import { DustHttpClient, WebCrawlerError } from "../lib/http";
+const { FIRECRAWL_API_KEY } = process.env;
+
+if (!FIRECRAWL_API_KEY) {
+  throw new Error("Missing FIRECRAWL_API_KEY");
+}
 
 const CONCURRENCY = 1;
 
@@ -124,38 +129,70 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const maxRequestsPerCrawl =
     webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES;
 
-  const crawler = new CheerioCrawler(
+  const crawler = new BasicCrawler(
     {
-      httpClient: new DustHttpClient(),
-      navigationTimeoutSecs: 10,
-      preNavigationHooks: [
-        async (crawlingContext) => {
-          Context.current().heartbeat({
-            type: "pre_navigation",
-          });
-
-          if (!crawlingContext.request.headers) {
-            crawlingContext.request.headers = {};
-          }
-          for (const [header, value] of Object.entries(customHeaders)) {
-            crawlingContext.request.headers[header] = value;
-          }
-        },
-      ],
       maxRequestsPerCrawl,
       maxConcurrency: CONCURRENCY,
       maxRequestsPerMinute: 20, // 1 request every 3 seconds average, to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
-      async requestHandler({ $, request, enqueueLinks }) {
-        if (request.skipNavigation) {
-          childLogger.info({ url: request.url }, "Skipping page");
-          return;
-        }
-
+      async requestHandler({ request, enqueueLinks }) {
         Context.current().heartbeat({
           type: "http_request",
         });
+
+        const checkUrl = await verifyRedirect(request.url);
+        if (checkUrl.isErr()) {
+          childLogger.error(
+            {
+              type: checkUrl.error.type,
+              configId: webCrawlerConfig.id,
+              sourceUrl: request.url,
+            },
+            checkUrl.error.message
+          );
+          return;
+        }
+
         const currentRequestDepth = request.userData.depth || 0;
+
+        if (
+          checkUrl.value !== request.url &&
+          !shouldCrawlLink(
+            checkUrl.value.toString(),
+            webCrawlerConfig,
+            currentRequestDepth
+          )
+        ) {
+          childLogger.warn(
+            { sourceUrl: request.url, url: checkUrl.value },
+            "Should not crawl"
+          );
+          return;
+        }
+
+        const crawlerResponse = await firecrawlApp.scrapeUrl(request.url, {
+          onlyMainContent: true,
+          formats: ["markdown", "links"],
+          headers: customHeaders,
+        });
+
+        if (!crawlerResponse.success) {
+          crawlingError++;
+          childLogger.error(
+            { url: request.url, configId: webCrawlerConfig.id },
+            `Error scraping: ${crawlerResponse.error}`
+          );
+          return;
+        }
+
+        childLogger.debug(
+          {
+            url: request.url,
+            configId: webCrawlerConfig.id,
+            links: crawlerResponse.links,
+          },
+          "Receive response"
+        );
 
         // try-catch allowing activity cancellation by temporal (various timeouts, or signal)
         try {
@@ -197,57 +234,19 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         }
 
         await enqueueLinks({
+          urls:
+            crawlerResponse.links?.filter((link) =>
+              shouldCrawlLink(link, webCrawlerConfig, currentRequestDepth)
+            ) ?? [],
           userData: {
             depth: currentRequestDepth + 1,
           },
-          transformRequestFunction: (req) => {
-            try {
-              if (
-                new URL(req.url).protocol !== "http:" &&
-                new URL(req.url).protocol !== "https:"
-              ) {
-                return false;
-              }
-            } catch (e) {
-              return false;
-            }
-            if (webCrawlerConfig.crawlMode === "child") {
-              // We only want to crawl children of the original url
-              if (
-                !new URL(req.url).pathname.startsWith(
-                  new URL(webCrawlerConfig.url).pathname
-                )
-              ) {
-                // path is not a child of the original url
-                return false;
-              }
-            }
-            if (
-              req.userData?.depth >= WEBCRAWLER_MAX_DEPTH ||
-              req.userData?.depth >= webCrawlerConfig.depth
-            ) {
-              return false;
-            }
-            return req;
-          },
         });
-        const extracted = new turndown()
-          .remove([
-            "style",
-            "script",
-            "iframe",
-            "noscript",
-            "nav",
-            "footer",
-            "header",
-            "form",
-            "meta",
-            "img",
-          ])
-          .turndown($.html());
+
+        const extracted = crawlerResponse.markdown ?? "[NO CONTENT]";
 
         totalExtracted += extracted.length;
-        const pageTitle = $("title").text();
+        const pageTitle = crawlerResponse.metadata?.title ?? "[NO TITLE]";
 
         // note that parentFolderUrls.length === parentFolderIds.length -1
         // since parentFolderIds includes the page as first element
@@ -399,35 +398,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           connector.id,
           `${pageCount.valid} pages`
         );
-      },
-      failedRequestHandler: async (context, error) => {
-        Context.current().heartbeat({
-          type: "failed_request",
-        });
-
-        if (error instanceof WebCrawlerError) {
-          childLogger.error(
-            { url: context.request.url, type: error.type },
-            error.message
-          );
-          return;
-        }
-
-        childLogger.error(
-          {
-            url: context.request.url,
-            error,
-          },
-          "webcrawler failedRequestHandler"
-        );
-        if (
-          !context.response ||
-          context.response.statusCode === 403 ||
-          context.response.statusCode === 429
-        ) {
-          pageCount.blocked++;
-        }
-        crawlingError++;
       },
       errorHandler: () => {
         // Errors are already logged by the crawler, so we are not re-logging them here.
