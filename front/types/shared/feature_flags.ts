@@ -3,6 +3,7 @@ export const WHITELISTABLE_FEATURES = [
   "agent_discovery",
   "claude_3_7_reasoning",
   "co_edition",
+  "context_window_compactor",
   "deepseek_feature",
   "deepseek_r1_global_agent_feature",
   "dev_mcp_actions",

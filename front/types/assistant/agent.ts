@@ -257,3 +257,14 @@ export type AgentContentEvent = {
   content: string;
   processedContent: string;
 };
+
+export type AgentContextWindowUtilizationEvent = {
+  type: "agent_context_window_utilization";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  usagePercentage: number;
+  usedTokens: number;
+  availableTokens: number;
+  totalContextSize: number;
+};

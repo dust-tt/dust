@@ -76,6 +76,7 @@ import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 import type {
   AgentActionSuccessEvent,
   AgentActionType,
+  AgentContextWindowUtilizationEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
@@ -240,7 +241,8 @@ export function AgentMessage({
           | AgentActionSuccessEvent
           | GenerationTokensEvent
           | AgentGenerationCancelledEvent
-          | AgentMessageSuccessEvent;
+          | AgentMessageSuccessEvent
+          | AgentContextWindowUtilizationEvent;
       } = JSON.parse(eventStr);
 
       const updateMessageWithAction = (
@@ -350,6 +352,10 @@ export function AgentMessage({
           setLastAgentStateClassification("thinking");
           break;
         }
+
+        case "agent_context_window_utilization":
+          // Handle context window utilization events
+          break;
 
         default:
           assertNever(event);

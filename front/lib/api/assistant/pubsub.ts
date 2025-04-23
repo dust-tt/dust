@@ -21,6 +21,7 @@ import type {
 import type { Result } from "@app/types";
 import type {
   AgentActionSuccessEvent,
+  AgentContextWindowUtilizationEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
@@ -137,6 +138,7 @@ async function handleUserMessageEvents({
     | GenerationTokensEvent
     | AgentGenerationCancelledEvent
     | AgentMessageSuccessEvent
+    | AgentContextWindowUtilizationEvent
     | ConversationTitleEvent,
     void
   >;
@@ -196,6 +198,7 @@ async function handleUserMessageEvents({
             case "agent_error":
             case "agent_generation_cancelled":
             case "agent_message_success":
+            case "agent_context_window_utilization":
             case "browse_params":
             case "conversation_include_file_params":
             case "dust_app_run_block":
@@ -362,6 +365,7 @@ export async function retryAgentMessageWithPubSub(
               case "agent_error":
               case "agent_generation_cancelled":
               case "agent_message_success":
+              case "agent_context_window_utilization":
               case "browse_params":
               case "conversation_include_file_params":
               case "dust_app_run_block":
