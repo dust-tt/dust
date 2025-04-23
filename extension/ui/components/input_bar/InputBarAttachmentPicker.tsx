@@ -25,6 +25,7 @@ import {
   Input,
   ScrollArea,
   ScrollBar,
+  SimpleDoubleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useRef, useState } from "react";
@@ -179,15 +180,15 @@ export const InputBarAttachmentsPicker = ({
                   <DropdownMenuItem
                     key={index}
                     label={item.title}
-                    icon={() =>
-                      getVisualForDataSourceViewContentNode(item)({
-                        className: "min-w-4",
-                      })
+                    icon={
+                      <SimpleDoubleIcon
+                        mainIcon={getVisualForDataSourceViewContentNode(item)}
+                        secondaryIcon={getConnectorProviderLogoWithFallback({
+                          provider:
+                            item.dataSourceView.dataSource.connectorProvider,
+                        })}
+                      />
                     }
-                    extraIcon={getConnectorProviderLogoWithFallback({
-                      provider:
-                        item.dataSourceView.dataSource.connectorProvider,
-                    })}
                     disabled={attachedNodeIds.includes(item.internalId)}
                     description={`${getLocationForDataSourceViewContentNode(item)}`}
                     onClick={() => {

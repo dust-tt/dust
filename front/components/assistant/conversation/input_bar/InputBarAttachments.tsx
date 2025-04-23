@@ -1,5 +1,5 @@
 import { isFolder, isWebsite } from "@dust-tt/client";
-import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { CitationGrid, Icon, SimpleDoubleIcon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 import type {
@@ -73,14 +73,9 @@ export function InputBarAttachments({
         const visual = isWebsiteOrFolder ? (
           <Icon visual={logo} />
         ) : (
-          <DoubleIcon
-            mainIconProps={{
-              visual: getVisualForDataSourceViewContentNode(node),
-              size: "md",
-            }}
-            secondaryIconProps={{
-              visual: logo,
-            }}
+          <SimpleDoubleIcon
+            mainIcon={getVisualForDataSourceViewContentNode(node)}
+            secondaryIcon={logo}
           />
         );
 

@@ -6,10 +6,10 @@ import {
   CitationImage,
   CitationTitle,
   DocumentIcon,
-  DoubleIcon,
   FolderIcon,
   Icon,
   ImageIcon,
+  SimpleDoubleIcon,
   TableIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -161,19 +161,15 @@ export function contentFragmentToAttachmentCitation(
       !provider || provider === "webcrawler" ? (
         <Icon visual={logo} size="md" />
       ) : (
-        <DoubleIcon
-          mainIconProps={{
-            visual:
-              nodeType === "table"
-                ? TableIcon
-                : nodeType === "folder"
-                  ? FolderIcon
-                  : DocumentIcon,
-            size: "md",
-          }}
-          secondaryIconProps={{
-            visual: logo,
-          }}
+        <SimpleDoubleIcon
+          mainIcon={
+            nodeType === "table"
+              ? TableIcon
+              : nodeType === "folder"
+                ? FolderIcon
+                : DocumentIcon
+          }
+          secondaryIcon={logo}
         />
       );
 
