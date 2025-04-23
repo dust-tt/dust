@@ -199,7 +199,11 @@ export function AdvancedSettings({
             <DropdownMenuSubTrigger label="Creativity level" />
             <DropdownMenuSubContent>
               <DropdownMenuRadioGroup
-                value={generationSettings.temperature.toString()}
+                value={
+                  getCreativityLevelFromTemperature(
+                    generationSettings?.temperature
+                  ).label
+                }
               >
                 {CREATIVITY_LEVELS.map(({ label, value }) => (
                   <DropdownMenuRadioItem
