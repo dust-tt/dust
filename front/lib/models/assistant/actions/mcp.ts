@@ -8,7 +8,6 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
 
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
   declare createdAt: CreationOptional<Date>;
@@ -224,36 +223,6 @@ export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPAction
   declare fileId: ForeignKey<FileModel["id"]> | null;
 
   declare file: NonAttribute<FileModel>;
-
-  getContentForModel(): MCPToolResultContentType {
-    // We want to hide the original file url from the model.
-    if (this.fileId) {
-      const sid = makeSId("file", {
-        workspaceId: this.workspaceId,
-        id: this.fileId,
-      });
-      let contentType = "unknown";
-      switch (this.content.type) {
-        case "text":
-          contentType = "text/plain";
-          break;
-        case "image":
-          contentType = this.content.mimeType;
-          break;
-        case "resource":
-          contentType = this.content.resource.mimeType ?? "unknown";
-          break;
-        default:
-          contentType = "unknown";
-          break;
-      }
-      return {
-        type: "text",
-        text: `A file of type ${contentType} with id ${sid} was generated successfully and made available to the conversation.`,
-      };
-    }
-    return this.content;
-  }
 }
 
 AgentMCPActionOutputItem.init(
