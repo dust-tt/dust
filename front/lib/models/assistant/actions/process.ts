@@ -2,7 +2,10 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { ProcessActionOutputsType } from "@app/lib/actions/process";
+import type {
+  ProcessActionOutputsType,
+  ProcessSchemaPropertyType,
+} from "@app/lib/actions/process";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -22,6 +25,9 @@ export class AgentProcessConfiguration extends WorkspaceAwareModel<AgentProcessC
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
+  // Maintained for backward compatibility for old version of the process action
+  // All saved process actions will used jsonSchema from now on
+  declare schema: ProcessSchemaPropertyType[] | null;
   declare jsonSchema: JSONSchema | null;
 
   declare name: string | null;
@@ -57,9 +63,24 @@ AgentProcessConfiguration.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    schema: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
     jsonSchema: {
       type: DataTypes.JSONB,
       allowNull: true,
+      get() {
+        const rawSchema = this.getDataValue("schema");
+        const jsonSchema = this.getDataValue("jsonSchema");
+
+        return (
+          jsonSchema ||
+          (rawSchema
+            ? renderSchemaPropertiesAsJSONSchema(rawSchema || [])
+            : null)
+        );
+      },
     },
     name: {
       type: DataTypes.STRING,
@@ -122,6 +143,9 @@ export class AgentProcessAction extends WorkspaceAwareModel<AgentProcessAction> 
   declare tagsIn: string[] | null;
   declare tagsNot: string[] | null;
 
+  // Maintained for backward compatibility for old version of the process action
+  // All saved process actions will used jsonSchema from now on
+  declare schema: ProcessSchemaPropertyType[] | null;
   declare jsonSchema: JSONSchema | null;
   declare outputs: ProcessActionOutputsType | null;
   declare functionCallId: string | null;
@@ -171,9 +195,24 @@ AgentProcessAction.init(
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
+    schema: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
     jsonSchema: {
       type: DataTypes.JSONB,
       allowNull: true,
+      get() {
+        const rawSchema = this.getDataValue("schema");
+        const jsonSchema = this.getDataValue("jsonSchema");
+        return (
+          jsonSchema ||
+          (rawSchema
+            ? renderSchemaPropertiesAsJSONSchema(rawSchema || [])
+            : null)
+        );
+      },
     },
     outputs: {
       type: DataTypes.JSONB,
@@ -241,3 +280,33 @@ AgentProcessAction.belongsTo(FileModel, {
   foreignKey: { name: "jsonFileId", allowNull: true },
   onDelete: "SET NULL",
 });
+
+function renderSchemaPropertiesAsJSONSchema(
+  schema: ProcessSchemaPropertyType[]
+): { type: string; properties: Record<string, object>; required: string[] } {
+  let properties: { [name: string]: { type: string; description: string } } =
+    {};
+  if (schema.length > 0) {
+    schema.forEach((f) => {
+      properties[f.name] = {
+        type: f.type,
+        description: f.description,
+      };
+    });
+  } else {
+    // Default schema for extraction.
+    properties = {
+      required_data: {
+        type: "string",
+        description:
+          "Minimal (short and concise) piece of information extracted to follow instructions",
+      },
+    };
+  }
+
+  return {
+    type: "object",
+    properties: properties,
+    required: Object.keys(properties),
+  };
+}
