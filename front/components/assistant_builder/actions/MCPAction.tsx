@@ -321,6 +321,7 @@ export function MCPAction({
         requiredStrings={requirements.requiredStrings}
         requiredNumbers={requirements.requiredNumbers}
         requiredBooleans={requirements.requiredBooleans}
+        requiredEnums={requirements.requiredEnums}
         additionalConfiguration={actionConfiguration.additionalConfiguration}
         onConfigUpdate={handleAdditionalConfigUpdate}
       />

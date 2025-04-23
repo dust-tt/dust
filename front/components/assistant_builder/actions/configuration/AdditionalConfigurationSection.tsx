@@ -1,4 +1,13 @@
-import { Checkbox, Input, Label } from "@dust-tt/sparkle";
+import {
+  Button,
+  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  Label,
+} from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
 import { asDisplayName } from "@app/types";
@@ -136,11 +145,59 @@ function StringConfigurationSection({
   });
 }
 
+interface EnumConfigurationSectionProps {
+  requiredEnums: Record<string, string[]>;
+  additionalConfiguration: Record<string, string | number | boolean>;
+  onConfigUpdate: (key: string, value: string) => void;
+}
+
+function EnumConfigurationSection({
+  requiredEnums,
+  additionalConfiguration,
+  onConfigUpdate,
+}: EnumConfigurationSectionProps) {
+  if (Object.keys(requiredEnums).length === 0) {
+    return null;
+  }
+
+  return Object.entries(requiredEnums).map(([key, enumValues]) => {
+    const displayLabel = `Select ${formatKeyForDisplay(key)}`;
+    return (
+      <div key={key} className="mb-2 flex items-center gap-1">
+        <Label className="w-1/5 text-sm font-medium">
+          {formatKeyForDisplay(key)}
+        </Label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              isSelect
+              label={additionalConfiguration[key]?.toString() ?? displayLabel}
+              size="sm"
+              tooltip={displayLabel}
+              variant="outline"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {enumValues.map((enumValue) => (
+              <DropdownMenuItem
+                key={enumValue}
+                label={enumValue}
+                onSelect={() => onConfigUpdate(key, enumValue)}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  });
+}
+
 interface GroupedConfigurationSectionProps {
   prefix: string;
   requiredStrings: string[];
   requiredNumbers: string[];
   requiredBooleans: string[];
+  requiredEnums: Record<string, string[]>;
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: string | number | boolean) => void;
 }
@@ -150,6 +207,7 @@ function GroupedConfigurationSection({
   requiredStrings,
   requiredNumbers,
   requiredBooleans,
+  requiredEnums,
   additionalConfiguration,
   onConfigUpdate,
 }: GroupedConfigurationSectionProps) {
@@ -185,6 +243,11 @@ function GroupedConfigurationSection({
           additionalConfiguration={additionalConfiguration}
           onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
         />
+        <EnumConfigurationSection
+          requiredEnums={requiredEnums}
+          additionalConfiguration={additionalConfiguration}
+          onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
+        />
       </div>
     </div>
   );
@@ -194,6 +257,7 @@ interface AdditionalConfigurationSectionProps {
   requiredStrings: string[];
   requiredNumbers: string[];
   requiredBooleans: string[];
+  requiredEnums: Record<string, string[]>;
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: string | number | boolean) => void;
 }
@@ -204,6 +268,7 @@ export const AdditionalConfigurationSection: React.FC<
   requiredStrings,
   requiredNumbers,
   requiredBooleans,
+  requiredEnums,
   additionalConfiguration,
   onConfigUpdate,
 }) => {
@@ -220,6 +285,18 @@ export const AdditionalConfigurationSection: React.FC<
     () => groupKeysByPrefix(requiredBooleans),
     [requiredBooleans]
   );
+  // Group enums by prefix, preserving the key-value structure.
+  const groupedEnumsByPrefix = useMemo(() => {
+    const groups: Record<string, Record<string, string[]>> = {};
+    Object.entries(requiredEnums).forEach(([key, values]) => {
+      const prefix = getKeyPrefix(key);
+      if (!groups[prefix]) {
+        groups[prefix] = {};
+      }
+      groups[prefix][key] = values;
+    });
+    return groups;
+  }, [requiredEnums]);
 
   // Get all unique prefixes
   const allPrefixes = useMemo(() => {
@@ -228,14 +305,19 @@ export const AdditionalConfigurationSection: React.FC<
     Object.keys(groupedStrings).forEach((prefix) => prefixSet.add(prefix));
     Object.keys(groupedNumbers).forEach((prefix) => prefixSet.add(prefix));
     Object.keys(groupedBooleans).forEach((prefix) => prefixSet.add(prefix));
+    // Use prefixes from the correctly grouped enums.
+    Object.keys(groupedEnumsByPrefix).forEach((prefix) =>
+      prefixSet.add(prefix)
+    );
 
     return Array.from(prefixSet).sort();
-  }, [groupedStrings, groupedNumbers, groupedBooleans]);
+  }, [groupedStrings, groupedNumbers, groupedBooleans, groupedEnumsByPrefix]);
 
   const hasConfiguration =
     Object.keys(requiredStrings).length > 0 ||
     Object.keys(requiredNumbers).length > 0 ||
-    Object.keys(requiredBooleans).length > 0;
+    Object.keys(requiredBooleans).length > 0 ||
+    Object.keys(requiredEnums).length > 0; // Also consider enums
 
   if (!hasConfiguration) {
     return null;
@@ -260,6 +342,8 @@ export const AdditionalConfigurationSection: React.FC<
           requiredStrings={groupedStrings[prefix] || []}
           requiredNumbers={groupedNumbers[prefix] || []}
           requiredBooleans={groupedBooleans[prefix] || []}
+          // Pass the correctly filtered enum group.
+          requiredEnums={groupedEnumsByPrefix[prefix] || {}}
           additionalConfiguration={additionalConfiguration}
           onConfigUpdate={onConfigUpdate}
         />
