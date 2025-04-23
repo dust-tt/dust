@@ -8,7 +8,6 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
-import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -51,7 +50,7 @@ export function MCPServerSelector({
   }, [mcpServerViews, allowedSpaces]);
 
   return (
-    <div>
+    <>
       <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
         Pick a set of tools
       </div>
@@ -130,7 +129,6 @@ export function MCPServerSelector({
           }}
         />
       )}
-      <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
-    </div>
+    </>
   );
 }
