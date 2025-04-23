@@ -247,7 +247,7 @@ const DropdownMenuContent = React.forwardRef<
         )}
         {...props}
       >
-        <div className="s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-background-night">
+        <div className="s-sticky s-top-0 s-bg-background dark:s-bg-background-night">
           {dropdownHeaders && dropdownHeaders}
         </div>
         <ScrollArea
