@@ -145,8 +145,5 @@ export async function maybeTrackTokenUsageCost(
   // Compute the price for all the runs.
   const runsCost = calculateTokenUsageCost(runUsages.flat());
 
-  const remaining = await trackTokenUsageCost(
-    auth.getNonNullableWorkspace(),
-    1 * 100
-  );
+  await trackTokenUsageCost(auth.getNonNullableWorkspace(), runsCost);
 }
