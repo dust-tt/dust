@@ -5,10 +5,7 @@ import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
-import {
-  concurrentExecutor,
-  setTimeoutAsync,
-} from "@app/lib/utils/async_utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types";
 
