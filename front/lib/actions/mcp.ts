@@ -164,12 +164,8 @@ function hideFileContentForModel({
   content,
   workspaceId,
 }: AgentMCPActionOutputItem): MCPToolResultContentType {
-  if (
-    !fileId ||
-    // For tool-generated files, we keep the resource as is.
-    (content.type === "resource" &&
-      content.resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE)
-  ) {
+  // For tool-generated files, we keep the resource as is.
+  if (!fileId || isToolGeneratedFile(content)) {
     return content;
   }
   // We want to hide the original file url from the model.
