@@ -535,6 +535,12 @@ export async function upsertDocument({
       }
 
       return new Ok(upsertRes.value);
+    },
+    {
+      // If account has no limits of document OR is a request made by our system
+      // we can safely avoid the lock and let them upload
+      __dangerouslySkipLock:
+        plan.limits.dataSources.documents.count === -1 || auth.isSystemKey(),
     }
   );
 
