@@ -169,12 +169,7 @@ export function isMCPServerConfiguration(
 export function isPlatformMCPServerConfiguration(
   arg: unknown
 ): arg is PlatformMCPServerConfigurationType {
-  return (
-    isMCPServerConfiguration(arg) &&
-    (arg as PlatformMCPServerConfigurationType).type ===
-      "mcp_server_configuration" &&
-    (arg as PlatformMCPServerConfigurationType).mcpServerViewId !== undefined
-  );
+  return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
 }
 
 export function isWebsearchActionType(

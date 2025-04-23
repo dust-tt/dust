@@ -128,7 +128,6 @@ export const isDefaultInternalMCPServer = (sId: string): boolean => {
   if (r.isErr()) {
     return false;
   }
-
   return isDefaultInternalMCPServerByName(r.value.name);
 };
 
