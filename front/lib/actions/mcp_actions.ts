@@ -3,6 +3,7 @@ import {
   INTERNAL_MIME_TYPES,
 } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import assert from "assert";
 import type { JSONSchema7 } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -60,7 +61,6 @@ import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
-import assert from "assert";
 
 const MAX_OUTPUT_ITEMS = 128;
 
