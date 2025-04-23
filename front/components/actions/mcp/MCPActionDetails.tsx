@@ -73,8 +73,7 @@ function SearchResultActionDetails({
 }) {
   const queryResources = removeNulls(
     action.output?.map((o) => {
-      if (
-        o.type === "resource" &&
+      if (isSearchQueryResourceType(o.resource)) {
         o.resource.mimeType ===
           INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY
       ) {
