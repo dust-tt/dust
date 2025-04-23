@@ -7,13 +7,11 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
   Icon,
-  MagnifyingGlassIcon,
   PencilSquareIcon,
   Popup,
   SliderToggle,
   Tooltip,
   TrashIcon,
-  UserIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, Row } from "@tanstack/react-table";
 import { useRouter } from "next/router";
@@ -24,7 +22,6 @@ import {
   assistantActiveUsersMessage,
   assistantUsageMessage,
 } from "@app/components/assistant/Usage";
-import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentConfigurationScope,
@@ -33,43 +30,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { isBuilder, pluralize } from "@app/types";
-
-export const ASSISTANT_MANAGER_TABS = [
-  // default shown tab = earliest in this list with non-empty agents
-  {
-    label: "Edited by me",
-    icon: UserIcon,
-    id: "current_user",
-    description: "Edited or created by you.",
-  },
-  {
-    label: "Company",
-    icon: SCOPE_INFO["workspace"].icon,
-    id: "workspace",
-    description: SCOPE_INFO["workspace"].text,
-  },
-  {
-    label: "Shared",
-    icon: SCOPE_INFO["published"].icon,
-    id: "published",
-    description: SCOPE_INFO["published"].text,
-  },
-  {
-    id: "global",
-    label: "Default",
-    icon: SCOPE_INFO["global"].icon,
-    description: SCOPE_INFO["global"].text,
-  },
-  {
-    label: "Searching across all agents",
-    icon: MagnifyingGlassIcon,
-    id: "search",
-    description: "Searching across all agents",
-  },
-] as const;
-
-export type AssistantManagerTabsType =
-  (typeof ASSISTANT_MANAGER_TABS)[number]["id"];
+import type { TagType } from "@app/types/tag";
 
 type MoreMenuItem = {
   label: string;
@@ -89,6 +50,7 @@ type RowData = {
   scope: AgentConfigurationScope;
   onClick?: () => void;
   moreMenuItems?: MoreMenuItem[];
+  tags: TagType[];
   action?: React.ReactNode;
 };
 
@@ -97,7 +59,7 @@ const calculateFeedback = (row: Row<RowData>) => {
   return feedbacks ? feedbacks.up + feedbacks.down : 0;
 };
 
-const getTableColumns = () => {
+const getTableColumns = (tags: TagType[]) => {
   return [
     {
       header: "Name",
@@ -120,8 +82,22 @@ const getTableColumns = () => {
         </DataTable.CellContent>
       ),
     },
+    ...(tags.length > 0
+      ? [
+          {
+            header: "Tags",
+            accessorKey: "tags",
+            cell: (info: CellContext<RowData, TagType[]>) => (
+              <DataTable.BasicCellContent
+                label={info.row.original.tags.map((t) => t.name).join(", ")}
+              />
+            ),
+            isFilterable: true,
+          },
+        ]
+      : []),
     {
-      header: "Msgs",
+      header: "Usage",
       accessorKey: "usage.messageCount",
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
@@ -236,9 +212,77 @@ const getTableColumns = () => {
   ];
 };
 
+type GlobalAgentActionProps = {
+  agent: LightAgentConfigurationType;
+  owner: WorkspaceType;
+  handleToggleAgentStatus: (
+    agent: LightAgentConfigurationType
+  ) => Promise<void>;
+  showDisabledFreeWorkspacePopup: string | null;
+  setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
+};
+
+function GlobalAgentAction({
+  agent,
+  owner,
+  handleToggleAgentStatus,
+  showDisabledFreeWorkspacePopup,
+  setShowDisabledFreeWorkspacePopup,
+}: GlobalAgentActionProps) {
+  const router = useRouter();
+  if (agent.sId === "helper") {
+    return null;
+  }
+
+  if (agent.sId === "dust") {
+    return (
+      <Button
+        variant="outline"
+        icon={Cog6ToothIcon}
+        size="xs"
+        disabled={!isBuilder(owner)}
+        onClick={(e: Event) => {
+          e.stopPropagation();
+          void router.push(`/w/${owner.sId}/builder/assistants/dust`);
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <SliderToggle
+        size="xs"
+        onClick={async (e) => {
+          e.stopPropagation();
+          await handleToggleAgentStatus(agent);
+        }}
+        selected={agent.status === "active"}
+        disabled={agent.status === "disabled_missing_datasource"}
+      />
+      <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
+        <Popup
+          show={showDisabledFreeWorkspacePopup === agent.sId}
+          className="absolute bottom-8 right-0"
+          chipLabel={`Free plan`}
+          description={`@${agent.name} is only available on our paid plans.`}
+          buttonLabel="Check Dust plans"
+          buttonClick={() => {
+            void router.push(`/w/${owner.sId}/subscription`);
+          }}
+          onClose={() => {
+            setShowDisabledFreeWorkspacePopup(null);
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
 type AgentsTableProps = {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
+  tags: TagType[];
   setShowDetails: (agent: LightAgentConfigurationType) => void;
   handleToggleAgentStatus: (
     agent: LightAgentConfigurationType
@@ -250,6 +294,7 @@ type AgentsTableProps = {
 export function AssistantsTable({
   owner,
   agents,
+  tags,
   setShowDetails,
   handleToggleAgentStatus,
   showDisabledFreeWorkspacePopup,
@@ -279,6 +324,7 @@ export function AssistantsTable({
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
           scope: agentConfiguration.scope,
+          tags: agentConfiguration.tags,
           action:
             agentConfiguration.scope === "global" ? (
               <GlobalAgentAction
@@ -390,74 +436,9 @@ export function AssistantsTable({
           <DataTable
             className="relative"
             data={rows}
-            columns={getTableColumns()}
+            columns={getTableColumns(tags)}
           />
         )}
-      </div>
-    </>
-  );
-}
-
-function GlobalAgentAction({
-  agent,
-  owner,
-  handleToggleAgentStatus,
-  showDisabledFreeWorkspacePopup,
-  setShowDisabledFreeWorkspacePopup,
-}: {
-  agent: LightAgentConfigurationType;
-  owner: WorkspaceType;
-  handleToggleAgentStatus: (
-    agent: LightAgentConfigurationType
-  ) => Promise<void>;
-  showDisabledFreeWorkspacePopup: string | null;
-  setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
-}) {
-  const router = useRouter();
-  if (agent.sId === "helper") {
-    return null;
-  }
-
-  if (agent.sId === "dust") {
-    return (
-      <Button
-        variant="outline"
-        icon={Cog6ToothIcon}
-        size="xs"
-        disabled={!isBuilder(owner)}
-        onClick={(e: Event) => {
-          e.stopPropagation();
-          void router.push(`/w/${owner.sId}/builder/assistants/dust`);
-        }}
-      />
-    );
-  }
-
-  return (
-    <>
-      <SliderToggle
-        size="xs"
-        onClick={async (e) => {
-          e.stopPropagation();
-          await handleToggleAgentStatus(agent);
-        }}
-        selected={agent.status === "active"}
-        disabled={agent.status === "disabled_missing_datasource"}
-      />
-      <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
-        <Popup
-          show={showDisabledFreeWorkspacePopup === agent.sId}
-          className="absolute bottom-8 right-0"
-          chipLabel={`Free plan`}
-          description={`@${agent.name} is only available on our paid plans.`}
-          buttonLabel="Check Dust plans"
-          buttonClick={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
-          }}
-          onClose={() => {
-            setShowDisabledFreeWorkspacePopup(null);
-          }}
-        />
       </div>
     </>
   );

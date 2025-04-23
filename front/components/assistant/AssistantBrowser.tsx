@@ -22,13 +22,12 @@ import {
   useHashParam,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
-import React from "react";
+import React, { useMemo, useState } from "react";
 
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isAdmin } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
@@ -53,18 +52,18 @@ const ALL_AGENTS_TABS = [
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
 type AgentGridProps = {
-  agents: LightAgentConfigurationType[];
+  agentConfigurations: LightAgentConfigurationType[];
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
   handleMoreClick: (agent: LightAgentConfigurationType) => void;
 };
 export const AgentGrid = ({
-  agents,
+  agentConfigurations,
   handleAssistantClick,
   handleMoreClick,
 }: AgentGridProps) => {
   return (
     <CardGrid>
-      {agents.map((agent) => (
+      {agentConfigurations.map((agent) => (
         <AssistantCard
           key={agent.sId}
           title={agent.name}
@@ -88,16 +87,14 @@ export const AgentGrid = ({
 
 interface AssistantBrowserProps {
   owner: WorkspaceType;
-  isBuilder: boolean;
-  agents: LightAgentConfigurationType[];
+  agentConfigurations: LightAgentConfigurationType[];
   isLoading: boolean;
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
 }
 
 export function AssistantBrowser({
   owner,
-  isBuilder,
-  agents,
+  agentConfigurations,
   isLoading,
   handleAssistantClick,
 }: AssistantBrowserProps) {
@@ -111,7 +108,7 @@ export function AssistantBrowser({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const agentsByTab = useMemo(() => {
-    const allAgents: LightAgentConfigurationType[] = agents
+    const allAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter((a) => a.status === "active")
       .filter((a) => {
         if (selectedTags.length === 0) {
@@ -129,12 +126,12 @@ export function AssistantBrowser({
 
     return {
       // do not show the "all" tab while still loading all agents
-      all: isLoading ? [] : allAgents,
+      all: allAgents,
       favorites: allAgents.filter((a) => a.userFavorite),
       editable_by_me: allAgents.filter(
         (a) =>
           isAdmin(owner) ||
-          (a.scope === "published" && isBuilder) ||
+          (a.scope === "published" && isBuilder(owner)) ||
           a.scope === "private" // TODO: add/replace with editors group check
       ),
       most_popular: allAgents
@@ -144,10 +141,10 @@ export function AssistantBrowser({
         )
         .slice(0, 6),
     };
-  }, [isLoading, agents, selectedTags, owner, isBuilder]);
+  }, [agentConfigurations, selectedTags, owner]);
 
   const { filteredAgents, filteredTags, uniqueTags } = useMemo(() => {
-    const tags = agents.flatMap((a) => a.tags);
+    const tags = agentConfigurations.flatMap((a) => a.tags);
     // Remove duplicate tags by unique sId
     const uniqueTags = Array.from(
       new Map(tags.map((tag) => [tag.sId, tag])).values()
@@ -157,7 +154,7 @@ export function AssistantBrowser({
       return { filteredAgents: [], filteredTags: [], uniqueTags };
     }
     const search = assistantSearch.toLowerCase().trim().replace(/^@/, "");
-    const filteredAgents: LightAgentConfigurationType[] = agents
+    const filteredAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter(
         (a) =>
           a.status === "active" &&
@@ -178,7 +175,7 @@ export function AssistantBrowser({
     );
 
     return { filteredAgents, filteredTags, uniqueTags };
-  }, [agents, assistantSearch]);
+  }, [agentConfigurations, assistantSearch]);
 
   // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
   const visibleTabs = useMemo(() => {
@@ -293,7 +290,7 @@ export function AssistantBrowser({
               size="sm"
             />
 
-            {isBuilder && (
+            {isBuilder(owner) && (
               <Button
                 tooltip="Manage agents"
                 href={`/w/${owner.sId}/builder/assistants/`}
@@ -352,7 +349,7 @@ export function AssistantBrowser({
             <>
               <span className="heading-base">Most popular</span>
               <AgentGrid
-                agents={agentsByTab.most_popular}
+                agentConfigurations={agentsByTab.most_popular}
                 handleAssistantClick={handleAssistantClick}
                 handleMoreClick={handleMoreClick}
               />
@@ -366,7 +363,7 @@ export function AssistantBrowser({
               <React.Fragment key={tag.sId}>
                 <span className="heading-base">{tag.name}</span>
                 <AgentGrid
-                  agents={agentsByTab.all.filter((a) =>
+                  agentConfigurations={agentsByTab.all.filter((a) =>
                     a.tags.some((t) => t.sId === tag.sId)
                   )}
                   handleAssistantClick={handleAssistantClick}
@@ -378,7 +375,7 @@ export function AssistantBrowser({
             <React.Fragment>
               <span className="heading-base">Others</span>
               <AgentGrid
-                agents={untaggedAgents}
+                agentConfigurations={untaggedAgents}
                 handleAssistantClick={handleAssistantClick}
                 handleMoreClick={handleMoreClick}
               />
@@ -388,7 +385,7 @@ export function AssistantBrowser({
       ) : (
         viewTab && (
           <AgentGrid
-            agents={agentsByTab[viewTab]}
+            agentConfigurations={agentsByTab[viewTab]}
             handleAssistantClick={handleAssistantClick}
             handleMoreClick={handleMoreClick}
           />

@@ -1,12 +1,16 @@
 import {
   Button,
+  DustIcon,
+  MagnifyingGlassIcon,
   Page,
+  PencilSquareIcon,
   PlusIcon,
   RobotIcon,
   SearchInput,
   Tabs,
   TabsList,
   TabsTrigger,
+  TrashIcon,
   useHashParam,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
@@ -14,11 +18,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import type { AssistantManagerTabsType } from "@app/components/assistant/AssistantsTable";
-import {
-  ASSISTANT_MANAGER_TABS,
-  AssistantsTable,
-} from "@app/components/assistant/AssistantsTable";
+import { AssistantsTable } from "@app/components/assistant/AssistantsTable";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -26,18 +26,54 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { subFilter } from "@app/lib/utils";
+import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type {
-  AgentsGetViewType,
   LightAgentConfigurationType,
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
+
+export const ASSISTANT_MANAGER_TABS = [
+  // default shown tab = earliest in this list with non-empty agents
+  {
+    id: "all",
+    label: "All agents",
+    icon: RobotIcon,
+    description: "All agents.",
+  },
+  {
+    id: "editable_by_me",
+    label: "Editable by me",
+    icon: PencilSquareIcon,
+    description: "Edited or created by you.",
+  },
+  {
+    id: "global",
+    label: "Default",
+    icon: DustIcon,
+    description: "Default agents provided by Dust.",
+  },
+  {
+    id: "archived",
+    label: "Archived",
+    icon: TrashIcon,
+    description: "Archived agents.",
+  },
+  {
+    id: "search",
+    label: "Searching across all agents",
+    icon: MagnifyingGlassIcon,
+    description: "Searching across all agents",
+  },
+] as const;
+
+export type AssistantManagerTabsType =
+  (typeof ASSISTANT_MANAGER_TABS)[number]["id"];
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  tabScope: AssistantManagerTabsType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -50,15 +86,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
 
-  const tabScope = ASSISTANT_MANAGER_TABS.map((tab) => tab.id).includes(
-    context.query.tabScope as AssistantManagerTabsType
-  )
-    ? (context.query.tabScope as AssistantManagerTabsType)
-    : "workspace";
   return {
     props: {
       owner,
-      tabScope,
       subscription,
     },
   };
@@ -72,20 +102,19 @@ function isValidTab(tab?: string): tab is AssistantManagerTabsType {
 
 export default function WorkspaceAssistants({
   owner,
-  tabScope,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useHashParam("tabScope", tabScope);
+  const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
 
   const activeTab = useMemo(() => {
     if (assistantSearch.trim() !== "") {
       return "search";
     }
 
-    return selectedTab && isValidTab(selectedTab) ? selectedTab : "workspace";
+    return selectedTab && isValidTab(selectedTab) ? selectedTab : "all";
   }, [assistantSearch, selectedTab]);
 
   // only fetch the agents that are relevant to the current scope, except when
@@ -93,26 +122,78 @@ export default function WorkspaceAssistants({
   const {
     agentConfigurations,
     mutateRegardlessOfQueryParams: mutateAgentConfigurations,
-    isAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView:
-      activeTab === "search" ? "list" : (activeTab as AgentsGetViewType),
+    agentsGetView: "list",
     includes: ["usage", "feedbacks"],
   });
 
-  const filteredAgents = agentConfigurations.filter((a) => {
-    if (assistantSearch && assistantSearch.trim() !== "") {
-      return subFilter(
-        assistantSearch.trim().toLowerCase(),
-        a.name.toLowerCase()
-      );
-    } else if (activeTab === "current_user") {
-      return true;
-    } else {
-      return a.scope === activeTab;
-    }
-  });
+  const { agentConfigurations: archivedAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "archived",
+      includes: ["usage", "feedbacks"],
+    });
+
+  const agentsByTab = useMemo(() => {
+    const allAgents: LightAgentConfigurationType[] = agentConfigurations
+      .filter((a) => a.status === "active")
+      .sort((a, b) => {
+        return compareForFuzzySort(
+          "",
+          a.name.toLowerCase(),
+          b.name.toLowerCase()
+        );
+      });
+
+    return {
+      // do not show the "all" tab while still loading all agents
+      all: allAgents,
+      editable_by_me: allAgents.filter(
+        (a) =>
+          isAdmin(owner) ||
+          (a.scope === "published" && isBuilder(owner)) ||
+          a.scope === "private" // TODO: add/replace with editors group check
+      ),
+      global: allAgents.filter((a) => a.scope === "global"),
+      archived: archivedAgentConfigurations.sort((a, b) => {
+        return compareForFuzzySort(
+          "",
+          a.name.toLowerCase(),
+          b.name.toLowerCase()
+        );
+      }),
+      search: agentConfigurations
+        .filter(
+          (a) =>
+            a.status === "active" &&
+            // Filters on search query
+            subFilter(assistantSearch, a.name.toLowerCase())
+        )
+        .sort((a, b) => {
+          return compareForFuzzySort(
+            assistantSearch,
+            a.name.toLowerCase(),
+            b.name.toLowerCase()
+          );
+        }),
+    };
+  }, [
+    agentConfigurations,
+    archivedAgentConfigurations,
+    owner,
+    assistantSearch,
+  ]);
+
+  const { uniqueTags } = useMemo(() => {
+    const tags = agentConfigurations.flatMap((a) => a.tags);
+    // Remove duplicate tags by unique sId
+    const uniqueTags = Array.from(
+      new Map(tags.map((tag) => [tag.sId, tag])).values()
+    ).sort((a, b) => a.name.localeCompare(b.name));
+
+    return { uniqueTags };
+  }, [agentConfigurations]);
 
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
@@ -240,10 +321,11 @@ export default function WorkspaceAssistants({
                   ))}
                 </TabsList>
               </Tabs>
-              {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
+              {activeTab && agentsByTab[activeTab] ? (
                 <AssistantsTable
                   owner={owner}
-                  agents={filteredAgents}
+                  agents={agentsByTab[activeTab]}
+                  tags={uniqueTags}
                   setShowDetails={setShowDetails}
                   handleToggleAgentStatus={handleToggleAgentStatus}
                   showDisabledFreeWorkspacePopup={

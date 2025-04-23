@@ -647,8 +647,8 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     );
   }
 
-  if (agentsGetView === "archived" && !auth.isDustSuperUser()) {
-    throw new Error("Archived view is for dust superusers only.");
+  if (agentsGetView === "archived" && !auth.isAdmin()) {
+    throw new Error("Archived view is for admins only.");
   }
 
   if (agentsGetView === "list" && !user) {

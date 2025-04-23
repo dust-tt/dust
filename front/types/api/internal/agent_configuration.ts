@@ -23,6 +23,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
     t.literal("global"),
     t.literal("admin_internal"),
     t.literal("all"),
+    t.literal("archived"),
     t.undefined,
   ]),
   withUsage: t.union([t.literal("true"), t.literal("false"), t.undefined]),
