@@ -242,15 +242,18 @@ const DropdownMenuContent = React.forwardRef<
         sideOffset={sideOffset}
         className={cn(
           menuStyleClasses.container,
-          "s-h-fit s-p-0 s-shadow-md",
+          "s-flex s-flex-col s-p-0 s-shadow-md",
           className
         )}
         {...props}
       >
-        {dropdownHeaders && dropdownHeaders}
+        <div className="s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-background-night">
+          {dropdownHeaders && dropdownHeaders}
+        </div>
         <ScrollArea
-          className="s-w-full s-h-full"
+          className="s-w-full s-flex-1"
           viewportClassName={cn(
+            "s-flex-1",
             "s-max-h-[var(--radix-dropdown-menu-content-available-height)]"
           )}
         >

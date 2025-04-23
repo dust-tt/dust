@@ -12,6 +12,7 @@ import {
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuStaticItem,
   DropdownMenuSub,
@@ -555,42 +556,42 @@ function AttachFileDemo() {
         <DropdownMenuTrigger asChild>
           <Button icon={RobotIcon} variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-[380px]">
-          <div className="s-flex s-gap-1.5 s-p-1.5">
-            <SearchInput
+        <DropdownMenuContent
+          className="s-h-96 s-w-[380px]"
+          dropdownHeaders={
+            <DropdownMenuSearchbar
               ref={agentsSearchInputRef}
               name="search"
               onChange={() => {}}
               onKeyDown={() => {}}
               placeholder="Search Agents"
               value=""
+              button={<Button icon={PlusIcon} label="Create" />}
             />
-            <Button icon={PlusIcon} label="Create" />
-          </div>
+          }
+        >
           <DropdownMenuSeparator />
-          <ScrollArea className="s-h-[380px]">
-            {filteredAgents.map((agent) => {
-              return (
-                <DropdownMenuItem
-                  key={agent.name}
-                  label={agent.name}
-                  description={agent.description}
-                  icon={() => (
-                    <Avatar
-                      size="sm"
-                      emoji={agent.emoji}
-                      backgroundColor={agent.backgroundColor}
-                    />
-                  )}
-                  onClick={() => {
-                    setSelectedItem(agent.name);
-                    setSearchText("");
-                  }}
-                  truncateText
-                />
-              );
-            })}
-          </ScrollArea>
+          {filteredAgents.map((agent) => {
+            return (
+              <DropdownMenuItem
+                key={agent.name}
+                label={agent.name}
+                description={agent.description}
+                icon={() => (
+                  <Avatar
+                    size="sm"
+                    emoji={agent.emoji}
+                    backgroundColor={agent.backgroundColor}
+                  />
+                )}
+                onClick={() => {
+                  setSelectedItem(agent.name);
+                  setSearchText("");
+                }}
+                truncateText
+              />
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
       <DropdownMenu open={openToolsets} onOpenChange={setOpenToolsets}>
