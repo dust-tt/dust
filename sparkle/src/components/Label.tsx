@@ -3,7 +3,7 @@ import * as React from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-interface LabelProps
+export interface LabelProps
   extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> {
   isMuted?: boolean;
 }
