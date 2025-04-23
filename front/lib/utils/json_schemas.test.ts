@@ -28,7 +28,7 @@ describe("JSON Schema Utilities", () => {
                       },
                       mimeType: {
                         type: "string",
-                        const: "application/vnd.dust.tool_input.string",
+                        const: "application/vnd.dust.tool-input.string",
                       },
                     },
                     required: ["value", "mimeType"],
@@ -43,7 +43,7 @@ describe("JSON Schema Utilities", () => {
                       },
                       mimeType: {
                         type: "string",
-                        const: "application/vnd.dust.tool_input.boolean",
+                        const: "application/vnd.dust.tool-input.boolean",
                       },
                     },
                     required: ["value", "mimeType"],
@@ -63,7 +63,7 @@ describe("JSON Schema Utilities", () => {
                       },
                       mimeType: {
                         type: "string",
-                        const: "application/vnd.dust.tool_input.number",
+                        const: "application/vnd.dust.tool-input.number",
                       },
                     },
                     required: ["value", "mimeType"],
@@ -78,7 +78,7 @@ describe("JSON Schema Utilities", () => {
                       },
                       mimeType: {
                         type: "string",
-                        const: "application/vnd.dust.tool_input.boolean",
+                        const: "application/vnd.dust.tool-input.boolean",
                       },
                     },
                     required: ["value", "mimeType"],
@@ -122,7 +122,7 @@ describe("JSON Schema Utilities", () => {
                       },
                       mimeType: {
                         type: "string",
-                        const: "application/vnd.dust.tool_input.data-source",
+                        const: "application/vnd.dust.tool-input.data-source",
                       },
                     },
                     required: ["uri", "mimeType"],
@@ -145,7 +145,7 @@ describe("JSON Schema Utilities", () => {
                           },
                           mimeType: {
                             type: "string",
-                            const: "application/vnd.dust.tool_input.table",
+                            const: "application/vnd.dust.tool-input.table",
                           },
                         },
                         required: ["uri", "mimeType"],
@@ -196,7 +196,7 @@ describe("JSON Schema Utilities", () => {
                             mimeType: {
                               type: "string",
                               const:
-                                "application/vnd.dust.tool_input.child-agent",
+                                "application/vnd.dust.tool-input.child-agent",
                             },
                           },
                           required: ["uri", "mimeType"],
