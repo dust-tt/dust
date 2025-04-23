@@ -249,7 +249,7 @@ const DropdownMenuContent = React.forwardRef<
       >
         {dropdownHeaders && dropdownHeaders}
         <ScrollArea
-          className="s-w-full"
+          className="s-w-full s-h-full"
           viewportClassName={cn(
             "s-max-h-[var(--radix-dropdown-menu-content-available-height)]"
           )}
