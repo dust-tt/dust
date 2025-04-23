@@ -358,9 +358,9 @@ export function getMCPServerRequirements(
   requiresDataSourceConfiguration: boolean;
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
-  requiredStrings: Record<string, string>;
-  requiredNumbers: Record<string, number | null>;
-  requiredBooleans: Record<string, boolean>;
+  requiredStrings: string[];
+  requiredNumbers: string[];
+  requiredBooleans: string[];
   noRequirement: boolean;
 } {
   if (!mcpServerView) {
@@ -368,9 +368,9 @@ export function getMCPServerRequirements(
       requiresDataSourceConfiguration: false,
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
-      requiredStrings: {},
-      requiredNumbers: {},
-      requiredBooleans: {},
+      requiredStrings: [],
+      requiredNumbers: [],
+      requiredBooleans: [],
       noRequirement: false,
     };
   }
@@ -394,26 +394,20 @@ export function getMCPServerRequirements(
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT,
     }).length > 0;
 
-  const requiredStrings = Object.fromEntries(
-    findPathsToConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-    }).map((path) => [path, ""])
-  );
+  const requiredStrings = findPathsToConfiguration({
+    mcpServer: server,
+    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+  });
 
-  const requiredNumbers = Object.fromEntries(
-    findPathsToConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
-    }).map((path) => [path, null])
-  );
+  const requiredNumbers = findPathsToConfiguration({
+    mcpServer: server,
+    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
+  });
 
-  const requiredBooleans = Object.fromEntries(
-    findPathsToConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-    }).map((path) => [path, false])
-  );
+  const requiredBooleans = findPathsToConfiguration({
+    mcpServer: server,
+    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
+  });
 
   return {
     requiresDataSourceConfiguration,
@@ -427,8 +421,8 @@ export function getMCPServerRequirements(
       !requiresDataSourceConfiguration &&
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
-      Object.keys(requiredStrings).length === 0 &&
-      Object.keys(requiredNumbers).length === 0 &&
-      Object.keys(requiredBooleans).length === 0,
+      requiredStrings.length === 0 &&
+      requiredNumbers.length === 0 &&
+      requiredBooleans.length === 0,
   };
 }

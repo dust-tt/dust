@@ -13,24 +13,22 @@ function getKeyPrefix(key: string): string {
   return segments.length > 1 ? segments[0] : "";
 }
 
-function groupKeysByPrefix<T extends string | number | boolean | null>(
-  keys: Record<string, T>
-): Record<string, Record<string, T>> {
-  const groups: Record<string, Record<string, T>> = {};
+function groupKeysByPrefix(keys: string[]): Record<string, string[]> {
+  const groups: Record<string, string[]> = {};
 
-  Object.entries(keys).forEach(([key, value]) => {
+  keys.forEach((key) => {
     const prefix = getKeyPrefix(key);
     if (!groups[prefix]) {
-      groups[prefix] = {};
+      groups[prefix] = [];
     }
-    groups[prefix][key] = value;
+    groups[prefix].push(key);
   });
 
   return groups;
 }
 
 interface BooleanConfigurationSectionProps {
-  requiredBooleans: Record<string, boolean>;
+  requiredBooleans: string[];
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: boolean) => void;
 }
@@ -40,12 +38,14 @@ function BooleanConfigurationSection({
   additionalConfiguration,
   onConfigUpdate,
 }: BooleanConfigurationSectionProps) {
-  if (Object.keys(requiredBooleans).length === 0) {
+  if (requiredBooleans.length === 0) {
     return null;
   }
 
-  return Object.entries(requiredBooleans).map(([key, defaultValue]) => {
-    const value = (additionalConfiguration[key] as boolean) ?? defaultValue;
+  return requiredBooleans.map((key) => {
+    // Ugly hack but the type of additionalConfiguration is highly dynamic.
+    // We make sure to save a boolean value that said.
+    const value = !!additionalConfiguration[key];
     return (
       <div key={key} className="mb-2 flex items-center gap-1">
         <Label htmlFor={`boolean-${key}`} className="w-1/5 text-sm font-medium">
@@ -64,7 +64,7 @@ function BooleanConfigurationSection({
 }
 
 interface NumberConfigurationSectionProps {
-  requiredNumbers: Record<string, number | null>;
+  requiredNumbers: string[];
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: number) => void;
 }
@@ -74,12 +74,12 @@ function NumberConfigurationSection({
   additionalConfiguration,
   onConfigUpdate,
 }: NumberConfigurationSectionProps) {
-  if (Object.keys(requiredNumbers).length === 0) {
+  if (requiredNumbers.length === 0) {
     return null;
   }
 
-  return Object.entries(requiredNumbers).map(([key, defaultValue]) => {
-    const value = additionalConfiguration[key] ?? defaultValue;
+  return requiredNumbers.map((key) => {
+    const value = additionalConfiguration[key] ?? null;
     return (
       <div key={key} className="mb-2 flex items-center gap-1">
         <Label htmlFor={`number-${key}`} className="w-1/5 text-sm font-medium">
@@ -103,7 +103,7 @@ function NumberConfigurationSection({
 }
 
 interface StringConfigurationSectionProps {
-  requiredStrings: Record<string, string>;
+  requiredStrings: string[];
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: string) => void;
 }
@@ -113,12 +113,12 @@ function StringConfigurationSection({
   additionalConfiguration,
   onConfigUpdate,
 }: StringConfigurationSectionProps) {
-  if (Object.keys(requiredStrings).length === 0) {
+  if (requiredStrings.length === 0) {
     return null;
   }
 
-  return Object.entries(requiredStrings).map(([key, defaultValue]) => {
-    const value = additionalConfiguration[key] ?? defaultValue;
+  return requiredStrings.map((key) => {
+    const value = additionalConfiguration[key] ?? "";
     return (
       <div key={key} className="mb-2 flex items-center gap-1">
         <Label htmlFor={`string-${key}`} className="w-1/5 text-sm font-medium">
@@ -138,9 +138,9 @@ function StringConfigurationSection({
 
 interface GroupedConfigurationSectionProps {
   prefix: string;
-  requiredStrings: Record<string, string>;
-  requiredNumbers: Record<string, number | null>;
-  requiredBooleans: Record<string, boolean>;
+  requiredStrings: string[];
+  requiredNumbers: string[];
+  requiredBooleans: string[];
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: string | number | boolean) => void;
 }
@@ -191,9 +191,9 @@ function GroupedConfigurationSection({
 }
 
 interface AdditionalConfigurationSectionProps {
-  requiredStrings: Record<string, string>;
-  requiredNumbers: Record<string, number | null>;
-  requiredBooleans: Record<string, boolean>;
+  requiredStrings: string[];
+  requiredNumbers: string[];
+  requiredBooleans: string[];
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: string | number | boolean) => void;
 }
@@ -257,9 +257,9 @@ export const AdditionalConfigurationSection: React.FC<
         <GroupedConfigurationSection
           key={prefix || "general"}
           prefix={prefix}
-          requiredStrings={groupedStrings[prefix] || {}}
-          requiredNumbers={groupedNumbers[prefix] || {}}
-          requiredBooleans={groupedBooleans[prefix] || {}}
+          requiredStrings={groupedStrings[prefix] || []}
+          requiredNumbers={groupedNumbers[prefix] || []}
+          requiredBooleans={groupedBooleans[prefix] || []}
           additionalConfiguration={additionalConfiguration}
           onConfigUpdate={onConfigUpdate}
         />
