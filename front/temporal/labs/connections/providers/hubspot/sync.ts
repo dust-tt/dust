@@ -172,7 +172,7 @@ async function createCompanySection(
     props.hs_analytics_source && `Source: ${props.hs_analytics_source}`,
     props.hs_pipeline && `Pipeline: ${props.hs_pipeline}`,
   ]
-    .filter((line): line is string => Boolean(line))
+    .filter((line) => typeof line === "string")
     .join("\n");
 
   const sections: Section[] = [
