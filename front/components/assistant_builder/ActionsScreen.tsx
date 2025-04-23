@@ -38,26 +38,14 @@ import assert from "assert";
 import { uniqueId } from "lodash";
 import { BarChartIcon, LightbulbIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import {
   ActionDustAppRun,
   isActionDustAppRunValid as hasErrorActionDustAppRun,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
-import {
-  hasErrorActionMCP,
-  MCPAction,
-} from "@app/components/assistant_builder/actions/MCPAction";
-import {
-  ActionProcess,
-  hasErrorActionProcess,
-} from "@app/components/assistant_builder/actions/ProcessAction";
+import { hasErrorActionMCP, MCPAction } from "@app/components/assistant_builder/actions/MCPAction";
+import { ActionProcess, hasErrorActionProcess } from "@app/components/assistant_builder/actions/ProcessAction";
 import { ActionReasoning } from "@app/components/assistant_builder/actions/ReasoningAction";
 import {
   ActionRetrievalExhaustive,
@@ -97,17 +85,8 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  ModelConfigurationType,
-  SpaceType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@app/types";
-import {
-  asDisplayName,
-  assertNever,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
+import type { ModelConfigurationType, SpaceType, WhitelistableFeature, WorkspaceType } from "@app/types";
+import { asDisplayName, assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -1549,7 +1528,7 @@ function Capabilities({
           isSelect
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="start">
         {shouldShowOldWebCapabilities && (
           <Capability
             name="Web search & browse"
