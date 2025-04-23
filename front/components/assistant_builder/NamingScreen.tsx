@@ -21,7 +21,6 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -47,7 +46,7 @@ import type {
   BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
   Result,
-  UserType,
+  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -150,7 +149,6 @@ export default function NamingScreen({
   setEdited,
   assistantHandleError,
   descriptionError,
-  currentUser,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -161,7 +159,6 @@ export default function NamingScreen({
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
   descriptionError: string | null;
-  currentUser: UserType | null;
 }) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
@@ -507,13 +504,7 @@ export default function NamingScreen({
                 </div>
               </div>
             </div>
-            <EditorsMembersList
-              currentUser={currentUser}
-              owner={owner}
-              builderState={builderState}
-              setBuilderState={setBuilderState}
-              setEdited={setEdited}
-            />
+            <EditorsMembersList currentUserId={"mock1"} owner={owner} />
           </>
         )}
       </div>
@@ -607,31 +598,66 @@ async function fetchWithErr<T>(
 }
 
 function EditorsMembersList({
-  currentUser,
+  currentUserId,
   owner,
-  builderState,
-  setBuilderState,
-  setEdited,
 }: {
-  currentUser: UserType | null;
+  currentUserId: string;
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
 }) {
-  const members = useMemo(
-    () =>
-      builderState.editors?.map((m) => ({ ...m, workspaces: [owner] })) ?? [],
-    [builderState, owner]
-  );
-
   const membersData = {
-    members,
-    totalMembersCount: members.length,
+    members: [
+      {
+        sId: "mock1",
+        fullName: "Mock User 1",
+        email: "mock1@test.com",
+        image: "https://example.com/image.png",
+        workspaces: [
+          {
+            role: "admin" as const,
+            sId: "mock1",
+            name: "Mock Workspace 1",
+            id: 1,
+            segmentation: null,
+            whiteListedProviders: null,
+            defaultEmbeddingProvider: null,
+            metadata: null,
+          },
+        ],
+        id: 1,
+        createdAt: 0,
+        provider: null,
+        username: "mock1",
+        firstName: "Mock",
+        lastName: "User 1",
+      },
+      {
+        sId: "mock2",
+        fullName: "Mock User 2",
+        email: "mock2@test.com",
+        image: "https://example.com/image.png",
+        workspaces: [
+          {
+            role: "admin" as const,
+            sId: "mock1",
+            name: "Mock Workspace 1",
+            id: 1,
+            segmentation: null,
+            whiteListedProviders: null,
+            defaultEmbeddingProvider: null,
+            metadata: null,
+          },
+        ],
+        id: 2,
+        createdAt: 0,
+        provider: null,
+        username: "mock2",
+        firstName: "Mock",
+        lastName: "User 2",
+      },
+    ],
+    totalMembersCount: 2,
     isLoading: false,
-    mutateRegardlessOfQueryParams: () => {},
+    mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
   };
 
   return (
@@ -641,32 +667,14 @@ function EditorsMembersList({
         <div className="flex flex-grow" />
         <AddEditorDropdown
           owner={owner}
-          editors={builderState.editors ?? []}
-          onAddEditor={(added) => {
-            if (builderState.editors?.some((e) => e.sId === added.sId)) {
-              return;
-            }
-            setBuilderState((s) => ({
-              ...s,
-              editors: [...(s.editors ?? []), added],
-            }));
-            setEdited(true);
-          }}
+          onAddEditor={() => membersData.mutateRegardlessOfQueryParams()}
         />
       </div>
       <MembersList
-        currentUser={currentUser}
+        currentUserId={currentUserId}
         membersData={membersData}
         onRowClick={() => {}}
-        onRemoveMemberClick={(removed) => {
-          setBuilderState((s) => ({
-            ...s,
-            editors: s.editors
-              ? s.editors.filter((m) => m.sId != removed.sId)
-              : [],
-          }));
-          setEdited(true);
-        }}
+        onRemoveMemberClick={() => {}}
         showColumns={["name", "email", "remove"]}
       />
     </div>
@@ -675,15 +683,14 @@ function EditorsMembersList({
 
 function AddEditorDropdown({
   owner,
-  editors,
   onAddEditor,
 }: {
   owner: WorkspaceType;
-  editors: UserType[];
-  onAddEditor: (member: UserType) => void;
+  onAddEditor: (member: UserTypeWithWorkspaces) => Promise<void>;
 }) {
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
   const itemsContainerRef = React.useRef<HTMLDivElement>(null);
 
   const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
@@ -711,9 +718,10 @@ function AddEditorDropdown({
       <DropdownMenuContent className="w-[380px]">
         <div className="flex gap-1.5 p-1.5">
           <SearchInput
+            ref={searchInputRef}
             name="search"
             onChange={(value) => setSearchTerm(value)}
-            placeholder="Search by email"
+            placeholder="Search members"
             value={searchTerm}
           />
           <Button icon={PlusIcon} label="Create" />
@@ -733,10 +741,9 @@ function AddEditorDropdown({
                   onClick={async () => {
                     setSearchTerm("");
                     setIsEditorPickerOpen(false);
-                    onAddEditor(member);
+                    await onAddEditor(member);
                   }}
                   truncateText
-                  disabled={editors.some((e) => e.sId === member.sId)}
                 />
               );
             })

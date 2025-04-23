@@ -763,7 +763,6 @@ export async function createAgentConfiguration(
     templateId,
     requestedGroupIds,
     tags,
-    editors,
   }: {
     name: string;
     description: string;
@@ -778,7 +777,6 @@ export async function createAgentConfiguration(
     templateId: string | null;
     requestedGroupIds: number[][];
     tags: TagType[];
-    editors: UserType[];
   },
   transaction?: Transaction
 ): Promise<Result<LightAgentConfigurationType, Error>> {
@@ -906,25 +904,19 @@ export async function createAgentConfiguration(
       }
 
       if (status === "active") {
-        assert(
-          editors.some((e) => e.sId === auth.user()?.sId),
-          "Unexpected: current user must be in editor group"
-        );
         if (!existingAgent) {
-          const group = await GroupResource.makeNewAgentEditorsGroup(
+          await GroupResource.makeNewAgentEditorsGroup(
             auth,
             agentConfigurationInstance,
             { transaction: t }
           );
-          await group.setMembers(auth, editors, { transaction: t });
         } else {
-          const groupRes = await GroupResource.fetchByAgentConfiguration(
+          const group = await GroupResource.fetchByAgentConfiguration(
             auth,
             existingAgent
           );
-          if (groupRes.isOk()) {
-            const group = groupRes.value;
-            const result = await group.addGroupToAgentConfiguration({
+          if (group.isOk()) {
+            const result = await group.value.addGroupToAgentConfiguration({
               auth,
               agentConfiguration: agentConfigurationInstance,
               transaction: t,
@@ -938,14 +930,13 @@ export async function createAgentConfiguration(
                 `Error adding group to agent ${existingAgent.sId}: ${result.error}`
               );
             }
-            await group.setMembers(auth, editors, { transaction: t });
           } else {
             logger.warn(
               {
                 workspaceId: owner.id,
                 agentConfigurationId: existingAgent.sId,
               },
-              `Error fetching group for agent ${existingAgent.sId}: ${groupRes.error}`
+              `Error fetching group for agent ${existingAgent.sId}: ${group.error}`
             );
           }
         }

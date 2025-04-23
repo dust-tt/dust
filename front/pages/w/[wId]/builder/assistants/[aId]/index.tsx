@@ -17,7 +17,6 @@ import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { useEditors } from "@app/lib/swr/editors";
 import type {
   AgentConfigurationType,
   AppType,
@@ -121,11 +120,6 @@ export default function EditAssistant({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   throwIfInvalidAgentConfiguration(agentConfiguration);
 
-  const { editors } = useEditors({
-    owner,
-    agentConfigurationId: agentConfiguration.sId,
-  });
-
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global agent");
   }
@@ -166,7 +160,6 @@ export default function EditAssistant({
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
           tags: agentConfiguration.tags,
-          editors,
         }}
         agentConfigurationId={agentConfiguration.sId}
         baseUrl={baseUrl}
