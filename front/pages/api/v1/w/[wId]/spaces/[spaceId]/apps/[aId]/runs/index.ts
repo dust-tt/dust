@@ -35,6 +35,10 @@ import {
 export const config = {
   api: {
     responseLimit: "8mb",
+    bodyParser: {
+      // 1m context size models at 4b/token (plain english) gives us an upper bound of 4mb.
+      sizeLimit: "4mb",
+    },
   },
 };
 
