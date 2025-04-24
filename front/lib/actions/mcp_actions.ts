@@ -2,6 +2,8 @@ import {
   ConfigurableToolInputJSONSchemas,
   INTERNAL_MIME_TYPES,
 } from "@dust-tt/client";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import assert from "assert";
 import type { JSONSchema7 } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -16,6 +18,7 @@ import type {
   MCPToolConfigurationType,
   PlatformMCPServerConfigurationType,
   PlatformMCPToolConfigurationType,
+  WithToolNameMetadata,
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -27,10 +30,14 @@ import type {
   MCPToolResult,
   MCPToolResultContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
+import type {
+  MCPConnectionParams,
+  PlatformMCPConnectionParams,
+} from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
   extractMetadataFromTools,
+  isConnectViaLocalMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -41,7 +48,11 @@ import {
   isPlatformMCPServerConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { MCPToolType, MCPToolWithStakeLevelType } from "@app/lib/api/mcp";
+import type {
+  LocalMCPToolTypeWithStakeLevel,
+  MCPToolType,
+  PlatformMCPToolTypeWithStakeLevel,
+} from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -60,8 +71,8 @@ const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
-  tools: MCPToolWithStakeLevelType[]
-): PlatformMCPToolConfigurationType[] {
+  tools: PlatformMCPToolTypeWithStakeLevel[]
+): WithToolNameMetadata<PlatformMCPToolConfigurationType>[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -77,13 +88,15 @@ function makePlatformMCPToolConfigurations(
     additionalConfiguration: config.additionalConfiguration,
     permission: tool.stakeLevel,
     toolServerId: tool.toolServerId,
+    originalName: tool.name,
+    mcpServerName: config.name,
   }));
 }
 
 function makeLocalMCPToolConfigurations(
   config: LocalMCPServerConfigurationType,
-  tools: MCPToolType[]
-): LocalMCPToolConfigurationType[] {
+  tools: LocalMCPToolTypeWithStakeLevel[]
+): WithToolNameMetadata<LocalMCPToolConfigurationType>[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -93,32 +106,9 @@ function makeLocalMCPToolConfigurations(
     id: config.id,
     localMcpServerId: config.localMcpServerId,
     isDefault: false, // can't be default for local MCP servers.
+    originalName: tool.name,
+    mcpServerName: config.name,
   }));
-}
-
-type MCPToolConfigurationResult<T> =
-  T extends PlatformMCPServerConfigurationType
-    ? PlatformMCPToolConfigurationType[]
-    : LocalMCPToolConfigurationType[];
-
-function makeMCPToolConfigurations<T extends MCPServerConfigurationType>({
-  config,
-  tools,
-}: {
-  config: T;
-  tools: MCPToolWithStakeLevelType[];
-}): MCPToolConfigurationResult<T> {
-  if (isPlatformMCPServerConfiguration(config)) {
-    return makePlatformMCPToolConfigurations(
-      config,
-      tools
-    ) as MCPToolConfigurationResult<T>;
-  }
-
-  return makeLocalMCPToolConfigurations(
-    config,
-    tools
-  ) as MCPToolConfigurationResult<T>;
 }
 
 /**
@@ -314,11 +304,7 @@ export async function tryListMCPTools(
         return [];
       }
 
-      const tools = toolsRes.value;
-      const toolConfigurations = makeMCPToolConfigurations({
-        config: action,
-        tools,
-      });
+      const toolConfigurations = toolsRes.value;
 
       // This handles the case where the MCP server configuration is using pre-configured data sources
       // or tables.
@@ -373,21 +359,72 @@ export async function tryListMCPTools(
   return configurations.flat();
 }
 
-async function augmentToolsWithMetadata(
-  auth: Authenticator,
-  connectionParams: MCPConnectionParams,
-  tools: MCPToolType[]
-): Promise<Result<MCPToolWithStakeLevelType[], Error>> {
-  // For non-server-side MCP servers, just add default metadata.
-  if (!isConnectViaMCPServerId(connectionParams)) {
-    return new Ok(
-      tools.map((tool) => ({
+async function listToolsForLocalMCPServer(
+  mcpClient: Client,
+  config: LocalMCPServerConfigurationType
+): Promise<Result<MCPToolConfigurationType[], Error>> {
+  let allTools: LocalMCPToolTypeWithStakeLevel[] = [];
+  let nextPageCursor;
+
+  // Fetch all tools, handling pagination if supported by the MCP server.
+  do {
+    const { tools, nextCursor } = await mcpClient.listTools();
+
+    for (const t of tools) {
+      t.inputSchema;
+    }
+
+    nextPageCursor = nextCursor;
+    allTools = [
+      ...allTools,
+      ...extractMetadataFromTools(tools).map((tool) => ({
         ...tool,
-        stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
         isDefault: false,
-        toolServerId: undefined,
-      }))
+        stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
+      })),
+    ];
+  } while (nextPageCursor);
+
+  // Create the configurations directly here
+  const localToolConfigs = makeLocalMCPToolConfigurations(config, allTools);
+  return new Ok(localToolConfigs);
+}
+
+async function listToolsForPlatformMCPServer(
+  auth: Authenticator,
+  connectionParams: PlatformMCPConnectionParams,
+  mcpClient: Client,
+  config: PlatformMCPServerConfigurationType
+): Promise<Result<MCPToolConfigurationType[], Error>> {
+  let allToolsRaw: MCPToolType[] = [];
+  let nextPageCursor;
+
+  // Fetch all tools, handling pagination if supported by the MCP server.
+  do {
+    const { tools, nextCursor } = await mcpClient.listTools();
+    nextPageCursor = nextCursor;
+    allToolsRaw = [
+      ...allToolsRaw,
+      ...extractMetadataFromTools(tools).map((tool) => ({
+        ...tool,
+      })),
+    ];
+  } while (nextPageCursor);
+
+  if (!isConnectViaMCPServerId(connectionParams)) {
+    const rawTools = allToolsRaw.map((tool) => ({
+      ...tool,
+      stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
+      isDefault: false,
+      toolServerId: "",
+    }));
+
+    // Create configurations and add required properties
+    const platformToolConfigs = makePlatformMCPToolConfigurations(
+      config,
+      rawTools
     );
+    return new Ok(platformToolConfigs);
   }
 
   const isDefault = isDefaultInternalMCPServer(connectionParams.mcpServerId);
@@ -409,6 +446,7 @@ async function augmentToolsWithMetadata(
       toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes || {};
       break;
     }
+
     case "remote": {
       const metadata =
         await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
@@ -425,18 +463,22 @@ async function augmentToolsWithMetadata(
       assertNever(serverType);
   }
 
-  return new Ok(
-    tools.map((tool) => ({
-      ...tool,
-      stakeLevel:
-        toolsStakes[tool.name] ||
-        (isDefault
-          ? FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL
-          : FALLBACK_MCP_TOOL_STAKE_LEVEL),
-      isDefault,
-      toolServerId: connectionParams.mcpServerId,
-    }))
+  const toolsWithStakes = allToolsRaw.map((tool) => ({
+    ...tool,
+    stakeLevel:
+      toolsStakes[tool.name] ||
+      (isDefault
+        ? FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL
+        : FALLBACK_MCP_TOOL_STAKE_LEVEL),
+    isDefault,
+    toolServerId: connectionParams.mcpServerId,
+  }));
+
+  const platformToolConfigs = makePlatformMCPToolConfigurations(
+    config,
+    toolsWithStakes
   );
+  return new Ok(platformToolConfigs);
 }
 
 async function listMCPServerTools(
@@ -449,7 +491,7 @@ async function listMCPServerTools(
     conversationId: string;
     messageId: string;
   }
-): Promise<Result<MCPToolWithStakeLevelType[], Error>> {
+): Promise<Result<MCPToolConfigurationType[], Error>> {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
@@ -471,44 +513,43 @@ async function listMCPServerTools(
     }
     mcpClient = r.value;
 
-    let allToolsRaw: MCPToolType[] = [];
-    let nextPageCursor;
-
-    // Fetch all tools, handling pagination if supported by the MCP server.
-    do {
-      const { tools, nextCursor } = await mcpClient.listTools();
-      nextPageCursor = nextCursor;
-      allToolsRaw = [
-        ...allToolsRaw,
-        ...extractMetadataFromTools(tools).map((tool) => ({
-          ...tool,
-        })),
-      ];
-    } while (nextPageCursor);
-
-    // Enrich tool metadata (if available) with permissions and serverId to avoid re-fetching at
-    // validation modal level.
-    const toolsMetadataRes = await augmentToolsWithMetadata(
-      auth,
-      connectionParams,
-      allToolsRaw
-    );
-    if (toolsMetadataRes.isErr()) {
-      return toolsMetadataRes;
+    let toolsRes: Result<MCPToolConfigurationType[], Error>;
+    if (isConnectViaLocalMCPServer(connectionParams)) {
+      assert(
+        !isPlatformMCPServerConfiguration(config),
+        "Config should not be a platform configuration when connecting via Local MCP Server."
+      );
+      toolsRes = await listToolsForLocalMCPServer(mcpClient, config);
+    } else {
+      assert(
+        isPlatformMCPServerConfiguration(config),
+        "Config should be a platform configuration when connecting via Platform MCP Server."
+      );
+      toolsRes = await listToolsForPlatformMCPServer(
+        auth,
+        connectionParams,
+        mcpClient,
+        config
+      );
     }
-    const toolsMetadata = toolsMetadataRes.value;
+
+    if (toolsRes.isErr()) {
+      return toolsRes;
+    }
+
+    const tools = toolsRes.value;
 
     logger.debug(
       {
         workspaceId: owner.id,
         conversationId,
         messageId,
-        toolCount: allToolsRaw.length,
+        toolCount: tools.length,
       },
-      `Retrieved ${toolsMetadata.length} tools from MCP server`
+      `Retrieved ${tools.length} tools from MCP server`
     );
 
-    return new Ok(toolsMetadata);
+    return new Ok(tools);
   } catch (error) {
     logger.error(
       {

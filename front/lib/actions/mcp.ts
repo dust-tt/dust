@@ -95,7 +95,7 @@ export type PlatformMCPToolConfigurationType = Omit<
   inputSchema: JSONSchema;
   isDefault: boolean;
   permission: MCPToolStakeLevelType;
-  toolServerId?: string;
+  toolServerId: string;
 };
 
 export type LocalMCPToolConfigurationType = Omit<
@@ -106,13 +106,14 @@ export type LocalMCPToolConfigurationType = Omit<
   inputSchema: JSONSchema;
 };
 
-export type MCPToolConfigurationType = (
-  | PlatformMCPToolConfigurationType
-  | LocalMCPToolConfigurationType
-) & {
+export type WithToolNameMetadata<T> = T & {
   originalName: string;
   mcpServerName: string;
 };
+
+export type MCPToolConfigurationType = WithToolNameMetadata<
+  PlatformMCPToolConfigurationType | LocalMCPToolConfigurationType
+>;
 
 type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
