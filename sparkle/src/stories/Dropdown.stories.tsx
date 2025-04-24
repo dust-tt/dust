@@ -56,7 +56,7 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   RobotIcon,
-  SearchInput,
+  SearchDropdownMenu,
   SuitcaseIcon,
   UserGroupIcon,
   UserIcon,
@@ -86,6 +86,38 @@ export const PickerExamples = () => (
     <div>{AttachFileDemo()}</div>
   </div>
 );
+
+export const SearchDropdownMenuExamples = () => {
+  const [searchInputValue, setSearchInputValue] = React.useState("");
+
+  const items = ["Profile", "Billing", "Team", "Subscription"];
+
+  const filteredItems = items.filter((item) =>
+    item.toLowerCase().includes(searchInputValue.toLowerCase())
+  );
+
+  return (
+    <div className="s-flex s-h-80 s-w-full s-flex-col s-items-center s-justify-center s-gap-4 s-text-foreground dark:s-text-foreground-night">
+      <div>
+        <SearchDropdownMenu
+          searchInputValue={searchInputValue}
+          setSearchInputValue={setSearchInputValue}
+        >
+          {filteredItems.map((item) => (
+            <DropdownMenuItem
+              key={item}
+              label={item}
+              onClick={() => {
+                setSearchInputValue("");
+                window.alert(item);
+              }}
+            />
+          ))}
+        </SearchDropdownMenu>
+      </div>
+    </div>
+  );
+};
 
 function SimpleDropdownDemo() {
   return (
@@ -135,7 +167,11 @@ function ComplexDropdownDemo() {
       <DropdownMenuContent className="s-w-56">
         <DropdownMenuLabel label="My Account" />
         <DropdownMenuGroup>
-          <DropdownMenuItem icon={UserIcon} label="Profile" />
+          <DropdownMenuItem
+            icon={UserIcon}
+            label="Profile"
+            endComponent={<Button icon={ArrowUpOnSquareIcon} variant="ghost" />}
+          />
           <DropdownMenuItem icon={ArrowDownCircleIcon} label="Billing" />
           <DropdownMenuItem icon={Cog6ToothIcon} label="Settings" />
           <DropdownMenuItem icon={UserIcon} label="Keyboard shortcuts" />
@@ -513,18 +549,18 @@ function AttachFileDemo() {
             size="sm"
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-[380px]">
-          <div className="s-flex s-gap-1.5 s-p-1.5">
-            <SearchInput
-              ref={searchInputRef}
-              name="search"
-              onChange={setSearchText}
-              onKeyDown={() => {}}
-              placeholder="Search in Dust"
+        <DropdownMenuContent
+          className="s-w-[380px]"
+          dropdownHeaders={
+            <DropdownMenuSearchbar
               value={searchText}
+              onChange={setSearchText}
+              name="search"
+              placeholder="Search in Dust"
+              button={<Button icon={ArrowUpOnSquareIcon} label="Upload File" />}
             />
-            <Button icon={ArrowUpOnSquareIcon} label="Upload File" />
-          </div>
+          }
+        >
           <DropdownMenuSeparator />
           {searchText ? (
             filteredItems.map((item) => {
