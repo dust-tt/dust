@@ -27,10 +27,25 @@ export function ReasoningModelConfigurationSection({
   selectedReasoningModel,
   onModelSelect,
 }: ReasoningModelConfigurationSectionProps) {
-  const { reasoningModels, isModelsLoading } = useModels({ owner });
+  const { reasoningModels, isModelsLoading, isModelsError } = useModels({
+    owner,
+  });
   const { isDark } = useTheme();
 
-  if (reasoningModels.length === 0) {
+  if (isModelsError) {
+    return (
+      <ContentMessage
+        title="Error loading models"
+        icon={InformationCircleIcon}
+        variant="warning"
+        size="sm"
+      >
+        Failed to load available reasoning models. Please try again later.
+      </ContentMessage>
+    );
+  }
+
+  if (!isModelsLoading && reasoningModels.length === 0) {
     return (
       <ContentMessage
         title="No reasoning model available"
