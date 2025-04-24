@@ -24,7 +24,7 @@ export function isDepthOption(value: unknown): value is DepthOption {
   return DepthOptions.includes(value as DepthOption);
 }
 
-export const WebcrawlerCustomCrawler = "firecrawl";
+export const WebcrawlerCustomCrawler = ["firecrawl"] as const;
 export type WebcrawlerCustomCrawler = (typeof WebcrawlerCustomCrawler)[number];
 
 export const WebCrawlerConfigurationTypeSchema = t.type({
