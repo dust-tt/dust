@@ -19,17 +19,20 @@ export function isJSONSchemaObject(
   return value !== null && typeof value === "object";
 }
 
-export function schemaMatchesMimeType(
+/**
+ * Checks if a JSON schema matches should be idenfied as being configurable for a specific mime type.
+ */
+export function schemaIsConfigurable(
   schema: JSONSchema,
   mimeType: InternalToolInputMimeType
 ): boolean {
-  // If the mime type is in the ConfigurableToolInputJSONSchemas, we check that the schema matches the fixed schema.
-  const fixedSchema = ConfigurableToolInputJSONSchemas[mimeType];
-  if (fixedSchema) {
-    return schemasAreEqual(schema, fixedSchema);
+  // If the mime type has a static configuration schema, we check that the schema matches it.
+  const staticSchema = ConfigurableToolInputJSONSchemas[mimeType];
+  if (staticSchema) {
+    return schemasAreEqual(schema, staticSchema);
   }
-  // If the mime type is not in the ConfigurableToolInputJSONSchemas, it is a flexible mime type.
-  // We only check that the schema has a value property and a mimeType property with the correct value.
+  // If the mime type does not have a static configuration schema, it supports flexible schemas.
+  // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
   const mimeTypeProperty = schema.properties?.mimeType;
   if (
     schema.properties?.value &&
@@ -80,7 +83,7 @@ export function findMatchingSubSchemas(
     for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
       if (isJSONSchemaObject(propSchema)) {
         // Check if this property's schema matches the target
-        if (schemaMatchesMimeType(propSchema, mimeType)) {
+        if (schemaIsConfigurable(propSchema, mimeType)) {
           matches[key] = propSchema;
         }
 
@@ -88,7 +91,7 @@ export function findMatchingSubSchemas(
         // zodToJsonSchema generates references if the same subSchema is repeated.
         if (propSchema.$ref) {
           const refSchema = followInternalRef(inputSchema, propSchema.$ref);
-          if (refSchema && schemaMatchesMimeType(refSchema, mimeType)) {
+          if (refSchema && schemaIsConfigurable(refSchema, mimeType)) {
             matches[key] = refSchema;
           }
         }
@@ -148,7 +151,7 @@ export function findMatchingSubSchemas(
       continue;
     }
 
-    if (isJSONSchemaObject(value) && schemaMatchesMimeType(value, mimeType)) {
+    if (isJSONSchemaObject(value) && schemaIsConfigurable(value, mimeType)) {
       matches[key] = value;
     } else if (isJSONSchemaObject(value)) {
       const nestedMatches = findMatchingSubSchemas(value, mimeType);
