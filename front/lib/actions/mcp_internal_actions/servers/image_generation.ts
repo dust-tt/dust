@@ -6,6 +6,7 @@ import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_act
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { dustManagedCredentials } from "@app/types";
 
@@ -73,7 +74,15 @@ const createServer = (auth: Authenticator): McpServer => {
         logger,
       });
 
+      const statsDClient = getStatsDClient();
+      statsDClient.increment("tools.image_generation.generated", 1, [
+        `quality:${quality}`,
+        `size:${size}`,
+      ]);
+
       if (remaining <= 0) {
+        statsDClient.increment("tools.image_generation.rate_limit_hit", 1);
+
         return {
           isError: true,
           content: [
@@ -116,7 +125,7 @@ const createServer = (auth: Authenticator): McpServer => {
       const fileName = `${name}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
 
       const content: MCPToolResultContentType[] = result.data.map((image) => ({
-        type: "image",
+        type: "image" as const,
         data: image.b64_json!,
         mimeType: DEFAULT_IMAGE_MIME_TYPE,
         fileName,
