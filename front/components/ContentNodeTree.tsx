@@ -252,6 +252,14 @@ function ContentNodeTreeChildren({
             }
             actions={
               <div className="mr-8 flex flex-row gap-2">
+                {n.sourceUrl && (
+                  <Button
+                    href={n.sourceUrl}
+                    icon={ExternalLinkIcon}
+                    size="xs"
+                    variant="outline"
+                  />
+                )}
                 {n.lastUpdatedAt ? (
                   <Tooltip
                     label={
@@ -259,26 +267,12 @@ function ContentNodeTreeChildren({
                     }
                     side={i === 0 ? "bottom" : "top"}
                     trigger={
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-600">
                         {timeAgoFrom(n.lastUpdatedAt)} ago
                       </span>
                     }
                   />
                 ) : null}
-                <IconButton
-                  size="xs"
-                  icon={ExternalLinkIcon}
-                  onClick={() => {
-                    if (n.sourceUrl) {
-                      window.open(n.sourceUrl, "_blank");
-                    }
-                  }}
-                  className={classNames(
-                    n.sourceUrl ? "" : "pointer-events-none opacity-0"
-                  )}
-                  disabled={!n.sourceUrl}
-                  variant="outline"
-                />
                 {onDocumentViewClick && (
                   <IconButton
                     size="xs"
