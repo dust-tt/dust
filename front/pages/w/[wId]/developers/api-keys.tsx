@@ -18,8 +18,6 @@ import {
   Input,
   Page,
   PlusIcon,
-  ScrollArea,
-  ScrollBar,
   ShapesIcon,
   Sheet,
   SheetContainer,
@@ -257,34 +255,28 @@ export function APIKeys({
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <ScrollArea
-                      className="flex max-h-[300px] flex-col"
-                      hideScrollBar
-                    >
-                      {groups
-                        .sort((a, b) => {
-                          // Put global groups first
-                          if (a.kind === "global" && b.kind !== "global") {
-                            return -1;
-                          }
-                          if (a.kind !== "global" && b.kind === "global") {
-                            return 1;
-                          }
+                    {groups
+                      .sort((a, b) => {
+                        // Put global groups first
+                        if (a.kind === "global" && b.kind !== "global") {
+                          return -1;
+                        }
+                        if (a.kind !== "global" && b.kind === "global") {
+                          return 1;
+                        }
 
-                          // Then sort alphabetically case insensitive
-                          return prettifyGroupName(a)
-                            .toLowerCase()
-                            .localeCompare(prettifyGroupName(b).toLowerCase());
-                        })
-                        .map((group: GroupType) => (
-                          <DropdownMenuItem
-                            key={group.id}
-                            label={prettifyGroupName(group)}
-                            onClick={() => setNewApiKeyGroup(group)}
-                          />
-                        ))}
-                      <ScrollBar className="py-0" />
-                    </ScrollArea>
+                        // Then sort alphabetically case insensitive
+                        return prettifyGroupName(a)
+                          .toLowerCase()
+                          .localeCompare(prettifyGroupName(b).toLowerCase());
+                      })
+                      .map((group: GroupType) => (
+                        <DropdownMenuItem
+                          key={group.id}
+                          label={prettifyGroupName(group)}
+                          onClick={() => setNewApiKeyGroup(group)}
+                        />
+                      ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

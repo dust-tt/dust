@@ -22,6 +22,7 @@ import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import type {
   LightWorkspaceType,
   MembershipRoleType,
+  PublicAPILimitsType,
   Result,
   RoleType,
   SubscriptionType,
@@ -459,6 +460,7 @@ export async function disableSSOEnforcement(
 
 interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
+  publicApiLimits?: PublicAPILimitsType;
 }
 
 export async function updateWorkspaceMetadata(
@@ -497,6 +499,19 @@ export async function setWorkspaceRelocated(
 
 export function isWorkspaceRelocationDone(owner: LightWorkspaceType): boolean {
   return owner.metadata?.maintenance === "relocation-done";
+}
+
+export function getWorkspacePublicAPILimits(
+  owner: LightWorkspaceType
+): PublicAPILimitsType | null {
+  return owner.metadata?.publicApiLimits || null;
+}
+
+export async function setWorkspacePublicAPILimits(
+  owner: LightWorkspaceType,
+  limits: PublicAPILimitsType
+): Promise<Result<void, Error>> {
+  return updateWorkspaceMetadata(owner, { publicApiLimits: limits });
 }
 
 export async function updateExtensionConfiguration(

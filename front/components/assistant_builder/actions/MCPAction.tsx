@@ -19,7 +19,7 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { assertNever, slugify } from "@app/types";
+import { asDisplayName, assertNever, slugify } from "@app/types";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -127,8 +127,10 @@ export function MCPAction({
           dataSourceConfigurations: null,
           tablesConfigurations: null,
           childAgentId: null,
-          // We initialize with the default values for required booleans since these can be left unset.
-          additionalConfiguration: requirements.requiredBooleans,
+          // We initialize boolean with false because leaving them unset means false (toggle on the left).
+          additionalConfiguration: Object.fromEntries(
+            requirements.requiredBooleans.map((key) => [key, false])
+          ),
         }),
       });
     },
@@ -249,8 +251,8 @@ export function MCPAction({
         />
       )}
       {/* Server selection */}
-      {isEditing ? (
-        <div>
+      {!selectedMCPServerView?.server.isDefault &&
+        (isEditing ? (
           <div className="text-sm text-foreground dark:text-foreground-night">
             <div>{selectedMCPServerView?.server.description}</div>
 
@@ -270,22 +272,21 @@ export function MCPAction({
               </div>
             )}
           </div>
-          <div className="pt-2">
-            <MCPToolsList tools={selectedMCPServerView?.server.tools ?? []} />
-          </div>
-        </div>
-      ) : (
-        <>
-          <MCPServerSelector
-            owner={owner}
-            allowedSpaces={allowedSpaces}
-            mcpServerViews={mcpServerViews}
-            selectedMCPServerView={selectedMCPServerView}
-            handleServerSelection={handleServerSelection}
-          />
-        </>
+        ) : (
+          <>
+            <MCPServerSelector
+              owner={owner}
+              allowedSpaces={allowedSpaces}
+              mcpServerViews={mcpServerViews}
+              selectedMCPServerView={selectedMCPServerView}
+              handleServerSelection={handleServerSelection}
+            />
+          </>
+        ))}
+      {/* List of tools */}
+      {selectedMCPServerView && (
+        <MCPToolsList tools={selectedMCPServerView.server.tools} />
       )}
-
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
@@ -317,9 +318,7 @@ export function MCPAction({
         />
       )}
       <AdditionalConfigurationSection
-        requiredStrings={requirements.requiredStrings}
-        requiredNumbers={requirements.requiredNumbers}
-        requiredBooleans={requirements.requiredBooleans}
+        {...requirements}
         additionalConfiguration={actionConfiguration.additionalConfiguration}
         onConfigUpdate={handleAdditionalConfigUpdate}
       />
@@ -345,13 +344,13 @@ export function hasErrorActionMCP(
       requirements.requiresDataSourceConfiguration &&
       !action.configuration.dataSourceConfigurations
     ) {
-      return "Please select data source(s).";
+      return "Please select one or multiple data sources.";
     }
     if (
       requirements.requiresTableConfiguration &&
       !action.configuration.tablesConfigurations
     ) {
-      return "Please select table(s).";
+      return "Please select one or multiple tables.";
     }
     if (
       requirements.requiresChildAgentConfiguration &&
@@ -359,15 +358,24 @@ export function hasErrorActionMCP(
     ) {
       return "Please select a child agent.";
     }
-    for (const key in requirements.requiredStrings) {
+    const missingFields = [];
+    for (const key of requirements.requiredStrings) {
       if (!(key in action.configuration.additionalConfiguration)) {
-        return `Please fill in all fields.`;
+        missingFields.push(key);
       }
     }
-    for (const key in requirements.requiredNumbers) {
+    for (const key of requirements.requiredNumbers) {
       if (!(key in action.configuration.additionalConfiguration)) {
-        return `Please fill in all required numeric fields.`;
+        missingFields.push(key);
       }
+    }
+    for (const key in requirements.requiredEnums) {
+      if (!(key in action.configuration.additionalConfiguration)) {
+        missingFields.push(key);
+      }
+    }
+    if (missingFields.length > 0) {
+      return `Some fields are missing: ${missingFields.map(asDisplayName).join(", ")}.`;
     }
 
     return null;

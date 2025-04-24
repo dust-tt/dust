@@ -19,11 +19,21 @@ export type MCPToolWithIsDefaultType = MCPToolType & {
   isDefault: boolean;
 };
 
-export type MCPToolWithStakeLevelType = MCPToolWithIsDefaultType & {
+export type WithStakeLevelType<T> = T & {
   stakeLevel: MCPToolStakeLevelType;
-  // TODO(2025-04-22 Adrien): Make this required.
-  toolServerId?: string;
 };
+
+export type PlatformMCPToolTypeWithStakeLevel =
+  WithStakeLevelType<MCPToolWithIsDefaultType> & {
+    toolServerId: string;
+  };
+
+export type LocalMCPToolTypeWithStakeLevel =
+  WithStakeLevelType<MCPToolWithIsDefaultType>;
+
+export type MCPToolWithStakeLevelType =
+  | PlatformMCPToolTypeWithStakeLevel
+  | LocalMCPToolTypeWithStakeLevel;
 
 export type MCPServerType = {
   id: string;

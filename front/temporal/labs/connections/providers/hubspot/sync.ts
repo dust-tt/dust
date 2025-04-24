@@ -12,7 +12,13 @@ import {
   renderLightWorkspaceType,
 } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { HubspotClient } from "@app/temporal/labs/connections/providers/hubspot/client";
+import type { AssociationsResponseType } from "@app/temporal/labs/connections/providers/hubspot/client";
+import {
+  AssociationsResponse,
+  ContactSearchResponse,
+  DealSearchResponse,
+  HubspotClient,
+} from "@app/temporal/labs/connections/providers/hubspot/client";
 import type {
   Company,
   Contact,
@@ -61,13 +67,27 @@ function createContactSection(contact: Contact, documentId: string): Section {
   };
 }
 
-function createDealSection(deal: Deal, documentId: string): Section {
+async function createDealSection(
+  deal: Deal,
+  documentId: string,
+  hubspotClient: HubspotClient
+): Promise<Section> {
   const props = deal.properties || {};
+
+  // Get all activities
+  const activities = await hubspotClient.getDealActivities(deal.id);
+
+  // Format all properties
+  const propertyEntries = Object.entries(props)
+    .filter(([, value]) => value !== null)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join("\n");
+
   const dealDetails = [
-    props.dealname,
-    props.dealstage && `Stage: ${props.dealstage}`,
-    props.amount && `Amount: ${props.amount}`,
-    props.closedate && `Close Date: ${props.closedate}`,
+    "Deal Details:",
+    propertyEntries,
+    activities.results.length > 0 ? "Activities:" : null,
+    ...activities.results.map((activity) => `Meeting: ${activity.id}`),
   ]
     .filter(Boolean)
     .join("\n");
@@ -108,10 +128,13 @@ function createOrderSection(order: Order, documentId: string): Section {
 
 function createNoteSection(note: Note, documentId: string): Section {
   const props = note.properties || {};
-  const formattedDate = props.hs_createdate
-    ? formatDate(props.hs_createdate)
-    : "Unknown date";
-  const cleanedNoteBody = sanitizeHtml(props.hs_note_body || "Empty note", {
+  const formattedDate =
+    typeof props.hs_createdate === "string"
+      ? formatDate(props.hs_createdate)
+      : "Unknown date";
+  const noteBody =
+    typeof props.hs_note_body === "string" ? props.hs_note_body : "Empty note";
+  const cleanedNoteBody = sanitizeHtml(noteBody, {
     allowedTags: [],
     allowedAttributes: {},
   });
@@ -123,18 +146,19 @@ function createNoteSection(note: Note, documentId: string): Section {
   };
 }
 
-function createCompanySection(
+async function createCompanySection(
   documentId: string,
   company: Company,
   contacts: Contact[],
   deals: Deal[],
   tickets: Ticket[],
   orders: Order[],
-  notes: Note[]
-): Section {
+  notes: Note[],
+  hubspotClient: HubspotClient
+): Promise<Section> {
   const props = company.properties || {};
   const companyDetails = [
-    `Company Name: ${props.name || "Unknown Company"}`,
+    `Company Name: ${typeof props.name === "string" ? props.name : "Unknown Company"}`,
     props.industry && `Industry: ${props.industry}`,
     props.annualrevenue && `Annual Revenue: ${props.annualrevenue}`,
     props.numberofemployees &&
@@ -154,7 +178,7 @@ function createCompanySection(
     props.hs_analytics_source && `Source: ${props.hs_analytics_source}`,
     props.hs_pipeline && `Pipeline: ${props.hs_pipeline}`,
   ]
-    .filter(Boolean)
+    .filter((line) => typeof line === "string")
     .join("\n");
 
   const sections: Section[] = [
@@ -179,7 +203,9 @@ function createCompanySection(
     sections.push({
       prefix: `${documentId}-deals`,
       content: "Deals:",
-      sections: deals.map((deal) => createDealSection(deal, documentId)),
+      sections: await Promise.all(
+        deals.map((deal) => createDealSection(deal, documentId, hubspotClient))
+      ),
     });
   }
 
@@ -211,7 +237,7 @@ function createCompanySection(
 
   return {
     prefix: documentId,
-    content: `Company Summary for ${props.name || "Unknown Company"}`,
+    content: `Company Summary for ${typeof props.name === "string" ? props.name : "Unknown Company"}`,
     sections,
   };
 }
@@ -259,31 +285,33 @@ async function upsertToDustDatasource(
   tickets: Ticket[],
   orders: Order[],
   notes: Note[],
-  portalId: string
+  portalId: string,
+  hubspotClient: HubspotClient
 ): Promise<void> {
   const documentId = `company-${company.id}`;
   const props = company.properties || {};
 
-  const section = createCompanySection(
+  const section = await createCompanySection(
     documentId,
     company,
     contacts,
     deals,
     tickets,
     orders,
-    notes
+    notes,
+    hubspotClient
   );
 
   try {
     const user = await UserResource.fetchByModelId(userId);
     if (!user) {
-      logger.error({ workspaceId }, "User not found");
+      logger.error({ workspaceId }, "[labs-hubspot] User not found");
       return;
     }
 
     const workspace = await getWorkspaceByModelId(workspaceId);
     if (!workspace) {
-      logger.error({ workspaceId }, "Workspace not found");
+      logger.error({ workspaceId }, "[labs-hubspot] Workspace not found");
       return;
     }
 
@@ -300,20 +328,14 @@ async function upsertToDustDatasource(
     );
 
     if (!datasourceView) {
-      logger.error(
-        {},
-        "[processTranscriptActivity] No datasource view found. Stopping."
-      );
+      logger.error({}, "[labs-hubspot] No datasource view found. Stopping.");
       return;
     }
 
     const dataSource = datasourceView.dataSource;
 
     if (!dataSource) {
-      logger.error(
-        {},
-        "[processTranscriptActivity] No datasource found. Stopping."
-      );
+      logger.error({}, "[labs-hubspot] No datasource found. Stopping.");
       return;
     }
 
@@ -340,19 +362,19 @@ async function upsertToDustDatasource(
           companyId: company.id,
           companyName: props.name,
         },
-        `Error upserting company to Dust datasource`
+        `[labs-hubspot] Error upserting company to Dust datasource`
       );
       return;
     }
 
     logger.info(
       { companyId: company.id, companyName: props.name },
-      `Upserted hubspot company to Dust datasource`
+      `[labs-hubspot] Upserted hubspot company to Dust datasource`
     );
   } catch (error) {
     logger.error(
       { error, companyId: company.id, companyName: props.name },
-      `Error upserting company to Dust datasource`
+      `[labs-hubspot] Error upserting company to Dust datasource`
     );
   }
 }
@@ -407,22 +429,110 @@ export async function syncHubspotConnection(
         ? new Date(cursor)
         : new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // Get recently updated companies
     const filters: HubspotFilter[] = [];
     if (since) {
-      filters.push({
-        propertyName: "hs_lastmodifieddate",
-        operator: "GTE",
-        value: since.toISOString(),
-      });
+      filters.push(
+        {
+          propertyName: "hs_lastmodifieddate",
+          operator: "GTE",
+          value: since.toISOString(),
+        },
+        {
+          propertyName: "notes_last_updated",
+          operator: "GTE",
+          value: since.toISOString(),
+        }
+      );
     }
 
     const searchResponse = await hubspotClient.searchCompanies({
       filterGroups: filters.length > 0 ? [{ filters }] : [],
-      properties: ["hs_object_id"],
+      properties: ["hs_object_id", "hs_lastmodifieddate", "notes_last_updated"],
       limit: 100,
     });
-    const companyIds = searchResponse.results.map((company) => company.id);
+
+    // Get additional companies that have modified associations
+    const additionalCompanyIds = new Set<string>();
+
+    if (since) {
+      // Get companies with modified deals
+      const modifiedDeals = await hubspotClient.makeRequest(
+        "/crm/v3/objects/deals/search",
+        DealSearchResponse,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            filterGroups: [
+              {
+                filters: [
+                  {
+                    propertyName: "hs_lastmodifieddate",
+                    operator: "GTE",
+                    value: since.toISOString(),
+                  },
+                ],
+              },
+            ],
+            properties: ["hs_object_id"],
+            limit: 100,
+          }),
+        }
+      );
+
+      for (const deal of modifiedDeals.results) {
+        const associations =
+          await hubspotClient.makeRequest<AssociationsResponseType>(
+            `/crm/v3/objects/deals/${deal.id}/associations/companies`,
+            AssociationsResponse,
+            { params: { limit: 100 } }
+          );
+        associations.results.forEach((assoc: { id: string }) =>
+          additionalCompanyIds.add(assoc.id)
+        );
+      }
+
+      // Get companies with modified contacts
+      const modifiedContacts = await hubspotClient.makeRequest(
+        "/crm/v3/objects/contacts/search",
+        ContactSearchResponse,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            filterGroups: [
+              {
+                filters: [
+                  {
+                    propertyName: "hs_lastmodifieddate",
+                    operator: "GTE",
+                    value: since.toISOString(),
+                  },
+                ],
+              },
+            ],
+            properties: ["hs_object_id"],
+            limit: 100,
+          }),
+        }
+      );
+
+      for (const contact of modifiedContacts.results) {
+        const associations =
+          await hubspotClient.makeRequest<AssociationsResponseType>(
+            `/crm/v3/objects/contacts/${contact.id}/associations/companies`,
+            AssociationsResponse,
+            { params: { limit: 100 } }
+          );
+        associations.results.forEach((assoc: { id: string }) =>
+          additionalCompanyIds.add(assoc.id)
+        );
+      }
+    }
+
+    // Combine company IDs from direct search and associations
+    const companyIds = [
+      ...searchResponse.results.map((company) => company.id),
+      ...Array.from(additionalCompanyIds),
+    ];
 
     logger.info(
       { count: companyIds.length, isFullSync, since },
@@ -475,7 +585,8 @@ export async function syncHubspotConnection(
             tickets,
             orders,
             notes,
-            credentials.portalId
+            credentials.portalId,
+            hubspotClient
           );
         }
       }
@@ -483,13 +594,13 @@ export async function syncHubspotConnection(
       await markSyncCompleted(configuration);
       return new Ok(undefined);
     } catch (error) {
-      const errorMsg = `Error during sync: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `${error instanceof Error ? error.message : String(error)}`;
       logger.error({ error }, errorMsg);
       await markSyncFailed(configuration, errorMsg);
       return new Err(error as Error);
     }
   } catch (error) {
-    const errorMsg = `Unexpected error during sync: ${error instanceof Error ? error.message : String(error)}`;
+    const errorMsg = `${error instanceof Error ? error.message : String(error)}`;
     logger.error({ error }, errorMsg);
     await markSyncFailed(configuration, errorMsg);
     return new Err(error as Error);

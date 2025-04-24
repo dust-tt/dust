@@ -37,6 +37,10 @@ export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION = `Search within the 'searchable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
 
+export const DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME =
+  "extract_conversation_files";
+export const DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION = `Extract structured data from the 'extractable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
+
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
 

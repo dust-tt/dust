@@ -283,11 +283,10 @@ Tree.Item = React.forwardRef<
               {label}
             </div>
           )}
-          <div className="s-grow" />
           {actions && (
             <div
               className={cn(
-                "s-flex s-gap-2 s-pl-4",
+                "s-flex s-grow s-gap-2 s-pl-4",
                 areActionsFading &&
                   "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
               )}

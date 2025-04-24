@@ -80,6 +80,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
         workspaceId: w.sId,
         planCode: FREE_UPGRADED_PLAN_CODE,
+        endDate: null,
       });
       await workspace("show", args);
       return;

@@ -50,11 +50,11 @@ const ToolGeneratedFileSchema = z.object({
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
 
 export function isToolGeneratedFile(
-  resource: MCPToolResultContentType
-): resource is { type: "resource"; resource: ToolGeneratedFileType } {
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: ToolGeneratedFileType } {
   return (
-    resource.type === "resource" &&
-    ToolGeneratedFileSchema.safeParse(resource.resource).success
+    outputBlock.type === "resource" &&
+    ToolGeneratedFileSchema.safeParse(outputBlock.resource).success
   );
 }
 
@@ -69,11 +69,11 @@ const ThinkingOutputSchema = z.object({
 export type ThinkingOutputType = z.infer<typeof ThinkingOutputSchema>;
 
 export function isThinkingOutput(
-  resource: MCPToolResultContentType
-): resource is { type: "resource"; resource: ThinkingOutputType } {
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: ThinkingOutputType } {
   return (
-    resource.type === "resource" &&
-    ThinkingOutputSchema.safeParse(resource.resource).success
+    outputBlock.type === "resource" &&
+    ThinkingOutputSchema.safeParse(outputBlock.resource).success
   );
 }
 
@@ -88,11 +88,11 @@ const SqlQueryOutputSchema = z.object({
 export type SqlQueryOutputType = z.infer<typeof SqlQueryOutputSchema>;
 
 export function isSqlQueryOutput(
-  resource: MCPToolResultContentType
-): resource is { type: "resource"; resource: SqlQueryOutputType } {
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: SqlQueryOutputType } {
   return (
-    resource.type === "resource" &&
-    SqlQueryOutputSchema.safeParse(resource.resource).success
+    outputBlock.type === "resource" &&
+    SqlQueryOutputSchema.safeParse(outputBlock.resource).success
   );
 }
 
@@ -118,6 +118,15 @@ export const SearchQueryResourceSchema = z.object({
 
 export type SearchQueryResourceType = z.infer<typeof SearchQueryResourceSchema>;
 
+export const isSearchQueryResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: SearchQueryResourceType } => {
+  return (
+    outputBlock.type === "resource" &&
+    SearchQueryResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 export const SearchResultResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT
@@ -141,13 +150,11 @@ export type SearchResultResourceType = z.infer<
 >;
 
 export const isSearchResultResourceType = (
-  resource: object
-): resource is SearchResultResourceType => {
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: SearchResultResourceType } => {
   return (
-    "mimeType" in resource &&
-    resource.mimeType ===
-      INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT &&
-    SearchResultResourceSchema.safeParse(resource).success
+    outputBlock.type === "resource" &&
+    SearchResultResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 

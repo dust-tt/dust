@@ -43,13 +43,14 @@ const CompanyDetailsResponse = t.type({
   properties: t.record(t.string, t.unknown),
 });
 
-const AssociationResult = t.type({
-  id: t.string,
-});
-
 const AssociationsResponse = t.type({
-  results: t.array(AssociationResult),
+  results: t.array(
+    t.type({
+      id: t.string,
+    })
+  ),
 });
+export type AssociationsResponseType = t.TypeOf<typeof AssociationsResponse>;
 
 const ContactResponse = t.type({
   results: t.array(ContactCodec),
@@ -70,6 +71,51 @@ const OrderResponse = t.type({
 const NoteResponse = t.type({
   results: t.array(NoteCodec),
 });
+
+const PropertyResponse = t.type({
+  results: t.array(
+    t.type({
+      name: t.string,
+      label: t.string,
+      type: t.string,
+      fieldType: t.string,
+      description: t.union([t.string, t.undefined]),
+      groupName: t.string,
+      options: t.array(t.unknown),
+      displayOrder: t.number,
+      calculated: t.boolean,
+      externalOptions: t.boolean,
+      hasUniqueValue: t.boolean,
+      hidden: t.boolean,
+      hubspotDefined: t.union([t.boolean, t.undefined]),
+      modificationMetadata: t.record(t.string, t.unknown),
+      formField: t.boolean,
+      dataSensitivity: t.string,
+    })
+  ),
+});
+
+const DealSearchResponse = t.type({
+  results: t.array(
+    t.type({
+      id: t.string,
+      properties: t.record(t.string, t.unknown),
+    })
+  ),
+});
+export type DealSearchResponseType = t.TypeOf<typeof DealSearchResponse>;
+
+const ContactSearchResponse = t.type({
+  results: t.array(
+    t.type({
+      id: t.string,
+      properties: t.record(t.string, t.unknown),
+    })
+  ),
+});
+export type ContactSearchResponseType = t.TypeOf<typeof ContactSearchResponse>;
+
+export { AssociationsResponse, ContactSearchResponse, DealSearchResponse };
 
 export class HubspotAPIError extends Error {
   readonly status?: number;
@@ -113,7 +159,7 @@ export class HubspotClient {
 
   constructor(private readonly accessToken: string) {}
 
-  private async makeRequest<T>(
+  async makeRequest<T>(
     endpoint: string,
     codec: t.Type<T>,
     options: RequestInit & { params?: Record<string, unknown> } = {}
@@ -226,10 +272,16 @@ export class HubspotClient {
 
     return {
       results: response.results.map((contact) => ({
-        ...contact,
-        createdAt: contact.properties?.createdate || new Date().toISOString(),
+        id: contact.id,
+        properties: contact.properties || {},
+        createdAt:
+          typeof contact.properties?.createdate === "string"
+            ? contact.properties.createdate
+            : new Date().toISOString(),
         updatedAt:
-          contact.properties?.lastmodifieddate || new Date().toISOString(),
+          typeof contact.properties?.lastmodifieddate === "string"
+            ? contact.properties.lastmodifieddate
+            : new Date().toISOString(),
         archived: false,
       })),
     };
@@ -247,13 +299,36 @@ export class HubspotClient {
       return { results: [] };
     }
 
+    // First get all deal properties
+    const propertiesResponse = await this.makeRequest(
+      "/crm/v3/properties/deals",
+      PropertyResponse,
+      { method: "GET" }
+    );
+
+    const propertyNames = propertiesResponse.results.map((p) => p.name);
+
     return this.makeRequest("/crm/v3/objects/deals/batch/read", DealResponse, {
       method: "POST",
       body: JSON.stringify({
-        properties: ["dealname", "dealstage", "amount", "closedate"],
+        properties: propertyNames,
         inputs: dealIds.map((id) => ({ id })),
       }),
     });
+  }
+
+  async getDealActivities(dealId: string) {
+    return this.makeRequest(
+      `/crm/v3/objects/deals/${dealId}/associations/meetings`,
+      AssociationsResponse,
+      {
+        params: {
+          limit: 100,
+          // Sort by timestamp descending to get most recent activities first
+          sorts: [{ propertyName: "hs_timestamp", direction: "DESCENDING" }],
+        },
+      }
+    );
   }
 
   async getAssociatedTickets(companyId: string) {

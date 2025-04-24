@@ -88,10 +88,21 @@ interface ConnectViaLocalMCPServer {
   mcpServerId: string;
 }
 
-export type MCPConnectionParams =
+export const isConnectViaLocalMCPServer = (
+  params: MCPConnectionParams
+): params is ConnectViaLocalMCPServer => {
+  return params.type === "localMCPServerId";
+};
+
+export type PlatformMCPConnectionParams =
   | ConnectViaMCPServerId
-  | ConnectViaRemoteMCPServerUrl
-  | ConnectViaLocalMCPServer;
+  | ConnectViaRemoteMCPServerUrl;
+
+export type LocalMCPConnectionParams = ConnectViaLocalMCPServer;
+
+export type MCPConnectionParams =
+  | PlatformMCPConnectionParams
+  | LocalMCPConnectionParams;
 
 export const connectToMCPServer = async (
   auth: Authenticator,
@@ -142,13 +153,20 @@ export const connectToMCPServer = async (
           const url = new URL(remoteMCPServer.url);
 
           try {
-            const sseTransport = new SSEClientTransport(url, {
+            const req = {
               requestInit: {
                 headers: {
-                  Authorization: `Bearer ${accessToken}`,
+                  ...(accessToken
+                    ? { Authorization: `Bearer ${accessToken}` }
+                    : {}),
+                  ...(remoteMCPServer.sharedSecret
+                    ? { "X-Dust-Secret": remoteMCPServer.sharedSecret }
+                    : {}),
                 },
               },
-            });
+            };
+
+            const sseTransport = new SSEClientTransport(url, req);
             await mcpClient.connect(sseTransport);
           } catch (e: unknown) {
             return new Err(

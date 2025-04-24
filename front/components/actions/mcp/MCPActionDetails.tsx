@@ -1,4 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   Citation,
   CitationIcons,
@@ -29,27 +28,23 @@ import type {
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  isSearchQueryResourceType,
   isSearchResultResourceType,
   isSqlQueryOutput,
   isThinkingOutput,
   isToolGeneratedFile,
-  SearchQueryResourceSchema,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { LightWorkspaceType } from "@app/types";
-import { isSupportedImageContentType, removeNulls } from "@app/types";
+import { isSupportedImageContentType } from "@app/types";
 
 export function MCPActionDetails(
   props: ActionDetailsComponentBaseProps<MCPActionType>
 ) {
-  const searchResults = removeNulls(
-    props.action.output?.map((o) => {
-      if (o.type === "resource" && isSearchResultResourceType(o.resource)) {
-        return o.resource;
-      }
-      return null;
-    }) ?? []
-  );
+  const searchResults =
+    props.action.output
+      ?.filter(isSearchResultResourceType)
+      .map((o) => o.resource) ?? [];
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
   const isTablesQuery = props.action.output?.some(isSqlQueryOutput);
 
@@ -71,18 +66,9 @@ function SearchResultActionDetails({
 }: ActionDetailsComponentBaseProps<MCPActionType> & {
   searchResults: SearchResultResourceType[];
 }) {
-  const queryResources = removeNulls(
-    action.output?.map((o) => {
-      if (
-        o.type === "resource" &&
-        o.resource.mimeType ===
-          INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY
-      ) {
-        return SearchQueryResourceSchema.safeParse(o.resource).data;
-      }
-      return null;
-    }) ?? []
-  );
+  const queryResources =
+    action.output?.filter(isSearchQueryResourceType).map((o) => o.resource) ??
+    [];
 
   return (
     <ActionDetailsWrapper

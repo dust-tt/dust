@@ -87,6 +87,16 @@ async function handler(
       }
       dataSourceToUse = dataSource;
 
+      if (!dataSourceToUse.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not authorized to upsert to this data source.",
+          },
+        });
+      }
+
       const rUpsert = await processAndUpsertToDataSource(
         auth,
         dataSourceToUse,

@@ -3,6 +3,8 @@ import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
+  HistoryIcon,
+  Icon,
   IconButton,
   ListCheckIcon,
   SearchInput,
@@ -53,6 +55,9 @@ export type UseResourcesHook = (parentId: string | null) => {
   isResourcesError: boolean;
   isResourcesTruncated?: boolean;
   resourcesError?: APIError | null;
+  nextPageCursor?: string | null;
+  loadMore?: () => void;
+  isLoadingMore?: boolean;
 };
 
 export type ContentNodeTreeItemStatus<T extends ContentNode = ContentNode> = {
@@ -138,17 +143,15 @@ function ContentNodeTreeChildren({
     isResourcesLoading,
     isResourcesError,
     resourcesError,
-    isResourcesTruncated,
     totalResourceCount,
+    nextPageCursor,
+    loadMore,
+    isLoadingMore,
   } = useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
     (n) => filter.trim().length === 0 || n.title.includes(filter)
   );
-  // The count below does not take into account the search, it's: total number of nodes - number of nodes displayed.
-  const hiddenNodesCount = totalResourceCount
-    ? Math.max(0, totalResourceCount - filteredNodes.length)
-    : 0;
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
@@ -250,7 +253,15 @@ function ContentNodeTreeChildren({
                 : undefined
             }
             actions={
-              <div className="mr-8 flex flex-row gap-2">
+              <div className="mr-8 flex grow flex-row gap-2">
+                {n.sourceUrl && (
+                  <Button
+                    href={n.sourceUrl}
+                    icon={ExternalLinkIcon}
+                    size="xs"
+                    variant="outline"
+                  />
+                )}
                 {n.lastUpdatedAt ? (
                   <Tooltip
                     label={
@@ -258,26 +269,15 @@ function ContentNodeTreeChildren({
                     }
                     side={i === 0 ? "bottom" : "top"}
                     trigger={
-                      <span className="text-xs text-gray-500">
-                        {timeAgoFrom(n.lastUpdatedAt)} ago
-                      </span>
+                      <div className="flex flex-row gap-1 text-gray-600">
+                        <Icon visual={HistoryIcon} size="xs" />
+                        <span className="text-xs">
+                          {timeAgoFrom(n.lastUpdatedAt)} ago
+                        </span>
+                      </div>
                     }
                   />
                 ) : null}
-                <IconButton
-                  size="xs"
-                  icon={ExternalLinkIcon}
-                  onClick={() => {
-                    if (n.sourceUrl) {
-                      window.open(n.sourceUrl, "_blank");
-                    }
-                  }}
-                  className={classNames(
-                    n.sourceUrl ? "" : "pointer-events-none opacity-0"
-                  )}
-                  disabled={!n.sourceUrl}
-                  variant="outline"
-                />
                 {onDocumentViewClick && (
                   <IconButton
                     size="xs"
@@ -311,11 +311,6 @@ function ContentNodeTreeChildren({
           />
         );
       })}
-      {hiddenNodesCount > 0 && (
-        <Tree.Empty
-          label={`${filteredNodes.length > 0 ? "and " : ""}${hiddenNodesCount}${isResourcesTruncated ? "+" : ""} item${hiddenNodesCount > 1 ? "s" : ""}`}
-        />
-      )}
     </Tree>
   );
 
@@ -363,7 +358,27 @@ function ContentNodeTreeChildren({
           </div>
         </>
       )}
-      <div className="overflow-y-auto p-1">{tree}</div>
+      <div className="overflow-y-auto p-1">
+        {tree}
+        {nextPageCursor && (
+          <div className="mt-2 flex flex-col items-center py-2">
+            <div className="mb-2 text-center text-xs text-gray-500">
+              {`Showing ${filteredNodes.length} of ${totalResourceCount ?? filteredNodes.length} items`}
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              label={isLoadingMore ? "Loading..." : "Load More"}
+              disabled={isResourcesLoading || isLoadingMore}
+              onClick={() => {
+                if (loadMore) {
+                  loadMore();
+                }
+              }}
+            />
+          </div>
+        )}
+      </div>
     </>
   );
 }
