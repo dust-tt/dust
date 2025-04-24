@@ -6,6 +6,7 @@ import * as t from "io-ts";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { freshServiceLimiter } from "@app/temporal/labs/connections/providers/freshservice/utils";
+import { LabsConnectionAPIError } from "@app/temporal/labs/connections/errors";
 import {
   ConversationResponseCodec,
   SlaPolicyResponseCodec,
@@ -16,52 +17,6 @@ import {
   ProblemCodec,
   ChangeCodec,
 } from "@app/temporal/labs/connections/providers/freshservice/types";
-
-export class FreshServiceError extends Error {
-  readonly status?: string;
-  readonly endpoint: string;
-  readonly body?: {
-    code?: string;
-    message?: string;
-  };
-
-  constructor(
-    message: string,
-    {
-      endpoint,
-      status,
-      body,
-    }: {
-      endpoint: string;
-      status?: string;
-      body?: {
-        code?: string;
-        message?: string;
-      };
-    }
-  ) {
-    super(message);
-    this.endpoint = endpoint;
-    this.status = status;
-    this.body = body;
-  }
-
-  static fromValidationError({
-    endpoint,
-    pathErrors,
-  }: {
-    endpoint: string;
-    pathErrors: string[];
-  }) {
-    return new this("Response validation failed", {
-      endpoint,
-      body: {
-        code: "validation_error",
-        message: pathErrors.join(", "),
-      },
-    });
-  }
-}
 
 export class FreshServiceClient {
   public readonly baseURL: string;
@@ -77,17 +32,14 @@ export class FreshServiceClient {
   private async makeRequest<T>(
     endpoint: string,
     codec: t.Type<T>,
-    options: {
-      method?: string;
-      params?: Record<string, string | number>;
-      body?: any;
-    } = {}
+    options: RequestInit & { params?: Record<string, unknown> } = {}
   ): Promise<T> {
-    const { method = "GET", params = {}, body } = options;
+    const { params, ...fetchOptions } = options;
 
-    // Build URL with query parameters
     let url = `${this.baseURL}${endpoint}`;
-    if (Object.keys(params).length > 0) {
+    logger.info({ url }, "Freshservice request URL");
+
+    if (params) {
       const queryParams = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
         queryParams.append(key, String(value));
@@ -97,152 +49,78 @@ export class FreshServiceClient {
 
     // Freshservice counts an additional call for each param in the include query param
     // so we need to calculate the weight of the request based on the number of fields in the include query param
-    const include = params.include as string;
+    const include = params?.include as string;
     const includeFields = include ? include.split(",") : [];
-    const weight = includeFields.length + 1;
+    const limiterWeight = includeFields.length + 1;
 
-    const parsedUrl = new URL(url);
-
-    const requestOptions = {
-      hostname: parsedUrl.hostname,
-      port: 443,
-      path: `${parsedUrl.pathname}${parsedUrl.search}`,
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization:
-          "Basic " + Buffer.from(`${this.apiKey}:X`).toString("base64"),
-      } as Record<string, string>,
-    };
-
-    if (body) {
-      requestOptions.headers["Content-Length"] = Buffer.byteLength(
-        JSON.stringify(body)
-      ).toString();
-    }
-
-    return new Promise((resolve, reject) => {
-      freshServiceLimiter
-        .schedule({ weight }, () => {
-          return new Promise<T>((innerResolve, innerReject) => {
-            logger.info(
-              { endpoint, method, params },
-              "Making request to FreshService API"
-            );
-
-            const req = https.request(requestOptions, (res) => {
-              let data = "";
-
-              res.on("data", (chunk) => {
-                data += chunk;
-              });
-
-              res.on("end", async () => {
-                try {
-                  const response = {
-                    status: res.statusCode,
-                    headers: res.headers,
-                    data: data ? JSON.parse(data) : null,
-                  };
-
-                  const result = await this.handleResponse(
-                    response,
-                    endpoint,
-                    codec
-                  );
-                  innerResolve(result);
-                } catch (error) {
-                  innerReject(error);
-                }
-              });
-            });
-
-            req.on("error", (error) => {
-              logger.error(
-                { error, endpoint },
-                "Error making request to FreshService"
-              );
-              innerReject(
-                new FreshServiceError(`Connection error: ${error.message}`, {
-                  endpoint,
-                })
-              );
-            });
-
-            if (body) {
-              req.write(JSON.stringify(body));
-            }
-
-            req.end();
-          });
+    const response = await freshServiceLimiter.schedule(
+      { weight: limiterWeight },
+      async () =>
+        fetch(url.toString(), {
+          ...fetchOptions,
+          headers: {
+            Authorization:
+              "Basic " + Buffer.from(`${this.apiKey}:X`).toString("base64"),
+            "Content-Type": "application/json",
+            ...fetchOptions.headers,
+          },
         })
-        .then(resolve)
-        .catch(reject);
-    });
+    );
+
+    return this.handleResponse(response, endpoint, codec);
   }
 
   private async handleResponse<T>(
-    response: { status: number | undefined; headers: any; data: any },
+    response: Response,
     endpoint: string,
     codec: t.Type<T>
   ): Promise<T> {
     // Ensure status is a number, default to 500 if undefined
     const statusCode = response.status || 500;
 
-    if (statusCode >= 400) {
+    if (!response.ok) {
       if (statusCode === 401 || statusCode === 403) {
-        throw new FreshServiceError(
+        throw new LabsConnectionAPIError(
           "Invalid or expired FreshService credentials",
           {
             endpoint,
-            status: String(statusCode),
-            body: {
-              code: "access_denied",
-              message: "You are not authorized to perform this action.",
-            },
+            status: statusCode,
           }
         );
       }
 
+      const errorBody = await response.text();
       logger.error(
-        { status: statusCode, endpoint, data: response.data },
+        { status: statusCode, endpoint, errorBody },
         "FreshService API error response"
       );
 
-      throw new FreshServiceError(
+      throw new LabsConnectionAPIError(
         `FreshService API responded with status: ${statusCode}`,
         {
           endpoint,
-          status: String(statusCode),
-          body: response.data?.body || {
-            code: "api_error",
-            message: `Error with status code ${statusCode}`,
-          },
+          status: statusCode,
         }
       );
     }
 
-    // If the codec is provided, validate the response
-    if (codec) {
-      const result = codec.decode(response.data);
+    const responseData = await response.json();
+    const result = codec.decode(responseData);
 
-      if (isLeft(result)) {
-        const pathErrors = reporter.formatValidationErrors(result.left);
-        logger.error(
-          { endpoint, pathErrors, data: response.data },
-          "FreshService API response validation failed"
-        );
+    if (isLeft(result)) {
+      const pathErrors = reporter.formatValidationErrors(result.left);
+      logger.error(
+        { endpoint, pathErrors, data: responseData },
+        "FreshService API response validation failed"
+      );
 
-        throw FreshServiceError.fromValidationError({
-          endpoint,
-          pathErrors,
-        });
-      }
-
-      return result.right;
+      throw LabsConnectionAPIError.fromValidationError({
+        endpoint,
+        pathErrors,
+      });
     }
 
-    return response.data;
+    return result.right;
   }
 
   async testCredentials(): Promise<Result<void, Error>> {
@@ -251,7 +129,7 @@ export class FreshServiceClient {
 
       return new Ok(undefined);
     } catch (error) {
-      if (error instanceof FreshServiceError) {
+      if (error instanceof LabsConnectionAPIError) {
         return new Err(error);
       }
       return new Err(

@@ -15,6 +15,7 @@ import {
 import { hubspotLimiter } from "@app/temporal/labs/connections/providers/hubspot/utils";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { LabsConnectionAPIError } from "@app/temporal/labs/connections/errors";
 
 const CompanySearchResult = t.type({
   id: t.string,
@@ -117,43 +118,6 @@ export type ContactSearchResponseType = t.TypeOf<typeof ContactSearchResponse>;
 
 export { AssociationsResponse, ContactSearchResponse, DealSearchResponse };
 
-export class HubspotAPIError extends Error {
-  readonly status?: number;
-  readonly endpoint: string;
-  readonly pathErrors?: string[];
-
-  constructor(
-    message: string,
-    {
-      endpoint,
-      status,
-      pathErrors,
-    }: {
-      endpoint: string;
-      status?: number;
-      pathErrors?: string[];
-    }
-  ) {
-    super(message);
-    this.endpoint = endpoint;
-    this.status = status;
-    this.pathErrors = pathErrors;
-  }
-
-  static fromValidationError({
-    endpoint,
-    pathErrors,
-  }: {
-    endpoint: string;
-    pathErrors: string[];
-  }) {
-    return new this("Response validation failed", {
-      endpoint,
-      pathErrors,
-    });
-  }
-}
-
 export class HubspotClient {
   private readonly baseURL = "https://api.hubapi.com";
 
@@ -197,10 +161,13 @@ export class HubspotClient {
   ): Promise<T> {
     if (!response.ok) {
       if (response.status === 401) {
-        throw new HubspotAPIError("Invalid or expired HubSpot credentials", {
-          endpoint,
-          status: response.status,
-        });
+        throw new LabsConnectionAPIError(
+          "Invalid or expired Hubspot credentials",
+          {
+            endpoint,
+            status: response.status,
+          }
+        );
       }
 
       const errorBody = await response.text();
@@ -209,7 +176,7 @@ export class HubspotClient {
         "Hubspot API error response"
       );
 
-      throw new HubspotAPIError(
+      throw new LabsConnectionAPIError(
         `HubSpot API responded with status: ${response.status}`,
         {
           endpoint,
@@ -227,7 +194,7 @@ export class HubspotClient {
         { endpoint, pathErrors, responseBody },
         "Hubspot API response validation failed"
       );
-      throw HubspotAPIError.fromValidationError({
+      throw LabsConnectionAPIError.fromValidationError({
         endpoint,
         pathErrors,
       });
@@ -416,7 +383,7 @@ export class HubspotClient {
       );
       return new Ok(undefined);
     } catch (error) {
-      if (error instanceof HubspotAPIError) {
+      if (error instanceof LabsConnectionAPIError) {
         return new Err(error);
       }
       return new Err(
