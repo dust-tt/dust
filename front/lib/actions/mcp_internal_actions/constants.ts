@@ -50,7 +50,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   image_generation: {
     id: 2,
     isDefault: true,
-    flag: "mcp_actions",
+    flag: null,
   },
   file_generation: {
     id: 3,
