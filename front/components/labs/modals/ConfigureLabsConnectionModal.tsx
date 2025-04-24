@@ -58,6 +58,20 @@ const PROVIDER_CREDENTIAL_SCHEMAS: Record<string, CredentialSchemaType> = {
       },
     ],
   },
+  freshservice: {
+    fields: [
+      {
+        name: "domain",
+        label: "Freshservice Domain",
+        type: "text",
+      },
+      {
+        name: "api_key",
+        label: "Freshservice API Key",
+        type: "password",
+      },
+    ],
+  },
 };
 
 interface ConfigureLabsConnectionModal {

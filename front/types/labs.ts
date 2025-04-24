@@ -17,7 +17,7 @@ export const labsFeatures = [
 ] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 
-export const labsConnections = ["hubspot", "linear"] as const;
+export const labsConnections = ["hubspot", "linear", "freshservice"] as const;
 export type LabsConnectionType = (typeof labsConnections)[number];
 
 // Types

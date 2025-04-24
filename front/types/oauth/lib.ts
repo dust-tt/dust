@@ -101,7 +101,11 @@ export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
 export type ProvidersWithWorkspaceConfigurations =
   (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
 
-export const LABS_CONNECTION_PROVIDERS = ["hubspot", "linear"] as const;
+export const LABS_CONNECTION_PROVIDERS = [
+  "hubspot",
+  "linear",
+  "freshservice",
+] as const;
 
 export type LabsConnectionProvider = (typeof LABS_CONNECTION_PROVIDERS)[number];
 
@@ -201,13 +205,22 @@ export type SalesforceCredentials = t.TypeOf<
   typeof SalesforceCredentialsSchema
 >;
 
+export const FreshServiceCredentialsSchema = t.type({
+  api_key: t.string,
+  domain: t.string,
+});
+export type FreshServiceCredentials = t.TypeOf<
+  typeof FreshServiceCredentialsSchema
+>;
+
 export type ConnectionCredentials =
   | SnowflakeCredentials
   | BigQueryCredentialsWithLocation
   | SalesforceCredentials
   | ModjoCredentials
   | HubspotCredentials
-  | LinearCredentials;
+  | LinearCredentials
+  | FreshServiceCredentials;
 
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
@@ -247,6 +260,12 @@ export function isSalesforceCredentials(
   credentials: ConnectionCredentials
 ): credentials is SalesforceCredentials {
   return "client_id" in credentials && "client_secret" in credentials;
+}
+
+export function isFreshServiceCredentials(
+  credentials: ConnectionCredentials
+): credentials is FreshServiceCredentials {
+  return "api_key" in credentials;
 }
 
 export type OauthAPIPostCredentialsResponse = {

@@ -6,14 +6,25 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { FreshServiceError } from "@app/temporal/labs/connections/providers/freshservice/client";
+import { FreshServiceClient } from "@app/temporal/labs/connections/providers/freshservice/client";
 import { HubspotClient } from "@app/temporal/labs/connections/providers/hubspot/client";
 import type { WithAPIErrorResponse } from "@app/types";
-import { HubspotCredentialsSchema } from "@app/types";
+import {
+  FreshServiceCredentialsSchema,
+  HubspotCredentialsSchema,
+} from "@app/types";
 
-const TestCredentialsBodyCodec = t.type({
-  provider: t.literal("hubspot"),
-  credentials: HubspotCredentialsSchema,
-});
+const TestCredentialsBodyCodec = t.union([
+  t.type({
+    provider: t.literal("hubspot"),
+    credentials: HubspotCredentialsSchema,
+  }),
+  t.type({
+    provider: t.literal("freshservice"),
+    credentials: FreshServiceCredentialsSchema,
+  }),
+]);
 
 async function testHubspotCredentials(
   credentials: t.TypeOf<typeof HubspotCredentialsSchema>
@@ -36,6 +47,49 @@ async function testHubspotCredentials(
     return {
       success: false,
       error: "Invalid or expired HubSpot credentials",
+    };
+  }
+}
+
+async function testFreshServiceCredentials(
+  credentials: t.TypeOf<typeof FreshServiceCredentialsSchema>
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const client = new FreshServiceClient(
+      credentials.api_key,
+      credentials.domain
+    );
+    const result = await client.testCredentials();
+
+    if (result.isErr()) {
+      logger.error(
+        { error: result.error },
+        "Freshservice test credentials failed"
+      );
+
+      const freshServiceError = result.error as FreshServiceError;
+      if (freshServiceError.status === "403") {
+        return {
+          success: false,
+          error:
+            freshServiceError.body?.message ||
+            "You are not authorized to perform this action.",
+        };
+      }
+
+      return {
+        success: false,
+        error:
+          result.error.message || "Failed to authenticate with FreshService",
+      };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    logger.error({ error }, "Error testing Freshservice credentials");
+    return {
+      success: false,
+      error: "Invalid or expired Freshservice credentials",
     };
   }
 }
@@ -73,8 +127,15 @@ async function handler(
 
   switch (validatedBody.provider) {
     case "hubspot":
-      const result = await testHubspotCredentials(validatedBody.credentials);
-      return res.status(200).json(result);
+      const hubspotResult = await testHubspotCredentials(
+        validatedBody.credentials
+      );
+      return res.status(200).json(hubspotResult);
+    case "freshservice":
+      const freshserviceResult = await testFreshServiceCredentials(
+        validatedBody.credentials
+      );
+      return res.status(200).json(freshserviceResult);
     default:
       return apiError(req, res, {
         status_code: 400,
