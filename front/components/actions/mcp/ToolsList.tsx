@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   InformationCircleIcon,
+  Label,
 } from "@dust-tt/sparkle";
 
 import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -83,7 +84,7 @@ export function ToolsList({
               return (
                 <div
                   key={index}
-                  className="flex flex-col gap-3 border-b border-border py-5 last:border-b-0 last:pb-0"
+                  className="flex flex-col gap-1 border-b border-border py-5 last:border-b-0 last:pb-0"
                 >
                   <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
                     {asDisplayName(tool.name)}
@@ -94,8 +95,10 @@ export function ToolsList({
                     </p>
                   )}
                   {serverType === "remote" && (
-                    <div className="flex w-full flex-row items-center justify-end gap-2">
-                      <p className="heading-sm">Tool stake setting</p>
+                    <div className="flex w-full flex-row items-center justify-end gap-2 pt-2">
+                      <Label className="w-full text-muted-foreground dark:text-muted-foreground-night">
+                        Tool stake setting
+                      </Label>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
