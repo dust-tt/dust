@@ -12,6 +12,7 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { dustManagedCredentials, Err } from "@app/types";
+import assert from "assert";
 
 const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
 const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
@@ -167,7 +168,7 @@ const createServer = (auth: Authenticator): McpServer => {
         { concurrency: 10 }
       );
 
-      const errors = fileResults.filter((r) => r.isErr());
+      const errors: Err<Error>[] = fileResults.filter((r) => r.isErr());
       if (errors.length > 0) {
         return {
           isError: true,
@@ -180,9 +181,15 @@ const createServer = (auth: Authenticator): McpServer => {
         };
       }
 
-      const content: MCPToolResultContentType[] = fileResults
-        .filter((f) => f.isOk())
-        .map(({ value: file }) => ({
+      const content: MCPToolResultContentType[] = fileResults.map((r) => {
+        assert(
+          r.isOk(),
+          "Unexpected error: result should be Ok since errors were filtered out above"
+        );
+
+        const file = r.value;
+
+        return {
           type: "resource",
           resource: {
             contentType: file.contentType,
@@ -193,7 +200,8 @@ const createServer = (auth: Authenticator): McpServer => {
             title: file.fileName,
             uri: file.getPublicUrl(auth),
           },
-        }));
+        };
+      });
 
       return {
         isError: false,
