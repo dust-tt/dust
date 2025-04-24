@@ -1244,6 +1244,7 @@ export async function createAgentActionConfiguration(
       const reasoningConfig = await AgentReasoningConfiguration.create({
         sId: generateRandomModelSId(),
         agentConfigurationId: agentConfiguration.id,
+        mcpServerConfigurationId: null,
         name: action.name,
         description: action.description,
         providerId: action.providerId,
@@ -1516,7 +1517,7 @@ async function createReasoningConfiguration(
   t: Transaction,
   {
     reasoningModel,
-    mcpConfig: agentConfig,
+    mcpConfig,
     agentConfiguration,
   }: {
     reasoningModel: ReasoningModelConfiguration;
@@ -1527,7 +1528,8 @@ async function createReasoningConfiguration(
   return AgentReasoningConfiguration.create(
     {
       sId: generateRandomModelSId(),
-      agentConfigurationId: agentConfig.agentConfigurationId,
+      agentConfigurationId: null,
+      mcpServerConfigurationId: mcpConfig.id,
       name: DEFAULT_RETRIEVAL_ACTION_NAME,
       description: DEFAULT_REASONING_ACTION_DESCRIPTION,
       providerId: reasoningModel.providerId,

@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -17,7 +18,10 @@ export class AgentReasoningConfiguration extends WorkspaceAwareModel<AgentReason
   declare temperature: number | null;
   declare reasoningEffort: AgentReasoningEffort | null;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]> | null;
+  declare mcpServerConfigurationId: ForeignKey<
+    AgentMCPServerConfiguration["id"]
+  > | null;
 
   declare sId: string;
 
@@ -83,10 +87,21 @@ AgentReasoningConfiguration.init(
 );
 
 AgentConfiguration.hasMany(AgentReasoningConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
 });
 AgentReasoningConfiguration.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+
+AgentMCPServerConfiguration.hasMany(AgentReasoningConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentReasoningConfiguration.belongsTo(AgentMCPServerConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
 });
 
 export class AgentReasoningAction extends WorkspaceAwareModel<AgentReasoningAction> {

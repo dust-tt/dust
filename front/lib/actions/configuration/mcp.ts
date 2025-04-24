@@ -1,3 +1,4 @@
+import type { IncludeOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import {
@@ -41,70 +42,46 @@ export async function fetchMCPServerActionConfigurations(
     return new Map();
   }
 
+  const whereClause: WhereOptions = {
+    mcpServerConfigurationId: {
+      [Op.in]: mcpServerConfigurations.map((r) => r.id),
+    },
+  };
+  const includeDataSourceViewClause: IncludeOptions[] = [
+    {
+      model: DataSourceViewModel,
+      as: "dataSourceView",
+      include: [
+        {
+          model: Workspace,
+          as: "workspace",
+        },
+      ],
+    },
+  ];
+
   // Find the associated data sources configurations.
   const allDataSourceConfigurations =
     await AgentDataSourceConfiguration.findAll({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-      include: [
-        {
-          model: DataSourceViewModel,
-          as: "dataSourceView",
-          include: [
-            {
-              model: Workspace,
-              as: "workspace",
-            },
-          ],
-        },
-      ],
+      where: whereClause,
+      include: includeDataSourceViewClause,
     });
 
   // Find the associated tables configurations.
   const allTablesConfigurations =
     await AgentTablesQueryConfigurationTable.findAll({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-      include: [
-        {
-          model: DataSourceViewModel,
-          as: "dataSourceView",
-          include: [
-            {
-              model: Workspace,
-              as: "workspace",
-            },
-          ],
-        },
-      ],
+      where: whereClause,
+      include: includeDataSourceViewClause,
     });
 
   // Find the associated reasoning configurations.
   const allReasoningConfigurations = await AgentReasoningConfiguration.findAll({
-    where: {
-      agentConfigurationId: {
-        // Dirty hack to get this working without having to change the model.
-        // Have not thought this through yet.
-        [Op.in]: configurationIds,
-      },
-    },
+    where: whereClause,
   });
 
   // Find the associated child agent configurations.
   const allChildAgentConfigurations =
-    await AgentChildAgentConfiguration.findAll({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-    });
+    await AgentChildAgentConfiguration.findAll({ where: whereClause });
 
   const actionsByConfigurationId = new Map<
     ModelId,
@@ -124,7 +101,7 @@ export async function fetchMCPServerActionConfigurations(
       (ca) => ca.mcpServerConfigurationId === config.id
     );
     const reasoningConfigurations = allReasoningConfigurations.filter(
-      (rc) => rc.agentConfigurationId === agentConfigurationId
+      (rc) => rc.mcpServerConfigurationId === config.id
     );
 
     const mcpServerView = await MCPServerViewResource.fetchByModelPk(
