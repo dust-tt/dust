@@ -3,6 +3,8 @@ import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
+  HistoryIcon,
+  Icon,
   IconButton,
   ListCheckIcon,
   SearchInput,
@@ -267,9 +269,12 @@ function ContentNodeTreeChildren({
                     }
                     side={i === 0 ? "bottom" : "top"}
                     trigger={
-                      <span className="text-xs text-gray-600">
-                        {timeAgoFrom(n.lastUpdatedAt)} ago
-                      </span>
+                      <div className="flex flex-row gap-1 text-gray-600">
+                        <Icon visual={HistoryIcon} size="xs" />
+                        <span className="text-xs">
+                          {timeAgoFrom(n.lastUpdatedAt)} ago
+                        </span>
+                      </div>
                     }
                   />
                 ) : null}
