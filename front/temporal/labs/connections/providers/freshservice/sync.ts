@@ -455,19 +455,11 @@ export async function syncFreshServiceConnection(
             [
               ...(ticket.changes_initiated_by_ticket || []),
               ...(ticket.changes_initiating_ticket || []),
-            ]
-              .map((change) =>
-                change.display_id ? client.getChange(change.display_id) : null
-              )
-              .filter((change) => change !== null)
+            ].map((change) => client.getChange(change.display_id))
           );
           const assets = ticket.assets
             ? await Promise.all(
-                ticket.assets
-                  .map((asset) =>
-                    asset.display_id ? client.getAsset(asset.display_id) : null
-                  )
-                  .filter((asset) => asset !== null)
+                ticket.assets.map((asset) => client.getAsset(asset.display_id))
               )
             : [];
 

@@ -3,6 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import logger from "@app/logger/logger";
+import { LabsConnectionAPIError } from "@app/temporal/labs/connections/errors";
 import type { HubspotFilter } from "@app/temporal/labs/connections/providers/hubspot/types";
 import type { Contact } from "@app/temporal/labs/connections/providers/hubspot/types";
 import {
@@ -15,7 +16,6 @@ import {
 import { hubspotLimiter } from "@app/temporal/labs/connections/providers/hubspot/utils";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { LabsConnectionAPIError } from "@app/temporal/labs/connections/errors";
 
 const CompanySearchResult = t.type({
   id: t.string,

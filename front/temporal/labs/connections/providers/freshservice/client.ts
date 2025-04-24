@@ -1,22 +1,22 @@
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
-import logger from "@app/logger/logger";
-import https from "https";
-import * as t from "io-ts";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { freshServiceLimiter } from "@app/temporal/labs/connections/providers/freshservice/utils";
+
+import logger from "@app/logger/logger";
 import { LabsConnectionAPIError } from "@app/temporal/labs/connections/errors";
 import {
+  AssetCodec,
+  ChangeCodec,
   ConversationResponseCodec,
+  ProblemCodec,
   SlaPolicyResponseCodec,
   TaskResponseCodec,
   TicketCodec,
   TicketResponseCodec,
-  AssetCodec,
-  ProblemCodec,
-  ChangeCodec,
 } from "@app/temporal/labs/connections/providers/freshservice/types";
+import { freshServiceLimiter } from "@app/temporal/labs/connections/providers/freshservice/utils";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export class FreshServiceClient {
   public readonly baseURL: string;
@@ -150,11 +150,7 @@ export class FreshServiceClient {
         updated_since,
       },
     };
-    return await this.makeRequest(
-      `/api/v2/tickets`,
-      TicketResponseCodec,
-      options
-    );
+    return this.makeRequest(`/api/v2/tickets`, TicketResponseCodec, options);
   }
 
   async getTicket(ticketId: number) {
@@ -183,7 +179,7 @@ export class FreshServiceClient {
         page,
       },
     };
-    return await this.makeRequest(
+    return this.makeRequest(
       `/api/v2/tickets/${ticketId}/tasks`,
       TaskResponseCodec,
       options
@@ -201,7 +197,7 @@ export class FreshServiceClient {
         page,
       },
     };
-    return await this.makeRequest(
+    return this.makeRequest(
       `/api/v2/tickets/${ticketId}/conversations`,
       ConversationResponseCodec,
       options
@@ -215,7 +211,7 @@ export class FreshServiceClient {
         page,
       },
     };
-    return await this.makeRequest(
+    return this.makeRequest(
       `/api/v2/sla_policies`,
       SlaPolicyResponseCodec,
       options

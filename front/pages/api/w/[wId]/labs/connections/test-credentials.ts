@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { FreshServiceError } from "@app/temporal/labs/connections/providers/freshservice/client";
+import type { LabsConnectionAPIError } from "@app/temporal/labs/connections/errors";
 import { FreshServiceClient } from "@app/temporal/labs/connections/providers/freshservice/client";
 import { HubspotClient } from "@app/temporal/labs/connections/providers/hubspot/client";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -67,13 +67,11 @@ async function testFreshServiceCredentials(
         "Freshservice test credentials failed"
       );
 
-      const freshServiceError = result.error as FreshServiceError;
+      const freshServiceError = result.error as LabsConnectionAPIError;
       if (freshServiceError.status === "403") {
         return {
           success: false,
-          error:
-            freshServiceError.body?.message ||
-            "You are not authorized to perform this action.",
+          error: "You are not authorized to perform this action.",
         };
       }
 
