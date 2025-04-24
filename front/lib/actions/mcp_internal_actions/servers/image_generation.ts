@@ -1,10 +1,13 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import OpenAI from "openai";
 import { z } from "zod";
 
 import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -133,11 +136,28 @@ const createServer = (auth: Authenticator): McpServer => {
 
       const fileName = `${name}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
 
-      const content: MCPToolResultContentType[] = result.data.map((image) => ({
-        type: "image" as const,
-        data: image.b64_json!,
-        mimeType: DEFAULT_IMAGE_MIME_TYPE,
-        fileName,
+      const files = await concurrentExecutor(
+        result.data,
+        async (image) =>
+          uploadBase64ImageToFileStorage(auth, {
+            base64: image.b64_json!,
+            contentType: DEFAULT_IMAGE_MIME_TYPE,
+            fileName,
+          }),
+        { concurrency: 10 }
+      );
+
+      const content: MCPToolResultContentType[] = files.map((file) => ({
+        type: "resource",
+        resource: {
+          contentType: file.contentType,
+          fileId: file.sId,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+          snippet: null,
+          text: "Your image was generated successfully.",
+          title: file.fileName,
+          uri: file.getPublicUrl(auth),
+        },
       }));
 
       return {

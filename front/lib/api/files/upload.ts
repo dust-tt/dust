@@ -10,7 +10,12 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { FileUseCase, Result, SupportedFileContentType } from "@app/types";
+import type {
+  FileUseCase,
+  Result,
+  SupportedFileContentType,
+  SupportedImageContentType,
+} from "@app/types";
 import {
   assertNever,
   Err,
@@ -514,4 +519,43 @@ export async function processAndStoreFromUrl(
       message: `Failed to create file from URL: ${error}`,
     });
   }
+}
+
+interface UploadBase64ImageToFileStorageArgs {
+  base64: string;
+  contentType: SupportedImageContentType;
+  fileName: string;
+}
+
+export async function uploadBase64ImageToFileStorage(
+  auth: Authenticator,
+  { base64, contentType, fileName }: UploadBase64ImageToFileStorageArgs
+) {
+  // Remove data URL prefix for any supported image type.
+  const base64Data = base64.replace(/^data:image\/[a-z]+;base64,/, "");
+
+  // Convert base64 to buffer.
+  const buffer = Buffer.from(base64Data, "base64");
+
+  const fileSizeInBytes = buffer.length;
+
+  // Upload the buffer to the file storage.
+  const file = await FileResource.makeNew({
+    workspaceId: auth.getNonNullableWorkspace().id,
+    userId: auth.user()?.id ?? null,
+    contentType,
+    fileName,
+    fileSize: fileSizeInBytes,
+    useCase: "conversation",
+  });
+
+  await processAndStoreFile(auth, {
+    file,
+    content: {
+      type: "readable",
+      value: Readable.from(buffer),
+    },
+  });
+
+  return file;
 }
