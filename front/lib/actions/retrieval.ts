@@ -663,6 +663,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
               {
                 refsOffset,
                 topK,
+                workspaceId: conversation.owner.sId,
                 conversationId: conversation.sId,
                 panic: true,
               },
