@@ -91,12 +91,14 @@ export function MCPServerDetailsSharing({
   const { addToSpace } = useAddMCPServerToSpace(owner);
   const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
 
-  const rows: RowData[] = availableSpaces.map((space) => ({
-    name: space.name,
-    space: space,
-    serverView: views.find((view) => view.spaceId === space.sId),
-    onClick: () => {},
-  }));
+  const rows: RowData[] = availableSpaces
+    .map((space) => ({
+      name: space.name,
+      space: space,
+      serverView: views.find((view) => view.spaceId === space.sId),
+      onClick: () => {},
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const columns: ColumnDef<RowData, any>[] = [
     {
       id: "name",
