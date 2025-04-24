@@ -8,9 +8,9 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Icon,
   Input,
-  ScrollArea,
-  ScrollBar,
+  MagnifyingGlassIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useRef, useState } from "react";
@@ -87,10 +87,6 @@ export const InputBarAttachmentsPicker = ({
     [spaces]
   );
 
-  /**
-   * Nodes can belong to multiple spaces. This is not of interest to the user,
-   * so we pick a space according to a priority order.
-   */
   const pickedSpaceNodes: DataSourceViewContentNode[] = useMemo(() => {
     return searchResultNodes.map((node) => {
       const { dataSourceViews, ...rest } = node;
@@ -112,19 +108,14 @@ export const InputBarAttachmentsPicker = ({
     });
   }, [searchResultNodes, spacesMap]);
 
-  const searchbarRef = (element: HTMLInputElement) => {
-    if (element) {
-      element.focus();
-    }
-  };
-
   const showLoader = isSearchLoading || isSearchValidating || isDebouncing;
 
   return (
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) {
+        setIsOpen(open);
+        if (open) {
           setSearch("");
         }
       }}
@@ -139,102 +130,111 @@ export const InputBarAttachmentsPicker = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-100"
-        side="bottom"
+        className="h-96 w-96"
+        align="end"
         onInteractOutside={() => setIsOpen(false)}
-      >
-        <Input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: "none" }}
-          onChange={async (e) => {
-            setIsOpen(false);
-            await fileUploaderService.handleFileChange(e);
-            if (fileInputRef.current) {
-              fileInputRef.current.value = "";
-            }
-          }}
-          multiple={true}
-        />
-        <DropdownMenuItem
-          key="upload-item"
-          label="Upload file"
-          icon={CloudArrowUpIcon}
-          onClick={() => fileInputRef.current?.click()}
-        />
-        <DropdownMenuSeparator />
-        <DropdownMenuSearchbar
-          ref={searchbarRef}
-          name="search-files"
-          placeholder="Search knowledge"
-          value={search}
-          onChange={setSearch}
-          disabled={isLoading}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              const firstMenuItem =
-                itemsContainerRef.current?.querySelector('[role="menuitem"]');
-              (firstMenuItem as HTMLElement)?.focus();
-            }
-          }}
-        />
-        {searchQuery && (
+        dropdownHeaders={
           <>
-            <DropdownMenuSeparator />
-            <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
-              <div ref={itemsContainerRef}>
-                {pickedSpaceNodes.map((item, index) => (
-                  <DropdownMenuItem
-                    key={index}
-                    label={item.title}
-                    icon={() =>
-                      getVisualForDataSourceViewContentNode(item)({
-                        className: "min-w-4",
-                      })
-                    }
-                    extraIcon={
-                      isWebsite(item.dataSourceView.dataSource) ||
-                      isFolder(item.dataSourceView.dataSource)
-                        ? undefined
-                        : getConnectorProviderLogoWithFallback({
-                            provider:
-                              item.dataSourceView.dataSource.connectorProvider,
-                          })
-                    }
-                    disabled={attachedNodes.some(
-                      (attachedNode) =>
-                        attachedNode.internalId === item.internalId &&
-                        attachedNode.dataSourceView.dataSource.sId ===
-                          item.dataSourceView.dataSource.sId
-                    )}
-                    description={`${getLocationForDataSourceViewContentNode(item)}`}
-                    onClick={() => {
-                      setSearch("");
-                      onNodeSelect(item);
-                      setIsOpen(false);
-                    }}
-                  />
-                ))}
-                {pickedSpaceNodes.length === 0 && !showLoader && (
-                  <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    No results found
-                  </div>
-                )}
-              </div>
-              <InfiniteScroll
-                nextPage={nextPage}
-                hasMore={hasMore}
-                showLoader={showLoader}
-                loader={
-                  <div className="flex justify-center py-4">
-                    <Spinner variant="dark" size="sm" />
-                  </div>
+            <Input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              onChange={async (e) => {
+                setIsOpen(false);
+                await fileUploaderService.handleFileChange(e);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
                 }
-              />
-              <ScrollBar className="py-0" />
-            </ScrollArea>
+              }}
+              multiple={true}
+            />
+            <DropdownMenuSearchbar
+              autoFocus
+              name="search-files"
+              placeholder="Search knowledge"
+              value={search}
+              onChange={setSearch}
+              disabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  const firstMenuItem =
+                    itemsContainerRef.current?.querySelector(
+                      '[role="menuitem"]'
+                    );
+                  (firstMenuItem as HTMLElement)?.focus();
+                }
+              }}
+              button={
+                <Button
+                  icon={CloudArrowUpIcon}
+                  label="Upload File"
+                  onClick={() => fileInputRef.current?.click()}
+                />
+              }
+            />
+            <DropdownMenuSeparator />
           </>
+        }
+      >
+        {searchQuery ? (
+          <div ref={itemsContainerRef}>
+            {pickedSpaceNodes.map((item, index) => (
+              <DropdownMenuItem
+                key={index}
+                label={item.title}
+                icon={() =>
+                  getVisualForDataSourceViewContentNode(item)({
+                    className: "min-w-4",
+                  })
+                }
+                extraIcon={
+                  isWebsite(item.dataSourceView.dataSource) ||
+                  isFolder(item.dataSourceView.dataSource)
+                    ? undefined
+                    : getConnectorProviderLogoWithFallback({
+                        provider:
+                          item.dataSourceView.dataSource.connectorProvider,
+                      })
+                }
+                disabled={attachedNodes.some(
+                  (attachedNode) =>
+                    attachedNode.internalId === item.internalId &&
+                    attachedNode.dataSourceView.dataSource.sId ===
+                      item.dataSourceView.dataSource.sId
+                )}
+                description={`${getLocationForDataSourceViewContentNode(item)}`}
+                onClick={() => {
+                  setSearch("");
+                  onNodeSelect(item);
+                  setIsOpen(false);
+                }}
+                truncateText
+              />
+            ))}
+            {pickedSpaceNodes.length === 0 && !showLoader && (
+              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                No results found
+              </div>
+            )}
+            <InfiniteScroll
+              nextPage={nextPage}
+              hasMore={hasMore}
+              showLoader={showLoader}
+              loader={
+                <div className="flex justify-center py-4">
+                  <Spinner variant="dark" size="sm" />
+                </div>
+              }
+            />
+          </div>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
+              <Icon visual={MagnifyingGlassIcon} size="sm" />
+              Search knowledge
+            </div>
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

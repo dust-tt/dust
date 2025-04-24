@@ -1,9 +1,15 @@
 import _ from "lodash";
 
 import {
+  generateJSONFileAndSnippet,
+  getJSONFileAttachment,
+  uploadFileToConversationDataSource,
+} from "@app/lib/actions/action_file_helpers";
+import {
   DEFAULT_PROCESS_ACTION_NAME,
   PROCESS_ACTION_TOP_K,
 } from "@app/lib/actions/constants";
+import { getExtractFileTitle } from "@app/lib/actions/process/utils";
 import type {
   DataSourceConfiguration,
   RetrievalTimeframe,
@@ -14,10 +20,15 @@ import {
   retrievalTagsInputSpecification,
 } from "@app/lib/actions/retrieval";
 import { runActionStreamed } from "@app/lib/actions/server";
-import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type {
+  ActionGeneratedFileType,
+  ExtractActionBlob,
+} from "@app/lib/actions/types";
 import type { BaseActionRunParams } from "@app/lib/actions/types";
-import { BaseAction } from "@app/lib/actions/types";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
+import {
+  BaseAction,
+  BaseActionConfigurationServerRunner,
+} from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -35,13 +46,22 @@ import type {
   TimeFrame,
   UserMessageType,
 } from "@app/types";
-import { Ok, parseTimeFrame, timeFrameFromNow } from "@app/types";
+import {
+  Ok,
+  parseTimeFrame,
+  removeNulls,
+  safeParseJSON,
+  timeFrameFromNow,
+} from "@app/types";
 
 export const PROCESS_SCHEMA_ALLOWED_TYPES = [
   "string",
   "number",
   "boolean",
 ] as const;
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+
+import { FileResource } from "@app/lib/resources/file_resource";
 
 // Properties in the process configuration table are stored as an array of objects.
 export type ProcessSchemaPropertyType = {
@@ -49,33 +69,6 @@ export type ProcessSchemaPropertyType = {
   type: (typeof PROCESS_SCHEMA_ALLOWED_TYPES)[number];
   description: string;
 };
-
-function renderSchemaPropertiesAsJSONSchema(
-  schema: ProcessSchemaPropertyType[]
-): { [name: string]: { type: string; description: string } } {
-  let jsonSchema: { [name: string]: { type: string; description: string } } =
-    {};
-
-  if (schema.length > 0) {
-    schema.forEach((f) => {
-      jsonSchema[f.name] = {
-        type: f.type,
-        description: f.description,
-      };
-    });
-  } else {
-    // Default schema for extraction.
-    jsonSchema = {
-      required_data: {
-        type: "string",
-        description:
-          "Minimal (short and concise) piece of information extracted to follow instructions",
-      },
-    };
-  }
-
-  return jsonSchema;
-}
 
 export type ProcessConfigurationType = {
   id: ModelId;
@@ -85,7 +78,7 @@ export type ProcessConfigurationType = {
 
   dataSources: DataSourceConfiguration[];
   relativeTimeFrame: RetrievalTimeframe;
-  schema: ProcessSchemaPropertyType[];
+  jsonSchema: JSONSchema | null;
 
   name: string;
   description: string | null;
@@ -139,23 +132,27 @@ export class ProcessActionType extends BaseAction {
     tagsIn: string[] | null;
     tagsNot: string[] | null;
   };
-  readonly schema: ProcessSchemaPropertyType[];
+  readonly jsonSchema: JSONSchema | null;
   readonly outputs: ProcessActionOutputsType | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
   readonly type = "process_action";
+  readonly jsonFileId: string | null;
+  readonly jsonFileSnippet: string | null;
 
   constructor(blob: ProcessActionBlob) {
-    super(blob.id, blob.type);
+    super(blob.id, blob.type, blob.generatedFiles);
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
-    this.schema = blob.schema;
+    this.jsonSchema = blob.jsonSchema;
     this.outputs = blob.outputs;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
+    this.jsonFileId = blob.jsonFileId ?? null;
+    this.jsonFileSnippet = blob.jsonFileSnippet ?? null;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -177,6 +174,18 @@ export class ProcessActionType extends BaseAction {
       } else {
         for (const o of this.outputs.data) {
           content += `${JSON.stringify(o)}\n`;
+        }
+
+        const jsonAttachment = getJSONFileAttachment({
+          jsonFileId: this.jsonFileId,
+          jsonFileSnippet: this.jsonFileSnippet,
+          title: getExtractFileTitle({
+            schema: this.jsonSchema,
+          }),
+        });
+
+        if (jsonAttachment) {
+          content += `${jsonAttachment}\n`;
         }
       }
     } else if (this.outputs === null) {
@@ -266,6 +275,14 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         relativeTimeFrame = parseTimeFrame(rawInputs.relativeTimeFrame);
       }
     }
+    if (!actionConfiguration.jsonSchema) {
+      if (rawInputs.schema && typeof rawInputs.schema === "string") {
+        const res = safeParseJSON(rawInputs.schema);
+        if (res.isOk()) {
+          actionConfiguration.jsonSchema = res.value;
+        }
+      }
+    }
 
     let globalTagsIn: string[] | null = null;
     let globalTagsNot: string[] | null = null;
@@ -300,7 +317,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       relativeTimeFrameDuration: relativeTimeFrame?.duration ?? null,
       relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
       processConfigurationId: actionConfiguration.sId,
-      schema: actionConfiguration.schema,
+      jsonSchema: actionConfiguration.jsonSchema,
       functionCallId,
       functionCallName: actionConfiguration.name,
       tagsIn: globalTagsIn,
@@ -326,13 +343,15 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           tagsIn: globalTagsIn,
           tagsNot: globalTagsNot,
         },
-        schema: action.schema,
+        jsonSchema: action.jsonSchema,
         outputs: null,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
         type: "process_action",
         generatedFiles: [],
+        jsonFileId: null,
+        jsonFileSnippet: null,
       }),
     };
 
@@ -397,9 +416,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         {
           context_size: contextSize,
           prompt,
-          schema: renderSchemaPropertiesAsJSONSchema(
-            actionConfiguration.schema
-          ),
+          schema: actionConfiguration.jsonSchema,
           objective,
         },
       ],
@@ -488,9 +505,58 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       }
     }
 
+    const generatedFiles: ActionGeneratedFileType[] = [];
+    let jsonFileSId: string | null = null;
+    let jsonFileSnippet: string | null = null;
+
+    const updateParams: {
+      jsonFileId: number | null;
+      jsonFileSnippet: string | null;
+      outputs: ProcessActionOutputsType | null;
+      runId?: string;
+    } = {
+      jsonFileId: null,
+      jsonFileSnippet: null,
+      outputs: outputs,
+    };
+
+    if (outputs) {
+      // Generate the JSON file with extraction results
+      const fileTitle = getExtractFileTitle({
+        schema: actionConfiguration.jsonSchema,
+      });
+      const { jsonFile, jsonSnippet } = await generateJSONFileAndSnippet(auth, {
+        title: fileTitle,
+        conversationId: conversation.sId,
+        data: outputs.data,
+      });
+
+      // Upload the file to the conversation data source.
+      // This step is critical for file persistence across sessions.
+      await uploadFileToConversationDataSource({
+        auth,
+        file: jsonFile,
+      });
+
+      generatedFiles.push({
+        fileId: jsonFile.sId,
+        title: fileTitle,
+        contentType: jsonFile.contentType,
+        snippet: jsonSnippet,
+      });
+
+      // Update the parameters with numeric IDs for database
+      updateParams.jsonFileId = jsonFile.id;
+      updateParams.jsonFileSnippet = jsonSnippet;
+
+      // Save references for the yield statement with string IDs for UI
+      jsonFileSId = jsonFile.sId;
+      jsonFileSnippet = jsonSnippet;
+    }
+
     // Update ProcessAction with the output of the last block.
     await action.update({
-      outputs,
+      ...updateParams,
       runId: await dustRunId,
     });
 
@@ -516,13 +582,15 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           tagsIn: globalTagsIn,
           tagsNot: globalTagsNot,
         },
-        schema: action.schema,
+        jsonSchema: action.jsonSchema,
         outputs,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
         type: "process_action",
-        generatedFiles: [],
+        generatedFiles,
+        jsonFileId: jsonFileSId,
+        jsonFileSnippet,
       }),
     };
   }
@@ -546,6 +614,10 @@ async function processActionSpecification({
       " This is used to guide the tool to extract the right data based on the user request.",
     type: "string" as const,
   });
+
+  if (!actionConfiguration.jsonSchema) {
+    inputs.push(retrievalSchemaInputSpecification());
+  }
 
   if (actionConfiguration.relativeTimeFrame === "auto") {
     inputs.push(retrievalAutoTimeFrameInputSpecification());
@@ -590,6 +662,20 @@ export async function processActionTypesFromAgentMessageIds(
         unit: action.relativeTimeFrameUnit,
       };
     }
+    let jsonFile: ActionGeneratedFileType | null = null;
+    if (action.jsonFileId && action.jsonFileSnippet) {
+      jsonFile = {
+        fileId: FileResource.modelIdToSId({
+          id: action.jsonFileId,
+          workspaceId: action.workspaceId,
+        }),
+        title: getExtractFileTitle({
+          schema: action.jsonSchema,
+        }),
+        contentType: "application/json",
+        snippet: action.jsonFileSnippet,
+      };
+    }
 
     return new ProcessActionType({
       id: action.id,
@@ -599,13 +685,44 @@ export async function processActionTypesFromAgentMessageIds(
         tagsIn: action.tagsIn,
         tagsNot: action.tagsNot,
       },
-      schema: action.schema,
+      jsonSchema: action.jsonSchema,
       outputs: action.outputs,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       step: action.step,
+      jsonFileId: jsonFile?.fileId ?? null,
+      jsonFileSnippet: action.jsonFileSnippet,
       type: "process_action",
-      generatedFiles: [],
+      generatedFiles: removeNulls([jsonFile]),
     });
   });
+}
+
+function retrievalSchemaInputSpecification() {
+  return {
+    name: "schema",
+    description:
+      "A JSON schema that will be embedded in the following JSON schema:" +
+      "\n```\n" +
+      "{\n" +
+      '  "name": "extract_data",\n' +
+      '  "description": "Call this function with an array of extracted data points",\n' +
+      '  "parameters": {\n' +
+      '    "type": "object",\n' +
+      '    "properties": {\n' +
+      '      "data_points": {\n' +
+      '         "type": "array",\n' +
+      '         "items": $SCHEMA,\n' +
+      '          "description": "The data points extracted from provided documents, as many as required to follow instructions."\n' +
+      "        }\n" +
+      "      },\n" +
+      '      "required": ["data_points"]\n' +
+      "    }\n" +
+      "  }\n" +
+      "}\n" +
+      "```\n\n" +
+      "Must be a valid JSON schema. Use only standard JSON Schema 7 core fields (type, properties, required, description) and avoid custom keywords or extensions that are not part of the core specification.\n\n" +
+      "This schema will be used as signature to extract the relevant information based on selected documents to properly follow instructions.",
+    type: "string" as const,
+  };
 }

@@ -1,3 +1,8 @@
+import {
+  ConfigurableToolInputJSONSchemas,
+  INTERNAL_MIME_TYPES,
+} from "@dust-tt/client";
+
 import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import type {
   ConversationIncludeFileActionType,
@@ -23,6 +28,7 @@ import type {
   WebsearchActionType,
   WebsearchConfigurationType,
 } from "@app/lib/actions/websearch";
+import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
 import type { AgentActionType } from "@app/types";
 import type {
   AgentConfigurationType,
@@ -127,6 +133,22 @@ export function isMCPActionConfiguration(
   );
 }
 
+export function isMCPActionWithDataSource(
+  arg: unknown
+): arg is MCPToolConfigurationType {
+  if (isMCPActionConfiguration(arg)) {
+    return (
+      findMatchingSchemaKeys(
+        arg.inputSchema,
+        ConfigurableToolInputJSONSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+        ]
+      ).length > 0
+    );
+  }
+  return false;
+}
+
 export function isPlatformMCPToolConfiguration(
   action: unknown
 ): action is PlatformMCPToolConfigurationType {
@@ -185,14 +207,11 @@ export function isConversationIncludeFileConfigurationActionType(
 }
 
 export function throwIfInvalidAgentConfiguration(
-  configation: AgentConfigurationType | TemplateAgentConfigurationType
+  configuration: AgentConfigurationType | TemplateAgentConfigurationType
 ) {
-  configation.actions.forEach((action) => {
+  configuration.actions.forEach((action) => {
     if (isProcessConfiguration(action)) {
-      if (
-        action.relativeTimeFrame === "auto" ||
-        action.relativeTimeFrame === "none"
-      ) {
+      if (action.relativeTimeFrame === "none") {
         /** Should never happen as not permitted for now. */
         throw new Error(
           "Invalid configuration: process must have a definite time frame"
@@ -201,8 +220,8 @@ export function throwIfInvalidAgentConfiguration(
     }
   });
 
-  const templateConfiguration = configation as TemplateAgentConfigurationType; // Creation
-  const agentConfiguration = configation as AgentConfigurationType; // Edition
+  const templateConfiguration = configuration as TemplateAgentConfigurationType; // Creation
+  const agentConfiguration = configuration as AgentConfigurationType; // Edition
 
   if (templateConfiguration) {
     if (templateConfiguration.scope === "global") {

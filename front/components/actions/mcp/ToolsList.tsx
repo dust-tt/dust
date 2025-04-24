@@ -5,14 +5,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ExclamationCircleIcon,
-  Page,
+  InformationCircleIcon,
 } from "@dust-tt/sparkle";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
-  DEFAULT_MCP_TOOL_STAKE_LEVEL,
-  MCP_TOOL_STAKE_LEVELS,
+  FALLBACK_MCP_TOOL_STAKE_LEVEL,
+  REMOTE_MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import {
   useMCPServerToolsPermissions,
@@ -42,58 +41,61 @@ export function ToolsList({
     serverId,
   });
 
-  const handleClick = (name: string, permission: MCPToolStakeLevelType) => {
+  const handleClick = (
+    name: string,
+    permission: RemoteMCPToolStakeLevelType
+  ) => {
     void updateToolPermission({
       toolName: name,
       permission,
     });
   };
 
-  const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
+  const toolPermissionLabel: Record<RemoteMCPToolStakeLevelType, string> = {
     high: "High (Update data, or sends information)",
     low: "Low (Retrieve data, or generates content)",
   };
 
   return (
-    <div className="mb-2 flex w-full flex-col gap-y-2 pt-2">
-      <Page.SectionHeader title="Available Tools" />
+    <div className="mb-2 flex w-full flex-col gap-y-2 pt-2 text-foreground dark:text-foreground-night">
+      <div className="heading-lg">Available Tools</div>
       {serverType === "remote" && (
         <ContentMessage
-          className="mb-8"
-          icon={ExclamationCircleIcon}
+          className="w-fit"
+          icon={InformationCircleIcon}
           title="User Approval Settings"
         >
           <p className="text-sm">
             <b>High stake</b> tools needs explicit user approval.
           </p>
           <p>
-            Users can disable confirmations for <b>low</b> stake tools.
+            Users can disable confirmations for <b>low stake</b> tools.
           </p>
         </ContentMessage>
       )}
-      <div className="space-y-4">
+      <div className="space-y-0">
         {tools && tools.length > 0 ? (
           tools.map(
             (tool: { name: string; description: string }, index: number) => {
               const toolPermission = toolsPermissions[tool.name]
                 ? toolsPermissions[tool.name]
-                : DEFAULT_MCP_TOOL_STAKE_LEVEL;
+                : FALLBACK_MCP_TOOL_STAKE_LEVEL;
               return (
                 <div
                   key={index}
-                  className="border-b pb-4 last:border-b-0 last:pb-0"
+                  className="flex flex-col gap-3 border-b border-border py-5 last:border-b-0 last:pb-0"
                 >
-                  <h4 className="flex-grow text-sm font-semibold">
+                  <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
                     {asDisplayName(tool.name)}
                   </h4>
                   {tool.description && (
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="copy-xs text-muted-foreground dark:text-muted-foreground-night">
                       {tool.description}
                     </p>
                   )}
                   {serverType === "remote" && (
-                    <div className="mt-2">
-                      <h5 className="pb-2 font-semibold">Tool stake setting</h5>
+                    <div className="flex w-full flex-row items-center justify-end gap-2">
+                      <p className="heading-sm">Tool stake setting</p>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -103,9 +105,8 @@ export function ToolsList({
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          {MCP_TOOL_STAKE_LEVELS.map((permission) => (
+                          {REMOTE_MCP_TOOL_STAKE_LEVELS.map((permission) => (
                             <DropdownMenuItem
-                              className="font-medium"
                               key={permission}
                               onClick={() => {
                                 handleClick(tool.name, permission);
@@ -122,7 +123,7 @@ export function ToolsList({
             }
           )
         ) : (
-          <p className="text-sm text-gray-500">No tools available</p>
+          <p className="text-sm text-faint">No tools available</p>
         )}
       </div>
     </div>

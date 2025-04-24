@@ -334,7 +334,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return {
       id: this.id,
       workspaceId: this.workspaceId,
-      connectionId: this.connectionId,
       provider: this.provider,
       agentConfigurationId: this.agentConfigurationId,
       isActive: this.isActive,

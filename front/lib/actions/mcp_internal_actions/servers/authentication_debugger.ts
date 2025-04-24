@@ -14,7 +14,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     provider,
     use_case: "connection" as const,
   },
-  visual: "https://dust.tt/static/droidavatar/Droid_Green_1.jpg",
+  icon: "ActionLockIcon",
 };
 
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
@@ -23,7 +23,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   server.tool("hello_world", "A simple hello world tool", async () => {
     const accessToken = await getAccessTokenForInternalMCPServer(auth, {
       mcpServerId,
-      provider,
     });
 
     return {

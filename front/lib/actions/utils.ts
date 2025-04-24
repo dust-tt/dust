@@ -14,9 +14,12 @@ import assert from "assert";
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import { isPlatformMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import {
+  isMCPActionWithDataSource,
+  isPlatformMCPToolConfiguration,
+  isRetrievalConfiguration,
+} from "@app/lib/actions/types/guards";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -87,7 +90,7 @@ export const ACTION_SPECIFICATIONS: Record<
   },
   MCP: {
     label: "More...",
-    description: "Pick from Toolsets added by your Admin",
+    description: "Add additional sets of tools",
     cardIcon: SuitcaseIcon,
     dropDownIcon: SuitcaseIcon,
     flag: "mcp_actions",
@@ -96,7 +99,7 @@ export const ACTION_SPECIFICATIONS: Record<
 
 /**
  * This function computes the topK for retrieval actions. This is used by both the action (to
- * compute the topK) and computing the citation counts for retrieval actions.
+ * compute the topK) and computing the citation counts for retrieval actions (mcp included)
  *
  * We share the topK across retrieval actions from the same step. If there are multiple retrieval
  * actions in the same step we get the maximum topK and divide it by the number of retrieval actions
@@ -111,28 +114,35 @@ export function getRetrievalTopK({
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
-  const retrievalActions = stepActions.filter(
-    (action) => action.type === "retrieval_configuration"
-  ) as RetrievalConfigurationType[];
+  const retrievalActions = stepActions.filter(isRetrievalConfiguration);
+  const dataSourceMMCPActions = stepActions.filter(isMCPActionWithDataSource);
+  // TODO(mcp): when we migrate "include" to mcp, this will not work anymore.
 
-  assert(
-    retrievalActions.length > 0,
-    "No retrieval actions found in `getRetrievalTopK`"
-  );
+  const actionsCount = retrievalActions.length + dataSourceMMCPActions.length;
 
-  const topKs = retrievalActions.map((action) => {
-    if (action.topK === "auto") {
-      if (action.query === "none") {
-        return model.recommendedExhaustiveTopK;
+  if (actionsCount === 0) {
+    return 0;
+  }
+
+  const topKs = retrievalActions
+    .map((action) => {
+      if (action.topK === "auto") {
+        if (action.query === "none") {
+          return model.recommendedExhaustiveTopK;
+        } else {
+          return model.recommendedTopK;
+        }
       } else {
-        return model.recommendedTopK;
+        return action.topK;
       }
-    } else {
-      return action.topK;
-    }
-  });
+    })
+    .concat(
+      dataSourceMMCPActions.map(() => {
+        return model.recommendedTopK;
+      })
+    );
 
-  return Math.ceil(Math.max(...topKs) / retrievalActions.length);
+  return Math.ceil(Math.max(...topKs) / actionsCount);
 }
 
 /**
@@ -163,25 +173,6 @@ export function getWebsearchNumResults({
   });
 
   return Math.ceil(Math.max(...numResults) / websearchActions.length);
-}
-
-export function getMCPCitationsCount({
-  stepActions,
-}: {
-  stepActions: ActionConfigurationType[];
-}): number {
-  const mcpActions = stepActions.filter(
-    (action) => action.type === "mcp_configuration"
-  ) as MCPToolConfigurationType[];
-
-  assert(
-    mcpActions.length > 0,
-    "No MCP actions found in `getMCPCitationsCount`"
-  );
-
-  //TODO(mcp) as mcp server might want to output multiple citations, here we should inspect the arguments
-  // of the tool to determine the number of actions using citations and compute the citations count accordingly.
-  return 0;
 }
 
 /**
@@ -223,7 +214,8 @@ export function getCitationsCount({
     case "reasoning_configuration":
       return 0;
     case "mcp_configuration":
-      return getMCPCitationsCount({
+      return getRetrievalTopK({
+        agentConfiguration,
         stepActions,
       });
     default:
@@ -288,29 +280,33 @@ export async function getExecutionStatusFromConfig(
     return { status: "pending" };
   }
 
-  if (actionConfiguration.isDefault) {
-    return { status: "allowed_implicitly" };
-  }
+  /**
+   * Permissions:
+   * - "never_ask": Automatically approved
+   * - "low": Ask user for approval and allow to automatically approve next time
+   * - "high": Ask for approval each time
+   * - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
+   */
+  switch (actionConfiguration.permission) {
+    case "never_ask":
+      return { status: "allowed_implicitly" };
+    case "low": {
+      const user = auth.getNonNullableUser();
+      const neverAskSetting = await user.getMetadata(
+        `toolsValidations:${actionConfiguration.toolServerId}`
+      );
 
-  if (
-    !actionConfiguration.permission ||
-    actionConfiguration.permission === "high"
-  ) {
-    return { status: "pending" };
+      if (
+        neverAskSetting &&
+        neverAskSetting.value.includes(`${actionConfiguration.name}`)
+      ) {
+        return { status: "allowed_implicitly" };
+      }
+      return { status: "pending" };
+    }
+    case "high":
+      return { status: "pending" };
+    default:
+      assertNever(actionConfiguration.permission);
   }
-
-  const user = auth.getNonNullableUser();
-  const neverAskSetting = await user.getMetadata(
-    `toolsValidations:${actionConfiguration.toolServerId}`
-  );
-  if (
-    neverAskSetting &&
-    neverAskSetting.value.includes(`${actionConfiguration.name}`)
-  ) {
-    return { status: "allowed_implicitly" };
-  }
-
-  return {
-    status: "pending",
-  };
 }

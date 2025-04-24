@@ -46,6 +46,7 @@ import {
   updateDataSourceDocumentParents,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -110,6 +111,9 @@ export async function getRootNodesToSyncFromResources(
           } catch (error) {
             if (error instanceof GraphError && error.statusCode === 404) {
               return null;
+            }
+            if (error instanceof ExternalOAuthTokenError) {
+              throw error;
             }
             logger.error(
               {

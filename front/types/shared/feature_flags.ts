@@ -1,11 +1,13 @@
 export const WHITELISTABLE_FEATURES = [
   "advanced_notion_management",
+  "agent_discovery",
   "claude_3_7_reasoning",
   "co_edition",
   "deepseek_feature",
   "deepseek_r1_global_agent_feature",
   "dev_mcp_actions",
   "disable_run_logs",
+  "experimental_mcp_actions",
   "force_gdrive_labels_scope",
   "google_ai_studio_experimental_models_feature",
   "index_private_slack_channel",

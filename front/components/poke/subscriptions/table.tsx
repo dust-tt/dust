@@ -31,12 +31,9 @@ import {
 import type { SubscriptionsDisplayType } from "@app/components/poke/subscriptions/columns";
 import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
+import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import {
-  FREE_NO_PLAN_CODE,
-  isFreePlan,
-  isProPlan,
-} from "@app/lib/plans/plan_codes";
+import { FREE_NO_PLAN_CODE, isProPlan } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
 import { isDevelopment } from "@app/types";
@@ -312,7 +309,7 @@ function UpgradeDowngradeModal({
     }
   });
 
-  const { submit: onUpgradeToPlan } = useSubmitFunction(
+  const { submit: onUpgradeToProPlan } = useSubmitFunction(
     async (plan: PlanType) => {
       if (
         !window.confirm(
@@ -322,15 +319,15 @@ function UpgradeDowngradeModal({
         return;
       }
       try {
-        const r = await fetch(
-          `/api/poke/workspaces/${owner.sId}/upgrade?planCode=${plan.code}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        const r = await fetch(`/api/poke/workspaces/${owner.sId}/upgrade`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            planCode: plan.code,
+          }),
+        });
         if (!r.ok) {
           throw new Error("Failed to upgrade workspace to plan.");
         }
@@ -374,20 +371,7 @@ function UpgradeDowngradeModal({
               description="This action will upgrade the workspace to a free plan. This means that all the features will be enabled and members of the workspace will be able to use the workspace according to the selected plan product limitations."
             />
             <div>
-              {plans
-                .filter((p) => isFreePlan(p.code)) // Hack to exclude The Pro and Enteprise plans
-                .map((p) => {
-                  return (
-                    <div key={p.code} className="pt-2">
-                      <Button
-                        variant="outline"
-                        disabled={subscription.plan.code === p.code}
-                        onClick={() => onUpgradeToPlan(p)}
-                        label={`Upgrade to ${p.code}`}
-                      />
-                    </div>
-                  );
-                })}
+              <FreePlanUpgradeDialog owner={owner} />
             </div>
             <Separator />
             <Page.SectionHeader
@@ -412,7 +396,7 @@ function UpgradeDowngradeModal({
                           <Button
                             variant="outline"
                             disabled={subscription.plan.code === p.code}
-                            onClick={() => onUpgradeToPlan(p)}
+                            onClick={() => onUpgradeToProPlan(p)}
                             label={`Upgrade to ${p.code}`}
                           />
                         </div>

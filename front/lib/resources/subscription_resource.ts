@@ -12,7 +12,11 @@ import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
-import { isEntreprisePlan, isProPlan } from "@app/lib/plans/plan_codes";
+import {
+  isEntreprisePlan,
+  isFreePlan,
+  isProPlan,
+} from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_39_CODE } from "@app/lib/plans/plan_codes";
 import {
@@ -254,10 +258,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     workspaceId,
     planCode,
     stripeSubscriptionId,
+    endDate,
   }: {
     workspaceId: string;
     planCode: string;
     stripeSubscriptionId?: string;
+    endDate: Date | null;
   }): Promise<SubscriptionResource> {
     const workspace = await this.findWorkspaceOrThrow(workspaceId);
     const newPlan = await this.findPlanOrThrow(planCode);
@@ -309,6 +315,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
           status: "active",
           startDate: now,
           stripeSubscriptionId: stripeSubscriptionId ?? null,
+          endDate: endDate,
         },
         { transaction: t }
       );
@@ -346,22 +353,27 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     const plan = await this.findPlanOrThrow(enterpriseDetails.planCode);
-
     // End the current subscription if any.
     await this.internalSubscribeWorkspaceToFreePlan({
       workspaceId: owner.sId,
       planCode: plan.code,
       stripeSubscriptionId: enterpriseDetails.stripeSubscriptionId,
+      endDate: null,
     });
   }
 
   /**
    * Internal function to create a PlanInvitation for the workspace.
    */
-  static async pokeUpgradeWorkspaceToPlan(
-    auth: Authenticator,
-    planCode: string
-  ) {
+  static async pokeUpgradeWorkspaceToPlan({
+    auth,
+    planCode,
+    endDate,
+  }: {
+    auth: Authenticator;
+    planCode: string;
+    endDate: Date | null;
+  }) {
     const owner = auth.getNonNullableWorkspace();
 
     if (!auth.isDustSuperUser()) {
@@ -373,6 +385,16 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     // We search for an active subscription for this workspace
     const activeSubscription = auth.subscriptionResource();
     if (activeSubscription && activeSubscription.plan.code === newPlan.code) {
+      // If you are already on this free plan and you want to change the end date, we let you do it.
+      if (isFreePlan(newPlan.code) && activeSubscription.endDate !== endDate) {
+        await Subscription.update(
+          { endDate },
+          {
+            where: { sId: activeSubscription.sId },
+          }
+        );
+        return;
+      }
       throw new Error(
         `Cannot subscribe to plan ${planCode}: already subscribed.`
       );
@@ -421,6 +443,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     await this.internalSubscribeWorkspaceToFreePlan({
       workspaceId: owner.sId,
       planCode: newPlan.code,
+      endDate,
     });
   }
 

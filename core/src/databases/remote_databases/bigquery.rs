@@ -352,7 +352,7 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         self.execute_query(query).await
     }
 
-    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>> {
+    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>> {
         let bq_tables: Vec<gcp_bigquery_client::model::table::Table> =
             try_join_all(opaque_ids.iter().map(|opaque_id| async move {
                 let parts: Vec<&str> = opaque_id.split('.').collect();
@@ -372,10 +372,10 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             }))
             .await?;
 
-        let schemas: Vec<TableSchema> = bq_tables
+        let schemas: Vec<Option<TableSchema>> = bq_tables
             .into_iter()
-            .map(|table| TableSchema::try_from(&table.schema))
-            .collect::<Result<Vec<TableSchema>>>()?;
+            .map(|table| TableSchema::try_from(&table.schema).map(Some))
+            .collect::<Result<Vec<_>>>()?;
 
         Ok(schemas)
     }

@@ -41,10 +41,18 @@ async function handler(
 
   switch (req.method) {
     case "DELETE":
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "You do not have the required permissions.",
+          },
+        });
+      }
       await secret.destroy();
       res.status(204).end();
       return;
-
     default:
       return apiError(req, res, {
         status_code: 405,

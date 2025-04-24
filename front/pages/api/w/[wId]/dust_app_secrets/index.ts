@@ -62,6 +62,15 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "You do not have the required permissions.",
+          },
+        });
+      }
       const secrets = await getDustAppSecrets(auth);
 
       res.status(200).json({
@@ -70,12 +79,25 @@ async function handler(
       return;
 
     case "POST":
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "You do not have the required permissions.",
+          },
+        });
+      }
+
       const { name: postSecretName } = req.body;
       const secretValue = req.body.value;
 
+      // Sanitize the secret name to be alphanumeric and underscores only
+      const sanitizedSecretName = postSecretName.replace(/[^a-zA-Z0-9_]/g, "_");
+
       const encryptedValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
 
-      let postSecret = await getDustAppSecret(auth, postSecretName);
+      let postSecret = await getDustAppSecret(auth, sanitizedSecretName);
 
       if (postSecret) {
         await postSecret.update({
@@ -85,14 +107,14 @@ async function handler(
         postSecret = await DustAppSecret.create({
           userId: user.id,
           workspaceId: owner.id,
-          name: postSecretName,
+          name: sanitizedSecretName,
           hash: encryptedValue,
         });
       }
 
       res.status(201).json({
         secret: {
-          name: postSecretName,
+          name: sanitizedSecretName,
           value: secretValue,
         },
       });
@@ -104,7 +126,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET, POST or DELETE is expected.",
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }

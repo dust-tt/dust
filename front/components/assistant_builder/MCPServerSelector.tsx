@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Card,
   Label,
   RadioGroup,
@@ -10,7 +9,7 @@ import {
 import React, { useMemo } from "react";
 
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -52,12 +51,8 @@ export function MCPServerSelector({
 
   return (
     <>
-      <div className="text-sm text-foreground dark:text-foreground-night">
-        The agent will be able to execute tools from the{" "}
-        <a className="font-bold" href="https://docs.dust.tt" target="_blank">
-          Toolset
-        </a>{" "}
-        made available to you by your Admin.
+      <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
+        Pick a set of tools
       </div>
       {isSpacesLoading ? (
         <Spinner />
@@ -80,7 +75,7 @@ export function MCPServerSelector({
               mcpServerViewsInSpace.length === 0 ||
               hasNoMCPServerViewsInAllowedSpaces
             ) {
-              return <>No Toolsets available.</>;
+              return <>No tools available.</>;
             }
 
             return (
@@ -107,9 +102,7 @@ export function MCPServerSelector({
                               }}
                             >
                               <div className="flex flex-row items-center gap-2">
-                                <Avatar
-                                  visual={getVisual(mcpServerView.server)}
-                                />
+                                {getAvatar(mcpServerView.server)}
                                 <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
                                   <div className="flex flex-col gap-1">
                                     <div className="text-sm font-semibold text-foreground dark:text-foreground-night">

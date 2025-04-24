@@ -201,6 +201,7 @@ export default function CreateAssistant({
                 maxStepsPerRun: agentConfiguration.maxStepsPerRun ?? null,
                 visualizationEnabled: agentConfiguration.visualizationEnabled,
                 templateId: templateId,
+                tags: agentConfiguration.tags,
               }
             : null
         }

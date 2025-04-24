@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +19,7 @@ import {
 import _ from "lodash";
 import { useState } from "react";
 
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { sendRequestActionsAccessEmail } from "@app/lib/email";
 import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_server_views";
@@ -124,16 +123,13 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                           <Button
                             variant="outline"
                             label={asDisplayName(selectedMcpServer.server.name)}
-                            icon={() => (
-                              <Avatar
-                                visual={getVisual(selectedMcpServer.server)}
-                                size="xs"
-                              />
-                            )}
+                            icon={() =>
+                              getAvatar(selectedMcpServer.server, "xs")
+                            }
                           />
                         ) : (
                           <Button
-                            label="Pick a Toolset"
+                            label="Pick Tools"
                             variant="outline"
                             size="sm"
                             isSelect
@@ -145,9 +141,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                           <DropdownMenuItem
                             key={v.id}
                             label={asDisplayName(v.server.name)}
-                            icon={() => (
-                              <Avatar visual={getVisual(v.server)} size="xs" />
-                            )}
+                            icon={() => getAvatar(v.server, "xs")}
                             onClick={() => setSelectedMcpServer(v)}
                           />
                         ))}

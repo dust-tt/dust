@@ -127,10 +127,12 @@ export async function submitAssistantBuilderForm({
         timeFrame = "none";
       }
     } else if (a.type === "PROCESS") {
-      timeFrame = {
-        duration: a.configuration.timeFrame.value,
-        unit: a.configuration.timeFrame.unit,
-      };
+      if (a.configuration.timeFrame) {
+        timeFrame = {
+          duration: a.configuration.timeFrame.value,
+          unit: a.configuration.timeFrame.unit,
+        };
+      }
     }
 
     switch (a.type) {
@@ -253,7 +255,7 @@ export async function submitAssistantBuilderForm({
             ),
             tagsFilter: a.configuration.tagsFilter,
             relativeTimeFrame: timeFrame,
-            schema: a.configuration.schema,
+            jsonSchema: a.configuration.jsonSchema,
           },
         ];
 
@@ -319,6 +321,7 @@ export async function submitAssistantBuilderForm({
       maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,
       templateId: builderState.templateId,
+      tags: builderState.tags,
     },
   };
 

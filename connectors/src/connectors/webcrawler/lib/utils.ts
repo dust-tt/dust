@@ -130,12 +130,16 @@ export async function getIpAddressForUrl(url: string) {
 }
 
 export function isPrivateIp(ip: string) {
-  const privatePrefixes = ["0.", "127.", "10.", "192.168.", "169.254"];
-  for (const prefix of privatePrefixes) {
-    if (ip.startsWith(prefix)) {
-      return true;
-    }
-  }
+  // Simple patterns for common private ranges.
+  const simpleRanges = /^(0|127|10|192\.168|169\.254)\./;
 
-  return false;
+  // 172.16.0.0/12 range (172.16-31.x.x).
+  // Only 172.16 through 172.31 are private.
+  const range172 = /^172\.(1[6-9]|2[0-9]|3[0-1])\./;
+
+  // 100.64.0.0/10 range (100.64-127.x.x).
+  // Only 100.64 through 100.127 are Carrier-grade NAT.
+  const range100 = /^100\.(6[4-9]|7[0-9]|8[0-9]|9[0-9]|1[01][0-9]|12[0-7])\./;
+
+  return simpleRanges.test(ip) || range172.test(ip) || range100.test(ip);
 }

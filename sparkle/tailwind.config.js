@@ -643,6 +643,10 @@ module.exports = {
             night: colors.gray[950],
           },
         },
+        faint: {
+          DEFAULT: colors.gray[400],
+          night: colors.gray[600],
+        },
         // Semantic Palette
         primary: {
           DEFAULT: colors.gray[800],
@@ -791,19 +795,31 @@ module.exports = {
           fontSize: theme("fontSize.xs[0]"),
           lineHeight: theme("fontSize.xs[1].lineHeight"),
           letterSpacing: theme("fontSize.xs[1].letterSpacing"),
-          fontWeight: "700",
+          fontWeight: "600",
         },
         ".s-label-sm": {
           fontSize: theme("fontSize.sm[0]"),
           lineHeight: theme("fontSize.sm[1].lineHeight"),
           letterSpacing: theme("fontSize.sm[1].letterSpacing"),
-          fontWeight: "700",
+          fontWeight: "600",
         },
         ".s-label-base": {
           fontSize: theme("fontSize.base[0]"),
           lineHeight: theme("fontSize.base[1].lineHeight"),
           letterSpacing: theme("fontSize.base[1].letterSpacing"),
-          fontWeight: "700",
+          fontWeight: "600",
+        },
+        ".s-heading-xs": {
+          fontSize: theme("fontSize.xs[0]"),
+          lineHeight: theme("fontSize.xs[1].lineHeight"),
+          letterSpacing: theme("fontSize.xs[1].letterSpacing"),
+          fontWeight: "600",
+        },
+        ".s-heading-sm": {
+          fontSize: theme("fontSize.sm[0]"),
+          lineHeight: theme("fontSize.sm[1].lineHeight"),
+          letterSpacing: theme("fontSize.sm[1].letterSpacing"),
+          fontWeight: "600",
         },
         ".s-heading-base": {
           fontSize: theme("fontSize.base[0]"),

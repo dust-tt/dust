@@ -5,6 +5,7 @@ import {
   CardGrid,
   ChatBubbleLeftRightIcon,
   ChatBubbleThoughtIcon,
+  Chip,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -42,7 +43,6 @@ import {
   useAgentConfiguration,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
-import { classNames } from "@app/lib/utils";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -71,6 +71,14 @@ function AssistantDetailsInfo({
 }) {
   return (
     <>
+      {agentConfiguration.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {agentConfiguration.tags.map((tag) => (
+            <Chip key={tag.sId} color="golden" label={tag.name} />
+          ))}
+        </div>
+      )}
+
       <div className="text-sm text-foreground dark:text-foreground-night">
         {agentConfiguration?.description}
       </div>
@@ -310,14 +318,7 @@ export function AssistantDetails({
           size="lg"
         />
         <div className="flex grow flex-col gap-1">
-          <div
-            className={classNames(
-              "text-foreground dark:text-foreground-night",
-              agentConfiguration?.name && agentConfiguration.name.length > 20
-                ? "heading-md"
-                : "heading-lg"
-            )}
-          >{`@${agentConfiguration?.name ?? ""}`}</div>
+          <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">{`${agentConfiguration?.name ?? ""}`}</div>
           {agentConfiguration?.status === "active" && (
             <SharingDropdown
               owner={owner}

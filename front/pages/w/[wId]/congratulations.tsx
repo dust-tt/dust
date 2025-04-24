@@ -1,9 +1,4 @@
-import {
-  Button,
-  ConfettiBackground,
-  Page,
-  SparklesIcon,
-} from "@dust-tt/sparkle";
+import { Button, ConfettiBackground, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef } from "react";
@@ -63,7 +58,16 @@ export default function Congratulations({
       >
         <ConfettiBackground variant="confetti" referentSize={referentRef} />
         <div className="z-10 flex h-full flex-col gap-6 pt-4 md:justify-center md:pt-0">
-          <Page.Header title={`You are all set!`} icon={SparklesIcon} />
+          <Page.Header
+            title={
+              <>
+                You're all set! <br />
+                Welcome to the{" "}
+                <span className="text-blue-500">{owner.name}</span> workspace.
+              </>
+            }
+          />
+
           <Page.P>
             We're glad to have you onboard.
             <br />

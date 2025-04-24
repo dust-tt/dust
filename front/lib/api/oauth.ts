@@ -2,15 +2,20 @@ import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
 import config from "@app/lib/api/config";
-import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import type { OAuthAPIError, OAuthConnectionType, Result } from "@app/types";
-import type { OAuthProvider, OAuthUseCase } from "@app/types";
+import type {
+  OAuthAPIError,
+  OAuthConnectionType,
+  OAuthProvider,
+  OAuthUseCase,
+  Result,
+} from "@app/types";
 import {
+  ConnectorsAPI,
   Err,
   isValidSalesforceDomain,
   isValidZendeskSubdomain,
@@ -439,16 +444,22 @@ const PROVIDER_STRATEGIES: Record<
         if (!isManaged(dataSource)) {
           return null;
         }
-        const augmentedDataSource =
-          await augmentDataSourceWithConnectorDetails(dataSource);
-        if (!augmentedDataSource.connector) {
+
+        const connectorsAPI = new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        );
+        const connectorRes =
+          await connectorsAPI.getConnectorFromDataSource(dataSource);
+        if (connectorRes.isErr()) {
           return null;
         }
 
+        const connector = connectorRes.value;
+
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
         const connectionRes = await oauthApi.getAccessToken({
-          provider: "salesforce",
-          connectionId: augmentedDataSource.connector.connectionId,
+          connectionId: connector.connectionId,
         });
         if (connectionRes.isErr()) {
           return null;
@@ -483,6 +494,44 @@ const PROVIDER_STRATEGIES: Record<
           cleanedConfig: restConfig,
         };
       }
+    },
+  },
+  hubspot: {
+    setupUri: ({ connection }) => {
+      const scopes = [
+        "crm.objects.companies.read",
+        "crm.objects.companies.write",
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
+        "crm.objects.custom.read",
+        "crm.objects.custom.write",
+        "crm.objects.deals.read",
+        "crm.objects.deals.write",
+        "crm.objects.leads.read",
+        "crm.objects.leads.write",
+        "crm.objects.owners.read",
+        "crm.schemas.companies.read",
+        "crm.schemas.contacts.read",
+        "crm.schemas.custom.read",
+        "crm.schemas.deals.read",
+        "oauth",
+      ];
+      return (
+        `https://app.hubspot.com/oauth/authorize` +
+        `?client_id=${config.getOAuthHubspotClientId()}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("hubspot"))}` +
+        `&state=${connection.connection_id}`
+      );
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
 };
@@ -629,4 +678,27 @@ export async function finalizeConnection(
   }
 
   return new Ok(cRes.value.connection);
+}
+
+export async function checkConnectionOwnership(
+  auth: Authenticator,
+  connectionId: string
+) {
+  if (!connectionId || !connectionId.startsWith("con_")) {
+    return new Ok(undefined);
+  }
+
+  // Ensure the connectionId has been created by the current user and is not being stolen.
+  const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+  const connectionRes = await oauthAPI.getAccessToken({
+    connectionId,
+  });
+  if (
+    connectionRes.isErr() ||
+    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
+  ) {
+    return new Err(new Error("Invalid connection"));
+  }
+
+  return new Ok(undefined);
 }

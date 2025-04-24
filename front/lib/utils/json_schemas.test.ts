@@ -1,8 +1,9 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import {
+  ConfigurableToolInputJSONSchemas,
+  INTERNAL_MIME_TYPES,
+} from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
-
-import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 import { findMatchingSchemaKeys } from "./json_schemas";
 
@@ -27,7 +28,7 @@ describe("JSON Schema Utilities", () => {
                       },
                       mimeType: {
                         type: "string",
-                        const: "application/vnd.dust.configuration.string",
+                        const: "application/vnd.dust.tool-input.string",
                       },
                     },
                     required: ["value", "mimeType"],
@@ -42,7 +43,7 @@ describe("JSON Schema Utilities", () => {
                       },
                       mimeType: {
                         type: "string",
-                        const: "application/vnd.dust.configuration.boolean",
+                        const: "application/vnd.dust.tool-input.boolean",
                       },
                     },
                     required: ["value", "mimeType"],
@@ -62,7 +63,7 @@ describe("JSON Schema Utilities", () => {
                       },
                       mimeType: {
                         type: "string",
-                        const: "application/vnd.dust.configuration.number",
+                        const: "application/vnd.dust.tool-input.number",
                       },
                     },
                     required: ["value", "mimeType"],
@@ -77,7 +78,7 @@ describe("JSON Schema Utilities", () => {
                       },
                       mimeType: {
                         type: "string",
-                        const: "application/vnd.dust.configuration.boolean",
+                        const: "application/vnd.dust.tool-input.boolean",
                       },
                     },
                     required: ["value", "mimeType"],
@@ -93,9 +94,7 @@ describe("JSON Schema Utilities", () => {
 
       // Look for STRING configuration schema
       const targetSchema =
-        ConfigurableToolInputJSONSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.STRING
-        ];
+        ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING];
 
       const result = findMatchingSchemaKeys(mainSchema, targetSchema);
       expect(result).toContain("config.userPreferences.theme");
@@ -123,7 +122,7 @@ describe("JSON Schema Utilities", () => {
                       },
                       mimeType: {
                         type: "string",
-                        const: "application/vnd.dust.configuration.data-source",
+                        const: "application/vnd.dust.tool-input.data-source",
                       },
                     },
                     required: ["uri", "mimeType"],
@@ -146,7 +145,7 @@ describe("JSON Schema Utilities", () => {
                           },
                           mimeType: {
                             type: "string",
-                            const: "application/vnd.dust.configuration.table",
+                            const: "application/vnd.dust.tool-input.table",
                           },
                         },
                         required: ["uri", "mimeType"],
@@ -164,9 +163,7 @@ describe("JSON Schema Utilities", () => {
 
       // Look for TABLE configuration schema
       const targetSchema =
-        ConfigurableToolInputJSONSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.TABLE
-        ];
+        ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE];
 
       const result = findMatchingSchemaKeys(mainSchema, targetSchema);
       expect(result).toContain("dataSourceConfigs.items.settings.tables");
@@ -199,7 +196,7 @@ describe("JSON Schema Utilities", () => {
                             mimeType: {
                               type: "string",
                               const:
-                                "application/vnd.dust.configuration.child-agent",
+                                "application/vnd.dust.tool-input.child-agent",
                             },
                           },
                           required: ["uri", "mimeType"],
@@ -219,7 +216,7 @@ describe("JSON Schema Utilities", () => {
       // Look for CHILD_AGENT configuration schema
       const targetSchema =
         ConfigurableToolInputJSONSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
         ];
 
       const result = findMatchingSchemaKeys(mainSchema, targetSchema);

@@ -23,6 +23,7 @@ import { InvitationsList } from "@app/components/members/InvitationsList";
 import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
 import config from "@app/lib/api/config";
@@ -37,11 +38,13 @@ import {
 } from "@app/lib/api/workspace";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useSearchMembers } from "@app/lib/swr/memberships";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
   SubscriptionType,
   UserType,
+  UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
@@ -74,7 +77,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails =
     {
       callbackUrl: config.getAuth0TenantUrl(),
-      initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(owner.sId),
+      initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(
+        owner.sId,
+        null
+      ),
       // SAML specific.
       audienceUri: makeAudienceUri(owner),
       samlAcsUrl: makeSamlAcsUrl(owner),
@@ -243,10 +249,10 @@ export default function WorkspaceAdmin({
           />
         </div>
         <InvitationsList owner={owner} searchText={searchTerm} />
-        <MembersList
+        <WorkspaceMembersList
           currentUserId={user.sId}
           owner={owner}
-          searchText={searchTerm}
+          searchTerm={searchTerm}
         />
         {popup}
       </Page.Vertical>
@@ -338,5 +344,42 @@ function DomainAutoJoinModal({
         />
       </DialogContent>
     </Dialog>
+  );
+}
+
+function WorkspaceMembersList({
+  currentUserId,
+  owner,
+  searchTerm,
+}: {
+  currentUserId: string;
+  owner: WorkspaceType;
+  searchTerm: string;
+}) {
+  const membersData = useSearchMembers({
+    workspaceId: owner.sId,
+    searchTerm,
+    pageIndex: 0,
+    pageSize: 25,
+  });
+
+  const [selectedMember, setSelectedMember] =
+    useState<UserTypeWithWorkspaces | null>(null);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Page.H variant="h5">Members</Page.H>
+      <MembersList
+        currentUserId={currentUserId}
+        membersData={membersData}
+        onRowClick={(user) => setSelectedMember(user)}
+        showColumns={["name", "email", "role"]}
+      />
+      <ChangeMemberModal
+        onClose={() => setSelectedMember(null)}
+        member={selectedMember}
+        mutateMembers={membersData.mutateRegardlessOfQueryParams}
+      />
+    </div>
   );
 }

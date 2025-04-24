@@ -99,7 +99,7 @@ async function handler(
           [Op.like]: `${key}%`,
         },
       });
-      res.status(200);
+      res.status(200).end();
       return;
 
     default:

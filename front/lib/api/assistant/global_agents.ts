@@ -41,7 +41,7 @@ import {
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4O_MODEL_CONFIG,
+  GPT_4_1_MODEL_CONFIG,
   isProviderWhitelisted,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
@@ -50,12 +50,13 @@ import {
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
   O3_MINI_HIGH_REASONING_MODEL_CONFIG,
+  O3_MODEL_CONFIG,
 } from "@app/types";
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
-  providerId: GPT_4O_MODEL_CONFIG.providerId,
-  modelId: GPT_4O_MODEL_CONFIG.modelId,
+  providerId: GPT_4_1_MODEL_CONFIG.providerId,
+  modelId: GPT_4_1_MODEL_CONFIG.modelId,
   temperature: 0,
 };
 
@@ -215,6 +216,7 @@ function _getHelperGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -251,6 +253,7 @@ function _getGPT35TurboGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 function _getGPT4GlobalAgent({
@@ -276,15 +279,15 @@ function _getGPT4GlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "gpt4",
-    description: GPT_4O_MODEL_CONFIG.description,
+    description: GPT_4_1_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GPT_4O_MODEL_CONFIG.providerId,
-      modelId: GPT_4O_MODEL_CONFIG.modelId,
+      providerId: GPT_4_1_MODEL_CONFIG.providerId,
+      modelId: GPT_4_1_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [
@@ -296,6 +299,7 @@ function _getGPT4GlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 function _getO3MiniGlobalAgent({
@@ -337,6 +341,7 @@ function _getO3MiniGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 function _getO1GlobalAgent({
@@ -374,6 +379,7 @@ function _getO1GlobalAgent({
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 function _getO1MiniGlobalAgent({
@@ -411,6 +417,7 @@ function _getO1MiniGlobalAgent({
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -450,6 +457,46 @@ function _getO1HighReasoningGlobalAgent({
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
+  };
+}
+
+function _getO3GlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.O3,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "o3",
+    description: O3_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: O3_MODEL_CONFIG.providerId,
+      modelId: O3_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
+    actions: [],
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    visualizationEnabled: true,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -482,6 +529,7 @@ function _getClaudeInstantGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -521,6 +569,7 @@ function _getClaude2GlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -554,6 +603,7 @@ function _getClaude3HaikuGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -592,6 +642,7 @@ function _getClaude3OpusGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -633,6 +684,7 @@ function _getClaude3GlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -674,6 +726,7 @@ function _getClaude3_7GlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -716,6 +769,7 @@ function _getMistralLargeGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -758,6 +812,7 @@ function _getMistralMediumGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -794,6 +849,7 @@ function _getMistralSmallGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -835,6 +891,7 @@ function _getGeminiProGlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -874,6 +931,7 @@ function _getDeepSeekR1GlobalAgent({
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -941,6 +999,7 @@ function _getManagedDataSourceAgent(
       visualizationEnabled: false,
       templateId: null,
       requestedGroupIds: [],
+      tags: [],
     };
   }
 
@@ -968,6 +1027,7 @@ function _getManagedDataSourceAgent(
       visualizationEnabled: false,
       templateId: null,
       requestedGroupIds: [],
+      tags: [],
     };
   }
 
@@ -1007,6 +1067,7 @@ function _getManagedDataSourceAgent(
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -1185,6 +1246,7 @@ function _getDustGlobalAgent(
       visualizationEnabled: true,
       templateId: null,
       requestedGroupIds: [],
+      tags: [],
     };
   }
 
@@ -1212,6 +1274,7 @@ function _getDustGlobalAgent(
       visualizationEnabled: true,
       templateId: null,
       requestedGroupIds: [],
+      tags: [],
     };
   }
 
@@ -1317,6 +1380,7 @@ function _getDustGlobalAgent(
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    tags: [],
   };
 }
 
@@ -1355,6 +1419,9 @@ function getGlobalAgent(
       break;
     case GLOBAL_AGENTS_SID.O3_MINI:
       agentConfiguration = _getO3MiniGlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.O3:
+      agentConfiguration = _getO3GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
@@ -1513,6 +1580,9 @@ export async function getGlobalAgents(
   if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1
+    );
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.O3
     );
   }
   if (!flags.includes("openai_o1_mini_feature")) {

@@ -71,7 +71,7 @@ import type {
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GPT_4O_MINI_MODEL_CONFIG,
+  GPT_4_1_MINI_MODEL_CONFIG,
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
@@ -141,6 +141,7 @@ export default function AssistantBuilder({
             getDefaultAssistantState().maxStepsPerRun,
           visualizationEnabled: initialBuilderState.visualizationEnabled,
           templateId: initialBuilderState.templateId,
+          tags: initialBuilderState.tags,
         }
       : {
           ...getDefaultAssistantState(),
@@ -148,7 +149,7 @@ export default function AssistantBuilder({
           generationSettings: {
             ...getDefaultAssistantState().generationSettings,
             modelSettings: !isUpgraded(plan)
-              ? GPT_4O_MINI_MODEL_CONFIG
+              ? GPT_4_1_MINI_MODEL_CONFIG
               : CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
           },
         }
@@ -157,6 +158,7 @@ export default function AssistantBuilder({
   const [pendingAction, setPendingAction] =
     useState<AssistantBuilderPendingAction>({
       action: null,
+      previousActionName: null,
     });
 
   const {
@@ -315,7 +317,7 @@ export default function AssistantBuilder({
           previousActionName: p.action.name,
         });
       } else if (p.type === "clear_pending") {
-        setPendingAction({ action: null });
+        setPendingAction({ action: null, previousActionName: null });
       } else if (p.type === "insert") {
         if (builderState.actions.some((a) => a.name === p.action.name)) {
           return;

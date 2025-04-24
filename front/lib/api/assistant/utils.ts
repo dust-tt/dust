@@ -6,12 +6,16 @@ export function getTextContentFromMessage(
 ): string {
   const { content } = message;
 
+  if (!content) {
+    return "";
+  }
+
   if (typeof content === "string") {
     return content;
   }
 
-  if (!content) {
-    return "";
+  if (isImageContent(content)) {
+    return content.image_url.url;
   }
 
   return content

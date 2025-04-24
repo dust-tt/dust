@@ -26,11 +26,20 @@ import type {
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
+  ImageContent,
   ModelConfigurationType,
   ModelId,
   Result,
+  TextContent,
 } from "@app/types";
-import { CoreAPI, Err, isTextContent, Ok } from "@app/types";
+import {
+  assertNever,
+  CoreAPI,
+  Err,
+  isImageContent,
+  isTextContent,
+  Ok,
+} from "@app/types";
 
 const CONTEXT_SIZE_DIVISOR_FOR_INCLUDE = 4;
 
@@ -106,7 +115,10 @@ export class ConversationIncludeFileActionType extends BaseAction {
     conversation: ConversationType,
     model: ModelConfigurationType
   ): Promise<
-    Result<{ fileId: string; title: string; content: string }, string>
+    Result<
+      { fileId: string; title: string; content: ImageContent | TextContent },
+      string
+    >
   > {
     // Note on `contentFragmentVersion`: two content fragment versions are created with different
     // fileIds. So we accept here rendering content fragments that are superseded. This will mean
@@ -123,13 +135,16 @@ export class ConversationIncludeFileActionType extends BaseAction {
           return new Ok({
             fileId,
             title: f.title,
-            content: CONTENT_OUTDATED_MSG,
+            content: {
+              type: "text",
+              text: CONTENT_OUTDATED_MSG,
+            },
           });
         }
 
         const r = await renderFromAttachmentId(conversation.owner, {
           contentType: f.contentType,
-          excludeImages: true,
+          excludeImages: false,
           conversationAttachmentId: conversationAttachmentId(f),
           model,
           title: f.title,
@@ -139,14 +154,17 @@ export class ConversationIncludeFileActionType extends BaseAction {
         if (r.isErr()) {
           return new Err(`${r.error}`);
         }
-        if (!isTextContent(r.value.content[0])) {
-          return new Err(`File \`${fileId}\` has no text content`);
+        if (
+          !isTextContent(r.value.content[0]) &&
+          !isImageContent(r.value.content[0])
+        ) {
+          return new Err(`File \`${fileId}\` has no text or image content`);
         }
 
         return new Ok({
           fileId,
           title: f.title,
-          content: r.value.content[0].text,
+          content: r.value.content[0],
         });
       }
     }
@@ -172,7 +190,7 @@ export class ConversationIncludeFileActionType extends BaseAction {
     conversation: ConversationType;
     model: ModelConfigurationType;
   }): Promise<FunctionMessageTypeModel> {
-    const finalize = (content: string) => {
+    const finalize = (content: string | ImageContent[]) => {
       return {
         role: "function" as const,
         name:
@@ -183,14 +201,14 @@ export class ConversationIncludeFileActionType extends BaseAction {
       };
     };
 
-    const textRes =
+    const fileRes =
       await ConversationIncludeFileActionType.fileFromConversation(
         this.params.fileId,
         conversation,
         model
       );
-    if (textRes.isErr()) {
-      return finalize(`Error: ${textRes.error}`);
+    if (fileRes.isErr()) {
+      return finalize(`Error: ${fileRes.error}`);
     }
 
     if (this.tokensCount === null) {
@@ -217,7 +235,13 @@ export class ConversationIncludeFileActionType extends BaseAction {
       );
     }
 
-    return finalize(textRes.value.content);
+    if (isTextContent(fileRes.value.content)) {
+      return finalize(fileRes.value.content.text);
+    } else if (isImageContent(fileRes.value.content)) {
+      return finalize([fileRes.value.content]);
+    }
+
+    assertNever(fileRes.value.content);
   }
 }
 
@@ -356,31 +380,40 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
       return;
     }
 
-    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const tokensRes = await coreAPI.tokenize({
-      text: fileRes.value.content,
-      providerId: model.providerId,
-      modelId: model.modelId,
-    });
+    let tokensCount: number | null = null;
+    if (isTextContent(fileRes.value.content)) {
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const tokensRes = await coreAPI.tokenize({
+        text: fileRes.value.content.text,
+        providerId: model.providerId,
+        modelId: model.modelId,
+      });
 
-    if (tokensRes.isErr()) {
-      yield {
-        type: "conversation_include_file_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "conversation_include_file_error",
-          message: `Error including conversation file: ${tokensRes.error}`,
-        },
-      };
-      return;
+      if (tokensRes.isErr()) {
+        yield {
+          type: "conversation_include_file_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "conversation_include_file_error",
+            message: `Error including conversation file: ${tokensRes.error}`,
+          },
+        };
+        return;
+      }
+
+      tokensCount = tokensRes.value.tokens.length;
+    } else if (isImageContent(fileRes.value.content)) {
+      tokensCount = 0;
+    } else {
+      assertNever(fileRes.value.content);
     }
 
     // Store the tokens count and file title on the action model for use in the rendering of the
     // action for the model (token count) and the rendering of the action details (file title).
     await action.update({
-      tokensCount: tokensRes.value.tokens.length,
+      tokensCount,
       fileTitle:
         fileRes.value.title?.length > 255
           ? `...${fileRes.value.title?.slice(-252)}`
@@ -397,7 +430,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
         params: {
           fileId,
         },
-        tokensCount: tokensRes.value.tokens.length,
+        tokensCount,
         fileTitle: fileRes.value.title,
         functionCallId,
         functionCallName: actionConfiguration.name,

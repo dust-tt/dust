@@ -489,7 +489,9 @@ export async function deleteSpacesActivity({
     }
 
     // Soft delete all the data sources of the space.
-    const dataSources = await DataSourceResource.listBySpace(auth, space);
+    const dataSources = await DataSourceResource.listBySpace(auth, space, {
+      includeDeleted: true,
+    });
     for (const ds of dataSources) {
       await ds.delete(auth, { hardDelete: false });
     }

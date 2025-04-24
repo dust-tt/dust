@@ -37,6 +37,10 @@ export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION = `Search within the 'searchable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
 
+export const DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME =
+  "extract_conversation_files";
+export const DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION = `Extract structured data from the 'extractable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
+
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
 
@@ -49,9 +53,18 @@ export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
 
-export const MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export type RemoteMCPToolStakeLevelType =
+  (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
+export const MCP_TOOL_STAKE_LEVELS = [
+  ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "never_ask",
+] as const;
 export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
-export const DEFAULT_MCP_TOOL_STAKE_LEVEL: MCPToolStakeLevelType = "high";
+
+export const FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL =
+  "never_ask" as const;
+export const FALLBACK_MCP_TOOL_STAKE_LEVEL = "high" as const;
 
 export const MCP_VALIDATION_OUTPUTS = [
   "approved",

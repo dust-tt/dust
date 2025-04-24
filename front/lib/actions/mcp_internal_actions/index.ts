@@ -8,6 +8,7 @@ import {
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 
@@ -28,7 +29,8 @@ export const isEnabledForWorkspace = async (
 export const connectToInternalMCPServer = async (
   mcpServerId: string,
   transport: InMemoryTransport,
-  auth: Authenticator
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> => {
   const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
   if (res.isErr()) {
@@ -36,10 +38,14 @@ export const connectToInternalMCPServer = async (
       `Internal MCPServer not found for id ${mcpServerId}`
     );
   }
-  const server = getInternalMCPServer(auth, {
-    internalMCPServerName: res.value.name,
-    mcpServerId,
-  });
+  const server = getInternalMCPServer(
+    auth,
+    {
+      internalMCPServerName: res.value.name,
+      mcpServerId,
+    },
+    agentLoopContext
+  );
 
   await server.connect(transport);
 

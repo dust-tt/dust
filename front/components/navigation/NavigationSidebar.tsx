@@ -25,6 +25,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
+import { isAdmin } from "@app/types";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -69,90 +70,90 @@ export const NavigationSidebar = React.forwardRef<
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
-      <div className="flex flex-col">
+      <div className="flex flex-col pt-3">
         <AppStatusBanner />
         {subscription.endDate && (
           <SubscriptionEndBanner endDate={subscription.endDate} />
         )}
-        {subscription.paymentFailingSince && <SubscriptionPastDueBanner />}
+        {subscription.paymentFailingSince && isAdmin(owner) && (
+          <SubscriptionPastDueBanner />
+        )}
         {navs.length > 1 && (
-          <div className="pt-2">
-            <Tabs value={currentTab?.id ?? "conversations"}>
-              <TabsList className="px-2">
-                {navs.map((tab) => (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    label={tab.hideLabel ? undefined : tab.label}
-                    tooltip={tab.hideLabel ? tab.label : undefined}
-                    icon={tab.icon}
-                    href={tab.href}
-                  />
-                ))}
-              </TabsList>
+          <Tabs value={currentTab?.id ?? "conversations"}>
+            <TabsList className="px-2">
               {navs.map((tab) => (
-                <TabsContent key={tab.id} value={tab.id}>
-                  <NavigationList className="px-3">
-                    {subNavigation && tab.isCurrent(activePath) && (
-                      <>
-                        {subNavigation.map((nav) => (
-                          <React.Fragment key={`nav-${nav.label}`}>
-                            {nav.label && (
-                              <NavigationListLabel
-                                label={nav.label}
-                                variant={nav.variant}
-                              />
-                            )}
-                            {nav.menus
-                              .filter(
-                                (menu) =>
-                                  !menu.featureFlag ||
-                                  featureFlags.includes(menu.featureFlag)
-                              )
-                              .map((menu) => (
-                                <React.Fragment key={menu.id}>
-                                  <NavigationListItem
-                                    selected={menu.current}
-                                    label={menu.label}
-                                    icon={menu.icon}
-                                    href={menu.href}
-                                    target={menu.target}
-                                  />
-                                  {menu.subMenuLabel && (
-                                    <div
-                                      className={classNames(
-                                        "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
-                                        "text-muted-foreground dark:text-muted-foreground-night"
-                                      )}
-                                    >
-                                      {menu.subMenuLabel}
-                                    </div>
-                                  )}
-                                  {menu.subMenu && (
-                                    <div className="mb-2 flex flex-col">
-                                      {menu.subMenu.map((nav) => (
-                                        <NavigationListItem
-                                          key={nav.id}
-                                          selected={nav.current}
-                                          label={nav.label}
-                                          icon={nav.icon}
-                                          className="grow pl-14 pr-4"
-                                          href={nav.href ? nav.href : undefined}
-                                        />
-                                      ))}
-                                    </div>
-                                  )}
-                                </React.Fragment>
-                              ))}
-                          </React.Fragment>
-                        ))}
-                      </>
-                    )}
-                  </NavigationList>
-                </TabsContent>
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  label={tab.hideLabel ? undefined : tab.label}
+                  tooltip={tab.hideLabel ? tab.label : undefined}
+                  icon={tab.icon}
+                  href={tab.href}
+                />
               ))}
-            </Tabs>
-          </div>
+            </TabsList>
+            {navs.map((tab) => (
+              <TabsContent key={tab.id} value={tab.id}>
+                <NavigationList className="px-3">
+                  {subNavigation && tab.isCurrent(activePath) && (
+                    <>
+                      {subNavigation.map((nav) => (
+                        <React.Fragment key={`nav-${nav.label}`}>
+                          {nav.label && (
+                            <NavigationListLabel
+                              label={nav.label}
+                              variant={nav.variant}
+                            />
+                          )}
+                          {nav.menus
+                            .filter(
+                              (menu) =>
+                                !menu.featureFlag ||
+                                featureFlags.includes(menu.featureFlag)
+                            )
+                            .map((menu) => (
+                              <React.Fragment key={menu.id}>
+                                <NavigationListItem
+                                  selected={menu.current}
+                                  label={menu.label}
+                                  icon={menu.icon}
+                                  href={menu.href}
+                                  target={menu.target}
+                                />
+                                {menu.subMenuLabel && (
+                                  <div
+                                    className={classNames(
+                                      "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
+                                      "text-muted-foreground dark:text-muted-foreground-night"
+                                    )}
+                                  >
+                                    {menu.subMenuLabel}
+                                  </div>
+                                )}
+                                {menu.subMenu && (
+                                  <div className="mb-2 flex flex-col">
+                                    {menu.subMenu.map((nav) => (
+                                      <NavigationListItem
+                                        key={nav.id}
+                                        selected={nav.current}
+                                        label={nav.label}
+                                        icon={nav.icon}
+                                        className="grow pl-14 pr-4"
+                                        href={nav.href ? nav.href : undefined}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </React.Fragment>
+                            ))}
+                        </React.Fragment>
+                      ))}
+                    </>
+                  )}
+                </NavigationList>
+              </TabsContent>
+            ))}
+          </Tabs>
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>

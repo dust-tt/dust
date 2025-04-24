@@ -12,7 +12,7 @@ const SvgHome = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M4 12v9h16v-9h3L12 2 1 12h3Zm14 0v7H6v-7h12Zm-.173-2L12 4.703 6.173 10h11.654Z"
+      d="M4 21V11l8-8 8 8v10H4Zm14-2v-7.172l-6-6-6 6V19h12Z"
       clipRule="evenodd"
     />
   </svg>

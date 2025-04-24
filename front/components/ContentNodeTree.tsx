@@ -53,6 +53,9 @@ export type UseResourcesHook = (parentId: string | null) => {
   isResourcesError: boolean;
   isResourcesTruncated?: boolean;
   resourcesError?: APIError | null;
+  nextPageCursor?: string | null;
+  loadMore?: () => void;
+  isLoadingMore?: boolean;
 };
 
 export type ContentNodeTreeItemStatus<T extends ContentNode = ContentNode> = {
@@ -138,17 +141,15 @@ function ContentNodeTreeChildren({
     isResourcesLoading,
     isResourcesError,
     resourcesError,
-    isResourcesTruncated,
     totalResourceCount,
+    nextPageCursor,
+    loadMore,
+    isLoadingMore,
   } = useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
     (n) => filter.trim().length === 0 || n.title.includes(filter)
   );
-  // The count below does not take into account the search, it's: total number of nodes - number of nodes displayed.
-  const hiddenNodesCount = totalResourceCount
-    ? Math.max(0, totalResourceCount - filteredNodes.length)
-    : 0;
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
@@ -196,7 +197,7 @@ function ContentNodeTreeChildren({
   }
 
   const tree = (
-    <Tree isLoading={isResourcesLoading}>
+    <Tree isLoading={isResourcesLoading} isBoxed={isRoundedBackground}>
       {filteredNodes &&
         filteredNodes.length === 0 &&
         (emptyComponent || <Tree.Empty label="No documents" />)}
@@ -311,11 +312,6 @@ function ContentNodeTreeChildren({
           />
         );
       })}
-      {hiddenNodesCount > 0 && (
-        <Tree.Empty
-          label={`${filteredNodes.length > 0 ? "and " : ""}${hiddenNodesCount}${isResourcesTruncated ? "+" : ""} item${hiddenNodesCount > 1 ? "s" : ""}`}
-        />
-      )}
     </Tree>
   );
 
@@ -364,12 +360,24 @@ function ContentNodeTreeChildren({
         </>
       )}
       <div className="overflow-y-auto p-1">
-        {isRoundedBackground ? (
-          <div className="rounded-xl border bg-muted-background p-4 dark:bg-muted-background-night">
-            {tree}
+        {tree}
+        {nextPageCursor && (
+          <div className="mt-2 flex flex-col items-center py-2">
+            <div className="mb-2 text-center text-xs text-gray-500">
+              {`Showing ${filteredNodes.length} of ${totalResourceCount ?? filteredNodes.length} items`}
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              label={isLoadingMore ? "Loading..." : "Load More"}
+              disabled={isResourcesLoading || isLoadingMore}
+              onClick={() => {
+                if (loadMore) {
+                  loadMore();
+                }
+              }}
+            />
           </div>
-        ) : (
-          tree
         )}
       </div>
     </>

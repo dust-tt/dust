@@ -103,4 +103,6 @@ async function handler(
   return;
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(handler, {
+  isStreaming: true,
+});

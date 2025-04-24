@@ -175,33 +175,38 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
   GONG: [],
 };
 
-// If we get other categories of mimeTypes we'll do the same as above and add a templated variable.
-function generateConfigurableResourcesMimeTypes<T extends Uppercase<string>[]>({
+function generateToolMimeTypes<
+  P extends Uppercase<string>,
+  T extends Uppercase<string>[]
+>({
+  category,
   resourceTypes,
 }: {
+  category: P;
   resourceTypes: T;
 }): {
-  [K in T[number]]: `application/vnd.dust.configuration.${Lowercase<
-    UnderscoreToDash<K>
-  >}`;
+  [K in T[number]]: `application/vnd.dust.${Lowercase<
+    UnderscoreToDash<P>
+  >}.${Lowercase<UnderscoreToDash<K>>}`;
 } {
   return resourceTypes.reduce(
     (acc, s) => ({
       ...acc,
-      [s]: `application/vnd.dust.configuration.${s
+      [s]: `application/vnd.dust.${category
         .replace(/_/g, "-")
-        .toLowerCase()}`,
+        .toLowerCase()}.${s.replace(/_/g, "-").toLowerCase()}`,
     }),
     {} as {
-      [K in T[number]]: `application/vnd.dust.configuration.${Lowercase<
-        UnderscoreToDash<K>
-      >}`;
+      [K in T[number]]: `application/vnd.dust.${Lowercase<
+        UnderscoreToDash<P>
+      >}.${Lowercase<UnderscoreToDash<K>>}`;
     }
   );
 }
 
-const TOOL_INPUT_MIME_TYPES = {
-  CONFIGURATION: generateConfigurableResourcesMimeTypes({
+const TOOL_MIME_TYPES = {
+  TOOL_INPUT: generateToolMimeTypes({
+    category: "TOOL_INPUT",
     resourceTypes: [
       "DATA_SOURCE",
       "TABLE",
@@ -211,11 +216,21 @@ const TOOL_INPUT_MIME_TYPES = {
       "BOOLEAN",
     ],
   }),
+  TOOL_OUTPUT: generateToolMimeTypes({
+    category: "TOOL_OUTPUT",
+    resourceTypes: [
+      "DATA_SOURCE_SEARCH_QUERY",
+      "DATA_SOURCE_SEARCH_RESULT",
+      "FILE",
+      "THINKING",
+      "SQL_QUERY",
+    ],
+  }),
 };
 
 export const INTERNAL_MIME_TYPES = {
   ...CONTENT_NODE_MIME_TYPES,
-  ...TOOL_INPUT_MIME_TYPES,
+  ...TOOL_MIME_TYPES,
 };
 
 export const INTERNAL_MIME_TYPES_VALUES = Object.values(
@@ -265,8 +280,8 @@ export type SalesforceMimeType =
 export type GongMimeType =
   (typeof INTERNAL_MIME_TYPES.GONG)[keyof typeof INTERNAL_MIME_TYPES.GONG];
 
-export type InternalConfigurationMimeType =
-  (typeof INTERNAL_MIME_TYPES.CONFIGURATION)[keyof typeof INTERNAL_MIME_TYPES.CONFIGURATION];
+export type InternalToolInputMimeType =
+  (typeof INTERNAL_MIME_TYPES.TOOL_INPUT)[keyof typeof INTERNAL_MIME_TYPES.TOOL_INPUT];
 
 export type IncludableInternalMimeType =
   (typeof INCLUDABLE_INTERNAL_MIME_TYPES_VALUES)[number];

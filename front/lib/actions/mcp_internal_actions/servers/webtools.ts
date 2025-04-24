@@ -3,18 +3,17 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import type { MCPServerDefinitionType } from "@app/lib/api/mcp";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { browseUrl } from "@app/lib/utils/webbrowse";
+import { browseUrls } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
 import type { OAuthProvider } from "@app/types";
 
 export const provider: OAuthProvider = "google_drive" as const;
 export const serverInfo: MCPServerDefinitionType = {
-  name: "web_search_&_browse",
+  name: "web_search_&_browse_v2",
   version: "1.0.0",
   description:
     "Agent can search (Google) and retrieve information from specific websites.",
-  visual: "https://dust.tt/static/droidavatar/Droid_Teal_7.jpg",
+  icon: "ActionGlobeAltIcon",
   authorization: {
     provider,
     use_case: "connection" as const,
@@ -33,13 +32,23 @@ const createServer = (): McpServer => {
         .describe(
           "The query used to perform the google search. If requested by the user, use the google syntax `site:` to restrict the the search to a particular website or domain."
         ),
+      page: z
+        .number()
+        .optional()
+        .describe(
+          "A 1-indexed page number used to paginate through the search results. Should only be provided if page is stricly greater than 1 in order to go deeper into the search results for a specific query."
+        ),
     },
-    async ({ query }) => {
-      const websearchRes = await webSearch({ provider: "serpapi", query });
+    async ({ query, page }) => {
+      const websearchRes = await webSearch({
+        provider: "serpapi",
+        query,
+        page,
+      });
 
       if (websearchRes.isErr()) {
         return {
-          isError: false,
+          isError: true,
           content: [
             {
               type: "text",
@@ -68,25 +77,13 @@ const createServer = (): McpServer => {
       urls: z.string().array().describe("List of urls to browse"),
     },
     async ({ urls }) => {
-      const content: CallToolResult["content"] = await concurrentExecutor(
-        urls,
-        async (url) => {
-          const res = await browseUrl(url);
-
-          if (res.isErr()) {
-            return {
-              type: "text",
-              text: `Failed to fetch url "${url}": ${res.error.message}`,
-            };
-          }
-
-          return {
-            type: "text",
-            text: JSON.stringify(res.value),
-          };
-        },
-        { concurrency: 4 }
-      );
+      const results = await browseUrls(urls);
+      const content: CallToolResult["content"] = results.map((result) => {
+        return {
+          type: "text",
+          text: JSON.stringify(result),
+        };
+      });
 
       return {
         isError: false,

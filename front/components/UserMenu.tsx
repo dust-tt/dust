@@ -1,6 +1,7 @@
 import {
   Avatar,
   ChevronDownIcon,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -13,38 +14,36 @@ import {
   DropdownMenuTrigger,
   Icon,
   LightbulbIcon,
-  LightModeIcon,
   LogoutIcon,
   StarIcon,
-  TrashIcon,
+  UserGroupIcon,
   UserIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
-import { BugIcon, TestTubeIcon, UserCogIcon } from "lucide-react";
+import { BugIcon, TestTubeIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
-import { useDeleteMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { UserType, WorkspaceType } from "@app/types";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 export function UserMenu({
   user,
   owner,
 }: {
-  user: UserType;
+  user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
 }) {
   const router = useRouter();
-  const { featureFlags, hasFeature } = useFeatureFlags({
+  const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const { deleteMetadata: deleteServerValidationMetadata } =
-    useDeleteMetadata("toolsValidations");
 
   const sendNotification = useSendNotification();
+  const { setNavigationSelection } = usePersistedNavigationSelection();
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -69,12 +68,17 @@ export function UserMenu({
     [owner, sendNotification, user, featureFlags]
   );
 
-  const theme = localStorage.getItem("theme") || "light";
+  // Check if user has multiple workspaces
+  const hasMultipleWorkspaces = useMemo(() => {
+    return (
+      "workspaces" in user && user.workspaces && user.workspaces.length > 1
+    );
+  }, [user]);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <div className="flex items-center gap-2">
+        <div className="group flex max-w-[200px] cursor-pointer items-center gap-2">
           <span className="sr-only">Open user menu</span>
           <Avatar
             size="sm"
@@ -83,11 +87,25 @@ export function UserMenu({
                 ? user.image
                 : "https://gravatar.com/avatar/anonymous?d=mp"
             }
-            onClick={() => {
-              "clickable";
-            }}
+            clickable
           />
-          <Icon visual={ChevronDownIcon} />
+          <div className="flex flex-col items-start">
+            <span
+              className={cn(
+                "heading-sm transition-colors duration-200",
+                "text-foreground group-hover:text-primary-600 group-active:text-primary-950 dark:text-foreground-night dark:group-hover:text-muted-foreground-night dark:group-active:text-primary-700"
+              )}
+            >
+              {user.firstName}
+            </span>
+            <span className="-mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {owner.name}
+            </span>
+          </div>
+          <Icon
+            visual={ChevronDownIcon}
+            className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
+          />
         </div>
       </DropdownMenuTrigger>
 
@@ -99,108 +117,97 @@ export function UserMenu({
           href={`/w/${owner.sId}/labs`}
         />
 
-        {showDebugTools(featureFlags) && (
-          <>
-            <DropdownMenuLabel label="Dev Tools" />
-            {router.route === "/w/[wId]/assistant/[cId]" && (
-              <DropdownMenuItem
-                label="Debug conversation"
-                onClick={() => {
-                  const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
-                  const match = window.location.href.match(regexp);
-                  if (match) {
-                    void router.push(
-                      `/poke/${match[1]}/conversations/${match[2]}`
-                    );
-                  }
-                }}
-                icon={BugIcon}
-              />
-            )}
-            {!isOnlyAdmin(owner) && (
-              <DropdownMenuItem
-                label="Become Admin"
-                onClick={() => forceRoleUpdate("admin")}
-                icon={StarIcon}
-              />
-            )}
-            {!isOnlyBuilder(owner) && (
-              <DropdownMenuItem
-                label="Become Builder"
-                onClick={() => forceRoleUpdate("builder")}
-                icon={LightbulbIcon}
-              />
-            )}
-            {!isOnlyUser(owner) && (
-              <DropdownMenuItem
-                label="Become User"
-                onClick={() => forceRoleUpdate("user")}
-                icon={UserIcon}
-              />
-            )}
-          </>
-        )}
-
-        <DropdownMenuLabel label="Preferences" />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup value={theme}>
-              <DropdownMenuRadioItem
-                value="light"
-                label="Light"
-                onClick={() => {
-                  localStorage.setItem("theme", "light");
-                  window.location.reload();
-                }}
-              />
-              <DropdownMenuRadioItem
-                value="dark"
-                label="Dark"
-                onClick={() => {
-                  localStorage.setItem("theme", "dark");
-                  window.location.reload();
-                }}
-              />
-              <DropdownMenuRadioItem
-                value="system"
-                label="System"
-                onClick={() => {
-                  localStorage.setItem("theme", "system");
-                  window.location.reload();
-                }}
-              />
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-
-        {hasFeature("mcp_actions") && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Metadata" icon={UserCogIcon} />
-            <DropdownMenuSubContent>
-              <DropdownMenuItem
-                label="Delete tool approbation history"
-                onClick={() => {
-                  void deleteServerValidationMetadata();
-                  sendNotification({
-                    title: "Success !",
-                    description: "Tool approbation history deleted.",
-                    type: "success",
-                  });
-                }}
-                icon={TrashIcon}
-              />
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )}
         <DropdownMenuLabel label="Account" />
         <DropdownMenuItem
+          label="Profile"
+          icon={UserIcon}
+          href={`/w/${owner.sId}/me`}
+        />
+
+        <DropdownMenuItem
           onClick={() => {
-            void router.push("/api/auth/logout");
+            window.location.href = "/api/auth/logout";
           }}
           icon={LogoutIcon}
           label="Sign&nbsp;out"
         />
+
+        {(hasMultipleWorkspaces || showDebugTools(featureFlags)) && (
+          <DropdownMenuLabel label="Advanced" />
+        )}
+
+        {hasMultipleWorkspaces && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Workspace" icon={UserGroupIcon} />
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup value={owner.name}>
+                {"workspaces" in user &&
+                  user.workspaces.map((w) => (
+                    <DropdownMenuRadioItem
+                      key={w.sId}
+                      value={w.name}
+                      onClick={async () => {
+                        await setNavigationSelection({
+                          lastWorkspaceId: w.sId,
+                        });
+                        if (w.id !== owner.id) {
+                          await router
+                            .push(`/w/${w.sId}/assistant/new`)
+                            .then(() => router.reload());
+                        }
+                      }}
+                    >
+                      {w.name}
+                    </DropdownMenuRadioItem>
+                  ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
+
+        {showDebugTools(featureFlags) && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Dev Tools" icon={BugIcon} />
+            <DropdownMenuSubContent>
+              {router.route === "/w/[wId]/assistant/[cId]" && (
+                <DropdownMenuItem
+                  label="Debug conversation"
+                  onClick={() => {
+                    const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
+                    const match = window.location.href.match(regexp);
+                    if (match) {
+                      void router.push(
+                        `/poke/${match[1]}/conversations/${match[2]}`
+                      );
+                    }
+                  }}
+                  icon={BugIcon}
+                />
+              )}
+              {!isOnlyAdmin(owner) && (
+                <DropdownMenuItem
+                  label="Become Admin"
+                  onClick={() => forceRoleUpdate("admin")}
+                  icon={StarIcon}
+                />
+              )}
+              {!isOnlyBuilder(owner) && (
+                <DropdownMenuItem
+                  label="Become Builder"
+                  onClick={() => forceRoleUpdate("builder")}
+                  icon={LightbulbIcon}
+                />
+              )}
+              {!isOnlyUser(owner) && (
+                <DropdownMenuItem
+                  label="Become User"
+                  onClick={() => forceRoleUpdate("user")}
+                  icon={UserIcon}
+                />
+              )}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

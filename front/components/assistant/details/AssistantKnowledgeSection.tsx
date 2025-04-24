@@ -167,60 +167,59 @@ export function AssistantKnowledgeSection({
     return acc;
   }, [categorizedActions.queryTables, dataSourceViews]);
 
-  if (
-    Object.values(retrievalByDataSources).length === 0 &&
-    Object.values(queryTableByDataSources).length === 0
-  ) {
+  const hasDocuments = Object.values(retrievalByDataSources).length > 0;
+  const hasTables = Object.values(queryTableByDataSources).length > 0;
+
+  if (!hasDocuments && !hasTables) {
     return null;
   }
+
+  const dataSourcesDocuments = Object.values(retrievalByDataSources).map(
+    (dataSources, index) => (
+      <div className="flex flex-col gap-2" key={`retrieval-${index}`}>
+        <DataSourceViewsSection
+          owner={owner}
+          dataSourceViews={dataSourceViews}
+          dataSourceConfigurations={[dataSources]}
+          viewType="document"
+        />
+      </div>
+    )
+  );
+
+  const dataSourcesTables = Object.values(queryTableByDataSources).map(
+    (dataSources, index) => (
+      <div className="flex flex-col gap-2" key={`query-tables-${index}`}>
+        <DataSourceViewsSection
+          owner={owner}
+          dataSourceViews={dataSourceViews}
+          dataSourceConfigurations={[dataSources]}
+          viewType="table"
+        />
+      </div>
+    )
+  );
 
   return (
     <div className="flex flex-col gap-5">
       <div className="heading-lg text-foreground dark:text-foreground-night">
         Knowledge
       </div>
-      <div className="rounded-xl border bg-muted-background p-2 dark:bg-muted-background-night">
-        <Tree>
-          {Object.values(retrievalByDataSources).length > 0 && (
-            <Tree.Item label="Documents" visual={DocumentIcon}>
-              {Object.values(retrievalByDataSources).map(
-                (dataSources, index) => (
-                  <div
-                    className="flex flex-col gap-2"
-                    key={`retrieval-${index}`}
-                  >
-                    <DataSourceViewsSection
-                      owner={owner}
-                      dataSourceViews={dataSourceViews}
-                      dataSourceConfigurations={[dataSources]}
-                      viewType="document"
-                    />
-                  </div>
-                )
-              )}
-            </Tree.Item>
-          )}
-          {Object.values(queryTableByDataSources).length > 0 && (
-            <Tree.Item label="Tables" visual={TableIcon}>
-              {Object.values(queryTableByDataSources).map(
-                (dataSources, index) => (
-                  <div
-                    className="flex flex-col gap-2"
-                    key={`query-tables-${index}`}
-                  >
-                    <DataSourceViewsSection
-                      owner={owner}
-                      dataSourceViews={dataSourceViews}
-                      dataSourceConfigurations={[dataSources]}
-                      viewType="table"
-                    />
-                  </div>
-                )
-              )}
-            </Tree.Item>
-          )}
+      {hasDocuments && hasTables ? (
+        <Tree isBoxed>
+          <Tree.Item label="Documents" visual={DocumentIcon}>
+            {dataSourcesDocuments}
+          </Tree.Item>
+          <Tree.Item label="Tables" visual={TableIcon}>
+            {dataSourcesTables}
+          </Tree.Item>
         </Tree>
-      </div>
+      ) : (
+        <Tree isBoxed>
+          {hasDocuments && dataSourcesDocuments}
+          {hasTables && dataSourcesTables}
+        </Tree>
+      )}
     </div>
   );
 }

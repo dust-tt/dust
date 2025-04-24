@@ -75,7 +75,7 @@ async function handler(
   }
 
   // We only allow setting and retrieving `botEnabled` (Slack), `codeSyncEnabled` (GitHub),
-  // `intercomConversationsNotesSyncEnabled` (Intercom) and `zendeskSyncUnresolvedTicketsEnabled` (Zendesk).
+  // `intercomConversationsNotesSyncEnabled` (Intercom), `zendeskSyncUnresolvedTicketsEnabled` and `zendeskHideCustomerDetails`.
   // This is mainly to prevent users from enabling other configs that are not released (e.g., google_drive `pdfEnabled`).
   if (
     ![
@@ -83,6 +83,7 @@ async function handler(
       "codeSyncEnabled",
       "intercomConversationsNotesSyncEnabled",
       "zendeskSyncUnresolvedTicketsEnabled",
+      "zendeskHideCustomerDetails",
       "gongRetentionPeriodDays",
     ].includes(configKey)
   ) {

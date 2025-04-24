@@ -1,24 +1,68 @@
-import { ActionIcons } from "@dust-tt/sparkle";
-import React from "react";
+import {
+  ActionBrainIcon,
+  ActionCloudArrowLeftRightIcon,
+  ActionDocumentTextIcon,
+  ActionEmotionLaughIcon,
+  ActionGitBranchIcon,
+  ActionGlobeAltIcon,
+  ActionIcons,
+  ActionImageIcon,
+  ActionLockIcon,
+  ActionMagnifyingGlassIcon,
+  ActionRobotIcon,
+  ActionTableIcon,
+  Avatar,
+  GithubLogo,
+  HubspotLogo,
+} from "@dust-tt/sparkle";
+import type React from "react";
+import type { ComponentProps } from "react";
 
 import type { MCPServerType } from "@app/lib/api/mcp";
 
 export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
 
-export const ALLOWED_ICONS = Object.keys(ActionIcons);
+export const REMOTE_ALLOWED_ICONS = Object.keys(ActionIcons);
 
-export type AllowedIconType = keyof typeof ActionIcons;
+export const InternalActionIcons = {
+  ActionRobotIcon,
+  ActionImageIcon,
+  ActionDocumentTextIcon,
+  ActionGlobeAltIcon,
+  ActionGitBranchIcon,
+  ActionLockIcon,
+  ActionCloudArrowLeftRightIcon,
+  ActionEmotionLaughIcon,
+  ActionTableIcon,
+  ActionBrainIcon,
+  ActionMagnifyingGlassIcon,
+  GithubLogo,
+  HubspotLogo,
+};
 
-export const isAllowedIconType = (icon: string): icon is AllowedIconType =>
-  ALLOWED_ICONS.includes(icon as AllowedIconType);
+export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
 
-export const isValidIconUrl = (icon: string): icon is `https://${string}` =>
-  icon.startsWith("https://");
+export type RemoteAllowedIconType = keyof typeof ActionIcons;
 
-export const getVisual = (mcpServer: MCPServerType) => {
-  if (isAllowedIconType(mcpServer.visual)) {
-    return React.createElement(ActionIcons[mcpServer.visual]);
+export const isRemoteAllowedIconType = (
+  icon: string
+): icon is RemoteAllowedIconType =>
+  REMOTE_ALLOWED_ICONS.includes(icon as RemoteAllowedIconType);
+
+export type InternalAllowedIconType = keyof typeof InternalActionIcons;
+
+export const isInternalAllowedIcon = (
+  icon: string
+): icon is InternalAllowedIconType =>
+  INTERNAL_ALLOWED_ICONS.includes(icon as InternalAllowedIconType);
+
+export const getAvatar = (
+  mcpServer: MCPServerType,
+  size: ComponentProps<typeof Avatar>["size"] = "sm"
+): React.ReactNode => {
+  if (isRemoteAllowedIconType(mcpServer.icon)) {
+    return <Avatar icon={ActionIcons[mcpServer.icon]} size={size} />;
   }
 
-  return mcpServer.visual;
+  return <Avatar icon={InternalActionIcons[mcpServer.icon]} size={size} />;
 };

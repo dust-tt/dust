@@ -1,5 +1,6 @@
 import moment from "moment-timezone";
 import { z } from "zod";
+import type { JSONSchema7 } from "json-schema";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 
@@ -31,9 +32,13 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-2024-08-06"
   | "gpt-4o"
   | "gpt-4o-mini"
+  | "gpt-4.1-2025-04-14"
+  | "gpt-4.1-mini-2025-04-14"
   | "o1"
   | "o1-mini"
+  | "o3"
   | "o3-mini"
+  | "o4-mini"
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
@@ -709,7 +714,7 @@ const RetrievalDocumentChunkTypeSchema = z.object({
   text: z.string(),
 });
 
-const RetrievalDocumentTypeSchema = z.object({
+export const RetrievalDocumentTypeSchema = z.object({
   chunks: z.array(RetrievalDocumentChunkTypeSchema),
   documentId: z.string(),
   dataSourceView: DataSourceViewSchema.nullable(),
@@ -743,13 +748,7 @@ export type RetrievalActionPublicType = z.infer<
   typeof RetrievalActionTypeSchema
 >;
 
-const ProcessSchemaAllowedTypesSchema = z.enum(["string", "number", "boolean"]);
-
-const ProcessSchemaPropertySchema = z.object({
-  name: z.string(),
-  type: ProcessSchemaAllowedTypesSchema,
-  description: z.string(),
-});
+const ProcessSchemaPropertySchema = z.union([z.custom<JSONSchema7>(), z.null()]);
 
 const ProcessActionOutputsSchema = z.object({
   data: z.array(z.unknown()),
@@ -764,7 +763,7 @@ const ProcessActionTypeSchema = BaseActionSchema.extend({
   params: z.object({
     relativeTimeFrame: TimeFrameSchema.nullable(),
   }),
-  schema: z.array(ProcessSchemaPropertySchema),
+  jsonSchema: ProcessSchemaPropertySchema,
   outputs: ProcessActionOutputsSchema.nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
@@ -788,34 +787,36 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
-  | "usage_data_api"
-  | "okta_enterprise_connection"
+  | "advanced_notion_management"
+  | "agent_discovery"
+  | "claude_3_7_reasoning"
   | "co_edition"
-  | "labs_transcripts"
+  | "deepseek_feature"
+  | "deepseek_r1_global_agent_feature"
+  | "dev_mcp_actions"
+  | "disable_run_logs"
+  | "document_tracker"
+  | "experimental_mcp_actions"
+  | "force_gdrive_labels_scope"
+  | "google_ai_studio_experimental_models_feature"
+  | "index_private_slack_channel"
   | "labs_connection_hubspot"
   | "labs_connection_linear"
-  | "labs_trackers"
   | "labs_salesforce_personal_connections"
-  | "document_tracker"
-  | "openai_o1_feature"
-  | "openai_o1_mini_feature"
-  | "openai_o1_high_reasoning_feature"
-  | "openai_o1_custom_assistants_feature"
-  | "openai_o1_high_reasoning_custom_assistants_feature"
-  | "deepseek_feature"
-  | "google_ai_studio_experimental_models_feature"
-  | "snowflake_connector_feature"
-  | "index_private_slack_channel"
-  | "disable_run_logs"
-  | "show_debug_tools"
-  | "deepseek_r1_global_agent_feature"
-  | "salesforce_feature"
-  | "advanced_notion_management"
-  | "search_knowledge_builder"
-  | "force_gdrive_labels_scope"
-  | "claude_3_7_reasoning"
+  | "labs_trackers"
+  | "labs_transcripts"
   | "mcp_actions"
-  | "dev_mcp_actions"
+  | "okta_enterprise_connection"
+  | "openai_o1_custom_assistants_feature"
+  | "openai_o1_feature"
+  | "openai_o1_high_reasoning_custom_assistants_feature"
+  | "openai_o1_high_reasoning_feature"
+  | "openai_o1_mini_feature"
+  | "salesforce_feature"
+  | "search_knowledge_builder"
+  | "show_debug_tools"
+  | "snowflake_connector_feature"
+  | "usage_data_api"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1328,7 +1329,7 @@ const MCPApproveExecutionEventSchema = z.object({
   messageId: z.string(),
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
-  stake: z.optional(z.enum(["low", "high"])),
+  stake: z.optional(z.enum(["low", "high", "never_ask"])),
   metadata: MCPValidationMetadataSchema,
 });
 
@@ -2810,7 +2811,7 @@ export const ACTION_RUNNING_LABELS: Record<
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
-  tool_action: "Calling MCP Server",
+  tool_action: "Using a tool",
 };
 
 // MCP Related.

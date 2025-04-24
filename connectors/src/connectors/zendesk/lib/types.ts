@@ -1,6 +1,4 @@
-import type { ZendeskClientOptions } from "node-zendesk";
-
-interface ZendeskFetchedBrand {
+export interface ZendeskFetchedBrand {
   url: string;
   id: number;
   name: string;
@@ -19,13 +17,7 @@ interface ZendeskFetchedBrand {
   updated_at: string;
 }
 
-interface Response {
-  status: number;
-  headers: object;
-  statusText: string;
-}
-
-interface ZendeskFetchedSection {
+export interface ZendeskFetchedSection {
   category_id?: number;
   created_at?: string;
   description?: string;
@@ -42,7 +34,7 @@ interface ZendeskFetchedSection {
   url?: string;
 }
 
-interface ZendeskFetchedCategory {
+export interface ZendeskFetchedCategory {
   id: number;
   url: string;
   html_url: string;
@@ -85,7 +77,7 @@ export interface ZendeskFetchedArticle {
   user_segment_ids: number[];
 }
 
-interface ZendeskFetchedTicket {
+export interface ZendeskFetchedTicket {
   assignee_id: number;
   collaborator_ids: number[];
   created_at: string; // ISO 8601 date string
@@ -128,7 +120,7 @@ interface ZendeskFetchedTicket {
   };
 }
 
-interface ZendeskFetchedTicketComment {
+export interface ZendeskFetchedTicketComment {
   id: number;
   body: string;
   html_body: string;
@@ -143,7 +135,7 @@ interface ZendeskFetchedTicketComment {
   }[];
 }
 
-interface ZendeskFetchedUser {
+export interface ZendeskFetchedUser {
   active: boolean;
   alias: string;
   chat_only: boolean;
@@ -184,64 +176,4 @@ interface ZendeskFetchedUser {
   updated_at: string; // ISO 8601 date string
   url: string;
   verified: boolean;
-}
-
-declare module "node-zendesk" {
-  interface Client {
-    config: ZendeskClientOptions;
-    brand: {
-      list: () => Promise<{
-        response: Response;
-        result: ZendeskFetchedBrand[];
-      }>;
-      show: (brandId: number) => Promise<{
-        response: Response;
-        result: { brand: ZendeskFetchedBrand };
-      }>;
-    };
-    helpcenter: {
-      categories: {
-        list: () => Promise<ZendeskFetchedCategory[]>;
-        show: (
-          categoryId: number
-        ) => Promise<{ response: Response; result: ZendeskFetchedCategory }>;
-      };
-      sections: {
-        list: () => Promise<ZendeskFetchedSection[]>;
-        listByCategory: (
-          categoryId: number
-        ) => Promise<ZendeskFetchedSection[]>;
-        show: (
-          sectionId: number
-        ) => Promise<{ response: Response; result: ZendeskFetchedSection }>;
-      };
-      articles: {
-        list: () => Promise<ZendeskFetchedArticle[]>;
-        show: (
-          articleId: number
-        ) => Promise<{ response: Response; result: ZendeskFetchedArticle }>;
-        listByCategory: (
-          categoryId: number
-        ) => Promise<ZendeskFetchedArticle[]>;
-        listSinceStartTime: (
-          startTime: number
-        ) => Promise<ZendeskFetchedArticle[]>;
-      };
-    };
-    tickets: {
-      list: () => Promise<ZendeskFetchedTicket[]>;
-      show: (
-        ticketId: number
-      ) => Promise<{ response: Response; result: ZendeskFetchedTicket }>;
-      getComments: (ticketId: number) => Promise<ZendeskFetchedTicketComment[]>;
-    };
-    users: {
-      list: () => Promise<ZendeskFetchedUser[]>;
-      show: (
-        userId: number
-      ) => Promise<{ response: Response; result: ZendeskFetchedUser }>;
-    };
-  }
-
-  export function createClient(options: object): Client;
 }

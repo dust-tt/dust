@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,7 +11,7 @@ import { assertNever } from "@app/types";
 
 export type GetMCPServerToolsPermissionsResponseBody = {
   permissions: {
-    [toolId: string]: MCPToolStakeLevelType;
+    [toolId: string]: RemoteMCPToolStakeLevelType;
   };
 };
 
@@ -56,7 +56,7 @@ async function handler(
             await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
 
           const permissions = resources.reduce(
-            (acc: { [key: string]: MCPToolStakeLevelType }, resource) => {
+            (acc: { [key: string]: RemoteMCPToolStakeLevelType }, resource) => {
               acc[resource.toolName] = resource.permission;
               return acc;
             },

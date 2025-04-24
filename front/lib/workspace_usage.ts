@@ -294,6 +294,7 @@ export async function getUserUsageData(
   });
   const userUsage: UserUsageQueryResult[] = userMessages.map((result) => {
     return {
+      userId: (result as unknown as { userId: string }).userId,
       userName: (result as unknown as { userContextFullName: string })
         .userContextFullName,
       userEmail: (result as unknown as { userContextEmail: string })

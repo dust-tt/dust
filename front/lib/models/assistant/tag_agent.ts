@@ -2,6 +2,7 @@ import type {
   BelongsToGetAssociationMixin,
   CreationOptional,
   ForeignKey,
+  NonAttribute,
 } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -16,7 +17,10 @@ export class TagAgentModel extends WorkspaceAwareModel<TagAgentModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare tag: NonAttribute<TagModel>;
   declare tagId: ForeignKey<TagModel["id"]>;
+
+  declare agentConfiguration: NonAttribute<AgentConfiguration>;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
   // workspaceId is inherited from WorkspaceAwareModel
 
@@ -59,6 +63,7 @@ TagAgentModel.init(
         fields: ["tagId", "agentConfigurationId"],
       },
       { fields: ["agentConfigurationId"] },
+      { fields: ["workspaceId", "agentConfigurationId"] },
     ],
   }
 );

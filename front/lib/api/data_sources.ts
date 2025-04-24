@@ -15,6 +15,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -100,6 +101,28 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
     });
   }
 
+  // Soft delete all ds views for that data source.
+  const views = await DataSourceViewResource.listForDataSources(auth, [
+    dataSource,
+  ]);
+  await concurrentExecutor(
+    views,
+    async (view) => {
+      const r = await view.delete(auth, { transaction, hardDelete: false });
+      if (r.isErr()) {
+        logger.error(
+          { viewId: view.id, error: r.error },
+          "Error deleting data source view"
+        );
+        throw r.error;
+      }
+    },
+    {
+      concurrency: 8,
+    }
+  );
+
+  // Soft delete the data source.
   await dataSource.delete(auth, { transaction, hardDelete: false });
 
   // The scrubbing workflow will delete associated resources and hard delete the data source.
@@ -139,11 +162,45 @@ export async function hardDeleteDataSource(
     await Promise.all(
       chunk.map((f) => {
         return (async () => {
-          await f.delete();
+          try {
+            await f.delete();
+          } catch (error) {
+            if (isGCSNotFoundError(error)) {
+              logger.warn(
+                {
+                  path: f.name,
+                  dataSourceId: dataSource.sId,
+                  dustAPIProjectId,
+                },
+                "File not found during deletion, skipping"
+              );
+            } else {
+              throw error;
+            }
+          }
         })();
       })
     );
   }
+
+  // Ensure all content fragments from dsviews are expired.
+  // Only used temporarily to unstuck queues -- TODO(fontanierh)
+  const views = await DataSourceViewResource.listForDataSources(
+    auth,
+    [dataSource],
+    {
+      includeDeleted: true,
+    }
+  );
+  await concurrentExecutor(
+    views,
+    async (view) => {
+      await view.expireContentFragments(auth);
+    },
+    {
+      concurrency: 8,
+    }
+  );
 
   // Delete all connectors associated with the data source.
   if (dataSource.connectorId && dataSource.connectorProvider) {
@@ -242,7 +299,7 @@ export async function augmentDataSourceWithConnectorDetails(
       fetchConnectorError = true;
       fetchConnectorErrorMessage = statusRes.error.message;
     } else {
-      connector = statusRes.value;
+      connector = { ...statusRes.value, connectionId: null };
     }
   } catch (e) {
     // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying

@@ -1,10 +1,10 @@
+import type { ConfigurableToolInputType } from "@dust-tt/client";
+import Ajv from "ajv";
 import type {
   JSONSchema7 as JSONSchema,
   JSONSchema7Definition as JSONSchemaDefinition,
 } from "json-schema";
 import { isEqual } from "lodash";
-
-import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 /**
  * Type guard to check if a value is a JSONSchema object
@@ -224,4 +224,25 @@ export function setValueAtPath(
   }
 
   current[path[path.length - 1]] = value;
+}
+
+export function isValidJsonSchema(value: string | null | undefined): {
+  isValid: boolean;
+  error?: string;
+} {
+  if (!value) {
+    return { isValid: true };
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    const ajv = new Ajv();
+    ajv.compile(parsed); // Throws an error if the schema is invalid
+    return { isValid: true };
+  } catch (e) {
+    return {
+      isValid: false,
+      error: e instanceof Error ? e.message : "Invalid JSON schema",
+    };
+  }
 }

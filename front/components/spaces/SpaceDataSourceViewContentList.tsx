@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Spinner,
+  Tooltip,
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -78,16 +79,60 @@ const columnsBreakpoints = {
   spaces: "md" as const,
 };
 
+function isMicrosoftNode(row: RowData) {
+  return row.dataSourceView.dataSource.connectorProvider === "microsoft";
+}
+
+/**
+ * Microsoft root folders' titles do not contain the sites / unsynced parent
+ * directory information, which had caused usability issues, see
+ * https://github.com/dust-tt/tasks/issues/2619
+ *
+ * As such we extract title from the sourceUrl rather than using titles
+ * directly.
+ *
+ * TODO(pr, 2025-04-18): if solution is satisfactory, change the title field for
+ * microsoft directly in connectors + backfill, then remove this logic.
+ */
+function getTitleForMicrosoftNode(row: RowData) {
+  if (
+    row.parentInternalId !== null ||
+    row.type !== "folder" ||
+    !row.sourceUrl
+  ) {
+    return row.title;
+  }
+  // remove the trailing url in parenthesis
+  //title = title.replace(/\s*\([^\)\()]*\)\s*$/, "");
+
+  // extract the title from the sourceUrl
+  const url = new URL(row.sourceUrl);
+  const decodedPathname = decodeURIComponent(url.pathname);
+  const title = decodedPathname.split("/").slice(2).join("/");
+  return title;
+}
 const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
   const columns: ColumnDef<RowData, any>[] = [];
   columns.push({
     header: "Name",
-    accessorKey: "title",
     id: "title",
-    sortingFn: "text", // built-in sorting function case-insensitive
+    accessorFn: (row) => {
+      if (isMicrosoftNode(row)) {
+        return getTitleForMicrosoftNode(row);
+      }
+      return row.title;
+    },
+    sortingFn: (a, b, columnId) => {
+      const aValue = a.getValue(columnId) as string;
+      const bValue = b.getValue(columnId) as string;
+      return aValue.localeCompare(bValue) > 0 ? -1 : 1;
+    },
     cell: (info: CellContext<RowData, string>) => (
       <DataTable.CellContent icon={info.row.original.icon}>
-        <span>{info.getValue()}</span>
+        <Tooltip
+          label={info.getValue()}
+          trigger={<span>{info.getValue()}</span>}
+        />
       </DataTable.CellContent>
     ),
   });
@@ -152,7 +197,7 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
   columns.push({
     id: "actions",
     meta: {
-      className: "flex justify-end items-center",
+      className: "w-16",
     },
     cell: (info) =>
       info.row.original.menuItems && (

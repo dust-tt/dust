@@ -334,6 +334,7 @@ export async function createOrUpgradeAgentConfiguration({
       auth,
       actions
     ),
+    tags: assistant.tags,
   });
 
   if (agentConfigurationRes.isErr()) {
@@ -413,7 +414,7 @@ export async function createOrUpgradeAgentConfiguration({
           type: "process_configuration",
           dataSources: action.dataSources,
           relativeTimeFrame: action.relativeTimeFrame,
-          schema: action.schema,
+          jsonSchema: action.jsonSchema ?? null,
           name: action.name ?? null,
           description: action.description ?? null,
         },

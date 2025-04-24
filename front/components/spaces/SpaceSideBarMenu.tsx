@@ -1,9 +1,9 @@
 import {
-  Avatar,
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   NavigationList,
+  NavigationListItem,
   NavigationListLabel,
   PlusIcon,
   SuitcaseIcon,
@@ -17,7 +17,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -257,7 +257,7 @@ const SystemSpaceMenu = ({
   hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
 }) => {
   return (
-    <Tree variant="navigator">
+    <NavigationList>
       {SYSTEM_SPACE_ITEMS.map((item) => {
         if (item.flag) {
           if (!hasFeature(item.flag)) {
@@ -275,7 +275,7 @@ const SystemSpaceMenu = ({
           />
         );
       })}
-    </Tree>
+    </NavigationList>
   );
 };
 
@@ -300,18 +300,15 @@ const SystemSpaceItem = ({
   const itemPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
 
   return (
-    <Tree.Item
-      isNavigatable
-      type="item"
+    <NavigationListItem
       label={label}
-      onItemClick={async () => {
-        await setNavigationSelection({ lastSpaceId: space.sId });
+      onClick={async () => {
+        void setNavigationSelection({ lastSpaceId: space.sId });
         void router.push(itemPath);
       }}
-      isSelected={router.asPath === itemPath}
-      visual={visual}
-      areActionsFading={false}
-    ></Tree.Item>
+      selected={router.asPath === itemPath}
+      icon={visual}
+    />
   );
 };
 
@@ -658,7 +655,7 @@ const SpaceActionItem = ({
     <Tree.Item
       type="leaf"
       label={asDisplayName(action.server.name)}
-      visual={() => <Avatar visual={getVisual(action.server)} size="xs" />}
+      visual={() => getAvatar(action.server, "xs")}
       areActionsFading={false}
     />
   );

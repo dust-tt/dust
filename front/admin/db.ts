@@ -58,6 +58,7 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import {
   TrackerConfigurationModel,
@@ -160,6 +161,7 @@ async function main() {
   await AgentUserRelation.sync({ alter: true });
   await GlobalAgentSettings.sync({ alter: true });
   await TagAgentModel.sync({ alter: true });
+  await GroupAgentModel.sync({ alter: true });
 
   await RemoteMCPServerModel.sync({ alter: true });
   await MCPServerViewModel.sync({ alter: true });

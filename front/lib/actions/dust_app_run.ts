@@ -9,17 +9,19 @@ import {
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
 import type {
   ActionGeneratedFileType,
+  BaseActionRunParams,
   ExtractActionBlob,
 } from "@app/lib/actions/types";
-import type { BaseActionRunParams } from "@app/lib/actions/types";
-import { BaseAction } from "@app/lib/actions/types";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
+import {
+  BaseAction,
+  BaseActionConfigurationServerRunner,
+} from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
   dustAppRunInputsToInputSchema,
   inputSchemaToDustAppRunInputs,
 } from "@app/lib/actions/types/agent";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";

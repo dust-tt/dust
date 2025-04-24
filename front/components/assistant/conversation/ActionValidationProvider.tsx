@@ -192,7 +192,7 @@ export function ActionValidationProvider({
         <DialogContent isAlertDialog>
           <DialogHeader>
             <DialogTitle visual={<ActionPieChartIcon />}>
-              Action Validation Required
+              Tool Validation Required
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
@@ -215,7 +215,7 @@ export function ActionValidationProvider({
                     }
                     contentChildren={
                       <div>
-                        <div className="max-h-80 overflow-auto rounded-lg bg-muted">
+                        <div className="max-h-80 overflow-auto rounded-lg bg-muted dark:bg-muted-night">
                           <CodeBlock
                             wrapLongLines
                             className="language-json overflow-y-auto"
@@ -229,14 +229,14 @@ export function ActionValidationProvider({
                 )}
 
               {validationQueue.length > 0 && (
-                <div className="mt-2 text-sm font-medium text-info-900">
-                  {validationQueue.length} more action
+                <div className="mt-2 text-sm font-medium text-info-900 dark:text-info-900-night">
+                  {validationQueue.length} more requests
                   {validationQueue.length > 1 ? "s" : ""} in queue
                 </div>
               )}
 
               {errorMessage && (
-                <div className="mt-2 text-sm font-medium text-warning-800">
+                <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
                   {errorMessage}
                 </div>
               )}

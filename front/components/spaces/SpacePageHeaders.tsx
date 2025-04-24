@@ -46,25 +46,8 @@ export function SpacePageHeader({
             .
           </>
         );
-      } else if (category === "actions") {
-        return (
-          <>
-            Here you can enable your agents with <b>additional capabilities</b>{" "}
-            and define who can use them. Find all available tools here and set
-            up new ones. You can also setup remote <b>MCP Servers</b>{" "}
-            connections here.
-            <br />
-            Need help? Check out our{" "}
-            <Link
-              href="https://docs.dust.tt/docs/tools"
-              className="text-highlight"
-              target="_blank"
-            >
-              guide
-            </Link>
-            .
-          </>
-        );
+      } else {
+        return null;
       }
     }
 

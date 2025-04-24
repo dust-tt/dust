@@ -1,4 +1,5 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type {
@@ -8,6 +9,7 @@ import type {
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { TimeframeUnit } from "@app/types";
 
@@ -23,7 +25,10 @@ export class AgentProcessConfiguration extends WorkspaceAwareModel<AgentProcessC
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
-  declare schema: ProcessSchemaPropertyType[];
+  // Maintained for backward compatibility for old version of the process action
+  // All saved process actions will used jsonSchema from now on
+  declare schema: ProcessSchemaPropertyType[] | null;
+  declare jsonSchema: JSONSchema | null;
 
   declare name: string | null;
   declare description: string | null;
@@ -60,7 +65,22 @@ AgentProcessConfiguration.init(
     },
     schema: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: true,
+    },
+    jsonSchema: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      get() {
+        const rawSchema = this.getDataValue("schema");
+        const jsonSchema = this.getDataValue("jsonSchema");
+
+        return (
+          jsonSchema ||
+          (rawSchema
+            ? renderSchemaPropertiesAsJSONSchema(rawSchema || [])
+            : null)
+        );
+      },
     },
     name: {
       type: DataTypes.STRING,
@@ -123,7 +143,10 @@ export class AgentProcessAction extends WorkspaceAwareModel<AgentProcessAction> 
   declare tagsIn: string[] | null;
   declare tagsNot: string[] | null;
 
-  declare schema: ProcessSchemaPropertyType[];
+  // Maintained for backward compatibility for old version of the process action
+  // All saved process actions will used jsonSchema from now on
+  declare schema: ProcessSchemaPropertyType[] | null;
+  declare jsonSchema: JSONSchema | null;
   declare outputs: ProcessActionOutputsType | null;
   declare functionCallId: string | null;
   declare functionCallName: string | null;
@@ -131,6 +154,10 @@ export class AgentProcessAction extends WorkspaceAwareModel<AgentProcessAction> 
   declare step: number;
 
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+
+  declare jsonFileId: ForeignKey<FileModel["id"]> | null;
+  declare jsonFileSnippet: string | null;
+  declare jsonFile: NonAttribute<FileModel>;
 }
 AgentProcessAction.init(
   {
@@ -170,7 +197,22 @@ AgentProcessAction.init(
     },
     schema: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: true,
+      defaultValue: null,
+    },
+    jsonSchema: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      get() {
+        const rawSchema = this.getDataValue("schema");
+        const jsonSchema = this.getDataValue("jsonSchema");
+        return (
+          jsonSchema ||
+          (rawSchema
+            ? renderSchemaPropertiesAsJSONSchema(rawSchema || [])
+            : null)
+        );
+      },
     },
     outputs: {
       type: DataTypes.JSONB,
@@ -188,6 +230,10 @@ AgentProcessAction.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    jsonFileSnippet: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_process_action",
@@ -195,6 +241,10 @@ AgentProcessAction.init(
     indexes: [
       {
         fields: ["agentMessageId"],
+        concurrently: true,
+      },
+      {
+        fields: ["jsonFileId"],
         concurrently: true,
       },
     ],
@@ -220,3 +270,43 @@ AgentProcessAction.belongsTo(AgentMessage, {
 AgentMessage.hasMany(AgentProcessAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
+
+FileModel.hasMany(AgentProcessAction, {
+  foreignKey: { name: "jsonFileId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AgentProcessAction.belongsTo(FileModel, {
+  as: "jsonFile",
+  foreignKey: { name: "jsonFileId", allowNull: true },
+  onDelete: "SET NULL",
+});
+
+function renderSchemaPropertiesAsJSONSchema(
+  schema: ProcessSchemaPropertyType[]
+): { type: string; properties: Record<string, object>; required: string[] } {
+  let properties: { [name: string]: { type: string; description: string } } =
+    {};
+  if (schema.length > 0) {
+    schema.forEach((f) => {
+      properties[f.name] = {
+        type: f.type,
+        description: f.description,
+      };
+    });
+  } else {
+    // Default schema for extraction.
+    properties = {
+      required_data: {
+        type: "string",
+        description:
+          "Minimal (short and concise) piece of information extracted to follow instructions",
+      },
+    };
+  }
+
+  return {
+    type: "object",
+    properties: properties,
+    required: Object.keys(properties),
+  };
+}

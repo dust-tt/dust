@@ -33,7 +33,10 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
+import {
+  getDocumentIcon,
+  makeDocumentCitation,
+} from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
@@ -59,9 +62,11 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
+import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import {
+  isMCPActionType,
   isRetrievalActionType,
   isWebsearchActionType,
 } from "@app/lib/actions/types/guards";
@@ -538,8 +543,33 @@ export function AgentMessage({
       return acc;
     }, {});
 
+    // MCP actions with search results
+    const searchResultsWithDocs = removeNulls(
+      agentMessageToRender.actions
+        .filter(isMCPActionType)
+        .flatMap((action) =>
+          action.output
+            ?.filter(isSearchResultResourceType)
+            .map((o) => o.resource)
+        )
+    );
+    const allMCPReferences = searchResultsWithDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.ref] = {
+        href: d.uri,
+        title: d.text,
+        icon: getDocumentIcon(d.source.provider),
+      };
+      return acc;
+    }, {});
+
     // Merge all references
-    setReferences({ ...allDocsReferences, ...allWebReferences });
+    setReferences({
+      ...allDocsReferences,
+      ...allWebReferences,
+      ...allMCPReferences,
+    });
   }, [
     agentMessageToRender.actions,
     agentMessageToRender.status,
@@ -830,7 +860,7 @@ function ErrorMessage({
           }
           content={
             <div className="flex flex-col gap-3">
-              <div className="text-sm font-normal text-warning-800">
+              <div className="whitespace-normal break-words text-sm font-normal text-warning-800">
                 {fullMessage}
               </div>
               <div className="self-end">

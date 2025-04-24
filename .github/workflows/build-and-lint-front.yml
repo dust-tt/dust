@@ -29,6 +29,12 @@ jobs:
       - name: Typecheck and Lint
         working-directory: front
         run: npm install && npm run tsc && npm run lint && npm run format:check && npm run docs:check
+      - name: Install Redis
+        uses: chenjuneking/redis-setup-action@v1
+        with:
+          version: "7.2.5"
+          hostPort: 5434
+          containerPort: 6379
       - name: Install Postgres
         uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
         with:
@@ -42,6 +48,7 @@ jobs:
         working-directory: front
         env:
           FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test"
+          REDIS_CACHE_URI: "redis://localhost:5434"
           NODE_ENV: test
         run: npx tsx admin/db.ts && npm run test:ci
       - name: Build Tests Report
