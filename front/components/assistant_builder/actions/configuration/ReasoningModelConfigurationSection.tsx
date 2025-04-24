@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   InformationCircleIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
@@ -26,7 +27,7 @@ export function ReasoningModelConfigurationSection({
   selectedReasoningModel,
   onModelSelect,
 }: ReasoningModelConfigurationSectionProps) {
-  const { reasoningModels } = useModels({ owner });
+  const { reasoningModels, isModelsLoading } = useModels({ owner });
   const { isDark } = useTheme();
 
   if (reasoningModels.length === 0) {
@@ -48,7 +49,13 @@ export function ReasoningModelConfigurationSection({
         Reasoning Model
       </div>
 
-      {selectedReasoningModel ? (
+      {isModelsLoading ? (
+        <Card size="sm" className="h-36 w-full">
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner />
+          </div>
+        </Card>
+      ) : selectedReasoningModel ? (
         <Card size="sm" className="w-full">
           <div className="flex w-full p-3">
             <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
