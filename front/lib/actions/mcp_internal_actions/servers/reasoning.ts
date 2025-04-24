@@ -18,11 +18,10 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: null,
 };
 
-async function createServer(auth: Authenticator): Promise<McpServer> {
+function createServer(auth: Authenticator): McpServer {
   const server = new McpServer(serverInfo);
 
   const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
 
   server.tool(
     "get_model_name",
@@ -34,6 +33,7 @@ async function createServer(auth: Authenticator): Promise<McpServer> {
         ],
     },
     async ({ model: { modelId, providerId } }) => {
+      const featureFlags = await getFeatureFlags(owner);
       const supportedModel = REASONING_MODEL_CONFIGS.find(
         (m) => m.modelId === modelId && m.providerId === providerId
       );

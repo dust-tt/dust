@@ -19,7 +19,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
-export async function getInternalMCPServer(
+export function getInternalMCPServer(
   auth: Authenticator,
   {
     internalMCPServerName,
@@ -29,7 +29,7 @@ export async function getInternalMCPServer(
     mcpServerId: string;
   },
   agentLoopContext?: AgentLoopContextType
-): Promise<McpServer> {
+): McpServer {
   switch (internalMCPServerName) {
     case "authentication_debugger":
       return authDebuggerServer(auth, mcpServerId);
