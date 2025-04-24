@@ -43,6 +43,8 @@ export const AGENT_CONFIGURATION_SCOPES = [
   "workspace",
   "published",
   "private",
+  "visible",
+  "hidden",
 ] as const;
 export type AgentConfigurationScope =
   (typeof AGENT_CONFIGURATION_SCOPES)[number];
@@ -63,6 +65,7 @@ export type AgentConfigurationScope =
  *   users. Intended strictly for internal use with necessary superuser or admin
  *   authorization.
  */
+// TODO(agent-discovery) remove workspace, published, global
 export type AgentsGetViewType =
   | { agentIds: string[]; allVersions?: boolean }
   | "current_user"
@@ -139,6 +142,9 @@ export type LightAgentConfigurationType = {
   requestedGroupIds: string[][];
 
   reasoningEffort?: AgentReasoningEffort;
+
+  canRead: boolean;
+  canEdit: boolean;
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {

@@ -179,7 +179,8 @@ export default function AssistantBuilder({
   } = useSlackChannel({
     initialChannels: [],
     workspaceId: owner.sId,
-    isPrivateAssistant: builderState.scope === "private",
+    isPrivateAssistant:
+      builderState.scope === "private" || builderState.scope === "hidden",
     isBuilder: isBuilder(owner),
     isEdited: edited,
     agentConfigurationId,

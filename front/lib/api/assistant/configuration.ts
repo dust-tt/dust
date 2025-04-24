@@ -599,7 +599,17 @@ async function fetchWorkspaceAgentConfigurationsForView(
       tags: tags
         .map((t) => t.toJSON())
         .sort((a, b) => a.name.localeCompare(b.name)),
+      canRead: false,
+      canEdit: false,
     };
+
+    const { canRead, canEdit } = await getAgentPermissions(
+      auth,
+      agentConfigurationType
+    );
+
+    agentConfigurationType.canRead = canRead;
+    agentConfigurationType.canEdit = canEdit;
 
     agentConfigurationTypes.push(agentConfigurationType);
   }
@@ -980,7 +990,16 @@ export async function createAgentConfiguration(
         )
       ),
       tags,
+      canRead: false,
+      canEdit: false,
     };
+
+    const { canRead, canEdit } = await getAgentPermissions(
+      auth,
+      agentConfiguration
+    );
+    agentConfiguration.canRead = canRead;
+    agentConfiguration.canEdit = canEdit;
 
     await agentConfigurationWasUpdatedBy({
       agent: agentConfiguration,
@@ -1678,5 +1697,41 @@ export async function updateAgentPermissions(
   } catch (error) {
     // Catch errors thrown from within the transaction
     return new Err(error as Error);
+  }
+}
+
+export async function getAgentPermissions(
+  auth: Authenticator,
+  agentConfiguration: LightAgentConfigurationType
+) {
+  if (auth.isAdmin()) {
+    return { canRead: true, canEdit: true };
+  }
+
+  switch (agentConfiguration.scope) {
+    case "global":
+      return { canRead: true, canEdit: false };
+    case "hidden":
+    case "visible":
+      const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+        auth,
+        agentConfiguration
+      );
+
+      const member =
+        editorGroupRes.isErr() || !(await editorGroupRes.value.isMember(auth));
+      return {
+        canRead: member || agentConfiguration.scope === "visible",
+        canEdit: member,
+      };
+    case "private":
+      const isAuthor = agentConfiguration.versionAuthorId === auth.user()?.id;
+      return { canRead: isAuthor, canEdit: isAuthor };
+    case "workspace":
+      return { canRead: true, canEdit: auth.isBuilder() };
+    case "published":
+      return { canRead: true, canEdit: true };
+    default:
+      assertNever(agentConfiguration.scope);
   }
 }

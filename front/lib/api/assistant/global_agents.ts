@@ -217,6 +217,8 @@ function _getHelperGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -254,6 +256,8 @@ function _getGPT35TurboGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 function _getGPT4GlobalAgent({
@@ -300,6 +304,8 @@ function _getGPT4GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 function _getO3MiniGlobalAgent({
@@ -342,6 +348,8 @@ function _getO3MiniGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 function _getO1GlobalAgent({
@@ -380,6 +388,8 @@ function _getO1GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 function _getO1MiniGlobalAgent({
@@ -418,6 +428,8 @@ function _getO1MiniGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -458,6 +470,8 @@ function _getO1HighReasoningGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -497,6 +511,8 @@ function _getO3GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -530,6 +546,8 @@ function _getClaudeInstantGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -570,6 +588,8 @@ function _getClaude2GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -604,6 +624,8 @@ function _getClaude3HaikuGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -643,6 +665,8 @@ function _getClaude3OpusGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -685,6 +709,8 @@ function _getClaude3GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -727,6 +753,8 @@ function _getClaude3_7GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -770,6 +798,8 @@ function _getMistralLargeGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -813,6 +843,8 @@ function _getMistralMediumGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -850,6 +882,8 @@ function _getMistralSmallGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -892,6 +926,8 @@ function _getGeminiProGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -932,6 +968,8 @@ function _getDeepSeekR1GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -1000,6 +1038,8 @@ function _getManagedDataSourceAgent(
       templateId: null,
       requestedGroupIds: [],
       tags: [],
+      canRead: true,
+      canEdit: false,
     };
   }
 
@@ -1028,6 +1068,8 @@ function _getManagedDataSourceAgent(
       templateId: null,
       requestedGroupIds: [],
       tags: [],
+      canRead: true,
+      canEdit: false,
     };
   }
 
@@ -1068,6 +1110,8 @@ function _getManagedDataSourceAgent(
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -1247,6 +1291,8 @@ function _getDustGlobalAgent(
       templateId: null,
       requestedGroupIds: [],
       tags: [],
+      canRead: true,
+      canEdit: false,
     };
   }
 
@@ -1275,6 +1321,8 @@ function _getDustGlobalAgent(
       templateId: null,
       requestedGroupIds: [],
       tags: [],
+      canRead: true,
+      canEdit: false,
     };
   }
 
@@ -1381,6 +1429,8 @@ function _getDustGlobalAgent(
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 

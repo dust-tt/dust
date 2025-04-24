@@ -602,9 +602,7 @@ export function AgentMessage({
     [activeReferences]
   );
 
-  const canMention =
-    agentConfiguration.scope !== "private" ||
-    agentConfiguration.versionAuthorId === user.id;
+  const canMention = agentConfiguration.canRead;
 
   return (
     <ConversationMessage

@@ -193,6 +193,8 @@ async function handler(
           },
         });
       }
+
+      //TODO(agent-discovery): Remove this once old scopes are removed
       if (
         bodyValidation.right.assistant.scope === "workspace" &&
         !auth.isBuilder()

@@ -180,7 +180,7 @@ export default function CreateAssistant({
                 scope:
                   agentConfiguration.scope !== "global"
                     ? agentConfiguration.scope
-                    : "private",
+                    : "hidden",
                 handle: `${agentConfiguration.name}${
                   "isTemplate" in agentConfiguration ? "" : "_Copy"
                 }`,

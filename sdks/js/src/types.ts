@@ -1,6 +1,6 @@
+import type { JSONSchema7 } from "json-schema";
 import moment from "moment-timezone";
 import { z } from "zod";
-import type { JSONSchema7 } from "json-schema";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 
@@ -748,7 +748,10 @@ export type RetrievalActionPublicType = z.infer<
   typeof RetrievalActionTypeSchema
 >;
 
-const ProcessSchemaPropertySchema = z.union([z.custom<JSONSchema7>(), z.null()]);
+const ProcessSchemaPropertySchema = z.union([
+  z.custom<JSONSchema7>(),
+  z.null(),
+]);
 
 const ProcessActionOutputsSchema = z.object({
   data: z.array(z.unknown()),
@@ -924,7 +927,7 @@ const AgentConfigurationStatusSchema = z.union([
 ]);
 
 const AgentConfigurationScopeSchema = FlexibleEnumSchema<
-  "global" | "workspace" | "published" | "private"
+  "global" | "workspace" | "published" | "private" | "hidden" | "visible"
 >();
 
 export const AgentConfigurationViewSchema = FlexibleEnumSchema<

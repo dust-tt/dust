@@ -32,16 +32,12 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(
+  const agent = await getAgentConfiguration(
     auth,
     req.query.aId as string,
     "full"
   );
-  if (
-    !assistant ||
-    (assistant.scope === "private" &&
-      assistant.versionAuthorId !== auth.user()?.id)
-  ) {
+  if (!agent || !agent.canRead) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -55,9 +51,9 @@ async function handler(
     case "GET":
       return res.status(200).json({
         agentConfiguration: {
-          ...assistant,
+          ...agent,
           lastAuthors: await getAgentRecentAuthors({
-            agent: assistant,
+            agent,
             auth,
           }),
         },
@@ -77,7 +73,7 @@ async function handler(
         });
       }
 
-      if (assistant.scope === "workspace" && !auth.isBuilder()) {
+      if (!agent.canEdit) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -132,7 +128,7 @@ async function handler(
       });
 
     case "DELETE":
-      if (assistant.scope === "workspace" && !auth.isBuilder()) {
+      if (!agent.canEdit) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {

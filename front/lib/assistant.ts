@@ -1,5 +1,4 @@
-import type { AgentModelConfigurationType } from "@app/types";
-import type { SupportedModel } from "@app/types";
+import type { AgentModelConfigurationType, SupportedModel } from "@app/types";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export function isLargeModel(model: unknown): model is SupportedModel {
