@@ -1,7 +1,4 @@
-import {
-  ConfigurableToolInputJSONSchemas,
-  INTERNAL_MIME_TYPES,
-} from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import assert from "assert";
 import type { JSONSchema7 } from "json-schema";
@@ -58,7 +55,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { findMatchingSchemaKeys } from "@app/lib/utils/json_schemas";
+import { findMatchingSubSchemas } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
@@ -316,19 +313,19 @@ export async function tryListMCPTools(
       // Only do it when there is a single tool configuration as we only have one description to add.
       if (toolConfigurations.length === 1 && action.description) {
         const hasDataSourceConfiguration =
-          findMatchingSchemaKeys(
-            toolConfigurations[0].inputSchema,
-            ConfigurableToolInputJSONSchemas[
+          Object.keys(
+            findMatchingSubSchemas(
+              toolConfigurations[0].inputSchema,
               INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-            ]
+            )
           ).length > 0;
 
         const hasTableConfiguration =
-          findMatchingSchemaKeys(
-            toolConfigurations[0].inputSchema,
-            ConfigurableToolInputJSONSchemas[
+          Object.keys(
+            findMatchingSubSchemas(
+              toolConfigurations[0].inputSchema,
               INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
-            ]
+            )
           ).length > 0;
 
         if (hasDataSourceConfiguration && hasTableConfiguration) {
