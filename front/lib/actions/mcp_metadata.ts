@@ -159,6 +159,9 @@ export const connectToMCPServer = async (
                   ...(accessToken
                     ? { Authorization: `Bearer ${accessToken}` }
                     : {}),
+                  ...(remoteMCPServer.sharedSecret
+                    ? { "X-Dust-Secret": remoteMCPServer.sharedSecret }
+                    : {}),
                 },
               },
             };
