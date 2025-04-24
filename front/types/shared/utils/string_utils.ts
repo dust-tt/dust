@@ -81,6 +81,10 @@ export function redactString(str: string, n: number) {
   return redacted;
 }
 
+export function isRedacted(str: string) {
+  return str.includes("•");
+}
+
 export function truncate(text: string, length: number, omission = "...") {
   return text.length > length
     ? `${text.substring(0, length - omission.length)}${omission}`

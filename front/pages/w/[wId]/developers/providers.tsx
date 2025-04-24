@@ -23,8 +23,8 @@ import {
   serviceProviders,
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
-import { formatSecret } from "@app/lib/utils";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
+import { redactString } from "@app/types";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -205,7 +205,7 @@ function ProviderListItem({
           {apiKey && (
             <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
               <span className="shrink-0">API Key:</span>
-              <div className="max-w-72 truncate">{formatSecret(apiKey)}</div>
+              <div className="max-w-72 truncate">{redactString(apiKey, 4)}</div>
             </div>
           )}
         </div>
