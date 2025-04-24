@@ -355,11 +355,13 @@ export default function WorkspaceAssistants({
                 }}
               />
               <div className="flex gap-2">
-                <TagsMenu
-                  uniqueTags={uniqueTags}
-                  selectedTags={selectedTags}
-                  setSelectedTags={setSelectedTags}
-                />
+                {hasAgentDiscovery && (
+                  <TagsMenu
+                    uniqueTags={uniqueTags}
+                    selectedTags={selectedTags}
+                    setSelectedTags={setSelectedTags}
+                  />
+                )}
                 <Link
                   href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
                 >
