@@ -35,7 +35,7 @@ export function renderPlanFromModel({
         },
       },
       capabilities: {
-        image: {
+        images: {
           maxImagesPerWeek: plan.maxImagesPerWeek,
         },
       },
