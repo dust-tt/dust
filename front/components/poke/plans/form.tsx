@@ -21,25 +21,26 @@ import {
 } from "@app/types";
 
 export type EditingPlanType = {
-  name: string;
   code: string;
-  isConfluenceAllowed: boolean;
-  isSlackBotAllowed: boolean;
-  isSlackAllowed: boolean;
-  isNotionAllowed: boolean;
-  isGoogleDriveAllowed: boolean;
-  isGithubAllowed: boolean;
-  isIntercomAllowed: boolean;
-  isWebCrawlerAllowed: boolean;
-  isSalesforceAllowed: boolean;
-  maxMessages: string | number;
-  maxMessagesTimeframe: string;
   dataSourcesCount: string | number;
   dataSourcesDocumentsCount: string | number;
   dataSourcesDocumentsSizeMb: string | number;
+  isConfluenceAllowed: boolean;
+  isGithubAllowed: boolean;
+  isGoogleDriveAllowed: boolean;
+  isIntercomAllowed: boolean;
+  isNewPlan?: boolean;
+  isNotionAllowed: boolean;
+  isSalesforceAllowed: boolean;
+  isSlackAllowed: boolean;
+  isSlackBotAllowed: boolean;
+  isWebCrawlerAllowed: boolean;
+  maxImagesPerWeek: string | number;
+  maxMessages: string | number;
+  maxMessagesTimeframe: string;
   maxUsers: string | number;
   maxVaults: string | number;
-  isNewPlan?: boolean;
+  name: string;
   trialPeriodDays: string | number;
 };
 
@@ -64,6 +65,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     maxUsers: plan.limits.users.maxUsers,
     maxVaults: plan.limits.vaults.maxVaults,
     trialPeriodDays: plan.trialPeriodDays,
+    maxImagesPerWeek: plan.limits.capabilities.images.maxImagesPerWeek,
   };
 };
 
@@ -104,6 +106,11 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
           sizeMb: parseMaybeNumber(editingPlan.dataSourcesDocumentsSizeMb),
         },
       },
+      capabilities: {
+        images: {
+          maxImagesPerWeek: parseMaybeNumber(editingPlan.maxImagesPerWeek),
+        },
+      },
       users: {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
       },
@@ -117,25 +124,26 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
 };
 
 const getEmptyPlan = (): EditingPlanType => ({
-  name: "",
   code: "",
-  isConfluenceAllowed: false,
-  isSlackBotAllowed: false,
-  isSlackAllowed: false,
-  isNotionAllowed: false,
-  isGoogleDriveAllowed: false,
-  isGithubAllowed: false,
-  isIntercomAllowed: false,
-  isWebCrawlerAllowed: false,
-  isSalesforceAllowed: false,
-  maxMessages: "",
-  maxMessagesTimeframe: "day",
   dataSourcesCount: "",
   dataSourcesDocumentsCount: "",
   dataSourcesDocumentsSizeMb: "",
+  isConfluenceAllowed: false,
+  isGithubAllowed: false,
+  isGoogleDriveAllowed: false,
+  isIntercomAllowed: false,
+  isNewPlan: true,
+  isNotionAllowed: false,
+  isSalesforceAllowed: false,
+  isSlackAllowed: false,
+  isSlackBotAllowed: false,
+  isWebCrawlerAllowed: false,
+  maxImagesPerWeek: "",
+  maxMessages: "",
+  maxMessagesTimeframe: "day",
   maxUsers: "",
   maxVaults: "",
-  isNewPlan: true,
+  name: "",
   trialPeriodDays: 0,
 });
 
@@ -273,6 +281,12 @@ export const PLAN_FIELDS = {
     width: "small",
     title: "# Spaces",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxVaults),
+  },
+  maxImagesPerWeek: {
+    type: "number",
+    width: "small",
+    title: "# Images",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxImagesPerWeek),
   },
   trialPeriodDays: {
     type: "number",

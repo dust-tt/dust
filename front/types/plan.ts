@@ -45,6 +45,11 @@ export type LimitsType = {
   vaults: {
     maxVaults: number;
   };
+  capabilities: {
+    images: {
+      maxImagesPerWeek: number;
+    };
+  };
   canUseProduct: boolean;
 };
 
