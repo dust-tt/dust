@@ -189,10 +189,11 @@ export const InputBarAttachmentsPicker = ({
                   isFolder(item.dataSourceView.dataSource) ? (
                     <Icon
                       visual={getVisualForDataSourceViewContentNode(item)}
-                      size="sm"
+                      size="md"
                     />
                   ) : (
                     <DoubleIcon
+                      size="md"
                       mainIcon={getVisualForDataSourceViewContentNode(item)}
                       secondaryIcon={getConnectorProviderLogoWithFallback({
                         provider:

@@ -187,6 +187,7 @@ export const InputBarAttachmentsPicker = ({
                           provider:
                             item.dataSourceView.dataSource.connectorProvider,
                         })}
+                        size="md"
                       />
                     }
                     disabled={attachedNodeIds.includes(item.internalId)}

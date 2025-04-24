@@ -154,6 +154,7 @@ export function contentFragmentToAttachmentCitation(
                 : DocumentIcon
           }
           secondaryIcon={logo}
+          size="md"
         />
       );
 

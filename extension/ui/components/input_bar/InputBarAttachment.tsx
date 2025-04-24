@@ -72,6 +72,7 @@ export function InputBarAttachments({
           <DoubleIcon
             mainIcon={getVisualForDataSourceViewContentNode(node)}
             secondaryIcon={logo}
+            size="md"
           />
         );
 
