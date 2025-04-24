@@ -127,7 +127,7 @@ export function MCPAction({
           dataSourceConfigurations: null,
           tablesConfigurations: null,
           childAgentId: null,
-          // We initialize boolean with false by default.
+          // We initialize boolean with false because leaving them unset means false.
           additionalConfiguration: Object.fromEntries(
             requirements.requiredBooleans.map((key) => [key, false])
           ),
