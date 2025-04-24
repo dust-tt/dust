@@ -68,7 +68,7 @@ export const ConfigurableToolInputSchemas = {
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Partial<Record<InternalToolInputMimeType, z.ZodType>>;
 
-// Type for the tool inputs that have a flexible schema, which are schemas that are fully defined by the tool.
+// Type for the tool inputs that have a flexible schema, which are schemas that can vary between tools.
 type FlexibleConfigurableToolInput = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM]: {
     value: string | number | boolean;
