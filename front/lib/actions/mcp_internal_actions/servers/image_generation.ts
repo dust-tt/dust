@@ -106,11 +106,12 @@ const createServer = (auth: Authenticator): McpServer => {
 
       const result = await openai.images.generate({
         model: "gpt-image-1",
+        moderation: "low",
+        output_format: DEFAULT_IMAGE_OUTPUT_FORMAT,
         prompt,
         quality,
         size,
         user: `workspace-${workspace.sId}`,
-        output_format: DEFAULT_IMAGE_OUTPUT_FORMAT,
       });
 
       statsDClient.increment(
