@@ -4,6 +4,7 @@ import {
   renderDataSourceConfiguration,
   renderTableConfiguration,
 } from "@app/lib/actions/configuration/helpers";
+import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -11,6 +12,7 @@ import {
   AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -84,6 +86,17 @@ export async function fetchMCPServerActionConfigurations(
       ],
     });
 
+  // Find the associated reasoning configurations.
+  const allReasoningConfigurations = await AgentReasoningConfiguration.findAll({
+    where: {
+      agentConfigurationId: {
+        // Dirty hack to get this working without having to change the model.
+        // Have not thought this through yet.
+        [Op.in]: configurationIds,
+      },
+    },
+  });
+
   // Find the associated child agent configurations.
   const allChildAgentConfigurations =
     await AgentChildAgentConfiguration.findAll({
@@ -111,6 +124,9 @@ export async function fetchMCPServerActionConfigurations(
     const childAgentConfigurations = allChildAgentConfigurations.filter(
       (ca) => ca.mcpServerConfigurationId === config.id
     );
+    const reasoningConfigurations = allReasoningConfigurations.filter(
+      (rc) => rc.agentConfigurationId === agentConfigurationId
+    );
 
     const mcpServerView = await MCPServerViewResource.fetchByModelPk(
       auth,
@@ -126,7 +142,7 @@ export async function fetchMCPServerActionConfigurations(
       serverName = "Missing";
       serverDescription = "Missing";
     } else {
-      const { name, description } = await mcpServerView.toJSON().server;
+      const { name, description } = mcpServerView.toJSON().server;
 
       serverName = name;
       serverDescription = description;
@@ -153,6 +169,15 @@ export async function fetchMCPServerActionConfigurations(
             ? childAgentConfigurations[0].agentConfigurationId
             : null,
         additionalConfiguration: config.additionalConfiguration,
+        reasoningModel:
+          reasoningConfigurations.length > 0
+            ? {
+                ...reasoningConfigurations[0],
+                name:
+                  reasoningConfigurations[0].name ||
+                  DEFAULT_REASONING_ACTION_NAME,
+              }
+            : null,
       });
     }
   }

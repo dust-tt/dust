@@ -9,6 +9,7 @@ import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
+import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as tableDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
@@ -18,7 +19,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
-export function getInternalMCPServer(
+export async function getInternalMCPServer(
   auth: Authenticator,
   {
     internalMCPServerName,
@@ -28,7 +29,7 @@ export function getInternalMCPServer(
     mcpServerId: string;
   },
   agentLoopContext?: AgentLoopContextType
-): McpServer {
+): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "authentication_debugger":
       return authDebuggerServer(auth, mcpServerId);
@@ -56,6 +57,8 @@ export function getInternalMCPServer(
       return webtoolsServer();
     case "search":
       return searchServer(auth, agentLoopContext);
+    case "reasoning_v2":
+      return reasoningServer(auth);
     default:
       assertNever(internalMCPServerName);
   }
