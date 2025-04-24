@@ -1,8 +1,17 @@
 import {
+  ActionEyeIcon,
+  Avatar,
   Card,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Icon,
   Label,
   RadioGroup,
   RadioGroupCustomItem,
+  ScrollArea,
+  ScrollBar,
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -85,42 +94,76 @@ export function MCPServerSelector({
                   .filter((view) => !view.server.isDefault)
                   .map((mcpServerView, idx, arr) => (
                     <React.Fragment key={mcpServerView.id}>
-                      <RadioGroupCustomItem
-                        value={mcpServerView.id}
-                        id={mcpServerView.id}
-                        iconPosition="start"
-                        customItem={
-                          <Label
-                            htmlFor={mcpServerView.id}
-                            className="font-normal"
-                          >
-                            <Card
-                              variant="tertiary"
-                              size="sm"
-                              onClick={() => {
-                                handleServerSelection(mcpServerView);
-                              }}
+                      <div className="flex w-full flex-row items-center justify-between gap-2">
+                        <RadioGroupCustomItem
+                          value={mcpServerView.id}
+                          id={mcpServerView.id}
+                          iconPosition="start"
+                          customItem={
+                            <Label
+                              htmlFor={mcpServerView.id}
+                              className="font-normal"
                             >
-                              <div className="flex flex-row items-center gap-2">
-                                {getAvatar(mcpServerView.server)}
-                                <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
-                                  <div className="flex flex-col gap-1">
-                                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                                      {asDisplayName(mcpServerView.server.name)}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                                      {mcpServerView.server.description}
+                              <Card
+                                variant="tertiary"
+                                size="sm"
+                                onClick={() => {
+                                  handleServerSelection(mcpServerView);
+                                }}
+                              >
+                                <div className="flex flex-row items-center gap-2">
+                                  {getAvatar(mcpServerView.server)}
+                                  <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
+                                    <div className="flex flex-col gap-1">
+                                      <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                                        {asDisplayName(
+                                          mcpServerView.server.name
+                                        )}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                                        {mcpServerView.server.description}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            </Card>
-                          </Label>
-                        }
-                        onClick={() => {
-                          handleServerSelection(mcpServerView);
-                        }}
-                      ></RadioGroupCustomItem>
+                              </Card>
+                            </Label>
+                          }
+                          onClick={() => {
+                            handleServerSelection(mcpServerView);
+                          }}
+                        />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <div>
+                              <Avatar
+                                size="sm"
+                                visual={<Icon visual={ActionEyeIcon} />}
+                              />
+                            </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <ScrollArea
+                              hideScrollBar
+                              className="flex max-h-96 w-96 flex-col"
+                            >
+                              {mcpServerView.server.tools.map((tool) => (
+                                <DropdownMenuItem key={tool.name}>
+                                  <div className="flex flex-col gap-1">
+                                    <p className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                                      {tool.name}
+                                    </p>
+                                    <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                                      {tool.description}
+                                    </p>
+                                  </div>
+                                </DropdownMenuItem>
+                              ))}
+                              <ScrollBar className="py-0" />
+                            </ScrollArea>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                       {idx !== arr.length - 1 && <Separator />}
                     </React.Fragment>
                   ))}
