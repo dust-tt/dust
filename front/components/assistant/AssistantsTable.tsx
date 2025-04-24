@@ -4,24 +4,18 @@ import {
   ClipboardIcon,
   Cog6ToothIcon,
   DataTable,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
-  Icon,
   PencilSquareIcon,
   Popup,
   SliderToggle,
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type { CellContext, Row } from "@tanstack/react-table";
+import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
-import {
-  assistantActiveUsersMessage,
-  assistantUsageMessage,
-} from "@app/components/assistant/Usage";
+import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentConfigurationScope,
@@ -54,11 +48,6 @@ type RowData = {
   action?: React.ReactNode;
 };
 
-const calculateFeedback = (row: Row<RowData>) => {
-  const feedbacks = row.original.feedbacks;
-  return feedbacks ? feedbacks.up + feedbacks.down : 0;
-};
-
 const getTableColumns = (tags: TagType[]) => {
   return [
     {
@@ -88,11 +77,32 @@ const getTableColumns = (tags: TagType[]) => {
             header: "Tags",
             accessorKey: "tags",
             cell: (info: CellContext<RowData, TagType[]>) => (
-              <DataTable.BasicCellContent
-                label={info.row.original.tags.map((t) => t.name).join(", ")}
-              />
+              <DataTable.CellContent>
+                <Tooltip
+                  label={
+                    info.getValue().length > 0
+                      ? info
+                          .getValue()
+                          .map((t) => t.name)
+                          .join(", ")
+                      : "-"
+                  }
+                  trigger={
+                    info.getValue().length > 0
+                      ? info
+                          .getValue()
+                          .map((t) => t.name)
+                          .join(", ")
+                      : "-"
+                  }
+                />
+              </DataTable.CellContent>
             ),
             isFilterable: true,
+            meta: {
+              className: "w-32",
+              tooltip: "Tags",
+            },
           },
         ]
       : []),
@@ -101,6 +111,7 @@ const getTableColumns = (tags: TagType[]) => {
       accessorKey: "usage.messageCount",
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
+          className="font-semibold"
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
             usage: info.row.original.usage || null,
@@ -115,23 +126,7 @@ const getTableColumns = (tags: TagType[]) => {
       meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
     },
     {
-      header: "Users",
-      accessorKey: "usage.userCount",
-      cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
-        <DataTable.BasicCellContent
-          label={info.row.original.usage?.userCount ?? 0}
-          tooltip={assistantActiveUsersMessage({
-            usage: info.row.original.usage || null,
-            isLoading: false,
-            isError: false,
-            asString: true,
-          })}
-        />
-      ),
-      meta: { className: "w-16", tooltip: "Active users in the last 30 days" },
-    },
-    {
-      header: "Feedback",
+      header: "Feedbacks",
       accessorFn: (row: RowData) => row.feedbacks,
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
@@ -141,43 +136,18 @@ const getTableColumns = (tags: TagType[]) => {
         if (f) {
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
           return (
-            <DataTable.CellContent>
-              <Tooltip
-                label={feedbacksCount}
-                trigger={
-                  <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    <div className="flex flex-row items-center gap-1.5">
-                      {f.up}
-                      <Icon
-                        visual={HandThumbUpIcon}
-                        size="xs"
-                        className="text-primary-400 dark:text-primary-400-night"
-                      />
-                    </div>
-                    <div className="flex flex-row items-center gap-1.5">
-                      {f.down}
-                      <Icon
-                        visual={HandThumbDownIcon}
-                        size="xs"
-                        className="text-primary-400 dark:text-primary-400-night"
-                      />
-                    </div>
-                  </div>
-                }
-              />
-            </DataTable.CellContent>
+            <DataTable.BasicCellContent
+              className="font-semibold"
+              tooltip={feedbacksCount}
+              label={`${f.up + f.down}`}
+            />
           );
         }
       },
-      sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) =>
-        calculateFeedback(rowA) - calculateFeedback(rowB),
-      meta: {
-        className: "w-24",
-        tooltip: "Feedbacks in the last 30 days",
-      },
+      meta: { className: "w-20", tooltip: "Active users in the last 30 days" },
     },
     {
-      header: "Last Update",
+      header: "Last Edited",
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
@@ -341,7 +311,8 @@ export function AssistantsTable({
             setShowDetails(agentConfiguration);
           },
           moreMenuItems:
-            agentConfiguration.scope !== "global"
+            agentConfiguration.scope !== "global" &&
+            agentConfiguration.status !== "archived"
               ? [
                   {
                     label: "Edit",

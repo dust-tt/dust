@@ -151,9 +151,10 @@ export default function WorkspaceAssistants({
       all: allAgents,
       editable_by_me: allAgents.filter(
         (a) =>
-          isAdmin(owner) ||
-          (a.scope === "published" && isBuilder(owner)) ||
-          a.scope === "private" // TODO: add/replace with editors group check
+          a.scope !== "global" &&
+          (isAdmin(owner) ||
+            (a.scope === "published" && isBuilder(owner)) ||
+            a.scope === "private") // TODO: add/replace with editors group check
       ),
       global: allAgents.filter((a) => a.scope === "global"),
       archived: archivedAgentConfigurations.sort((a, b) => {
