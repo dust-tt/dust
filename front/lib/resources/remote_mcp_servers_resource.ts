@@ -28,6 +28,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
 import { Ok, redactString, removeNulls } from "@app/types";
 
+const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface RemoteMCPServerResource
@@ -284,7 +286,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     );
     const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
     const secret =
-      differenceInMinutes > 10
+      differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES
         ? redactString(this.sharedSecret, 4)
         : this.sharedSecret;
 
