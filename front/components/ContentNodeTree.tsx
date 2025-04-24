@@ -251,7 +251,7 @@ function ContentNodeTreeChildren({
                 : undefined
             }
             actions={
-              <div className="mr-8 flex flex-row gap-2">
+              <div className="mr-8 flex grow flex-row gap-2">
                 {n.sourceUrl && (
                   <Button
                     href={n.sourceUrl}
