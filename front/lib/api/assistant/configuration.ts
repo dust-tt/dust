@@ -23,7 +23,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { ReasoningConfigurationType, ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
@@ -92,7 +92,6 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
-import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -1521,7 +1520,6 @@ async function createReasoningConfiguration(
     mcpConfig: AgentMCPServerConfiguration;
   }
 ) {
-  
   return AgentReasoningConfiguration.create(
     {
       sId: generateRandomModelSId(),

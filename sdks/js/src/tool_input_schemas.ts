@@ -54,7 +54,7 @@ export const ConfigurableToolInputSchemas = {
     providerId: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
   }),
-  // Partial because all mime types do not necessarily have a fixed schema,
+  // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Omit<
   Record<InternalToolInputMimeType, z.ZodType>,
@@ -64,7 +64,7 @@ export const ConfigurableToolInputSchemas = {
 // Type for the tool inputs that have a flexible schema, which are schemas that can vary between tools.
 type FlexibleConfigurableToolInput = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM]: {
-    value: string | number | boolean;
+    value: string;
     mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM;
   };
 };
@@ -88,4 +88,7 @@ export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
     key,
     zodToJsonSchema(schema),
   ])
-) as Partial<Record<InternalToolInputMimeType, JSONSchema>>;
+) as Omit<
+  Record<InternalToolInputMimeType, JSONSchema>,
+  typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM
+>;
