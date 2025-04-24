@@ -1,4 +1,5 @@
 import moment from "moment-timezone";
+import type { RedisClientType } from "redis";
 
 import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { runOnRedis } from "@app/lib/api/redis";
@@ -74,6 +75,7 @@ export async function trackTokenUsageCost(
     // If no credits are set yet, initialize with monthly limit.
     if (remainingCredits === null) {
       await initializeCredits(redis, workspace, limits.monthlyLimit);
+
       return limits.monthlyLimit;
     }
 
@@ -88,7 +90,7 @@ export async function trackTokenUsageCost(
 }
 
 async function initializeCredits(
-  redis: any,
+  redis: RedisClientType,
   workspace: LightWorkspaceType,
   monthlyLimit: number
 ): Promise<void> {
@@ -147,4 +149,33 @@ export async function maybeTrackTokenUsageCost(
   const runsCost = calculateTokenUsageCost(runUsages.flat());
 
   await trackTokenUsageCost(auth.getNonNullableWorkspace(), runsCost);
+}
+
+export async function resetCredits(
+  workspace: LightWorkspaceType,
+  { newCredits }: { newCredits?: number } = {}
+): Promise<void> {
+  return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
+    if (newCredits) {
+      await initializeCredits(redis, workspace, newCredits);
+    } else {
+      const key = getRedisKey(workspace);
+
+      await redis.del(key);
+    }
+  });
+}
+
+export async function getRemainingCredits(
+  workspace: LightWorkspaceType
+): Promise<number | null> {
+  return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
+    const key = getRedisKey(workspace);
+    const remainingCredits = await redis.get(key);
+    if (remainingCredits === null) {
+      return null;
+    }
+
+    return parseFloat(remainingCredits);
+  });
 }
