@@ -4,7 +4,6 @@ import {
   renderDataSourceConfiguration,
   renderTableConfiguration,
 } from "@app/lib/actions/configuration/helpers";
-import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -171,12 +170,7 @@ export async function fetchMCPServerActionConfigurations(
         additionalConfiguration: config.additionalConfiguration,
         reasoningModel:
           reasoningConfigurations.length > 0
-            ? {
-                ...reasoningConfigurations[0],
-                name:
-                  reasoningConfigurations[0].name ||
-                  DEFAULT_REASONING_ACTION_NAME,
-              }
+            ? { ...reasoningConfigurations[0] }
             : null,
       });
     }

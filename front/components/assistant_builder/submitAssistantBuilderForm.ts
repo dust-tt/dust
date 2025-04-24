@@ -203,6 +203,7 @@ export async function submitAssistantBuilderForm({
             tablesConfigurations,
             dataSourceConfigurations,
             childAgentId,
+            reasoningModel: mcpReasoningModel,
             additionalConfiguration,
           },
         } = a;
@@ -219,6 +220,12 @@ export async function submitAssistantBuilderForm({
               ? processTableSelection({ owner, tablesConfigurations })
               : null,
             childAgentId,
+            reasoningModel: mcpReasoningModel
+              ? {
+                  ...mcpReasoningModel,
+                  reasoningEffort: mcpReasoningModel.reasoningEffort ?? null,
+                }
+              : null,
             additionalConfiguration,
           },
         ];

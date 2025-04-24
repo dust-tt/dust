@@ -18,6 +18,7 @@ import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configurati
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
@@ -1527,8 +1528,8 @@ async function createReasoningConfiguration(
     {
       sId: generateRandomModelSId(),
       agentConfigurationId: agentConfig.agentConfigurationId,
-      name: reasoningModel.name,
-      description: reasoningModel.description,
+      name: DEFAULT_RETRIEVAL_ACTION_NAME,
+      description: DEFAULT_REASONING_ACTION_DESCRIPTION,
       providerId: reasoningModel.providerId,
       modelId: reasoningModel.modelId,
       temperature: agentConfiguration.model.temperature,

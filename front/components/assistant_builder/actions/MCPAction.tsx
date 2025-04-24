@@ -14,11 +14,11 @@ import type {
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
+  ModelConfigurationType,
   SpaceType,
 } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";
@@ -188,7 +188,7 @@ export function MCPAction({
   );
 
   const handleReasoningModelConfigUpdate = useCallback(
-    (reasoningModelConfig: ReasoningModelConfiguration) => {
+    (reasoningModelConfig: ModelConfigurationType) => {
       setEdited(true);
 
       updateAction({
@@ -196,7 +196,7 @@ export function MCPAction({
         actionDescription: action.description,
         getNewActionConfig: (old) => ({
           ...(old as AssistantBuilderMCPServerConfiguration),
-          reasoningModel: reasoningModelConfig,
+          reasoningModel: { ...reasoningModelConfig },
         }),
       });
     },

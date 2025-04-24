@@ -1,25 +1,22 @@
 import {
+  Button,
   Card,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
+  ContentMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  InformationCircleIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import {
-  DEFAULT_REASONING_ACTION_DESCRIPTION,
-  DEFAULT_REASONING_ACTION_NAME,
-} from "@app/lib/actions/constants";
-import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import { useModels } from "@app/lib/swr/models";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, ModelConfigurationType } from "@app/types";
 
 interface ReasoningModelConfigurationSectionProps {
   owner: LightWorkspaceType;
-  selectedReasoningModel: ReasoningModelConfiguration | null;
-  onModelSelect: (modelConfig: ReasoningModelConfiguration) => void;
+  selectedReasoningModel: ModelConfigurationType | null;
+  onModelSelect: (modelConfig: ModelConfigurationType) => void;
 }
 
 export function ReasoningModelConfigurationSection({
@@ -29,6 +26,19 @@ export function ReasoningModelConfigurationSection({
 }: ReasoningModelConfigurationSectionProps) {
   const { reasoningModels } = useModels({ owner });
 
+  if (reasoningModels.length === 0) {
+    return (
+      <ContentMessage
+        title="No reasoning model available"
+        icon={InformationCircleIcon}
+        variant="warning"
+        size="sm"
+      >
+        There are no reasoning model available on your workspace.
+      </ContentMessage>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
@@ -37,36 +47,34 @@ export function ReasoningModelConfigurationSection({
 
       <Card size="sm" className="h-36 w-full">
         <div className="flex h-full w-full items-center justify-center">
-          {(reasoningModels?.length ?? 0) > 1 && (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger
-                label="Reasoning model"
-                className="mt-1"
-              />
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup
-                  value={`${selectedReasoningModel?.modelId}-${selectedReasoningModel?.providerId}-${selectedReasoningModel?.reasoningEffort ?? ""}`}
-                >
-                  {(reasoningModels ?? []).map((model) => (
-                    <DropdownMenuRadioItem
-                      key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
-                      value={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
-                      label={model.displayName}
-                      onClick={() =>
-                        onModelSelect({
-                          modelId: model.modelId,
-                          providerId: model.providerId,
-                          reasoningEffort: model.reasoningEffort ?? null,
-                          name: DEFAULT_REASONING_ACTION_NAME,
-                          description: DEFAULT_REASONING_ACTION_DESCRIPTION,
-                        })
-                      }
-                    />
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              {selectedReasoningModel ? (
+                <Button
+                  label={selectedReasoningModel.displayName}
+                  variant="outline"
+                  size="sm"
+                  isSelect
+                />
+              ) : (
+                <Button
+                  label="Select a reasoning model"
+                  variant="outline"
+                  size="sm"
+                  isSelect
+                />
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {reasoningModels.map((model) => (
+                <DropdownMenuItem
+                  key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
+                  label={model.displayName}
+                  onClick={() => onModelSelect(model)}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </Card>
     </div>

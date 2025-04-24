@@ -53,9 +53,9 @@ export type ReasoningConfigurationType = {
   type: "reasoning_configuration";
 };
 
-export type ReasoningModelConfiguration = Omit<
+export type ReasoningModelConfiguration = Pick<
   ReasoningConfigurationType,
-  "id" | "sId" | "type" | "temperature"
+  "modelId" | "providerId" | "reasoningEffort"
 >;
 
 type ReasoningErrorEvent = {
