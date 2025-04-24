@@ -105,6 +105,7 @@ interface ItemWithLabelIconAndDescriptionProps {
   description?: string;
   children?: React.ReactNode;
   truncate?: boolean;
+  endComponent?: React.ReactNode;
 }
 
 const ItemWithLabelIconAndDescription = <
@@ -116,35 +117,34 @@ const ItemWithLabelIconAndDescription = <
   description,
   truncate,
   children,
+  endComponent,
 }: T) => {
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
-          {(icon || extraIcon) && (
-            <div
-              className={cn(
-                "s-flex",
-                description ? "s-items-start s-pt-0.5" : "s-items-center"
-              )}
-            >
-              {icon && extraIcon ? (
-                <DoubleIcon
-                  mainIconProps={{
-                    visual: icon,
-                    size: "sm",
-                  }}
-                  secondaryIconProps={{
-                    visual: extraIcon,
-                    size: "xs",
-                  }}
-                  position="bottom-right"
-                />
-              ) : icon ? (
-                <Icon size="sm" visual={icon} />
-              ) : null}
-            </div>
-          )}
+        <div className="s-grid s-flex-grow s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
+          <div
+            className={cn(
+              "s-flex",
+              description ? "s-items-start s-pt-0.5" : "s-items-center"
+            )}
+          >
+            {icon && extraIcon ? (
+              <DoubleIcon
+                mainIconProps={{
+                  visual: icon,
+                  size: "sm",
+                }}
+                secondaryIconProps={{
+                  visual: extraIcon,
+                  size: "xs",
+                }}
+                position="bottom-right"
+              />
+            ) : icon ? (
+              <Icon size="sm" visual={icon} />
+            ) : null}
+          </div>
           <div className="s-flex s-flex-col">
             <span className={truncate ? "s-line-clamp-1" : undefined}>
               {label}
@@ -160,6 +160,7 @@ const ItemWithLabelIconAndDescription = <
               </span>
             )}
           </div>
+          <div>{endComponent}</div>
         </div>
       )}
       {children}
@@ -185,16 +186,13 @@ const DropdownMenuSubTrigger = React.forwardRef<
     )}
     {...props}
   >
-    {label && (
-      <>
-        {icon && <Icon size="xs" visual={icon} />}
-        {label}
-        <span className={menuStyleClasses.subTrigger.default}>
-          <Icon size="xs" visual={ChevronRightIcon} />
-        </span>
-      </>
-    )}
-    {children}
+    <ItemWithLabelIconAndDescription
+      label={label}
+      icon={icon}
+      endComponent={<Icon size="xs" visual={ChevronRightIcon} />}
+    >
+      {children}
+    </ItemWithLabelIconAndDescription>
   </DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName =
@@ -312,6 +310,7 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
     description?: string;
     extraIcon?: React.ComponentType;
     truncateText?: boolean;
+    endComponent?: React.ReactNode;
   }
 >;
 
@@ -337,6 +336,7 @@ const DropdownMenuItem = React.forwardRef<
       replace,
       shallow,
       prefetch,
+      endComponent,
       ...props
     },
     ref
@@ -366,6 +366,7 @@ const DropdownMenuItem = React.forwardRef<
             extraIcon={extraIcon}
             description={description}
             truncate={truncateText}
+            endComponent={endComponent}
           >
             {children}
           </ItemWithLabelIconAndDescription>
