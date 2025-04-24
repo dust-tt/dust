@@ -2,6 +2,7 @@ import {
   AttachmentIcon,
   Button,
   CloudArrowUpIcon,
+  DoubleIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
