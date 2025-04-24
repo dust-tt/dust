@@ -110,6 +110,15 @@ const createServer = (auth: Authenticator): McpServer => {
         output_format: DEFAULT_IMAGE_OUTPUT_FORMAT,
       });
 
+      statsDClient.increment(
+        "tools.image_generation.usage.input_tokens",
+        result.usage?.input_tokens ?? 0
+      );
+      statsDClient.increment(
+        "tools.image_generation.usage.output_tokens",
+        result.usage?.output_tokens ?? 0
+      );
+
       if (!result.data) {
         return {
           isError: true,
