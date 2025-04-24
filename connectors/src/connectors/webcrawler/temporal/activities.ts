@@ -1,3 +1,4 @@
+import FirecrawlApp from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { BasicCrawler, CheerioCrawler, Configuration, LogLevel } from "crawlee";
@@ -23,6 +24,7 @@ import {
   MIN_EXTRACTED_TEXT_LENGTH,
   REQUEST_HANDLING_TIMEOUT,
 } from "@connectors/connectors/webcrawler/temporal/workflows";
+import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
@@ -32,7 +34,6 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { firecrawlApp } from "@connectors/lib/firecrawl";
 import {
   WebCrawlerFolder,
   WebCrawlerPage,
@@ -57,6 +58,10 @@ import {
 } from "@connectors/types";
 
 import { DustHttpClient } from "../lib/http";
+
+export const firecrawlApp = new FirecrawlApp({
+  apiKey: apiConfig.getFirecrawlAPIConfig().apiKey,
+});
 
 const CONCURRENCY = 1;
 
