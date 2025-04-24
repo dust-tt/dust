@@ -1,11 +1,14 @@
+import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { PlanResource } from "@app/lib/resources/plan_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { createAndLogMembership } from "@app/pages/api/login";
 import { makeScript } from "@app/scripts/helpers";
+
 async function createTestWorkspaces(
   { userId, count }: { userId: number; count: number },
   execute: boolean,
@@ -75,10 +78,11 @@ async function createTestWorkspaces(
       );
     }
 
-    await SubscriptionResource.pokeUpgradeWorkspaceToPlan(
-      authenticator,
-      FREE_UPGRADED_PLAN_CODE
-    );
+    await SubscriptionResource.pokeUpgradeWorkspaceToPlan({
+      auth: authenticator,
+      planCode: FREE_UPGRADED_PLAN_CODE,
+      endDate: null,
+    });
   }
 }
 
