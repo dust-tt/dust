@@ -56,7 +56,6 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   RobotIcon,
-  SearchInput,
   SuitcaseIcon,
   UserGroupIcon,
   UserIcon,
@@ -135,7 +134,11 @@ function ComplexDropdownDemo() {
       <DropdownMenuContent className="s-w-56">
         <DropdownMenuLabel label="My Account" />
         <DropdownMenuGroup>
-          <DropdownMenuItem icon={UserIcon} label="Profile" />
+          <DropdownMenuItem
+            icon={UserIcon}
+            label="Profile"
+            endComponent={<Button icon={ArrowUpOnSquareIcon} variant="ghost" />}
+          />
           <DropdownMenuItem icon={ArrowDownCircleIcon} label="Billing" />
           <DropdownMenuItem icon={Cog6ToothIcon} label="Settings" />
           <DropdownMenuItem icon={UserIcon} label="Keyboard shortcuts" />
@@ -513,18 +516,18 @@ function AttachFileDemo() {
             size="sm"
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-[380px]">
-          <div className="s-flex s-gap-1.5 s-p-1.5">
-            <SearchInput
-              ref={searchInputRef}
-              name="search"
-              onChange={setSearchText}
-              onKeyDown={() => {}}
-              placeholder="Search in Dust"
+        <DropdownMenuContent
+          className="s-w-[380px]"
+          dropdownHeaders={
+            <DropdownMenuSearchbar
               value={searchText}
+              onChange={setSearchText}
+              name="search"
+              placeholder="Search in Dust"
+              button={<Button icon={ArrowUpOnSquareIcon} label="Upload File" />}
             />
-            <Button icon={ArrowUpOnSquareIcon} label="Upload File" />
-          </div>
+          }
+        >
           <DropdownMenuSeparator />
           {searchText ? (
             filteredItems.map((item) => {
