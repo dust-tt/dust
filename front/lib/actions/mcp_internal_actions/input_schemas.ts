@@ -393,6 +393,7 @@ export function getMCPServerRequirements(
   requiresDataSourceConfiguration: boolean;
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
+  requiresReasoningConfiguration: boolean;
   requiredStrings: string[];
   requiredNumbers: string[];
   requiredBooleans: string[];
@@ -404,6 +405,7 @@ export function getMCPServerRequirements(
       requiresDataSourceConfiguration: false,
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
+      requiresReasoningConfiguration: false,
       requiredStrings: [],
       requiredNumbers: [],
       requiredBooleans: [],
@@ -434,6 +436,14 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT,
+      })
+    ).length > 0;
+
+  const requiresReasoningConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
       })
     ).length > 0;
 
@@ -481,6 +491,7 @@ export function getMCPServerRequirements(
     requiresDataSourceConfiguration,
     requiresTableConfiguration,
     requiresChildAgentConfiguration,
+    requiresReasoningConfiguration,
     requiredStrings,
     requiredNumbers,
     requiredBooleans,
@@ -490,6 +501,7 @@ export function getMCPServerRequirements(
       !requiresDataSourceConfiguration &&
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
+      !requiresReasoningConfiguration &&
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
       requiredBooleans.length === 0 &&

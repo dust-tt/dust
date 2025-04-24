@@ -1327,6 +1327,7 @@ export async function createAgentActionConfiguration(
           await createReasoningConfiguration(auth, t, {
             reasoningModel: action.reasoningModel,
             mcpConfig,
+            agentConfiguration,
           });
         }
 
@@ -1515,9 +1516,11 @@ async function createReasoningConfiguration(
   {
     reasoningModel,
     mcpConfig: agentConfig,
+    agentConfiguration,
   }: {
     reasoningModel: ReasoningModelConfiguration;
     mcpConfig: AgentMCPServerConfiguration;
+    agentConfiguration: LightAgentConfigurationType;
   }
 ) {
   return AgentReasoningConfiguration.create(
@@ -1528,7 +1531,7 @@ async function createReasoningConfiguration(
       description: reasoningModel.description,
       providerId: reasoningModel.providerId,
       modelId: reasoningModel.modelId,
-      temperature: reasoningModel.temperature,
+      temperature: agentConfiguration.model.temperature,
       reasoningEffort: reasoningModel.reasoningEffort,
       workspaceId: auth.getNonNullableWorkspace().id,
     },

@@ -15,6 +15,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
@@ -133,6 +134,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
+  reasoningModel: ReasoningModelConfiguration | null;
   additionalConfiguration: Record<string, boolean | number | string>;
 };
 
@@ -379,6 +381,7 @@ export function getDefaultMCPServerActionConfiguration(
       dataSourceConfigurations: null,
       tablesConfigurations: null,
       childAgentId: null,
+      reasoningModel: null,
       additionalConfiguration: {},
     },
     name: mcpServerView?.server.name ?? "",
