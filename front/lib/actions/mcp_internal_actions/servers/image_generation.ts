@@ -20,7 +20,7 @@ const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "image_generation",
   version: "1.0.0",
-  description: "Agent can generate images (Dall-E v3).",
+  description: "Agent can generate images (GPT Image 1).",
   icon: "ActionImageIcon",
   authorization: null,
 };
