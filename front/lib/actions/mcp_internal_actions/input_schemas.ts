@@ -71,7 +71,7 @@ export const ConfigurableToolInputSchemas = {
 // Type for the tool inputs that have a flexible schema, which are schemas that can vary between tools.
 type FlexibleConfigurableToolInput = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM]: {
-    value: string | number | boolean;
+    value: string;
     mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM;
   };
 };
@@ -173,6 +173,11 @@ export function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
       const value = actionConfiguration.additionalConfiguration[keyPath];
+      if (typeof value !== "string") {
+        throw new Error(
+          `Expected string value for key ${keyPath}, got ${typeof value}`
+        );
+      }
       return { value, mimeType };
     }
 
