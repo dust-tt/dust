@@ -15,10 +15,6 @@ import { CoreAPI } from "@app/types";
 export const config = {
   api: {
     responseLimit: "8mb",
-    bodyParser: {
-      // 1m context size at 4mb for text gives a good higher bound.
-      sizeLimit: "4mb",
-    },
   },
 };
 
