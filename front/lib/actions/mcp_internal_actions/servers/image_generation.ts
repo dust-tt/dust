@@ -10,8 +10,7 @@ import logger from "@app/logger/logger";
 import { dustManagedCredentials } from "@app/types";
 
 const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
-const IMAGE_GENERATION_RATE_LIMITER_MAX_PER_TIMEFRAME = 800; // Around 100€ / week at 0.12€ / image
-const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week
+const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
 
 // By default, OpenAI returns a PNG image.
 const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
@@ -61,10 +60,15 @@ const createServer = (auth: Authenticator): McpServer => {
         ),
     },
     async ({ prompt, name, quality, size }) => {
-      // Crude way to rate limit the usage of the image generation tool.
+      const workspace = auth.getNonNullableWorkspace();
+
+      const { limits } = auth.getNonNullablePlan();
+      const { maxImagesPerWeek } = limits.capabilities.images;
+
+      // Check current usage for the week.
       const remaining = await rateLimiter({
-        key: `${IMAGE_GENERATION_RATE_LIMITER_KEY}_${auth.getNonNullableWorkspace().sId}`,
-        maxPerTimeframe: IMAGE_GENERATION_RATE_LIMITER_MAX_PER_TIMEFRAME,
+        key: `${IMAGE_GENERATION_RATE_LIMITER_KEY}_${workspace.sId}`,
+        maxPerTimeframe: maxImagesPerWeek,
         timeframeSeconds: IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS,
         logger,
       });
@@ -75,7 +79,9 @@ const createServer = (auth: Authenticator): McpServer => {
           content: [
             {
               type: "text",
-              text: "Rate limit of 800 requests per week exceeded. Contact your administrator to increase the limit.",
+              text:
+                `Rate limit of ${maxImagesPerWeek} requests per week exceeded. Contact your ` +
+                "administrator to increase the limit.",
             },
           ],
         };
@@ -91,11 +97,9 @@ const createServer = (auth: Authenticator): McpServer => {
         prompt,
         quality,
         size,
-        user: `workspace-${auth.getNonNullableWorkspace().sId}`,
+        user: `workspace-${workspace.sId}`,
         output_format: DEFAULT_IMAGE_OUTPUT_FORMAT,
       });
-
-      const fileName = `${name}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
 
       if (!result.data) {
         return {
@@ -108,6 +112,8 @@ const createServer = (auth: Authenticator): McpServer => {
           ],
         };
       }
+
+      const fileName = `${name}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
 
       const content: MCPToolResultContentType[] = result.data.map((image) => ({
         type: "image",
