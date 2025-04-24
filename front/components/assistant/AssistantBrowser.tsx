@@ -265,6 +265,7 @@ export function AssistantBrowser({
                       handleAssistantClick(agent);
                       setAssistantSearch("");
                     }}
+                    truncateText
                     label={agent.name}
                     description={agent.description}
                     icon={() => <Avatar size="sm" visual={agent.pictureUrl} />}
