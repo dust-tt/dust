@@ -18,7 +18,9 @@ export class AgentReasoningConfiguration extends WorkspaceAwareModel<AgentReason
   declare temperature: number | null;
   declare reasoningEffort: AgentReasoningEffort | null;
 
+  // If we have an agentConfigurationId, it means that the agent has the reasoning tool.
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]> | null;
+  // If we have a mcpServerConfigurationId, it means that the MCP server is configured with a reasoning model.
   declare mcpServerConfigurationId: ForeignKey<
     AgentMCPServerConfiguration["id"]
   > | null;
