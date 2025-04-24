@@ -37,9 +37,11 @@ function createServer(auth: Authenticator): McpServer {
       const supportedModel = REASONING_MODEL_CONFIGS.find(
         (m) => m.modelId === modelId && m.providerId === providerId
       );
+
       if (!supportedModel) {
         return makeMCPToolTextError("Reasoning model not found.");
       }
+
       if (!canUseModel(supportedModel, featureFlags, auth.plan(), owner)) {
         return makeMCPToolTextError(
           "Reasoning model not allowed for the current workspace."

@@ -155,11 +155,7 @@ export function generateConfiguredInput({
         throw new Error("Unreachable: missing reasoning model configuration.");
       }
       const { modelId, providerId } = reasoningModel;
-      return {
-        modelId,
-        providerId,
-        mimeType,
-      };
+      return { modelId, providerId, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
