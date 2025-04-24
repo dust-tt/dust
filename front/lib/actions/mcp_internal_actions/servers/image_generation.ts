@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import OpenAI from "openai";
 import { z } from "zod";
 
+import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -11,6 +12,10 @@ import { dustManagedCredentials } from "@app/types";
 const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
 const IMAGE_GENERATION_RATE_LIMITER_MAX_PER_TIMEFRAME = 800; // Around 100€ / week at 0.12€ / image
 const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week
+
+// By default, OpenAI returns a PNG image.
+const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
+const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "image_generation",
@@ -40,30 +45,23 @@ const createServer = (auth: Authenticator): McpServer => {
           "The name of the image. The maximum length is 32 characters."
         ),
       quality: z
-        .enum(["standard", "hd"])
+        .enum(["auto", "low", "medium", "high"])
         .optional()
-        .default("standard")
+        .default("auto")
         .describe(
-          "The quality of the generated images. Must be one of standard or hd"
-        ),
-      style: z
-        .enum(["vivid", "natural"])
-        .optional()
-        .default("vivid")
-        .describe(
-          "The style of the generated images. Must be one of vivid or natural"
+          "The quality of the generated images. Must be one of auto, low, medium, or high. Auto" +
+            " will automatically choose the best quality for the size."
         ),
       size: z
-        .enum(["1024x1024", "1792x1024", "1024x1792"])
+        .enum(["1024x1024", "1536x1024", "1024x1536"])
         .optional()
         .default("1024x1024")
         .describe(
-          "The size of the generated images. Must be one of 1024x1024, 1792x1024, or 1024x1792"
+          "The size of the generated images. Must be one of 1024x1024, 1536x1024, or 1024x1536"
         ),
     },
-    async ({ prompt, name, quality, style, size }) => {
+    async ({ prompt, name, quality, size }) => {
       // Crude way to rate limit the usage of the image generation tool.
-      //
       const remaining = await rateLimiter({
         key: `${IMAGE_GENERATION_RATE_LIMITER_KEY}_${auth.getNonNullableWorkspace().sId}`,
         maxPerTimeframe: IMAGE_GENERATION_RATE_LIMITER_MAX_PER_TIMEFRAME,
@@ -88,26 +86,34 @@ const createServer = (auth: Authenticator): McpServer => {
         apiKey: credentials.OPENAI_API_KEY,
       });
 
-      const images = await openai.images.generate({
-        model: "dall-e-3",
+      const result = await openai.images.generate({
+        model: "gpt-image-1",
         prompt,
-        size,
         quality,
-        style,
-        response_format: "url",
+        size,
         user: `workspace-${auth.getNonNullableWorkspace().sId}`,
+        output_format: DEFAULT_IMAGE_OUTPUT_FORMAT,
       });
 
-      const fileName = name + ".png";
+      const fileName = `${name}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
 
-      const content = images.data.map((image) => ({
-        type: "resource" as const,
-        resource: {
-          mimeType: "image/png",
-          uri: image.url!,
-          text: `Your image ${fileName} was generated successfully.`,
-          name: fileName,
-        },
+      if (!result.data) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "No image generated.",
+            },
+          ],
+        };
+      }
+
+      const content: MCPToolResultContentType[] = result.data.map((image) => ({
+        type: "image",
+        data: image.b64_json!,
+        mimeType: DEFAULT_IMAGE_MIME_TYPE,
+        fileName,
       }));
 
       return {
