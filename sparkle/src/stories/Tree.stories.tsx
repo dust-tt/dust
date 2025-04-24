@@ -17,6 +17,8 @@ import {
   DustIcon,
   EyeIcon,
   FolderIcon,
+  HistoryIcon,
+  Icon,
   IconButton,
   PlusCircleIcon,
   Tree,
@@ -41,7 +43,7 @@ export const TreeExample = () => {
   return (
     <div className="s-flex s-flex-col s-gap-10">
       <div className="s-flex s-gap-10">
-        <div className="s-flex s-max-w-xs s-flex-col s-gap-3">
+        <div className="s-flex s-flex-col s-gap-3">
           <div className="s-text-xl">Tree</div>
           <div>
             <Tree>
@@ -133,13 +135,14 @@ export const TreeExample = () => {
                   />
 
                   <Tree.Item
-                    label="1"
+                    label="t"
                     visual={DocumentIcon}
                     type="leaf"
                     actions={
                       <div className="s-flex s-grow s-flex-row s-items-center s-justify-between">
                         <Button size="mini" variant="outline" icon={EyeIcon} />
-                        <div className="s-text-sm s-text-muted-foreground">
+                        <div className="s-flex s-flex-row s-items-center s-gap-1 s-text-sm s-text-muted-foreground">
+                          <Icon visual={HistoryIcon} size="xs" />
                           1y
                         </div>
                       </div>

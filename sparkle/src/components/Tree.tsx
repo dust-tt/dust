@@ -283,7 +283,6 @@ Tree.Item = React.forwardRef<
               {label}
             </div>
           )}
-          <div className="s-grow" />
           {actions && (
             <div
               className={cn(
