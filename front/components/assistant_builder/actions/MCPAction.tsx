@@ -318,10 +318,7 @@ export function MCPAction({
         />
       )}
       <AdditionalConfigurationSection
-        requiredStrings={requirements.requiredStrings}
-        requiredNumbers={requirements.requiredNumbers}
-        requiredBooleans={requirements.requiredBooleans}
-        requiredEnums={requirements.requiredEnums}
+        {...requirements}
         additionalConfiguration={actionConfiguration.additionalConfiguration}
         onConfigUpdate={handleAdditionalConfigUpdate}
       />
