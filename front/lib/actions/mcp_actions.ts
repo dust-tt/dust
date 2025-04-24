@@ -51,7 +51,6 @@ import type {
   PlatformMCPToolTypeWithStakeLevel,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -62,7 +61,7 @@ import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
 
-const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 60 * 1000; // 1 minute.
+const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 
@@ -273,10 +272,6 @@ export async function tryListMCPTools(
   }
 ): Promise<MCPToolConfigurationType[]> {
   const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("mcp_actions")) {
-    return [];
-  }
 
   // Filter for MCP server configurations.
   const mcpServerActions = agentActions.filter(isMCPServerConfiguration);
