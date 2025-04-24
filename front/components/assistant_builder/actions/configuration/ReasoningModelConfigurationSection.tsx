@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Button,
   Card,
   ContentMessage,
@@ -9,6 +10,8 @@ import {
   InformationCircleIcon,
 } from "@dust-tt/sparkle";
 
+import { getModelProviderLogo } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useModels } from "@app/lib/swr/models";
 import type { LightWorkspaceType, ModelConfigurationType } from "@app/types";
 
@@ -24,6 +27,7 @@ export function ReasoningModelConfigurationSection({
   onModelSelect,
 }: ReasoningModelConfigurationSectionProps) {
   const { reasoningModels } = useModels({ owner });
+  const { isDark } = useTheme();
 
   if (reasoningModels.length === 0) {
     return (
@@ -49,6 +53,13 @@ export function ReasoningModelConfigurationSection({
           <div className="flex w-full p-3">
             <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
               <div className="text-md flex items-center gap-2 font-medium">
+                <Avatar
+                  icon={getModelProviderLogo(
+                    selectedReasoningModel.providerId,
+                    false
+                  )}
+                  size="sm"
+                />
                 {selectedReasoningModel.displayName}
               </div>
               <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -70,6 +81,7 @@ export function ReasoningModelConfigurationSection({
                     <DropdownMenuItem
                       key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
                       label={model.displayName}
+                      icon={getModelProviderLogo(model.providerId, isDark)}
                       onClick={() => onModelSelect(model)}
                     />
                   ))}
@@ -95,6 +107,7 @@ export function ReasoningModelConfigurationSection({
                   <DropdownMenuItem
                     key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
                     label={model.displayName}
+                    icon={getModelProviderLogo(model.providerId, isDark)}
                     onClick={() => onModelSelect(model)}
                   />
                 ))}
