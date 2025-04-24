@@ -1,6 +1,7 @@
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { BasicCrawler, CheerioCrawler, Configuration, LogLevel } from "crawlee";
+import { randomUUID } from "crypto";
 import { Op } from "sequelize";
 import turndown from "turndown";
 
@@ -253,7 +254,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           const extracted = crawlerResponse.markdown ?? "[NO CONTENT]";
 
           totalExtracted += extracted.length;
-          const pageTitle = crawlerResponse.metadata?.title ?? "[NO TITLE]";
+          const pageTitle = crawlerResponse.metadata?.title ?? randomUUID();
 
           // note that parentFolderUrls.length === parentFolderIds.length -1
           // since parentFolderIds includes the page as first element
