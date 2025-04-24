@@ -59,10 +59,6 @@ import {
 
 import { DustHttpClient } from "../lib/http";
 
-export const firecrawlApp = new FirecrawlApp({
-  apiKey: apiConfig.getFirecrawlAPIConfig().apiKey,
-});
-
 const CONCURRENCY = 1;
 
 export async function markAsCrawled(connectorId: ModelId) {
@@ -104,6 +100,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   if (!webCrawlerConfig) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
+
+  const firecrawlApp = new FirecrawlApp({
+    apiKey: apiConfig.getFirecrawlAPIConfig().apiKey,
+  });
+
   const childLogger = logger.child({
     connectorId: connector.id,
   });
