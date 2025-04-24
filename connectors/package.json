@@ -18,6 +18,7 @@
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
     "@google-cloud/bigquery": "^7.9.2",
+    "@mendable/firecrawl-js": "^1.24.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@microsoft/microsoft-graph-types": "^2.40.0",
     "@notionhq/client": "^2.2.15",

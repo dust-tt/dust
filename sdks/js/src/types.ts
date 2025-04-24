@@ -748,7 +748,10 @@ export type RetrievalActionPublicType = z.infer<
   typeof RetrievalActionTypeSchema
 >;
 
-const ProcessSchemaPropertySchema = z.union([z.custom<JSONSchema7>(), z.null()]);
+const ProcessSchemaPropertySchema = z.union([
+  z.custom<JSONSchema7>(),
+  z.null(),
+]);
 
 const ProcessActionOutputsSchema = z.object({
   data: z.array(z.unknown()),
@@ -817,6 +820,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "show_debug_tools"
   | "snowflake_connector_feature"
   | "usage_data_api"
+  | "custom_webcrawler"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
