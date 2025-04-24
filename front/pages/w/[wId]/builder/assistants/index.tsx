@@ -22,6 +22,7 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantsTable } from "@app/components/assistant/AssistantsTable";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { TagsMenu } from "@app/components/assistant/TagsMenu";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -155,7 +156,7 @@ export default function WorkspaceAssistants({
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
-
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const activeTab = useMemo(() => {
     if (assistantSearch.trim() !== "") {
       return "search";
@@ -189,6 +190,12 @@ export default function WorkspaceAssistants({
   const agentsByTab = useMemo(() => {
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter((a) => a.status === "active")
+      .filter((a) => {
+        if (selectedTags.length === 0) {
+          return true;
+        }
+        return a.tags.some((t) => selectedTags.includes(t.sId));
+      })
       .sort((a, b) => {
         return compareForFuzzySort(
           "",
@@ -236,6 +243,7 @@ export default function WorkspaceAssistants({
   }, [
     agentConfigurations,
     archivedAgentConfigurations,
+    selectedTags,
     owner,
     assistantSearch,
   ]);
@@ -347,6 +355,11 @@ export default function WorkspaceAssistants({
                 }}
               />
               <div className="flex gap-2">
+                <TagsMenu
+                  uniqueTags={uniqueTags}
+                  selectedTags={selectedTags}
+                  setSelectedTags={setSelectedTags}
+                />
                 <Link
                   href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
                 >

@@ -149,6 +149,7 @@ export function AssistantBrowser({
           (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
         )
         .slice(0, 6),
+      untagged: allAgents.filter((a) => a.tags.length === 0),
       // TODO(agent-discovery): Remove this once old scopes are removed
       personal: allAgents.filter((a) => a.scope === "private"),
       published: allAgents.filter((a) => a.scope === "published"),
@@ -218,10 +219,6 @@ export function AssistantBrowser({
   const handleMoreClick = (agent: LightAgentConfigurationType) => {
     setQueryParam(router, "assistantDetails", agent.sId);
   };
-
-  const untaggedAgents = useMemo(() => {
-    return agentsByTab.all.filter((a) => a.tags.length === 0);
-  }, [agentsByTab]);
 
   return (
     <>
@@ -387,11 +384,11 @@ export function AssistantBrowser({
                 />
               </React.Fragment>
             ))}
-          {selectedTags.length === 0 && untaggedAgents.length > 0 && (
+          {selectedTags.length === 0 && agentsByTab.untagged.length > 0 && (
             <React.Fragment>
               <span className="heading-base">Others</span>
               <AgentGrid
-                agentConfigurations={untaggedAgents}
+                agentConfigurations={agentsByTab.untagged}
                 handleAssistantClick={handleAssistantClick}
                 handleMoreClick={handleMoreClick}
               />
