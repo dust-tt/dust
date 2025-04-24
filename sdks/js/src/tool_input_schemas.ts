@@ -49,7 +49,6 @@ export const ConfigurableToolInputSchemas = {
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN),
   }),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL]: z.object({
-    // TODO(mcp): pass enums here with all the possible values (known but not available yet in the sdk).
     modelId: z.string(),
     providerId: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
