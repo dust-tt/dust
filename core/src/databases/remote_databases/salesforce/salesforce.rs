@@ -18,7 +18,10 @@ use crate::{
         database::{QueryDatabaseError, QueryResult, SqlDialect},
         remote_databases::remote_database::RemoteDatabase,
         table::Table,
-        table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
+        table_schema::{
+            TableSchema, TableSchemaColumn, TableSchemaFieldType,
+            TABLE_SCHEMA_POSSIBLE_VALUES_MAX_COUNT, TABLE_SCHEMA_POSSIBLE_VALUES_MAX_LEN,
+        },
     },
     oauth::{
         app::ConnectionAccessTokenResponse, providers::salesforce::SalesforceConnectionProvider,
@@ -418,37 +421,53 @@ impl SalesforceRemoteDatabase {
                     _ => TableSchemaFieldType::Text,
                 };
 
+                // Similar to TableSchema::accumulate_value but for Salesforce picklist values
                 let possible_values = field["picklistValues"]
                     .as_array()
                     .map(|values| {
-                        values
-                            .iter()
-                            .map(|v| {
-                                let obj = v.as_object().ok_or_else(|| {
-                                    QueryDatabaseError::GenericError(anyhow!(
-                                        "Expected picklist value to be an object"
-                                    ))
-                                })?;
-                                let value = obj.get("value").ok_or_else(|| {
-                                    QueryDatabaseError::GenericError(anyhow!(
-                                        "Missing 'value' field in picklist value"
-                                    ))
-                                })?;
-                                let str_value = value.as_str().ok_or_else(|| {
-                                    QueryDatabaseError::GenericError(anyhow!(
-                                        "Expected picklist value to be a string"
-                                    ))
-                                })?;
-                                Ok(str_value.to_string())
-                            })
-                            .collect::<Result<Vec<String>>>()
+                        // If there are too many values, don't even try to collect them
+                        if values.len() > TABLE_SCHEMA_POSSIBLE_VALUES_MAX_COUNT {
+                            return Ok::<Option<Vec<String>>, QueryDatabaseError>(None);
+                        }
+
+                        // Process values, checking length constraints
+                        let mut result = Vec::with_capacity(values.len());
+
+                        for v in values {
+                            let obj = v.as_object().ok_or_else(|| {
+                                QueryDatabaseError::GenericError(anyhow!(
+                                    "Expected picklist value to be an object"
+                                ))
+                            })?;
+
+                            let value = obj.get("value").ok_or_else(|| {
+                                QueryDatabaseError::GenericError(anyhow!(
+                                    "Missing 'value' field in picklist value"
+                                ))
+                            })?;
+
+                            let str_value = value.as_str().ok_or_else(|| {
+                                QueryDatabaseError::GenericError(anyhow!(
+                                    "Expected picklist value to be a string"
+                                ))
+                            })?;
+
+                            // Check if any value exceeds the maximum length
+                            if str_value.len() > TABLE_SCHEMA_POSSIBLE_VALUES_MAX_LEN {
+                                return Ok(None);
+                            }
+
+                            result.push(str_value.to_string());
+                        }
+
+                        Ok(Some(result))
                     })
                     .transpose()?;
 
                 Ok(TableSchemaColumn {
                     name,
                     value_type,
-                    possible_values: possible_values,
+                    possible_values: possible_values.flatten(),
                     non_filterable: Some(!filterable),
                 })
             })
