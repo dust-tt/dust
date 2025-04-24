@@ -265,19 +265,12 @@ export function AssistantBrowser({
                       handleAssistantClick(agent);
                       setAssistantSearch("");
                     }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Avatar visual={agent.pictureUrl} />
-                      <div className="flex flex-col">
-                        <div>{agent.name}</div>
-                        <div className="text-sm text-gray-500">
-                          {agent.description}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-grow flex-row items-center justify-end">
+                    label={agent.name}
+                    description={agent.description}
+                    icon={() => <Avatar size="sm" visual={agent.pictureUrl} />}
+                    endComponent={
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="xs"
                         icon={MoreIcon}
                         onClick={(e: Event) => {
@@ -285,8 +278,8 @@ export function AssistantBrowser({
                           setQueryParam(router, "assistantDetails", agent.sId);
                         }}
                       />
-                    </div>
-                  </DropdownMenuItem>
+                    }
+                  />
                 ))}
               </>
             ) : isLoading ? (
