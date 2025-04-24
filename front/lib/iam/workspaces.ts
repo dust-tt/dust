@@ -1,16 +1,15 @@
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Plan } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-
 export async function createWorkspace(session: SessionWithUser) {
   const { user: externalUser } = session;
 
@@ -46,11 +45,7 @@ export async function createWorkspaceInternal({
         `Invalid plan code: ${planCode}. Only free plans are supported.`
       );
     }
-    const plan = await Plan.findOne({
-      where: {
-        code: planCode,
-      },
-    });
+    const plan = await PlanResource.fetchByPlanCode(planCode);
     if (!plan) {
       throw new Error(`Plan with code ${planCode} not found.`);
     }

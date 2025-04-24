@@ -10,10 +10,7 @@ import type Stripe from "stripe";
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { Subscription } from "@app/lib/models/plan";
-import { Plan } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
-import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   isEntreprisePlan,
@@ -22,20 +19,26 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_39_CODE } from "@app/lib/plans/plan_codes";
-import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
   getProPlanStripeProductId,
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
-import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { PlanAttributes } from "@app/lib/resources/plan_resource";
+import {
+  getTrialVersionForPlan,
+  PlanResource,
+} from "@app/lib/resources/plan_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { PlanModel } from "@app/lib/resources/storage/models/plans";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
@@ -56,6 +59,12 @@ import { Ok, sendUserOperationMessage } from "@app/types";
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 
+export function isTrial(
+  subscription: SubscriptionType | Subscription
+): boolean {
+  return subscription.trialing === true;
+}
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -65,20 +74,43 @@ export interface SubscriptionResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SubscriptionResource extends BaseResource<Subscription> {
   static model: ModelStatic<Subscription> = Subscription;
-  private readonly plan: PlanType;
+  private readonly plan: PlanResource;
 
   constructor(
     model: ModelStatic<Subscription>,
     blob: Attributes<Subscription>,
-    plan: PlanType
+    plan: PlanResource
   ) {
     super(Subscription, blob);
     this.plan = plan;
   }
 
-  static async makeNew(blob: CreationAttributes<Subscription>, plan: PlanType) {
+  static async makeNew(
+    blob: CreationAttributes<Subscription>,
+    plan: PlanResource
+  ) {
     const subscription = await Subscription.create({ ...blob });
     return new SubscriptionResource(Subscription, subscription.get(), plan);
+  }
+
+  private static async baseFetch(
+    auth: Authenticator,
+    where?: ResourceFindOptions<Subscription>
+  ) {
+    const subscription = await Subscription.findOne({
+      where: { ...where, workspaceId: auth.getNonNullableWorkspace().id },
+      include: [PlanModel],
+    });
+
+    if (!subscription) {
+      return null;
+    }
+
+    return new SubscriptionResource(
+      Subscription,
+      subscription.get(),
+      PlanResource.fromModel(subscription.plan)
+    );
   }
 
   static async fetchActiveByWorkspace(
@@ -112,7 +144,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         },
         include: [
           {
-            model: Plan,
+            model: PlanModel,
             as: "plan",
             required: true,
           },
@@ -130,14 +162,17 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       const activeSubscription =
         activeSubscriptionByWorkspaceId[workspace.id.toString()];
 
-      let plan: PlanAttributes = DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION;
-
+      let plan: PlanResource = PlanResource.fromAttributes(
+        DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION
+      );
       if (activeSubscription) {
         // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
         if (isTrial(activeSubscription)) {
-          plan = getTrialVersionForPlan(activeSubscription.plan);
+          plan = PlanResource.fromModel(
+            getTrialVersionForPlan(activeSubscription.plan)
+          );
         } else if (activeSubscription.plan) {
-          plan = activeSubscription.plan;
+          plan = PlanResource.fromModel(activeSubscription.plan);
         } else {
           logger.error(
             {
@@ -152,7 +187,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         Subscription,
         activeSubscription?.get() ||
           this.createFreeNoPlanSubscription(workspace),
-        renderPlanFromModel({ plan })
+        plan
       );
     }
 
@@ -166,7 +201,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     const subscriptions = await Subscription.findAll({
       where: { workspaceId: owner.id },
-      include: [Plan],
+      include: [PlanModel],
     });
 
     return subscriptions.map(
@@ -174,28 +209,18 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         new SubscriptionResource(
           Subscription,
           s.get(),
-          renderPlanFromModel({ plan: s.plan })
+          PlanResource.fromModel(s.plan)
         )
     );
   }
 
   static async fetchByStripeId(
+    auth: Authenticator,
     stripeSubscriptionId: string
   ): Promise<SubscriptionResource | null> {
-    const res = await Subscription.findOne({
+    return this.baseFetch(auth, {
       where: { stripeSubscriptionId },
-      include: [Plan],
     });
-
-    if (!res) {
-      return null;
-    }
-
-    return new SubscriptionResource(
-      Subscription,
-      res.get(),
-      renderPlanFromModel({ plan: res.plan })
-    );
   }
 
   /**
@@ -217,7 +242,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       this.createFreeNoPlanSubscription(workspace),
-      renderPlanFromModel({ plan: FREE_NO_PLAN_DATA })
+      PlanResource.fromAttributes(FREE_NO_PLAN_DATA)
     );
   }
 
@@ -313,7 +338,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       newSubscription.get(),
-      renderPlanFromModel({ plan: newPlan })
+      newPlan
     );
   }
 
@@ -521,7 +546,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     return {
       checkoutUrl,
-      plan: renderPlanFromModel({ plan: proPlan }),
+      plan: proPlan.toJSON(),
     };
   }
 
@@ -592,7 +617,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   }
 
   getPlan(): PlanType {
-    return Object.freeze({ ...this.plan });
+    return this.plan.toJSON();
   }
 
   toJSON(): SubscriptionType {
@@ -654,14 +679,13 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return workspace;
   }
 
-  private static async findPlanOrThrow(planCode: string): Promise<Plan> {
-    const newPlan = await Plan.findOne({
-      where: { code: planCode },
-    });
+  private static async findPlanOrThrow(
+    planCode: string
+  ): Promise<PlanResource> {
+    const newPlan = await PlanResource.fetchByPlanCode(planCode);
     if (!newPlan) {
       throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
     }
-
     return newPlan;
   }
 

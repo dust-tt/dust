@@ -1,23 +1,8 @@
-import type { Plan, Subscription } from "@app/lib/models/plan";
-import type { PlanAttributes } from "@app/lib/plans/free_plans";
-import type { SubscriptionType } from "@app/types";
+import type { PlanAttributes } from "@app/lib/resources/plan_resource";
 
 // These limits are applied to all plans during the trial period.
-const TRIAL_LIMITS: Partial<PlanAttributes> = {
+export const TRIAL_LIMITS: Partial<PlanAttributes> = {
   maxUsersInWorkspace: 5,
   maxMessages: 100,
   maxMessagesTimeframe: "day",
 };
-
-export function getTrialVersionForPlan(plan: Plan): PlanAttributes {
-  return {
-    ...plan.get(),
-    ...TRIAL_LIMITS,
-  };
-}
-
-export function isTrial(
-  subscription: SubscriptionType | Subscription
-): boolean {
-  return subscription.trialing === true;
-}

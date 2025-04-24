@@ -1,7 +1,6 @@
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
-import { Plan, Subscription } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
@@ -10,6 +9,11 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import { PlanResource } from "@app/lib/resources/plan_resource";
+import {
+  PlanModel,
+  Subscription,
+} from "@app/lib/resources/storage/models/plans";
 import type {
   BillingPeriod,
   LightWorkspaceType,
@@ -89,7 +93,7 @@ export const createProPlanCheckoutSession = async ({
 }): Promise<string | null> => {
   const stripe = getStripeClient();
 
-  const plan = await Plan.findOne({ where: { code: planCode } });
+  const plan = await PlanResource.fetchByPlanCode(planCode);
   if (!plan) {
     throw new Error(
       `Cannot create checkout session for plan ${planCode}: plan not found.`
@@ -123,7 +127,7 @@ export const createProPlanCheckoutSession = async ({
   let trialAllowed = true;
   const existingSubscription = await Subscription.findOne({
     where: { workspaceId: owner.id },
-    include: [Plan],
+    include: [PlanModel],
   });
   if (existingSubscription && !isOldFreePlan(existingSubscription.plan.code)) {
     trialAllowed = false;
