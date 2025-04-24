@@ -171,7 +171,9 @@ function ComplexDropdownDemo() {
           <DropdownMenuItem
             icon={UserIcon}
             label="Profile"
-            endComponent={<Button icon={ArrowUpOnSquareIcon} variant="ghost" />}
+            endComponent={
+              <Button size="mini" icon={ArrowUpOnSquareIcon} variant="ghost" />
+            }
           />
           <DropdownMenuItem icon={ArrowDownCircleIcon} label="Billing" />
           <DropdownMenuItem icon={Cog6ToothIcon} label="Settings" />
