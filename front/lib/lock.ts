@@ -11,6 +11,17 @@ const logger = mainLogger.child(
   { msgPrefix: "[LOCK] " }
 );
 
+/**
+ * NOTES:
+ * We use redis.eval to make calls in the same operation.
+ * i.e: if we want to get and del a value, by using eval we make sure the'll be executed without race condition issue on the redis side.
+ *
+ * The lock extension is to avoid having unecessary long running lock (with huge timeout), or too short one.
+ * i.e: If it's too long and a function fail, we'll have to wait for the lock to be freed before executing the next callback calling the lock.
+ * A too short one we'll can have race condition again (if function are too long)
+ * Having a lock extension help in the balance of handling failed dangling function.
+ */
+
 export type LockOptions = {
   /**
    * Maximum time to wait for lock acquisition in milliseconds
@@ -83,6 +94,7 @@ export class Lock {
     let lockExtender: NodeJS.Timeout | null = null;
 
     try {
+      // Try to acquire the lock for the given lock key
       while (
         !(await client.set(lockKey, lockValue, { NX: true, PX: timeoutMs }))
       ) {
@@ -97,6 +109,10 @@ export class Lock {
 
       acquired = true;
 
+      // If lock extension is activated, we'll check every x ms if the lockKey === lockValue
+      // If yes, that means that lock is still used by the same function.
+      // If no, an other instance of the calling function acquired the lock,
+      // so we can just clear that interval and exit
       if (enableLockExtension) {
         // Set the lock extender check to 1/3 of the timeout
         const extensionInterval = Math.floor(timeoutMs / 3);
@@ -138,9 +154,11 @@ export class Lock {
       }
 
       try {
+        // Call the long running process protected of race condition
         const result = await callback();
         return result;
       } finally {
+        // Once we done, we can free the lock extender if we have any
         if (lockExtender) {
           clearInterval(lockExtender);
           lockExtender = null;
@@ -167,11 +185,14 @@ export class Lock {
         }
       }
     } catch (err) {
-      // If we acquired the lock but an error ocurred before the finally block
+      // Last protection, if something failed somewhere before, we try to clean behind us
+
+      // If we still own the lock and we have a lockExtender running, let's clear it
       if (acquired && lockExtender) {
         clearInterval(lockExtender);
       }
 
+      // Let's free the lock atomically if we still own it.
       if (acquired) {
         try {
           const script = `
