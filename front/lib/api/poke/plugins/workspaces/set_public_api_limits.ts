@@ -76,6 +76,11 @@ export const setPublicAPILimitsPlugin = createPlugin({
           "Enable or disable public API limits. When disabled, there " +
           "are no spending restrictions. (Leave empty to disable).",
       },
+      markup: {
+        type: "number",
+        label: "Markup (%)",
+        description: "Markup to apply to the monthly limit.",
+      },
       monthlyLimit: {
         type: "number",
         label: "Monthly Limit (USD)",
@@ -86,9 +91,21 @@ export const setPublicAPILimitsPlugin = createPlugin({
     },
   },
   execute: async (auth, _, args) => {
-    const { enabled, monthlyLimit } = args;
+    const { enabled, markup, monthlyLimit } = args;
     const workspace = auth.getNonNullableWorkspace();
     const subscription = auth.subscription();
+
+    if (markup < 0 || markup > 100) {
+      return new Err(
+        new Error(
+          "Markup must be between 0 and 100. (0 for no markup, 100 for 100% markup)."
+        )
+      );
+    }
+
+    if (monthlyLimit < 0) {
+      return new Err(new Error("Monthly limit must be greater than 0."));
+    }
 
     // Validate subscription requirements.
     if (!subscription) {
@@ -145,12 +162,15 @@ export const setPublicAPILimitsPlugin = createPlugin({
     }
 
     // Adjust credits based on new limit.
-    await adjustCredits(workspace, { newMonthlyLimit: monthlyLimit });
+    await adjustCredits(workspace, {
+      newMonthlyLimit: monthlyLimit,
+    });
 
     // Set new limits.
     const billingDay = calculateBillingDay(stripeSubscription);
     const res = await setWorkspacePublicAPILimits(workspace, {
       enabled,
+      markup,
       monthlyLimit,
       billingDay,
     });
