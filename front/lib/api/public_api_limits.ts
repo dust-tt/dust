@@ -68,6 +68,9 @@ export async function trackTokenUsageCost(
     return Infinity; // No limits means unlimited credits.
   }
 
+  // Apply markup.
+  const amountWithMarkup = amount * (1 + limits.markup / 100);
+
   return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
     const key = getRedisKey(workspace);
     const remainingCredits = await redis.get(key);
@@ -83,7 +86,7 @@ export async function trackTokenUsageCost(
     // remaining, we allow the negative balance to be recorded. This ensures we have an accurate
     // record of over-usage, while hasReachedPublicAPILimits will block subsequent calls when
     // detecting negative credits.
-    const newCredits = parseFloat(remainingCredits) - amount;
+    const newCredits = parseFloat(remainingCredits) - amountWithMarkup;
     await redis.set(key, newCredits.toString());
     return newCredits;
   });

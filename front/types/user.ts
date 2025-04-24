@@ -34,6 +34,7 @@ export function isActiveRoleType(role: string): role is ActiveRoleType {
 
 type PublicAPILimitsEnabled = {
   enabled: true;
+  markup: number;
   monthlyLimit: number;
   billingDay: number; // Best-effort, represents the day of the month when the billing period starts.
 };
