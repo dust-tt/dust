@@ -108,13 +108,11 @@ const updateSelection = ({
   prevState,
   selectionMode = "checkbox",
   onlyAdd = false,
-  viewType,
 }: {
   item: DataSourceViewContentNode;
   prevState: DataSourceViewSelectionConfigurations;
   selectionMode: "checkbox" | "radio";
   onlyAdd?: boolean;
-  viewType: ContentNodesViewType;
 }): DataSourceViewSelectionConfigurations => {
   const { dataSourceView: dsv } = item;
   const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
@@ -155,7 +153,7 @@ const updateSelection = ({
     };
   }
 
-  let newResources = exists
+  const newResources = exists
     ? prevConfig.selectedResources.filter(
         (r) => r.internalId !== item.internalId
       )
@@ -167,11 +165,6 @@ const updateSelection = ({
           parentInternalIds: item.parentInternalIds || [],
         },
       ];
-
-  // In table view, we cannot select folders.
-  if (viewType === "table" && item.type === "folder") {
-    newResources = newResources.filter((r) => r.type !== "folder");
-  }
 
   return {
     ...prevState,
@@ -343,7 +336,6 @@ export function DataSourceViewsSelector({
             prevState: acc,
             selectionMode,
             onlyAdd: true,
-            viewType,
           }),
         prevState
       );
@@ -383,7 +375,6 @@ export function DataSourceViewsSelector({
               item,
               prevState,
               selectionMode,
-              viewType,
             })
           );
         }}
@@ -405,7 +396,6 @@ export function DataSourceViewsSelector({
                     item,
                     prevState,
                     selectionMode,
-                    viewType,
                   })
                 );
               }}
