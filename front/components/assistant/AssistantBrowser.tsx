@@ -5,12 +5,15 @@ import {
   Button,
   CardGrid,
   Chip,
+  CompanyIcon,
   DropdownMenuItem,
   DropdownMenuLabel,
+  LockIcon,
   MoreIcon,
   PencilSquareIcon,
   PlusIcon,
   RobotIcon,
+  RocketIcon,
   ScrollArea,
   ScrollBar,
   SearchDropdownMenu,
@@ -20,10 +23,12 @@ import {
   TabsList,
   TabsTrigger,
   useHashParam,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
@@ -33,23 +38,27 @@ function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
 }
 
-// const ALL_AGENTS_TABS = [
-//   // default shown tab = earliest in this list with non-empty agents
-//   { label: "Favorites", icon: StarIcon, id: "favorites" },
-//   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
-//   { label: "Company", icon: CompanyIcon, id: "workspace" },
-//   { label: "Shared", icon: UserGroupIcon, id: "published" },
-//   { label: "Personal", icon: LockIcon, id: "personal" },
-//   { label: "All", icon: RobotIcon, id: "all" },
-// ] as const;
+// TODO(agent-discovery): Remove this once old scopes are removed
+const AGENTS_TABS_LEGACY = [
+  // default shown tab = earliest in this list with non-empty agents
+  { label: "Favorites", icon: StarIcon, id: "favorites" },
+  { label: "Most popular", icon: RocketIcon, id: "most_popular" },
+  { label: "Company", icon: CompanyIcon, id: "workspace" },
+  { label: "Shared", icon: UserGroupIcon, id: "published" },
+  { label: "Personal", icon: LockIcon, id: "personal" },
+  { label: "All", icon: RobotIcon, id: "all" },
+] as const;
+// END-TODO(agent-discovery)
 
-const ALL_AGENTS_TABS = [
+const AGENTS_TABS = [
   { label: "Favorites", icon: StarIcon, id: "favorites" },
   { label: "All agents", icon: RobotIcon, id: "all" },
   { label: "Editable by me", icon: PencilSquareIcon, id: "editable_by_me" },
 ] as const;
 
-type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
+const ALL_TABS = [...AGENTS_TABS_LEGACY, ...AGENTS_TABS];
+
+type TabId = (typeof ALL_TABS)[number]["id"];
 
 type AgentGridProps = {
   agentConfigurations: LightAgentConfigurationType[];
@@ -140,6 +149,11 @@ export function AssistantBrowser({
           (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
         )
         .slice(0, 6),
+      // TODO(agent-discovery): Remove this once old scopes are removed
+      personal: allAgents.filter((a) => a.scope === "private"),
+      published: allAgents.filter((a) => a.scope === "published"),
+      workspace: allAgents.filter((a) => a.scope === "workspace"),
+      // END-TODO(agent-discovery)
     };
   }, [agentConfigurations, selectedTags, owner]);
 
@@ -177,10 +191,18 @@ export function AssistantBrowser({
     return { filteredAgents, filteredTags, uniqueTags };
   }, [agentConfigurations, assistantSearch]);
 
+  // TODO(agent-discovery) Remove feature-flag
+  const featureFlags = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasAgentDiscovery = featureFlags.hasFeature("agent_discovery");
+
   // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
   const visibleTabs = useMemo(() => {
-    return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
-  }, [agentsByTab]);
+    return (hasAgentDiscovery ? AGENTS_TABS : AGENTS_TABS_LEGACY).filter(
+      (tab) => agentsByTab[tab.id].length > 0
+    );
+  }, [agentsByTab, hasAgentDiscovery]);
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
   const viewTab = useMemo(() => {
@@ -343,7 +365,7 @@ export function AssistantBrowser({
         ))}
       </div>
 
-      {viewTab === "all" ? (
+      {viewTab === "all" && hasAgentDiscovery ? (
         <div className="flex flex-col gap-4">
           {selectedTags.length === 0 && (
             <>

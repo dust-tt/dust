@@ -12,6 +12,7 @@ import {
   TabsTrigger,
   TrashIcon,
   useHashParam,
+  UserIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -21,8 +22,10 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantsTable } from "@app/components/assistant/AssistantsTable";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -34,11 +37,44 @@ import type {
 } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 
-export const ASSISTANT_MANAGER_TABS = [
+export const AGENT_MANAGER_TABS_LEGACY = [
+  {
+    label: "Edited by me",
+    icon: UserIcon,
+    id: "current_user",
+    description: "Edited or created by you.",
+  },
+  {
+    label: "Company",
+    icon: SCOPE_INFO["workspace"].icon,
+    id: "workspace",
+    description: SCOPE_INFO["workspace"].text,
+  },
+  {
+    label: "Shared",
+    icon: SCOPE_INFO["published"].icon,
+    id: "published",
+    description: SCOPE_INFO["published"].text,
+  },
+  {
+    id: "global",
+    label: "Default",
+    icon: SCOPE_INFO["global"].icon,
+    description: SCOPE_INFO["global"].text,
+  },
+  {
+    label: "Searching across all agents",
+    icon: MagnifyingGlassIcon,
+    id: "search",
+    description: "Searching across all agents",
+  },
+] as const;
+
+export const AGENT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents
   {
-    id: "all",
-    label: "All agents",
+    id: "all_custom",
+    label: "All custom agents",
     icon: RobotIcon,
     description: "All agents.",
   },
@@ -68,12 +104,14 @@ export const ASSISTANT_MANAGER_TABS = [
   },
 ] as const;
 
-export type AssistantManagerTabsType =
-  (typeof ASSISTANT_MANAGER_TABS)[number]["id"];
+const ALL_TABS = [...AGENT_MANAGER_TABS, ...AGENT_MANAGER_TABS_LEGACY];
+
+export type AssistantManagerTabsType = (typeof ALL_TABS)[number]["id"];
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  hasAgentDiscovery: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -86,23 +124,32 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
 
+  // TODO(agent-discovery) Remove feature-flag
+  const featureFlags = await getFeatureFlags(owner);
+  const hasAgentDiscovery = featureFlags.includes("agent_discovery");
+
   return {
     props: {
       owner,
       subscription,
+      hasAgentDiscovery,
     },
   };
 });
 
-function isValidTab(tab?: string): tab is AssistantManagerTabsType {
-  return ASSISTANT_MANAGER_TABS.map((tab) => tab.id).includes(
-    tab as AssistantManagerTabsType
-  );
+function isValidTab(
+  tab: string,
+  hasAgentDiscovery: boolean
+): tab is AssistantManagerTabsType {
+  return (hasAgentDiscovery ? AGENT_MANAGER_TABS : AGENT_MANAGER_TABS_LEGACY)
+    .map((tab) => tab.id)
+    .includes(tab as AssistantManagerTabsType);
 }
 
 export default function WorkspaceAssistants({
   owner,
   subscription,
+  hasAgentDiscovery,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
@@ -114,8 +161,12 @@ export default function WorkspaceAssistants({
       return "search";
     }
 
-    return selectedTab && isValidTab(selectedTab) ? selectedTab : "all";
-  }, [assistantSearch, selectedTab]);
+    return selectedTab && isValidTab(selectedTab, hasAgentDiscovery)
+      ? selectedTab
+      : hasAgentDiscovery
+        ? "all_custom"
+        : "current_user";
+  }, [assistantSearch, selectedTab, hasAgentDiscovery]);
 
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
@@ -125,7 +176,7 @@ export default function WorkspaceAssistants({
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "list",
-    includes: ["usage", "feedbacks"],
+    includes: ["authors", "usage", "feedbacks"],
   });
 
   const { agentConfigurations: archivedAgentConfigurations } =
@@ -148,7 +199,7 @@ export default function WorkspaceAssistants({
 
     return {
       // do not show the "all" tab while still loading all agents
-      all: allAgents,
+      all_custom: allAgents.filter((a) => a.scope !== "global"),
       editable_by_me: allAgents.filter(
         (a) =>
           a.scope !== "global" &&
@@ -164,6 +215,9 @@ export default function WorkspaceAssistants({
           b.name.toLowerCase()
         );
       }),
+      workspace: allAgents.filter((a) => a.scope === "workspace"),
+      published: allAgents.filter((a) => a.scope === "published"),
+      current_user: allAgents.filter((a) => a.lastAuthors?.includes("Me")),
       search: agentConfigurations
         .filter(
           (a) =>
@@ -233,15 +287,18 @@ export default function WorkspaceAssistants({
 
   // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
   const visibleTabs = useMemo(() => {
-    const searchTab = ASSISTANT_MANAGER_TABS.find((tab) => tab.id === "search");
+    const searchTab = AGENT_MANAGER_TABS.find((tab) => tab.id === "search");
     if (!searchTab) {
       throw new Error("Unexpected: Search tab not found");
     }
 
     return assistantSearch.trim() !== ""
       ? [searchTab]
-      : ASSISTANT_MANAGER_TABS.filter((tab) => tab.id !== "search");
-  }, [assistantSearch]);
+      : (hasAgentDiscovery
+          ? AGENT_MANAGER_TABS
+          : AGENT_MANAGER_TABS_LEGACY
+        ).filter((tab) => tab.id !== "search");
+  }, [assistantSearch, hasAgentDiscovery]);
 
   const disabledTablineClass =
     "!border-primary-500 !text-primary-500 !cursor-default";
@@ -315,7 +372,7 @@ export default function WorkspaceAssistants({
                       className={assistantSearch ? disabledTablineClass : ""}
                       onClick={() => !assistantSearch && setSelectedTab(tab.id)}
                       tooltip={
-                        ASSISTANT_MANAGER_TABS.find((t) => t.id === tab.id)
+                        AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                           ?.description
                       }
                     />
