@@ -530,7 +530,7 @@ interface UploadBase64ImageToFileStorageArgs {
 export async function uploadBase64ImageToFileStorage(
   auth: Authenticator,
   { base64, contentType, fileName }: UploadBase64ImageToFileStorageArgs
-) {
+): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   // Remove data URL prefix for any supported image type.
   const base64Data = base64.replace(/^data:image\/[a-z]+;base64,/, "");
 
@@ -549,7 +549,7 @@ export async function uploadBase64ImageToFileStorage(
     useCase: "conversation",
   });
 
-  await processAndStoreFile(auth, {
+  const res = await processAndStoreFile(auth, {
     file,
     content: {
       type: "readable",
@@ -557,5 +557,10 @@ export async function uploadBase64ImageToFileStorage(
     },
   });
 
-  return file;
+  if (res.isErr()) {
+    await file.markAsFailed();
+    return res;
+  }
+
+  return new Ok(file);
 }

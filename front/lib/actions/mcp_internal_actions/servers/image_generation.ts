@@ -11,7 +11,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials, Err } from "@app/types";
 
 const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
 const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
@@ -139,29 +139,61 @@ const createServer = (auth: Authenticator): McpServer => {
 
       const fileName = `${name}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
 
-      const files = await concurrentExecutor(
+      const fileResults = await concurrentExecutor(
         result.data,
-        async (image) =>
-          uploadBase64ImageToFileStorage(auth, {
-            base64: image.b64_json!,
-            contentType: DEFAULT_IMAGE_MIME_TYPE,
-            fileName,
-          }),
+        async (image) => {
+          try {
+            const res = await uploadBase64ImageToFileStorage(auth, {
+              base64: image.b64_json!,
+              contentType: DEFAULT_IMAGE_MIME_TYPE,
+              fileName,
+            });
+
+            return res;
+          } catch (error) {
+            logger.error(
+              {
+                action: "mcp_tool",
+                tool: "generate_image",
+                workspaceId: workspace.sId,
+                error,
+              },
+              "Failed to save the generated image."
+            );
+
+            return new Err("Failed to save the generated image.");
+          }
+        },
         { concurrency: 10 }
       );
 
-      const content: MCPToolResultContentType[] = files.map((file) => ({
-        type: "resource",
-        resource: {
-          contentType: file.contentType,
-          fileId: file.sId,
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-          snippet: null,
-          text: "Your image was generated successfully.",
-          title: file.fileName,
-          uri: file.getPublicUrl(auth),
-        },
-      }));
+      const errors = fileResults.filter((r) => r.isErr());
+      if (errors.length > 0) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Failed to generate image: ${errors.map((e) => e.error).join(", ")}`,
+            },
+          ],
+        };
+      }
+
+      const content: MCPToolResultContentType[] = fileResults
+        .filter((f) => f.isOk())
+        .map(({ value: file }) => ({
+          type: "resource",
+          resource: {
+            contentType: file.contentType,
+            fileId: file.sId,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+            snippet: null,
+            text: "Your image was generated successfully.",
+            title: file.fileName,
+            uri: file.getPublicUrl(auth),
+          },
+        }));
 
       return {
         isError: false,
