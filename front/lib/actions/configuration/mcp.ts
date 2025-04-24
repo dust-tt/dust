@@ -170,7 +170,11 @@ export async function fetchMCPServerActionConfigurations(
         additionalConfiguration: config.additionalConfiguration,
         reasoningModel:
           reasoningConfigurations.length > 0
-            ? { ...reasoningConfigurations[0] }
+            ? {
+                providerId: reasoningConfigurations[0].providerId,
+                modelId: reasoningConfigurations[0].modelId,
+                reasoningEffort: reasoningConfigurations[0].reasoningEffort,
+              }
             : null,
       });
     }
