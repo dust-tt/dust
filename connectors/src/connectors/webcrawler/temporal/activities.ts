@@ -52,12 +52,6 @@ import {
   WEBCRAWLER_MAX_PAGES,
 } from "@connectors/types";
 
-const { FIRECRAWL_API_KEY } = process.env;
-
-if (!FIRECRAWL_API_KEY) {
-  throw new Error("Missing FIRECRAWL_API_KEY");
-}
-
 const CONCURRENCY = 1;
 
 export async function markAsCrawled(connectorId: ModelId) {
