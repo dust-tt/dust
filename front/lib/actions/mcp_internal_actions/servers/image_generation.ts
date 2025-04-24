@@ -33,15 +33,15 @@ const createServer = (auth: Authenticator): McpServer => {
 
   server.tool(
     "generate_image",
-    "Generate images from text descriptions. The more detailed and specific your prompt is, the" +
-      " better the results will be. You can customize the output through various parameters to" +
+    "Generate an image from text descriptions. The more detailed and specific your prompt is, the" +
+      " better the result will be. You can customize the output through various parameters to" +
       " match your needs.",
     {
       prompt: z
         .string()
         .max(4000)
         .describe(
-          "A text description of the desired image(s). The maximum length is 32000 characters."
+          "A text description of the desired image. The maximum length is 32000 characters."
         ),
       name: z
         .string()
@@ -54,7 +54,7 @@ const createServer = (auth: Authenticator): McpServer => {
         .optional()
         .default("auto")
         .describe(
-          "The quality of the generated images. Must be one of auto, low, medium, or high. Auto" +
+          "The quality of the generated image. Must be one of auto, low, medium, or high. Auto" +
             " will automatically choose the best quality for the size."
         ),
       size: z
@@ -62,7 +62,7 @@ const createServer = (auth: Authenticator): McpServer => {
         .optional()
         .default("1024x1024")
         .describe(
-          "The size of the generated images. Must be one of 1024x1024, 1536x1024, or 1024x1536"
+          "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
         ),
     },
     async ({ prompt, name, quality, size }) => {
