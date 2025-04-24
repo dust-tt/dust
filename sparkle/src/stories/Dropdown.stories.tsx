@@ -56,6 +56,7 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   RobotIcon,
+  SearchDropdownMenu,
   SuitcaseIcon,
   UserGroupIcon,
   UserIcon,
@@ -85,6 +86,38 @@ export const PickerExamples = () => (
     <div>{AttachFileDemo()}</div>
   </div>
 );
+
+export const SearchDropdownMenuExamples = () => {
+  const [searchInputValue, setSearchInputValue] = React.useState("");
+
+  const items = ["Profile", "Billing", "Team", "Subscription"];
+
+  const filteredItems = items.filter((item) =>
+    item.toLowerCase().includes(searchInputValue.toLowerCase())
+  );
+
+  return (
+    <div className="s-flex s-h-80 s-w-full s-flex-col s-items-center s-justify-center s-gap-4 s-text-foreground dark:s-text-foreground-night">
+      <div>
+        <SearchDropdownMenu
+          searchInputValue={searchInputValue}
+          setSearchInputValue={setSearchInputValue}
+        >
+          {filteredItems.map((item) => (
+            <DropdownMenuItem
+              key={item}
+              label={item}
+              onClick={() => {
+                setSearchInputValue("");
+                window.alert(item);
+              }}
+            />
+          ))}
+        </SearchDropdownMenu>
+      </div>
+    </div>
+  );
+};
 
 function SimpleDropdownDemo() {
   return (
