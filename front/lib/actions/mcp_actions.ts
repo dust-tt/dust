@@ -18,6 +18,7 @@ import type {
   MCPToolConfigurationType,
   PlatformMCPServerConfigurationType,
   PlatformMCPToolConfigurationType,
+  WithToolNameMetadata,
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -71,10 +72,7 @@ const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
   tools: PlatformMCPToolTypeWithStakeLevel[]
-): (PlatformMCPToolConfigurationType & {
-  originalName: string;
-  mcpServerName: string;
-})[] {
+): WithToolNameMetadata<PlatformMCPToolConfigurationType>[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -98,10 +96,7 @@ function makePlatformMCPToolConfigurations(
 function makeLocalMCPToolConfigurations(
   config: LocalMCPServerConfigurationType,
   tools: LocalMCPToolTypeWithStakeLevel[]
-): (LocalMCPToolConfigurationType & {
-  originalName: string;
-  mcpServerName: string;
-})[] {
+): WithToolNameMetadata<LocalMCPToolConfigurationType>[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -520,10 +515,16 @@ async function listMCPServerTools(
 
     let toolsRes: Result<MCPToolConfigurationType[], Error>;
     if (isConnectViaLocalMCPServer(connectionParams)) {
-      assert(!isPlatformMCPServerConfiguration(config), "Should never happen");
+      assert(
+        !isPlatformMCPServerConfiguration(config),
+        "Config should not be a platform configuration when connecting via Local MCP Server."
+      );
       toolsRes = await listToolsForLocalMCPServer(mcpClient, config);
     } else {
-      assert(isPlatformMCPServerConfiguration(config), "Should never happen");
+      assert(
+        isPlatformMCPServerConfiguration(config),
+        "Config should be a platform configuration when connecting via Platform MCP Server."
+      );
       toolsRes = await listToolsForPlatformMCPServer(
         auth,
         connectionParams,

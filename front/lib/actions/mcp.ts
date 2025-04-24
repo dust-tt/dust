@@ -106,13 +106,14 @@ export type LocalMCPToolConfigurationType = Omit<
   inputSchema: JSONSchema;
 };
 
-export type MCPToolConfigurationType = (
-  | PlatformMCPToolConfigurationType
-  | LocalMCPToolConfigurationType
-) & {
+export type WithToolNameMetadata<T> = T & {
   originalName: string;
   mcpServerName: string;
 };
+
+export type MCPToolConfigurationType = WithToolNameMetadata<
+  PlatformMCPToolConfigurationType | LocalMCPToolConfigurationType
+>;
 
 type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
