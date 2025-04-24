@@ -4,15 +4,16 @@ import OpenAI from "openai";
 import { z } from "zod";
 
 import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { dustManagedCredentials, Err } from "@app/types";
-import assert from "assert";
 
 const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
 const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
@@ -168,7 +169,21 @@ const createServer = (auth: Authenticator): McpServer => {
         { concurrency: 10 }
       );
 
-      const errors: Err<Error>[] = fileResults.filter((r) => r.isErr());
+      const { errors, files } = fileResults.reduce<{
+        errors: Err<Error | ProcessAndStoreFileError>[];
+        files: FileResource[];
+      }>(
+        (acc, r) => {
+          if (r.isErr()) {
+            acc.errors.push(r);
+          } else {
+            acc.files.push(r.value);
+          }
+          return acc;
+        },
+        { errors: [], files: [] }
+      );
+
       if (errors.length > 0) {
         return {
           isError: true,
@@ -181,14 +196,7 @@ const createServer = (auth: Authenticator): McpServer => {
         };
       }
 
-      const content: MCPToolResultContentType[] = fileResults.map((r) => {
-        assert(
-          r.isOk(),
-          "Unexpected error: result should be Ok since errors were filtered out above"
-        );
-
-        const file = r.value;
-
+      const content: MCPToolResultContentType[] = files.map((file) => {
         return {
           type: "resource",
           resource: {
