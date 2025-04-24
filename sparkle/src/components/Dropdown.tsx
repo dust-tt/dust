@@ -6,6 +6,7 @@ import { useRef } from "react";
 import { DoubleIcon } from "@sparkle/components/DoubleIcon";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
@@ -21,7 +22,7 @@ export const menuStyleClasses = {
     "s-border s-border-border dark:s-border-border-night",
     "s-bg-background dark:s-bg-muted-background-night",
     "s-text-foreground dark:s-text-foreground-night",
-    "s-z-50 s-min-w-[8rem] s-overflow-hidden",
+    "s-z-50 s-min-w-[8rem]",
     "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
   ),
   item: cva(
@@ -202,12 +203,28 @@ DropdownMenuSubTrigger.displayName =
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
-    className={cn(menuStyleClasses.container, "s-shadow-lg", className)}
+    className={cn(
+      menuStyleClasses.container,
+      "s-flex s-flex-col s-p-0 s-shadow-lg",
+      className
+    )}
     {...props}
-  />
+  >
+    <ScrollArea
+      className="s-w-full s-flex-1"
+      hideScrollBar={false}
+      orientation="vertical"
+      viewportClassName={cn(
+        "s-flex-1",
+        "s-max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
+      )}
+    >
+      <div className="s-p-1">{children}</div>
+    </ScrollArea>
+  </DropdownMenuPrimitive.SubContent>
 ));
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
@@ -216,6 +233,7 @@ interface DropdownMenuContentProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
+  dropdownHeaders?: React.ReactNode;
 }
 
 const DropdownMenuContent = React.forwardRef<
@@ -228,6 +246,8 @@ const DropdownMenuContent = React.forwardRef<
       sideOffset = 4,
       mountPortal = true,
       mountPortalContainer,
+      dropdownHeaders,
+      children,
       ...props
     },
     ref
@@ -236,9 +256,26 @@ const DropdownMenuContent = React.forwardRef<
       <DropdownMenuPrimitive.Content
         ref={ref}
         sideOffset={sideOffset}
-        className={cn(menuStyleClasses.container, "s-shadow-md", className)}
+        className={cn(
+          menuStyleClasses.container,
+          "s-flex s-flex-col s-p-0 s-shadow-md",
+          className
+        )}
         {...props}
-      />
+      >
+        <div className="s-sticky s-top-0 s-bg-background dark:s-bg-background-night">
+          {dropdownHeaders && dropdownHeaders}
+        </div>
+        <ScrollArea
+          className="s-w-full s-flex-1"
+          viewportClassName={cn(
+            "s-flex-1",
+            "s-max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
+          )}
+        >
+          {children}
+        </ScrollArea>
+      </DropdownMenuPrimitive.Content>
     );
 
     const [container, setContainer] = React.useState<Element | undefined>(

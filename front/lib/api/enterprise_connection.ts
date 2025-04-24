@@ -14,10 +14,13 @@ function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
 }
 
-export function makeEnterpriseConnectionInitiateLoginUrl(workspaceId: string) {
+export function makeEnterpriseConnectionInitiateLoginUrl(
+  workspaceId: string,
+  returnTo: string | null
+) {
   return `${config.getClientFacingUrl()}/api/auth/login?connection=${makeEnterpriseConnectionName(
     workspaceId
-  )}`;
+  )}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`;
 }
 
 export function makeAudienceUri(owner: LightWorkspaceType) {

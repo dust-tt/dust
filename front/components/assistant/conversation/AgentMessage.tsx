@@ -545,14 +545,13 @@ export function AgentMessage({
 
     // MCP actions with search results
     const searchResultsWithDocs = removeNulls(
-      agentMessageToRender.actions.filter(isMCPActionType).flatMap((action) =>
-        action.output?.map((o) => {
-          if (o.type === "resource" && isSearchResultResourceType(o.resource)) {
-            return o.resource;
-          }
-          return null;
-        })
-      )
+      agentMessageToRender.actions
+        .filter(isMCPActionType)
+        .flatMap((action) =>
+          action.output
+            ?.filter(isSearchResultResourceType)
+            .map((o) => o.resource)
+        )
     );
     const allMCPReferences = searchResultsWithDocs.reduce<{
       [key: string]: MarkdownCitation;

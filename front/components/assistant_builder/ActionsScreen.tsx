@@ -28,7 +28,6 @@ import {
   Page,
   PlusIcon,
   Popover,
-  ScrollArea,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -142,8 +141,7 @@ const isUsableAsCapability = (
   if (!view) {
     return false;
   }
-  const requirements = getMCPServerRequirements(view);
-  return view.server.isDefault && requirements.noRequirement;
+  return view.server.isDefault && getMCPServerRequirements(view).noRequirement;
 };
 
 const isUsableInKnowledge = (
@@ -1344,75 +1342,73 @@ function AddAction({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
-        <ScrollArea className="flex max-h-[40vh] flex-col">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel label="Knowledge" />
-            {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
-              const spec = ACTION_SPECIFICATIONS[key];
-              if (!hasFeature(spec.flag)) {
-                return null;
-              }
-              const defaultAction = getDefaultActionConfiguration(key);
-              if (!defaultAction) {
-                return null;
-              }
+        <DropdownMenuGroup>
+          <DropdownMenuLabel label="Knowledge" />
+          {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            if (!hasFeature(spec.flag)) {
+              return null;
+            }
+            const defaultAction = getDefaultActionConfiguration(key);
+            if (!defaultAction) {
+              return null;
+            }
 
+            return (
+              <DropdownMenuItem
+                key={key}
+                onClick={() => onAddAction(defaultAction)}
+                icon={spec.dropDownIcon}
+                label={spec.label}
+                description={spec.description}
+              />
+            );
+          })}
+          {mcpServerViews
+            .filter((view) => isUsableInKnowledge(view.id, mcpServerViews))
+            .map((view) => {
               return (
                 <DropdownMenuItem
-                  key={key}
-                  onClick={() => onAddAction(defaultAction)}
-                  icon={spec.dropDownIcon}
-                  label={spec.label}
-                  description={spec.description}
+                  key={view.id}
+                  icon={() => (
+                    <Avatar visual={getAvatar(view.server)} size="xs" />
+                  )}
+                  label={asDisplayName(view.server.name)}
+                  description={view.server.description}
+                  onClick={() =>
+                    onAddAction({
+                      ...getDefaultMCPServerActionConfiguration(view),
+                      id: uniqueId(),
+                    })
+                  }
                 />
               );
             })}
-            {mcpServerViews
-              .filter((view) => isUsableInKnowledge(view.id, mcpServerViews))
-              .map((view) => {
-                return (
-                  <DropdownMenuItem
-                    key={view.id}
-                    icon={() => (
-                      <Avatar visual={getAvatar(view.server)} size="xs" />
-                    )}
-                    label={asDisplayName(view.server.name)}
-                    description={view.server.description}
-                    onClick={() =>
-                      onAddAction({
-                        ...getDefaultMCPServerActionConfiguration(view),
-                        id: uniqueId(),
-                      })
-                    }
-                  />
-                );
-              })}
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuLabel label="Advanced" />
-            {ADVANCED_ACTION_CATEGORIES.map((key) => {
-              const spec = ACTION_SPECIFICATIONS[key];
-              if (!hasFeature(spec.flag)) {
-                return null;
-              }
-              const defaultAction = getDefaultActionConfiguration(key);
-              if (!defaultAction) {
-                return null;
-              }
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel label="Advanced" />
+          {ADVANCED_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            if (!hasFeature(spec.flag)) {
+              return null;
+            }
+            const defaultAction = getDefaultActionConfiguration(key);
+            if (!defaultAction) {
+              return null;
+            }
 
-              return (
-                <DropdownMenuItem
-                  key={key}
-                  onClick={() => onAddAction(defaultAction)}
-                  icon={spec.dropDownIcon}
-                  label={spec.label}
-                  description={spec.description}
-                />
-              );
-            })}
-          </DropdownMenuGroup>
-        </ScrollArea>
+            return (
+              <DropdownMenuItem
+                key={key}
+                onClick={() => onAddAction(defaultAction)}
+                icon={spec.dropDownIcon}
+                label={spec.label}
+                description={spec.description}
+              />
+            );
+          })}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

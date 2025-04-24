@@ -184,7 +184,7 @@ export function ActionValidationProvider({
         <DialogContent isAlertDialog>
           <DialogHeader>
             <DialogTitle visual={<ActionPieChartIcon />}>
-              Action Validation Required
+              Tool Validation Required
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>

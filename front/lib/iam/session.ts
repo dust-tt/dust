@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   GetServerSidePropsContext,
   GetServerSidePropsResult,
@@ -153,6 +154,22 @@ export function makeGetServerSidePropsRequirementsWrapper<
           },
         };
       }
+      if (requireUserPrivilege !== "none") {
+        // If this is a logged page start first by checking if the user is logged in, if not
+        // redirect to login to avoid jumping through /subscribe (below).
+        if (!session || !isValidSession(session)) {
+          return {
+            redirect: {
+              permanent: false,
+              destination: `/api/auth/login${
+                context.resolvedUrl
+                  ? `?returnTo=${encodeURIComponent(context.resolvedUrl)}`
+                  : ""
+              }`,
+            },
+          };
+        }
+      }
 
       if (
         requireCanUseProduct &&
@@ -177,15 +194,8 @@ export function makeGetServerSidePropsRequirementsWrapper<
       }
 
       if (requireUserPrivilege !== "none") {
-        if (!session || !isValidSession(session)) {
-          return {
-            redirect: {
-              permanent: false,
-              // TODO(2024-03-04 flav) Add support for `returnTo=`.
-              destination: "/api/auth/login",
-            },
-          };
-        }
+        // This was checked above already.
+        assert(session && isValidSession(session));
 
         const isDustSuperUser = auth?.isDustSuperUser() ?? false;
         if (requireUserPrivilege === "superuser" && !isDustSuperUser) {
@@ -210,8 +220,11 @@ export function makeGetServerSidePropsRequirementsWrapper<
           return {
             redirect: {
               permanent: false,
-              // TODO(2024-03-04 flav) Add support for `returnTo=`.
-              destination: `/sso-enforced?workspaceId=${auth.workspace()?.sId}`,
+              destination: `/sso-enforced?workspaceId=${auth.workspace()?.sId}${
+                context.resolvedUrl
+                  ? `&returnTo=${encodeURIComponent(context.resolvedUrl)}`
+                  : ""
+              }`,
             },
           };
         }

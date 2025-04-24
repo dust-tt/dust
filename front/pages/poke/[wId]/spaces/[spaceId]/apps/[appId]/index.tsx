@@ -4,7 +4,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ScrollArea,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
@@ -187,27 +186,25 @@ function AppSpecification({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <ScrollArea className="h-96">
+                <DropdownMenuItem
+                  label="Current"
+                  onClick={() => {
+                    void router.push(`${pathname}?hash=`);
+                  }}
+                />
+                {specificationHashes.map((hash) => (
                   <DropdownMenuItem
-                    label="Current"
+                    label={
+                      registryApp?.app?.appHash === hash
+                        ? `${hash} [registry]`
+                        : hash
+                    }
+                    key={hash}
                     onClick={() => {
-                      void router.push(`${pathname}?hash=`);
+                      void router.push(`${pathname}?hash=${hash}`);
                     }}
                   />
-                  {specificationHashes.map((hash) => (
-                    <DropdownMenuItem
-                      label={
-                        registryApp?.app?.appHash === hash
-                          ? `${hash} [registry]`
-                          : hash
-                      }
-                      key={hash}
-                      onClick={() => {
-                        void router.push(`${pathname}?hash=${hash}`);
-                      }}
-                    />
-                  ))}
-                </ScrollArea>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
