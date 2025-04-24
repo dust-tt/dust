@@ -33,13 +33,15 @@ const createServer = (auth: Authenticator): McpServer => {
 
   server.tool(
     "generate_image",
-    "Generate an image in PNG format from a text prompt",
+    "Generate images from text descriptions. The more detailed and specific your prompt is, the" +
+      " better the results will be. You can customize the output through various parameters to" +
+      " match your needs.",
     {
       prompt: z
         .string()
         .max(4000)
         .describe(
-          "A text description of the desired image(s). The maximum length is 4000 characters."
+          "A text description of the desired image(s). The maximum length is 32000 characters."
         ),
       name: z
         .string()
