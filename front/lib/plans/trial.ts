@@ -7,6 +7,7 @@ const TRIAL_LIMITS: Partial<PlanAttributes> = {
   maxUsersInWorkspace: 5,
   maxMessages: 100,
   maxMessagesTimeframe: "day",
+  maxImagesPerWeek: 50,
 };
 
 export function getTrialVersionForPlan(plan: Plan): PlanAttributes {

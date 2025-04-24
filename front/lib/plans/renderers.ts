@@ -34,6 +34,11 @@ export function renderPlanFromModel({
           sizeMb: plan.maxDataSourcesDocumentsSizeMb,
         },
       },
+      capabilities: {
+        images: {
+          maxImagesPerWeek: plan.maxImagesPerWeek,
+        },
+      },
       users: {
         maxUsers: plan.maxUsersInWorkspace,
       },
