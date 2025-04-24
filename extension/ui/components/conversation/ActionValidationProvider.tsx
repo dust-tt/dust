@@ -185,7 +185,14 @@ export function ActionValidationProvider({
       >
         <DialogContent isAlertDialog>
           <DialogHeader>
-            <DialogTitle visual={<Avatar size="sm" visual={<Icon visual={ActionPieChartIcon} />} />}>
+            <DialogTitle
+              visual={
+                <Avatar
+                  size="sm"
+                  visual={<Icon visual={ActionPieChartIcon} />}
+                />
+              }
+            >
               Tool Validation Required
             </DialogTitle>
           </DialogHeader>
@@ -205,7 +212,9 @@ export function ActionValidationProvider({
                 Object.keys(currentValidation.inputs).length > 0 && (
                   <CollapsibleComponent
                     triggerChildren={
-                      <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">Details</span>
+                      <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
+                        Details
+                      </span>
                     }
                     contentChildren={
                       <div>

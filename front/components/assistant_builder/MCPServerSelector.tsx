@@ -1,12 +1,11 @@
 import {
   ActionEyeIcon,
-  Avatar,
+  Button,
   Card,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Icon,
   Label,
   RadioGroup,
   RadioGroupCustomItem,
@@ -135,12 +134,12 @@ export function MCPServerSelector({
                         />
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <div>
-                              <Avatar
-                                size="sm"
-                                visual={<Icon visual={ActionEyeIcon} />}
-                              />
-                            </div>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              isSelect
+                              icon={ActionEyeIcon}
+                            />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
                             <ScrollArea
