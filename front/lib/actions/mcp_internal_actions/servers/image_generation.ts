@@ -161,7 +161,7 @@ const createServer = (auth: Authenticator): McpServer => {
               "Failed to save the generated image."
             );
 
-            return new Err("Failed to save the generated image.");
+            return new Err(new Error("Failed to save the generated image."));
           }
         },
         { concurrency: 10 }
