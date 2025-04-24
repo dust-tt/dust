@@ -17,6 +17,7 @@ export const CHILD_AGENT_CONFIGURATION_URI_PATTERN =
 
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
+ * Not all mime types have a fixed schema, for instance the ENUM mime type is flexible.
  */
 export const ConfigurableToolInputSchemas = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]: z.array(
@@ -47,10 +48,26 @@ export const ConfigurableToolInputSchemas = {
     value: z.boolean(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN),
   }),
-} as const satisfies Record<InternalToolInputMimeType, z.ZodType>;
+  // Partial because all mime types do not necessarily have a fixed schema,
+  // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
+} as const satisfies Partial<Record<InternalToolInputMimeType, z.ZodType>>;
 
-export type ConfigurableToolInputType = z.infer<
-  (typeof ConfigurableToolInputSchemas)[InternalToolInputMimeType]
+// Type for the tool inputs that have a flexible schema, which are schemas that can vary between tools.
+type FlexibleConfigurableToolInput = {
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM]: {
+    value: string | number | boolean;
+    mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM;
+  };
+};
+
+export type ConfigurableToolInputType =
+  | z.infer<
+      (typeof ConfigurableToolInputSchemas)[keyof typeof ConfigurableToolInputSchemas]
+    >
+  | FlexibleConfigurableToolInput[keyof FlexibleConfigurableToolInput];
+
+export type DataSourcesToolConfigurationType = z.infer<
+  (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]
 >;
 
 /**
@@ -62,4 +79,4 @@ export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
     key,
     zodToJsonSchema(schema),
   ])
-) as Record<InternalToolInputMimeType, JSONSchema>;
+) as Partial<Record<InternalToolInputMimeType, JSONSchema>>;

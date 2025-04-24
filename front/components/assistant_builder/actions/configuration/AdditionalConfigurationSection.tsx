@@ -1,4 +1,13 @@
-import { Checkbox, Input, Label } from "@dust-tt/sparkle";
+import {
+  Button,
+  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  Label,
+} from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
 import { asDisplayName } from "@app/types";
@@ -13,24 +22,22 @@ function getKeyPrefix(key: string): string {
   return segments.length > 1 ? segments[0] : "";
 }
 
-function groupKeysByPrefix<T extends string | number | boolean | null>(
-  keys: Record<string, T>
-): Record<string, Record<string, T>> {
-  const groups: Record<string, Record<string, T>> = {};
+function groupKeysByPrefix(keys: string[]): Record<string, string[]> {
+  const groups: Record<string, string[]> = {};
 
-  Object.entries(keys).forEach(([key, value]) => {
+  keys.forEach((key) => {
     const prefix = getKeyPrefix(key);
     if (!groups[prefix]) {
-      groups[prefix] = {};
+      groups[prefix] = [];
     }
-    groups[prefix][key] = value;
+    groups[prefix].push(key);
   });
 
   return groups;
 }
 
 interface BooleanConfigurationSectionProps {
-  requiredBooleans: Record<string, boolean>;
+  requiredBooleans: string[];
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: boolean) => void;
 }
@@ -40,12 +47,14 @@ function BooleanConfigurationSection({
   additionalConfiguration,
   onConfigUpdate,
 }: BooleanConfigurationSectionProps) {
-  if (Object.keys(requiredBooleans).length === 0) {
+  if (requiredBooleans.length === 0) {
     return null;
   }
 
-  return Object.entries(requiredBooleans).map(([key, defaultValue]) => {
-    const value = (additionalConfiguration[key] as boolean) ?? defaultValue;
+  return requiredBooleans.map((key) => {
+    // Ugly hack but the type of additionalConfiguration is highly dynamic.
+    // We make sure to save a boolean value that said.
+    const value = !!additionalConfiguration[key];
     return (
       <div key={key} className="mb-2 flex items-center gap-1">
         <Label htmlFor={`boolean-${key}`} className="w-1/5 text-sm font-medium">
@@ -64,7 +73,7 @@ function BooleanConfigurationSection({
 }
 
 interface NumberConfigurationSectionProps {
-  requiredNumbers: Record<string, number | null>;
+  requiredNumbers: string[];
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: number) => void;
 }
@@ -74,12 +83,12 @@ function NumberConfigurationSection({
   additionalConfiguration,
   onConfigUpdate,
 }: NumberConfigurationSectionProps) {
-  if (Object.keys(requiredNumbers).length === 0) {
+  if (requiredNumbers.length === 0) {
     return null;
   }
 
-  return Object.entries(requiredNumbers).map(([key, defaultValue]) => {
-    const value = additionalConfiguration[key] ?? defaultValue;
+  return requiredNumbers.map((key) => {
+    const value = additionalConfiguration[key] ?? null;
     return (
       <div key={key} className="mb-2 flex items-center gap-1">
         <Label htmlFor={`number-${key}`} className="w-1/5 text-sm font-medium">
@@ -103,7 +112,7 @@ function NumberConfigurationSection({
 }
 
 interface StringConfigurationSectionProps {
-  requiredStrings: Record<string, string>;
+  requiredStrings: string[];
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: string) => void;
 }
@@ -113,12 +122,12 @@ function StringConfigurationSection({
   additionalConfiguration,
   onConfigUpdate,
 }: StringConfigurationSectionProps) {
-  if (Object.keys(requiredStrings).length === 0) {
+  if (requiredStrings.length === 0) {
     return null;
   }
 
-  return Object.entries(requiredStrings).map(([key, defaultValue]) => {
-    const value = additionalConfiguration[key] ?? defaultValue;
+  return requiredStrings.map((key) => {
+    const value = additionalConfiguration[key] ?? "";
     return (
       <div key={key} className="mb-2 flex items-center gap-1">
         <Label htmlFor={`string-${key}`} className="w-1/5 text-sm font-medium">
@@ -136,11 +145,59 @@ function StringConfigurationSection({
   });
 }
 
+interface EnumConfigurationSectionProps {
+  requiredEnums: Record<string, string[]>;
+  additionalConfiguration: Record<string, string | number | boolean>;
+  onConfigUpdate: (key: string, value: string) => void;
+}
+
+function EnumConfigurationSection({
+  requiredEnums,
+  additionalConfiguration,
+  onConfigUpdate,
+}: EnumConfigurationSectionProps) {
+  if (Object.keys(requiredEnums).length === 0) {
+    return null;
+  }
+
+  return Object.entries(requiredEnums).map(([key, enumValues]) => {
+    const displayLabel = `Select ${formatKeyForDisplay(key)}`;
+    return (
+      <div key={key} className="mb-2 flex items-center gap-1">
+        <Label className="w-1/5 text-sm font-medium">
+          {formatKeyForDisplay(key)}
+        </Label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              isSelect
+              label={additionalConfiguration[key]?.toString() ?? displayLabel}
+              size="sm"
+              tooltip={displayLabel}
+              variant="outline"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {enumValues.map((enumValue) => (
+              <DropdownMenuItem
+                key={enumValue}
+                label={enumValue}
+                onSelect={() => onConfigUpdate(key, enumValue)}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  });
+}
+
 interface GroupedConfigurationSectionProps {
   prefix: string;
-  requiredStrings: Record<string, string>;
-  requiredNumbers: Record<string, number | null>;
-  requiredBooleans: Record<string, boolean>;
+  requiredStrings: string[];
+  requiredNumbers: string[];
+  requiredBooleans: string[];
+  requiredEnums: Record<string, string[]>;
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: string | number | boolean) => void;
 }
@@ -150,6 +207,7 @@ function GroupedConfigurationSection({
   requiredStrings,
   requiredNumbers,
   requiredBooleans,
+  requiredEnums,
   additionalConfiguration,
   onConfigUpdate,
 }: GroupedConfigurationSectionProps) {
@@ -185,15 +243,21 @@ function GroupedConfigurationSection({
           additionalConfiguration={additionalConfiguration}
           onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
         />
+        <EnumConfigurationSection
+          requiredEnums={requiredEnums}
+          additionalConfiguration={additionalConfiguration}
+          onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
+        />
       </div>
     </div>
   );
 }
 
 interface AdditionalConfigurationSectionProps {
-  requiredStrings: Record<string, string>;
-  requiredNumbers: Record<string, number | null>;
-  requiredBooleans: Record<string, boolean>;
+  requiredStrings: string[];
+  requiredNumbers: string[];
+  requiredBooleans: string[];
+  requiredEnums: Record<string, string[]>;
   additionalConfiguration: Record<string, string | number | boolean>;
   onConfigUpdate: (key: string, value: string | number | boolean) => void;
 }
@@ -204,6 +268,7 @@ export const AdditionalConfigurationSection: React.FC<
   requiredStrings,
   requiredNumbers,
   requiredBooleans,
+  requiredEnums,
   additionalConfiguration,
   onConfigUpdate,
 }) => {
@@ -220,6 +285,17 @@ export const AdditionalConfigurationSection: React.FC<
     () => groupKeysByPrefix(requiredBooleans),
     [requiredBooleans]
   );
+  const groupedEnums = useMemo(() => {
+    const groups: Record<string, Record<string, string[]>> = {};
+    Object.entries(requiredEnums).forEach(([key, values]) => {
+      const prefix = getKeyPrefix(key);
+      if (!groups[prefix]) {
+        groups[prefix] = {};
+      }
+      groups[prefix][key] = values;
+    });
+    return groups;
+  }, [requiredEnums]);
 
   // Get all unique prefixes
   const allPrefixes = useMemo(() => {
@@ -228,14 +304,16 @@ export const AdditionalConfigurationSection: React.FC<
     Object.keys(groupedStrings).forEach((prefix) => prefixSet.add(prefix));
     Object.keys(groupedNumbers).forEach((prefix) => prefixSet.add(prefix));
     Object.keys(groupedBooleans).forEach((prefix) => prefixSet.add(prefix));
+    Object.keys(groupedEnums).forEach((prefix) => prefixSet.add(prefix));
 
     return Array.from(prefixSet).sort();
-  }, [groupedStrings, groupedNumbers, groupedBooleans]);
+  }, [groupedStrings, groupedNumbers, groupedBooleans, groupedEnums]);
 
   const hasConfiguration =
     Object.keys(requiredStrings).length > 0 ||
     Object.keys(requiredNumbers).length > 0 ||
-    Object.keys(requiredBooleans).length > 0;
+    Object.keys(requiredBooleans).length > 0 ||
+    Object.keys(requiredEnums).length > 0;
 
   if (!hasConfiguration) {
     return null;
@@ -257,9 +335,10 @@ export const AdditionalConfigurationSection: React.FC<
         <GroupedConfigurationSection
           key={prefix || "general"}
           prefix={prefix}
-          requiredStrings={groupedStrings[prefix] || {}}
-          requiredNumbers={groupedNumbers[prefix] || {}}
-          requiredBooleans={groupedBooleans[prefix] || {}}
+          requiredStrings={groupedStrings[prefix] || []}
+          requiredNumbers={groupedNumbers[prefix] || []}
+          requiredBooleans={groupedBooleans[prefix] || []}
+          requiredEnums={groupedEnums[prefix] || {}}
           additionalConfiguration={additionalConfiguration}
           onConfigUpdate={onConfigUpdate}
         />

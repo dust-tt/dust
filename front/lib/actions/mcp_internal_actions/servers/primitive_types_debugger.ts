@@ -36,6 +36,10 @@ function createServer(): McpServer {
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING],
       enabled:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
+      category: z.object({
+        value: z.enum(["A", "B", "C"]),
+        mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
+      }),
     },
     async (params) => {
       return {

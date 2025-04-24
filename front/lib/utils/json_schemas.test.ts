@@ -1,11 +1,8 @@
-import {
-  ConfigurableToolInputJSONSchemas,
-  INTERNAL_MIME_TYPES,
-} from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
 
-import { findMatchingSchemaKeys } from "./json_schemas";
+import { findMatchingSubSchemas } from "./json_schemas";
 
 describe("JSON Schema Utilities", () => {
   describe("findMatchingSchemaKeys", () => {
@@ -93,11 +90,11 @@ describe("JSON Schema Utilities", () => {
       };
 
       // Look for STRING configuration schema
-      const targetSchema =
-        ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING];
-
-      const result = findMatchingSchemaKeys(mainSchema, targetSchema);
-      expect(result).toContain("config.userPreferences.theme");
+      const result = findMatchingSubSchemas(
+        mainSchema,
+        INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+      );
+      expect(Object.keys(result)).toContain("config.userPreferences.theme");
     });
 
     it("should return array item keys when array items match the target schema", () => {
@@ -162,11 +159,13 @@ describe("JSON Schema Utilities", () => {
       };
 
       // Look for TABLE configuration schema
-      const targetSchema =
-        ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE];
-
-      const result = findMatchingSchemaKeys(mainSchema, targetSchema);
-      expect(result).toContain("dataSourceConfigs.items.settings.tables");
+      const result = findMatchingSubSchemas(
+        mainSchema,
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
+      );
+      expect(Object.keys(result)).toContain(
+        "dataSourceConfigs.items.settings.tables"
+      );
     });
 
     it("should handle complex nested schemas with CHILD_AGENT configuration", () => {
@@ -214,13 +213,13 @@ describe("JSON Schema Utilities", () => {
       };
 
       // Look for CHILD_AGENT configuration schema
-      const targetSchema =
-        ConfigurableToolInputJSONSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
-        ];
-
-      const result = findMatchingSchemaKeys(mainSchema, targetSchema);
-      expect(result).toContain("workflow.steps.items.action.executor");
+      const result = findMatchingSubSchemas(
+        mainSchema,
+        INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
+      );
+      expect(Object.keys(result)).toContain(
+        "workflow.steps.items.action.executor"
+      );
     });
   });
 });
