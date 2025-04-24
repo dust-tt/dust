@@ -8,8 +8,6 @@ import {
   ContentMessage,
   ExclamationCircleIcon,
   ExternalLinkIcon,
-  EyeIcon,
-  EyeSlashIcon,
   IconPicker,
   Input,
   Label,
@@ -33,9 +31,8 @@ import {
   useSyncRemoteMCPServer,
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
-import { formatSecret } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName, isRedacted } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -57,7 +54,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  const [isSecretVisible, setIsSecretVisible] = useState(false);
   const [isCopied, copy] = useCopyToClipboard();
 
   const form = useForm<MCPFormType>({
@@ -152,10 +148,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
       setIsSynchronizing(false);
     }
   }, [url, syncServer, mutateMCPServers, sendNotification]);
-
-  const toggleSecretVisibility = () => {
-    setIsSecretVisible(!isSecretVisible);
-  };
 
   const copyToClipboard = async () => {
     if (sharedSecret) {
@@ -343,16 +335,9 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
               <Label htmlFor="sharedSecret">Shared Secret</Label>
               <div className="flex items-center justify-between">
                 <p className="overflow-hidden text-ellipsis whitespace-nowrap">
-                  {isSecretVisible ? sharedSecret : formatSecret(sharedSecret)}
+                  {sharedSecret}
                 </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
-                    variant="outline"
-                    size="sm"
-                    onClick={toggleSecretVisibility}
-                    tooltip={isSecretVisible ? "Hide secret" : "Show secret"}
-                  />
+                {!isRedacted(sharedSecret) && (
                   <Button
                     icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
                     variant="outline"
@@ -360,12 +345,21 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                     onClick={copyToClipboard}
                     tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
                   />
-                </div>
+                )}
               </div>
-              <p className="text-xs text-gray-500">
-                This is the secret key used to authenticate your MCP server with
-                Dust. Keep it secure.
-              </p>
+              {isRedacted(sharedSecret) ? (
+                <p className="text-xs text-gray-500">
+                  This is the secret key used to authenticate your MCP server
+                  with Dust. It is now hidden for security reasons. You can
+                  retrieve it in the calls made to your MCP server.
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500">
+                  This is the secret key used to authenticate your MCP server
+                  with Dust. Keep it secure. It will be hidden after 10 minutes
+                  of creation.
+                </p>
+              )}
             </div>
             <Separator />
           </>

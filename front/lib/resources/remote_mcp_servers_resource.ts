@@ -26,7 +26,7 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
-import { Ok, removeNulls } from "@app/types";
+import { Ok, redactString, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -277,6 +277,17 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     lastSyncAt: number | null;
     sharedSecret: string;
   } {
+    const currentTime = new Date();
+    const createdAt = new Date(this.createdAt);
+    const timeDifference = Math.abs(
+      currentTime.getTime() - createdAt.getTime()
+    );
+    const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+    const secret =
+      differenceInMinutes > 10
+        ? redactString(this.sharedSecret, 4)
+        : this.sharedSecret;
+
     return {
       id: this.sId,
 
@@ -295,7 +306,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       // Remote MCP Server specifics
       url: this.url,
       lastSyncAt: this.lastSyncAt?.getTime() ?? null,
-      sharedSecret: this.sharedSecret,
+      sharedSecret: secret,
     };
   }
 }
