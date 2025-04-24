@@ -13,6 +13,7 @@ import type {
   ModelId,
   Result,
   SupportedFileContentType,
+  UserMessageType,
 } from "@app/types";
 
 export type ActionGeneratedFileType = {
