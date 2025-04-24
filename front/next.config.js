@@ -2,16 +2,16 @@ const path = require("path");
 
 const CONTENT_SECURITY_POLICIES = [
   "default-src 'none';",
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.cr-relay.com;`,
-  `style-src 'self' 'unsafe-inline';`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.cr-relay.com *.plasmic.app *.posthog.com;`,
+  `style-src 'self' 'unsafe-inline' *.plasmic.app fronts.googleapis.com;`,
   `img-src 'self' data: https:;`,
-  `connect-src 'self' blob: *.google-analytics.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com;`,
-  `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net;`,
+  `connect-src 'self' blob: *.google-analytics.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com *.plasmic.app;`,
+  `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.plasmic.app;`,
   `font-src 'self' data: dust.tt *.dust.tt;`,
   `object-src 'none';`,
   `form-action 'self';`,
-  `base-uri 'self';`,
-  `frame-ancestors 'self';`,
+  `base-uri 'self' studio.plasmic.app;`,
+  `frame-ancestors 'self' *.plasmic.app;`,
   `manifest-src 'self';`,
   `worker-src 'self';`,
   `upgrade-insecure-requests;`,
@@ -64,10 +64,10 @@ module.exports = {
       {
         source: "/:path*", // Match all paths
         headers: [
-          {
-            key: "Content-Security-Policy",
-            value: CONTENT_SECURITY_POLICIES,
-          },
+          // {
+          //   key: "Content-Security-Policy",
+          //   value: CONTENT_SECURITY_POLICIES,
+          // },
           {
             key: "Strict-Transport-Security",
             value: "max-age=86400", // 1 day in seconds
