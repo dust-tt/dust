@@ -222,8 +222,9 @@ export async function submitAssistantBuilderForm({
             childAgentId,
             reasoningModel: mcpReasoningModel
               ? {
-                  ...mcpReasoningModel,
+                  providerId: mcpReasoningModel.providerId,
                   reasoningEffort: mcpReasoningModel.reasoningEffort ?? null,
+                  modelId: mcpReasoningModel.modelId,
                 }
               : null,
             additionalConfiguration,

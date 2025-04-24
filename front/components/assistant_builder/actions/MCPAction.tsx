@@ -196,7 +196,7 @@ export function MCPAction({
         actionDescription: action.description,
         getNewActionConfig: (old) => ({
           ...(old as AssistantBuilderMCPServerConfiguration),
-          reasoningModel: { ...reasoningModelConfig },
+          reasoningModel: reasoningModelConfig,
         }),
       });
     },
