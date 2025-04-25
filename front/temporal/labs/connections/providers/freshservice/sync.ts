@@ -414,9 +414,7 @@ export async function syncFreshServiceConnection(
     );
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-    let since = isFullSync ? null : new Date(cursor);
-    // subtract one week from the since date
-    since = since ? new Date(since.getTime() - 7 * 24 * 60 * 60 * 1000) : null;
+    const since = isFullSync ? null : new Date(cursor);
 
     // Test the credentials
     const testResult = await client.testCredentials();
@@ -448,26 +446,18 @@ export async function syncFreshServiceConnection(
             (response) => response.tasks || []
           );
 
-          const problem = ticket.problem?.display_id
+          const problem = ticket.problem
             ? await client.getProblem(ticket.problem.display_id)
             : null;
           const changes = await Promise.all(
             [
               ...(ticket.changes_initiated_by_ticket || []),
               ...(ticket.changes_initiating_ticket || []),
-            ]
-              .map((change) =>
-                change.display_id ? client.getChange(change.display_id) : null
-              )
-              .filter((change) => change !== null)
+            ].map((change) => client.getChange(change.display_id))
           );
           const assets = ticket.assets
             ? await Promise.all(
-                ticket.assets
-                  .map((asset) =>
-                    asset.display_id ? client.getAsset(asset.display_id) : null
-                  )
-                  .filter((asset) => asset !== null)
+                ticket.assets.map((asset) => client.getAsset(asset.display_id))
               )
             : [];
 

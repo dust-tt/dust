@@ -39,11 +39,11 @@ export const StatsCodec = createCodecWithRequireFields(
   }
 );
 
-export const TicketAssetCodec = t.partial({ display_id: t.number });
+export const TicketAssetCodec = t.type({ display_id: t.number });
 
-export const TicketProblemCodec = t.partial({ display_id: t.number });
+export const TicketProblemCodec = t.type({ display_id: t.number });
 
-export const TicketChangeCodec = t.partial({ display_id: t.number });
+export const TicketChangeCodec = t.type({ display_id: t.number });
 
 export const RelatedTicketsCodec = t.partial({
   child_ids: t.array(t.number),
