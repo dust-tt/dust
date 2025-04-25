@@ -221,7 +221,7 @@ export function useAgentConfiguration({
 
   return {
     agentConfiguration: data ? data.agentConfiguration : null,
-    isAgentConfigurationLoading: !error && !data,
+    isAgentConfigurationLoading: !error && !data && !disabled,
     isAgentConfigurationError: error,
     isAgentConfigurationValidating: isValidating,
     mutateAgentConfiguration: mutate,
