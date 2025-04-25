@@ -17,6 +17,7 @@ import {
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
@@ -75,6 +76,7 @@ export type PlatformMCPServerConfigurationType =
     dataSources: DataSourceConfiguration[] | null;
     tables: TableDataSourceConfiguration[] | null;
     childAgentId: string | null;
+    reasoningModel: ReasoningModelConfiguration | null;
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
   };

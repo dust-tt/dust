@@ -22,6 +22,7 @@ import type {
   AgentReasoningEffort,
   AppType,
   DataSourceViewSelectionConfigurations,
+  ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   PlanType,
@@ -133,6 +134,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
+  reasoningModel: ModelConfigurationType | null;
   additionalConfiguration: Record<string, boolean | number | string>;
 };
 
@@ -379,6 +381,7 @@ export function getDefaultMCPServerActionConfiguration(
       dataSourceConfigurations: null,
       tablesConfigurations: null,
       childAgentId: null,
+      reasoningModel: null,
       additionalConfiguration: {},
     },
     name: mcpServerView?.server.name ?? "",

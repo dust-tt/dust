@@ -263,6 +263,18 @@ async function getMCPServerActionConfiguration(
 
   builderAction.configuration.childAgentId = action.childAgentId;
 
+  const { reasoningModel } = action;
+  if (reasoningModel) {
+    builderAction.configuration.reasoningModel =
+      REASONING_MODEL_CONFIGS.find(
+        (m) =>
+          m.modelId === reasoningModel.modelId &&
+          m.providerId === reasoningModel.providerId &&
+          (m.reasoningEffort ?? null) ===
+            (reasoningModel.reasoningEffort ?? null)
+      ) ?? null;
+  }
+
   builderAction.configuration.additionalConfiguration =
     action.additionalConfiguration;
 

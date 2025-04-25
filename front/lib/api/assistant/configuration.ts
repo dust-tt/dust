@@ -18,11 +18,13 @@ import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configurati
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
@@ -1242,6 +1244,7 @@ export async function createAgentActionConfiguration(
       const reasoningConfig = await AgentReasoningConfiguration.create({
         sId: generateRandomModelSId(),
         agentConfigurationId: agentConfiguration.id,
+        mcpServerConfigurationId: null,
         name: action.name,
         description: action.description,
         providerId: action.providerId,
@@ -1321,6 +1324,14 @@ export async function createAgentActionConfiguration(
             mcpConfig,
           });
         }
+        // Creating the AgentTablesQueryConfigurationTable if configured
+        if (action.reasoningModel) {
+          await createReasoningConfiguration(auth, t, {
+            reasoningModel: action.reasoningModel,
+            mcpConfig,
+            agentConfiguration,
+          });
+        }
 
         return new Ok({
           id: mcpConfig.id,
@@ -1332,6 +1343,7 @@ export async function createAgentActionConfiguration(
           dataSources: action.dataSources,
           tables: action.tables,
           childAgentId: action.childAgentId,
+          reasoningModel: action.reasoningModel,
           additionalConfiguration: action.additionalConfiguration,
         });
       });
@@ -1494,6 +1506,36 @@ async function createChildAgentConfiguration(
     {
       agentConfigurationId: childAgentId,
       mcpServerConfigurationId: mcpConfig.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    { transaction: t }
+  );
+}
+
+async function createReasoningConfiguration(
+  auth: Authenticator,
+  t: Transaction,
+  {
+    reasoningModel,
+    mcpConfig,
+    agentConfiguration,
+  }: {
+    reasoningModel: ReasoningModelConfiguration;
+    mcpConfig: AgentMCPServerConfiguration;
+    agentConfiguration: LightAgentConfigurationType;
+  }
+) {
+  return AgentReasoningConfiguration.create(
+    {
+      sId: generateRandomModelSId(),
+      agentConfigurationId: null,
+      mcpServerConfigurationId: mcpConfig.id,
+      name: DEFAULT_RETRIEVAL_ACTION_NAME,
+      description: DEFAULT_REASONING_ACTION_DESCRIPTION,
+      providerId: reasoningModel.providerId,
+      modelId: reasoningModel.modelId,
+      temperature: agentConfiguration.model.temperature,
+      reasoningEffort: reasoningModel.reasoningEffort,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
     { transaction: t }

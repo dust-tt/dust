@@ -64,9 +64,17 @@ export const ConfigurableToolInputSchemas = {
     value: z.boolean(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN),
   }),
-  // Partial because all mime types do not necessarily have a fixed schema,
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL]: z.object({
+    modelId: z.string(),
+    providerId: z.string(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
+  }),
+  // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
-} as const satisfies Partial<Record<InternalToolInputMimeType, z.ZodType>>;
+} as const satisfies Omit<
+  Record<InternalToolInputMimeType, z.ZodType>,
+  typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM
+>;
 
 // Type for the tool inputs that have a flexible schema, which are schemas that can vary between tools.
 type FlexibleConfigurableToolInput = {
@@ -138,6 +146,16 @@ export function generateConfiguredInput({
         uri: `agent://dust/w/${owner.sId}/agents/${childAgentId}`,
         mimeType,
       };
+    }
+
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL: {
+      const { reasoningModel } = actionConfiguration;
+      if (!reasoningModel) {
+        // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the reasoning model.
+        throw new Error("Unreachable: missing reasoning model configuration.");
+      }
+      const { modelId, providerId } = reasoningModel;
+      return { modelId, providerId, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
@@ -370,6 +388,7 @@ export function getMCPServerRequirements(
   requiresDataSourceConfiguration: boolean;
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
+  requiresReasoningConfiguration: boolean;
   requiredStrings: string[];
   requiredNumbers: string[];
   requiredBooleans: string[];
@@ -381,6 +400,7 @@ export function getMCPServerRequirements(
       requiresDataSourceConfiguration: false,
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
+      requiresReasoningConfiguration: false,
       requiredStrings: [],
       requiredNumbers: [],
       requiredBooleans: [],
@@ -411,6 +431,14 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT,
+      })
+    ).length > 0;
+
+  const requiresReasoningConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
       })
     ).length > 0;
 
@@ -458,6 +486,7 @@ export function getMCPServerRequirements(
     requiresDataSourceConfiguration,
     requiresTableConfiguration,
     requiresChildAgentConfiguration,
+    requiresReasoningConfiguration,
     requiredStrings,
     requiredNumbers,
     requiredBooleans,
@@ -467,6 +496,7 @@ export function getMCPServerRequirements(
       !requiresDataSourceConfiguration &&
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
+      !requiresReasoningConfiguration &&
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
       requiredBooleans.length === 0 &&

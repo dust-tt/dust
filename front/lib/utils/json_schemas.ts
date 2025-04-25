@@ -2,7 +2,10 @@ import type {
   ConfigurableToolInputType,
   InternalToolInputMimeType,
 } from "@dust-tt/client";
-import { ConfigurableToolInputJSONSchemas } from "@dust-tt/client";
+import {
+  ConfigurableToolInputJSONSchemas,
+  INTERNAL_MIME_TYPES,
+} from "@dust-tt/client";
 import Ajv from "ajv";
 import type {
   JSONSchema7 as JSONSchema,
@@ -27,9 +30,8 @@ export function schemaIsConfigurable(
   mimeType: InternalToolInputMimeType
 ): boolean {
   // If the mime type has a static configuration schema, we check that the schema matches it.
-  const staticSchema = ConfigurableToolInputJSONSchemas[mimeType];
-  if (staticSchema) {
-    return schemasAreEqual(schema, staticSchema);
+  if (mimeType !== INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM) {
+    return schemasAreEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
   }
   // If the mime type does not have a static configuration schema, it supports flexible schemas.
   // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
