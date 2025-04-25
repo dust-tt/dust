@@ -4,27 +4,18 @@ import {
   ClipboardIcon,
   Cog6ToothIcon,
   DataTable,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
-  Icon,
-  MagnifyingGlassIcon,
   PencilSquareIcon,
   Popup,
   SliderToggle,
   Tooltip,
   TrashIcon,
-  UserIcon,
 } from "@dust-tt/sparkle";
-import type { CellContext, Row } from "@tanstack/react-table";
+import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
-import {
-  assistantActiveUsersMessage,
-  assistantUsageMessage,
-} from "@app/components/assistant/Usage";
-import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
+import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentConfigurationScope,
@@ -33,43 +24,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { isBuilder, pluralize } from "@app/types";
-
-export const ASSISTANT_MANAGER_TABS = [
-  // default shown tab = earliest in this list with non-empty agents
-  {
-    label: "Edited by me",
-    icon: UserIcon,
-    id: "current_user",
-    description: "Edited or created by you.",
-  },
-  {
-    label: "Company",
-    icon: SCOPE_INFO["workspace"].icon,
-    id: "workspace",
-    description: SCOPE_INFO["workspace"].text,
-  },
-  {
-    label: "Shared",
-    icon: SCOPE_INFO["published"].icon,
-    id: "published",
-    description: SCOPE_INFO["published"].text,
-  },
-  {
-    id: "global",
-    label: "Default",
-    icon: SCOPE_INFO["global"].icon,
-    description: SCOPE_INFO["global"].text,
-  },
-  {
-    label: "Searching across all agents",
-    icon: MagnifyingGlassIcon,
-    id: "search",
-    description: "Searching across all agents",
-  },
-] as const;
-
-export type AssistantManagerTabsType =
-  (typeof ASSISTANT_MANAGER_TABS)[number]["id"];
+import type { TagType } from "@app/types/tag";
 
 type MoreMenuItem = {
   label: string;
@@ -89,15 +44,11 @@ type RowData = {
   scope: AgentConfigurationScope;
   onClick?: () => void;
   moreMenuItems?: MoreMenuItem[];
+  tags: TagType[];
   action?: React.ReactNode;
 };
 
-const calculateFeedback = (row: Row<RowData>) => {
-  const feedbacks = row.original.feedbacks;
-  return feedbacks ? feedbacks.up + feedbacks.down : 0;
-};
-
-const getTableColumns = () => {
+const getTableColumns = (tags: TagType[]) => {
   return [
     {
       header: "Name",
@@ -120,11 +71,47 @@ const getTableColumns = () => {
         </DataTable.CellContent>
       ),
     },
+    ...(tags.length > 0
+      ? [
+          {
+            header: "Tags",
+            accessorKey: "tags",
+            cell: (info: CellContext<RowData, TagType[]>) => (
+              <DataTable.CellContent>
+                <Tooltip
+                  label={
+                    info.getValue().length > 0
+                      ? info
+                          .getValue()
+                          .map((t) => t.name)
+                          .join(", ")
+                      : "-"
+                  }
+                  trigger={
+                    info.getValue().length > 0
+                      ? info
+                          .getValue()
+                          .map((t) => t.name)
+                          .join(", ")
+                      : "-"
+                  }
+                />
+              </DataTable.CellContent>
+            ),
+            isFilterable: true,
+            meta: {
+              className: "w-32",
+              tooltip: "Tags",
+            },
+          },
+        ]
+      : []),
     {
-      header: "Msgs",
+      header: "Usage",
       accessorKey: "usage.messageCount",
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
+          className="font-semibold"
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
             usage: info.row.original.usage || null,
@@ -139,23 +126,7 @@ const getTableColumns = () => {
       meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
     },
     {
-      header: "Users",
-      accessorKey: "usage.userCount",
-      cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
-        <DataTable.BasicCellContent
-          label={info.row.original.usage?.userCount ?? 0}
-          tooltip={assistantActiveUsersMessage({
-            usage: info.row.original.usage || null,
-            isLoading: false,
-            isError: false,
-            asString: true,
-          })}
-        />
-      ),
-      meta: { className: "w-16", tooltip: "Active users in the last 30 days" },
-    },
-    {
-      header: "Feedback",
+      header: "Feedbacks",
       accessorFn: (row: RowData) => row.feedbacks,
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
@@ -165,43 +136,18 @@ const getTableColumns = () => {
         if (f) {
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
           return (
-            <DataTable.CellContent>
-              <Tooltip
-                label={feedbacksCount}
-                trigger={
-                  <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    <div className="flex flex-row items-center gap-1.5">
-                      {f.up}
-                      <Icon
-                        visual={HandThumbUpIcon}
-                        size="xs"
-                        className="text-primary-400 dark:text-primary-400-night"
-                      />
-                    </div>
-                    <div className="flex flex-row items-center gap-1.5">
-                      {f.down}
-                      <Icon
-                        visual={HandThumbDownIcon}
-                        size="xs"
-                        className="text-primary-400 dark:text-primary-400-night"
-                      />
-                    </div>
-                  </div>
-                }
-              />
-            </DataTable.CellContent>
+            <DataTable.BasicCellContent
+              className="font-semibold"
+              tooltip={feedbacksCount}
+              label={`${f.up + f.down}`}
+            />
           );
         }
       },
-      sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) =>
-        calculateFeedback(rowA) - calculateFeedback(rowB),
-      meta: {
-        className: "w-24",
-        tooltip: "Feedbacks in the last 30 days",
-      },
+      meta: { className: "w-20", tooltip: "Active users in the last 30 days" },
     },
     {
-      header: "Last Update",
+      header: "Last Edited",
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
@@ -230,15 +176,83 @@ const getTableColumns = () => {
         );
       },
       meta: {
-        className: "w-12",
+        className: "w-14",
       },
     },
   ];
 };
 
+type GlobalAgentActionProps = {
+  agent: LightAgentConfigurationType;
+  owner: WorkspaceType;
+  handleToggleAgentStatus: (
+    agent: LightAgentConfigurationType
+  ) => Promise<void>;
+  showDisabledFreeWorkspacePopup: string | null;
+  setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
+};
+
+function GlobalAgentAction({
+  agent,
+  owner,
+  handleToggleAgentStatus,
+  showDisabledFreeWorkspacePopup,
+  setShowDisabledFreeWorkspacePopup,
+}: GlobalAgentActionProps) {
+  const router = useRouter();
+  if (agent.sId === "helper") {
+    return null;
+  }
+
+  if (agent.sId === "dust") {
+    return (
+      <Button
+        variant="outline"
+        icon={Cog6ToothIcon}
+        size="xs"
+        disabled={!isBuilder(owner)}
+        onClick={(e: Event) => {
+          e.stopPropagation();
+          void router.push(`/w/${owner.sId}/builder/assistants/dust`);
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <SliderToggle
+        size="xs"
+        onClick={async (e) => {
+          e.stopPropagation();
+          await handleToggleAgentStatus(agent);
+        }}
+        selected={agent.status === "active"}
+        disabled={agent.status === "disabled_missing_datasource"}
+      />
+      <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
+        <Popup
+          show={showDisabledFreeWorkspacePopup === agent.sId}
+          className="absolute bottom-8 right-0"
+          chipLabel={`Free plan`}
+          description={`@${agent.name} is only available on our paid plans.`}
+          buttonLabel="Check Dust plans"
+          buttonClick={() => {
+            void router.push(`/w/${owner.sId}/subscription`);
+          }}
+          onClose={() => {
+            setShowDisabledFreeWorkspacePopup(null);
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
 type AgentsTableProps = {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
+  tags: TagType[];
   setShowDetails: (agent: LightAgentConfigurationType) => void;
   handleToggleAgentStatus: (
     agent: LightAgentConfigurationType
@@ -250,6 +264,7 @@ type AgentsTableProps = {
 export function AssistantsTable({
   owner,
   agents,
+  tags,
   setShowDetails,
   handleToggleAgentStatus,
   showDisabledFreeWorkspacePopup,
@@ -279,6 +294,7 @@ export function AssistantsTable({
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
           scope: agentConfiguration.scope,
+          tags: agentConfiguration.tags,
           action:
             agentConfiguration.scope === "global" ? (
               <GlobalAgentAction
@@ -295,7 +311,8 @@ export function AssistantsTable({
             setShowDetails(agentConfiguration);
           },
           moreMenuItems:
-            agentConfiguration.scope !== "global"
+            agentConfiguration.scope !== "global" &&
+            agentConfiguration.status !== "archived"
               ? [
                   {
                     label: "Edit",
@@ -390,74 +407,9 @@ export function AssistantsTable({
           <DataTable
             className="relative"
             data={rows}
-            columns={getTableColumns()}
+            columns={getTableColumns(tags)}
           />
         )}
-      </div>
-    </>
-  );
-}
-
-function GlobalAgentAction({
-  agent,
-  owner,
-  handleToggleAgentStatus,
-  showDisabledFreeWorkspacePopup,
-  setShowDisabledFreeWorkspacePopup,
-}: {
-  agent: LightAgentConfigurationType;
-  owner: WorkspaceType;
-  handleToggleAgentStatus: (
-    agent: LightAgentConfigurationType
-  ) => Promise<void>;
-  showDisabledFreeWorkspacePopup: string | null;
-  setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
-}) {
-  const router = useRouter();
-  if (agent.sId === "helper") {
-    return null;
-  }
-
-  if (agent.sId === "dust") {
-    return (
-      <Button
-        variant="outline"
-        icon={Cog6ToothIcon}
-        size="xs"
-        disabled={!isBuilder(owner)}
-        onClick={(e: Event) => {
-          e.stopPropagation();
-          void router.push(`/w/${owner.sId}/builder/assistants/dust`);
-        }}
-      />
-    );
-  }
-
-  return (
-    <>
-      <SliderToggle
-        size="xs"
-        onClick={async (e) => {
-          e.stopPropagation();
-          await handleToggleAgentStatus(agent);
-        }}
-        selected={agent.status === "active"}
-        disabled={agent.status === "disabled_missing_datasource"}
-      />
-      <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
-        <Popup
-          show={showDisabledFreeWorkspacePopup === agent.sId}
-          className="absolute bottom-8 right-0"
-          chipLabel={`Free plan`}
-          description={`@${agent.name} is only available on our paid plans.`}
-          buttonLabel="Check Dust plans"
-          buttonClick={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
-          }}
-          onClose={() => {
-            setShowDisabledFreeWorkspacePopup(null);
-          }}
-        />
       </div>
     </>
   );

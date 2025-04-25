@@ -212,6 +212,7 @@ function determineGlobalAgentIdsToFetch(
       return []; // fetch no global agents
     case "global":
     case "list":
+    case "manage":
     case "all":
     case "favorites":
     case "admin_internal":
@@ -243,6 +244,7 @@ async function fetchGlobalAgentConfigurationForView(
 
   if (
     agentsGetView === "global" ||
+    agentsGetView === "manage" ||
     (typeof agentsGetView === "object" && "agentIds" in agentsGetView)
   ) {
     // All global agents in global and agent views.
@@ -366,6 +368,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
 
     case "list":
+    case "manage":
       const user = auth.user();
 
       const sharedAssistants = await AgentConfiguration.findAll({
@@ -649,17 +652,17 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     );
   }
 
-  if (agentsGetView === "archived" && !auth.isDustSuperUser()) {
-    throw new Error("Archived view is for dust superusers only.");
+  if (agentsGetView === "archived" && !auth.isAdmin()) {
+    throw new Error("Archived view is for admins only.");
   }
 
-  if (agentsGetView === "list" && !user) {
-    throw new Error(
-      "`list` or `assistants-search` view is specific to a user."
-    );
-  }
-  if (agentsGetView === "favorites" && !user) {
-    throw new Error("`favorites` view is specific to a user.");
+  if (
+    !user &&
+    (agentsGetView === "list" ||
+      agentsGetView === "manage" ||
+      agentsGetView === "favorites")
+  ) {
+    throw new Error(`'${agentsGetView}' view is specific to a user.`);
   }
 
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);
