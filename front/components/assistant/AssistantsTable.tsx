@@ -176,7 +176,7 @@ const getTableColumns = (tags: TagType[]) => {
         );
       },
       meta: {
-        className: "w-12",
+        className: "w-14",
       },
     },
   ];

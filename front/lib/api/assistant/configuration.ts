@@ -210,6 +210,7 @@ function determineGlobalAgentIdsToFetch(
       return []; // fetch no global agents
     case "global":
     case "list":
+    case "manage":
     case "all":
     case "favorites":
     case "admin_internal":
@@ -241,6 +242,7 @@ async function fetchGlobalAgentConfigurationForView(
 
   if (
     agentsGetView === "global" ||
+    agentsGetView === "manage" ||
     (typeof agentsGetView === "object" && "agentIds" in agentsGetView)
   ) {
     // All global agents in global and agent views.
@@ -364,6 +366,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
 
     case "list":
+    case "manage":
       const user = auth.user();
 
       const sharedAssistants = await AgentConfiguration.findAll({

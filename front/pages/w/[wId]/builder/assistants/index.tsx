@@ -176,7 +176,7 @@ export default function WorkspaceAssistants({
     mutateRegardlessOfQueryParams: mutateAgentConfigurations,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "list",
+    agentsGetView: "manage",
     includes: ["authors", "usage", "feedbacks"],
   });
 
@@ -190,7 +190,6 @@ export default function WorkspaceAssistants({
 
   const agentsByTab = useMemo(() => {
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
-      .filter((a) => a.status === "active")
       .filter((a) => {
         if (selectedTags.length === 0) {
           return true;
