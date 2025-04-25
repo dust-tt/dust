@@ -3,19 +3,20 @@ import { z } from "zod";
 
 import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import {
+  ALL_OBJECTS,
   createObject,
-  getCompaniesByName,
-  getContactsByName,
   getObjectByEmail,
   getObjectById,
   getObjectProperties,
-  SUPPORTED_OBJECT_TYPES_READ,
-  SUPPORTED_OBJECT_TYPES_WRITE,
+  getObjectsByProperties,
+  getObjectsByProperty,
+  SIMPLE_OBJECTS,
   updateObject,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot_api_helper";
+import { logAndReturnError } from "@app/lib/actions/mcp_internal_actions/servers/hupspot_utils";
+import { returnSuccess } from "@app/lib/actions/mcp_internal_actions/servers/hupspot_utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "hubspot",
@@ -35,7 +36,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     "get_object_properties",
     "Lists all available properties for a Hubspot object. When creatableOnly is true, returns only properties that can be modified through forms (excludes hidden, calculated, read-only and file upload fields).",
     {
-      objectType: z.enum(SUPPORTED_OBJECT_TYPES_READ),
+      objectType: z.enum(ALL_OBJECTS),
       creatableOnly: z.boolean().optional(),
     },
     async ({ objectType, creatableOnly = true }) => {
@@ -55,38 +56,26 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           objectType,
           creatableOnly,
         });
-        const content = JSON.stringify(properties, null, 2);
 
-        return {
-          isError: false,
-          content: [
-            { type: "text", text: "Object properties fetched successfully" },
-            { type: "text", text: content },
-          ],
-        };
-      } catch (error) {
-        logger.error(
-          {
-            error,
-            objectType,
-            mcpServerId,
-            server: "hubspot",
-          },
-          "[Hubspot MCP Server] Error fetching object properties."
-        );
-        return {
-          isError: true,
-          content: [{ type: "text", text: "Error fetching object properties" }],
-        };
+        return returnSuccess({
+          message: "Object properties fetched successfully",
+          result: properties,
+        });
+      } catch (error: any) {
+        return logAndReturnError({
+          error,
+          params: { objectType, creatableOnly },
+          message: "Error fetching object properties.",
+        });
       }
     }
   );
 
   server.tool(
     "create_object",
-    `Creates a new object in Hubspot. Supports ${SUPPORTED_OBJECT_TYPES_WRITE.join(", ")}.`,
+    `Creates a new object in Hubspot. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
     {
-      objectType: z.enum(SUPPORTED_OBJECT_TYPES_WRITE),
+      objectType: z.enum(SIMPLE_OBJECTS),
       properties: z
         .record(z.string())
         .describe("An object containing the valid properties for the object."),
@@ -112,36 +101,25 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           },
         });
 
-        return {
-          isError: false,
-          content: [
-            { type: "text", text: "Object created successfully" },
-            { type: "text", text: JSON.stringify(object, null, 2) },
-          ],
-        };
+        return returnSuccess({
+          message: "Object created successfully",
+          result: object,
+        });
       } catch (error: any) {
-        logger.error(
-          {
-            error,
-            objectType,
-            mcpServerId,
-            server: "hubspot",
-          },
-          "[Hubspot MCP Server] Error creating object."
-        );
-        return {
-          isError: true,
-          content: [{ type: "text", text: error.message }],
-        };
+        return logAndReturnError({
+          error,
+          params: { objectType, properties },
+          message: "Error creating object.",
+        });
       }
     }
   );
 
   server.tool(
     "update_object",
-    `Updates an existing object in Hubspot. Supports ${SUPPORTED_OBJECT_TYPES_WRITE.join(", ")}.`,
+    `Updates an existing object in Hubspot. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
     {
-      objectType: z.enum(SUPPORTED_OBJECT_TYPES_WRITE),
+      objectType: z.enum(SIMPLE_OBJECTS),
       objectId: z.string().describe("The ID of the object to update."),
       properties: z.record(z.string()).describe("The properties to update."),
     },
@@ -167,37 +145,25 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           },
         });
 
-        return {
-          isError: false,
-          content: [
-            { type: "text", text: "Object updated successfully" },
-            { type: "text", text: JSON.stringify(object, null, 2) },
-          ],
-        };
+        return returnSuccess({
+          message: "Object updated successfully",
+          result: object,
+        });
       } catch (error: any) {
-        logger.error(
-          {
-            error: error,
-            objectType,
-            objectId,
-            mcpServerId,
-            server: "hubspot",
-          },
-          "[Hubspot MCP Server] Error updating object."
-        );
-        return {
-          isError: true,
-          content: [{ type: "text", text: error.message }],
-        };
+        return logAndReturnError({
+          error,
+          params: { objectType, objectId, properties },
+          message: "Error updating object.",
+        });
       }
     }
   );
 
   server.tool(
     "get_object_by_id",
-    `Retrieves a Hubspot object using its unique ID. Supports ${SUPPORTED_OBJECT_TYPES_READ.join(", ")}.`,
+    `Retrieves a Hubspot object using its unique ID. Supports ${ALL_OBJECTS.join(", ")}.`,
     {
-      objectType: z.enum(SUPPORTED_OBJECT_TYPES_READ),
+      objectType: z.enum(ALL_OBJECTS),
       objectId: z.string().describe("The ID of the object to get."),
     },
     async ({ objectType, objectId }) => {
@@ -220,34 +186,25 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             content: [{ type: "text", text: "Object not found" }],
           };
         }
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(object, null, 2) }],
-        };
+        return returnSuccess({
+          message: "Object fetched successfully",
+          result: object,
+        });
       } catch (error: any) {
-        logger.error(
-          {
-            error,
-            objectType,
-            objectId,
-            mcpServerId,
-            server: "hubspot",
-          },
-          "[Hubspot MCP Server] Error getting object by ID."
-        );
-        return {
-          isError: true,
-          content: [{ type: "text", text: error.message }],
-        };
+        return logAndReturnError({
+          error,
+          params: { objectType, objectId },
+          message: "Error getting object by ID.",
+        });
       }
     }
   );
 
   server.tool(
     "get_object_by_email",
-    `Retrieves a Hubspot object using an email address. Supports ${SUPPORTED_OBJECT_TYPES_READ.join(", ")}.`,
+    `Retrieves a Hubspot object using an email address. Supports ${ALL_OBJECTS.join(", ")}.`,
     {
-      objectType: z.enum(SUPPORTED_OBJECT_TYPES_READ),
+      objectType: z.enum(ALL_OBJECTS),
       email: z.string().describe("The email address of the object."),
     },
     async ({ objectType, email }) => {
@@ -270,39 +227,29 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             content: [{ type: "text", text: "Object not found" }],
           };
         }
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(object, null, 2) }],
-        };
+        return returnSuccess({
+          message: "Object fetched successfully",
+          result: object,
+        });
       } catch (error: any) {
-        logger.error(
-          {
-            error,
-            objectType,
-            mcpServerId,
-            server: "hubspot",
-          },
-          "[Hubspot MCP Server] Error getting object by email."
-        );
-        return {
-          isError: true,
-          content: [{ type: "text", text: error.message }],
-        };
+        return logAndReturnError({
+          error,
+          params: { objectType, email },
+          message: "Error getting object by email.",
+        });
       }
     }
   );
 
   server.tool(
-    "get_contact_by_name",
-    "Searches for contacts in Hubspot matching a first and last name. May return multiple results.",
+    "get_objects_by_property_value",
+    `Searches for objects in Hubspot matching a property value. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
     {
-      firstname: z
-        .string()
-        .optional()
-        .describe("The first name of the contact (optional)."),
-      lastname: z.string().describe("The last name of the contact."),
+      objectType: z.enum(SIMPLE_OBJECTS),
+      property: z.string().describe("The property to search by."),
+      value: z.string().describe("The value of the property."),
     },
-    async ({ firstname, lastname }) => {
+    async ({ objectType, property, value }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
       });
@@ -315,45 +262,40 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       }
 
       try {
-        const contacts = await getContactsByName(
+        const objects = await getObjectsByProperty(
           accessToken,
-          firstname,
-          lastname
+          objectType,
+          property,
+          value
         );
-        if (!contacts.length) {
+        if (!objects.length) {
           return {
             isError: true,
-            content: [{ type: "text", text: "No contact found" }],
+            content: [{ type: "text", text: "No objects found" }],
           };
         }
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(contacts, null, 2) }],
-        };
+        return returnSuccess({
+          message: "Objects fetched successfully",
+          result: objects,
+        });
       } catch (error: any) {
-        logger.error(
-          {
-            error,
-            mcpServerId,
-            server: "hubspot",
-          },
-          "[Hubspot MCP Server] Error getting contact by name."
-        );
-        return {
-          isError: true,
-          content: [{ type: "text", text: error.message }],
-        };
+        return logAndReturnError({
+          error,
+          params: { objectType, property, value },
+          message: "Error getting objects by property value.",
+        });
       }
     }
   );
 
   server.tool(
-    "get_company_by_name",
-    "Searches for companies in Hubspot matching a name. May return multiple results.",
+    "get_objects_by_properties",
+    `Searches for objects in Hubspot matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
     {
-      name: z.string().describe("The name of the company."),
+      objectType: z.enum(SIMPLE_OBJECTS),
+      properties: z.record(z.string()).describe("The properties to search by."),
     },
-    async ({ name }) => {
+    async ({ objectType, properties }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
       });
@@ -366,30 +308,27 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       }
 
       try {
-        const companies = await getCompaniesByName(accessToken, name);
-        if (!companies.length) {
+        const objects = await getObjectsByProperties(
+          accessToken,
+          objectType,
+          properties
+        );
+        if (!objects.length) {
           return {
             isError: true,
-            content: [{ type: "text", text: "No company found" }],
+            content: [{ type: "text", text: "No objects found" }],
           };
         }
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(companies, null, 2) }],
-        };
+        return returnSuccess({
+          message: "Objects fetched successfully",
+          result: objects,
+        });
       } catch (error: any) {
-        logger.error(
-          {
-            error,
-            mcpServerId,
-            server: "hubspot",
-          },
-          "[Hubspot MCP Server] Error getting company by name."
-        );
-        return {
-          isError: true,
-          content: [{ type: "text", text: error.message }],
-        };
+        return logAndReturnError({
+          error,
+          params: { objectType, properties },
+          message: "Error getting objects by properties.",
+        });
       }
     }
   );
