@@ -6,8 +6,9 @@ import type { PublicOwner } from "@hubspot/api-client/lib/codegen/crm/owners/mod
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
 const MAX_ENUM_OPTIONS_DISPLAYED = 50;
-const MAX_LIMIT = 200; // Hubspot API limit.
+export const MAX_LIMIT = 200; // Hubspot API limit.
 export const MAX_COUNT_LIMIT = 10000; // Hubspot API limit.
+
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 

@@ -11,6 +11,7 @@ import {
   getObjectProperties,
   getObjectsByProperties,
   MAX_COUNT_LIMIT,
+  MAX_LIMIT,
   SIMPLE_OBJECTS,
   updateObject,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
@@ -133,7 +134,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "get_objects_by_properties",
-    `Searches for objects in Hubspot matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is 200 objects retrieved.`,
+    `Searches for objects in Hubspot matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is ${MAX_LIMIT} objects retrieved.`,
     {
       objectType: z.enum(SIMPLE_OBJECTS),
       filters: z
@@ -170,7 +171,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "count_objects_by_properties",
-    `Count objects in Hubspot with matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is 10000 objects.`,
+    `Count objects in Hubspot with matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is ${MAX_COUNT_LIMIT} objects.`,
     {
       objectType: z.enum(SIMPLE_OBJECTS),
       filters: z

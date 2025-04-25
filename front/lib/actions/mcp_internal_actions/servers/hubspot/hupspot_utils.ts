@@ -15,7 +15,7 @@ export const withAuth = async (
   mcpServerId: string,
   action: (accessToken: string) => Promise<any>,
   params?: any
-) => {
+): Promise<CallToolResult> => {
   const accessToken = await getAccessTokenForInternalMCPServer(auth, {
     mcpServerId,
   });
