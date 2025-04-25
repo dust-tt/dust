@@ -68,20 +68,20 @@ export function FeatureAccessButton({
   if (!canManage) {
     return (
       <Button
-        disabled={true}
-        icon={LockIcon}
         label="Manage"
         tooltip="Only admins can manage this feature."
+        icon={LockIcon}
         variant="outline"
+        disabled={true}
       />
     );
   }
   return (
     <Button
-      href={managePath}
-      icon={Cog6ToothIcon}
       label="Manage"
+      icon={Cog6ToothIcon}
       variant="outline"
+      href={managePath}
     />
   );
 }
