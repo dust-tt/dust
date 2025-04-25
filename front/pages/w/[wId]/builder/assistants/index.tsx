@@ -22,7 +22,7 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantsTable } from "@app/components/assistant/AssistantsTable";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { TagsMenu } from "@app/components/assistant/TagsMenu";
+import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -357,8 +357,8 @@ export default function WorkspaceAssistants({
               />
               <div className="flex gap-2">
                 {hasAgentDiscovery && (
-                  <TagsMenu
-                    uniqueTags={uniqueTags}
+                  <TagsFilterMenu
+                    tags={uniqueTags}
                     selectedTags={selectedTags}
                     setSelectedTags={setSelectedTags}
                   />

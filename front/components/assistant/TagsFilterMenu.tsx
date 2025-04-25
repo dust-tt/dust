@@ -12,20 +12,20 @@ import { useState } from "react";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { TagType } from "@app/types/tag";
 
-type TagsMenuProps = {
-  uniqueTags: TagType[];
+type TagsFilterMenuProps = {
+  tags: TagType[];
   selectedTags: string[];
   setSelectedTags: (tags: string[]) => void;
 };
 
-export const TagsMenu = ({
-  uniqueTags,
+export const TagsFilterMenu = ({
+  tags,
   selectedTags,
   setSelectedTags,
-}: TagsMenuProps) => {
+}: TagsFilterMenuProps) => {
   const [tagSearch, setTagSearch] = useState<string>("");
 
-  const filteredTags = uniqueTags
+  const filteredTags = tags
     .filter((a) => {
       return subFilter(tagSearch, a.name.toLowerCase());
     })
