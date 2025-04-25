@@ -295,7 +295,13 @@ export async function tryListMCPTools(
           },
           `Error listing tools from MCP server: ${normalizeError(toolsRes.error)}`
         );
-        return new Err(`${action.name}: ${toolsRes.error.message}`);
+        return new Err(
+          new Error(
+            `An error occured while listing the available tools for ${action.name}. ` +
+              "Tools from this server are not available for this message. " +
+              "Inform the user of this issue."
+          )
+        );
       }
 
       const toolConfigurations = toolsRes.value;
@@ -353,16 +359,20 @@ export async function tryListMCPTools(
   );
 
   // Aggregate results
-  const tools: MCPToolConfigurationType[] = [];
-  const errors: string[] = [];
-
-  for (const result of toolsResults) {
-    if (result.isOk()) {
-      tools.push(...result.value);
-    } else {
-      errors.push(result.error);
-    }
-  }
+  const { tools, errors } = toolsResults.reduce<{
+    tools: MCPToolConfigurationType[];
+    errors: string[];
+  }>(
+    (acc, result) => {
+      if (result.isOk()) {
+        acc.tools.push(...result.value);
+      } else {
+        acc.errors.push(result.error);
+      }
+      return acc;
+    },
+    { tools: [], errors: [] }
+  );
 
   return {
     tools,
