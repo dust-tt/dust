@@ -12,7 +12,7 @@ export function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
     case "document":
       return ["folder", "document"];
     case "table":
-      return ["folder", "table"];
+      return ["table"];
     case "all":
       return ["folder", "table", "document"];
     default:
