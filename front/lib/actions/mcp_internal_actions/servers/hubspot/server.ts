@@ -11,11 +11,11 @@ import {
   getObjectsByProperties,
   SIMPLE_OBJECTS,
   updateObject,
-} from "@app/lib/actions/mcp_internal_actions/servers/hubspot_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
 import {
   ERROR_MESSAGES,
   withAuth,
-} from "@app/lib/actions/mcp_internal_actions/servers/hupspot_utils";
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hupspot_utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 
