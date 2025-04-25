@@ -37,6 +37,9 @@ export async function fetchReasoningActionConfigurations({
         temperature,
         reasoningEffort,
       } = config;
+      if (!agentConfigurationId) {
+        return acc;
+      }
       if (!acc.has(agentConfigurationId)) {
         acc.set(agentConfigurationId, []);
       }
