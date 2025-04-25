@@ -110,12 +110,20 @@ const renderIcon = (
   icon: React.ComponentType | React.ReactNode,
   size: "xs" | "sm" = "xs"
 ) => {
-  if (!icon) {
-    return null;
+  // If it's a React element (already rendered), return it as is
+  if (React.isValidElement(icon)) {
+    return icon;
   }
-  return typeof icon === "function" ? <Icon size={size} visual={icon} /> : icon;
+
+  // For any component type (including exotic components), render it with Icon
+  if (typeof icon === "function" || typeof icon === "object") {
+    return <Icon size={size} visual={icon as React.ComponentType} />;
+  }
+
+  // For primitive values, return null
+  return null;
 };
-  
+
 const ItemWithLabelIconAndDescription = <
   T extends ItemWithLabelIconAndDescriptionProps,
 >({
