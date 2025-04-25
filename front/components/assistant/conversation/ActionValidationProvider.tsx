@@ -1,5 +1,6 @@
 import {
   ActionPieChartIcon,
+  Avatar,
   Button,
   CodeBlock,
   CollapsibleComponent,
@@ -9,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Icon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { createContext, useCallback, useEffect, useState } from "react";
@@ -191,7 +193,14 @@ export function ActionValidationProvider({
       >
         <DialogContent isAlertDialog>
           <DialogHeader>
-            <DialogTitle visual={<ActionPieChartIcon />}>
+            <DialogTitle
+              visual={
+                <Avatar
+                  size="sm"
+                  visual={<Icon visual={ActionPieChartIcon} />}
+                />
+              }
+            >
               Tool Validation Required
             </DialogTitle>
           </DialogHeader>
@@ -211,7 +220,9 @@ export function ActionValidationProvider({
                 Object.keys(currentValidation.inputs).length > 0 && (
                   <CollapsibleComponent
                     triggerChildren={
-                      <span className="font-medium">Details</span>
+                      <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
+                        Details
+                      </span>
                     }
                     contentChildren={
                       <div>
@@ -230,7 +241,7 @@ export function ActionValidationProvider({
 
               {validationQueue.length > 0 && (
                 <div className="mt-2 text-sm font-medium text-info-900 dark:text-info-900-night">
-                  {validationQueue.length} more requests
+                  {validationQueue.length} more request
                   {validationQueue.length > 1 ? "s" : ""} in queue
                 </div>
               )}
@@ -246,7 +257,7 @@ export function ActionValidationProvider({
             permanentValidation={
               currentValidation?.stake === "low"
                 ? {
-                    label: "Never ask again",
+                    label: "Always allow this tool",
                     checked: neverAskAgain,
                     onChange: (check) => {
                       setNeverAskAgain(!!check);
@@ -269,8 +280,8 @@ export function ActionValidationProvider({
               )}
             </Button>
             <Button
-              label="Approve"
-              variant="primary"
+              label="Allow"
+              variant="highlight"
               onClick={() => handleSubmit("approved")}
               disabled={isProcessing}
             >
