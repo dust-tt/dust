@@ -19,10 +19,8 @@ import { useTagsUsage } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
 import type { TagTypeWithUsage } from "@app/types/tag";
 
-import {
-  EditTagDialog,
-  TagCreationDialog,
-} from "../assistant_builder/TagCreationDialog";
+import { TagCreationDialog } from "../assistant_builder/TagCreationDialog";
+import { EditTagDialog } from "../assistant_builder/TagUpdateDialog";
 import { DeleteTagDialog } from "./DeleteTagDialog";
 
 const columns = [
