@@ -181,7 +181,7 @@ export function UserMenu({
                       );
                     }
                   }}
-                  icon={BugIcon}
+                  icon={<BugIcon />}
                 />
               )}
               {!isOnlyAdmin(owner) && (
