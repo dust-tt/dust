@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiError } from "@app/logger/withlogging";
-import type { ConversationErrorType, UserMessageContext } from "@app/types";
+import type { ConversationErrorType } from "@app/types";
 import { ConversationError, isOverflowingDBString } from "@app/types";
 
 const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {

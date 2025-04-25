@@ -36,7 +36,6 @@ import {
   isContentFragmentInputWithFileId,
   isContentFragmentInputWithInlinedContent,
   isEmptyString,
-  isOverflowingDBString,
 } from "@app/types";
 
 /**
