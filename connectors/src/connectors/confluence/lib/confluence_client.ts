@@ -439,7 +439,7 @@ export class ConfluenceClient {
     // When approaching the rate limit, we defer the handling of the backoff to Temporal.
     // We have no accurate estimation of the time we should wait here, the goal here is more to warm up the exponential
     // backoff to slow down the queries as soon as they approach the rate limit.
-    if (checkNearRateLimit(response)) {
+    if (!bypassThrottle && checkNearRateLimit(response)) {
       statsDClient.increment("external.api.calls", 1, [
         "provider:confluence",
         "status:near_rate_limit",
