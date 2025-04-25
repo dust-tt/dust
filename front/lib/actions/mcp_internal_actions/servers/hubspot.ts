@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import {
   ALL_OBJECTS,
   createObject,
@@ -13,8 +12,10 @@ import {
   SIMPLE_OBJECTS,
   updateObject,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot_api_helper";
-import { logAndReturnError } from "@app/lib/actions/mcp_internal_actions/servers/hupspot_utils";
-import { returnSuccess } from "@app/lib/actions/mcp_internal_actions/servers/hupspot_utils";
+import {
+  ERROR_MESSAGES,
+  withAuth,
+} from "@app/lib/actions/mcp_internal_actions/servers/hupspot_utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -40,34 +41,9 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       creatableOnly: z.boolean().optional(),
     },
     async ({ objectType, creatableOnly = true }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-      });
-      if (!accessToken) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "No access token found" }],
-        };
-      }
-
-      try {
-        const properties = await getObjectProperties({
-          accessToken,
-          objectType,
-          creatableOnly,
-        });
-
-        return returnSuccess({
-          message: "Object properties fetched successfully",
-          result: properties,
-        });
-      } catch (error: any) {
-        return logAndReturnError({
-          error,
-          params: { objectType, creatableOnly },
-          message: "Error fetching object properties.",
-        });
-      }
+      return withAuth(auth, mcpServerId, (accessToken) =>
+        getObjectProperties({ accessToken, objectType, creatableOnly })
+      );
     }
   );
 
@@ -81,37 +57,13 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("An object containing the valid properties for the object."),
     },
     async ({ objectType, properties }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-      });
-      if (!accessToken) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "No access token found" }],
-        };
-      }
-
-      try {
-        const object = await createObject({
+      return withAuth(auth, mcpServerId, (accessToken) =>
+        createObject({
           accessToken,
           objectType,
-          objectProperties: {
-            properties,
-            associations: [],
-          },
-        });
-
-        return returnSuccess({
-          message: "Object created successfully",
-          result: object,
-        });
-      } catch (error: any) {
-        return logAndReturnError({
-          error,
-          params: { objectType, properties },
-          message: "Error creating object.",
-        });
-      }
+          objectProperties: { properties, associations: [] },
+        })
+      );
     }
   );
 
@@ -124,38 +76,14 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       properties: z.record(z.string()).describe("The properties to update."),
     },
     async ({ objectType, objectId, properties }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-      });
-      if (!accessToken) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "No access token found" }],
-        };
-      }
-
-      try {
-        const object = await updateObject({
+      return withAuth(auth, mcpServerId, (accessToken) =>
+        updateObject({
           accessToken,
           objectType,
           objectId,
-          objectProperties: {
-            properties,
-            associations: [],
-          },
-        });
-
-        return returnSuccess({
-          message: "Object updated successfully",
-          result: object,
-        });
-      } catch (error: any) {
-        return logAndReturnError({
-          error,
-          params: { objectType, objectId, properties },
-          message: "Error updating object.",
-        });
-      }
+          objectProperties: { properties, associations: [] },
+        })
+      );
     }
   );
 
@@ -167,36 +95,16 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       objectId: z.string().describe("The ID of the object to get."),
     },
     async ({ objectType, objectId }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-      });
-
-      if (!accessToken) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "No access token found" }],
-        };
-      }
-
-      try {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
         const object = await getObjectById(accessToken, objectType, objectId);
         if (!object) {
           return {
             isError: true,
-            content: [{ type: "text", text: "Object not found" }],
+            content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
           };
         }
-        return returnSuccess({
-          message: "Object fetched successfully",
-          result: object,
-        });
-      } catch (error: any) {
-        return logAndReturnError({
-          error,
-          params: { objectType, objectId },
-          message: "Error getting object by ID.",
-        });
-      }
+        return object;
+      });
     }
   );
 
@@ -208,36 +116,16 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       email: z.string().describe("The email address of the object."),
     },
     async ({ objectType, email }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-      });
-
-      if (!accessToken) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "No access token found" }],
-        };
-      }
-
-      try {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
         const object = await getObjectByEmail(accessToken, objectType, email);
         if (!object) {
           return {
             isError: true,
-            content: [{ type: "text", text: "Object not found" }],
+            content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
           };
         }
-        return returnSuccess({
-          message: "Object fetched successfully",
-          result: object,
-        });
-      } catch (error: any) {
-        return logAndReturnError({
-          error,
-          params: { objectType, email },
-          message: "Error getting object by email.",
-        });
-      }
+        return object;
+      });
     }
   );
 
@@ -250,18 +138,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       value: z.string().describe("The value of the property."),
     },
     async ({ objectType, property, value }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-      });
-
-      if (!accessToken) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "No access token found" }],
-        };
-      }
-
-      try {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
         const objects = await getObjectsByProperty(
           accessToken,
           objectType,
@@ -271,20 +148,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         if (!objects.length) {
           return {
             isError: true,
-            content: [{ type: "text", text: "No objects found" }],
+            content: [{ type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND }],
           };
         }
-        return returnSuccess({
-          message: "Objects fetched successfully",
-          result: objects,
-        });
-      } catch (error: any) {
-        return logAndReturnError({
-          error,
-          params: { objectType, property, value },
-          message: "Error getting objects by property value.",
-        });
-      }
+        return objects;
+      });
     }
   );
 
@@ -296,18 +164,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       properties: z.record(z.string()).describe("The properties to search by."),
     },
     async ({ objectType, properties }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-      });
-
-      if (!accessToken) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "No access token found" }],
-        };
-      }
-
-      try {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
         const objects = await getObjectsByProperties(
           accessToken,
           objectType,
@@ -316,20 +173,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         if (!objects.length) {
           return {
             isError: true,
-            content: [{ type: "text", text: "No objects found" }],
+            content: [{ type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND }],
           };
         }
-        return returnSuccess({
-          message: "Objects fetched successfully",
-          result: objects,
-        });
-      } catch (error: any) {
-        return logAndReturnError({
-          error,
-          params: { objectType, properties },
-          message: "Error getting objects by properties.",
-        });
-      }
+        return objects;
+      });
     }
   );
 
