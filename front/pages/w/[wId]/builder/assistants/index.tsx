@@ -360,6 +360,7 @@ export default function WorkspaceAssistants({
                     tags={uniqueTags}
                     selectedTags={selectedTags}
                     setSelectedTags={setSelectedTags}
+                    owner={owner}
                   />
                 )}
                 <Link
