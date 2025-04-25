@@ -11,7 +11,10 @@ import {
   confluenceUpsertPagesWithFullParentsWorkflow,
   confluenceUpsertPageWithFullParentsWorkflow,
 } from "@connectors/connectors/confluence/temporal/workflows";
-import { ConfluenceSpace } from "@connectors/lib/models/confluence";
+import {
+  ConfluenceConfiguration,
+  ConfluenceSpace,
+} from "@connectors/lib/models/confluence";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -173,6 +176,48 @@ export const confluence = async ({
           null
         );
       }
+      return { success: true };
+    }
+    case "ignore-near-rate-limit": {
+      const { connectorId } = args;
+      if (!connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+
+      const configuration = await ConfluenceConfiguration.findOne({
+        where: {
+          connectorId,
+        },
+      });
+      if (!configuration) {
+        throw new Error(
+          `Confluence configuration not found (connectorId: ${args.connectorId})`
+        );
+      }
+
+      await configuration.update({ ignoreNearRateLimit: true });
+
+      return { success: true };
+    }
+    case "unignore-near-rate-limit": {
+      const { connectorId } = args;
+      if (!connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+
+      const configuration = await ConfluenceConfiguration.findOne({
+        where: {
+          connectorId,
+        },
+      });
+      if (!configuration) {
+        throw new Error(
+          `Confluence configuration not found (connectorId: ${args.connectorId})`
+        );
+      }
+
+      await configuration.update({ ignoreNearRateLimit: false });
+
       return { success: true };
     }
 
