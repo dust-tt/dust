@@ -75,6 +75,7 @@ export const GithubCommandSchema = t.type({
     t.literal("sync-issue"),
     t.literal("force-daily-code-sync"),
     t.literal("skip-issue"),
+    t.literal("clear-installation-id"),
   ]),
   args: t.record(
     t.string,
