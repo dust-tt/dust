@@ -247,7 +247,7 @@ Tree.Item = React.forwardRef<
             />
           )}
           {type === "leaf" && (
-            <div className="s-w-[34px] s-flex-shrink-0"></div>
+            <div className="s-w-[24px] s-flex-shrink-0"></div>
           )}
           {checkbox && <Checkbox {...checkbox} size="xs" />}
           <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
