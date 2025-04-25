@@ -4,11 +4,13 @@ import { z } from "zod";
 
 import {
   ALL_OBJECTS,
+  countObjectsByProperties,
   createObject,
   getObjectByEmail,
   getObjectById,
   getObjectProperties,
   getObjectsByProperties,
+  MAX_COUNT_LIMIT,
   SIMPLE_OBJECTS,
   updateObject,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
@@ -131,7 +133,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "get_objects_by_properties",
-    `Searches for objects in Hubspot matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
+    `Searches for objects in Hubspot matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is 200 objects retrieved.`,
     {
       objectType: z.enum(SIMPLE_OBJECTS),
       filters: z
@@ -143,11 +145,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             operator: z
               .nativeEnum(FilterOperatorEnum)
               .describe("The operator to use for comparison."),
-            value: z
-              .string()
-              .describe(
-                "The value to compare against. Not needed for is_null and is_not_null operators."
-              ),
+            value: z.string().describe("The value to compare against."),
           })
         )
         .describe("Array of property filters to apply."),
@@ -166,6 +164,54 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           };
         }
         return objects;
+      });
+    }
+  );
+
+  server.tool(
+    "count_objects_by_properties",
+    `Count objects in Hubspot with matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is 10000 objects.`,
+    {
+      objectType: z.enum(SIMPLE_OBJECTS),
+      filters: z
+        .array(
+          z.object({
+            propertyName: z
+              .string()
+              .describe("The name of the property to search by."),
+            operator: z
+              .nativeEnum(FilterOperatorEnum)
+              .describe("The operator to use for comparison."),
+            value: z.string().describe("The value to compare against."),
+          })
+        )
+        .describe("Array of property filters to apply."),
+    },
+    async ({ objectType, filters }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const count = await countObjectsByProperties(
+          accessToken,
+          objectType,
+          filters
+        );
+        if (!count) {
+          return {
+            isError: true,
+            content: [{ type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND }],
+          };
+        }
+        if (count === MAX_COUNT_LIMIT) {
+          return {
+            isError: false,
+            content: [
+              {
+                type: "text",
+                text: `At least ${MAX_COUNT_LIMIT} objects matching the filters (Hubspot API limit when counting objects).`,
+              },
+            ],
+          };
+        }
+        return count;
       });
     }
   );
