@@ -311,14 +311,17 @@ async function answerMessage(
       if (isSlackWebAPIPlatformError(e)) {
         if (e.data.error === "bot_not_found") {
           // Log to understand why we are getting this error.
-          logger.warn("Received bot_not_found", {
-            error: e,
-            connectorId: connector.id,
-            slackUserId,
-            slackBotId,
-            slackUserInfo,
-            slackTeamId,
-          });
+          logger.warn(
+            {
+              error: e,
+              connectorId: connector.id,
+              slackUserId,
+              slackBotId,
+              slackUserInfo,
+              slackTeamId,
+            },
+            "Received bot_not_found"
+          );
         }
       }
       throw e;
