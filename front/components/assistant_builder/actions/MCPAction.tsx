@@ -208,7 +208,9 @@ export function MCPAction({
           isOpen={showDataSourcesModal}
           setOpen={setShowDataSourcesModal}
           owner={owner}
-          onSave={handleDataSourceConfigUpdate}
+          onSave={(dataSourceConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
+          }}
           initialDataSourceConfigurations={
             actionConfiguration.dataSourceConfigurations ?? {}
           }
@@ -223,7 +225,9 @@ export function MCPAction({
             setShowTablesModal(isOpen);
           }}
           owner={owner}
-          onSave={handleTableConfigUpdate}
+          onSave={(tablesConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
+          }}
           initialDataSourceConfigurations={
             actionConfiguration.tablesConfigurations ?? {}
           }
@@ -274,7 +278,9 @@ export function MCPAction({
             actionConfiguration.dataSourceConfigurations ?? {}
           }
           openDataSourceModal={() => setShowDataSourcesModal(true)}
-          onSave={handleDataSourceConfigUpdate}
+          onSave={(dataSourceConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
+          }}
           viewType="document"
         />
       )}
@@ -285,13 +291,17 @@ export function MCPAction({
             actionConfiguration.tablesConfigurations ?? {}
           }
           openDataSourceModal={() => setShowTablesModal(true)}
-          onSave={handleTableConfigUpdate}
+          onSave={(tablesConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
+          }}
           viewType="table"
         />
       )}
       {requirements.requiresChildAgentConfiguration && (
         <ChildAgentConfigurationSection
-          onAgentSelect={handleChildAgentConfigUpdate}
+          onAgentSelect={(childAgentId) => {
+            handleConfigUpdate((old) => ({ ...old, childAgentId }));
+          }}
           selectedAgentId={actionConfiguration.childAgentId}
           owner={owner}
         />
@@ -306,7 +316,15 @@ export function MCPAction({
       <AdditionalConfigurationSection
         {...requirements}
         additionalConfiguration={actionConfiguration.additionalConfiguration}
-        onConfigUpdate={handleAdditionalConfigUpdate}
+        onConfigUpdate={(key, value) => {
+          handleConfigUpdate((old) => ({
+            ...old,
+            additionalConfiguration: {
+              ...old.additionalConfiguration,
+              [key]: value,
+            },
+          }));
+        }}
       />
     </>
   );
