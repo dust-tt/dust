@@ -27,7 +27,8 @@ export function ActionDetailsWrapper({
         >
           <Avatar
             size="sm"
-            visual={<Icon visual={visual} className="text-foreground" />}
+            visual={<Icon visual={visual} />}
+            backgroundColor="bg-muted-background dark:bg-muted-background-night"
           />
           <span className="heading-base">{actionName}</span>
         </div>
