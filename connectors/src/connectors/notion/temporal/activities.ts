@@ -2502,6 +2502,8 @@ export async function upsertDatabaseStructuredDataFromCache({
     databaseId,
   });
 
+  localLogger.info("Start upserting Notion Database.");
+
   const dbModel = await NotionDatabase.findOne({
     where: {
       connectorId,
@@ -2686,6 +2688,8 @@ export async function upsertDatabaseStructuredDataFromCache({
       );
     }
   }
+
+  localLogger.info("Done upserting Notion Database.");
 
   await dbModel.update({ structuredDataUpsertedTs: upsertAt });
 }
