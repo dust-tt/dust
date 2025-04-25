@@ -367,7 +367,7 @@ export async function tryListMCPTools(
       if (result.isOk()) {
         acc.tools.push(...result.value);
       } else {
-        acc.errors.push(result.error);
+        acc.errors.push(result.error.message);
       }
       return acc;
     },
