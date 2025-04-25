@@ -271,11 +271,12 @@ export async function tryListMCPTools(
     conversationId: string;
     messageId: string;
   }
-): Promise<MCPToolConfigurationType[]> {
+): Promise<{ tools: MCPToolConfigurationType[]; error?: string }> {
   const owner = auth.getNonNullableWorkspace();
 
   // Filter for MCP server configurations.
   const mcpServerActions = agentActions.filter(isMCPServerConfiguration);
+  const errors: string[] = [];
 
   // Discover all the tools exposed by all the mcp servers available.
   const configurations = await Promise.all(
@@ -294,6 +295,7 @@ export async function tryListMCPTools(
           },
           `Error listing tools from MCP server: ${normalizeError(toolsRes.error)}`
         );
+        errors.push(`${action.name}: ${toolsRes.error.message}`);
         return [];
       }
 
@@ -349,7 +351,10 @@ export async function tryListMCPTools(
     })
   );
 
-  return configurations.flat();
+  return {
+    tools: configurations.flat(),
+    error: errors.join("\n"),
+  };
 }
 
 async function listToolsForLocalMCPServer(
