@@ -1,5 +1,13 @@
-import type { AgentModelConfigurationType, SupportedModel } from "@app/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
+import type {
+  AgentModelConfigurationType,
+  ModelConfigurationType,
+  PlanType,
+  SupportedModel,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@app/types";
+import { isProviderWhitelisted, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export function isLargeModel(model: unknown): model is SupportedModel {
   const maybeSupportedModel = model as SupportedModel;
@@ -25,4 +33,28 @@ export function getSupportedModelConfig(
       m.providerId === supportedModel.providerId &&
       m.reasoningEffort === supportedModel.reasoningEffort
   ) as (typeof SUPPORTED_MODEL_CONFIGS)[number];
+}
+
+export function canUseModel(
+  m: ModelConfigurationType,
+  featureFlags: WhitelistableFeature[],
+  plan: PlanType | null,
+  owner: WorkspaceType
+) {
+  if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
+    return false;
+  }
+
+  if (
+    m.customAssistantFeatureFlag &&
+    !featureFlags.includes(m.customAssistantFeatureFlag)
+  ) {
+    return false;
+  }
+
+  if (m.largeModel && !isUpgraded(plan)) {
+    return false;
+  }
+
+  return isProviderWhitelisted(owner, m.providerId);
 }

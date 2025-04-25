@@ -272,13 +272,13 @@ export default function SecretsPage({
                     >
                       <div className="flex items-center space-x-2">
                         <pre className="rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
-                          env.SECRETS.{secret.name}
+                          env.secrets.{secret.name}
                         </pre>
                         <Button
                           variant="outline"
                           icon={ClipboardIcon}
                           onClick={() => {
-                            const text = `env.SECRETS.${secret.name}`;
+                            const text = `env.secrets.${secret.name}`;
                             void navigator.clipboard.writeText(text);
                             sendNotification({
                               type: "success",

@@ -61,6 +61,7 @@ export type AgentConfigurationScope =
  * - 'published': Retrieves all agents exclusively with a 'published' scope.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
  * - 'admin_internal': Grants access to all agents, including private ones.
+ * - 'manage': Retrieves all agents for the manage agents view (same as list, but including disabled agents).
  * - 'archived': Retrieves all agents that are archived. Only available to super
  *   users. Intended strictly for internal use with necessary superuser or admin
  *   authorization.
@@ -75,6 +76,7 @@ export type AgentsGetViewType =
   | "published"
   | "global"
   | "admin_internal"
+  | "manage"
   | "archived"
   | "favorites";
 

@@ -19,4 +19,9 @@ export const apiConfig = {
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
   },
+  getFirecrawlAPIConfig: (): { apiKey: string } => {
+    return {
+      apiKey: EnvironmentConfig.getEnvVariable("FIRECRAWL_API_KEY"),
+    };
+  },
 };

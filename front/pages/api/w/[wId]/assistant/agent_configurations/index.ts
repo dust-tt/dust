@@ -493,6 +493,7 @@ export async function createOrUpgradeAgentConfiguration({
           description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
           mcpServerViewId: action.mcpServerViewId,
           dataSources: action.dataSources || null,
+          reasoningModel: action.reasoningModel,
           tables: action.tables,
           childAgentId: action.childAgentId,
           additionalConfiguration: action.additionalConfiguration,

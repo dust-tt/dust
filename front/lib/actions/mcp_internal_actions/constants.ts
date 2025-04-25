@@ -21,6 +21,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse_v2",
   "tables_query",
   "think",
+  "reasoning_v2",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -50,7 +51,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   image_generation: {
     id: 2,
     isDefault: true,
-    flag: "mcp_actions",
+    flag: null,
   },
   file_generation: {
     id: 3,
@@ -109,6 +110,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   search: {
     id: 1006,
+    isDefault: true,
+    flag: "dev_mcp_actions",
+  },
+  reasoning_v2: {
+    id: 1007,
     isDefault: true,
     flag: "dev_mcp_actions",
   },

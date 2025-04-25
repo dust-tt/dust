@@ -40,9 +40,6 @@ export const DocumentOrTableDeleteDialog = ({
 
   const sendNotification = useSendNotification();
 
-  const isTable = params && params.viewType.value === "table";
-  const itemType = isTable ? "table" : "document";
-
   const openDialog = () => {
     params.setParams({
       [DocumentDeletionKey]: "true",
@@ -58,29 +55,35 @@ export const DocumentOrTableDeleteDialog = ({
   };
 
   const handleDelete = async () => {
-    if (!contentNode || !dataSourceView) {
+    if (
+      !contentNode ||
+      !dataSourceView ||
+      !["table", "document"].includes(contentNode.type)
+    ) {
       return;
     }
     try {
       setIsLoading(true);
-      const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${itemType}s/${encodeURIComponent(contentNode.internalId)}`;
+      const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${contentNode.type}s/${encodeURIComponent(contentNode.internalId)}`;
 
       const res = await fetch(endpoint, { method: "DELETE" });
       if (!res.ok) {
-        throw new Error(`Failed to delete ${itemType}`);
+        throw new Error(`Failed to delete ${contentNode.type}`);
       }
 
       sendNotification({
         type: "success",
-        title: `${_.capitalize(itemType)} deletion submitted`,
-        description: `Deletion of ${itemType} ${contentNode.title} ongoing, it will complete shortly.`,
+        title: `${_.capitalize(contentNode.type)} deletion submitted`,
+        description:
+          `Deletion of ${contentNode.type} ${contentNode.title} is ongoing, ` +
+          `it will complete shortly.`,
       });
       closeDialog();
     } catch (error) {
       sendNotification({
         type: "error",
-        title: `Error deleting ${itemType}`,
-        description: `An error occurred while deleting your ${itemType}.`,
+        title: `Error deleting ${contentNode.type}`,
+        description: `An error occurred while deleting your ${contentNode.type}.`,
       });
     } finally {
       setIsLoading(false);
@@ -102,8 +105,9 @@ export const DocumentOrTableDeleteDialog = ({
         <DialogHeader>
           <DialogTitle>Confirm deletion</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete {isTable ? "table" : "document"} '
-            {contentNode?.title}?
+            Are you sure you want to delete
+            {contentNode?.type ? ` ${contentNode.type}` : ""}
+            {contentNode?.title ? ` '${contentNode.title}'` : ""}?
           </DialogDescription>
         </DialogHeader>
         {isLoading ? (

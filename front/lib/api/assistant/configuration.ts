@@ -18,11 +18,13 @@ import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configurati
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
@@ -210,6 +212,7 @@ function determineGlobalAgentIdsToFetch(
       return []; // fetch no global agents
     case "global":
     case "list":
+    case "manage":
     case "all":
     case "favorites":
     case "admin_internal":
@@ -241,6 +244,7 @@ async function fetchGlobalAgentConfigurationForView(
 
   if (
     agentsGetView === "global" ||
+    agentsGetView === "manage" ||
     (typeof agentsGetView === "object" && "agentIds" in agentsGetView)
   ) {
     // All global agents in global and agent views.
@@ -364,6 +368,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
 
     case "list":
+    case "manage":
       const user = auth.user();
 
       const sharedAssistants = await AgentConfiguration.findAll({
@@ -657,17 +662,17 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     );
   }
 
-  if (agentsGetView === "archived" && !auth.isDustSuperUser()) {
-    throw new Error("Archived view is for dust superusers only.");
+  if (agentsGetView === "archived" && !auth.isAdmin()) {
+    throw new Error("Archived view is for admins only.");
   }
 
-  if (agentsGetView === "list" && !user) {
-    throw new Error(
-      "`list` or `assistants-search` view is specific to a user."
-    );
-  }
-  if (agentsGetView === "favorites" && !user) {
-    throw new Error("`favorites` view is specific to a user.");
+  if (
+    !user &&
+    (agentsGetView === "list" ||
+      agentsGetView === "manage" ||
+      agentsGetView === "favorites")
+  ) {
+    throw new Error(`'${agentsGetView}' view is specific to a user.`);
   }
 
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);
@@ -1261,6 +1266,7 @@ export async function createAgentActionConfiguration(
       const reasoningConfig = await AgentReasoningConfiguration.create({
         sId: generateRandomModelSId(),
         agentConfigurationId: agentConfiguration.id,
+        mcpServerConfigurationId: null,
         name: action.name,
         description: action.description,
         providerId: action.providerId,
@@ -1340,6 +1346,14 @@ export async function createAgentActionConfiguration(
             mcpConfig,
           });
         }
+        // Creating the AgentTablesQueryConfigurationTable if configured
+        if (action.reasoningModel) {
+          await createReasoningConfiguration(auth, t, {
+            reasoningModel: action.reasoningModel,
+            mcpConfig,
+            agentConfiguration,
+          });
+        }
 
         return new Ok({
           id: mcpConfig.id,
@@ -1351,6 +1365,7 @@ export async function createAgentActionConfiguration(
           dataSources: action.dataSources,
           tables: action.tables,
           childAgentId: action.childAgentId,
+          reasoningModel: action.reasoningModel,
           additionalConfiguration: action.additionalConfiguration,
         });
       });
@@ -1513,6 +1528,36 @@ async function createChildAgentConfiguration(
     {
       agentConfigurationId: childAgentId,
       mcpServerConfigurationId: mcpConfig.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    { transaction: t }
+  );
+}
+
+async function createReasoningConfiguration(
+  auth: Authenticator,
+  t: Transaction,
+  {
+    reasoningModel,
+    mcpConfig,
+    agentConfiguration,
+  }: {
+    reasoningModel: ReasoningModelConfiguration;
+    mcpConfig: AgentMCPServerConfiguration;
+    agentConfiguration: LightAgentConfigurationType;
+  }
+) {
+  return AgentReasoningConfiguration.create(
+    {
+      sId: generateRandomModelSId(),
+      agentConfigurationId: null,
+      mcpServerConfigurationId: mcpConfig.id,
+      name: DEFAULT_RETRIEVAL_ACTION_NAME,
+      description: DEFAULT_REASONING_ACTION_DESCRIPTION,
+      providerId: reasoningModel.providerId,
+      modelId: reasoningModel.modelId,
+      temperature: agentConfiguration.model.temperature,
+      reasoningEffort: reasoningModel.reasoningEffort,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
     { transaction: t }

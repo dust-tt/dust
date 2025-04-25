@@ -24,6 +24,7 @@ import type { WebCrawlerConfigurationType } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
 import {
   CrawlingFrequencies,
+  WebcrawlerCustomCrawler,
   WebCrawlerHeaderRedactedValue,
 } from "@connectors/types";
 
@@ -286,6 +287,10 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       depth: this.depth,
       crawlFrequency: this.crawlFrequency,
       headers: redactedHeaders,
+      customCrawler:
+        Object.values(WebcrawlerCustomCrawler).find(
+          (value) => value === this.customCrawler
+        ) ?? null,
     };
   }
 }

@@ -44,14 +44,19 @@ const REASONING_GENERATION_TOKENS = 20480;
 export type ReasoningConfigurationType = {
   description: string | null;
   id: ModelId;
-  name: string;
-  sId: string;
-  providerId: ModelProviderIdType;
   modelId: ModelIdType;
-  temperature: number | null;
+  name: string;
+  providerId: ModelProviderIdType;
   reasoningEffort: ReasoningEffortIdType | null;
+  sId: string;
+  temperature: number | null;
   type: "reasoning_configuration";
 };
+
+export type ReasoningModelConfiguration = Pick<
+  ReasoningConfigurationType,
+  "modelId" | "providerId" | "reasoningEffort"
+>;
 
 type ReasoningErrorEvent = {
   type: "reasoning_error";

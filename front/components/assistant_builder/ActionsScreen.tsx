@@ -141,8 +141,7 @@ const isUsableAsCapability = (
   if (!view) {
     return false;
   }
-  const requirements = getMCPServerRequirements(view);
-  return view.server.isDefault && requirements.noRequirement;
+  return view.server.isDefault && getMCPServerRequirements(view).noRequirement;
 };
 
 const isUsableInKnowledge = (

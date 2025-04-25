@@ -60,8 +60,8 @@ impl std::fmt::Display for TableSchemaFieldType {
     }
 }
 
-static POSSIBLE_VALUES_MAX_LEN: usize = 32;
-static POSSIBLE_VALUES_MAX_COUNT: usize = 16;
+pub static TABLE_SCHEMA_POSSIBLE_VALUES_MAX_LEN: usize = 32;
+pub static TABLE_SCHEMA_POSSIBLE_VALUES_MAX_COUNT: usize = 16;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct TableSchemaColumn {
@@ -142,7 +142,7 @@ impl TableSchema {
                 Value::Array(_) | Value::Null => unreachable!(),
             };
 
-            if s.len() > POSSIBLE_VALUES_MAX_LEN {
+            if s.len() > TABLE_SCHEMA_POSSIBLE_VALUES_MAX_LEN {
                 column.possible_values = None;
                 return;
             }
@@ -151,7 +151,7 @@ impl TableSchema {
                 possible_values.push(s);
             }
 
-            if possible_values.len() > POSSIBLE_VALUES_MAX_COUNT {
+            if possible_values.len() > TABLE_SCHEMA_POSSIBLE_VALUES_MAX_COUNT {
                 column.possible_values = None;
                 return;
             }
@@ -369,7 +369,9 @@ impl TableSchema {
                             // If the total number of possible values is too large, or if any of the values are
                             // too long, then we give up on possible values.
                             // If there are no possible values, then we set it to None.
-                            if v.len() > POSSIBLE_VALUES_MAX_LEN || i >= POSSIBLE_VALUES_MAX_COUNT {
+                            if v.len() > TABLE_SCHEMA_POSSIBLE_VALUES_MAX_LEN
+                                || i >= TABLE_SCHEMA_POSSIBLE_VALUES_MAX_COUNT
+                            {
                                 None
                             } else {
                                 Some(v)
@@ -793,7 +795,7 @@ mod tests {
                 Some(create_test_column_with_values(
                     "going_over_max_count",
                     TableSchemaFieldType::Int,
-                    (1..=POSSIBLE_VALUES_MAX_COUNT)
+                    (1..=TABLE_SCHEMA_POSSIBLE_VALUES_MAX_COUNT)
                         .map(|i| i.to_string())
                         .collect::<Vec<String>>()
                         .iter()
@@ -818,7 +820,7 @@ mod tests {
                 Some(create_test_column_with_values(
                     "going_over_max_length",
                     TableSchemaFieldType::Text,
-                    vec![&"a".repeat(POSSIBLE_VALUES_MAX_LEN + 1)],
+                    vec![&"a".repeat(TABLE_SCHEMA_POSSIBLE_VALUES_MAX_LEN + 1)],
                 )),
                 TableSchemaFieldType::Text,
                 None,

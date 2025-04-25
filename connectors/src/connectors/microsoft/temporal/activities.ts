@@ -383,13 +383,27 @@ export async function syncFiles({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  const logger = getActivityLogger(connector);
+
   const parent = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     parentInternalId
   );
 
   if (!parent) {
-    throw new Error(`Unexpected: parent node not found: ${parentInternalId}`);
+    logger.error(
+      {
+        connectorId,
+        parentInternalId,
+      },
+      `[SyncFiles] Node not found, skipping`
+    );
+
+    return {
+      count: 0,
+      childNodes: [],
+      nextLink: undefined,
+    };
   }
 
   if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
@@ -406,7 +420,6 @@ export async function syncFiles({
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const logger = getActivityLogger(connector);
 
   logger.info(
     {
