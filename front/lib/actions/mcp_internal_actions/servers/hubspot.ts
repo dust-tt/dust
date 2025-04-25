@@ -1,3 +1,4 @@
+import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/contacts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
@@ -8,7 +9,6 @@ import {
   getObjectById,
   getObjectProperties,
   getObjectsByProperties,
-  getObjectsByProperty,
   SIMPLE_OBJECTS,
   updateObject,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot_api_helper";
@@ -130,45 +130,34 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
-    "get_objects_by_property_value",
-    `Searches for objects in Hubspot matching a property value. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
-    {
-      objectType: z.enum(SIMPLE_OBJECTS),
-      property: z.string().describe("The property to search by."),
-      value: z.string().describe("The value of the property."),
-    },
-    async ({ objectType, property, value }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const objects = await getObjectsByProperty(
-          accessToken,
-          objectType,
-          property,
-          value
-        );
-        if (!objects.length) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND }],
-          };
-        }
-        return objects;
-      });
-    }
-  );
-
-  server.tool(
     "get_objects_by_properties",
     `Searches for objects in Hubspot matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
     {
       objectType: z.enum(SIMPLE_OBJECTS),
-      properties: z.record(z.string()).describe("The properties to search by."),
+      filters: z
+        .array(
+          z.object({
+            propertyName: z
+              .string()
+              .describe("The name of the property to search by."),
+            operator: z
+              .nativeEnum(FilterOperatorEnum)
+              .describe("The operator to use for comparison."),
+            value: z
+              .string()
+              .describe(
+                "The value to compare against. Not needed for is_null and is_not_null operators."
+              ),
+          })
+        )
+        .describe("Array of property filters to apply."),
     },
-    async ({ objectType, properties }) => {
+    async ({ objectType, filters }) => {
       return withAuth(auth, mcpServerId, async (accessToken) => {
         const objects = await getObjectsByProperties(
           accessToken,
           objectType,
-          properties
+          filters
         );
         if (!objects.length) {
           return {

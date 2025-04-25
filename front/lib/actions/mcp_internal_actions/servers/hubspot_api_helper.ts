@@ -206,64 +206,16 @@ export const getObjectByEmail = async (
 };
 
 /**
- * Get objects by property value.
- */
-export const getObjectsByProperty = async (
-  accessToken: string,
-  objectType: SimpleObjectType,
-  property: string,
-  value: string
-): Promise<SimplePublicObject[]> => {
-  const hubspotClient = new Client({ accessToken });
-
-  const properties =
-    await hubspotClient.crm.properties.coreApi.getAll(objectType);
-  const propertyNames = properties.results.map((p) => p.name);
-
-  // Handle wildcard search for any property.
-  if (value === "*" || value === "NO_VALUE" || value === "NOT_NULL") {
-    const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
-      filterGroups: [
-        {
-          filters: [
-            {
-              propertyName: property,
-              operator: FilterOperatorEnum.Neq,
-              value: "null",
-            },
-          ],
-        },
-      ],
-      properties: propertyNames,
-    });
-    return objects.results;
-  }
-
-  const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
-    filterGroups: [
-      {
-        filters: [
-          {
-            propertyName: property,
-            operator: FilterOperatorEnum.Eq,
-            value,
-          },
-        ],
-      },
-    ],
-    properties: propertyNames,
-  });
-
-  return objects.results;
-};
-
-/**
  * Get objects by properties.
  */
 export const getObjectsByProperties = async (
   accessToken: string,
   objectType: SimpleObjectType,
-  properties: Record<string, string>
+  filters: Array<{
+    propertyName: string;
+    operator: FilterOperatorEnum;
+    value?: string;
+  }>
 ): Promise<SimplePublicObject[]> => {
   const hubspotClient = new Client({ accessToken });
 
@@ -274,11 +226,20 @@ export const getObjectsByProperties = async (
   const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
     filterGroups: [
       {
-        filters: Object.entries(properties).map(([propertyName, value]) => ({
-          propertyName,
-          operator: FilterOperatorEnum.Eq,
-          value,
-        })),
+        filters: filters.map(({ propertyName, operator, value }) => {
+          const filter: any = {
+            propertyName,
+            operator,
+          };
+          // Only include value if it's not a HAS_PROPERTY or NOT_HAS_PROPERTY operator
+          if (
+            operator !== FilterOperatorEnum.HasProperty &&
+            operator !== FilterOperatorEnum.NotHasProperty
+          ) {
+            filter.value = value;
+          }
+          return filter;
+        }),
       },
     ],
     properties: propertyNames,
