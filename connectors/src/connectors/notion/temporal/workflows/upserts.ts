@@ -17,9 +17,14 @@ import type { ModelId } from "@connectors/types";
 const {
   garbageCollectorMarkAsSeenAndReturnNewEntities,
   fetchDatabaseChildPages,
-  upsertDatabaseStructuredDataFromCache,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "15 minutes",
+});
+
+const { upsertDatabaseStructuredDataFromCache } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "30 minutes",
 });
 
 export async function upsertDatabase({
