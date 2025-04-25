@@ -377,7 +377,7 @@ async function* runMultiActionsAgent(
     userMessage.context.localMCPServerIds
   );
 
-  const mcpActions = await tryListMCPTools(auth, {
+  const { tools: mcpActions, error } = await tryListMCPTools(auth, {
     agentActions: [...agentActions, ...localMCPActions],
     conversationId: conversation.sId,
     messageId: agentMessage.sId,
@@ -405,6 +405,7 @@ async function* runMultiActionsAgent(
     fallbackPrompt,
     model,
     hasAvailableActions: !!availableActions.length,
+    errorContext: error,
   });
 
   const MIN_GENERATION_TOKENS = model.generationTokensCount;
