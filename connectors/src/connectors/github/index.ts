@@ -113,7 +113,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             previousInstallationId: connectorState?.installationId,
             newInstallationId: newGithubInstallationId,
           },
-          "Github connector installationId mismatch."
+          "Github connector installationId mismatch"
         );
 
         return new Err(
