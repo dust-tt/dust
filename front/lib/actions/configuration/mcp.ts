@@ -42,7 +42,12 @@ export async function fetchMCPServerActionConfigurations(
     return new Map();
   }
 
-  const whereClause: WhereOptions = {
+  const whereClause: WhereOptions<
+    AgentDataSourceConfiguration &
+      AgentTablesQueryConfigurationTable &
+      AgentReasoningConfiguration &
+      AgentChildAgentConfiguration
+  > = {
     mcpServerConfigurationId: {
       [Op.in]: mcpServerConfigurations.map((r) => r.id),
     },
