@@ -104,13 +104,16 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       const newGithubInstallationId =
         await installationIdFromConnectionId(connectionId);
 
-      if (connectorState?.installationId !== newGithubInstallationId) {
+      if (
+        connectorState?.installationId !== null &&
+        connectorState?.installationId !== newGithubInstallationId
+      ) {
         logger.info(
           {
             previousInstallationId: connectorState?.installationId,
             newInstallationId: newGithubInstallationId,
           },
-          "Github connector installationId mismatch"
+          "Github connector installationId mismatch."
         );
 
         return new Err(
