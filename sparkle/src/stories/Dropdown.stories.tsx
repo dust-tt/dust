@@ -47,6 +47,7 @@ import {
   CloudArrowDownIcon,
   Cog6ToothIcon,
   DocumentIcon,
+  DoubleIcon,
   FolderIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
@@ -170,7 +171,9 @@ function ComplexDropdownDemo() {
           <DropdownMenuItem
             icon={UserIcon}
             label="Profile"
-            endComponent={<Button icon={ArrowUpOnSquareIcon} variant="ghost" />}
+            endComponent={
+              <Button size="mini" icon={ArrowUpOnSquareIcon} variant="ghost" />
+            }
           />
           <DropdownMenuItem icon={ArrowDownCircleIcon} label="Billing" />
           <DropdownMenuItem icon={Cog6ToothIcon} label="Settings" />
@@ -573,8 +576,13 @@ function AttachFileDemo() {
                   key={item}
                   label={item}
                   description="Company Space/Notion"
-                  icon={randomMainIcon}
-                  extraIcon={randomExtraIcon}
+                  icon={
+                    <DoubleIcon
+                      size="lg"
+                      mainIcon={randomMainIcon}
+                      secondaryIcon={randomExtraIcon}
+                    />
+                  }
                   onClick={() => {
                     setSelectedItem(item);
                     setSearchText("");

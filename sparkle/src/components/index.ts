@@ -58,7 +58,6 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./Dialog";
-export { DoubleIcon } from "./DoubleIcon";
 export type { DropdownMenuItemProps } from "./Dropdown";
 export {
   DropdownMenu,
@@ -85,7 +84,7 @@ export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
-export { Icon } from "./Icon";
+export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export { Input } from "./Input";
 export { Label } from "./Label";
