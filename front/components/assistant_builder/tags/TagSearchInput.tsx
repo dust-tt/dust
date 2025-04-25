@@ -1,7 +1,6 @@
 import {
   Chip,
   DropdownMenuItem,
-  ScrollArea,
   SearchDropdownMenu,
   Spinner,
 } from "@dust-tt/sparkle";
