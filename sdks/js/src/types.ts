@@ -806,7 +806,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_connection_hubspot"
   | "labs_connection_linear"
   | "labs_salesforce_personal_connections"
-  | "labs_connection_freshservice"
   | "labs_trackers"
   | "labs_transcripts"
   | "mcp_actions"

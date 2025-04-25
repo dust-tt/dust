@@ -1,12 +1,10 @@
 import { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
-import { getFreshServiceProvider } from "@app/temporal/labs/connections/providers/freshservice";
 import { getHubspotProvider } from "@app/temporal/labs/connections/providers/hubspot";
 import type { LabsConnectionProvider } from "@app/temporal/labs/connections/types";
 import type { ModelId } from "@app/types";
 
 const PROVIDERS: Record<string, LabsConnectionProvider> = {
   hubspot: getHubspotProvider(),
-  freshservice: getFreshServiceProvider(),
 };
 
 async function getConfiguration(configurationId: ModelId) {

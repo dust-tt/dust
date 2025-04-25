@@ -71,15 +71,6 @@ const LABS_CONNECTIONS: LabsConnectionItemType[] = [
     authType: "apiKey",
   },
   {
-    id: "freshservice",
-    label: "Freshservice",
-    featureFlag: "labs_connection_freshservice",
-    visibleWithoutAccess: true,
-    logo: TestTubeIcon,
-    description: "Import Freshservice data into Dust.",
-    authType: "apiKey",
-  },
-  {
     id: "linear",
     label: "Linear",
     featureFlag: "labs_connection_linear",

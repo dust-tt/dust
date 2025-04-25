@@ -20,7 +20,6 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  isFreshServiceCredentials,
   isHubspotCredentials,
   isOAuthProvider,
   setupOAuthConnection,
@@ -387,53 +386,6 @@ export function useCreateLabsConnectionConfiguration({
           description: "Linear is not supported yet.",
         });
         return false;
-      case "freshservice":
-        if (!isFreshServiceCredentials(credentials)) {
-          sendNotification({
-            type: "error",
-            title: "Invalid credentials format",
-            description:
-              "The provided credentials are not in the correct Freshservice format.",
-          });
-          return false;
-        }
-
-        const res = await fetch(
-          `/api/w/${workspaceId}/labs/connections/test-credentials`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              provider,
-              credentials,
-            }),
-          }
-        );
-
-        if (!res.ok) {
-          const error = await res.json();
-          sendNotification({
-            type: "error",
-            title: "Failed to test credentials",
-            description: error.error.message,
-          });
-          return false;
-        }
-
-        const result = await res.json();
-        if (!result.success) {
-          sendNotification({
-            type: "error",
-            title: "Credentials are invalid",
-            description:
-              result.error ||
-              "Please check your Freshservice credentials and try again.",
-          });
-          return false;
-        }
-        break;
       default:
         assertNever(provider);
     }

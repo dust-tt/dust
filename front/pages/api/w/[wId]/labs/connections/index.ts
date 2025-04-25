@@ -12,7 +12,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import {
   ApiKeyCredentialsSchema,
-  FreshServiceCredentialsSchema,
   HubspotCredentialsSchema,
   isCredentialProvider,
   OAuthAPI,
@@ -31,7 +30,6 @@ export type GetLabsConnectionsConfigurationResponseBody =
 export const acceptableConnectionProvidersCodec = t.union([
   t.literal("hubspot"),
   t.literal("linear"),
-  t.literal("freshservice"),
 ]);
 
 const OAuthConfigSchema = t.type({
@@ -41,11 +39,7 @@ const OAuthConfigSchema = t.type({
 
 const CredentialsConfigSchema = t.type({
   provider: acceptableConnectionProvidersCodec,
-  credentials: t.union([
-    HubspotCredentialsSchema,
-    ApiKeyCredentialsSchema,
-    FreshServiceCredentialsSchema,
-  ]),
+  credentials: t.union([HubspotCredentialsSchema, ApiKeyCredentialsSchema]),
 });
 
 export const PostLabsConnectionsConfigurationBodySchema = t.union([
