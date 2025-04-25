@@ -113,7 +113,7 @@ export function UserMenu({
         <DropdownMenuLabel label="Beta" />
         <DropdownMenuItem
           label="Exploratory features"
-          icon={TestTubeIcon}
+          icon={<TestTubeIcon />}
           href={`/w/${owner.sId}/labs`}
         />
 
@@ -167,7 +167,7 @@ export function UserMenu({
 
         {showDebugTools(featureFlags) && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Dev Tools" icon={BugIcon} />
+            <DropdownMenuSubTrigger label="Dev Tools" icon={<BugIcon />} />
             <DropdownMenuSubContent>
               {router.route === "/w/[wId]/assistant/[cId]" && (
                 <DropdownMenuItem
@@ -181,7 +181,7 @@ export function UserMenu({
                       );
                     }
                   }}
-                  icon={BugIcon}
+                  icon={<BugIcon />}
                 />
               )}
               {!isOnlyAdmin(owner) && (
