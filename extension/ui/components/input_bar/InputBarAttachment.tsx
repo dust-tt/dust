@@ -70,13 +70,9 @@ export function InputBarAttachments({
           <Icon visual={logo} size="md" />
         ) : (
           <DoubleIcon
-            mainIconProps={{
-              visual: getVisualForDataSourceViewContentNode(node),
-              size: "md",
-            }}
-            secondaryIconProps={{
-              visual: logo,
-            }}
+            mainIcon={getVisualForDataSourceViewContentNode(node)}
+            secondaryIcon={logo}
+            size="md"
           />
         );
 
