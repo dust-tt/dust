@@ -38,29 +38,27 @@ export const TagSearchInput = ({
         setSearchInputValue={setSearchInputValue}
         disabled={disabled}
       >
-        <ScrollArea className="max-h-[500px]">
-          {availableTags.length > 0 ? (
-            availableTags.map((tag) => (
-              <DropdownMenuItem
-                key={tag.tag}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onTagAdd(tag);
-                  setSearchInputValue("");
-                }}
-              >
-                <Chip label={tag.tag} size="xs" />
-              </DropdownMenuItem>
-            ))
-          ) : isLoading ? (
-            <div className="flex justify-center py-8">
-              <Spinner variant="dark" size="md" />
-            </div>
-          ) : (
-            <div className="p-2 text-sm text-gray-500">No results found</div>
-          )}
-        </ScrollArea>
+        {availableTags.length > 0 ? (
+          availableTags.map((tag) => (
+            <DropdownMenuItem
+              key={tag.tag}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onTagAdd(tag);
+                setSearchInputValue("");
+              }}
+            >
+              <Chip label={tag.tag} size="xs" />
+            </DropdownMenuItem>
+          ))
+        ) : isLoading ? (
+          <div className="flex justify-center py-8">
+            <Spinner variant="dark" size="md" />
+          </div>
+        ) : (
+          <div className="p-2 text-sm text-gray-500">No results found</div>
+        )}
       </SearchDropdownMenu>
       <div className="flex flex-wrap gap-2">
         {selectedTags.map((tag, i) => (
