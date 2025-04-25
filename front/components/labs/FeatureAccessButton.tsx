@@ -71,6 +71,7 @@ export function FeatureAccessButton({
         disabled={true}
         icon={LockIcon}
         label="Manage"
+        tooltip="Only admins can manage this feature."
         variant="outline"
       />
     );
