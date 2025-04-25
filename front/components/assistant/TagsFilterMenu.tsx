@@ -10,19 +10,26 @@ import {
 import { useState } from "react";
 
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
 import type { TagType } from "@app/types/tag";
+
+import { TagsManager } from "./TagsManager";
 
 type TagsFilterMenuProps = {
   tags: TagType[];
   selectedTags: string[];
   setSelectedTags: (tags: string[]) => void;
+  owner: WorkspaceType;
 };
 
 export const TagsFilterMenu = ({
   tags,
   selectedTags,
   setSelectedTags,
+  owner,
 }: TagsFilterMenuProps) => {
+  const [isTagManagerOpen, setTagManagerOpen] = useState(false);
+  const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState<string>("");
 
   const filteredTags = tags
@@ -38,43 +45,59 @@ export const TagsFilterMenu = ({
     });
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="primary"
-          icon={TagIcon}
-          label={
-            selectedTags.length > 0 ? `Tags (${selectedTags.length})` : "Tags"
-          }
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        dropdownHeaders={
-          <DropdownMenuSearchbar
-            name="tagSearch"
-            placeholder="Search tags"
-            value={tagSearch}
-            onChange={setTagSearch}
-            button={<Button disabled variant="primary" label="Manage tags" />}
+    <>
+      <TagsManager
+        open={isTagManagerOpen}
+        setOpen={setTagManagerOpen}
+        owner={owner}
+      />
+      <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="primary"
+            icon={TagIcon}
+            label={
+              selectedTags.length > 0 ? `Tags (${selectedTags.length})` : "Tags"
+            }
           />
-        }
-      >
-        {filteredTags.map((tag) => (
-          <DropdownMenuCheckboxItem
-            key={tag.sId}
-            checked={selectedTags.includes(tag.sId)}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                setSelectedTags([...selectedTags, tag.sId]);
-              } else {
-                setSelectedTags(selectedTags.filter((t) => t !== tag.sId));
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          dropdownHeaders={
+            <DropdownMenuSearchbar
+              name="tagSearch"
+              placeholder="Search tags"
+              value={tagSearch}
+              onChange={setTagSearch}
+              button={
+                <Button
+                  variant="primary"
+                  label="Manage tags"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    setTagManagerOpen(true);
+                  }}
+                />
               }
-            }}
-          >
-            {tag.name}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            />
+          }
+        >
+          {filteredTags.map((tag) => (
+            <DropdownMenuCheckboxItem
+              key={tag.sId}
+              checked={selectedTags.includes(tag.sId)}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setSelectedTags([...selectedTags, tag.sId]);
+                } else {
+                  setSelectedTags(selectedTags.filter((t) => t !== tag.sId));
+                }
+              }}
+            >
+              {tag.name}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 };

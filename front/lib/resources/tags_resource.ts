@@ -5,6 +5,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import sequelize from "sequelize/lib/sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
@@ -19,6 +20,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
+import type { TagTypeWithUsage } from "@app/types/tag";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -116,6 +118,44 @@ export class TagResource extends BaseResource<TagModel> {
     return this.baseFetch(auth, options);
   }
 
+  static async findAllWithUsage(
+    auth: Authenticator
+  ): Promise<TagTypeWithUsage[]> {
+    const tags = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: [
+        "id",
+        "name",
+        "createdAt",
+        "updatedAt",
+        [
+          sequelize.literal(`
+            (
+              SELECT COUNT(*)
+              FROM tag_agents AS tag_agent
+              WHERE tag_agent.id = tags.id
+            )
+          `),
+          "usage",
+        ],
+      ],
+      order: [[sequelize.literal("usage"), "DESC"]],
+    });
+
+    return tags.map((tag) => {
+      return {
+        sId: this.modelIdToSId({
+          id: tag.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        }),
+        name: tag.name,
+        usage: (tag.get({ plain: true }) as any).usage as number,
+      };
+    });
+  }
+
   static async listForAgent(
     auth: Authenticator,
     agentConfigurationId: number
@@ -152,6 +192,10 @@ export class TagResource extends BaseResource<TagModel> {
     return _.mapValues(_.groupBy(tagAgents, "agentConfigurationId"), (group) =>
       group.map((tagAgent) => tagsMap[tagAgent.tagId])
     );
+  }
+
+  async updateName(name: string) {
+    await this.update({ name });
   }
 
   async delete(
