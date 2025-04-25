@@ -299,12 +299,30 @@ async function answerMessage(
   const slackClient = await getSlackClient(connector.id);
 
   let slackUserInfo: SlackUserInfo | null = null;
+
   // The order is important here because we want to prioritize the user id over the bot id.
   // When a bot sends a message "as a user", we want to honor the user and not the bot.
   if (slackUserId) {
     slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
   } else if (slackBotId) {
-    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+    try {
+      slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+    } catch (e) {
+      if (isSlackWebAPIPlatformError(e)) {
+        if (e.data.error === "bot_not_found") {
+          // Log to understand why we are getting this error.
+          logger.warn("Received bot_not_found", {
+            error: e,
+            connectorId: connector.id,
+            slackUserId,
+            slackBotId,
+            slackUserInfo,
+            slackTeamId,
+          });
+        }
+      }
+      throw e;
+    }
   }
 
   if (!slackUserInfo) {
