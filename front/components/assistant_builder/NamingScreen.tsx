@@ -12,6 +12,7 @@ import {
   Page,
   PencilSquareIcon,
   PlusIcon,
+  SliderToggle,
   SparklesIcon,
   Spinner,
   useSendNotification,
@@ -38,7 +39,6 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
   APIError,
@@ -57,6 +57,14 @@ export function removeLeadingAt(handle: string) {
 function assistantHandleIsValid(handle: string) {
   return /^[a-zA-Z0-9_-]{1,30}$/.test(removeLeadingAt(handle));
 }
+
+const VISIBILITY_DESCRIPTIONS = {
+  visible: "Visible to all members",
+  hidden: "Limited to editors",
+  published: "Visible to all members [legacy Shared]",
+  workspace: "Visible to all members [legacy Workspace]",
+  private: "Limited to current user[legacy Private]",
+};
 
 async function assistantHandleIsAvailable({
   owner,
@@ -148,6 +156,7 @@ export default function NamingScreen({
   setEdited,
   assistantHandleError,
   descriptionError,
+  isAgentDiscoveryEnabled,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -158,14 +167,11 @@ export default function NamingScreen({
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
   descriptionError: string | null;
+  isAgentDiscoveryEnabled: boolean;
 }) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
 
   // Name suggestions handling
   const [nameSuggestions, setNameSuggestions] =
@@ -331,6 +337,11 @@ export default function NamingScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isVisible =
+    builderState.scope === "visible" ||
+    builderState.scope === "published" ||
+    builderState.scope === "workspace";
+
   return (
     <>
       <AvatarPicker
@@ -484,12 +495,31 @@ export default function NamingScreen({
             )}
           </div>
         </div>
-        {featureFlags.includes("agent_discovery") && (
+        {isAgentDiscoveryEnabled && (
           <>
             <div className="flex flex-row gap-4">
               <div className="flex flex-[1_0_0] flex-col gap-4">
                 <Page.SectionHeader title="Visibility" />
-                <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night"></div>
+                <div className="flex flex-row items-center gap-2">
+                  <SliderToggle
+                    selected={isVisible}
+                    onClick={() => {
+                      setBuilderState((state) => ({
+                        ...state,
+                        scope: isVisible ? "hidden" : "visible",
+                      }));
+                      setEdited(true);
+                    }}
+                  />
+                  <div className="flex flex-col gap-1">
+                    <span className="dark:text-foreground-nightt text-sm font-semibold text-foreground">
+                      {isVisible ? "Visible" : "Hidden"}
+                    </span>
+                    <span className="dark:text-muted-foreground-nightt text-sm font-normal text-muted-foreground">
+                      {VISIBILITY_DESCRIPTIONS[builderState.scope]}
+                    </span>
+                  </div>
+                </div>
               </div>
               <div className="flex flex-[1_0_0] flex-col gap-4">
                 <Page.SectionHeader title="Tags" />

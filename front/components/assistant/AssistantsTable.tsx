@@ -23,7 +23,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder, pluralize } from "@app/types";
+import { isAdmin, isBuilder, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 type MoreMenuItem = {
@@ -228,7 +228,9 @@ function GlobalAgentAction({
           await handleToggleAgentStatus(agent);
         }}
         selected={agent.status === "active"}
-        disabled={agent.status === "disabled_missing_datasource"}
+        disabled={
+          !isBuilder(owner) || agent.status === "disabled_missing_datasource"
+        }
       />
       <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
         <Popup

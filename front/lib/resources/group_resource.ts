@@ -116,6 +116,24 @@ export class GroupResource extends BaseResource<GroupModel> {
     return defaultGroup;
   }
 
+  static async findAgentIdsForGroups(
+    auth: Authenticator,
+    groupIds: ModelId[]
+  ): Promise<ModelId[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const groupAgents = await GroupAgentModel.findAll({
+      where: {
+        groupId: {
+          [Op.in]: groupIds,
+        },
+        workspaceId: owner.id,
+      },
+      attributes: ["agentConfigurationId"],
+    });
+    return groupAgents.map((ga) => ga.agentConfigurationId);
+  }
+
   /**
    * Finds the specific editor group associated with an agent configuration.
    */

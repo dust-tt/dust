@@ -117,7 +117,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !auth.isBuilder() || !subscription) {
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -207,13 +207,7 @@ export default function WorkspaceAssistants({
     return {
       // do not show the "all" tab while still loading all agents
       all_custom: allAgents.filter((a) => a.scope !== "global"),
-      editable_by_me: allAgents.filter(
-        (a) =>
-          a.scope !== "global" &&
-          (isAdmin(owner) ||
-            (a.scope === "published" && isBuilder(owner)) ||
-            a.scope === "private") // TODO: add/replace with editors group check
-      ),
+      editable_by_me: allAgents.filter((a) => a.canEdit),
       global: allAgents.filter((a) => a.scope === "global"),
       archived: archivedAgentConfigurations.sort((a, b) => {
         return compareForFuzzySort(

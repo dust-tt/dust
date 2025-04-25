@@ -240,30 +240,21 @@ export const TagsSelector = ({
               </>
             }
           >
-            {searchText ? (
-              filteredTags.map((c) => (
-                <DropdownMenuItem
-                  className="p-1"
-                  key={`assistant-picker-${c.sId}`}
-                  onClick={() => {
-                    setBuilderState((state) => ({
-                      ...state,
-                      tags: [...state.tags, c],
-                    }));
-                    setEdited(true);
-                  }}
-                >
-                  <Chip size="sm" color="golden" label={c.name} />
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
-                  <Icon visual={MagnifyingGlassIcon} size="sm" />
-                  Search Tags
-                </div>
-              </div>
-            )}
+            {filteredTags.map((c) => (
+              <DropdownMenuItem
+                className="p-1"
+                key={`assistant-picker-${c.sId}`}
+                onClick={() => {
+                  setBuilderState((state) => ({
+                    ...state,
+                    tags: [...state.tags, c],
+                  }));
+                  setEdited(true);
+                }}
+              >
+                <Chip size="sm" color="golden" label={c.name} />
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
