@@ -9,14 +9,12 @@ import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 interface AssistantBrowserContainerProps {
   onAgentConfigurationClick: (agentId: string) => void;
   owner: WorkspaceType;
-  isBuilder: boolean;
   setAssistantToMention: (agent: LightAgentConfigurationType) => void;
 }
 
 export function AssistantBrowserContainer({
   onAgentConfigurationClick,
   owner,
-  isBuilder,
   setAssistantToMention,
 }: AssistantBrowserContainerProps) {
   // We use this specific hook because this component is involved in the new conversation page.
@@ -67,9 +65,8 @@ export function AssistantBrowserContainer({
       </div>
       <AssistantBrowser
         owner={owner}
-        isBuilder={isBuilder}
-        agents={agentConfigurations}
-        loadingStatus={isLoading ? "loading" : "finished"}
+        agentConfigurations={agentConfigurations}
+        isLoading={isLoading}
         handleAssistantClick={handleAssistantClick}
       />
     </div>

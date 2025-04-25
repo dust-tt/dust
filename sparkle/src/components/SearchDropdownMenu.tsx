@@ -60,6 +60,10 @@ export function SearchDropdownMenu({
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
+              const firstItem = document.querySelector('[role="menuitem"]');
+              if (firstItem instanceof HTMLElement) {
+                firstItem.click();
+              }
               setIsOpen(false);
             }
             if (e.key === "Tab" || e.key === "ArrowDown") {

@@ -71,6 +71,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       crawlFrequency: configuration.crawlFrequency,
       lastCrawledAt: null,
       headers: configuration.headers,
+      customCrawler: configuration.customCrawler,
     };
 
     const connector = await ConnectorResource.makeNew(

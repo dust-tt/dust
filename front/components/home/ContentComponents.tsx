@@ -236,31 +236,28 @@ export function SecurityComplianceSection() {
   return (
     <div>
       <H2 className="mb-6 text-left">Security & compliance</H2>
-      <div className="flex w-full flex-col justify-between gap-8 sm:gap-10 md:flex-row md:gap-6">
-        <div className="flex flex-col text-left md:w-1/4">
-          <div className="flex items-center">
-            <Icon visual={LockIcon} className="mr-2 h-6" />
-            <h4 className="text-lg font-semibold">Data-privacy</h4>
-          </div>
-          <P size="sm" className="mt-3 text-muted-foreground">
+      <div className="flex w-full flex-col justify-between gap-6 md:flex-row">
+        <div className="flex flex-1 flex-col rounded-2xl bg-blue-50 p-6">
+          <Icon visual={LockIcon} className="mb-4 h-8 w-8 text-blue-400" />
+          <h4 className="text-lg font-semibold">Data-privacy</h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
             Your data is your data. Never used for model training.
           </P>
         </div>
-        <div className="flex flex-col text-left md:w-1/4">
-          <div className="flex items-center">
-            <Icon visual={EyeIcon} className="mr-2 h-6" />
-            <h4 className="text-lg font-semibold">Access-control</h4>
-          </div>
-          <P size="sm" className="mt-3 text-muted-foreground">
+        <div className="flex flex-1 flex-col rounded-2xl bg-golden-50 p-6">
+          <Icon visual={EyeIcon} className="mb-4 h-8 w-8 text-golden-400" />
+          <h4 className="text-lg font-semibold">Access-control</h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
             Fine-grained permissions with Spaces for sensitive information.
           </P>
         </div>
-        <div className="flex flex-col text-left md:w-1/4">
-          <div className="flex items-center">
-            <Icon visual={CheckCircleIcon} className="mr-2 h-6" />
-            <h4 className="text-lg font-semibold">Compliance</h4>
-          </div>
-          <P size="sm" className="mt-3 text-muted-foreground">
+        <div className="flex flex-1 flex-col rounded-2xl bg-rose-50 p-6">
+          <Icon
+            visual={CheckCircleIcon}
+            className="mb-4 h-8 w-8 text-rose-400"
+          />
+          <h4 className="text-lg font-semibold">Compliance</h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
             SOC2 Type II certified, HIPAA and GDPR compliant.
           </P>
         </div>
@@ -272,34 +269,28 @@ export function SecurityComplianceSection() {
 export function TeamFeatureSection() {
   return (
     <div>
-      <div className="flex w-full flex-col justify-between gap-8 sm:gap-10 md:flex-row md:gap-6">
-        <div className="flex flex-col text-left md:w-1/4">
-          <div className="flex items-center">
-            <Icon visual={RobotIcon} className="mr-2 h-6" />
-            <h4 className="text-lg font-semibold">Team orchestration</h4>
-          </div>
-          <P size="sm" className="mt-3 text-muted-foreground">
+      <div className="flex w-full flex-col justify-between gap-6 md:flex-row">
+        <div className="flex flex-1 flex-col rounded-2xl bg-blue-50 p-6">
+          <Icon visual={RobotIcon} className="mb-4 h-8 w-8 text-blue-400" />
+          <h4 className="text-lg font-semibold">Team orchestration</h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
             Build and manage teams of specialized agents that collaborate with
             humans
           </P>
         </div>
-        <div className="flex flex-col text-left md:w-1/4">
-          <div className="flex items-center">
-            <Icon visual={LinkIcon} className="mr-2 h-6" />
-            <h4 className="text-lg font-semibold">
-              Context-aware infrastructure
-            </h4>
-          </div>
-          <P size="sm" className="mt-3 text-muted-foreground">
+        <div className="flex flex-1 flex-col rounded-2xl bg-golden-50 p-6">
+          <Icon visual={LinkIcon} className="mb-4 h-8 w-8 text-golden-400" />
+          <h4 className="text-lg font-semibold">
+            Context-aware infrastructure
+          </h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
             Connect agents to your company data and break down silos
           </P>
         </div>
-        <div className="flex flex-col text-left md:w-1/4">
-          <div className="flex items-center">
-            <Icon visual={PlanetIcon} className="mr-2 h-6" />
-            <h4 className="text-lg font-semibold">Universal access layer</h4>
-          </div>
-          <P size="sm" className="mt-3 text-muted-foreground">
+        <div className="flex flex-1 flex-col rounded-2xl bg-rose-50 p-6">
+          <Icon visual={PlanetIcon} className="mb-4 h-8 w-8 text-rose-400" />
+          <h4 className="text-lg font-semibold">Universal access layer</h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
             Seamlessly integrate with your existing tools and systems
           </P>
         </div>

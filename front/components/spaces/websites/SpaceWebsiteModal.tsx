@@ -49,6 +49,7 @@ function getInitialFormState(
     crawlMode: config?.crawlMode ?? WEBCRAWLER_DEFAULT_CONFIGURATION.crawlMode,
     crawlFrequency:
       config?.crawlFrequency ?? WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency,
+    customCrawler: config?.customCrawler ?? null,
     headers: config?.headers
       ? Object.entries(config.headers).map(([k, v]) => ({ key: k, value: v }))
       : [],
@@ -106,6 +107,7 @@ function buildWebCrawlerConfig(
     depth: state.depth,
     crawlMode: state.crawlMode,
     crawlFrequency: state.crawlFrequency,
+    customCrawler: state.customCrawler,
     headers: state.headers.reduce(
       (acc, { key, value }) => {
         if (key && value) {
@@ -314,6 +316,7 @@ export default function SpaceWebsiteModal({
             dispatch={dispatch}
             isConfigurationLoading={isConfigurationLoading}
             webCrawlerConfiguration={webCrawlerConfiguration}
+            owner={owner}
           />
           {webCrawlerConfiguration && dataSourceView && (
             <DeleteSection
