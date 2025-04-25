@@ -13,7 +13,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "reasoning_v2",
   version: "1.0.0",
   description:
-    "Agent can decide to trigger a reasoning model for complex tasks",
+    "Agent can decide to trigger a reasoning model for complex tasks (mcp)",
   icon: "ActionLightbulbIcon",
   authorization: null,
 };
