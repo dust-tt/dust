@@ -354,8 +354,18 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
     internalId
   );
 
+  const logger = getActivityLogger(connector);
+
   if (!node) {
-    throw new Error(`Node ${internalId} not found`);
+    logger.error(
+      {
+        connectorId,
+        internalId,
+      },
+      `[MarkNodeAsSeen] Node not found, skipping`
+    );
+
+    return;
   }
 
   // if node was updated more recently than this sync, we don't need to mark it
