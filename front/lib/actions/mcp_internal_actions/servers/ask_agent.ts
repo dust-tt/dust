@@ -43,7 +43,12 @@ function createServer(auth: Authenticator): McpServer {
     // TODO(mcp): we probably want to make this description configurable to guide the model on when to use this sub-agent.
     "Query another agent.",
     {
-      query: z.string(),
+      query: z.string().describe(
+        `The text prompt to send to the child agent.
+          This is the question or instruction that will be processed by the selected agent,
+          which will respond with its own capabilities and knowledge.
+          Be specific and clear to get the most relevant response.`
+      ),
       childAgent:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
