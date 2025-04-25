@@ -3,8 +3,6 @@ export type TagType = {
   name: string;
 };
 
-export type TagTypeWithUsage = {
-  sId: string;
-  name: string;
+export type TagTypeWithUsage = TagType & {
   usage: number;
 };
