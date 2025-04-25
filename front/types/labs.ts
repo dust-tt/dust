@@ -53,6 +53,7 @@ export type LabsFeatureItemType = {
   icon: React.ComponentType;
   label: string;
   description: string;
+  onlyAdminCanManage?: boolean;
 };
 
 export enum SyncStatus {
