@@ -2,7 +2,12 @@ import { Button, Cog6ToothIcon, LockIcon } from "@dust-tt/sparkle";
 
 import { ConfigureLabsConnectionModal } from "@app/components/labs/modals/ConfigureLabsConnectionModal";
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
-import type { LabsConnectionItemType, LightWorkspaceType } from "@app/types";
+import type {
+  DataSourceViewType,
+  LabsConnectionItemType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 import { RequestFeatureAccessModal } from "./modals/RequestFeatureAccessModal";
 
@@ -14,8 +19,8 @@ interface FeatureAccessButtonProps {
   canRequestAccess: boolean;
   canManage: boolean;
   connection?: LabsConnectionItemType;
-  dataSourcesViews?: any[];
-  spaces?: any[];
+  dataSourcesViews?: DataSourceViewType[];
+  spaces?: SpaceType[];
   isSpacesLoading?: boolean;
   existingConfigurations?: LabsConnectionsConfigurationResource[];
 }
