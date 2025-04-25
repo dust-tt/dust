@@ -271,19 +271,20 @@ export async function tryListMCPTools(
     conversationId: string;
     messageId: string;
   }
-): Promise<MCPToolConfigurationType[]> {
+): Promise<{ tools: MCPToolConfigurationType[]; error?: string }> {
   const owner = auth.getNonNullableWorkspace();
 
   // Filter for MCP server configurations.
   const mcpServerActions = agentActions.filter(isMCPServerConfiguration);
 
   // Discover all the tools exposed by all the mcp servers available.
-  const configurations = await Promise.all(
+  const toolsResults = await Promise.all(
     mcpServerActions.map(async (action) => {
       const toolsRes = await listMCPServerTools(auth, action, {
         conversationId,
         messageId,
       });
+
       if (toolsRes.isErr()) {
         logger.error(
           {
@@ -294,7 +295,13 @@ export async function tryListMCPTools(
           },
           `Error listing tools from MCP server: ${normalizeError(toolsRes.error)}`
         );
-        return [];
+        return new Err(
+          new Error(
+            `An error occured while listing the available tools for ${action.name}. ` +
+              "Tools from this server are not available for this message. " +
+              "Inform the user of this issue."
+          )
+        );
       }
 
       const toolConfigurations = toolsRes.value;
@@ -335,21 +342,42 @@ export async function tryListMCPTools(
         }
       }
 
-      return toolConfigurations.map((toolConfig) => {
-        const prefixedName = getPrefixedToolName(action, toolConfig.name);
+      return new Ok(
+        toolConfigurations.map((toolConfig) => {
+          const prefixedName = getPrefixedToolName(action, toolConfig.name);
 
-        return {
-          ...toolConfig,
-          originalName: toolConfig.name,
-          mcpServerName: action.name,
-          name: prefixedName,
-          description: toolConfig.description + extraDescription,
-        };
-      });
+          return {
+            ...toolConfig,
+            originalName: toolConfig.name,
+            mcpServerName: action.name,
+            name: prefixedName,
+            description: toolConfig.description + extraDescription,
+          };
+        })
+      );
     })
   );
 
-  return configurations.flat();
+  // Aggregate results
+  const { tools, errors } = toolsResults.reduce<{
+    tools: MCPToolConfigurationType[];
+    errors: string[];
+  }>(
+    (acc, result) => {
+      if (result.isOk()) {
+        acc.tools.push(...result.value);
+      } else {
+        acc.errors.push(result.error.message);
+      }
+      return acc;
+    },
+    { tools: [], errors: [] }
+  );
+
+  return {
+    tools,
+    error: errors.length > 0 ? errors.join("\n") : undefined,
+  };
 }
 
 async function listToolsForLocalMCPServer(
