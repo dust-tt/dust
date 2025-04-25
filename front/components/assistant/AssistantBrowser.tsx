@@ -231,63 +231,61 @@ export function AssistantBrowser({
           searchInputValue={assistantSearch}
           setSearchInputValue={setAssistantSearch}
         >
-          <ScrollArea className="max-h-[500px]">
-            {filteredTags.length > 0 || filteredAgents.length > 0 ? (
-              <>
-                {filteredTags.length > 0 && <DropdownMenuLabel label="Tags" />}
-                {filteredTags.map((tag) => (
-                  <DropdownMenuItem
-                    key={tag.sId}
-                    onClick={() => {
-                      if (selectedTags.includes(tag.sId)) {
-                        setSelectedTags(
-                          selectedTags.filter((t) => t !== tag.sId)
-                        );
-                      } else {
-                        setSelectedTags([...selectedTags, tag.sId]);
-                      }
-                      setAssistantSearch("");
-                    }}
-                  >
-                    <Chip label={tag.name} color="golden" size="xs" />
-                  </DropdownMenuItem>
-                ))}
-                {filteredAgents.length > 0 && (
-                  <DropdownMenuLabel label="Agents" />
-                )}
-                {filteredAgents.map((agent) => (
-                  <DropdownMenuItem
-                    key={agent.sId}
-                    onClick={() => {
-                      handleAssistantClick(agent);
-                      setAssistantSearch("");
-                    }}
-                    truncateText
-                    label={agent.name}
-                    description={agent.description}
-                    icon={() => <Avatar size="sm" visual={agent.pictureUrl} />}
-                    endComponent={
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        icon={MoreIcon}
-                        onClick={(e: Event) => {
-                          e.stopPropagation();
-                          setQueryParam(router, "assistantDetails", agent.sId);
-                        }}
-                      />
+          {filteredTags.length > 0 || filteredAgents.length > 0 ? (
+            <>
+              {filteredTags.length > 0 && <DropdownMenuLabel label="Tags" />}
+              {filteredTags.map((tag) => (
+                <DropdownMenuItem
+                  key={tag.sId}
+                  onClick={() => {
+                    if (selectedTags.includes(tag.sId)) {
+                      setSelectedTags(
+                        selectedTags.filter((t) => t !== tag.sId)
+                      );
+                    } else {
+                      setSelectedTags([...selectedTags, tag.sId]);
                     }
-                  />
-                ))}
-              </>
-            ) : isLoading ? (
-              <div className="flex justify-center py-8">
-                <Spinner variant="dark" size="md" />
-              </div>
-            ) : (
-              <div className="p-2 text-sm text-gray-500">No results found</div>
-            )}
-          </ScrollArea>
+                    setAssistantSearch("");
+                  }}
+                >
+                  <Chip label={tag.name} color="golden" size="xs" />
+                </DropdownMenuItem>
+              ))}
+              {filteredAgents.length > 0 && (
+                <DropdownMenuLabel label="Agents" />
+              )}
+              {filteredAgents.map((agent) => (
+                <DropdownMenuItem
+                  key={agent.sId}
+                  onClick={() => {
+                    handleAssistantClick(agent);
+                    setAssistantSearch("");
+                  }}
+                  truncateText
+                  label={agent.name}
+                  description={agent.description}
+                  icon={() => <Avatar size="sm" visual={agent.pictureUrl} />}
+                  endComponent={
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      icon={MoreIcon}
+                      onClick={(e: Event) => {
+                        e.stopPropagation();
+                        setQueryParam(router, "assistantDetails", agent.sId);
+                      }}
+                    />
+                  }
+                />
+              ))}
+            </>
+          ) : isLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <div className="p-2 text-sm text-gray-500">No results found</div>
+          )}
         </SearchDropdownMenu>
 
         <div className="hidden sm:block">
