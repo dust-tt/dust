@@ -47,9 +47,9 @@ const createServer = (auth: Authenticator): McpServer => {
         ),
       name: z
         .string()
-        .max(32)
+        .max(64)
         .describe(
-          "The name of the image. The maximum length is 32 characters."
+          "The filename that will be used to save the generated image. Must be 64 characters or less."
         ),
       quality: z
         .enum(["auto", "low", "medium", "high"])
