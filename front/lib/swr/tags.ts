@@ -113,7 +113,7 @@ export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
       sendNotification({
         type: "error",
         title: "Failed to delete tag",
-        description: json.error.message || "Failed to create tag",
+        description: json.error.message || "Failed to delete tag",
       });
     }
 
