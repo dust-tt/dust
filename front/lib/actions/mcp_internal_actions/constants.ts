@@ -77,6 +77,14 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 7,
     isDefault: false,
     flag: "experimental_mcp_actions",
+    tools_stakes: {
+      get_object_properties: "never_ask",
+      get_objects_by_properties: "low",
+      get_object_by_email: "low",
+      get_object_by_id: "low",
+      create_object: "high",
+      update_object: "high",
+    },
   },
 
   // Dev

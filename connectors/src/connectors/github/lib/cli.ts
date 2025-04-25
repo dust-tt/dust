@@ -243,6 +243,43 @@ export const github = async ({
 
       return { success: true };
     }
+
+    case "clear-installation-id": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
+      }
+
+      const connector = await ConnectorResource.findByDataSource({
+        workspaceId: `${args.wId}`,
+        dataSourceId: args.dsId,
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
+        );
+      }
+
+      const connectorState = await GithubConnectorState.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!connectorState) {
+        throw new Error(
+          `Could not find github connector state for workspace ${args.wId}, data source ${args.dsId}`
+        );
+      }
+
+      await connectorState.update({
+        installationId: null,
+      });
+
+      return { success: true };
+    }
+
     default:
       assertNever(command);
   }

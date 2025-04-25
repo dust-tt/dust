@@ -25,7 +25,11 @@ export function ActionDetailsWrapper({
             "flex flex-row items-center gap-x-2"
           )}
         >
-          <Avatar size="sm" visual={<Icon visual={visual} />} />
+          <Avatar
+            size="sm"
+            visual={<Icon visual={visual} />}
+            backgroundColor="bg-muted-background dark:bg-muted-background-night"
+          />
           <span className="heading-base">{actionName}</span>
         </div>
       }

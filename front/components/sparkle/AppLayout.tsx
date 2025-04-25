@@ -30,29 +30,33 @@ export const appLayoutBack = async (
   }
 };
 
-export default function AppLayout({
-  owner,
-  subscription,
-  isWideMode = false,
-  hideSidebar = false,
-  subNavigation,
-  pageTitle,
-  navChildren,
-  titleChildren,
-  hasTopPadding,
-  children,
-}: {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  isWideMode?: boolean;
-  hideSidebar?: boolean;
-  subNavigation?: SidebarNavigation[] | null;
-  pageTitle?: string;
-  navChildren?: React.ReactNode;
-  titleChildren?: React.ReactNode;
+interface AppLayoutProps {
   children: React.ReactNode;
   hasTopPadding?: boolean;
-}) {
+  hideSidebar?: boolean;
+  isConversationView?: boolean;
+  isWideMode?: boolean;
+  navChildren?: React.ReactNode;
+  owner: WorkspaceType;
+  pageTitle?: string;
+  subNavigation?: SidebarNavigation[] | null;
+  subscription: SubscriptionType;
+  titleChildren?: React.ReactNode;
+}
+
+export default function AppLayout({
+  children,
+  hasTopPadding,
+  hideSidebar = false,
+  isConversationView,
+  isWideMode = false,
+  navChildren,
+  owner,
+  pageTitle,
+  subNavigation,
+  subscription,
+  titleChildren,
+}: AppLayoutProps) {
   const [loaded, setLoaded] = useState(false);
   const { user } = useUser();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
@@ -171,7 +175,12 @@ export default function AppLayout({
               {loaded && titleChildren && titleChildren}
             </div>
 
-            <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 sm:px-8">
+            <div
+              className={cn(
+                "flex h-full w-full flex-col items-center overflow-y-auto",
+                !isConversationView && "px-4 sm:px-8"
+              )}
+            >
               {isWideMode ? (
                 loaded && children
               ) : (

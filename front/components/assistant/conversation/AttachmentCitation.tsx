@@ -162,18 +162,15 @@ export function contentFragmentToAttachmentCitation(
         <Icon visual={logo} size="md" />
       ) : (
         <DoubleIcon
-          mainIconProps={{
-            visual:
-              nodeType === "table"
-                ? TableIcon
-                : nodeType === "folder"
-                  ? FolderIcon
-                  : DocumentIcon,
-            size: "md",
-          }}
-          secondaryIconProps={{
-            visual: logo,
-          }}
+          mainIcon={
+            nodeType === "table"
+              ? TableIcon
+              : nodeType === "folder"
+                ? FolderIcon
+                : DocumentIcon
+          }
+          secondaryIcon={logo}
+          size="md"
         />
       );
 

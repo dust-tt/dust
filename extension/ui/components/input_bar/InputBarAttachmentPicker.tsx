@@ -16,6 +16,7 @@ import {
   AttachmentIcon,
   Button,
   CloudArrowUpIcon,
+  DoubleIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -179,15 +180,16 @@ export const InputBarAttachmentsPicker = ({
                   <DropdownMenuItem
                     key={index}
                     label={item.title}
-                    icon={() =>
-                      getVisualForDataSourceViewContentNode(item)({
-                        className: "min-w-4",
-                      })
+                    icon={
+                      <DoubleIcon
+                        mainIcon={getVisualForDataSourceViewContentNode(item)}
+                        secondaryIcon={getConnectorProviderLogoWithFallback({
+                          provider:
+                            item.dataSourceView.dataSource.connectorProvider,
+                        })}
+                        size="md"
+                      />
                     }
-                    extraIcon={getConnectorProviderLogoWithFallback({
-                      provider:
-                        item.dataSourceView.dataSource.connectorProvider,
-                    })}
                     disabled={attachedNodeIds.includes(item.internalId)}
                     description={`${getLocationForDataSourceViewContentNode(item)}`}
                     onClick={() => {

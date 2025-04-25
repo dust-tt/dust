@@ -5,19 +5,14 @@ import type { SimplePublicObjectInputForCreate } from "@hubspot/api-client/lib/c
 import type { PublicOwner } from "@hubspot/api-client/lib/codegen/crm/owners/models/PublicOwner";
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
-const MAX_ENUM_OPTIONS_DISPLAYED = 10;
-export const SUPPORTED_OBJECT_TYPES_WRITE = [
-  "contacts",
-  "companies",
-  "deals",
-] as const;
-type SupportedObjectTypeWrite = (typeof SUPPORTED_OBJECT_TYPES_WRITE)[number];
+const MAX_ENUM_OPTIONS_DISPLAYED = 50;
+export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
+type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
-export const SUPPORTED_OBJECT_TYPES_READ = [
-  ...SUPPORTED_OBJECT_TYPES_WRITE,
-  "owners",
-] as const;
-type SupportedObjectTypeRead = (typeof SUPPORTED_OBJECT_TYPES_READ)[number];
+const SPECIAL_OBJECTS = ["owners"] as const;
+type SpecialObjectType = (typeof SPECIAL_OBJECTS)[number];
+
+export const ALL_OBJECTS = [...SIMPLE_OBJECTS, ...SPECIAL_OBJECTS] as const;
 
 /**
  * Get all createable properties for an object.
@@ -30,7 +25,7 @@ export const getObjectProperties = async ({
   creatableOnly,
 }: {
   accessToken: string;
-  objectType: SupportedObjectTypeRead;
+  objectType: SimpleObjectType | SpecialObjectType;
   creatableOnly: boolean;
 }) => {
   const hubspotClient = new Client({ accessToken });
@@ -79,7 +74,7 @@ export const createObject = async ({
   objectProperties,
 }: {
   accessToken: string;
-  objectType: SupportedObjectTypeWrite;
+  objectType: SimpleObjectType;
   objectProperties: SimplePublicObjectInputForCreate;
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
@@ -107,7 +102,7 @@ export const updateObject = async ({
   objectProperties,
 }: {
   accessToken: string;
-  objectType: SupportedObjectTypeWrite;
+  objectType: SimpleObjectType;
   objectId: string;
   objectProperties: SimplePublicObjectInputForCreate;
 }): Promise<SimplePublicObject> => {
@@ -140,7 +135,7 @@ export const updateObject = async ({
  */
 export const getObjectById = async (
   accessToken: string,
-  objectType: SupportedObjectTypeRead,
+  objectType: SimpleObjectType | SpecialObjectType,
   objectId: string
 ): Promise<SimplePublicObject | PublicOwner | null> => {
   const hubspotClient = new Client({ accessToken });
@@ -170,7 +165,7 @@ export const getObjectById = async (
  */
 export const getObjectByEmail = async (
   accessToken: string,
-  objectType: SupportedObjectTypeRead,
+  objectType: SimpleObjectType | SpecialObjectType,
   email: string
 ): Promise<SimplePublicObject | PublicOwner | null> => {
   const hubspotClient = new Client({ accessToken });
@@ -181,13 +176,14 @@ export const getObjectByEmail = async (
     if (owner) {
       return owner;
     }
+    return null;
   }
 
   const properties =
     await hubspotClient.crm.properties.coreApi.getAll(objectType);
   const propertyNames = properties.results.map((p) => p.name);
 
-  const object = await hubspotClient.crm.contacts.searchApi.doSearch({
+  const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
     filterGroups: [
       {
         filters: [
@@ -202,86 +198,52 @@ export const getObjectByEmail = async (
     properties: propertyNames,
   });
 
-  if (object.results.length === 0) {
+  if (objects.results.length === 0) {
     return null;
   }
 
-  return object.results[0];
+  return objects.results[0];
 };
 
 /**
- * Get a contact by name.
- * A name is not unique, so there may be multiple contacts with the same name.
+ * Get objects by properties.
  */
-export const getContactsByName = async (
+export const getObjectsByProperties = async (
   accessToken: string,
-  firstname: string | undefined,
-  lastname: string
+  objectType: SimpleObjectType,
+  filters: Array<{
+    propertyName: string;
+    operator: FilterOperatorEnum;
+    value?: string;
+  }>
 ): Promise<SimplePublicObject[]> => {
   const hubspotClient = new Client({ accessToken });
 
-  // First get all available properties.
-  const properties =
-    await hubspotClient.crm.properties.coreApi.getAll("contacts");
-  const propertyNames = properties.results.map((p) => p.name);
+  const availableProperties =
+    await hubspotClient.crm.properties.coreApi.getAll(objectType);
+  const propertyNames = availableProperties.results.map((p) => p.name);
 
-  const filters = [
-    {
-      propertyName: "lastname",
-      operator: FilterOperatorEnum.ContainsToken,
-      value: lastname,
-    },
-  ];
-
-  if (firstname) {
-    filters.push({
-      propertyName: "firstname",
-      operator: FilterOperatorEnum.ContainsToken,
-      value: firstname,
-    });
-  }
-
-  const contacts = await hubspotClient.crm.contacts.searchApi.doSearch({
+  const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
     filterGroups: [
       {
-        filters,
+        filters: filters.map(({ propertyName, operator, value }) => {
+          const filter: any = {
+            propertyName,
+            operator,
+          };
+          // Only include value if it's not a HAS_PROPERTY or NOT_HAS_PROPERTY operator
+          if (
+            operator !== FilterOperatorEnum.HasProperty &&
+            operator !== FilterOperatorEnum.NotHasProperty
+          ) {
+            filter.value = value;
+          }
+          return filter;
+        }),
       },
     ],
     properties: propertyNames,
   });
 
-  return contacts.results;
-};
-
-/**
- * Get a contact by email.
- * A email is unique, so there will only be zero or one contact with a given email.
- */
-export const getCompaniesByName = async (
-  accessToken: string,
-  name: string
-): Promise<SimplePublicObject[]> => {
-  const hubspotClient = new Client({ accessToken });
-
-  // First get all available properties.
-  const properties =
-    await hubspotClient.crm.properties.coreApi.getAll("contacts");
-  const propertyNames = properties.results.map((p) => p.name);
-
-  const companies = await hubspotClient.crm.companies.searchApi.doSearch({
-    filterGroups: [
-      {
-        filters: [
-          {
-            propertyName: "name",
-            operator: FilterOperatorEnum.ContainsToken,
-            value: name,
-          },
-        ],
-      },
-    ],
-    properties: propertyNames,
-  });
-
-  return companies.results;
+  return objects.results;
 };
