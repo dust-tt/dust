@@ -13,7 +13,10 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import {
+  apiErrorForConversation,
+  isUserMessageContextOverflowing,
+} from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
@@ -146,6 +149,18 @@ async function handler(
       }
 
       if (message) {
+        if (isUserMessageContextOverflowing(message.context)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The message.context properties (username, timezone, fullName, and email) " +
+                "must be less than 255 characters.",
+            },
+          });
+        }
+
         if (isEmptyString(message.context.username)) {
           return apiError(req, res, {
             status_code: 400,
