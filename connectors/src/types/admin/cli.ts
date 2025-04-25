@@ -36,6 +36,8 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("upsert-page"),
     t.literal("upsert-pages"),
     t.literal("update-parents"),
+    t.literal("ignore-near-rate-limit"),
+    t.literal("unignore-near-rate-limit"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
