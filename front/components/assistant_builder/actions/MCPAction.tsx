@@ -255,10 +255,8 @@ export function MCPAction({
         (isEditing ? (
           <div className="text-sm text-foreground dark:text-foreground-night">
             <div>{selectedMCPServerView?.server.description}</div>
-
-            {isDefaultMCPServer ? (
-              ""
-            ) : (
+            <br />
+            {!isDefaultMCPServer && (
               <div>
                 Available to you via{" "}
                 <b>
@@ -270,6 +268,10 @@ export function MCPAction({
                 </b>{" "}
                 space.
               </div>
+            )}
+
+            {selectedMCPServerView && (
+              <MCPToolsList tools={selectedMCPServerView.server.tools} />
             )}
           </div>
         ) : (
@@ -283,10 +285,6 @@ export function MCPAction({
             />
           </>
         ))}
-      {/* List of tools */}
-      {selectedMCPServerView && (
-        <MCPToolsList tools={selectedMCPServerView.server.tools} />
-      )}
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
