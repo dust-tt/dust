@@ -115,7 +115,7 @@ const renderIcon = (
   }
   return typeof icon === "function" ? <Icon size={size} visual={icon} /> : icon;
 };
-
+  
 const ItemWithLabelIconAndDescription = <
   T extends ItemWithLabelIconAndDescriptionProps,
 >({
@@ -131,15 +131,13 @@ const ItemWithLabelIconAndDescription = <
       {label && (
         <div className="s-grid s-flex-grow s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
           {renderIcon(icon, "sm")}
-          <div className="s-flex s-flex-col">
-            <span className={truncate ? "s-line-clamp-1" : undefined}>
-              {label}
-            </span>
+          <div className={cn("s-flex s-flex-col", truncate && "s-truncate")}>
+            <span className={cn(truncate && "s-truncate")}>{label}</span>
             {description && (
               <span
                 className={cn(
                   menuStyleClasses.description,
-                  truncate && "s-line-clamp-1"
+                  truncate && "s-truncate"
                 )}
               >
                 {description}

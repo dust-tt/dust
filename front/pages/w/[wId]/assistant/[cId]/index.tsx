@@ -15,7 +15,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
     // Here, override conversationId.
     conversationId: string | null;
-    isBuilder: boolean;
   }
 >(async (context, auth) => {
   const owner = auth.workspace();
@@ -47,7 +46,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   return {
     props: {
       user,
-      isBuilder: auth.isBuilder(),
       owner,
       subscription,
       baseUrl: config.getClientFacingUrl(),
@@ -61,7 +59,6 @@ export default function AssistantConversation({
   owner,
   subscription,
   user,
-  isBuilder,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
@@ -113,7 +110,6 @@ export default function AssistantConversation({
       owner={owner}
       subscription={subscription}
       user={user}
-      isBuilder={isBuilder}
       agentIdToMention={agentIdToMention}
     />
   );

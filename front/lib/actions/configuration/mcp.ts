@@ -1,3 +1,4 @@
+import type { IncludeOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import {
@@ -11,6 +12,7 @@ import {
   AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -40,59 +42,51 @@ export async function fetchMCPServerActionConfigurations(
     return new Map();
   }
 
+  const whereClause: WhereOptions<
+    AgentDataSourceConfiguration &
+      AgentTablesQueryConfigurationTable &
+      AgentReasoningConfiguration &
+      AgentChildAgentConfiguration
+  > = {
+    mcpServerConfigurationId: {
+      [Op.in]: mcpServerConfigurations.map((r) => r.id),
+    },
+  };
+  const includeDataSourceViewClause: IncludeOptions[] = [
+    {
+      model: DataSourceViewModel,
+      as: "dataSourceView",
+      include: [
+        {
+          model: Workspace,
+          as: "workspace",
+        },
+      ],
+    },
+  ];
+
   // Find the associated data sources configurations.
   const allDataSourceConfigurations =
     await AgentDataSourceConfiguration.findAll({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-      include: [
-        {
-          model: DataSourceViewModel,
-          as: "dataSourceView",
-          include: [
-            {
-              model: Workspace,
-              as: "workspace",
-            },
-          ],
-        },
-      ],
+      where: whereClause,
+      include: includeDataSourceViewClause,
     });
 
   // Find the associated tables configurations.
   const allTablesConfigurations =
     await AgentTablesQueryConfigurationTable.findAll({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-      include: [
-        {
-          model: DataSourceViewModel,
-          as: "dataSourceView",
-          include: [
-            {
-              model: Workspace,
-              as: "workspace",
-            },
-          ],
-        },
-      ],
+      where: whereClause,
+      include: includeDataSourceViewClause,
     });
+
+  // Find the associated reasoning configurations.
+  const allReasoningConfigurations = await AgentReasoningConfiguration.findAll({
+    where: whereClause,
+  });
 
   // Find the associated child agent configurations.
   const allChildAgentConfigurations =
-    await AgentChildAgentConfiguration.findAll({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-    });
+    await AgentChildAgentConfiguration.findAll({ where: whereClause });
 
   const actionsByConfigurationId = new Map<
     ModelId,
@@ -111,6 +105,9 @@ export async function fetchMCPServerActionConfigurations(
     const childAgentConfigurations = allChildAgentConfigurations.filter(
       (ca) => ca.mcpServerConfigurationId === config.id
     );
+    const reasoningConfigurations = allReasoningConfigurations.filter(
+      (rc) => rc.mcpServerConfigurationId === config.id
+    );
 
     const mcpServerView = await MCPServerViewResource.fetchByModelPk(
       auth,
@@ -126,7 +123,7 @@ export async function fetchMCPServerActionConfigurations(
       serverName = "Missing";
       serverDescription = "Missing";
     } else {
-      const { name, description } = await mcpServerView.toJSON().server;
+      const { name, description } = mcpServerView.toJSON().server;
 
       serverName = name;
       serverDescription = description;
@@ -153,6 +150,14 @@ export async function fetchMCPServerActionConfigurations(
             ? childAgentConfigurations[0].agentConfigurationId
             : null,
         additionalConfiguration: config.additionalConfiguration,
+        reasoningModel:
+          reasoningConfigurations.length > 0
+            ? {
+                providerId: reasoningConfigurations[0].providerId,
+                modelId: reasoningConfigurations[0].modelId,
+                reasoningEffort: reasoningConfigurations[0].reasoningEffort,
+              }
+            : null,
       });
     }
   }

@@ -5,6 +5,7 @@ import { AdditionalConfigurationSection } from "@app/components/assistant_builde
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
+import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
@@ -17,6 +18,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
+  ModelConfigurationType,
   SpaceType,
 } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";
@@ -127,6 +129,7 @@ export function MCPAction({
           dataSourceConfigurations: null,
           tablesConfigurations: null,
           childAgentId: null,
+          reasoningModel: null,
           // We initialize boolean with false because leaving them unset means false (toggle on the left).
           additionalConfiguration: Object.fromEntries(
             requirements.requiredBooleans.map((key) => [key, false])
@@ -178,6 +181,22 @@ export function MCPAction({
         getNewActionConfig: (old) => ({
           ...(old as AssistantBuilderMCPServerConfiguration),
           childAgentId: newChildAgentId,
+        }),
+      });
+    },
+    [action.description, action.name, setEdited, updateAction]
+  );
+
+  const handleReasoningModelConfigUpdate = useCallback(
+    (reasoningModelConfig: ModelConfigurationType) => {
+      setEdited(true);
+
+      updateAction({
+        actionName: action.name,
+        actionDescription: action.description,
+        getNewActionConfig: (old) => ({
+          ...(old as AssistantBuilderMCPServerConfiguration),
+          reasoningModel: reasoningModelConfig,
         }),
       });
     },
@@ -255,10 +274,8 @@ export function MCPAction({
         (isEditing ? (
           <div className="text-sm text-foreground dark:text-foreground-night">
             <div>{selectedMCPServerView?.server.description}</div>
-
-            {isDefaultMCPServer ? (
-              ""
-            ) : (
+            <br />
+            {!isDefaultMCPServer && (
               <div>
                 Available to you via{" "}
                 <b>
@@ -270,6 +287,10 @@ export function MCPAction({
                 </b>{" "}
                 space.
               </div>
+            )}
+
+            {selectedMCPServerView && (
+              <MCPToolsList tools={selectedMCPServerView.server.tools} />
             )}
           </div>
         ) : (
@@ -283,10 +304,6 @@ export function MCPAction({
             />
           </>
         ))}
-      {/* List of tools */}
-      {selectedMCPServerView && (
-        <MCPToolsList tools={selectedMCPServerView.server.tools} />
-      )}
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
@@ -314,6 +331,13 @@ export function MCPAction({
         <ChildAgentConfigurationSection
           onAgentSelect={handleChildAgentConfigUpdate}
           selectedAgentId={actionConfiguration.childAgentId}
+          owner={owner}
+        />
+      )}
+      {requirements.requiresReasoningConfiguration && (
+        <ReasoningModelConfigurationSection
+          onModelSelect={handleReasoningModelConfigUpdate}
+          selectedReasoningModel={actionConfiguration.reasoningModel}
           owner={owner}
         />
       )}

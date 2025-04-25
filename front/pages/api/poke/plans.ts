@@ -20,6 +20,11 @@ export const PlanTypeSchema = t.type({
       maxMessages: t.number,
       maxMessagesTimeframe: t.union([t.literal("day"), t.literal("lifetime")]),
     }),
+    capabilities: t.type({
+      images: t.type({
+        maxImagesPerWeek: t.number,
+      }),
+    }),
     connections: t.type({
       isConfluenceAllowed: t.boolean,
       isSlackAllowed: t.boolean,
@@ -105,6 +110,7 @@ async function handler(
         code: body.code,
         name: body.name,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,
+        maxImagesPerWeek: body.limits.capabilities.images.maxImagesPerWeek,
         maxMessages: body.limits.assistant.maxMessages,
         maxMessagesTimeframe: body.limits.assistant.maxMessagesTimeframe,
         isManagedConfluenceAllowed: body.limits.connections.isConfluenceAllowed,

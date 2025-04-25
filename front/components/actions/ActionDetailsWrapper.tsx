@@ -1,4 +1,4 @@
-import { cn, CollapsibleComponent, Icon } from "@dust-tt/sparkle";
+import { Avatar, cn, CollapsibleComponent, Icon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 interface ActionDetailsWrapperProps {
@@ -25,7 +25,7 @@ export function ActionDetailsWrapper({
             "flex flex-row items-center gap-x-2"
           )}
         >
-          <Icon size="sm" visual={visual} />
+          <Avatar size="sm" visual={<Icon visual={visual} />} />
           <span className="heading-base">{actionName}</span>
         </div>
       }
