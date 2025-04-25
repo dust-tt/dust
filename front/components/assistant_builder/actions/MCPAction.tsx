@@ -157,55 +157,38 @@ export function MCPAction({
     [action.description, action.name, setEdited, updateAction]
   );
 
-  const handleDataSourceConfigUpdate = useCallback(
-    (dataSourceConfigurations: DataSourceViewSelectionConfigurations) => {
-      handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
-    },
-    [handleConfigUpdate]
+  const handleDataSourceConfigUpdate = (
+    dataSourceConfigurations: DataSourceViewSelectionConfigurations
+  ) => {
+    handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
+  };
+
+  const handleTableConfigUpdate = (
+    tablesConfigurations: DataSourceViewSelectionConfigurations
+  ) => {
+    handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
+  };
+
+  const handleChildAgentConfigUpdate = (childAgentId: string) => {
+    handleConfigUpdate((old) => ({ ...old, childAgentId }));
+  };
+
+  const handleReasoningModelConfigUpdate = handleConfigUpdate(
+    (reasoningModel: ModelConfigurationType) => ({ ...old, reasoningModel })
   );
 
-  const handleTableConfigUpdate = useCallback(
-    (tablesConfigurations: DataSourceViewSelectionConfigurations) => {
-      handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
-    },
-    [handleConfigUpdate]
-  );
-
-  const handleChildAgentConfigUpdate = useCallback(
-    (childAgentId: string) => {
-      handleConfigUpdate((old) => ({ ...old, childAgentId }));
-    },
-    [handleConfigUpdate]
-  );
-
-  const handleReasoningModelConfigUpdate = useCallback(
-    (reasoningModelConfig: ModelConfigurationType) => {
-      setEdited(true);
-
-      updateAction({
-        actionName: action.name,
-        actionDescription: action.description,
-        getNewActionConfig: (old) => ({
-          ...(old as AssistantBuilderMCPServerConfiguration),
-          reasoningModel: reasoningModelConfig,
-        }),
-      });
-    },
-    [action.description, action.name, setEdited, updateAction]
-  );
-
-  const handleAdditionalConfigUpdate = useCallback(
-    (key: string, value: string | number | boolean) => {
-      handleConfigUpdate((old) => ({
-        ...old,
-        additionalConfiguration: {
-          ...old.additionalConfiguration,
-          [key]: value,
-        },
-      }));
-    },
-    [handleConfigUpdate]
-  );
+  const handleAdditionalConfigUpdate = (
+    key: string,
+    value: string | number | boolean
+  ) => {
+    handleConfigUpdate((old) => ({
+      ...old,
+      additionalConfiguration: {
+        ...old.additionalConfiguration,
+        [key]: value,
+      },
+    }));
+  };
 
   if (action.type !== "MCP") {
     return null;
