@@ -1,4 +1,4 @@
-import { Button, Cog6ToothIcon } from "@dust-tt/sparkle";
+import { Button, Cog6ToothIcon, LockIcon } from "@dust-tt/sparkle";
 
 import { ConfigureLabsConnectionModal } from "@app/components/labs/modals/ConfigureLabsConnectionModal";
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
@@ -12,6 +12,7 @@ interface FeatureAccessButtonProps {
   managePath?: string;
   owner: LightWorkspaceType;
   canRequestAccess: boolean;
+  canManage: boolean;
   connection?: LabsConnectionItemType;
   dataSourcesViews?: any[];
   spaces?: any[];
@@ -25,6 +26,7 @@ export function FeatureAccessButton({
   managePath,
   owner,
   canRequestAccess,
+  canManage,
   connection,
   dataSourcesViews = [],
   spaces = [],
@@ -58,12 +60,22 @@ export function FeatureAccessButton({
     );
   }
 
+  if (!canManage) {
+    return (
+      <Button
+        disabled={true}
+        icon={LockIcon}
+        label="Manage"
+        variant="outline"
+      />
+    );
+  }
   return (
     <Button
-      label="Manage"
-      icon={Cog6ToothIcon}
-      variant="outline"
       href={managePath}
+      icon={Cog6ToothIcon}
+      label="Manage"
+      variant="outline"
     />
   );
 }
