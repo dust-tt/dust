@@ -288,6 +288,7 @@ export function AssistantDetails({
   const [selectedTab, setSelectedTab] = useState("info");
   const {
     agentConfiguration,
+    isAgentConfigurationLoading,
     isAgentConfigurationValidating,
     isAgentConfigurationError,
   } = useAgentConfiguration({
@@ -355,55 +356,63 @@ export function AssistantDetails({
   return (
     <Sheet open={!!assistantId} onOpenChange={onClose}>
       <SheetContent size="lg">
-        <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
-          <VisuallyHidden>
-            <SheetTitle />
-          </VisuallyHidden>
-          <DescriptionSection />
-          {isBuilder(owner) && (
-            <Tabs value={selectedTab}>
-              <TabsList border={false}>
-                <TabsTrigger
-                  value="info"
-                  label="Info"
-                  icon={InformationCircleIcon}
-                  onClick={() => setSelectedTab("info")}
-                />
-                <TabsTrigger
-                  value="performance"
-                  label="Performance"
-                  icon={BarChartIcon}
-                  onClick={() => setSelectedTab("performance")}
-                />
-              </TabsList>
-            </Tabs>
-          )}
-        </SheetHeader>
-        <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
-          {agentConfiguration && (
-            <>
-              {selectedTab === "info" && (
-                <AssistantDetailsInfo
-                  agentConfiguration={agentConfiguration}
-                  owner={owner}
-                />
+        {isAgentConfigurationLoading ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <>
+            <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
+              <VisuallyHidden>
+                <SheetTitle />
+              </VisuallyHidden>
+              <DescriptionSection />
+              {isBuilder(owner) && (
+                <Tabs value={selectedTab}>
+                  <TabsList border={false}>
+                    <TabsTrigger
+                      value="info"
+                      label="Info"
+                      icon={InformationCircleIcon}
+                      onClick={() => setSelectedTab("info")}
+                    />
+                    <TabsTrigger
+                      value="performance"
+                      label="Performance"
+                      icon={BarChartIcon}
+                      onClick={() => setSelectedTab("performance")}
+                    />
+                  </TabsList>
+                </Tabs>
               )}
-              {selectedTab === "performance" && (
-                <AssistantDetailsPerformance
-                  agentConfiguration={agentConfiguration}
-                  owner={owner}
-                />
+            </SheetHeader>
+            <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
+              {agentConfiguration && (
+                <>
+                  {selectedTab === "info" && (
+                    <AssistantDetailsInfo
+                      agentConfiguration={agentConfiguration}
+                      owner={owner}
+                    />
+                  )}
+                  {selectedTab === "performance" && (
+                    <AssistantDetailsPerformance
+                      agentConfiguration={agentConfiguration}
+                      owner={owner}
+                    />
+                  )}
+                </>
               )}
-            </>
-          )}
-          {isAgentConfigurationError?.error.type ===
-            "agent_configuration_not_found" && (
-            <ContentMessage title="Not Available" icon={LockIcon} size="md">
-              This is a private agent that can't be shared with other workspace
-              members.
-            </ContentMessage>
-          )}
-        </SheetContainer>
+              {isAgentConfigurationError?.error.type ===
+                "agent_configuration_not_found" && (
+                <ContentMessage title="Not Available" icon={LockIcon} size="md">
+                  This is a private agent that can't be shared with other
+                  workspace members.
+                </ContentMessage>
+              )}
+            </SheetContainer>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );
