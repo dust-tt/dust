@@ -276,15 +276,15 @@ export async function tryListMCPTools(
 
   // Filter for MCP server configurations.
   const mcpServerActions = agentActions.filter(isMCPServerConfiguration);
-  const errors: string[] = [];
 
   // Discover all the tools exposed by all the mcp servers available.
-  const configurations = await Promise.all(
+  const toolsResults = await Promise.all(
     mcpServerActions.map(async (action) => {
       const toolsRes = await listMCPServerTools(auth, action, {
         conversationId,
         messageId,
       });
+
       if (toolsRes.isErr()) {
         logger.error(
           {
@@ -295,8 +295,7 @@ export async function tryListMCPTools(
           },
           `Error listing tools from MCP server: ${normalizeError(toolsRes.error)}`
         );
-        errors.push(`${action.name}: ${toolsRes.error.message}`);
-        return [];
+        return new Err(`${action.name}: ${toolsRes.error.message}`);
       }
 
       const toolConfigurations = toolsRes.value;
@@ -337,23 +336,37 @@ export async function tryListMCPTools(
         }
       }
 
-      return toolConfigurations.map((toolConfig) => {
-        const prefixedName = getPrefixedToolName(action, toolConfig.name);
+      return new Ok(
+        toolConfigurations.map((toolConfig) => {
+          const prefixedName = getPrefixedToolName(action, toolConfig.name);
 
-        return {
-          ...toolConfig,
-          originalName: toolConfig.name,
-          mcpServerName: action.name,
-          name: prefixedName,
-          description: toolConfig.description + extraDescription,
-        };
-      });
+          return {
+            ...toolConfig,
+            originalName: toolConfig.name,
+            mcpServerName: action.name,
+            name: prefixedName,
+            description: toolConfig.description + extraDescription,
+          };
+        })
+      );
     })
   );
 
+  // Aggregate results
+  const tools: MCPToolConfigurationType[] = [];
+  const errors: string[] = [];
+
+  for (const result of toolsResults) {
+    if (result.isOk()) {
+      tools.push(...result.value);
+    } else {
+      errors.push(result.error);
+    }
+  }
+
   return {
-    tools: configurations.flat(),
-    error: errors.join("\n"),
+    tools,
+    error: errors.length > 0 ? errors.join("\n") : undefined,
   };
 }
 
