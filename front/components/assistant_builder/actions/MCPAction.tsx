@@ -1,5 +1,5 @@
 import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
@@ -140,51 +140,42 @@ export function MCPAction({
     [setEdited, updateAction]
   );
 
-  const handleDataSourceConfigUpdate = useCallback(
-    (dsConfigs: DataSourceViewSelectionConfigurations) => {
+  const handleConfigUpdate = useCallback(
+    (
+      getNewConfig: (
+        old: AssistantBuilderMCPServerConfiguration
+      ) => AssistantBuilderMCPServerConfiguration
+    ) => {
       setEdited(true);
       updateAction({
         actionName: action.name,
         actionDescription: action.description,
-        getNewActionConfig: (old) => ({
-          ...(old as AssistantBuilderMCPServerConfiguration),
-          dataSourceConfigurations: dsConfigs,
-        }),
+        getNewActionConfig: (old) =>
+          getNewConfig(old as AssistantBuilderMCPServerConfiguration),
       });
     },
     [action.description, action.name, setEdited, updateAction]
+  );
+
+  const handleDataSourceConfigUpdate = useCallback(
+    (dataSourceConfigurations: DataSourceViewSelectionConfigurations) => {
+      handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
+    },
+    [handleConfigUpdate]
   );
 
   const handleTableConfigUpdate = useCallback(
-    (tableConfigs: DataSourceViewSelectionConfigurations) => {
-      setEdited(true);
-
-      updateAction({
-        actionName: action.name,
-        actionDescription: action.description,
-        getNewActionConfig: (old) => ({
-          ...(old as AssistantBuilderMCPServerConfiguration),
-          tablesConfigurations: tableConfigs,
-        }),
-      });
+    (tablesConfigurations: DataSourceViewSelectionConfigurations) => {
+      handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
     },
-    [action.description, action.name, setEdited, updateAction]
+    [handleConfigUpdate]
   );
 
   const handleChildAgentConfigUpdate = useCallback(
-    (newChildAgentId: string) => {
-      setEdited(true);
-
-      updateAction({
-        actionName: action.name,
-        actionDescription: action.description,
-        getNewActionConfig: (old) => ({
-          ...(old as AssistantBuilderMCPServerConfiguration),
-          childAgentId: newChildAgentId,
-        }),
-      });
+    (childAgentId: string) => {
+      handleConfigUpdate((old) => ({ ...old, childAgentId }));
     },
-    [action.description, action.name, setEdited, updateAction]
+    [handleConfigUpdate]
   );
 
   const handleReasoningModelConfigUpdate = useCallback(
@@ -205,27 +196,15 @@ export function MCPAction({
 
   const handleAdditionalConfigUpdate = useCallback(
     (key: string, value: string | number | boolean) => {
-      if (!selectedMCPServerView) {
-        return;
-      }
-      setEdited(true);
-      updateAction({
-        actionName: slugify(selectedMCPServerView?.server.name ?? ""),
-        actionDescription: selectedMCPServerView?.server.description ?? "",
-        getNewActionConfig: (prev) => {
-          const prevConfig = prev as AssistantBuilderMCPServerConfiguration;
-          return {
-            ...prevConfig,
-            mcpServerViewId: selectedMCPServerView.id,
-            additionalConfiguration: {
-              ...prevConfig.additionalConfiguration,
-              [key]: value,
-            },
-          };
+      handleConfigUpdate((old) => ({
+        ...old,
+        additionalConfiguration: {
+          ...old.additionalConfiguration,
+          [key]: value,
         },
-      });
+      }));
     },
-    [selectedMCPServerView, setEdited, updateAction]
+    [handleConfigUpdate]
   );
 
   if (action.type !== "MCP") {
