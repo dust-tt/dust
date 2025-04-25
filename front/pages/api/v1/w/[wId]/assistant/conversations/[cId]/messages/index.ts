@@ -4,7 +4,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import {
+  apiErrorForConversation,
+  isUserMessageContextOverflowing,
+} from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
@@ -117,6 +120,18 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "The context.username field is required.",
+          },
+        });
+      }
+
+      if (isUserMessageContextOverflowing(context)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The message.context properties (username, timezone, fullName, and email) " +
+              "must be less than 255 characters.",
           },
         });
       }
