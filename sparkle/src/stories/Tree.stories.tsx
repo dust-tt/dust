@@ -550,21 +550,21 @@ export const TreeExample = () => {
                     }}
                   />
                   <Tree.Item
-                    label="Item 2"
-                    checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
-                      },
-                    }}
-                  />
-                  <Tree.Item
                     label="Item 3"
                     type="leaf"
                     checkbox={{
                       checked: "partial",
                       onCheckedChange: () => {
                         return;
+                      },
+                    }}
+                  />
+                  <Tree.Item
+                    label="Item 2"
+                    checkbox={{
+                      checked: checked["Item 2"],
+                      onCheckedChange: () => {
+                        check("Item 2");
                       },
                     }}
                   />
