@@ -16,7 +16,6 @@ import type {
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
-  DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
   ModelConfigurationType,
   SpaceType,
@@ -157,39 +156,6 @@ export function MCPAction({
     [action.description, action.name, setEdited, updateAction]
   );
 
-  const handleDataSourceConfigUpdate = (
-    dataSourceConfigurations: DataSourceViewSelectionConfigurations
-  ) => {
-    handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
-  };
-
-  const handleTableConfigUpdate = (
-    tablesConfigurations: DataSourceViewSelectionConfigurations
-  ) => {
-    handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
-  };
-
-  const handleChildAgentConfigUpdate = (childAgentId: string) => {
-    handleConfigUpdate((old) => ({ ...old, childAgentId }));
-  };
-
-  const handleReasoningModelConfigUpdate = handleConfigUpdate(
-    (reasoningModel: ModelConfigurationType) => ({ ...old, reasoningModel })
-  );
-
-  const handleAdditionalConfigUpdate = (
-    key: string,
-    value: string | number | boolean
-  ) => {
-    handleConfigUpdate((old) => ({
-      ...old,
-      additionalConfiguration: {
-        ...old.additionalConfiguration,
-        [key]: value,
-      },
-    }));
-  };
-
   if (action.type !== "MCP") {
     return null;
   }
@@ -308,7 +274,9 @@ export function MCPAction({
       )}
       {requirements.requiresReasoningConfiguration && (
         <ReasoningModelConfigurationSection
-          onModelSelect={handleReasoningModelConfigUpdate}
+          onModelSelect={(reasoningModel: ModelConfigurationType) => {
+            handleConfigUpdate((old) => ({ ...old, reasoningModel }));
+          }}
           selectedReasoningModel={actionConfiguration.reasoningModel}
           owner={owner}
         />
