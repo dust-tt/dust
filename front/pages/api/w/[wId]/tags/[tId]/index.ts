@@ -7,11 +7,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type { TagType } from "@app/types/tag";
-
-export type UpdateTagResponseBody = {
-  tag: TagType;
-};
 
 const PatchBodySchema = t.type({
   name: t.string,
@@ -19,9 +14,7 @@ const PatchBodySchema = t.type({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<Record<string, never> | UpdateTagResponseBody>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<Record<string, never>>>,
   auth: Authenticator
 ): Promise<void> {
   const {
@@ -117,9 +110,8 @@ async function handler(
 
       await tag.updateName(name);
 
-      return res.status(200).json({
-        tag: tag.toJSON(),
-      });
+      res.status(200).end();
+      return;
     }
     default: {
       return apiError(req, res, {
