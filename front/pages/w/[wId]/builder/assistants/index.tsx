@@ -185,7 +185,7 @@ export default function WorkspaceAssistants({
       workspaceId: owner.sId,
       agentsGetView: "archived",
       includes: ["usage", "feedbacks"],
-      disabled: !hasAgentDiscovery,
+      disabled: !hasAgentDiscovery || !isAdmin(owner),
     });
 
   const agentsByTab = useMemo(() => {
