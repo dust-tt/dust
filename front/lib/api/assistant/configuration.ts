@@ -654,13 +654,13 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     throw new Error("Archived view is for admins only.");
   }
 
-  if (agentsGetView === "list" && !user) {
-    throw new Error(
-      "`list` or `assistants-search` view is specific to a user."
-    );
-  }
-  if (agentsGetView === "favorites" && !user) {
-    throw new Error("`favorites` view is specific to a user.");
+  if (
+    !user &&
+    (agentsGetView === "list" ||
+      agentsGetView === "manage" ||
+      agentsGetView === "favorites")
+  ) {
+    throw new Error(`'${agentsGetView}' view is specific to a user.`);
   }
 
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);

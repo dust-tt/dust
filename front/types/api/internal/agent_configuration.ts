@@ -42,18 +42,6 @@ export const GetAgentConfigurationsHistoryQuerySchema = t.type({
   limit: t.union([LimitCodec, t.undefined]),
 });
 
-export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
-  view: t.union([
-    t.literal("list"),
-    t.literal("workspace"),
-    t.literal("published"),
-    t.literal("global"),
-    t.literal("admin_internal"),
-    t.literal("manage-assistants-search"),
-    t.literal("all"),
-  ]),
-});
-
 // Data sources
 
 const DataSourceFilterParentsCodec = t.union([
