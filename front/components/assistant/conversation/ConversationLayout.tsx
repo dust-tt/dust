@@ -120,6 +120,7 @@ const ConversationLayoutContent = ({
             ? `Dust - ${conversation?.title}`
             : `Dust - New Conversation`
         }
+        isConversationView
         titleChildren={
           activeConversationId && (
             <ConversationTitle owner={owner} baseUrl={baseUrl} />
@@ -179,7 +180,9 @@ function ConversationInnerLayout({
         <ResizablePanel defaultSize={100}>
           <FileDropProvider>
             <GenerationContextProvider>
-              <div className="h-full overflow-y-auto">{children}</div>
+              <div className="h-full overflow-y-auto px-4 sm:px-8">
+                {children}
+              </div>
             </GenerationContextProvider>
           </FileDropProvider>
         </ResizablePanel>
