@@ -172,12 +172,6 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
     if (notionConnector.pausedAt) {
       continue;
     }
-    if (notionConnector.id === 19585) {
-      // TODO(spolu): remove once the workflow is fixed. We have a workflow on this notion connector
-      // that is in a broken state with Temporal. Can't be retrieved yet is listable causing issues
-      // with the production check.
-      continue;
-    }
     heartbeat();
 
     const { isRunning, isNotStalled, details } =
