@@ -1,7 +1,6 @@
 import { verify } from "jsonwebtoken";
 
 import config from "@app/lib/api/config";
-import { getMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Workspace } from "@app/lib/models/workspace";
@@ -100,7 +99,6 @@ export async function getPendingMembershipInvitationWithWorkspaceForEmail(
         createdAt: pendingInvitation.createdAt.getTime(),
         id: pendingInvitation.id,
         initialRole: pendingInvitation.initialRole,
-        inviteLink: getMembershipInvitationUrl(workspace, pendingInvitation.id),
         inviteEmail: pendingInvitation.inviteEmail,
         sId: pendingInvitation.sId,
         status: pendingInvitation.status,
