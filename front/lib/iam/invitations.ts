@@ -100,7 +100,6 @@ export async function getPendingMembershipInvitationWithWorkspaceForEmail(
         createdAt: pendingInvitation.createdAt.getTime(),
         id: pendingInvitation.id,
         initialRole: pendingInvitation.initialRole,
-        inviteLink: getMembershipInvitationUrl(workspace, pendingInvitation.id),
         inviteEmail: pendingInvitation.inviteEmail,
         sId: pendingInvitation.sId,
         status: pendingInvitation.status,

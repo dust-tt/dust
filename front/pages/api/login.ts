@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getTokenFromMembershipInvitationUrl } from "@app/lib/api/invitation";
+import {
+  getMembershipInvitationToken,
+  getTokenFromMembershipInvitationUrl,
+} from "@app/lib/api/invitation";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
@@ -31,9 +34,9 @@ import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type { ActiveRoleType, Result, WithAPIErrorResponse } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-// `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
-// all the checks (decoding the JWT) have been run before. Simply create the membership if
-// it does not already exist and mark the invitation as consumed.
+// `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as all the
+// checks (decoding the JWT) have been run before. Simply create the membership if it does not
+// already exist and mark the invitation as consumed.
 async function handleMembershipInvite(
   user: UserResource,
   membershipInvite: MembershipInvitation
@@ -195,8 +198,8 @@ async function handleEnterpriseSignUpFlow(
       workspace.id
     );
 
-  // Initialize membership if it's not present or has been previously revoked.
-  // In the case of enterprise connections, Dust access is overridden by the identity management service.
+  // Initialize membership if it's not present or has been previously revoked. In the case of
+  // enterprise connections, Dust access is overridden by the identity management service.
   if (!membership || membership.isRevoked()) {
     await createAndLogMembership({
       workspace,
@@ -212,9 +215,9 @@ async function handleEnterpriseSignUpFlow(
   return { flow: null, workspace };
 }
 
-// Regular flow, only if the user is a newly created user.
-// Verify if there's an existing workspace with the same verified domain that allows auto-joining.
-// The user will join this workspace if it exists; otherwise, a new workspace is created.
+// Regular flow, only if the user is a newly created user. Verify if there's an existing workspace
+// with the same verified domain that allows auto-joining. The user will join this workspace if it
+// exists; otherwise, a new workspace is created.
 async function handleRegularSignupFlow(
   session: SessionWithUser,
   user: UserResource,
@@ -233,7 +236,8 @@ async function handleRegularSignupFlow(
       users: [user],
     });
 
-  // Return early if the user is already a member of a workspace and is not attempting to join another one.
+  // Return early if the user is already a member of a workspace and is not attempting to join
+  // another one.
   if (total !== 0 && !targetWorkspaceId) {
     return new Ok({
       flow: null,
@@ -317,7 +321,8 @@ async function handleRegularSignupFlow(
       )
     );
   } else {
-    // Redirect the user to their existing workspace if they are not allowed to join the target workspace.
+    // Redirect the user to their existing workspace if they are not allowed to join the target
+    // workspace.
     return new Ok({ flow: null, workspace: null });
   }
 }
@@ -349,8 +354,8 @@ async function handler(
     session.user["https://dust.tt/workspaceId"];
 
   let targetWorkspace: Workspace | null = null;
-  // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
-  // `inviteToken`, meaning the user is going through the invite by email flow.
+  // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
+  // meaning the user is going through the invite by email flow.
   const membershipInviteRes =
     await getPendingMembershipInvitationForToken(inviteToken);
   if (membershipInviteRes.isErr()) {
@@ -388,17 +393,16 @@ async function handler(
     targetWorkspace = workspace;
   } else {
     if (userCreated) {
-      // When user is just created, check whether they have a pending
-      // invitation. If they do, it is assumed they are coming from the
-      // invitation link and have seen the join page; we redirect (after auth0
-      // login) to this URL with inviteToken appended. The user will then end up
-      // on the workspace's welcome page (see comment's PR)
+      // When user is just created, check whether they have a pending invitation. If they do, it is
+      // assumed they are coming from the invitation link and have seen the join page; we redirect
+      // (after auth0 login) to this URL with inviteToken appended. The user will then end up on the
+      // workspace's welcome page (see comment's PR)
       const pendingInvitationAndWorkspace =
         await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
       if (pendingInvitationAndWorkspace) {
         const { invitation: pendingInvitation } = pendingInvitationAndWorkspace;
         const signUpUrl = getSignUpUrl({
-          signupCallbackUrl: `/api/login?inviteToken=${getTokenFromMembershipInvitationUrl(pendingInvitation.inviteLink)}`,
+          signupCallbackUrl: `/api/login?inviteToken=${getMembershipInvitationToken(pendingInvitation.id)}`,
           invitationEmail: pendingInvitation.inviteEmail,
         });
         res.redirect(signUpUrl);
@@ -454,7 +458,8 @@ async function handler(
   }
 
   if (targetWorkspace) {
-    // For users joining a workspace from trying to access a conversation, we redirect to this conversation after signing in.
+    // For users joining a workspace from trying to access a conversation, we redirect to this
+    // conversation after signing in.
     if (req.query.join === "true" && req.query.cId) {
       res.redirect(`/w/${targetWorkspace.sId}/welcome?cId=${req.query.cId}`);
       return;
