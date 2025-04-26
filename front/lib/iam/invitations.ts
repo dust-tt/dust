@@ -1,7 +1,6 @@
 import { verify } from "jsonwebtoken";
 
 import config from "@app/lib/api/config";
-import { getMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Workspace } from "@app/lib/models/workspace";

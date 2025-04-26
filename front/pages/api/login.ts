@@ -1,9 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getMembershipInvitationToken,
-  getTokenFromMembershipInvitationUrl,
-} from "@app/lib/api/invitation";
+import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
