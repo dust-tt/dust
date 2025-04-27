@@ -1,4 +1,5 @@
 import { isLeft } from "fp-ts/lib/Either";
+import { escape } from "html-escaper";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -88,7 +89,7 @@ async function handler(
 
       if ("name" in body) {
         await w.update({
-          name: body.name,
+          name: escape(body.name),
         });
         owner.name = body.name;
       } else if ("ssoEnforced" in body) {
