@@ -147,7 +147,10 @@ export async function createOrUpdateUser(
     );
 
     firstName = escape(externalUser.given_name || firstName);
-    lastName = escape(externalUser.family_name || lastName);
+    lastName = externalUser.family_name || lastName;
+    if (lastName) {
+      lastName = escape(lastName);
+    }
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
