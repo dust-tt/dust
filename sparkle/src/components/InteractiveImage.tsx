@@ -65,7 +65,7 @@ export function InteractiveImage({
 function LoadingImage() {
   return (
     <div className="s-flex s-h-full s-w-full s-items-center s-justify-center">
-      <Spinner variant="dark" size="sm" />
+      <Spinner variant="dark" size="md" />
     </div>
   );
 }
@@ -99,7 +99,8 @@ function ImagePreview({
     <div
       onClick={onClick}
       className={cn(
-        "s-group/preview s-relative s-h-full s-w-full s-overflow-hidden s-rounded-2xl s-bg-muted-background dark:s-bg-muted-background-night",
+        "s-group/preview s-relative s-h-full s-w-full s-overflow-hidden s-rounded-2xl",
+        "s-bg-muted-background dark:s-bg-muted-background-night",
         !isLoading && "s-cursor-pointer"
       )}
     >
@@ -113,9 +114,22 @@ function ImagePreview({
             className="s-h-full s-w-full s-rounded-2xl s-object-cover"
           />
           {/* Dark overlay on hover */}
-          <div className="s-absolute s-inset-0 s-bg-black s-opacity-0 s-transition-opacity s-duration-200 group-hover/preview:s-opacity-40" />
+          <div
+            className={cn(
+              "s-absolute s-inset-0 s-bg-gradient-to-b",
+              "s-from-black/40 s-via-transparent s-to-black/40",
+              "s-opacity-0 s-transition-opacity s-duration-200",
+              "group-hover/preview:s-opacity-100"
+            )}
+          />
           {/* Icon container - only visible on hover */}
-          <div className="s-absolute s-right-3 s-top-3 s-z-10 s-flex s-opacity-0 s-transition-opacity s-duration-200 group-hover/preview:s-opacity-100">
+          <div
+            className={cn(
+              "s-absolute s-right-3 s-top-3 s-z-10 s-flex",
+              "s-opacity-0 s-transition-opacity s-duration-200",
+              "group-hover/preview:s-opacity-100"
+            )}
+          >
             <IconButton
               icon={ArrowDownOnSquareIcon}
               className="s-text-white"
