@@ -1,19 +1,18 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
-import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 import {
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_REASONING_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { runReasoning } from "@app/lib/actions/reasoning";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isReasoningConfiguration } from "@app/lib/actions/types/guards";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import { canUseModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
+import { isModelId, isModelProviderId } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "reasoning_v2",
@@ -24,10 +23,11 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: null,
 };
 
-function createServer(auth: Authenticator, agentLoopContext?: AgentLoopContextType): McpServer {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = new McpServer(serverInfo);
-
-  const owner = auth.getNonNullableWorkspace();
 
   server.tool(
     DEFAULT_REASONING_ACTION_NAME,
@@ -37,81 +37,78 @@ function createServer(auth: Authenticator, agentLoopContext?: AgentLoopContextTy
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
         ],
-      text: z.string().describe("The text to reason about"),
     },
-    async ({ model: { modelId, providerId }, text }) => {
+    async ({ model: { modelId, providerId } }) => {
       if (!agentLoopContext) {
         throw new Error("Unreachable: missing agentLoopContext.");
       }
 
-      const featureFlags = await getFeatureFlags(owner);
-      const supportedModel = REASONING_MODEL_CONFIGS.find(
-        (m) => m.modelId === modelId && m.providerId === providerId
-      );
-
-      if (!supportedModel) {
-        return makeMCPToolTextError("Reasoning model not found.");
+      const { actionConfiguration } = agentLoopContext;
+      if (!isReasoningConfiguration(actionConfiguration)) {
+        throw new Error("Unreachable: Reasoning");
       }
 
-      if (!canUseModel(supportedModel, featureFlags, auth.plan(), owner)) {
-        return makeMCPToolTextError(
-          "Reasoning model not allowed for the current workspace."
-        );
+      if (!isModelId(modelId) || !isModelProviderId(providerId)) {
+        return makeMCPToolTextError("Invalid model ID.");
       }
 
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text: `This is a placeholder for the reasoning functionality. In a real implementation, we would use the shared reasoning function with the model ${supportedModel.displayName} to reason about: "${text}"`,
-          },
-        ],
+      const actionOutput = {
+        content: "",
+        thinking: "",
       };
 
-      // Note: The full implementation would look something like this:
-      /*
-      // Use the shared reasoning function
-      let content = "";
-      let error = null;
-
-      // We would need to have access to the conversation, agentConfiguration, and agentMessage
-      // which would need to be passed from the agent context
-
-      // Consume the generator to get the final result
       for await (const event of runReasoning(auth, {
-        supportedModel,
-        conversation,
-        agentConfiguration,
-        agentMessage,
-        actionConfig: {
-          modelId: supportedModel.modelId,
-          providerId: supportedModel.providerId,
-          reasoningEffort: null,
-          temperature: null,
+        reasoningModel: {
+          modelId,
+          providerId,
+          temperature: actionConfiguration.temperature,
+          reasoningEffort: actionConfiguration.reasoningEffort,
         },
+        ...agentLoopContext,
       })) {
-        if (event.type === "error") {
-          error = event.message;
-        } else if (event.type === "success") {
-          content = event.content;
+        switch (event.type) {
+          case "error": {
+            return makeMCPToolTextError(event.message);
+          }
+          case "token": {
+            const { classification, text } = event.token;
+            if (
+              classification === "opening_delimiter" ||
+              classification === "closing_delimiter"
+            ) {
+              continue;
+            }
+            if (classification === "chain_of_thought") {
+              actionOutput.thinking += text;
+            } else {
+              actionOutput.content += text;
+            }
+            break;
+          }
+          case "runId":
+            break;
+          default:
+            assertNever(event);
         }
       }
 
-      if (error) {
-        return makeMCPToolTextError(error);
-      }
-
       return {
         isError: false,
         content: [
           {
+            type: "resource",
+            resource: {
+              text: actionOutput.thinking,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.THINKING,
+              uri: "",
+            },
+          },
+          {
             type: "text",
-            text: content,
+            text: actionOutput.content,
           },
         ],
       };
-      */
     }
   );
 

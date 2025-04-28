@@ -26,7 +26,6 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   GenerationTokensEvent,
-  ModelConfigurationType,
   ModelId,
   ModelIdType,
   ModelProviderIdType,
@@ -233,39 +232,18 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     if (!actionConfig || !isReasoningConfiguration(actionConfig)) {
       throw new Error("Unreachable: Reasoning configuration not found");
     }
-    const supportedModel = SUPPORTED_MODEL_CONFIGS.find(
-      (m) =>
-        m.modelId === actionConfig.modelId &&
-        m.providerId === actionConfig.providerId
-    );
-
-    if (!supportedModel) {
-      yield {
-        type: "reasoning_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "reasoning_error",
-          message: "Reasoning configuration not found",
-        },
-      };
-      return;
-    }
 
     const actionOutput = {
       content: "",
       thinking: "",
     };
-
     let dustRunId: Promise<string> | undefined;
 
     for await (const event of runReasoning(auth, {
-      supportedModel,
+      reasoningModel: { ...actionConfig },
       conversation,
       agentConfiguration,
       agentMessage,
-      actionConfig,
     })) {
       switch (event.type) {
         case "error": {
@@ -376,17 +354,15 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
 export async function* runReasoning(
   auth: Authenticator,
   {
-    supportedModel,
+    reasoningModel,
     conversation,
     agentConfiguration,
     agentMessage,
-    actionConfig,
   }: {
-    supportedModel: ModelConfigurationType;
+    reasoningModel: ReasoningModelConfiguration;
     conversation: ConversationType;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
-    actionConfig: ReasoningModelConfiguration;
   }
 ): AsyncGenerator<
   | { type: "error"; message: string }
@@ -394,6 +370,17 @@ export async function* runReasoning(
   | { type: "runId"; runId: Promise<string> }
 > {
   const owner = auth.getNonNullableWorkspace();
+
+  const supportedModel = SUPPORTED_MODEL_CONFIGS.find(
+    (m) =>
+      m.modelId === reasoningModel.modelId &&
+      m.providerId === reasoningModel.providerId
+  );
+
+  if (!supportedModel) {
+    yield { type: "error", message: "Reasoning configuration not found" };
+    return;
+  }
 
   if (!isProviderWhitelisted(owner, supportedModel.providerId)) {
     yield { type: "error", message: "Provider not supported" };
@@ -432,12 +419,12 @@ export async function* runReasoning(
   config.MODEL.provider_id = supportedModel.providerId;
   config.MODEL.model_id = supportedModel.modelId;
 
-  if (actionConfig.temperature) {
-    config.MODEL.temperature = actionConfig.temperature;
+  if (reasoningModel.temperature) {
+    config.MODEL.temperature = reasoningModel.temperature;
   }
 
-  if (actionConfig.reasoningEffort) {
-    config.MODEL.reasoning_effort = actionConfig.reasoningEffort;
+  if (reasoningModel.reasoningEffort) {
+    config.MODEL.reasoning_effort = reasoningModel.reasoningEffort;
   }
 
   if (supportedModel.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID) {
