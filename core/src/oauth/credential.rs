@@ -123,9 +123,27 @@ impl Credential {
     ) -> Result<Self> {
         if let Some(from_connection_id) = content.get("from_connection_id") {
             if let Some(from_connection_id) = from_connection_id.as_str() {
-                let connection = store.retrieve_connection(&from_connection_id).await?;
-                if let Some(credential_id) = connection.related_credential_id() {
-                    return store.retrieve_credential(&credential_id).await;
+                match store.retrieve_connection(&from_connection_id).await? {
+                    None => {
+                        return Err(anyhow::anyhow!(
+                            "Connection (`from_connection_id`) not found"
+                        ));
+                    }
+                    Some(connection) => {
+                        if let Some(credential_id) = connection.related_credential_id() {
+                            match store.retrieve_credential(&credential_id).await? {
+                                None => {
+                                    return Err(anyhow::anyhow!(
+                                        "Credential (`from_connection_id.related_credential_id`) \
+                                           not found",
+                                    ));
+                                }
+                                Some(credential) => {
+                                    return Ok(credential);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

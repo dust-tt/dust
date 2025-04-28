@@ -51,7 +51,7 @@ export const logAndReturnError = ({
   );
 };
 
-export const returnSuccess = ({
+export const returnJSONStringifiedSuccess = ({
   message,
   result,
 }: {

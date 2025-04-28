@@ -242,18 +242,19 @@ export function isSupportedImageContentType(
 }
 
 const UserMessageOriginSchema = FlexibleEnumSchema<
+  | "api"
+  | "email"
+  | "extension"
+  | "github-copilot-chat"
+  | "gsheet"
+  | "make"
+  | "mcp"
+  | "n8n"
+  | "raycast"
   | "slack"
   | "web"
-  | "api"
-  | "gsheet"
   | "zapier"
-  | "n8n"
-  | "make"
   | "zendesk"
-  | "raycast"
-  | "github-copilot-chat"
-  | "extension"
-  | "email"
 >()
   .or(z.null())
   .or(z.undefined());

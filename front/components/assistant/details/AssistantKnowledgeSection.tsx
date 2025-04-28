@@ -11,6 +11,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   SparklesIcon,
+  Spinner,
   TableIcon,
   Tree,
 } from "@dust-tt/sparkle";
@@ -61,9 +62,12 @@ export function AssistantKnowledgeSection({
   agentConfiguration,
   owner,
 }: AssistantKnowledgeSectionProps) {
-  const { dataSourceViews } = useDataSourceViews(owner, {
-    disabled: agentConfiguration.actions.length === 0,
-  });
+  const { dataSourceViews, isDataSourceViewsLoading } = useDataSourceViews(
+    owner,
+    {
+      disabled: agentConfiguration.actions.length === 0,
+    }
+  );
 
   const categorizedActions = useMemo(() => {
     const initial = {
@@ -180,6 +184,7 @@ export function AssistantKnowledgeSection({
         <DataSourceViewsSection
           owner={owner}
           dataSourceViews={dataSourceViews}
+          isLoading={isDataSourceViewsLoading}
           dataSourceConfigurations={[dataSources]}
           viewType="document"
         />
@@ -193,6 +198,7 @@ export function AssistantKnowledgeSection({
         <DataSourceViewsSection
           owner={owner}
           dataSourceViews={dataSourceViews}
+          isLoading={isDataSourceViewsLoading}
           dataSourceConfigurations={[dataSources]}
           viewType="table"
         />
@@ -267,6 +273,7 @@ interface DataSourceViewsSectionProps {
   dataSourceViews: DataSourceViewType[];
   dataSourceConfigurations: DataSourceConfiguration[];
   viewType: ContentNodesViewType;
+  isLoading: boolean;
 }
 
 function DataSourceViewsSection({
@@ -274,6 +281,7 @@ function DataSourceViewsSection({
   dataSourceViews,
   dataSourceConfigurations,
   viewType,
+  isLoading,
 }: DataSourceViewsSectionProps) {
   const router = useRouter();
   const { isDark } = useTheme();
@@ -286,75 +294,81 @@ function DataSourceViewsSection({
         owner={owner}
         dataSourceView={dataSourceViewToDisplay}
       />
-      <Tree>
-        {dataSourceConfigurations.map((dsConfig) => {
-          const dataSourceView = dataSourceViews.find(
-            (dsv) => dsv.sId === dsConfig.dataSourceViewId
-          );
+      {isLoading ? (
+        <Spinner variant="sm" />
+      ) : (
+        <Tree>
+          {dataSourceConfigurations.map((dsConfig) => {
+            const dataSourceView = dataSourceViews.find(
+              (dsv) => dsv.sId === dsConfig.dataSourceViewId
+            );
 
-          // We won't throw here if dataSourceView is null to avoid crashing the UI but this is not
-          // supposed to happen as we delete the configurations when data sources are deleted.
-          let dsLogo = null;
-          let dataSourceName = "Deleted data source";
+            // We won't throw here if dataSourceView is null to avoid crashing the UI but this is not
+            // supposed to happen as we delete the configurations when data sources are deleted.
+            let dsLogo = null;
+            let dataSourceName = "Deleted data source";
 
-          if (dataSourceView) {
-            const { dataSource } = dataSourceView;
-            dsLogo = getConnectorProviderLogoWithFallback({
-              provider: dataSource.connectorProvider,
-              isDark,
-            });
-            dataSourceName = getDisplayNameForDataSource(dataSource);
-          }
+            if (dataSourceView) {
+              const { dataSource } = dataSourceView;
+              dsLogo = getConnectorProviderLogoWithFallback({
+                provider: dataSource.connectorProvider,
+                isDark,
+              });
+              dataSourceName = getDisplayNameForDataSource(dataSource);
+            }
 
-          const isAllSelected = dsConfig.filter.parents === null;
+            const isAllSelected = dsConfig.filter.parents === null;
 
-          return (
-            <Tree.Item
-              key={`${dsConfig.dataSourceViewId}-${JSON.stringify(dsConfig.filter)}`}
-              type={canBeExpanded(dataSourceView?.dataSource) ? "node" : "leaf"}
-              label={dataSourceName}
-              visual={dsLogo ?? FolderIcon}
-              className="whitespace-nowrap"
-              actions={
-                <RetrievalActionTagsFilterPopover
-                  dustAPIDataSourceId={dsConfig.dataSourceViewId}
-                  tagsFilter={dsConfig.filter.tags ?? null}
-                  connectorProvider={
-                    dataSourceView?.dataSource.connectorProvider ?? null
-                  }
-                />
-              }
-              areActionsFading={false}
-            >
-              {dataSourceView && isAllSelected && (
-                <DataSourceViewPermissionTree
-                  owner={owner}
-                  dataSourceView={dataSourceView}
-                  onDocumentViewClick={(documentId: string) => {
-                    setDataSourceViewToDisplay(dataSourceView);
-                    setQueryParam(router, DocumentViewRawContentKey, "true");
-                    setQueryParam(router, "documentId", documentId);
-                  }}
-                  viewType={viewType}
-                />
-              )}
-              {dataSourceView && !isAllSelected && (
-                <DataSourceViewSelectedNodes
-                  owner={owner}
-                  dataSourceView={dataSourceView}
-                  dataSourceConfiguration={dsConfig}
-                  setDataSourceViewToDisplay={setDataSourceViewToDisplay}
-                  setDocumentToDisplay={(documentId: string) => {
-                    setQueryParam(router, DocumentViewRawContentKey, "true");
-                    setQueryParam(router, "documentId", documentId);
-                  }}
-                  viewType={viewType}
-                />
-              )}
-            </Tree.Item>
-          );
-        })}
-      </Tree>
+            return (
+              <Tree.Item
+                key={`${dsConfig.dataSourceViewId}-${JSON.stringify(dsConfig.filter)}`}
+                type={
+                  canBeExpanded(dataSourceView?.dataSource) ? "node" : "leaf"
+                }
+                label={dataSourceName}
+                visual={dsLogo ?? FolderIcon}
+                className="whitespace-nowrap"
+                actions={
+                  <RetrievalActionTagsFilterPopover
+                    dustAPIDataSourceId={dsConfig.dataSourceViewId}
+                    tagsFilter={dsConfig.filter.tags ?? null}
+                    connectorProvider={
+                      dataSourceView?.dataSource.connectorProvider ?? null
+                    }
+                  />
+                }
+                areActionsFading={false}
+              >
+                {dataSourceView && isAllSelected && (
+                  <DataSourceViewPermissionTree
+                    owner={owner}
+                    dataSourceView={dataSourceView}
+                    onDocumentViewClick={(documentId: string) => {
+                      setDataSourceViewToDisplay(dataSourceView);
+                      setQueryParam(router, DocumentViewRawContentKey, "true");
+                      setQueryParam(router, "documentId", documentId);
+                    }}
+                    viewType={viewType}
+                  />
+                )}
+                {dataSourceView && !isAllSelected && (
+                  <DataSourceViewSelectedNodes
+                    owner={owner}
+                    dataSourceView={dataSourceView}
+                    dataSourceConfiguration={dsConfig}
+                    setDataSourceViewToDisplay={setDataSourceViewToDisplay}
+                    setDocumentToDisplay={(documentId: string) => {
+                      setQueryParam(router, DocumentViewRawContentKey, "true");
+                      setQueryParam(router, "documentId", documentId);
+                    }}
+                    viewType={viewType}
+                  />
+                )}
+              </Tree.Item>
+            );
+          })}
+        </Tree>
+      )}
     </div>
   );
 }

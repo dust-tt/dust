@@ -133,15 +133,20 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   private static async baseFetch(
     auth: Authenticator,
     fetchDataSourceOptions?: FetchDataSourceOptions,
-    options?: ResourceFindOptions<DataSourceModel>
+    options?: ResourceFindOptions<DataSourceModel>,
+    transaction?: Transaction
   ) {
     const { includeDeleted } = fetchDataSourceOptions ?? {};
 
-    return this.baseFetchWithAuthorization(auth, {
-      ...this.getOptions(fetchDataSourceOptions),
-      ...options,
-      includeDeleted,
-    });
+    return this.baseFetchWithAuthorization(
+      auth,
+      {
+        ...this.getOptions(fetchDataSourceOptions),
+        ...options,
+        includeDeleted,
+      },
+      transaction
+    );
   }
 
   static async fetchById(
@@ -338,7 +343,8 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static async listByWorkspace(
     auth: Authenticator,
     options?: FetchDataSourceOptions,
-    includeConversationDataSources?: boolean
+    includeConversationDataSources?: boolean,
+    transaction?: Transaction
   ): Promise<DataSourceResource[]> {
     const where: WhereOptions<DataSourceModel> = {
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -348,9 +354,14 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         [Op.is]: undefined,
       };
     }
-    return this.baseFetch(auth, options, {
-      where,
-    });
+    return this.baseFetch(
+      auth,
+      options,
+      {
+        where,
+      },
+      transaction
+    );
   }
 
   static async listByConnectorProvider(

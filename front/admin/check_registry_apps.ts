@@ -40,7 +40,10 @@ async function main({
   const notDeployedApps = res.value.filter((a) => !a.deployed);
   if (notDeployedApps.length > 0) {
     throw new Error(
-      "Missing apps: " + notDeployedApps.map((a) => a.appId).join(", ")
+      "Missing apps: " +
+        notDeployedApps.map((a) => a.appId).join(", ") +
+        "\n" +
+        "Check runbook: https://www.notion.so/dust-tt/Runbook-Update-Assistant-dust-apps-18c28599d94180d78dabe92f445157a8"
     );
   }
   console.log("All apps are deployed");

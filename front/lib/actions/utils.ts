@@ -9,16 +9,18 @@ import {
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";
-import assert from "assert";
 
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
+  isMCPActionConfiguration,
   isMCPActionWithDataSource,
   isPlatformMCPToolConfiguration,
   isRetrievalConfiguration,
+  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -159,20 +161,33 @@ export function getWebsearchNumResults({
 }: {
   stepActions: ActionConfigurationType[];
 }): number {
-  const websearchActions = stepActions.filter(
-    (action) => action.type === "websearch_configuration"
-  ) as WebsearchConfigurationType[];
-
-  assert(
-    websearchActions.length > 0,
-    "No websearch actions found in `getWebsearchNumResults`"
+  const websearchActions: WebsearchConfigurationType[] = stepActions.filter(
+    isWebsearchConfiguration
   );
 
-  const numResults = websearchActions.map(() => {
-    return WEBSEARCH_ACTION_NUM_RESULTS;
-  });
+  const internalWebsearchV2ActionName: InternalMCPServerNameType =
+    "web_search_&_browse_v2";
+  const websearchV2Actions: MCPToolConfigurationType[] = stepActions
+    .filter(isMCPActionConfiguration)
+    .filter((action) => action.mcpServerName === internalWebsearchV2ActionName);
 
-  return Math.ceil(Math.max(...numResults) / websearchActions.length);
+  const numResults = websearchActions
+    .map(() => {
+      return WEBSEARCH_ACTION_NUM_RESULTS;
+    })
+    .concat(
+      websearchV2Actions.map(() => {
+        return WEBSEARCH_ACTION_NUM_RESULTS;
+      })
+    );
+
+  const totalActions = websearchActions.length + websearchV2Actions.length;
+
+  if (totalActions === 0) {
+    return 0;
+  }
+
+  return Math.ceil(Math.max(...numResults) / totalActions);
 }
 
 /**
@@ -214,6 +229,13 @@ export function getCitationsCount({
     case "reasoning_configuration":
       return 0;
     case "mcp_configuration":
+      const internalWebsearchV2ActionName: InternalMCPServerNameType =
+        "web_search_&_browse_v2";
+      if (action.mcpServerName === internalWebsearchV2ActionName) {
+        return getWebsearchNumResults({
+          stepActions,
+        });
+      }
       return getRetrievalTopK({
         agentConfiguration,
         stepActions,

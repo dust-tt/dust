@@ -87,6 +87,7 @@ export { Hoverable } from "./Hoverable";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export { Input } from "./Input";
+export { InteractiveImage } from "./InteractiveImage";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";

@@ -67,7 +67,8 @@ export abstract class ResourceWithSpace<
       order,
       where,
       includeDeleted,
-    }: ResourceFindOptions<M> = {}
+    }: ResourceFindOptions<M> = {},
+    transaction?: Transaction
   ): Promise<T[]> {
     const blobs = await this.model.findAll({
       attributes,
@@ -76,6 +77,7 @@ export abstract class ResourceWithSpace<
       limit,
       order,
       includeDeleted,
+      transaction,
     });
 
     if (blobs.length === 0) {
