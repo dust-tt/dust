@@ -25,6 +25,7 @@ import type { ActionDetailsComponentBaseProps } from "@app/components/actions/ty
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import type {
   BrowseResultResourceType,
+  ReasoningSuccessOutputType,
   SearchResultResourceType,
   SqlQueryOutputType,
   ThinkingOutputType,
@@ -33,6 +34,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isBrowseResultResourceType,
+  isReasoningSuccessOutput,
   isSearchQueryResourceType,
   isSearchResultResourceType,
   isSqlQueryOutput,
@@ -66,6 +68,9 @@ export function MCPActionDetails(
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
   const isTablesQuery = props.action.output?.some(isSqlQueryOutput);
 
+  // Hack to find out whether the output comes from the reasoning tool, links back to the TODO above.
+  const isReasoning = props.action.output?.some(isReasoningSuccessOutput);
+
   if (searchResults.length > 0) {
     return (
       <SearchResultActionDetails {...props} searchResults={searchResults} />
@@ -78,6 +83,8 @@ export function MCPActionDetails(
     return <BrowseActionDetails {...props} browseResults={browseResults} />;
   } else if (isTablesQuery) {
     return <TablesQueryActionDetails {...props} />;
+  } else if (isReasoning) {
+    return <ReasoningActionDetails {...props} />;
   } else {
     return <GenericActionDetails {...props} />;
   }
@@ -157,6 +164,24 @@ function ThinkingBlock({ resource }: ThinkingBlockProps) {
           isLastMessage={false}
         />
       </ContentMessage>
+    </div>
+  );
+}
+
+interface ReasoningSuccessBlockProps {
+  resource: ReasoningSuccessOutputType;
+}
+
+function ReasoningSuccessBlock({ resource }: ReasoningSuccessBlockProps) {
+  return (
+    <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+      <Markdown
+        content={resource.text}
+        textColor="text-muted-foreground dark:text-muted-foreground-night"
+        isStreaming={false}
+        forcedTextSize="md"
+        isLastMessage={false}
+      />
     </div>
   );
 }
@@ -299,6 +324,36 @@ function TablesQueryActionDetails({
             />
           ))}
         </div>
+      </div>
+    </ActionDetailsWrapper>
+  );
+}
+
+function ReasoningActionDetails({
+  action,
+  defaultOpen,
+}: ActionDetailsComponentBaseProps<MCPActionType>) {
+  const { output } = action;
+
+  const thinkingBlocks =
+    output?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
+
+  const reasoningSuccessBlocks =
+    output?.filter(isReasoningSuccessOutput).map((o) => o.resource) ?? [];
+
+  return (
+    <ActionDetailsWrapper
+      actionName="Reasoning"
+      defaultOpen={defaultOpen}
+      visual={TableIcon}
+    >
+      <div className="flex flex-col gap-4 pl-6 pt-4">
+        {thinkingBlocks.map((block) => (
+          <ThinkingBlock key={block.text} resource={block} />
+        ))}
+        {reasoningSuccessBlocks.map((block) => (
+          <ReasoningSuccessBlock key={block.text} resource={block} />
+        ))}
       </div>
     </ActionDetailsWrapper>
   );
