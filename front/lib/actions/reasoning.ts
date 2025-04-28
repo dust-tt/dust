@@ -263,10 +263,17 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
           return;
         }
         case "token": {
-          if (event.classification === "chain_of_thought") {
-            actionOutput.thinking += event.text;
+          const { classification, text } = event.token;
+          if (
+            classification === "opening_delimiter" ||
+            classification === "closing_delimiter"
+          ) {
+            continue;
+          }
+          if (classification === "chain_of_thought") {
+            actionOutput.thinking += text;
           } else {
-            actionOutput.content += event.text;
+            actionOutput.content += text;
           }
 
           yield {
@@ -285,14 +292,12 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
               type: "reasoning_action",
               generatedFiles: [],
             }),
-            content: event.text,
-            classification: event.classification,
+            content: text,
+            classification,
           } satisfies ReasoningTokensEvent;
           break;
         }
         case "success": {
-          actionOutput.content = event.content;
-          actionOutput.thinking = event.thinking;
           break;
         }
         case "runId": {
@@ -369,8 +374,8 @@ export async function* runReasoning(
   }
 ): AsyncGenerator<
   | { type: "error"; message: string }
-  | { type: "token"; text: string; classification: TokensClassification }
-  | { type: "success"; content: string; thinking: string }
+  | { type: "token"; token: GenerationTokensEvent }
+  | { type: "success" }
   | { type: "runId"; runId: Promise<string> }
 > {
   const owner = auth.getNonNullableWorkspace();
@@ -481,47 +486,15 @@ export async function* runReasoning(
   const redis = await getRedisClient({ origin: "reasoning_generation" });
   let lastCheckCancellation = Date.now();
 
-  const actionOutput = {
-    content: "",
-    thinking: "",
-  };
-
-  async function* processTokensEvents(
-    stream: AsyncGenerator<GenerationTokensEvent>
-  ): AsyncGenerator<{
-    type: "token";
-    text: string;
-    classification: TokensClassification;
-  }> {
-    for await (const token of stream) {
-      if (
-        token.classification === "opening_delimiter" ||
-        token.classification === "closing_delimiter"
-      ) {
-        continue;
-      }
-
-      if (token.classification === "chain_of_thought") {
-        actionOutput.thinking += token.text;
-      } else {
-        actionOutput.content += token.text;
-      }
-
-      yield {
-        type: "token",
-        text: token.text,
-        classification: token.classification,
-      };
-    }
-  }
-
   for await (const event of eventStream) {
     if (event.type === "function_call") {
       continue;
     }
 
     if (event.type === "error") {
-      yield* processTokensEvents(contentParser.flushTokens());
+      for await (const token of contentParser.flushTokens()) {
+        yield { type: "token", token };
+      }
       yield {
         type: "error",
         message: `Error running reasoning action: ${event.content.message}`,
@@ -548,9 +521,11 @@ export async function* runReasoning(
     }
 
     if (event.type === "tokens") {
-      yield* processTokensEvents(
-        contentParser.emitTokens(event.content.tokens.text)
-      );
+      for await (const token of contentParser.emitTokens(
+        event.content.tokens.text
+      )) {
+        yield { type: "token", token };
+      }
     }
 
     if (event.type === "block_execution") {
@@ -565,13 +540,11 @@ export async function* runReasoning(
     }
   }
 
-  yield* processTokensEvents(contentParser.flushTokens());
+  for await (const token of contentParser.flushTokens()) {
+    yield { type: "token", token };
+  }
 
-  yield {
-    type: "success",
-    content: actionOutput.content,
-    thinking: actionOutput.thinking,
-  };
+  yield { type: "success" };
 }
 
 export async function reasoningActionTypesFromAgentMessageIds(
