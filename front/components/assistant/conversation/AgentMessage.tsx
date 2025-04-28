@@ -698,7 +698,8 @@ export function AgentMessage({
             {generatedImages.map((image) => (
               <InteractiveImage
                 key={image.fileId}
-                src={`/api/w/${owner.sId}/files/${image.fileId}?action=download`}
+                imageUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=view`}
+                downloadUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=download`}
                 alt={`${image.title}`}
                 title={`${image.title}`}
                 isLoading={false}
