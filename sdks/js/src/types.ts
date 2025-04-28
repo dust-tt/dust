@@ -1,6 +1,6 @@
+import type { JSONSchema7 } from "json-schema";
 import moment from "moment-timezone";
 import { z } from "zod";
-import type { JSONSchema7 } from "json-schema";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 
@@ -242,18 +242,19 @@ export function isSupportedImageContentType(
 }
 
 const UserMessageOriginSchema = FlexibleEnumSchema<
+  | "api"
+  | "email"
+  | "extension"
+  | "github-copilot-chat"
+  | "gsheet"
+  | "make"
+  | "mcp"
+  | "n8n"
+  | "raycast"
   | "slack"
   | "web"
-  | "api"
-  | "gsheet"
   | "zapier"
-  | "n8n"
-  | "make"
   | "zendesk"
-  | "raycast"
-  | "github-copilot-chat"
-  | "extension"
-  | "email"
 >()
   .or(z.null())
   .or(z.undefined());
