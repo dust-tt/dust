@@ -24,13 +24,15 @@ export const InteractiveImageExample = () => (
     <h2>Loaded</h2>
     <InteractiveImage
       alt="Example of an interactive image"
-      src="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+      downloadUrl="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+      imageUrl="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
       title="Example of an interactive image"
     />
     <h3>With 4:3 aspect ratio</h3>
     <InteractiveImage
       alt="Example of a 4:3 aspect ratio interactive image"
-      src="https://upload.wikimedia.org/wikipedia/commons/d/de/Aspect-ratio-4x3.svg"
+      downloadUrl="https://upload.wikimedia.org/wikipedia/commons/d/de/Aspect-ratio-4x3.svg"
+      imageUrl="https://upload.wikimedia.org/wikipedia/commons/d/de/Aspect-ratio-4x3.svg"
       title="Example of a 4:3 aspect ratio interactive image"
     />
   </div>
