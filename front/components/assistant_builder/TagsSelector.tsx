@@ -7,8 +7,6 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Icon,
-  MagnifyingGlassIcon,
   PlusIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";

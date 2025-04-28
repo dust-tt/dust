@@ -116,7 +116,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations", () => {
   itInTransaction(
     "returns agent list configurations successfully - should not include other users' agents",
     async (t) => {
-      const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      const { req, res, workspace } = await createPrivateApiMockRequest({
         method: "GET",
       });
       const { agentOwner } = await setupAgentOwner(workspace, "admin");
