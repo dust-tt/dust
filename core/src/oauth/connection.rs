@@ -506,8 +506,7 @@ impl Connection {
             self.related_credential_id = connection.related_credential_id;
         } else {
             return Err(anyhow::anyhow!(
-                "Connection not found in store: {}",
-                self.connection_id
+                "Connection not found in store while reloading",
             ));
         }
         Ok(())
