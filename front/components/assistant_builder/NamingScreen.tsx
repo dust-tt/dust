@@ -874,7 +874,7 @@ function TagsSuggestions({
   return (
     <>
       {tagsSuggestions.status === "ok" &&
-        tagsSuggestions.suggestions?.length && (
+        filteredTagsSuggestions.length > 0 && (
           <div className="flex items-center gap-2">
             <div className="text-muted-foregroup text-xs font-semibold dark:text-muted-foreground-night">
               Suggestions:
