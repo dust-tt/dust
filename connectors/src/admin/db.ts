@@ -7,6 +7,11 @@ import {
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 import {
+  FreshServiceTicketModel,
+  FreshServiceTimestampCursorModel,
+} from "@connectors/lib/models/freshservice";
+import { FreshServiceConfigurationModel } from "@connectors/lib/models/freshservice";
+import {
   GithubCodeDirectory,
   GithubCodeFile,
   GithubCodeRepository,
@@ -139,6 +144,9 @@ async function main(): Promise<void> {
   await GongConfigurationModel.sync({ alter: true });
   await GongTranscriptModel.sync({ alter: true });
   await GongUserModel.sync({ alter: true });
+  await FreshServiceConfigurationModel.sync({ alter: true });
+  await FreshServiceTimestampCursorModel.sync({ alter: true });
+  await FreshServiceTicketModel.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
