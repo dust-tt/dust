@@ -50,7 +50,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isAdmin, Ok } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export function removeLeadingAt(handle: string) {
@@ -500,6 +500,7 @@ export default function NamingScreen({
                   owner={owner}
                   builderState={builderState}
                   setBuilderState={setBuilderState}
+                  setEdited={setEdited}
                 />
                 <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                   <TagsSelector
@@ -602,7 +603,7 @@ async function getTagsSuggestions({
         instructions,
         description,
         tags,
-        isAdmin: owner.role === "admin",
+        isAdmin: isAdmin(owner),
       },
     }),
   });
@@ -794,12 +795,14 @@ function TagsSuggestions({
   owner,
   builderState,
   setBuilderState,
+  setEdited,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
+  setEdited: (edited: boolean) => void;
 }) {
   const { tags, isTagsLoading } = useTags({ owner });
 
@@ -817,7 +820,7 @@ function TagsSuggestions({
     }
 
     // As only admin can create tag, we make sure the suggestions we received exist
-    if (owner.role !== "admin") {
+    if (isAdmin(owner)) {
       return (
         tagsSuggestions.suggestions
           ?.slice(0, 3)
@@ -826,7 +829,7 @@ function TagsSuggestions({
     }
 
     return tagsSuggestions.suggestions ?? [];
-  }, [owner.role, tagsSuggestions, tags]);
+  }, [owner, tagsSuggestions, tags]);
 
   const updateTagsSuggestions = useCallback(async () => {
     const tagsSuggestions = await getTagsSuggestions({
@@ -859,7 +862,7 @@ function TagsSuggestions({
       builderState.tags.findIndex((t) => t.name === name) !== -1;
     let tag: TagType | null = tags.find((t) => t.name === name) ?? null;
 
-    if (tag === null && !isTagInAssistant && owner.role === "admin") {
+    if (tag === null && !isTagInAssistant && isAdmin(owner)) {
       tag = await createTag(name);
     }
 
@@ -869,6 +872,8 @@ function TagsSuggestions({
         tags: state.tags.concat(tag),
       }));
     }
+
+    setEdited(true);
   };
 
   return (
