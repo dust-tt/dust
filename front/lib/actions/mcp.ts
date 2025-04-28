@@ -49,6 +49,7 @@ import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
   FunctionMessageTypeModel,
+  ModelConfigurationType,
   ModelId,
   Result,
 } from "@app/types";
@@ -248,13 +249,34 @@ export class MCPActionType extends BaseAction {
     };
   }
 
-  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
+  async renderForMultiActionsModel({
+    model,
+  }: {
+    model: ModelConfigurationType;
+  }): Promise<FunctionMessageTypeModel> {
     if (!this.functionCallName) {
       throw new Error("MCPAction: functionCallName is required");
     }
 
     if (!this.functionCallId) {
       throw new Error("MCPAction: functionCallId is required");
+    }
+
+    const totalTextLength =
+      this.output?.reduce(
+        (acc, curr) =>
+          acc + (curr.type === "text" ? curr.text?.length ?? 0 : 0),
+        0
+      ) ?? 0;
+
+    if (totalTextLength > model.contextSize * 0.9) {
+      return {
+        role: "function" as const,
+        name: this.functionCallName,
+        function_call_id: this.functionCallId,
+        content:
+          "The tool returned too much content. The response cannot be processed.",
+      };
     }
 
     return {
@@ -547,16 +569,15 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         isError: true,
       });
 
-      const toolErr = normalizeError(toolCallResult.error);
+      const toolErr = normalizeError(toolCallResult.error) as Error & {
+        code?: number;
+      };
       let errorMessage: string;
 
       // We don't want to expose the MCP full error message to the user.
-      if (toolErr.message.includes("timed out")) {
+      if (toolErr?.code && toolErr.code === -32001) {
         // MCP Error -32001: Request timed out
         errorMessage = `The tool ${actionConfiguration.originalName} timed out. `;
-      } else if (toolErr.message.includes("returned too much content")) {
-        // Dust Error: The tool returned too much content.
-        errorMessage = `The tool ${actionConfiguration.originalName} returned too much content. `;
       } else {
         errorMessage = `The tool ${actionConfiguration.originalName} returned an error. `;
       }

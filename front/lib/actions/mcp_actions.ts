@@ -50,7 +50,6 @@ import type {
   MCPToolType,
   PlatformMCPToolTypeWithStakeLevel,
 } from "@app/lib/api/mcp";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -183,21 +182,7 @@ export async function tryCallMCPTool(
       );
     }
 
-    const supportedModel = getSupportedModelConfig(
-      agentLoopContext.agentConfiguration.model
-    );
-    const totalTextLength = content.reduce(
-      (acc, curr) => acc + (curr.type === "text" ? curr.text?.length ?? 0 : 0),
-      0
-    );
-
-    if (totalTextLength > supportedModel.contextSize * 0.9) {
-      return new Err(
-        new Error(
-          `The tool ${agentLoopContext.actionConfiguration.originalName} returned too much content.`
-        )
-      );
-    }
+    // TODO(mcp) refuse if the content is too large
 
     return new Ok(content);
   } catch (error) {
