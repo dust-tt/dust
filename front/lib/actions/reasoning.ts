@@ -26,6 +26,7 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   GenerationTokensEvent,
+  ModelConfigurationType,
   ModelId,
   ModelIdType,
   ModelProviderIdType,
@@ -232,6 +233,25 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     if (!actionConfig || !isReasoningConfiguration(actionConfig)) {
       throw new Error("Unreachable: Reasoning configuration not found");
     }
+    const supportedModel = SUPPORTED_MODEL_CONFIGS.find(
+      (m) =>
+        m.modelId === actionConfig.modelId &&
+        m.providerId === actionConfig.providerId
+    );
+
+    if (!supportedModel) {
+      yield {
+        type: "reasoning_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "reasoning_error",
+          message: "Reasoning configuration not found",
+        },
+      };
+      return;
+    }
 
     const actionOutput = {
       content: "",
@@ -240,9 +260,8 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
 
     let dustRunId: Promise<string> | undefined;
 
-    // Process the shared reasoning generator
     for await (const event of runReasoning(auth, {
-      reasoningModel: { ...actionConfig },
+      supportedModel,
       conversation,
       agentConfiguration,
       agentMessage,
@@ -357,13 +376,13 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
 export async function* runReasoning(
   auth: Authenticator,
   {
-    reasoningModel,
+    supportedModel,
     conversation,
     agentConfiguration,
     agentMessage,
     actionConfig,
   }: {
-    reasoningModel: ReasoningModelConfiguration;
+    supportedModel: ModelConfigurationType;
     conversation: ConversationType;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
@@ -375,17 +394,6 @@ export async function* runReasoning(
   | { type: "runId"; runId: Promise<string> }
 > {
   const owner = auth.getNonNullableWorkspace();
-
-  // Retrieve the model and check that the owner is allowed to use it.
-  const supportedModel = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === reasoningModel.modelId &&
-      m.providerId === reasoningModel.providerId
-  );
-  if (!supportedModel) {
-    yield { type: "error", message: "Reasoning configuration not found" };
-    return;
-  }
 
   if (!isProviderWhitelisted(owner, supportedModel.providerId)) {
     yield { type: "error", message: "Provider not supported" };
