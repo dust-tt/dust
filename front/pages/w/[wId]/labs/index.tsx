@@ -49,6 +49,7 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     icon: BookOpenIcon,
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
+    onlyAdminCanManage: true,
   },
   {
     id: "salesforce_personal_connections",
@@ -172,6 +173,7 @@ export default function LabsTranscriptsIndex({
                       managePath={`/w/${owner.sId}/labs/${item.id}`}
                       owner={owner}
                       canRequestAccess={isAdmin}
+                      canManage={!item.onlyAdminCanManage || isAdmin}
                     />
                   }
                   visual={<Icon visual={item.icon} />}
@@ -231,6 +233,7 @@ export default function LabsTranscriptsIndex({
                                 featureName={`${item.label} connection`}
                                 owner={owner}
                                 canRequestAccess={isAdmin}
+                                canManage={true}
                                 connection={item}
                                 dataSourcesViews={dataSourceViews}
                                 spaces={spaces}
