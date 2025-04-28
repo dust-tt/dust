@@ -7,15 +7,13 @@ import { cn } from "@sparkle/lib";
 interface TourStep {
   ref?: React.RefObject<HTMLElement>;
   content: React.ReactNode;
-  title?: React.ReactNode;
+  title?: string;
   visual?: React.ReactNode;
 }
 
 export interface TourGuideProps {
   steps: TourStep[];
-  /** Automatically start the tour on mount (default: true) */
   autoStart?: boolean;
-  /** Callback when tour is started/restarted */
   onStart?: () => void;
 }
 
@@ -31,17 +29,18 @@ export function TourGuide({
     left: "50%",
     width: "0px",
     height: "0px",
-    transform: "translate(-50%, -50%)",
   });
 
+  // Only run on mount and when autoStart changes
   useEffect(() => {
     if (autoStart) {
       setIsActive(true);
       setCurrentIndex(0);
       onStart?.();
     }
-  }, [steps, autoStart, onStart]);
+  }, [autoStart, onStart]);
 
+  // Handle position updates
   useEffect(() => {
     const currentStep = steps[currentIndex];
     if (!currentStep?.ref) {
@@ -50,18 +49,22 @@ export function TourGuide({
         left: "50%",
         width: "0px",
         height: "0px",
-        transform: "translate(-50%, -50%)",
       });
-    } else if (currentStep.ref.current) {
-      const rect = currentStep.ref.current.getBoundingClientRect();
-      setPosition({
-        top: `${rect.top}px`,
-        left: `${rect.left}px`,
-        width: `${rect.width}px`,
-        height: `${rect.height}px`,
-        transform: "none",
-      });
+      return;
     }
+
+    const element = currentStep.ref.current;
+    if (!element) {
+      return;
+    }
+
+    const rect = element.getBoundingClientRect();
+    setPosition({
+      top: `${rect.top}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+    });
   }, [currentIndex, steps]);
 
   const handleNext = () => {
@@ -80,7 +83,8 @@ export function TourGuide({
     return null;
   }
 
-  const { content, title, visual } = steps[currentIndex];
+  const currentStep = steps[currentIndex];
+  const { content, title, visual } = currentStep;
   const isLastStep = currentIndex === steps.length - 1;
 
   return (
@@ -92,13 +96,12 @@ export function TourGuide({
           left: position.left,
           width: position.width,
           height: position.height,
-          transform: position.transform,
         }}
       />
       <PopoverPrimitive.Content
         className={cn(
-          "s-max-w-xs s-overflow-hidden s-rounded-2xl s-border s-shadow-xl s-transition-all s-duration-300 s-ease-in-out",
-          !steps[currentIndex]?.ref && "s-translate-y-[-50%]",
+          "s-w-96 s-max-w-xs s-overflow-hidden s-rounded-2xl s-border s-shadow-xl s-transition-all s-duration-300 s-ease-in-out",
+          !currentStep.ref && "s-translate-y-[-50%]",
           "s-border-border s-bg-background s-text-foreground",
           "dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night"
         )}
