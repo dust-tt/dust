@@ -12,9 +12,10 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
+import type { PaginationState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
@@ -347,6 +348,8 @@ function DomainAutoJoinModal({
   );
 }
 
+const DEFAULT_PAGE_SIZE = 25;
+
 function WorkspaceMembersList({
   currentUserId,
   owner,
@@ -356,12 +359,21 @@ function WorkspaceMembersList({
   owner: WorkspaceType;
   searchTerm: string;
 }) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+
   const membersData = useSearchMembers({
     workspaceId: owner.sId,
     searchTerm,
-    pageIndex: 0,
-    pageSize: 25,
+    pageIndex: pagination.pageIndex,
+    pageSize: DEFAULT_PAGE_SIZE,
   });
+
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [setPagination]);
 
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspaces | null>(null);
@@ -374,6 +386,8 @@ function WorkspaceMembersList({
         membersData={membersData}
         onRowClick={(user) => setSelectedMember(user)}
         showColumns={["name", "email", "role"]}
+        pagination={pagination}
+        setPagination={setPagination}
       />
       <ChangeMemberModal
         onClose={() => setSelectedMember(null)}

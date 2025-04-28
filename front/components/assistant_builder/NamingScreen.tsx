@@ -16,6 +16,7 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import type { PaginationState } from "@tanstack/react-table";
 import React, {
   useCallback,
   useContext,
@@ -596,6 +597,8 @@ async function fetchWithErr<T>(
   }
 }
 
+const DEFAULT_PAGE_SIZE = 25;
+
 function EditorsMembersList({
   currentUserId,
   owner,
@@ -603,6 +606,14 @@ function EditorsMembersList({
   currentUserId: string;
   owner: WorkspaceType;
 }) {
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [setPagination]);
+
   const membersData = {
     members: [
       {
@@ -675,6 +686,8 @@ function EditorsMembersList({
         onRowClick={() => {}}
         onRemoveMemberClick={() => {}}
         showColumns={["name", "email", "remove"]}
+        pagination={pagination}
+        setPagination={setPagination}
       />
     </div>
   );
