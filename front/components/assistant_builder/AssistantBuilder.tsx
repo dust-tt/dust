@@ -522,6 +522,8 @@ export default function AssistantBuilder({
                   case "naming":
                     return (
                       <NamingScreen
+                        agentConfigurationId={agentConfigurationId}
+                        baseUrl={baseUrl}
                         owner={owner}
                         builderState={builderState}
                         initialHandle={initialBuilderState?.handle}
@@ -530,6 +532,9 @@ export default function AssistantBuilder({
                         assistantHandleError={assistantHandleError}
                         descriptionError={descriptionError}
                         isAgentDiscoveryEnabled={isAgentDiscoveryEnabled}
+                        slackChannelSelected={selectedSlackChannels || []}
+                        slackDataSource={slackDataSource}
+                        setSelectedSlackChannels={setSelectedSlackChannels}
                       />
                     );
                   default:

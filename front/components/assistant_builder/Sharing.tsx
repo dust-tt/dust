@@ -371,6 +371,13 @@ export function SharingDropdown({
     scopes = scopes.filter(
       ([entryScope]) => entryScope !== "hidden" && entryScope !== "visible"
     );
+  } else {
+    scopes = scopes.filter(
+      ([entryScope]) =>
+        entryScope === agentConfiguration?.scope ||
+        entryScope === "hidden" ||
+        entryScope === "visible"
+    );
   }
 
   const usageText = assistantName

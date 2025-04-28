@@ -1,17 +1,20 @@
 import {
   Avatar,
   Button,
+  ClipboardIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Icon,
   IconButton,
   Input,
   Page,
   PencilSquareIcon,
   PlusIcon,
+  SlackLogo,
   SliderToggle,
   SparklesIcon,
   Spinner,
@@ -34,6 +37,8 @@ import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
+import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
+import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -44,11 +49,12 @@ import type {
   APIError,
   BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
+  DataSourceType,
   Result,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isAdmin, Ok } from "@app/types";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -59,8 +65,8 @@ function assistantHandleIsValid(handle: string) {
 }
 
 const VISIBILITY_DESCRIPTIONS = {
-  visible: "Visible to all members",
-  hidden: "Limited to editors",
+  visible: "Visible & usable by the members of Company Space.",
+  hidden: "Limited to editors.",
   published: "Visible to all members [legacy Shared]",
   workspace: "Visible to all members [legacy Workspace]",
   private: "Limited to current user[legacy Private]",
@@ -148,17 +154,10 @@ export async function validateHandle({
   };
 }
 
-export default function NamingScreen({
-  owner,
-  builderState,
-  initialHandle,
-  setBuilderState,
-  setEdited,
-  assistantHandleError,
-  descriptionError,
-  isAgentDiscoveryEnabled,
-}: {
+type NamingScreenProps = {
   owner: WorkspaceType;
+  agentConfigurationId: string | null;
+  baseUrl: string;
   builderState: AssistantBuilderState;
   initialHandle: string | undefined;
   setBuilderState: (
@@ -168,10 +167,33 @@ export default function NamingScreen({
   assistantHandleError: string | null;
   descriptionError: string | null;
   isAgentDiscoveryEnabled: boolean;
-}) {
+  slackChannelSelected: SlackChannel[];
+  slackDataSource: DataSourceType | undefined;
+  setSelectedSlackChannels: (channels: SlackChannel[]) => void;
+};
+
+export default function NamingScreen({
+  owner,
+  agentConfigurationId,
+  baseUrl,
+  builderState,
+  initialHandle,
+  setBuilderState,
+  setEdited,
+  assistantHandleError,
+  descriptionError,
+  isAgentDiscoveryEnabled,
+  slackChannelSelected,
+  slackDataSource,
+  setSelectedSlackChannels,
+}: NamingScreenProps) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [slackDrawerOpened, setSlackDrawerOpened] = useState(false);
+
+  const shareLink = `${baseUrl}/w/${owner.sId}/assistant/new?assistantDetails=${agentConfigurationId}`;
+  const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
 
   // Name suggestions handling
   const [nameSuggestions, setNameSuggestions] =
@@ -344,6 +366,20 @@ export default function NamingScreen({
 
   return (
     <>
+      {slackDataSource && (
+        <SlackAssistantDefaultManager
+          existingSelection={slackChannelSelected}
+          owner={owner}
+          onSave={(slackChannels: SlackChannel[]) => {
+            setSelectedSlackChannels(slackChannels);
+            setEdited(true);
+          }}
+          assistantHandle="@Dust"
+          show={slackDrawerOpened}
+          slackDataSource={slackDataSource}
+          onClose={() => setSlackDrawerOpened(false)}
+        />
+      )}
       <AvatarPicker
         owner={owner}
         isOpen={isAvatarModalOpen}
@@ -500,17 +536,19 @@ export default function NamingScreen({
             <div className="flex flex-row gap-4">
               <div className="flex flex-[1_0_0] flex-col gap-4">
                 <Page.SectionHeader title="Visibility" />
-                <div className="flex flex-row items-center gap-2">
-                  <SliderToggle
-                    selected={isVisible}
-                    onClick={() => {
-                      setBuilderState((state) => ({
-                        ...state,
-                        scope: isVisible ? "hidden" : "visible",
-                      }));
-                      setEdited(true);
-                    }}
-                  />
+                <div className="flex flex-row items-start gap-2">
+                  <div className="min-w-12">
+                    <SliderToggle
+                      selected={isVisible}
+                      onClick={() => {
+                        setBuilderState((state) => ({
+                          ...state,
+                          scope: isVisible ? "hidden" : "visible",
+                        }));
+                        setEdited(true);
+                      }}
+                    />
+                  </div>
                   <div className="flex flex-col gap-1">
                     <span className="dark:text-foreground-nightt text-sm font-semibold text-foreground">
                       {isVisible ? "Visible" : "Hidden"}
@@ -518,8 +556,75 @@ export default function NamingScreen({
                     <span className="dark:text-muted-foreground-nightt text-sm font-normal text-muted-foreground">
                       {VISIBILITY_DESCRIPTIONS[builderState.scope]}
                     </span>
+
+                    {agentConfigurationId && (
+                      <div className="pt-2">
+                        <Button
+                          size="xs"
+                          icon={ClipboardIcon}
+                          label={copyLinkSuccess ? "Copied!" : "Copy link"}
+                          variant="outline"
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(shareLink);
+                            setCopyLinkSuccess(true);
+                            setTimeout(() => {
+                              setCopyLinkSuccess(false);
+                            }, 1000);
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
+                {isVisible && (
+                  <>
+                    <div className="flex flex-row items-start gap-2">
+                      <div className="min-w-12">
+                        <SliderToggle
+                          selected={slackChannelSelected.length > 0}
+                          disabled={
+                            !slackDataSource ||
+                            (slackChannelSelected.length > 0 && !isAdmin(owner))
+                          }
+                          onClick={() => {
+                            if (slackChannelSelected.length > 0) {
+                              setSelectedSlackChannels([]);
+                              setEdited(true);
+                            } else {
+                              setSlackDrawerOpened(true);
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="flex flex-row items-center gap-1 text-sm font-semibold text-foreground dark:text-foreground-night">
+                          <Icon visual={SlackLogo} size="sm" />
+                          Slack integration
+                        </span>
+                        <span className="dark:text-muted-foreground-nightt text-sm font-normal text-muted-foreground">
+                          {slackChannelSelected.length > 0
+                            ? `Default agent for ${slackChannelSelected.map((c) => c.slackChannelName).join(", ")}`
+                            : "Set this agent as the default agent on one or several of your Slack channels."}
+                        </span>
+
+                        {slackChannelSelected.length > 0 && (
+                          <div className="pt-2">
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              icon={PencilSquareIcon}
+                              label="Manage channels"
+                              onClick={() => {
+                                setSlackDrawerOpened(true);
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div></div>
+                  </>
+                )}
               </div>
               <div className="flex flex-[1_0_0] flex-col gap-4">
                 <Page.SectionHeader title="Tags" />
