@@ -21,6 +21,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -39,6 +40,7 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useCreateTag, useTags } from "@app/lib/swr/tags";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
@@ -49,7 +51,8 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isAdmin, Ok } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -494,6 +497,12 @@ export default function NamingScreen({
               </div>
               <div className="flex flex-[1_0_0] flex-col gap-4">
                 <Page.SectionHeader title="Tags" />
+                <TagsSuggestions
+                  owner={owner}
+                  builderState={builderState}
+                  setBuilderState={setBuilderState}
+                  setEdited={setEdited}
+                />
                 <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                   <TagsSelector
                     owner={owner}
@@ -569,6 +578,34 @@ async function getDescriptionSuggestions({
     body: JSON.stringify({
       type: "description",
       inputs: { instructions, name },
+    }),
+  });
+}
+
+async function getTagsSuggestions({
+  owner,
+  instructions,
+  description,
+  tags,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+  description: string;
+  tags: string[];
+}): Promise<Result<BuilderSuggestionsType, APIError>> {
+  return fetchWithErr(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "tags",
+      inputs: {
+        instructions,
+        description,
+        tags,
+        isAdmin: isAdmin(owner),
+      },
     }),
   });
 }
@@ -764,5 +801,114 @@ function AddEditorDropdown({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function TagsSuggestions({
+  owner,
+  builderState,
+  setBuilderState,
+  setEdited,
+}: {
+  owner: WorkspaceType;
+  builderState: AssistantBuilderState;
+  setBuilderState: (
+    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
+  setEdited: (edited: boolean) => void;
+}) {
+  const { tags, isTagsLoading } = useTags({ owner });
+
+  const { createTag } = useCreateTag({ owner });
+  const tagsDebounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+  const [tagsSuggestions, setTagsSuggestions] =
+    useState<BuilderSuggestionsType>({
+      status: "unavailable",
+      reason: "irrelevant",
+    });
+
+  const filteredTagsSuggestions = useMemo(() => {
+    if (tagsSuggestions.status !== "ok") {
+      return [];
+    }
+
+    // As only admin can create tag, we make sure the suggestions we received exist
+    if (isAdmin(owner)) {
+      return (
+        tagsSuggestions.suggestions
+          ?.slice(0, 3)
+          .filter((tag) => tags.findIndex((t) => t.name === tag) !== -1) ?? []
+      );
+    }
+
+    return tagsSuggestions.suggestions ?? [];
+  }, [owner, tagsSuggestions, tags]);
+
+  const updateTagsSuggestions = useCallback(async () => {
+    const tagsSuggestions = await getTagsSuggestions({
+      owner,
+      instructions: builderState.instructions || "",
+      description: builderState.description || "",
+      tags: tags.map((t) => t.name),
+    });
+
+    if (tagsSuggestions.isOk()) {
+      setTagsSuggestions(tagsSuggestions.value);
+    }
+  }, [owner, builderState.description, builderState.instructions, tags]);
+
+  useEffect(() => {
+    if (!isTagsLoading) {
+      debounce(tagsDebounceHandle, updateTagsSuggestions);
+    }
+  }, [
+    owner,
+    builderState.description,
+    builderState.instructions,
+    updateTagsSuggestions,
+    tags,
+    isTagsLoading,
+  ]);
+
+  const addTag = async (name: string) => {
+    const isTagInAssistant =
+      builderState.tags.findIndex((t) => t.name === name) !== -1;
+    let tag: TagType | null = tags.find((t) => t.name === name) ?? null;
+
+    if (tag === null && !isTagInAssistant && isAdmin(owner)) {
+      tag = await createTag(name);
+    }
+
+    if (tag != null && !isTagInAssistant) {
+      setBuilderState((state) => ({
+        ...state,
+        tags: state.tags.concat(tag),
+      }));
+    }
+
+    setEdited(true);
+  };
+
+  return (
+    <>
+      {tagsSuggestions.status === "ok" &&
+        filteredTagsSuggestions.length > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="text-muted-foregroup text-xs font-semibold dark:text-muted-foreground-night">
+              Suggestions:
+            </div>
+
+            {filteredTagsSuggestions.map((tag) => (
+              <Button
+                key={`tag-suggestion-${tag}`}
+                size="xs"
+                variant="outline"
+                label={tag}
+                onClick={() => addTag(tag)}
+              />
+            ))}
+          </div>
+        )}
+    </>
   );
 }

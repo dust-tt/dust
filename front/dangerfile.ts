@@ -115,6 +115,14 @@ function warnDocumentationAck(documentationAckLabel: string) {
   );
 }
 
+function checkAppsRegistry() {
+  warn(
+    `File \`front/lib/registry.ts\` has been modified.
+    Please check [Runbook: Update Assistant dust-apps](https://www.notion.so/dust-tt/Runbook-Update-Assistant-dust-apps-18c28599d94180d78dabe92f445157a8)
+    `
+  );
+}
+
 function checkDiffFiles() {
   const diffFiles = danger.git.modified_files
     .concat(danger.git.created_files)
@@ -160,6 +168,15 @@ function checkDiffFiles() {
 
   if (modifiedSdksFiles.length > 0) {
     checkSDKLabel();
+  }
+
+  // dust-apps registry
+  const modifiedAppsRegistry = diffFiles.filter((path) => {
+    return path === "front/lib/registry.ts";
+  });
+
+  if (modifiedAppsRegistry.length > 0) {
+    checkAppsRegistry();
   }
 }
 
