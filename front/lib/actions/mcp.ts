@@ -546,15 +546,42 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       await action.update({
         isError: true,
       });
+
+      const toolErr = normalizeError(toolCallResult.error);
+      let errorMessage: string;
+
+      // We don't want to expose the MCP full error message to the user.
+      if (toolErr.message.includes("timed out")) {
+        // MCP Error -32001: Request timed out
+        errorMessage = `The tool ${actionConfiguration.originalName} timed out. `;
+      } else if (toolErr.message.includes("returned too much content")) {
+        // Dust Error: The tool returned too much content.
+        errorMessage = `The tool ${actionConfiguration.originalName} returned too much content. `;
+      } else {
+        errorMessage = `The tool ${actionConfiguration.originalName} returned an error. `;
+      }
+      errorMessage +=
+        "An error occured while executing the tool. You can inform the user of this issue.";
+
       yield {
-        type: "tool_error",
+        type: "tool_success",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        error: {
-          code: "tool_error",
-          message: `Error calling tool ${actionConfiguration.name}, error: ${normalizeError(toolCallResult.error).message}.`,
-        },
+        action: new MCPActionType({
+          ...actionBaseParams,
+          generatedFiles: [],
+          executionState: status,
+          id: action.id,
+          isError: false,
+          output: [
+            {
+              type: "text",
+              text: errorMessage,
+            },
+          ],
+          type: "tool_action",
+        }),
       };
       return;
     }
