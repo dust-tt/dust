@@ -33,6 +33,7 @@ import type {
   TokensClassification,
 } from "@app/types";
 import {
+  assertNever,
   CLAUDE_3_7_SONNET_20250219_MODEL_ID,
   isProviderWhitelisted,
   Ok,
@@ -231,7 +232,6 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       throw new Error("Unreachable: Reasoning configuration not found");
     }
 
-    // Use the shared reasoning function
     const actionOutput = {
       content: "",
       thinking: "",
@@ -247,50 +247,59 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       agentMessage,
       actionConfig,
     })) {
-      if (event.type === "error") {
-        yield {
-          type: "reasoning_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "reasoning_error",
-            message: event.message,
-          },
-        };
-        return;
-      } else if (event.type === "token") {
-        if (event.classification === "chain_of_thought") {
-          actionOutput.thinking += event.text;
-        } else {
-          actionOutput.content += event.text;
+      switch (event.type) {
+        case "error": {
+          yield {
+            type: "reasoning_error",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "reasoning_error",
+              message: event.message,
+            },
+          };
+          return;
         }
+        case "token": {
+          if (event.classification === "chain_of_thought") {
+            actionOutput.thinking += event.text;
+          } else {
+            actionOutput.content += event.text;
+          }
 
-        yield {
-          type: "reasoning_tokens",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          action: new ReasoningActionType({
-            id: action.id,
-            agentMessageId: action.agentMessageId,
-            output: actionOutput.content,
-            thinking: actionOutput.thinking,
-            functionCallId: action.functionCallId,
-            functionCallName: action.functionCallName,
-            step: action.step,
-            type: "reasoning_action",
-            generatedFiles: [],
-          }),
-          content: event.text,
-          classification: event.classification,
-        };
-      } else if (event.type === "success") {
-        actionOutput.content = event.content;
-        actionOutput.thinking = event.thinking;
-
-        // The dustRunId is returned as the final value from the generator
-        dustRunId = event as unknown as Promise<string>;
+          yield {
+            type: "reasoning_tokens",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            action: new ReasoningActionType({
+              id: action.id,
+              agentMessageId: action.agentMessageId,
+              output: actionOutput.content,
+              thinking: actionOutput.thinking,
+              functionCallId: action.functionCallId,
+              functionCallName: action.functionCallName,
+              step: action.step,
+              type: "reasoning_action",
+              generatedFiles: [],
+            }),
+            content: event.text,
+            classification: event.classification,
+          } satisfies ReasoningTokensEvent;
+          break;
+        }
+        case "success": {
+          actionOutput.content = event.content;
+          actionOutput.thinking = event.thinking;
+          break;
+        }
+        case "runId": {
+          dustRunId = event.runId;
+          break;
+        }
+        default:
+          assertNever(event);
       }
     }
 
@@ -361,6 +370,7 @@ export async function* runReasoning(
   | { type: "error"; message: string }
   | { type: "token"; text: string; classification: TokensClassification }
   | { type: "success"; content: string; thinking: string }
+  | { type: "runId"; runId: Promise<string> }
 > {
   const owner = auth.getNonNullableWorkspace();
 
@@ -403,7 +413,6 @@ export async function* runReasoning(
     };
     return;
   }
-
   const renderedConversation = renderedConversationRes.value;
 
   // Configure the app.
@@ -459,6 +468,8 @@ export async function* runReasoning(
   }
 
   const { eventStream, dustRunId } = res.value;
+
+  yield { type: "runId", runId: dustRunId };
 
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
@@ -568,8 +579,6 @@ export async function* runReasoning(
     content: actionOutput.content,
     thinking: actionOutput.thinking,
   };
-
-  return dustRunId;
 }
 
 export async function reasoningActionTypesFromAgentMessageIds(
