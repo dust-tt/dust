@@ -10,6 +10,47 @@ import {
 import { ArrowDownOnSquareIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
+interface DownloadButtonProps {
+  className?: string;
+  size?: "xs" | "sm";
+  src?: string;
+  title: string;
+}
+
+function DownloadButton({
+  className,
+  size = "xs",
+  src,
+  title,
+}: DownloadButtonProps) {
+  const handleDownload = React.useCallback(async () => {
+    if (!src) {
+      return;
+    }
+
+    // Create a hidden link and click it.
+    const link = document.createElement("a");
+    link.href = src;
+    link.download = title;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [src, title]);
+
+  return (
+    <IconButton
+      icon={ArrowDownOnSquareIcon}
+      className={cn("s-text-white", className)}
+      tooltip="Download"
+      size={size}
+      onClick={async (e) => {
+        e.stopPropagation(); // Prevent image zoom.
+        await handleDownload();
+      }}
+    />
+  );
+}
+
 interface InteractiveImageProps {
   alt: string;
   isLoading?: boolean;
@@ -52,11 +93,19 @@ export function InteractiveImage({
       <DialogContent
         className={cn(
           "s-w-auto s-max-w-none s-border-0 s-outline-none s-ring-0",
-          "focus:s-outline-none focus:s-ring-0"
+          "focus:s-outline-none focus:s-ring-0",
+          "s-rounded-none s-bg-transparent s-shadow-none"
         )}
         size="xl"
       >
-        <img src={src} alt={alt} className="s-object-contain" />
+        <div className="s-flex s-flex-col">
+          <div className="s-flex s-justify-end s-pb-2 s-pr-1 s-pt-1">
+            <DownloadButton src={src} title={props.title} size="sm" />
+          </div>
+          <div className="s-relative s-w-full">
+            <img src={src} alt={alt} className="s-w-full s-object-contain" />
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -81,20 +130,6 @@ function ImagePreview({
   src,
   title,
 }: ImagePreviewProps) {
-  const handleDownload = React.useCallback(async () => {
-    if (!src) {
-      return;
-    }
-
-    // Create a hidden link and click it.
-    const link = document.createElement("a");
-    link.href = src;
-    link.download = title;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, [src, title]);
-
   return (
     <div
       onClick={onClick}
@@ -130,16 +165,7 @@ function ImagePreview({
               "group-hover/preview:s-opacity-100"
             )}
           >
-            <IconButton
-              icon={ArrowDownOnSquareIcon}
-              className="s-text-white"
-              tooltip="Download"
-              size="xs"
-              onClick={async (e) => {
-                e.stopPropagation(); // Prevent image zoom.
-                await handleDownload();
-              }}
-            />
+            <DownloadButton src={src} title={title} size="xs" />
           </div>
         </>
       )}
