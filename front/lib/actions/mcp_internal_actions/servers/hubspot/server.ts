@@ -18,10 +18,13 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
 import {
   ERROR_MESSAGES,
-  returnJSONStringifiedSuccess,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hupspot_utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeMCPToolJSONSuccess,
+  makeMCPToolTextError,
+  makeMCPToolTextSuccess,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -53,7 +56,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           objectType,
           creatableOnly,
         });
-        return returnJSONStringifiedSuccess({
+        return makeMCPToolJSONSuccess({
           message: "Operation completed successfully",
           result,
         });
@@ -77,7 +80,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           objectType,
           objectProperties: { properties, associations: [] },
         });
-        return returnJSONStringifiedSuccess({
+        return makeMCPToolJSONSuccess({
           message: "Operation completed successfully",
           result,
         });
@@ -101,7 +104,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           objectId,
           objectProperties: { properties, associations: [] },
         });
-        return returnJSONStringifiedSuccess({
+        return makeMCPToolJSONSuccess({
           message: "Operation completed successfully",
           result,
         });
@@ -122,7 +125,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         if (!object) {
           return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
         }
-        return returnJSONStringifiedSuccess({
+        return makeMCPToolJSONSuccess({
           message: "Operation completed successfully",
           result: object,
         });
@@ -143,7 +146,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         if (!object) {
           return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
         }
-        return returnJSONStringifiedSuccess({
+        return makeMCPToolJSONSuccess({
           message: "Operation completed successfully",
           result: object,
         });
@@ -180,7 +183,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         if (!objects.length) {
           return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
         }
-        return returnJSONStringifiedSuccess({
+        return makeMCPToolJSONSuccess({
           message: "Operation completed successfully",
           result: objects,
         });
@@ -222,9 +225,9 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             `Can't retrieve the exact number of objects matching the filters (hit Hubspot API limit of max ${MAX_COUNT_LIMIT} total objects).`
           );
         }
-        return returnJSONStringifiedSuccess({
+        return makeMCPToolTextSuccess({
           message: "Operation completed successfully",
-          result: count,
+          result: count.toString(),
         });
       });
     }
@@ -243,7 +246,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         if (!objects.length) {
           return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
         }
-        return returnJSONStringifiedSuccess({
+        return makeMCPToolJSONSuccess({
           message: "Operation completed successfully",
           result: objects,
         });

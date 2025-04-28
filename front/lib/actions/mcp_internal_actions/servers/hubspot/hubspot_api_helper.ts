@@ -308,7 +308,7 @@ export const getLatestObjects = async (
     filterGroups: [],
     properties: propertyNames,
     sorts: ["createdate:desc"],
-    limit,
+    limit: Math.min(limit, MAX_LIMIT),
   });
 
   return objects.results;
