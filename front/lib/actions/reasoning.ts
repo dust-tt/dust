@@ -220,7 +220,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
         type: "reasoning_action",
         generatedFiles: [],
       }),
-    };
+    } satisfies ReasoningStartedEvent;
 
     const actionConfig = agentConfiguration.actions.find(
       (action) =>
@@ -258,7 +258,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
               code: "reasoning_error",
               message: event.message,
             },
-          };
+          } satisfies ReasoningErrorEvent;
           return;
         }
         case "token": {
@@ -319,7 +319,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
         type: "reasoning_action",
         generatedFiles: [],
       }),
-    };
+    } satisfies ReasoningThinkingEvent;
 
     yield {
       type: "reasoning_success",
@@ -337,7 +337,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
         type: "reasoning_action",
         generatedFiles: [],
       }),
-    };
+    } satisfies ReasoningSuccessEvent;
 
     await action.update({
       output: actionOutput.content,
