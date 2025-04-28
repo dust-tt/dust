@@ -62,7 +62,10 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
-import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isSearchResultResourceType,
+  isWebsearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import {
@@ -553,7 +556,7 @@ export function AgentMessage({
             .map((o) => o.resource)
         )
     );
-    const allMCPReferences = searchResultsWithDocs.reduce<{
+    const allMCPSearchResultsReferences = searchResultsWithDocs.reduce<{
       [key: string]: MarkdownCitation;
     }>((acc, d) => {
       acc[d.ref] = {
@@ -564,11 +567,31 @@ export function AgentMessage({
       return acc;
     }, {});
 
+    const websearchResultsWithDocs = removeNulls(
+      agentMessageToRender.actions
+        .filter(isMCPActionType)
+        .flatMap((action) =>
+          action.output?.filter(isWebsearchResultResourceType)
+        )
+    );
+
+    const allMCPWebsearchResultsReferences = websearchResultsWithDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.resource.reference] = {
+        href: d.resource.uri,
+        title: d.resource.title,
+        icon: <DocumentIcon />,
+      };
+      return acc;
+    }, {});
+
     // Merge all references
     setReferences({
       ...allDocsReferences,
       ...allWebReferences,
-      ...allMCPReferences,
+      ...allMCPSearchResultsReferences,
+      ...allMCPWebsearchResultsReferences,
     });
   }, [
     agentMessageToRender.actions,

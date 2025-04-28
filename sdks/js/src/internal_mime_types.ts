@@ -226,6 +226,9 @@ const TOOL_MIME_TYPES = {
       "FILE",
       "THINKING",
       "SQL_QUERY",
+      "WEBSEARCH_QUERY",
+      "WEBSEARCH_RESULT",
+      "BROWSE_RESULT",
     ],
   }),
 };
