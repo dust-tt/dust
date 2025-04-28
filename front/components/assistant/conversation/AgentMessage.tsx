@@ -13,6 +13,7 @@ import {
   DocumentIcon,
   DocumentPileIcon,
   EyeIcon,
+  InteractiveImage,
   Markdown,
   Page,
   Popover,
@@ -40,7 +41,6 @@ import {
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -173,8 +173,6 @@ export function AgentMessage({
     { index: number; document: MarkdownCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
-
-  const { setIsImageUrl } = useConversationsNavigation();
 
   const isGlobalAgent = useMemo(() => {
     return Object.values(GLOBAL_AGENTS_SID).includes(
@@ -698,16 +696,14 @@ export function AgentMessage({
         {generatedImages.length > 0 && (
           <div className="mt-2 grid grid-cols-4 gap-2">
             {generatedImages.map((image) => (
-              <div key={image.fileId}>
-                <img
-                  className="cursor-zoom-in rounded-md"
-                  src={`/api/w/${owner.sId}/files/${image.fileId}`}
-                  alt={`${image.title}`}
-                  onClick={() => {
-                    setIsImageUrl(`/api/w/${owner.sId}/files/${image.fileId}`);
-                  }}
-                />
-              </div>
+              <InteractiveImage
+                key={image.fileId}
+                imageUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=view`}
+                downloadUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=download`}
+                alt={`${image.title}`}
+                title={`${image.title}`}
+                isLoading={false}
+              />
             ))}
           </div>
         )}
