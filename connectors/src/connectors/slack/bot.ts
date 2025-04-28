@@ -310,18 +310,19 @@ async function answerMessage(
     } catch (e) {
       if (isSlackWebAPIPlatformError(e)) {
         if (e.data.error === "bot_not_found") {
-          // Log to understand why we are getting this error.
+          // We received a bot message from a bot that is not accessible to us. We log and ignore
+          // the message.
           logger.warn(
             {
               error: e,
               connectorId: connector.id,
               slackUserId,
               slackBotId,
-              slackUserInfo,
               slackTeamId,
             },
             "Received bot_not_found"
           );
+          return new Ok(undefined);
         }
       }
       throw e;
