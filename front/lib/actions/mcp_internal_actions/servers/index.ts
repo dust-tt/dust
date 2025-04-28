@@ -61,7 +61,7 @@ export function getInternalMCPServer(
     case "ask_agent":
       return askAgentServer(auth);
     case "reasoning_v2":
-      return reasoningServer(auth);
+      return reasoningServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

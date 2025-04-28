@@ -155,6 +155,7 @@ export async function fetchMCPServerActionConfigurations(
             ? {
                 providerId: reasoningConfigurations[0].providerId,
                 modelId: reasoningConfigurations[0].modelId,
+                temperature: reasoningConfigurations[0].temperature,
                 reasoningEffort: reasoningConfigurations[0].reasoningEffort,
               }
             : null,
