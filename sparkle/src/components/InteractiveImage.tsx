@@ -79,7 +79,7 @@ export function InteractiveImage({
         <div className="s-aspect-square s-h-80 s-w-80">
           <ImagePreview
             alt={alt}
-            downloadUrl={downloadUrl}
+            downloadUrl={downloadUrl ?? imageUrl}
             isLoading={isLoading}
             onClick={(e) => {
               if (isLoading) {
@@ -106,7 +106,7 @@ export function InteractiveImage({
           <div className="s-flex s-justify-end">
             {imageLoaded && (
               <DownloadButton
-                downloadUrl={downloadUrl}
+                downloadUrl={downloadUrl ?? imageUrl}
                 title={props.title}
                 size="md"
               />
