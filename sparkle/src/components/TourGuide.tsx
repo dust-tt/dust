@@ -103,7 +103,7 @@ export function TourGuide({
           "dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night"
         )}
       >
-        <div className="s-aspect-video s-bg-brand-tea-green">{visual}</div>
+        <div className="s-aspect-video s-bg-muted-background">{visual}</div>
         <div className="s-space-y-4 s-p-4">
           <div className="s-space-y-2">
             {title && <div className="s-heading-base">{title}</div>}
