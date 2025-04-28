@@ -492,18 +492,24 @@ impl Connection {
             .retrieve_connection_by_provider(self.provider, &self.connection_id)
             .await?;
 
-        self.created = connection.created;
-        self.provider = connection.provider;
-        self.status = connection.status;
-        self.metadata = connection.metadata;
-        self.redirect_uri = connection.redirect_uri;
-        self.encrypted_authorization_code = connection.encrypted_authorization_code;
-        self.access_token_expiry = connection.access_token_expiry;
-        self.encrypted_access_token = connection.encrypted_access_token;
-        self.encrypted_refresh_token = connection.encrypted_refresh_token;
-        self.encrypted_raw_json = connection.encrypted_raw_json;
-        self.related_credential_id = connection.related_credential_id;
-
+        if let Some(connection) = connection {
+            self.created = connection.created;
+            self.provider = connection.provider;
+            self.status = connection.status;
+            self.metadata = connection.metadata;
+            self.redirect_uri = connection.redirect_uri;
+            self.encrypted_authorization_code = connection.encrypted_authorization_code;
+            self.access_token_expiry = connection.access_token_expiry;
+            self.encrypted_access_token = connection.encrypted_access_token;
+            self.encrypted_refresh_token = connection.encrypted_refresh_token;
+            self.encrypted_raw_json = connection.encrypted_raw_json;
+            self.related_credential_id = connection.related_credential_id;
+        } else {
+            return Err(anyhow::anyhow!(
+                "Connection not found in store: {}",
+                self.connection_id
+            ));
+        }
         Ok(())
     }
 
@@ -594,7 +600,11 @@ impl Connection {
         let now = utils::now();
 
         let credential = match self.related_credential_id() {
-            Some(id) => store.retrieve_credential(&id).await.ok(),
+            Some(id) => match store.retrieve_credential(&id).await {
+                Err(_) => None,
+                Ok(Some(credential)) => Some(credential),
+                Ok(None) => None,
+            },
             None => None,
         };
 
@@ -745,7 +755,11 @@ impl Connection {
         let now = utils::now();
 
         let credential = match self.related_credential_id() {
-            Some(id) => store.retrieve_credential(&id).await.ok(),
+            Some(id) => match store.retrieve_credential(&id).await {
+                Err(_) => None,
+                Ok(Some(credential)) => Some(credential),
+                Ok(None) => None,
+            },
             None => None,
         };
 

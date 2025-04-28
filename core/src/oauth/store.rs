@@ -19,12 +19,12 @@ pub trait OAuthStore {
         metadata: serde_json::Value,
         related_credential_id: Option<String>,
     ) -> Result<Connection>;
-    async fn retrieve_connection(&self, connection_id: &str) -> Result<Connection>;
+    async fn retrieve_connection(&self, connection_id: &str) -> Result<Option<Connection>>;
     async fn retrieve_connection_by_provider(
         &self,
         provider: ConnectionProvider,
         connection_id: &str,
-    ) -> Result<Connection>;
+    ) -> Result<Option<Connection>>;
     async fn update_connection_secrets(&self, connection: &Connection) -> Result<()>;
     async fn update_connection_status(&self, connection: &Connection) -> Result<()>;
 
@@ -34,7 +34,7 @@ pub trait OAuthStore {
         metadata: CredentialMetadata,
         encrypted_content: Vec<u8>,
     ) -> Result<Credential>;
-    async fn retrieve_credential(&self, credential_id: &str) -> Result<Credential>;
+    async fn retrieve_credential(&self, credential_id: &str) -> Result<Option<Credential>>;
     async fn delete_credential(&self, credential_id: &str) -> Result<()>;
 
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send>;
@@ -138,14 +138,14 @@ impl OAuthStore for PostgresOAuthStore {
         ))
     }
 
-    async fn retrieve_connection(&self, connection_id: &str) -> Result<Connection> {
+    async fn retrieve_connection(&self, connection_id: &str) -> Result<Option<Connection>> {
         let (row_id, secret) = Connection::row_id_and_secret_from_connection_id(connection_id)?;
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
         let r = c
-            .query_one(
+            .query(
                 "SELECT created, provider, status, metadata,
                         redirect_uri, encrypted_authorization_code,
                         access_token_expiry, encrypted_access_token,
@@ -156,6 +156,14 @@ impl OAuthStore for PostgresOAuthStore {
                 &[&row_id, &secret],
             )
             .await?;
+
+        if r.is_empty() {
+            return Ok(None);
+        }
+        if r.len() > 1 {
+            return Err(anyhow::anyhow!("Multiple connections found"));
+        }
+        let r = &r[0];
 
         let created: i64 = r.get(0);
         let provider: ConnectionProvider = ConnectionProvider::from_str(r.get(1))?;
@@ -169,7 +177,7 @@ impl OAuthStore for PostgresOAuthStore {
         let encrypted_raw_json: Option<Vec<u8>> = r.get(9);
         let related_credential_id: Option<String> = r.get(10);
 
-        Ok(Connection::new(
+        Ok(Some(Connection::new(
             connection_id.to_string(),
             created as u64,
             provider,
@@ -185,19 +193,23 @@ impl OAuthStore for PostgresOAuthStore {
             encrypted_refresh_token,
             encrypted_raw_json,
             related_credential_id,
-        ))
+        )))
     }
 
     async fn retrieve_connection_by_provider(
         &self,
         provider: ConnectionProvider,
         connection_id: &str,
-    ) -> Result<Connection> {
+    ) -> Result<Option<Connection>> {
         let c = self.retrieve_connection(connection_id).await?;
-        if c.provider() == provider {
-            Ok(c)
+        if let Some(ref c) = c {
+            if c.provider() == provider {
+                return Ok(Some(c.clone()));
+            } else {
+                Err(anyhow::anyhow!("Connection provider mismatch"))
+            }
         } else {
-            Err(anyhow::anyhow!("Connection provider mismatch"))
+            return Ok(None);
         }
     }
 
@@ -305,14 +317,14 @@ impl OAuthStore for PostgresOAuthStore {
         ))
     }
 
-    async fn retrieve_credential(&self, credential_id: &str) -> Result<Credential> {
+    async fn retrieve_credential(&self, credential_id: &str) -> Result<Option<Credential>> {
         let (row_id, secret) = Credential::row_id_and_secret_from_credential_id(credential_id)?;
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
         let r = c
-            .query_one(
+            .query(
                 "SELECT created, provider, metadata, encrypted_content
                    FROM credentials
                    WHERE id = $1 AND secret = $2",
@@ -320,18 +332,26 @@ impl OAuthStore for PostgresOAuthStore {
             )
             .await?;
 
+        if r.is_empty() {
+            return Ok(None);
+        }
+        if r.len() > 1 {
+            return Err(anyhow::anyhow!("Multiple credentials found"));
+        }
+        let r = &r[0];
+
         let created: i64 = r.get(0);
         let provider: CredentialProvider = CredentialProvider::from_str(r.get(1))?;
         let metadata: CredentialMetadata = serde_json::from_value(r.get(2))?;
         let encrypted_content: Vec<u8> = r.get(3);
 
-        Ok(Credential::new(
+        Ok(Some(Credential::new(
             credential_id.to_string(),
             created as u64,
             provider,
             metadata,
             encrypted_content,
-        ))
+        )))
     }
 
     async fn delete_credential(&self, credential_id: &str) -> Result<()> {
