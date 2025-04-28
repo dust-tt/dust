@@ -105,12 +105,14 @@ export default function AssistantBuilder({
 
   const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
-  const defaultScope =
-    flow === "workspace_assistants"
-      ? "workspace"
-      : isAgentDiscoveryEnabled
-        ? "hidden"
-        : "private";
+  const defaultScope = isAgentDiscoveryEnabled
+    ? flow === "personal_assistants"
+      ? "hidden"
+      : "visible"
+    : flow === "personal_assistants"
+      ? "private"
+      : "workspace";
+
   const [currentTab, setCurrentTab] = useHashParam(
     "selectedTab",
     "instructions"
