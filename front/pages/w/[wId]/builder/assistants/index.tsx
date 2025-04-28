@@ -377,7 +377,7 @@ export default function WorkspaceAssistants({
                       key={tab.id}
                       value={tab.id}
                       label={tab.label}
-                      icon={tab.icon || undefined}
+                      icon={tab.icon}
                       className={assistantSearch ? disabledTablineClass : ""}
                       onClick={() => !assistantSearch && setSelectedTab(tab.id)}
                       tooltip={

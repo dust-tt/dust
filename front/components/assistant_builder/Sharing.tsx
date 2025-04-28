@@ -54,7 +54,7 @@ export const SCOPE_INFO: Record<
     shortLabel: string;
     label: string;
     color: "green" | "golden" | "blue" | "primary";
-    icon: typeof UserGroupIcon | typeof CompanyIcon | typeof LockIcon | null;
+    icon: typeof UserGroupIcon | typeof CompanyIcon | typeof LockIcon;
     text: string;
     confirmationModalData: ConfirmationModalDataType | null;
   }
