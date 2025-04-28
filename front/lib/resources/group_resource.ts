@@ -135,7 +135,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (groupAgents.length === 0) {
       return new Err(
-        new Error("Editor group association not found for agent.")
+        new DustError(
+          "group_not_found",
+          "Editor group association not found for agent."
+        )
       );
     }
 
