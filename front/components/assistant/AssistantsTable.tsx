@@ -4,8 +4,13 @@ import {
   ClipboardIcon,
   Cog6ToothIcon,
   DataTable,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   PencilSquareIcon,
-  Popup,
   SliderToggle,
   Tooltip,
   TrashIcon,
@@ -231,19 +236,37 @@ function GlobalAgentAction({
         disabled={agent.status === "disabled_missing_datasource"}
       />
       <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
-        <Popup
-          show={showDisabledFreeWorkspacePopup === agent.sId}
-          className="absolute bottom-8 right-0"
-          chipLabel={`Free plan`}
-          description={`@${agent.name} is only available on our paid plans.`}
-          buttonLabel="Check Dust plans"
-          buttonClick={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
+        <Dialog
+          open={showDisabledFreeWorkspacePopup === agent.sId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowDisabledFreeWorkspacePopup(null);
+            }
           }}
-          onClose={() => {
-            setShowDisabledFreeWorkspacePopup(null);
-          }}
-        />
+        >
+          <DialogContent size="md">
+            <DialogHeader hideButton={false}>
+              <DialogTitle>Free plan</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
+              {`@${agent.name} is only available on our paid plans.`}
+            </DialogContainer>
+            <DialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+                onClick: () => setShowDisabledFreeWorkspacePopup(null),
+              }}
+              rightButtonProps={{
+                label: "Check Dust plans",
+                variant: "primary",
+                onClick: () => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                },
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );
