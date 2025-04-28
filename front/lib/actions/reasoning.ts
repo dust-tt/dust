@@ -418,24 +418,27 @@ export async function* runReasoning(
   const config = cloneBaseConfig(
     getDustProdAction("assistant-v2-reason").config
   );
+
   config.MODEL.provider_id = supportedModel.providerId;
   config.MODEL.model_id = supportedModel.modelId;
-
   if (reasoningModel.temperature) {
     config.MODEL.temperature = reasoningModel.temperature;
   }
-
   if (reasoningModel.reasoningEffort) {
     config.MODEL.reasoning_effort = reasoningModel.reasoningEffort;
   }
 
   if (supportedModel.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID) {
+    // We can't pass a temperature different from 1.0 in thinking mode
+    // ref: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
     config.MODEL.temperature = 1.0;
     delete config.MODEL.top_p;
+    // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
     config.MODEL.anthropic_beta_thinking = {
       type: "enabled",
       budget_tokens: 6400,
     };
+    // Add the beta flag for larger outputs.
     config.MODEL.anthropic_beta_flags = ["output-128k-2025-02-19"];
   }
 
@@ -458,6 +461,7 @@ export async function* runReasoning(
       agentMessageId: agentMessage.sId,
     }
   );
+
   if (res.isErr()) {
     yield {
       type: "error",
@@ -483,7 +487,6 @@ export async function* runReasoning(
     if (event.type === "function_call") {
       continue;
     }
-
     if (event.type === "error") {
       for await (const token of contentParser.flushTokens()) {
         yield { type: "token", token };
