@@ -4,18 +4,23 @@ import { z } from "zod";
 
 import {
   ALL_OBJECTS,
+  countObjectsByProperties,
   createObject,
   getObjectByEmail,
   getObjectById,
   getObjectProperties,
   getObjectsByProperties,
+  MAX_COUNT_LIMIT,
+  MAX_LIMIT,
   SIMPLE_OBJECTS,
   updateObject,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
 import {
   ERROR_MESSAGES,
+  returnSuccess,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hupspot_utils";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -41,9 +46,17 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       creatableOnly: z.boolean().optional(),
     },
     async ({ objectType, creatableOnly = true }) => {
-      return withAuth(auth, mcpServerId, (accessToken) =>
-        getObjectProperties({ accessToken, objectType, creatableOnly })
-      );
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await getObjectProperties({
+          accessToken,
+          objectType,
+          creatableOnly,
+        });
+        return returnSuccess({
+          message: "Operation completed successfully",
+          result,
+        });
+      });
     }
   );
 
@@ -57,13 +70,17 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("An object containing the valid properties for the object."),
     },
     async ({ objectType, properties }) => {
-      return withAuth(auth, mcpServerId, (accessToken) =>
-        createObject({
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createObject({
           accessToken,
           objectType,
           objectProperties: { properties, associations: [] },
-        })
-      );
+        });
+        return returnSuccess({
+          message: "Operation completed successfully",
+          result,
+        });
+      });
     }
   );
 
@@ -76,14 +93,18 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       properties: z.record(z.string()).describe("The properties to update."),
     },
     async ({ objectType, objectId, properties }) => {
-      return withAuth(auth, mcpServerId, (accessToken) =>
-        updateObject({
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await updateObject({
           accessToken,
           objectType,
           objectId,
           objectProperties: { properties, associations: [] },
-        })
-      );
+        });
+        return returnSuccess({
+          message: "Operation completed successfully",
+          result,
+        });
+      });
     }
   );
 
@@ -98,12 +119,12 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       return withAuth(auth, mcpServerId, async (accessToken) => {
         const object = await getObjectById(accessToken, objectType, objectId);
         if (!object) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
-          };
+          return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
         }
-        return object;
+        return returnSuccess({
+          message: "Operation completed successfully",
+          result: object,
+        });
       });
     }
   );
@@ -119,19 +140,19 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       return withAuth(auth, mcpServerId, async (accessToken) => {
         const object = await getObjectByEmail(accessToken, objectType, email);
         if (!object) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
-          };
+          return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
         }
-        return object;
+        return returnSuccess({
+          message: "Operation completed successfully",
+          result: object,
+        });
       });
     }
   );
 
   server.tool(
     "get_objects_by_properties",
-    `Searches for objects in Hubspot matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
+    `Searches for objects in Hubspot matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is ${MAX_LIMIT} objects retrieved.`,
     {
       objectType: z.enum(SIMPLE_OBJECTS),
       filters: z
@@ -143,11 +164,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             operator: z
               .nativeEnum(FilterOperatorEnum)
               .describe("The operator to use for comparison."),
-            value: z
-              .string()
-              .describe(
-                "The value to compare against. Not needed for is_null and is_not_null operators."
-              ),
+            value: z.string().describe("The value to compare against."),
           })
         )
         .describe("Array of property filters to apply."),
@@ -160,12 +177,54 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           filters
         );
         if (!objects.length) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND }],
-          };
+          return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
         }
-        return objects;
+        return returnSuccess({
+          message: "Operation completed successfully",
+          result: objects,
+        });
+      });
+    }
+  );
+
+  server.tool(
+    "count_objects_by_properties",
+    `Count objects in Hubspot with matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is ${MAX_COUNT_LIMIT} objects.`,
+    {
+      objectType: z.enum(SIMPLE_OBJECTS),
+      filters: z
+        .array(
+          z.object({
+            propertyName: z
+              .string()
+              .describe("The name of the property to search by."),
+            operator: z
+              .nativeEnum(FilterOperatorEnum)
+              .describe("The operator to use for comparison."),
+            value: z.string().describe("The value to compare against."),
+          })
+        )
+        .describe("Array of property filters to apply."),
+    },
+    async ({ objectType, filters }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const count = await countObjectsByProperties(
+          accessToken,
+          objectType,
+          filters
+        );
+        if (!count) {
+          return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
+        }
+        if (count === MAX_COUNT_LIMIT) {
+          return makeMCPToolTextError(
+            `Can't retrieve the exact number of objects matching the filters (hit Hubspot API limit of max ${MAX_COUNT_LIMIT} total objects).`
+          );
+        }
+        return returnSuccess({
+          message: "Operation completed successfully",
+          result: count,
+        });
       });
     }
   );
