@@ -25,6 +25,7 @@ import type {
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
+  GenerationTokensEvent,
   ModelId,
   ModelIdType,
   ModelProviderIdType,
@@ -485,12 +486,42 @@ export async function* runReasoning(
     thinking: "",
   };
 
+  async function* processTokensEvents(
+    stream: AsyncGenerator<GenerationTokensEvent>
+  ): AsyncGenerator<{
+    type: "token";
+    text: string;
+    classification: TokensClassification;
+  }> {
+    for await (const token of stream) {
+      if (
+        token.classification === "opening_delimiter" ||
+        token.classification === "closing_delimiter"
+      ) {
+        continue;
+      }
+
+      if (token.classification === "chain_of_thought") {
+        actionOutput.thinking += token.text;
+      } else {
+        actionOutput.content += token.text;
+      }
+
+      yield {
+        type: "token",
+        text: token.text,
+        classification: token.classification,
+      };
+    }
+  }
+
   for await (const event of eventStream) {
     if (event.type === "function_call") {
       continue;
     }
 
     if (event.type === "error") {
+      yield* processTokensEvents(contentParser.flushTokens());
       yield {
         type: "error",
         message: `Error running reasoning action: ${event.content.message}`,
@@ -517,28 +548,9 @@ export async function* runReasoning(
     }
 
     if (event.type === "tokens") {
-      for await (const token of contentParser.emitTokens(
-        event.content.tokens.text
-      )) {
-        if (
-          token.classification === "opening_delimiter" ||
-          token.classification === "closing_delimiter"
-        ) {
-          continue;
-        }
-
-        if (token.classification === "chain_of_thought") {
-          actionOutput.thinking += token.text;
-        } else {
-          actionOutput.content += token.text;
-        }
-
-        yield {
-          type: "token",
-          text: token.text,
-          classification: token.classification,
-        };
-      }
+      yield* processTokensEvents(
+        contentParser.emitTokens(event.content.tokens.text)
+      );
     }
 
     if (event.type === "block_execution") {
@@ -553,26 +565,7 @@ export async function* runReasoning(
     }
   }
 
-  for await (const token of contentParser.flushTokens()) {
-    if (
-      token.classification === "opening_delimiter" ||
-      token.classification === "closing_delimiter"
-    ) {
-      continue;
-    }
-
-    if (token.classification === "chain_of_thought") {
-      actionOutput.thinking += token.text;
-    } else {
-      actionOutput.content += token.text;
-    }
-
-    yield {
-      type: "token",
-      text: token.text,
-      classification: token.classification,
-    };
-  }
+  yield* processTokensEvents(contentParser.flushTokens());
 
   yield {
     type: "success",
