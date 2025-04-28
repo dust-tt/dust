@@ -278,6 +278,11 @@ export function ActionProcess({
           <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
             Time Range
           </div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            By default, the time frame is determined automatically based on the
+            conversation context. Enable manual time frame selection when you
+            need to specify an exact range for data extraction.
+          </div>
           <div className={"flex flex-row items-center gap-4 pb-4"}>
             <Checkbox
               checked={!!actionConfiguration.timeFrame}
@@ -334,7 +339,7 @@ export function ActionProcess({
             <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Optionally, provide a schema for the data to be extracted. If you
               do not specify a schema, the tool will determine the schema based
-              on the message in a conversation.
+              on the conversation context.
             </div>
             <Button
               tooltip="Automatically re-generate the extraction schema based on Instructions"
