@@ -36,6 +36,7 @@ import { AssistantKnowledgeSection } from "@app/components/assistant/details/Ass
 import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
+import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {
@@ -301,6 +302,8 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+
   const updateScope = useCallback(
     async (scope: Exclude<AgentConfigurationScope, "global">) => {
       setIsUpdatingScope(true);
@@ -342,13 +345,34 @@ export function AssistantDetails({
       )}
 
       {agentConfiguration?.status === "archived" && (
-        <ContentMessage
-          title="This agent has been deleted."
-          icon={InformationCircleIcon}
-          size="md"
-        >
-          It is no longer active and cannot be used.
-        </ContentMessage>
+        <>
+          <ContentMessage
+            title="This agent has been deleted."
+            icon={InformationCircleIcon}
+            size="md"
+          >
+            It is no longer active and cannot be used.
+          </ContentMessage>
+
+          <RestoreAssistantDialog
+            owner={owner}
+            isOpen={showRestoreModal}
+            agentConfiguration={agentConfiguration}
+            onClose={() => {
+              setShowRestoreModal(false);
+            }}
+          />
+
+          <div className="flex justify-center">
+            <Button
+              variant="warning"
+              label="Restore"
+              onClick={() => {
+                setShowRestoreModal(true);
+              }}
+            />
+          </div>
+        </>
       )}
     </div>
   );
