@@ -36,7 +36,6 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin } from "@app/types";
 
 export const AGENT_MANAGER_TABS_LEGACY = [
   {

@@ -151,7 +151,7 @@ export function AssistantBrowser({
       workspace: allAgents.filter((a) => a.scope === "workspace"),
       // END-TODO(agent-discovery)
     };
-  }, [agentConfigurations, selectedTags, owner]);
+  }, [agentConfigurations, selectedTags]);
 
   const { filteredAgents, filteredTags, uniqueTags } = useMemo(() => {
     const tags = agentConfigurations.flatMap((a) => a.tags);
