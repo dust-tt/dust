@@ -156,7 +156,6 @@ export function AgentMessage({
   message,
   messageFeedback,
   owner,
-  user,
 }: AgentMessageProps) {
   const { isDark } = useTheme();
   const [streamedAgentMessage, setStreamedAgentMessage] =

@@ -36,7 +36,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isAdmin } from "@app/types";
 
 export const AGENT_MANAGER_TABS_LEGACY = [
   {
@@ -238,7 +238,6 @@ export default function WorkspaceAssistants({
     agentConfigurations,
     archivedAgentConfigurations,
     selectedTags,
-    owner,
     assistantSearch,
   ]);
 
@@ -378,7 +377,7 @@ export default function WorkspaceAssistants({
                       key={tab.id}
                       value={tab.id}
                       label={tab.label}
-                      icon={tab.icon}
+                      icon={tab.icon || undefined}
                       className={assistantSearch ? disabledTablineClass : ""}
                       onClick={() => !assistantSearch && setSelectedTab(tab.id)}
                       tooltip={

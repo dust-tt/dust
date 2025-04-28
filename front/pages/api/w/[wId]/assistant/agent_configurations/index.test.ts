@@ -1,4 +1,3 @@
-import { LegalConsentOptionsLegitimateInterest } from "@hubspot/api-client/lib/codegen/marketing/forms";
 import type { Transaction } from "sequelize";
 import { describe, expect, vi } from "vitest";
 
@@ -12,7 +11,6 @@ import { itInTransaction } from "@app/tests/utils/utils";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
-  UserType,
 } from "@app/types";
 
 import handler from "./index";

@@ -23,7 +23,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder, pluralize } from "@app/types";
+import { isBuilder, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 type MoreMenuItem = {
