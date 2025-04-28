@@ -196,6 +196,8 @@ export default function SecretsPage({
               message="Secret values are encrypted and stored securely in our database."
               name="Secret value"
               placeholder="Type the secret value"
+              type="password"
+              autocomplete="off"
               value={newDustAppSecret.value}
               onChange={(e) =>
                 setNewDustAppSecret({
