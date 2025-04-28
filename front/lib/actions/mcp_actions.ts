@@ -136,7 +136,7 @@ export async function tryCallMCPTool(
     return connectionParamsRes;
   }
 
-  let mcpClient: Client | undefined;
+  let mcpClient;
   try {
     const r = await connectToMCPServer(
       auth,
