@@ -202,14 +202,15 @@ impl OAuthStore for PostgresOAuthStore {
         connection_id: &str,
     ) -> Result<Option<Connection>> {
         let c = self.retrieve_connection(connection_id).await?;
+
         if let Some(ref c) = c {
             if c.provider() == provider {
-                return Ok(Some(c.clone()));
+                Ok(Some(c.clone()))
             } else {
                 Err(anyhow::anyhow!("Connection provider mismatch"))
             }
         } else {
-            return Ok(None);
+            Ok(None)
         }
     }
 
