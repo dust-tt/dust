@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   Page,
-  Popup,
   SearchInput,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -212,17 +211,32 @@ export default function WorkspaceAdmin({
                   }}
                 />
               )}
-              <Popup
-                show={showNoInviteLinkPopup}
-                chipLabel="Free plan"
-                description="You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
-                buttonLabel="Check Dust plans"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                className="absolute bottom-8 right-0"
-                onClose={() => setShowNoInviteLinkPopup(false)}
-              />
+              <Dialog open={showNoInviteLinkPopup}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Free plan</DialogTitle>
+                  </DialogHeader>
+                  <p className="text-sm text-gray-500">
+                    You cannot enable auto-join with the free plan. Upgrade your
+                    plan to invite other members.
+                  </p>
+                  <DialogFooter>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setShowNoInviteLinkPopup(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        void router.push(`/w/${owner.sId}/subscription`);
+                      }}
+                    >
+                      Check Dust plans
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </Page.Vertical>
         )}
