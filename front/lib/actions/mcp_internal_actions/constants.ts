@@ -63,10 +63,12 @@ export const INTERNAL_MCP_SERVERS: Record<
     isDefault: true,
     flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
   },
+  // WARN: This action was moved back to dev
+  // keeping it here with the same ID to not break workspaces
   "web_search_&_browse_v2": {
     id: 5,
     isDefault: true,
-    flag: "mcp_actions",
+    flag: "dev_mcp_actions",
   },
   think: {
     id: 6,
