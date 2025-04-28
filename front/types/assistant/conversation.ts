@@ -66,19 +66,19 @@ export type MessageWithRankType = WithRank<MessageType>;
  */
 
 export type UserMessageOrigin =
-  | "slack"
-  | "web"
   | "api"
   | "email"
-  | "gsheet"
-  | "zapier"
-  | "n8n"
-  | "make"
-  | "zendesk"
-  | "raycast"
-  | "github-copilot-chat"
   | "extension"
-  | "email";
+  | "github-copilot-chat"
+  | "gsheet"
+  | "make"
+  | "mcp"
+  | "n8n"
+  | "raycast"
+  | "slack"
+  | "web"
+  | "zapier"
+  | "zendesk";
 
 export type UserMessageContext = {
   username: string;
