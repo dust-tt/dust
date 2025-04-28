@@ -59,6 +59,7 @@ import {
   isSlackAutoReadPatterns,
   safeParseJSON,
 } from "@app/types";
+import { white } from "tailwindcss/colors";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
@@ -1221,6 +1222,8 @@ function SlackWhitelistBot({
 }) {
   const [botName, setBotName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [whitelistType, setWhitelistType] =
+    useState<SlackbotWhitelistType>("summon_agent");
 
   const selectedGroupName = groups.find(
     (group) => group.sId === selectedGroup
@@ -1238,6 +1241,29 @@ function SlackWhitelistBot({
             onChange={(e) => setBotName(e.target.value)}
             value={botName}
           />
+        </div>
+        <div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" label={whitelistType} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="min-w-72">
+              <DropdownMenuRadioGroup
+                value={whitelistType ?? undefined}
+                onValueChange={(value) => {
+                  setWhitelistType(value as SlackbotWhitelistType);
+                }}
+              >
+                {["summon_agent", "index_messages"].map((whitelistType) => (
+                  <DropdownMenuRadioItem
+                    value={whitelistType}
+                    key={whitelistType}
+                    label={whitelistType}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div>
           <DropdownMenu>
@@ -1264,7 +1290,7 @@ function SlackWhitelistBot({
           </DropdownMenu>
         </div>
         <Button
-          variant="outline"
+          variant="primary"
           label="Whitelist"
           onClick={async () => {
             if (!botName) {
@@ -1279,7 +1305,7 @@ function SlackWhitelistBot({
               botName,
               wId: owner.sId,
               groupId: selectedGroup,
-              whitelistType: "summon_agent",
+              whitelistType,
             });
             setBotName("");
           }}
