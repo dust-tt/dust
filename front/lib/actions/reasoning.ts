@@ -297,9 +297,6 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
           } satisfies ReasoningTokensEvent;
           break;
         }
-        case "success": {
-          break;
-        }
         case "runId": {
           dustRunId = event.runId;
           break;
@@ -375,7 +372,6 @@ export async function* runReasoning(
 ): AsyncGenerator<
   | { type: "error"; message: string }
   | { type: "token"; token: GenerationTokensEvent }
-  | { type: "success" }
   | { type: "runId"; runId: Promise<string> }
 > {
   const owner = auth.getNonNullableWorkspace();
@@ -543,8 +539,6 @@ export async function* runReasoning(
   for await (const token of contentParser.flushTokens()) {
     yield { type: "token", token };
   }
-
-  yield { type: "success" };
 }
 
 export async function reasoningActionTypesFromAgentMessageIds(
