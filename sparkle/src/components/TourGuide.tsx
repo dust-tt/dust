@@ -102,7 +102,7 @@ export function TourGuide({
         className={cn(
           "s-w-96 s-max-w-xs s-overflow-hidden s-rounded-2xl s-border s-shadow-xl s-transition-all s-duration-300 s-ease-in-out",
           !currentStep.ref && "s-translate-y-[-50%]",
-          "s-border-border s-bg-background s-text-foreground",
+          "s-border-highlight-400 s-bg-background s-text-foreground s-ring-2 s-ring-highlight-400/30",
           "dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night"
         )}
       >
