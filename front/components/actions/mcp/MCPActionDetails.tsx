@@ -1,5 +1,6 @@
 import {
   Button,
+  ChatBubbleThoughtIcon,
   Citation,
   CitationIcons,
   CitationTitle,
@@ -149,22 +150,24 @@ interface ThinkingBlockProps {
 
 function ThinkingBlock({ resource }: ThinkingBlockProps) {
   return (
-    <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-      <ContentMessage
-        title="Reasoning" // TODO(mcp): to be challenged by the design team (could be "Thoughts")
-        variant="primary"
-        icon={InformationCircleIcon}
-        size="lg"
-      >
-        <Markdown
-          content={resource.text}
-          isStreaming={false}
-          forcedTextSize="text-sm"
-          textColor="text-muted-foreground"
-          isLastMessage={false}
-        />
-      </ContentMessage>
-    </div>
+    resource.text && (
+      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+        <ContentMessage
+          title="Reasoning" // TODO(mcp): to be challenged by the design team (could be "Thoughts")
+          variant="primary"
+          icon={InformationCircleIcon}
+          size="lg"
+        >
+          <Markdown
+            content={resource.text}
+            isStreaming={false}
+            forcedTextSize="text-sm"
+            textColor="text-muted-foreground"
+            isLastMessage={false}
+          />
+        </ContentMessage>
+      </div>
+    )
   );
 }
 
@@ -174,15 +177,17 @@ interface ReasoningSuccessBlockProps {
 
 function ReasoningSuccessBlock({ resource }: ReasoningSuccessBlockProps) {
   return (
-    <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-      <Markdown
-        content={resource.text}
-        textColor="text-muted-foreground dark:text-muted-foreground-night"
-        isStreaming={false}
-        forcedTextSize="md"
-        isLastMessage={false}
-      />
-    </div>
+    resource.text && (
+      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+        <Markdown
+          content={resource.text}
+          textColor="text-muted-foreground dark:text-muted-foreground-night"
+          isStreaming={false}
+          forcedTextSize="md"
+          isLastMessage={false}
+        />
+      </div>
+    )
   );
 }
 
@@ -345,7 +350,7 @@ function ReasoningActionDetails({
     <ActionDetailsWrapper
       actionName="Reasoning"
       defaultOpen={defaultOpen}
-      visual={TableIcon}
+      visual={ChatBubbleThoughtIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         {thinkingBlocks.map((block) => (
