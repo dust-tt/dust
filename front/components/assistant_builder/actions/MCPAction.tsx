@@ -1,5 +1,5 @@
 import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
@@ -16,7 +16,6 @@ import type {
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
-  DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
   ModelConfigurationType,
   SpaceType,
@@ -140,92 +139,21 @@ export function MCPAction({
     [setEdited, updateAction]
   );
 
-  const handleDataSourceConfigUpdate = useCallback(
-    (dsConfigs: DataSourceViewSelectionConfigurations) => {
+  const handleConfigUpdate = useCallback(
+    (
+      getNewConfig: (
+        old: AssistantBuilderMCPServerConfiguration
+      ) => AssistantBuilderMCPServerConfiguration
+    ) => {
       setEdited(true);
       updateAction({
         actionName: action.name,
         actionDescription: action.description,
-        getNewActionConfig: (old) => ({
-          ...(old as AssistantBuilderMCPServerConfiguration),
-          dataSourceConfigurations: dsConfigs,
-        }),
+        getNewActionConfig: (old) =>
+          getNewConfig(old as AssistantBuilderMCPServerConfiguration),
       });
     },
     [action.description, action.name, setEdited, updateAction]
-  );
-
-  const handleTableConfigUpdate = useCallback(
-    (tableConfigs: DataSourceViewSelectionConfigurations) => {
-      setEdited(true);
-
-      updateAction({
-        actionName: action.name,
-        actionDescription: action.description,
-        getNewActionConfig: (old) => ({
-          ...(old as AssistantBuilderMCPServerConfiguration),
-          tablesConfigurations: tableConfigs,
-        }),
-      });
-    },
-    [action.description, action.name, setEdited, updateAction]
-  );
-
-  const handleChildAgentConfigUpdate = useCallback(
-    (newChildAgentId: string) => {
-      setEdited(true);
-
-      updateAction({
-        actionName: action.name,
-        actionDescription: action.description,
-        getNewActionConfig: (old) => ({
-          ...(old as AssistantBuilderMCPServerConfiguration),
-          childAgentId: newChildAgentId,
-        }),
-      });
-    },
-    [action.description, action.name, setEdited, updateAction]
-  );
-
-  const handleReasoningModelConfigUpdate = useCallback(
-    (reasoningModelConfig: ModelConfigurationType) => {
-      setEdited(true);
-
-      updateAction({
-        actionName: action.name,
-        actionDescription: action.description,
-        getNewActionConfig: (old) => ({
-          ...(old as AssistantBuilderMCPServerConfiguration),
-          reasoningModel: reasoningModelConfig,
-        }),
-      });
-    },
-    [action.description, action.name, setEdited, updateAction]
-  );
-
-  const handleAdditionalConfigUpdate = useCallback(
-    (key: string, value: string | number | boolean) => {
-      if (!selectedMCPServerView) {
-        return;
-      }
-      setEdited(true);
-      updateAction({
-        actionName: slugify(selectedMCPServerView?.server.name ?? ""),
-        actionDescription: selectedMCPServerView?.server.description ?? "",
-        getNewActionConfig: (prev) => {
-          const prevConfig = prev as AssistantBuilderMCPServerConfiguration;
-          return {
-            ...prevConfig,
-            mcpServerViewId: selectedMCPServerView.id,
-            additionalConfiguration: {
-              ...prevConfig.additionalConfiguration,
-              [key]: value,
-            },
-          };
-        },
-      });
-    },
-    [selectedMCPServerView, setEdited, updateAction]
   );
 
   if (action.type !== "MCP") {
@@ -246,7 +174,9 @@ export function MCPAction({
           isOpen={showDataSourcesModal}
           setOpen={setShowDataSourcesModal}
           owner={owner}
-          onSave={handleDataSourceConfigUpdate}
+          onSave={(dataSourceConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
+          }}
           initialDataSourceConfigurations={
             actionConfiguration.dataSourceConfigurations ?? {}
           }
@@ -261,7 +191,9 @@ export function MCPAction({
             setShowTablesModal(isOpen);
           }}
           owner={owner}
-          onSave={handleTableConfigUpdate}
+          onSave={(tablesConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
+          }}
           initialDataSourceConfigurations={
             actionConfiguration.tablesConfigurations ?? {}
           }
@@ -312,7 +244,9 @@ export function MCPAction({
             actionConfiguration.dataSourceConfigurations ?? {}
           }
           openDataSourceModal={() => setShowDataSourcesModal(true)}
-          onSave={handleDataSourceConfigUpdate}
+          onSave={(dataSourceConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
+          }}
           viewType="document"
         />
       )}
@@ -323,20 +257,26 @@ export function MCPAction({
             actionConfiguration.tablesConfigurations ?? {}
           }
           openDataSourceModal={() => setShowTablesModal(true)}
-          onSave={handleTableConfigUpdate}
+          onSave={(tablesConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
+          }}
           viewType="table"
         />
       )}
       {requirements.requiresChildAgentConfiguration && (
         <ChildAgentConfigurationSection
-          onAgentSelect={handleChildAgentConfigUpdate}
+          onAgentSelect={(childAgentId) => {
+            handleConfigUpdate((old) => ({ ...old, childAgentId }));
+          }}
           selectedAgentId={actionConfiguration.childAgentId}
           owner={owner}
         />
       )}
       {requirements.requiresReasoningConfiguration && (
         <ReasoningModelConfigurationSection
-          onModelSelect={handleReasoningModelConfigUpdate}
+          onModelSelect={(reasoningModel: ModelConfigurationType) => {
+            handleConfigUpdate((old) => ({ ...old, reasoningModel }));
+          }}
           selectedReasoningModel={actionConfiguration.reasoningModel}
           owner={owner}
         />
@@ -344,7 +284,15 @@ export function MCPAction({
       <AdditionalConfigurationSection
         {...requirements}
         additionalConfiguration={actionConfiguration.additionalConfiguration}
-        onConfigUpdate={handleAdditionalConfigUpdate}
+        onConfigUpdate={(key, value) => {
+          handleConfigUpdate((old) => ({
+            ...old,
+            additionalConfiguration: {
+              ...old.additionalConfiguration,
+              [key]: value,
+            },
+          }));
+        }}
       />
     </>
   );
