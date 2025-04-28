@@ -1,5 +1,6 @@
 import type { Session } from "@auth0/nextjs-auth0";
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
+import { escape } from "html-escaper";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
@@ -141,9 +142,15 @@ export async function createOrUpdateUser(
 
     return { user, created: false };
   } else {
-    const { firstName, lastName } = guessFirstAndLastNameFromFullName(
+    let { firstName, lastName } = guessFirstAndLastNameFromFullName(
       externalUser.name
     );
+
+    firstName = escape(externalUser.given_name || firstName);
+    lastName = externalUser.family_name || lastName;
+    if (lastName) {
+      lastName = escape(lastName);
+    }
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
@@ -152,8 +159,8 @@ export async function createOrUpdateUser(
       username: externalUser.nickname,
       email: sanitizeString(externalUser.email),
       name: externalUser.name,
-      firstName: externalUser.given_name ?? firstName,
-      lastName: externalUser.family_name ?? lastName,
+      firstName,
+      lastName,
     });
 
     ServerSideTracking.trackSignup({
