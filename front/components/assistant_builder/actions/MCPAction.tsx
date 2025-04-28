@@ -15,11 +15,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type {
-  LightWorkspaceType,
-  ModelConfigurationType,
-  SpaceType,
-} from "@app/types";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";
 
 interface NoActionAvailableProps {
@@ -274,7 +270,7 @@ export function MCPAction({
       )}
       {requirements.requiresReasoningConfiguration && (
         <ReasoningModelConfigurationSection
-          onModelSelect={(reasoningModel: ModelConfigurationType) => {
+          onModelSelect={(reasoningModel) => {
             handleConfigUpdate((old) => ({ ...old, reasoningModel }));
           }}
           selectedReasoningModel={actionConfiguration.reasoningModel}

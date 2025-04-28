@@ -10,16 +10,18 @@ import {
   InformationCircleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import { useModels } from "@app/lib/swr/models";
-import type { LightWorkspaceType, ModelConfigurationType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 
 interface ReasoningModelConfigurationSectionProps {
   owner: LightWorkspaceType;
-  selectedReasoningModel: ModelConfigurationType | null;
-  onModelSelect: (modelConfig: ModelConfigurationType) => void;
+  selectedReasoningModel: ReasoningModelConfiguration | null;
+  onModelSelect: (modelConfig: ReasoningModelConfiguration) => void;
 }
 
 export function ReasoningModelConfigurationSection({
@@ -31,6 +33,17 @@ export function ReasoningModelConfigurationSection({
     owner,
   });
   const { isDark } = useTheme();
+
+  const selectedReasoningModelConfig = useMemo(
+    () =>
+      selectedReasoningModel &&
+      reasoningModels.find(
+        (m) =>
+          m.modelId === selectedReasoningModel.modelId &&
+          m.providerId === selectedReasoningModel.providerId
+      ),
+    [selectedReasoningModel, reasoningModels]
+  );
 
   if (isModelsError) {
     return (
@@ -70,22 +83,22 @@ export function ReasoningModelConfigurationSection({
             <Spinner />
           </div>
         </Card>
-      ) : selectedReasoningModel ? (
+      ) : selectedReasoningModelConfig ? (
         <Card size="sm" className="w-full">
           <div className="flex w-full p-3">
             <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
               <div className="text-md flex items-center gap-2 font-medium">
                 <Avatar
                   icon={getModelProviderLogo(
-                    selectedReasoningModel.providerId,
+                    selectedReasoningModelConfig.providerId,
                     false
                   )}
                   size="sm"
                 />
-                {selectedReasoningModel.displayName}
+                {selectedReasoningModelConfig.displayName}
               </div>
               <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {selectedReasoningModel.description}
+                {selectedReasoningModelConfig.description}
               </div>
             </div>
             <div className="ml-4 flex-shrink-0 self-start">
@@ -104,7 +117,14 @@ export function ReasoningModelConfigurationSection({
                       key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
                       label={model.displayName}
                       icon={getModelProviderLogo(model.providerId, isDark)}
-                      onClick={() => onModelSelect(model)}
+                      onClick={() =>
+                        onModelSelect({
+                          modelId: model.modelId,
+                          providerId: model.providerId,
+                          reasoningEffort: model.reasoningEffort ?? null,
+                          temperature: null,
+                        })
+                      }
                     />
                   ))}
                 </DropdownMenuContent>
@@ -130,7 +150,14 @@ export function ReasoningModelConfigurationSection({
                     key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
                     label={model.displayName}
                     icon={getModelProviderLogo(model.providerId, isDark)}
-                    onClick={() => onModelSelect(model)}
+                    onClick={() =>
+                      onModelSelect({
+                        modelId: model.modelId,
+                        providerId: model.providerId,
+                        reasoningEffort: model.reasoningEffort ?? null,
+                        temperature: null,
+                      })
+                    }
                   />
                 ))}
               </DropdownMenuContent>
