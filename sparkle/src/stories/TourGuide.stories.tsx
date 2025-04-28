@@ -55,7 +55,6 @@ const Template: StoryFn<TourGuideProps> = (args: TourGuideProps) => {
           {...args}
           steps={[
             {
-              centered: true,
               title: "Welcome to the Tour",
               content:
                 "Let's explore the different elements on this page and learn how to use them effectively.",

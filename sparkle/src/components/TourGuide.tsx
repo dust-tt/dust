@@ -7,7 +7,6 @@ import { cn } from "@sparkle/lib";
 interface TourStep {
   ref?: React.RefObject<HTMLElement>;
   content: React.ReactNode;
-  centered?: boolean;
   title?: React.ReactNode;
   visual?: React.ReactNode;
 }
@@ -45,7 +44,7 @@ export function TourGuide({
 
   useEffect(() => {
     const currentStep = steps[currentIndex];
-    if (currentStep?.centered) {
+    if (!currentStep?.ref) {
       setPosition({
         top: "50%",
         left: "50%",
@@ -53,7 +52,7 @@ export function TourGuide({
         height: "0px",
         transform: "translate(-50%, -50%)",
       });
-    } else if (currentStep?.ref?.current) {
+    } else if (currentStep.ref.current) {
       const rect = currentStep.ref.current.getBoundingClientRect();
       setPosition({
         top: `${rect.top}px`,
@@ -87,7 +86,7 @@ export function TourGuide({
   return (
     <PopoverPrimitive.Root open modal={false}>
       <PopoverPrimitive.Anchor
-        className="s-fixed s-transition-all s-duration-300"
+        className="s-fixed s-transition-all s-duration-300 s-ease-in-out"
         style={{
           top: position.top,
           left: position.left,
@@ -98,7 +97,8 @@ export function TourGuide({
       />
       <PopoverPrimitive.Content
         className={cn(
-          "s-max-w-xs s-overflow-hidden s-rounded-2xl s-border s-shadow-xl s-transition-all s-duration-300",
+          "s-max-w-xs s-overflow-hidden s-rounded-2xl s-border s-shadow-xl s-transition-all s-duration-300 s-ease-in-out",
+          !steps[currentIndex]?.ref && "s-translate-y-[-50%]",
           "s-border-border s-bg-background s-text-foreground",
           "dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night"
         )}
