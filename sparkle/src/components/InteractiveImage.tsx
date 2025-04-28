@@ -12,30 +12,30 @@ import { cn } from "@sparkle/lib/utils";
 
 interface DownloadButtonProps {
   className?: string;
+  downloadUrl?: string;
   size?: "xs" | "sm" | "md";
-  src?: string;
   title: string;
 }
 
 function DownloadButton({
   className,
+  downloadUrl,
   size = "xs",
-  src,
   title,
 }: DownloadButtonProps) {
   const handleDownload = React.useCallback(async () => {
-    if (!src) {
+    if (!downloadUrl) {
       return;
     }
 
     // Create a hidden link and click it.
     const link = document.createElement("a");
-    link.href = src;
+    link.href = downloadUrl;
     link.download = title;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [src, title]);
+  }, [downloadUrl, title]);
 
   return (
     <IconButton
@@ -53,15 +53,17 @@ function DownloadButton({
 
 interface InteractiveImageProps {
   alt: string;
+  downloadUrl?: string;
+  imageUrl?: string;
   isLoading?: boolean;
-  src?: string;
   title: string;
 }
 
 export function InteractiveImage({
   alt,
+  downloadUrl,
+  imageUrl,
   isLoading = false,
-  src,
   ...props
 }: InteractiveImageProps) {
   const [isZoomed, setIsZoomed] = React.useState(false);
@@ -77,6 +79,7 @@ export function InteractiveImage({
         <div className="s-aspect-square s-h-80 s-w-80">
           <ImagePreview
             alt={alt}
+            downloadUrl={downloadUrl ?? imageUrl}
             isLoading={isLoading}
             onClick={(e) => {
               if (isLoading) {
@@ -86,7 +89,7 @@ export function InteractiveImage({
               }
               handleZoomToggle();
             }}
-            src={src}
+            imageUrl={imageUrl}
             {...props}
           />
         </div>
@@ -102,12 +105,16 @@ export function InteractiveImage({
         <div className="s-flex s-flex-col">
           <div className="s-flex s-justify-end">
             {imageLoaded && (
-              <DownloadButton src={src} title={props.title} size="md" />
+              <DownloadButton
+                downloadUrl={downloadUrl ?? imageUrl}
+                title={props.title}
+                size="md"
+              />
             )}
           </div>
           <div className="s-relative s-w-full">
             <img
-              src={src}
+              src={imageUrl}
               alt={alt}
               className="s-w-full s-object-contain"
               onLoad={() => setImageLoaded(true)}
@@ -132,10 +139,11 @@ type ImagePreviewProps = InteractiveImageProps & {
 };
 
 function ImagePreview({
+  alt,
+  downloadUrl,
+  imageUrl,
   isLoading,
   onClick,
-  alt,
-  src,
   title,
 }: ImagePreviewProps) {
   return (
@@ -152,7 +160,7 @@ function ImagePreview({
       ) : (
         <>
           <img
-            src={src}
+            src={imageUrl}
             alt={alt}
             className="s-h-full s-w-full s-rounded-2xl s-object-cover"
           />
@@ -173,7 +181,7 @@ function ImagePreview({
               "group-hover/preview:s-opacity-100"
             )}
           >
-            <DownloadButton src={src} title={title} size="xs" />
+            <DownloadButton downloadUrl={downloadUrl} title={title} size="xs" />
           </div>
         </>
       )}
