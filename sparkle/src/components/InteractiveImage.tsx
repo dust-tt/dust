@@ -7,19 +7,12 @@ import {
   IconButton,
   Spinner,
 } from "@sparkle/components/";
-import { useCopyToClipboard } from "@sparkle/hooks";
-import {
-  ArrowDownOnSquareIcon,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-} from "@sparkle/icons/app";
+import { ArrowDownOnSquareIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 interface InteractiveImageProps {
   alt: string;
   isLoading?: boolean;
-  onCopyError?: (error: unknown) => void;
-  onDownloadError?: (error: unknown) => void;
   src?: string;
   title: string;
 }
@@ -56,7 +49,13 @@ export function InteractiveImage({
           />
         </div>
       </DialogTrigger>
-      <DialogContent className="s-w-auto s-max-w-none s-border-0 s-outline-none s-ring-0 focus:s-outline-none focus:s-ring-0">
+      <DialogContent
+        className={cn(
+          "s-w-auto s-max-w-none s-border-0 s-outline-none s-ring-0",
+          "focus:s-outline-none focus:s-ring-0"
+        )}
+        size="xl"
+      >
         <img src={src} alt={alt} className="s-object-contain" />
       </DialogContent>
     </Dialog>
@@ -81,61 +80,20 @@ function ImagePreview({
   alt,
   src,
   title,
-  onCopyError,
-  onDownloadError,
 }: ImagePreviewProps) {
-  const [isCopied, copyToClipboard] = useCopyToClipboard();
-
-  const handleCopy = async () => {
-    try {
-      if (!src) {
-        return;
-      }
-
-      // Fetch the image as a blob.
-      const response = await fetch(src);
-      const blob = await response.blob();
-
-      // Copy to clipboard.
-      await copyToClipboard(
-        new ClipboardItem({
-          [blob.type]: blob,
-        })
-      );
-    } catch (error) {
-      onCopyError?.(error);
+  const handleDownload = React.useCallback(async () => {
+    if (!src) {
+      return;
     }
-  };
 
-  const handleDownload = async () => {
-    try {
-      if (!src) {
-        return;
-      }
-
-      // Fetch the image.
-      const response = await fetch(src);
-      const blob = await response.blob();
-
-      // Create a download link.
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-
-      // Extract filename from URL or use a default.
-      link.download = title;
-
-      // Trigger download.
-      document.body.appendChild(link);
-      link.click();
-
-      // Cleanup.
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      onDownloadError?.(error);
-    }
-  };
+    // Create a hidden link and click it.
+    const link = document.createElement("a");
+    link.href = src;
+    link.download = title;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [src, title]);
 
   return (
     <div
@@ -158,16 +116,6 @@ function ImagePreview({
           <div className="s-absolute s-inset-0 s-bg-black s-opacity-0 s-transition-opacity s-duration-200 group-hover/preview:s-opacity-40" />
           {/* Icon container - only visible on hover */}
           <div className="s-absolute s-right-3 s-top-3 s-z-10 s-flex s-opacity-0 s-transition-opacity s-duration-200 group-hover/preview:s-opacity-100">
-            <IconButton
-              icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-              className="s-text-white"
-              tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-              size="xs"
-              onClick={async (e) => {
-                e.stopPropagation(); // Prevent image zoom.
-                await handleCopy();
-              }}
-            />
             <IconButton
               icon={ArrowDownOnSquareIcon}
               className="s-text-white"
