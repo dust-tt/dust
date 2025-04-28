@@ -14,6 +14,8 @@ type BrowserScrapeMetadata = {
 
 export type BrowseScrapeSuccessResponse = BrowserScrapeMetadata & {
   markdown: string;
+  title: string | undefined;
+  description: string | undefined;
 };
 
 export type BrowseScrapeErrorResponse = BrowserScrapeMetadata & {
@@ -74,6 +76,8 @@ export const browseUrl = async (
   if (scrapeResult.markdown) {
     return {
       markdown: scrapeResult.markdown,
+      title: scrapeResult.metadata?.title,
+      description: scrapeResult.metadata?.description,
       status: scrapeResult.metadata?.statusCode ?? 200,
       url: url,
     };

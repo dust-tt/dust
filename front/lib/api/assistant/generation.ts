@@ -1,7 +1,8 @@
 import moment from "moment-timezone";
 
 import {
-  isMCPActionWithDataSource,
+  isMCPConfigurationWithDataSource,
+  isMCPConfigurationWithWebsearch,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { isRetrievalConfiguration } from "@app/lib/actions/types/guards";
@@ -107,7 +108,8 @@ export async function constructPromptMultiActions(
     (action) =>
       isRetrievalConfiguration(action) ||
       isWebsearchConfiguration(action) ||
-      isMCPActionWithDataSource(action)
+      isMCPConfigurationWithDataSource(action) ||
+      isMCPConfigurationWithWebsearch(action)
   );
 
   if (canRetrieveDocuments) {

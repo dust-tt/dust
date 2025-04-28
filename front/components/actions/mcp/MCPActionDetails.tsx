@@ -1,4 +1,5 @@
 import {
+  Button,
   Citation,
   CitationIcons,
   CitationTitle,
@@ -7,6 +8,7 @@ import {
   CollapsibleComponent,
   ContentBlockWrapper,
   ContentMessage,
+  GlobeAltIcon,
   Icon,
   InformationCircleIcon,
   MagnifyingGlassIcon,
@@ -22,17 +24,22 @@ import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import type {
+  BrowseResultResourceType,
   SearchResultResourceType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
+  WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  isBrowseResultResourceType,
   isSearchQueryResourceType,
   isSearchResultResourceType,
   isSqlQueryOutput,
   isThinkingOutput,
   isToolGeneratedFile,
+  isWebsearchQueryResourceType,
+  isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { LightWorkspaceType } from "@app/types";
@@ -45,6 +52,17 @@ export function MCPActionDetails(
     props.action.output
       ?.filter(isSearchResultResourceType)
       .map((o) => o.resource) ?? [];
+
+  const websearchResults =
+    props.action.output
+      ?.filter(isWebsearchResultResourceType)
+      .map((o) => o.resource) ?? [];
+
+  const browseResults =
+    props.action.output
+      ?.filter(isBrowseResultResourceType)
+      .map((o) => o.resource) ?? [];
+
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
   const isTablesQuery = props.action.output?.some(isSqlQueryOutput);
 
@@ -52,6 +70,12 @@ export function MCPActionDetails(
     return (
       <SearchResultActionDetails {...props} searchResults={searchResults} />
     );
+  } else if (websearchResults.length > 0) {
+    return (
+      <WebsearchActionDetails {...props} websearchResults={websearchResults} />
+    );
+  } else if (browseResults.length > 0) {
+    return <BrowseActionDetails {...props} browseResults={browseResults} />;
   } else if (isTablesQuery) {
     return <TablesQueryActionDetails {...props} />;
   } else {
@@ -274,6 +298,110 @@ function TablesQueryActionDetails({
               owner={owner}
             />
           ))}
+        </div>
+      </div>
+    </ActionDetailsWrapper>
+  );
+}
+
+export function WebsearchActionDetails({
+  action,
+  websearchResults,
+  defaultOpen,
+}: ActionDetailsComponentBaseProps<MCPActionType> & {
+  websearchResults: WebsearchResultResourceType[];
+}) {
+  const queryResources =
+    action.output
+      ?.filter(isWebsearchQueryResourceType)
+      .map((o) => o.resource) ?? [];
+
+  return (
+    <ActionDetailsWrapper
+      actionName="Web search"
+      defaultOpen={defaultOpen}
+      visual={GlobeAltIcon}
+    >
+      <div className="flex flex-col gap-4 pl-6 pt-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+            Query
+          </span>
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night"></div>
+        </div>
+        <div>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen: defaultOpen }}
+            triggerChildren={
+              <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+                {queryResources.length > 0
+                  ? queryResources.map((r) => r.text).join("\n")
+                  : (action.params.query as string) ?? "No query provided"}
+              </span>
+            }
+            contentChildren={
+              <>
+                <PaginatedCitationsGrid
+                  items={websearchResults.map((r) => ({
+                    description: r.text,
+                    title: r.title,
+                    icon: getDocumentIcon("webcrawler"),
+                    href: r.uri,
+                  }))}
+                />
+              </>
+            }
+          />
+        </div>
+      </div>
+    </ActionDetailsWrapper>
+  );
+}
+
+export function BrowseActionDetails({
+  browseResults,
+  defaultOpen,
+}: ActionDetailsComponentBaseProps<MCPActionType> & {
+  browseResults: BrowseResultResourceType[];
+}) {
+  return (
+    <ActionDetailsWrapper
+      actionName="Web navigation"
+      defaultOpen={defaultOpen}
+      visual={GlobeAltIcon}
+    >
+      <div className="flex flex-col gap-4 pl-6 pt-4">
+        <div className="flex flex-col gap-1">
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+            {browseResults.map((r, idx) => (
+              <div
+                className="flex max-h-60 flex-col gap-2 overflow-y-auto overflow-x-hidden pb-4"
+                key={idx}
+              >
+                {r.responseCode === "200" ? (
+                  <>
+                    <Button
+                      icon={GlobeAltIcon}
+                      onClick={() => window.open(r.uri, "_blank")}
+                      label={r.title ?? r.requestedUrl}
+                      variant="outline"
+                    />
+                    <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      {r.requestedUrl}
+                    </span>
+                    <span className="text-sm text-foreground dark:text-foreground-night">
+                      {r.description ?? r.text.slice(0, 1024)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-sm text-foreground">
+                    Cannot fetch content for {r.uri}, error code :{" "}
+                    {r.responseCode}.{r.errorMessage}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </ActionDetailsWrapper>
