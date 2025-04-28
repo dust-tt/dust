@@ -65,6 +65,7 @@ export function InteractiveImage({
   ...props
 }: InteractiveImageProps) {
   const [isZoomed, setIsZoomed] = React.useState(false);
+  const [imageLoaded, setImageLoaded] = React.useState(false);
 
   const handleZoomToggle = React.useCallback(() => {
     setIsZoomed(!isZoomed);
@@ -99,11 +100,18 @@ export function InteractiveImage({
         size="xl"
       >
         <div className="s-flex s-flex-col">
-          <div className="s-flex s-justify-end s-pb-2 s-pr-1 s-pt-1">
-            <DownloadButton src={src} title={props.title} size="sm" />
+          <div className="s-flex s-justify-end">
+            {imageLoaded && (
+              <DownloadButton src={src} title={props.title} size="sm" />
+            )}
           </div>
           <div className="s-relative s-w-full">
-            <img src={src} alt={alt} className="s-w-full s-object-contain" />
+            <img
+              src={src}
+              alt={alt}
+              className="s-w-full s-object-contain"
+              onLoad={() => setImageLoaded(true)}
+            />
           </div>
         </div>
       </DialogContent>
