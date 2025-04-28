@@ -12,7 +12,7 @@ import { cn } from "@sparkle/lib/utils";
 
 interface DownloadButtonProps {
   className?: string;
-  size?: "xs" | "sm";
+  size?: "xs" | "sm" | "md";
   src?: string;
   title: string;
 }
@@ -102,7 +102,7 @@ export function InteractiveImage({
         <div className="s-flex s-flex-col">
           <div className="s-flex s-justify-end">
             {imageLoaded && (
-              <DownloadButton src={src} title={props.title} size="sm" />
+              <DownloadButton src={src} title={props.title} size="md" />
             )}
           </div>
           <div className="s-relative s-w-full">
