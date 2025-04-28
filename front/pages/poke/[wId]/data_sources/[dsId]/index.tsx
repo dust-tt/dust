@@ -59,7 +59,6 @@ import {
   isSlackAutoReadPatterns,
   safeParseJSON,
 } from "@app/types";
-import { white } from "tailwindcss/colors";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
