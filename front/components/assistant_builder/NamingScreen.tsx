@@ -550,10 +550,10 @@ export default function NamingScreen({
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="dark:text-foreground-nightt text-sm font-semibold text-foreground">
+                    <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                       {isVisible ? "Visible" : "Hidden"}
                     </span>
-                    <span className="dark:text-muted-foreground-nightt text-sm font-normal text-muted-foreground">
+                    <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                       {VISIBILITY_DESCRIPTIONS[builderState.scope]}
                     </span>
 
@@ -601,7 +601,7 @@ export default function NamingScreen({
                           <Icon visual={SlackLogo} size="sm" />
                           Slack integration
                         </span>
-                        <span className="dark:text-muted-foreground-nightt text-sm font-normal text-muted-foreground">
+                        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                           {slackChannelSelected.length > 0
                             ? `Default agent for ${slackChannelSelected.map((c) => c.slackChannelName).join(", ")}`
                             : "Set this agent as the default agent on one or several of your Slack channels."}
