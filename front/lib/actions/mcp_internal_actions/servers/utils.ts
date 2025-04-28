@@ -142,7 +142,6 @@ type CoreSearchArgs = {
   dataSourceView: DataSourceViewType;
 };
 
-// TODO(mcp): update to fetch multiple uris at once.
 export async function getCoreSearchArgs(
   auth: Authenticator,
   dataSourceConfiguration: DataSourcesToolConfigurationType[number]
