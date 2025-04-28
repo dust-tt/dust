@@ -9,7 +9,10 @@ import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
-import { getMembers } from "@app/lib/api/workspace";
+import {
+  getMembers,
+  getWorkspaceAdministrationVersionLock,
+} from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
@@ -61,6 +64,7 @@ import {
 } from "@app/types";
 
 import { ConversationResource } from "../resources/conversation_resource";
+import { frontSequelize } from "../resources/storage";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -879,6 +883,11 @@ export async function upsertTable({
   return new Ok(tableRes.value);
 }
 
+type DataSourceCreationError = Omit<DustError, "code"> & {
+  code: "invalid_request_error" | "plan_limit_error" | "internal_server_error";
+  dataSourceError?: CoreAPIError;
+};
+
 /**
  * Data sources without provider = folders
  */
@@ -899,18 +908,7 @@ export async function createDataSourceWithoutProvider(
     description: string | null;
     conversation?: ConversationWithoutContentType;
   }
-): Promise<
-  Result<
-    DataSourceViewResource,
-    Omit<DustError, "code"> & {
-      code:
-        | "invalid_request_error"
-        | "plan_limit_error"
-        | "internal_server_error";
-      dataSourceError?: CoreAPIError;
-    }
-  >
-> {
+): Promise<Result<DataSourceViewResource, DataSourceCreationError>> {
   if (name.startsWith("managed-")) {
     return new Err({
       name: "dust_error",
@@ -925,102 +923,121 @@ export async function createDataSourceWithoutProvider(
       message: "Data source names cannot be empty.",
     });
   }
-  const dataSources = await DataSourceResource.listByWorkspace(auth);
-  if (
-    plan.limits.dataSources.count != -1 &&
-    dataSources.length >= plan.limits.dataSources.count
-  ) {
-    return new Err({
-      name: "dust_error",
-      code: "plan_limit_error",
-      message: "Your plan does not allow you to create more data sources.",
-    });
-  }
 
-  if (dataSources.some((ds) => ds.name === name)) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "Data source with that name already exist.",
-    });
-  }
+  return frontSequelize.transaction(
+    async (
+      t
+    ): Promise<Result<DataSourceViewResource, DataSourceCreationError>> => {
+      // Only setup the lock if the workspace has a limit of data source
+      if (plan.limits.dataSources.count !== -1) {
+        await getWorkspaceAdministrationVersionLock(owner, t);
+      }
 
-  const dataSourceEmbedder =
-    owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
-  const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const dataSources = await DataSourceResource.listByWorkspace(
+        auth,
+        undefined,
+        undefined,
+        t
+      );
+      if (
+        plan.limits.dataSources.count != -1 &&
+        dataSources.length >= plan.limits.dataSources.count
+      ) {
+        return new Err({
+          name: "dust_error",
+          code: "plan_limit_error",
+          message: "Your plan does not allow you to create more data sources.",
+        });
+      }
 
-  const dustProject = await coreAPI.createProject();
-  if (dustProject.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: "Failed to create internal project for the data source.",
-      dataSourceError: dustProject.error,
-    });
-  }
+      if (dataSources.some((ds) => ds.name === name)) {
+        return new Err({
+          name: "dust_error",
+          code: "invalid_request_error",
+          message: "Data source with that name already exist.",
+        });
+      }
 
-  const dustDataSource = await coreAPI.createDataSource({
-    projectId: dustProject.value.project.project_id.toString(),
-    config: {
-      qdrant_config: {
-        cluster: DEFAULT_QDRANT_CLUSTER,
-        shadow_write_cluster: null,
-      },
-      embedder_config: {
-        embedder: {
-          max_chunk_size: embedderConfig.max_chunk_size,
-          model_id: embedderConfig.model_id,
-          provider_id: embedderConfig.provider_id,
-          splitter_id: embedderConfig.splitter_id,
+      const dataSourceEmbedder =
+        owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
+      const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+      const dustProject = await coreAPI.createProject();
+      if (dustProject.isErr()) {
+        return new Err({
+          name: "dust_error",
+          code: "internal_server_error",
+          message: "Failed to create internal project for the data source.",
+          dataSourceError: dustProject.error,
+        });
+      }
+
+      const dustDataSource = await coreAPI.createDataSource({
+        projectId: dustProject.value.project.project_id.toString(),
+        config: {
+          qdrant_config: {
+            cluster: DEFAULT_QDRANT_CLUSTER,
+            shadow_write_cluster: null,
+          },
+          embedder_config: {
+            embedder: {
+              max_chunk_size: embedderConfig.max_chunk_size,
+              model_id: embedderConfig.model_id,
+              provider_id: embedderConfig.provider_id,
+              splitter_id: embedderConfig.splitter_id,
+            },
+          },
         },
-      },
-    },
-    credentials: dustManagedCredentials(),
-    name,
-  });
-
-  if (dustDataSource.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: "Failed to create the data source.",
-      dataSourceError: dustDataSource.error,
-    });
-  }
-
-  const dataSourceView =
-    await DataSourceViewResource.createDataSourceAndDefaultView(
-      {
+        credentials: dustManagedCredentials(),
         name,
-        description,
-        dustAPIProjectId: dustProject.value.project.project_id.toString(),
-        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-        workspaceId: owner.id,
-        assistantDefaultSelected: false,
-        conversationId: conversation?.id,
-      },
-      space,
-      auth.user()
-    );
+      });
 
-  try {
-    // Asynchronous tracking without awaiting, handled safely
-    void ServerSideTracking.trackDataSourceCreated({
-      user: auth.user() ?? undefined,
-      workspace: owner,
-      dataSource: dataSourceView.dataSource.toJSON(),
-    });
-  } catch (error) {
-    logger.error(
-      {
-        error,
-      },
-      "Failed to track data source creation"
-    );
-  }
+      if (dustDataSource.isErr()) {
+        return new Err({
+          name: "dust_error",
+          code: "internal_server_error",
+          message: "Failed to create the data source.",
+          dataSourceError: dustDataSource.error,
+        });
+      }
 
-  return new Ok(dataSourceView);
+      const dataSourceView =
+        await DataSourceViewResource.createDataSourceAndDefaultView(
+          {
+            name,
+            description,
+            dustAPIProjectId: dustProject.value.project.project_id.toString(),
+            dustAPIDataSourceId:
+              dustDataSource.value.data_source.data_source_id,
+            workspaceId: owner.id,
+            assistantDefaultSelected: false,
+            conversationId: conversation?.id,
+          },
+          space,
+          auth.user(),
+          t
+        );
+
+      try {
+        // Asynchronous tracking without awaiting, handled safely
+        void ServerSideTracking.trackDataSourceCreated({
+          user: auth.user() ?? undefined,
+          workspace: owner,
+          dataSource: dataSourceView.dataSource.toJSON(),
+        });
+      } catch (error) {
+        logger.error(
+          {
+            error,
+          },
+          "Failed to track data source creation"
+        );
+      }
+
+      return new Ok(dataSourceView);
+    }
+  );
 }
 
 async function getOrCreateConversationDataSource(
