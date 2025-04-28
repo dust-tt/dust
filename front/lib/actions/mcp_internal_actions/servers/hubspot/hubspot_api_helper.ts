@@ -6,7 +6,7 @@ import type { PublicOwner } from "@hubspot/api-client/lib/codegen/crm/owners/mod
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
 const MAX_ENUM_OPTIONS_DISPLAYED = 50;
-export const MAX_LIMIT = 200; // Hubspot API limit.
+export const MAX_LIMIT = 50; // Hubspot API limit is 200 but it's too big for us.
 export const MAX_COUNT_LIMIT = 10000; // Hubspot API limit.
 
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
@@ -247,6 +247,7 @@ export const getObjectsByProperties = async (
       },
     ],
     properties: propertyNames,
+    sorts: ["createdate:desc"],
     limit: MAX_LIMIT,
   });
 
@@ -287,4 +288,28 @@ export const countObjectsByProperties = async (
   });
 
   return objects.total;
+};
+
+/**
+ * Get latest objects from Hubspot by lastmodifieddate.
+ */
+export const getLatestObjects = async (
+  accessToken: string,
+  objectType: SimpleObjectType,
+  limit: number
+): Promise<SimplePublicObject[]> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const availableProperties =
+    await hubspotClient.crm.properties.coreApi.getAll(objectType);
+  const propertyNames = availableProperties.results.map((p) => p.name);
+
+  const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
+    filterGroups: [],
+    properties: propertyNames,
+    sorts: ["createdate:desc"],
+    limit,
+  });
+
+  return objects.results;
 };
