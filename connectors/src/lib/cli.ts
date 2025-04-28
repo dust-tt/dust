@@ -145,10 +145,6 @@ export const connectors = async ({
       return { success: true };
     }
     case "unpause": {
-      // We start by clearing any errorType
-      connector.errorType = null;
-      await connector.save();
-
       await throwOnError(manager.unpause());
       return { success: true };
     }
