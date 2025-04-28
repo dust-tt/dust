@@ -146,6 +146,7 @@ export {
   TooltipRoot,
   TooltipTrigger,
 } from "./Tooltip";
+export { TourGuide, TourPopover } from "./TourGuide";
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
 export { ValueCard } from "./ValueCard";
