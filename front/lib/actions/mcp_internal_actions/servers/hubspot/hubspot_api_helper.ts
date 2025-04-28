@@ -6,6 +6,9 @@ import type { PublicOwner } from "@hubspot/api-client/lib/codegen/crm/owners/mod
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
 const MAX_ENUM_OPTIONS_DISPLAYED = 50;
+export const MAX_LIMIT = 200; // Hubspot API limit.
+export const MAX_COUNT_LIMIT = 10000; // Hubspot API limit.
+
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
@@ -196,6 +199,7 @@ export const getObjectByEmail = async (
       },
     ],
     properties: propertyNames,
+    limit: MAX_LIMIT,
   });
 
   if (objects.results.length === 0) {
@@ -243,7 +247,44 @@ export const getObjectsByProperties = async (
       },
     ],
     properties: propertyNames,
+    limit: MAX_LIMIT,
   });
 
   return objects.results;
+};
+
+export const countObjectsByProperties = async (
+  accessToken: string,
+  objectType: SimpleObjectType,
+  filters: Array<{
+    propertyName: string;
+    operator: FilterOperatorEnum;
+    value?: string;
+  }>
+): Promise<number> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
+    filterGroups: [
+      {
+        filters: filters.map(({ propertyName, operator, value }) => {
+          const filter: any = {
+            propertyName,
+            operator,
+          };
+          // Only include value if it's not a HAS_PROPERTY or NOT_HAS_PROPERTY operator
+          if (
+            operator !== FilterOperatorEnum.HasProperty &&
+            operator !== FilterOperatorEnum.NotHasProperty
+          ) {
+            filter.value = value;
+          }
+          return filter;
+        }),
+      },
+    ],
+    limit: 1, // We only need to know if there are any objects matching the filters.
+  });
+
+  return objects.total;
 };

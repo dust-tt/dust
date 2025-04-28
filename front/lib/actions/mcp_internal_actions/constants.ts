@@ -82,6 +82,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_objects_by_properties: "low",
       get_object_by_email: "low",
       get_object_by_id: "low",
+      count_objects_by_properties: "low",
       create_object: "high",
       update_object: "high",
     },
