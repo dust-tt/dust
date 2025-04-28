@@ -55,17 +55,26 @@ const Template: StoryFn<TourGuideProps> = (args: TourGuideProps) => {
           {...args}
           steps={[
             {
+              centered: true,
+              title: "Welcome to the Tour",
+              content:
+                "Let's explore the different elements on this page and learn how to use them effectively.",
+            },
+            {
               ref: topRightRef,
+              title: "Top Right Element",
               content:
                 "This element is anchored to the top right corner. The popover will automatically position itself to stay in view.",
             },
             {
               ref: centerRef,
+              title: "Centered Element",
               content:
                 "This element is perfectly centered in the container using transform translate.",
             },
             {
               ref: bottomLeftRef,
+              title: "Bottom Left Element",
               content:
                 "This element is anchored to the bottom left corner, demonstrating the tour's ability to handle different positions.",
             },
