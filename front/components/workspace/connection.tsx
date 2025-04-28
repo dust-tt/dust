@@ -12,7 +12,6 @@ import {
   Input,
   LockIcon,
   Page,
-  Popup,
   RadioGroup,
   RadioGroupItem,
   Sheet,
@@ -184,29 +183,61 @@ export function EnterpriseConnectionDetails({
             }}
           />
         )}
-        <Popup
-          show={showNoInviteLinkPopup}
-          chipLabel="Free plan"
-          description="You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
-          buttonLabel="Check Dust plans"
-          buttonClick={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
+        <Dialog open={showNoInviteLinkPopup}>
+          <DialogContent>
+            <DialogHeader>Free plan</DialogHeader>
+            You cannot enable auto-join with the free plan. Upgrade your plan to
+            invite other members.
+            <DialogFooter>
+              <Button
+                variant="secondary"
+                onClick={() => setShowNoInviteLinkPopup(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                }}
+              >
+                Check Dust plans
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog
+          open={showNoVerifiedDomainPopup}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowNoVerifiedDomainPopup(false);
+            }
           }}
-          className="absolute bottom-8 right-8"
-          onClose={() => setShowNoInviteLinkPopup(false)}
-        />
-        <Popup
-          show={showNoVerifiedDomainPopup}
-          chipLabel="Domain Verification Required"
-          description="Single Sign-On (SSO) is not available because your domain isn't verified yet. Contact us at support@dust.tt for assistance."
-          buttonLabel="Get Help"
-          buttonClick={() => {
-            window.location.href =
-              "mailto:support@dust.tt?subject=Help with Domain Verification for SSO";
-          }}
-          className="absolute bottom-8 right-8"
-          onClose={() => setShowNoVerifiedDomainPopup(false)}
-        />
+        >
+          <DialogContent size="md">
+            <DialogHeader hideButton={false}>
+              <DialogTitle>Domain Verification Required</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
+              Single Sign-On (SSO) is not available because your domain isn't
+              verified yet. Contact us at support@dust.tt for assistance.
+            </DialogContainer>
+            <DialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+                onClick: () => setShowNoVerifiedDomainPopup(false),
+              }}
+              rightButtonProps={{
+                label: "Get Help",
+                variant: "primary",
+                onClick: () => {
+                  window.location.href =
+                    "mailto:support@dust.tt?subject=Help with Domain Verification for SSO";
+                },
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </Page.Vertical>
   );
