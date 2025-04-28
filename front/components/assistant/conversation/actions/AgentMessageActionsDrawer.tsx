@@ -1,5 +1,4 @@
 import {
-  Page,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -66,7 +65,6 @@ export function AgentMessageActionsDrawer({
                     actionSpecification.detailsComponent;
                   return (
                     <div key={`action-${action.id}`}>
-                      {idx !== 0 && <Page.Separator />}
                       <ActionDetailsComponent
                         action={action}
                         defaultOpen={idx === 0 && step === "1"}

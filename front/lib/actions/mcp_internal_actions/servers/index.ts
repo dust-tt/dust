@@ -55,7 +55,7 @@ export function getInternalMCPServer(
     case "think":
       return thinkServer();
     case "web_search_&_browse_v2":
-      return webtoolsServer();
+      return webtoolsServer(agentLoopContext);
     case "search":
       return searchServer(auth, agentLoopContext);
     case "ask_agent":

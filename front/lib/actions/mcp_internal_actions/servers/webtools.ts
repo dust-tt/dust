@@ -1,9 +1,20 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import type {
+  BrowseResultResourceType,
+  WebsearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { actionRefsOffset } from "@app/lib/actions/utils";
+import { getWebsearchNumResults } from "@app/lib/actions/utils";
+import { getRefs } from "@app/lib/api/assistant/citations";
 import type { MCPServerDefinitionType } from "@app/lib/api/mcp";
-import { browseUrls } from "@app/lib/utils/webbrowse";
+import {
+  browseUrls,
+  isBrowseScrapeSuccessResponse,
+} from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
 import type { OAuthProvider } from "@app/types";
 
@@ -20,7 +31,7 @@ export const serverInfo: MCPServerDefinitionType = {
   },
 };
 
-const createServer = (): McpServer => {
+const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -40,10 +51,21 @@ const createServer = (): McpServer => {
         ),
     },
     async ({ query, page }) => {
+      if (!agentLoopContext) {
+        throw new Error(
+          "agentLoopContext is required where the tool is called."
+        );
+      }
+
+      const numResults = getWebsearchNumResults({
+        stepActions: agentLoopContext.stepActions,
+      });
+
       const websearchRes = await webSearch({
         provider: "serpapi",
         query,
         page,
+        num: numResults,
       });
 
       if (websearchRes.isErr()) {
@@ -58,12 +80,39 @@ const createServer = (): McpServer => {
         };
       }
 
+      const refsOffset = actionRefsOffset({
+        agentConfiguration: agentLoopContext.agentConfiguration,
+        stepActionIndex: agentLoopContext.stepActionIndex,
+        stepActions: agentLoopContext.stepActions,
+        refsOffset: agentLoopContext.citationsRefsOffset,
+      });
+      const refs = getRefs().slice(refsOffset, refsOffset + numResults);
+
+      const results: WebsearchResultResourceType[] = [];
+      for (const result of websearchRes.value) {
+        results.push({
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
+          title: result.title,
+          text: result.snippet,
+          uri: result.link,
+          reference: refs.shift() as string,
+        });
+      }
+
       return {
         isError: false,
         content: [
+          ...results.map((result) => ({
+            type: "resource" as const,
+            resource: result,
+          })),
           {
-            type: "text",
-            text: JSON.stringify(websearchRes.value),
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_QUERY,
+              text: query,
+              uri: "",
+            },
           },
         ],
       };
@@ -72,22 +121,38 @@ const createServer = (): McpServer => {
 
   server.tool(
     "webbrowser",
-    "A tool to browse website",
+    "A tool to browse websites, you can provide a list of urls to browse all at once.",
     {
       urls: z.string().array().describe("List of urls to browse"),
     },
     async ({ urls }) => {
       const results = await browseUrls(urls);
-      const content: CallToolResult["content"] = results.map((result) => {
-        return {
-          type: "text",
-          text: JSON.stringify(result),
-        };
-      });
+
+      const content: BrowseResultResourceType[] = [];
+      for (const result of results) {
+        const [markdown, title, description, error] =
+          isBrowseScrapeSuccessResponse(result)
+            ? [result.markdown, result.title, result.description, undefined]
+            : [undefined, undefined, undefined, result.error];
+
+        content.push({
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+          requestedUrl: result.url,
+          uri: result.url,
+          text: markdown ?? "There was an error while browsing the website.",
+          title: title ?? undefined,
+          description: description ?? undefined,
+          responseCode: result.status.toString(),
+          errorMessage: error,
+        });
+      }
 
       return {
         isError: false,
-        content,
+        content: content.map((result) => ({
+          type: "resource" as const,
+          resource: result,
+        })),
       };
     }
   );
