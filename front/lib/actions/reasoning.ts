@@ -20,9 +20,11 @@ import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasonin
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
-  GenerationTokensEvent,
   ModelId,
   ModelIdType,
   ModelProviderIdType,
@@ -55,7 +57,7 @@ export type ReasoningConfigurationType = {
 
 export type ReasoningModelConfiguration = Pick<
   ReasoningConfigurationType,
-  "modelId" | "providerId" | "reasoningEffort"
+  "modelId" | "providerId" | "reasoningEffort" | "temperature"
 >;
 
 type ReasoningErrorEvent = {
@@ -228,43 +230,24 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     if (!actionConfig || !isReasoningConfiguration(actionConfig)) {
       throw new Error("Unreachable: Reasoning configuration not found");
     }
-    const supportedModel = SUPPORTED_MODEL_CONFIGS.find(
-      (m) =>
-        m.modelId === actionConfig.modelId &&
-        m.providerId === actionConfig.providerId
-    );
 
-    if (!supportedModel) {
-      yield {
-        type: "reasoning_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "reasoning_error",
-          message: "Reasoning configuration not found",
-        },
-      };
-      return;
-    }
+    // Use the shared reasoning function
+    const actionOutput = {
+      content: "",
+      thinking: "",
+    };
 
-    if (!isProviderWhitelisted(owner, supportedModel.providerId)) {
-      yield {
-        type: "reasoning_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "reasoning_error",
-          message: "Provider not supported",
-        },
-      };
-      return;
-    }
+    let dustRunId: Promise<string> | undefined;
 
-    if (supportedModel.featureFlag) {
-      const featureFlags = await getFeatureFlags(owner);
-      if (!featureFlags.includes(supportedModel.featureFlag)) {
+    // Process the shared reasoning generator
+    for await (const event of runReasoning(auth, {
+      reasoningModel: { ...actionConfig },
+      conversation,
+      agentConfiguration,
+      agentMessage,
+      actionConfig,
+    })) {
+      if (event.type === "error") {
         yield {
           type: "reasoning_error",
           created: Date.now(),
@@ -272,125 +255,15 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
           messageId: agentMessage.sId,
           error: {
             code: "reasoning_error",
-            message: "Model not allowed.",
+            message: event.message,
           },
         };
         return;
-      }
-    }
-
-    const renderedConversationRes = await renderConversationForModel(auth, {
-      conversation,
-      model: supportedModel,
-      prompt: agentConfiguration.instructions ?? "",
-      allowedTokenCount:
-        supportedModel.contextSize - REASONING_GENERATION_TOKENS,
-      excludeImages: true,
-    });
-    if (renderedConversationRes.isErr()) {
-      yield {
-        type: "reasoning_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "reasoning_error",
-          message: `Error running reasoning action: ${renderedConversationRes.error.message}`,
-        },
-      };
-      return;
-    }
-    const renderedConversation = renderedConversationRes.value;
-
-    const config = cloneBaseConfig(
-      getDustProdAction("assistant-v2-reason").config
-    );
-
-    config.MODEL.provider_id = supportedModel.providerId;
-    config.MODEL.model_id = supportedModel.modelId;
-    if (actionConfig.temperature) {
-      config.MODEL.temperature = actionConfig.temperature;
-    }
-    if (actionConfig.reasoningEffort) {
-      config.MODEL.reasoning_effort = actionConfig.reasoningEffort;
-    }
-
-    if (supportedModel.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID) {
-      // We can't pass a temperature different from 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
-      config.MODEL.temperature = 1.0;
-      delete config.MODEL.top_p;
-      // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
-      config.MODEL.anthropic_beta_thinking = {
-        type: "enabled",
-        budget_tokens: 6400,
-      };
-      // Add the beta flag for larger outputs.
-      config.MODEL.anthropic_beta_flags = ["output-128k-2025-02-19"];
-    }
-
-    const inputs = [
-      {
-        conversation: renderedConversation.modelConversation.messages,
-        instructions: agentConfiguration.instructions,
-      },
-    ];
-
-    const res = await runActionStreamed(
-      auth,
-      "assistant-v2-reason",
-      config,
-      inputs,
-      {
-        conversationId: conversation.sId,
-        workspaceId: conversation.owner.sId,
-        agentMessageId: agentMessage.sId,
-      }
-    );
-
-    if (res.isErr()) {
-      yield {
-        type: "reasoning_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "reasoning_error",
-          message: `Error running reasoning action: ${res.error.message}`,
-        },
-      };
-      return;
-    }
-
-    const { eventStream, dustRunId } = res.value;
-
-    const contentParser = new AgentMessageContentParser(
-      agentConfiguration,
-      agentMessage.sId,
-      supportedModel.delimitersConfiguration
-    );
-
-    const redis = await getRedisClient({ origin: "reasoning_generation" });
-    let lastCheckCancellation = Date.now();
-
-    const actionOutput = {
-      content: "",
-      thinking: "",
-    };
-    async function* processTokensEvents(
-      stream: AsyncGenerator<GenerationTokensEvent>
-    ): AsyncGenerator<ReasoningTokensEvent> {
-      for await (const token of stream) {
-        if (
-          token.classification === "opening_delimiter" ||
-          token.classification === "closing_delimiter"
-        ) {
-          continue;
-        }
-
-        if (token.classification === "chain_of_thought") {
-          actionOutput.thinking += token.text;
+      } else if (event.type === "token") {
+        if (event.classification === "chain_of_thought") {
+          actionOutput.thinking += event.text;
         } else {
-          actionOutput.content += token.text;
+          actionOutput.content += event.text;
         }
 
         yield {
@@ -409,75 +282,17 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
             type: "reasoning_action",
             generatedFiles: [],
           }),
-          content: token.text,
-          classification: token.classification,
-        } satisfies ReasoningTokensEvent;
-      }
-    }
-
-    for await (const event of eventStream) {
-      if (event.type === "function_call") {
-        continue;
-      }
-      if (event.type === "error") {
-        yield* processTokensEvents(contentParser.flushTokens());
-        yield {
-          type: "reasoning_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "reasoning_error",
-            message: `Error running reasoning action: ${event.content.message}`,
-          },
+          content: event.text,
+          classification: event.classification,
         };
-        return;
-      }
+      } else if (event.type === "success") {
+        actionOutput.content = event.content;
+        actionOutput.thinking = event.thinking;
 
-      const currentTimestamp = Date.now();
-      if (
-        currentTimestamp - lastCheckCancellation >=
-        CANCELLATION_CHECK_INTERVAL
-      ) {
-        try {
-          const cancelled = await redis.get(
-            `assistant:generation:cancelled:${agentMessage.sId}`
-          );
-          if (cancelled === "1") {
-            return;
-          }
-          lastCheckCancellation = currentTimestamp;
-        } catch (error) {
-          logger.error({ error }, "Error checking cancellation");
-        }
-      }
-
-      if (event.type === "tokens") {
-        yield* processTokensEvents(
-          contentParser.emitTokens(event.content.tokens.text)
-        );
-      }
-
-      if (event.type === "block_execution") {
-        const e = event.content.execution[0][0];
-        if (e.error) {
-          yield* processTokensEvents(contentParser.flushTokens());
-          yield {
-            type: "reasoning_error",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: "reasoning_error",
-              message: `Error running reasoning action: ${e.error}`,
-            },
-          } satisfies ReasoningErrorEvent;
-          return;
-        }
+        // The dustRunId is returned as the final value from the generator
+        dustRunId = event as unknown as Promise<string>;
       }
     }
-
-    yield* processTokensEvents(contentParser.flushTokens());
 
     yield {
       type: "reasoning_thinking",
@@ -518,9 +333,243 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     await action.update({
       output: actionOutput.content,
       thinking: actionOutput.thinking,
-      runId: await dustRunId,
+      runId: dustRunId ? await dustRunId : null,
     });
   }
+}
+
+/**
+ * Shared function to run reasoning that can be used by both the streaming action and the MCP server.
+ * It returns an async generator that yields tokens and results.
+ */
+export async function* runReasoning(
+  auth: Authenticator,
+  {
+    reasoningModel,
+    conversation,
+    agentConfiguration,
+    agentMessage,
+    actionConfig,
+  }: {
+    reasoningModel: ReasoningModelConfiguration;
+    conversation: ConversationType;
+    agentConfiguration: AgentConfigurationType;
+    agentMessage: AgentMessageType;
+    actionConfig: ReasoningModelConfiguration;
+  }
+): AsyncGenerator<
+  | { type: "error"; message: string }
+  | { type: "token"; text: string; classification: TokensClassification }
+  | { type: "success"; content: string; thinking: string }
+> {
+  const owner = auth.getNonNullableWorkspace();
+
+  // Retrieve the model and check that the owner is allowed to use it.
+  const supportedModel = SUPPORTED_MODEL_CONFIGS.find(
+    (m) =>
+      m.modelId === reasoningModel.modelId &&
+      m.providerId === reasoningModel.providerId
+  );
+  if (!supportedModel) {
+    yield { type: "error", message: "Reasoning configuration not found" };
+    return;
+  }
+
+  if (!isProviderWhitelisted(owner, supportedModel.providerId)) {
+    yield { type: "error", message: "Provider not supported" };
+    return;
+  }
+
+  if (supportedModel.featureFlag) {
+    const featureFlags = await getFeatureFlags(owner);
+    if (!featureFlags.includes(supportedModel.featureFlag)) {
+      yield { type: "error", message: "Model not allowed." };
+      return;
+    }
+  }
+
+  // Render the conversation.
+  const renderedConversationRes = await renderConversationForModel(auth, {
+    conversation,
+    model: supportedModel,
+    prompt: agentConfiguration.instructions ?? "",
+    allowedTokenCount: supportedModel.contextSize - REASONING_GENERATION_TOKENS,
+    excludeImages: true,
+  });
+  if (renderedConversationRes.isErr()) {
+    yield {
+      type: "error",
+      message: `Error running reasoning action: ${renderedConversationRes.error.message}`,
+    };
+    return;
+  }
+
+  const renderedConversation = renderedConversationRes.value;
+
+  // Configure the app.
+  const config = cloneBaseConfig(
+    getDustProdAction("assistant-v2-reason").config
+  );
+  config.MODEL.provider_id = supportedModel.providerId;
+  config.MODEL.model_id = supportedModel.modelId;
+
+  if (actionConfig.temperature) {
+    config.MODEL.temperature = actionConfig.temperature;
+  }
+
+  if (actionConfig.reasoningEffort) {
+    config.MODEL.reasoning_effort = actionConfig.reasoningEffort;
+  }
+
+  if (supportedModel.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID) {
+    config.MODEL.temperature = 1.0;
+    delete config.MODEL.top_p;
+    config.MODEL.anthropic_beta_thinking = {
+      type: "enabled",
+      budget_tokens: 6400,
+    };
+    config.MODEL.anthropic_beta_flags = ["output-128k-2025-02-19"];
+  }
+
+  // Run the app.
+  const inputs = [
+    {
+      conversation: renderedConversation.modelConversation.messages,
+      instructions: agentConfiguration.instructions,
+    },
+  ];
+
+  const res = await runActionStreamed(
+    auth,
+    "assistant-v2-reason",
+    config,
+    inputs,
+    {
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      agentMessageId: agentMessage.sId,
+    }
+  );
+  if (res.isErr()) {
+    yield {
+      type: "error",
+      message: `Error running reasoning action: ${res.error.message}`,
+    };
+    return;
+  }
+
+  const { eventStream, dustRunId } = res.value;
+
+  const contentParser = new AgentMessageContentParser(
+    agentConfiguration,
+    agentMessage.sId,
+    supportedModel.delimitersConfiguration
+  );
+
+  const redis = await getRedisClient({ origin: "reasoning_generation" });
+  let lastCheckCancellation = Date.now();
+
+  const actionOutput = {
+    content: "",
+    thinking: "",
+  };
+
+  for await (const event of eventStream) {
+    if (event.type === "function_call") {
+      continue;
+    }
+
+    if (event.type === "error") {
+      yield {
+        type: "error",
+        message: `Error running reasoning action: ${event.content.message}`,
+      };
+      return;
+    }
+
+    const currentTimestamp = Date.now();
+    if (
+      currentTimestamp - lastCheckCancellation >=
+      CANCELLATION_CHECK_INTERVAL
+    ) {
+      try {
+        const cancelled = await redis.get(
+          `assistant:generation:cancelled:${agentMessage.sId}`
+        );
+        if (cancelled === "1") {
+          return;
+        }
+        lastCheckCancellation = currentTimestamp;
+      } catch (error) {
+        logger.error({ error }, "Error checking cancellation");
+      }
+    }
+
+    if (event.type === "tokens") {
+      for await (const token of contentParser.emitTokens(
+        event.content.tokens.text
+      )) {
+        if (
+          token.classification === "opening_delimiter" ||
+          token.classification === "closing_delimiter"
+        ) {
+          continue;
+        }
+
+        if (token.classification === "chain_of_thought") {
+          actionOutput.thinking += token.text;
+        } else {
+          actionOutput.content += token.text;
+        }
+
+        yield {
+          type: "token",
+          text: token.text,
+          classification: token.classification,
+        };
+      }
+    }
+
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
+        yield {
+          type: "error",
+          message: `Error running reasoning action: ${e.error}`,
+        };
+        return;
+      }
+    }
+  }
+
+  for await (const token of contentParser.flushTokens()) {
+    if (
+      token.classification === "opening_delimiter" ||
+      token.classification === "closing_delimiter"
+    ) {
+      continue;
+    }
+
+    if (token.classification === "chain_of_thought") {
+      actionOutput.thinking += token.text;
+    } else {
+      actionOutput.content += token.text;
+    }
+
+    yield {
+      type: "token",
+      text: token.text,
+      classification: token.classification,
+    };
+  }
+
+  yield {
+    type: "success",
+    content: actionOutput.content,
+    thinking: actionOutput.thinking,
+  };
+
+  return dustRunId;
 }
 
 export async function reasoningActionTypesFromAgentMessageIds(
