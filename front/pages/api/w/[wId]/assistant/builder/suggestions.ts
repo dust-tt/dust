@@ -59,6 +59,7 @@ async function handler(
         case "name":
         case "description":
         case "emoji":
+        case "tags":
           model = getSmallWhitelistedModel(owner);
           break;
         default:
