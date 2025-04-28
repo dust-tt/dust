@@ -21,7 +21,7 @@ export function ReasoningActionDetails({
           <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
             <Markdown
               content={action.output}
-              textColor="text-muted-foreground"
+              textColor="text-muted-foreground dark:text-muted-foreground-night"
               isStreaming={false}
               forcedTextSize="md"
               isLastMessage={false}
