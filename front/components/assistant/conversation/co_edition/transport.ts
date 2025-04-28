@@ -1,10 +1,25 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
+import type {
+  HeartbeatMCPResponseType,
+  LightWorkspaceType,
+} from "@dust-tt/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
 const logger = console;
 
 const HEARTBEAT_INTERVAL_MS = 4 * 60 * 1000; // 4 minutes.
 const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
+
+function isFailedHeartbeatResponse(
+  response: unknown
+): response is HeartbeatMCPResponseType {
+  return (
+    typeof response === "object" &&
+    response !== null &&
+    "success" in response &&
+    typeof response.success === "boolean" &&
+    !response.success
+  );
+}
 
 /**
  * Custom transport implementation for MCP
@@ -90,7 +105,8 @@ export class CoEditionTransport implements Transport {
         }),
       });
 
-      if (!response.ok) {
+      const body = await response.json();
+      if (!response.ok || isFailedHeartbeatResponse(body)) {
         logger.error(`Failed to heartbeat MCP server: ${response.statusText}`);
         await this.registerServer();
       }

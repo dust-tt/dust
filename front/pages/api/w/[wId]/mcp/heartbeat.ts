@@ -13,10 +13,18 @@ const PostMCPHeartbeatRequestBodyCodec = t.type({
   serverId: t.string,
 });
 
-type HeartbeatMCPResponseType = {
+interface MCPServerHeartbeatSuccess {
   expiresAt: string;
-  success: boolean;
-};
+  success: true;
+}
+
+interface MCPServerHeartbeatFailure {
+  success: false;
+}
+
+type HeartbeatMCPResponseType =
+  | MCPServerHeartbeatSuccess
+  | MCPServerHeartbeatFailure;
 
 async function handler(
   req: NextApiRequest,
@@ -54,13 +62,12 @@ async function handler(
   });
 
   if (!result) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "mcp_server_connection_not_found",
-        message: "MCP server not registered or expired",
-      },
+    // Return 200 with success: false instead of a 4xx error to avoid triggering monitoring alerts
+    // for expected conditions (expired/terminated connections).
+    res.status(200).json({
+      success: false,
     });
+    return;
   }
 
   res.status(200).json(result);
