@@ -58,7 +58,7 @@ export function getInternalMCPServer(
     case "search":
       return searchServer(auth, agentLoopContext);
     case "reasoning_v2":
-      return reasoningServer(auth);
+      return reasoningServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

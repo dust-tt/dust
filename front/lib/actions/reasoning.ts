@@ -239,8 +239,10 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     };
     let dustRunId: Promise<string> | undefined;
 
+    const { modelId, providerId, temperature, reasoningEffort } = actionConfig;
+
     for await (const event of runReasoning(auth, {
-      reasoningModel: { ...actionConfig },
+      reasoningModel: { modelId, providerId, temperature, reasoningEffort },
       conversation,
       agentConfiguration,
       agentMessage,

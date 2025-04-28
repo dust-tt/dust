@@ -26,6 +26,11 @@ export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 export const REASONING_EFFORT_IDS = ["low", "medium", "high"] as const;
 export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
 
+export const isReasoningEffortId = (
+  reasoningEffortId: string
+): reasoningEffortId is ReasoningEffortIdType =>
+  REASONING_EFFORT_IDS.includes(reasoningEffortId as ReasoningEffortIdType);
+
 export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
 export const EMBEDDING_PROVIDER_IDS = [
   DEFAULT_EMBEDDING_PROVIDER_ID,

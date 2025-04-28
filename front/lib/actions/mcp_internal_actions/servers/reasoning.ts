@@ -9,10 +9,9 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runReasoning } from "@app/lib/actions/reasoning";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isReasoningConfiguration } from "@app/lib/actions/types/guards";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { isModelId, isModelProviderId } from "@app/types";
+import { isModelId, isModelProviderId, isReasoningEffortId } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "reasoning_v2",
@@ -38,17 +37,18 @@ function createServer(
           INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
         ],
     },
-    async ({ model: { modelId, providerId } }) => {
+    async ({
+      model: { modelId, providerId, temperature, reasoningEffort },
+    }) => {
       if (!agentLoopContext) {
         throw new Error("Unreachable: missing agentLoopContext.");
       }
 
-      const { actionConfiguration } = agentLoopContext;
-      if (!isReasoningConfiguration(actionConfiguration)) {
-        throw new Error("Unreachable: Reasoning");
-      }
-
-      if (!isModelId(modelId) || !isModelProviderId(providerId)) {
+      if (
+        !isModelId(modelId) ||
+        !isModelProviderId(providerId) ||
+        (reasoningEffort !== null && !isReasoningEffortId(reasoningEffort))
+      ) {
         return makeMCPToolTextError("Invalid model ID.");
       }
 
@@ -57,14 +57,14 @@ function createServer(
         thinking: "",
       };
 
+      const { conversation, agentConfiguration, agentMessage } =
+        agentLoopContext;
+
       for await (const event of runReasoning(auth, {
-        reasoningModel: {
-          modelId,
-          providerId,
-          temperature: actionConfiguration.temperature,
-          reasoningEffort: actionConfiguration.reasoningEffort,
-        },
-        ...agentLoopContext,
+        reasoningModel: { modelId, providerId, temperature, reasoningEffort },
+        conversation,
+        agentConfiguration,
+        agentMessage,
       })) {
         switch (event.type) {
           case "error": {
