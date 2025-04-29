@@ -576,6 +576,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       return true;
     }
 
+    if (this.isSystem()) {
+      return false;
+    }
+
     const membership = await GroupMembershipModel.findOne({
       where: {
         groupId: this.id,
