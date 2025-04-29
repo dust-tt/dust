@@ -18,6 +18,8 @@ interface TourGuideCardProps {
   align?: "start" | "center" | "end";
   side?: "top" | "right" | "bottom" | "left";
   sideOffset?: number;
+  currentIndex?: number;
+  totalCards?: number;
 }
 
 export const TourGuideCardTitle = React.forwardRef<
@@ -68,18 +70,72 @@ export const TourGuideCardVisual = React.forwardRef<
 ));
 TourGuideCardVisual.displayName = "TourGuideCardVisual";
 
+interface TourGuideCardActionsProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  currentIndex: number;
+  totalCards: number;
+  onNext?: () => void;
+  onDismiss?: () => void;
+}
+
 export const TourGuideCardActions = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, children, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("s-flex s-justify-end s-space-x-2 s-p-2 s-pt-4", className)}
-    {...props}
-  >
-    {children}
-  </div>
-));
+  TourGuideCardActionsProps
+>(
+  (
+    {
+      currentIndex,
+      totalCards,
+      onNext,
+      onDismiss,
+      className,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const isFirstCard = currentIndex === 0;
+    const isLastCard = currentIndex === totalCards - 1;
+    const isSingleCard = totalCards === 1;
+    const showDismiss = !isLastCard && !isSingleCard;
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "s-flex s-justify-end s-space-x-2 s-p-2 s-pt-4",
+          className
+        )}
+        {...props}
+      >
+        {children ? (
+          children
+        ) : (
+          <>
+            {showDismiss && onDismiss && (
+              <Button variant="outline" label="Dismiss" onClick={onDismiss} />
+            )}
+            {onNext && (
+              <Button
+                onClick={onNext}
+                variant="highlight"
+                label={
+                  isSingleCard
+                    ? "Ok"
+                    : isFirstCard
+                      ? "Start Tour"
+                      : isLastCard
+                        ? "Done"
+                        : "Next"
+                }
+              />
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+);
 TourGuideCardActions.displayName = "TourGuideCardActions";
 
 export const TourGuideCard = React.forwardRef<
@@ -87,14 +143,15 @@ export const TourGuideCard = React.forwardRef<
   TourGuideCardProps
 >(
   ({
-    onNext,
-    onDismiss,
-    isLastStep,
     className,
     children,
     align = "center",
     side = "bottom",
     sideOffset = 4,
+    onNext,
+    onDismiss,
+    currentIndex = 0,
+    totalCards = 1,
   }) => {
     return (
       <PopoverPrimitive.Content
@@ -109,18 +166,12 @@ export const TourGuideCard = React.forwardRef<
         )}
       >
         {children}
-        <TourGuideCardActions>
-          {!isLastStep && onDismiss && (
-            <Button variant="outline" label="Dismiss" onClick={onDismiss} />
-          )}
-          {onNext && (
-            <Button
-              onClick={onNext}
-              variant="highlight"
-              label={isLastStep ? "Finish" : "Start Tour"}
-            />
-          )}
-        </TourGuideCardActions>
+        <TourGuideCardActions
+          currentIndex={currentIndex}
+          totalCards={totalCards}
+          onNext={onNext}
+          onDismiss={onDismiss}
+        />
       </PopoverPrimitive.Content>
     );
   }
@@ -234,7 +285,6 @@ export function TourGuide({
   }
 
   const currentCard = cards[currentIndex];
-  const isLastStep = currentIndex === cards.length - 1;
 
   return (
     <PopoverPrimitive.Root open={isActive} modal={false}>
@@ -248,10 +298,10 @@ export function TourGuide({
         }}
       />
       {React.cloneElement(currentCard, {
-        asPopover: true,
         onNext: handleNext,
         onDismiss: handleDismiss,
-        isLastStep,
+        currentIndex,
+        totalCards: cards.length,
         className: !currentCard.props.anchorRef ? "s-translate-y-[-50%]" : "",
       })}
     </PopoverPrimitive.Root>

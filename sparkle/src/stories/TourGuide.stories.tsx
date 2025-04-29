@@ -1,13 +1,21 @@
 import { Meta, StoryFn } from "@storybook/react";
 import React, { useRef, useState } from "react";
 
-import { ConfettiBackground, TypingAnimation } from "@sparkle/components";
+import { ConfettiBackground, Icon, TypingAnimation } from "@sparkle/components";
 import { Button } from "@sparkle/components/Button";
+import {
+  BookOpenIcon,
+  BrainIcon,
+  MagnifyingGlassIcon,
+  PlayIcon,
+  RobotIcon,
+  TableIcon,
+} from "@sparkle/icons";
+import { GithubLogo, GoogleLogo, NotionLogo, SlackLogo } from "@sparkle/logo";
 
 import {
   TourGuide,
   TourGuideCard,
-  TourGuideCardActions,
   TourGuideCardContent,
   TourGuideCardTitle,
   TourGuideCardVisual,
@@ -77,40 +85,78 @@ const Template: StoryFn = () => {
             Discover Dust’s basics in 3 steps.
           </TourGuideCardContent>
         </TourGuideCard>
-        <TourGuideCard anchorRef={topRightRef}>
-          <TourGuideCardVisual>
-            <div className="s-flex s-h-full s-items-center s-justify-center s-text-muted-foreground">
-              Custom Visual Content
-            </div>
+        <TourGuideCard anchorRef={centerRef}>
+          <TourGuideCardVisual className="s-flex s-items-center s-justify-center s-bg-brand-support-green s-px-6 s-text-center">
+            <span className="s-heading-5xl s-text-brand-hunter-green">
+              <TypingAnimation text="@mentions" />
+            </span>
           </TourGuideCardVisual>
-          <TourGuideCardTitle>Top Right Element</TourGuideCardTitle>
-          <TourGuideCardContent>
-            This element is anchored to the top right corner. The popover will
-            automatically position itself to stay in view.
+          <TourGuideCardTitle>
+            Use{" "}
+            <span className="s-font-semibold s-text-brand-hunter-green">
+              @mentions
+            </span>{" "}
+            to call Agents and&nbsp;start a conversation
+          </TourGuideCardTitle>
+          <TourGuideCardContent className="s-py-2">
+            <Button
+              label="Watch the full video"
+              icon={PlayIcon}
+              variant={"outline"}
+            />
           </TourGuideCardContent>
         </TourGuideCard>
-        <TourGuideCard anchorRef={centerRef}>
-          <TourGuideCardVisual>
-            <div className="s-flex s-h-full s-items-center s-justify-center s-text-muted-foreground">
-              Custom Visual Content
+        <TourGuideCard anchorRef={topRightRef}>
+          <TourGuideCardVisual className="s-flex s-flex-col s-items-center s-justify-center s-gap-4 s-bg-brand-support-rose s-px-6 s-text-center">
+            <div className="s-grid s-grid-cols-4 s-gap-2">
+              <Icon visual={BookOpenIcon} size="lg" />
+              <Icon visual={MagnifyingGlassIcon} size="lg" />
+              <Icon visual={TableIcon} size="lg" />
+              <Icon visual={BrainIcon} size="lg" />
+              <Icon visual={NotionLogo} size="lg" />
+              <Icon visual={GoogleLogo} size="lg" />
+              <Icon visual={SlackLogo} size="lg" />
+              <Icon visual={GithubLogo} size="lg" />
             </div>
+            <span className="s-heading-2xl">
+              <TypingAnimation text="Knowledge & Tools" />
+            </span>
           </TourGuideCardVisual>
-          <TourGuideCardTitle>Centered Element</TourGuideCardTitle>
-          <TourGuideCardContent>
-            This element is perfectly centered in the container using transform
-            translate.
+          <TourGuideCardTitle>
+            Make your agents smarter with&nbsp;
+            <span className="s-text-brand-red-rose">knowledge and tools</span>
+          </TourGuideCardTitle>
+          <TourGuideCardContent className="s-py-2">
+            <Button
+              label="Watch the full video"
+              icon={PlayIcon}
+              variant={"outline"}
+            />
           </TourGuideCardContent>
         </TourGuideCard>
         <TourGuideCard anchorRef={bottomLeftRef}>
-          <TourGuideCardVisual>
-            <div className="s-flex s-h-full s-items-center s-justify-center s-text-muted-foreground">
-              Custom Visual Content
-            </div>
+          <TourGuideCardVisual className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-px-6 s-text-center">
+            <Icon
+              className="s-text-brand-orange-golden"
+              visual={RobotIcon}
+              size="xl"
+            />
+            <span className="s-heading-mono-2xl s-text-brand-orange-golden">
+              <TypingAnimation text="Create an Agent" />
+            </span>
           </TourGuideCardVisual>
-          <TourGuideCardTitle>Bottom Left Element</TourGuideCardTitle>
-          <TourGuideCardContent>
-            This element is anchored to the bottom left corner, demonstrating
-            the tour's ability to handle different positions.
+          <TourGuideCardTitle>
+            Create new custom agents{" "}
+            <span className="s-text-brand-orange-golden">
+              designed for your needs
+            </span>
+          </TourGuideCardTitle>
+          <TourGuideCardContent className="s-py-2">
+            <Button
+              label="Watch the full video"
+              icon={PlayIcon}
+              variant={"outline"}
+            />
           </TourGuideCardContent>
         </TourGuideCard>
       </TourGuide>
@@ -119,26 +165,3 @@ const Template: StoryFn = () => {
 };
 
 export const Default = Template.bind({});
-
-// Example of using individual subcomponents
-export const TourGuideSubcomponents = () => {
-  return (
-    <div className="s-flex s-min-h-screen s-w-full s-items-center s-justify-center">
-      <TourGuideCard>
-        <TourGuideCardVisual>
-          <div className="s-flex s-h-full s-items-center s-justify-center s-text-muted-foreground">
-            Custom Visual Content
-          </div>
-        </TourGuideCardVisual>
-        <TourGuideCardTitle>Custom Title</TourGuideCardTitle>
-        <TourGuideCardContent>
-          This is an example of using the individual subcomponents.
-        </TourGuideCardContent>
-        <TourGuideCardActions>
-          <Button variant="outline" label="Cancel" />
-          <Button variant="highlight" label="Confirm" />
-        </TourGuideCardActions>
-      </TourGuideCard>
-    </div>
-  );
-};
