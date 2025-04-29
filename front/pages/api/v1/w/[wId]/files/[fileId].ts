@@ -24,9 +24,6 @@ export const config = {
   },
 };
 
-const validActions = ["view", "download"] as const;
-type Action = (typeof validActions)[number];
-
 /**
  * @ignoreswagger
  */
@@ -113,7 +110,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const action: Action = getSecureFileAction(req.query.action, file);
+      const action = getSecureFileAction(req.query.action, file);
 
       // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {

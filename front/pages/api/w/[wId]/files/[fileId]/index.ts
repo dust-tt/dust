@@ -40,7 +40,6 @@ function isValidViewVersion(
   );
 }
 
-// Declared here because endpoint-specific.
 const VALID_ACTIONS = ["view", "download"] as const;
 type Action = (typeof VALID_ACTIONS)[number];
 
