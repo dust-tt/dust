@@ -126,7 +126,7 @@ const migrateWorkspaceEditorsGroups = async (
     agents,
     (agent) =>
       backfillAgentEditorsGroup(auth, agent, workspace, execute, logger),
-    { concurrency: 1 }
+    { concurrency: 4 }
   );
 
   logger.info(
@@ -141,7 +141,7 @@ makeScript({}, async ({ execute }, logger) => {
     async (workspace) => {
       await migrateWorkspaceEditorsGroups(execute, logger, workspace);
     },
-    { concurrency: 1 }
+    { concurrency: 4 }
   );
 
   logger.info("Agent editors group backfill completed");
