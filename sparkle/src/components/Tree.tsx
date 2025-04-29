@@ -286,7 +286,7 @@ Tree.Item = React.forwardRef<
           {actions && (
             <div
               className={cn(
-                "s-flex s-grow s-gap-2 s-pl-4",
+                "s-flex s-grow s-gap-2",
                 areActionsFading &&
                   "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
               )}
