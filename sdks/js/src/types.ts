@@ -1757,7 +1757,7 @@ const DatasetSchema = z.object({
 });
 
 const AppTypeSchema = z.object({
-  id: ModelIdSchema,
+  id: ModelIdSchema.optional(),
   sId: z.string(),
   name: z.string(),
   description: z.string().nullable(),
@@ -1765,7 +1765,7 @@ const AppTypeSchema = z.object({
   savedConfig: z.string().nullable(),
   savedRun: z.string().nullable(),
   dustAPIProjectId: z.string(),
-  space: SpaceTypeSchema,
+  space: SpaceTypeSchema.optional(),
   datasets: z.array(DatasetSchema).optional(),
   coreSpecifications: z.record(z.string()).optional(),
 });
