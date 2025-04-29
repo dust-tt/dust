@@ -4,7 +4,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AccountSettings } from "@app/components/me/AccountSettings";
-import { ThemeSettings } from "@app/components/me/ThemeSettings";
+import { Preferences } from "@app/components/me/Preferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -61,7 +61,7 @@ export default function ProfilePage({
             />
 
             <Page.SectionHeader title="Preferences" />
-            <ThemeSettings />
+            <Preferences />
 
             <Separator />
 

@@ -1,23 +1,44 @@
+import type { CommandProps } from "@tiptap/core";
 import Paragraph from "@tiptap/extension-paragraph";
 
 export const ParagraphExtension = Paragraph.extend({
   addKeyboardShortcuts() {
+    const enterBehavior = localStorage.getItem("enterBehavior") || "enter";
+    const isEnterForSubmission = enterBehavior === "enter";
+    const isCmdEnterForSubmission = enterBehavior === "cmd+enter";
+
+    const newLineCommands = ({ commands }: CommandProps) => [
+      () => commands.newlineInCode(),
+      () => commands.splitListItem("listItem"),
+      () => commands.liftEmptyBlock(),
+      () => commands.createParagraphNear(),
+      () => commands.splitBlock(),
+    ];
+
+    const submitCommands = ({ commands }: CommandProps) => [
+      () => commands.enter(),
+    ];
+
     return {
-      Enter: () => false,
+      Enter: () => {
+        if (isCmdEnterForSubmission) {
+          return this.editor.commands.first(newLineCommands); // Prevent default behavior when in cmd+enter mode
+        }
+        return this.editor.commands.first(submitCommands); // Enter mode
+      },
 
       "Shift-Enter": () => {
-        // Chain is what Tiptap does by default for Enter:
-        // - newlineInCode: insert line breaks in code blocks
-        // - splitListItem: if in a list item, create new list item
-        // - liftEmptyBlock: if empty block (like empty quote), exit it
-        // - splitBlock: fallback -> normal line break
-        return this.editor.commands.first(({ commands }) => [
-          () => commands.newlineInCode(),
-          () => commands.splitListItem("listItem"),
-          () => commands.liftEmptyBlock(),
-          () => commands.createParagraphNear(),
-          () => commands.splitBlock(),
-        ]);
+        if (isEnterForSubmission) {
+          return this.editor.commands.first(newLineCommands);
+        }
+        return false; // Prevent default behavior when not in enter mode
+      },
+
+      "Cmd-Enter": () => {
+        if (isCmdEnterForSubmission) {
+          return this.editor.commands.first(submitCommands);
+        }
+        return false; // Prevent default behavior when not in cmd+enter mode
       },
     };
   },
