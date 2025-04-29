@@ -72,7 +72,7 @@ async function handler(
 
   if (!assistant.canEdit) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
         type: "app_auth_error",
         message: "Only editors can get agent analytics.",
