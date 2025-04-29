@@ -636,6 +636,65 @@ async function fetchWithErr<T>(
 
 const DEFAULT_PAGE_SIZE = 25;
 
+// TODO: Mock data
+const membersData = {
+  members: [
+    {
+      sId: "mock1",
+      fullName: "Mock User 1",
+      email: "mock1@test.com",
+      image: "https://example.com/image.png",
+      workspaces: [
+        {
+          role: "admin" as const,
+          sId: "mock1",
+          name: "Mock Workspace 1",
+          id: 1,
+          segmentation: null,
+          whiteListedProviders: null,
+          defaultEmbeddingProvider: null,
+          metadata: null,
+        },
+      ],
+      id: 1,
+      createdAt: 0,
+      provider: null,
+      username: "mock1",
+      firstName: "Mock",
+      lastName: "User 1",
+    },
+    {
+      sId: "mock2",
+      fullName: "Mock User 2",
+      email: "mock2@test.com",
+      image: "https://example.com/image.png",
+      workspaces: [
+        {
+          role: "admin" as const,
+          sId: "mock1",
+          name: "Mock Workspace 1",
+          id: 1,
+          segmentation: null,
+          whiteListedProviders: null,
+          defaultEmbeddingProvider: null,
+          metadata: null,
+        },
+      ],
+      id: 2,
+      createdAt: 0,
+      provider: null,
+      username: "mock2",
+      firstName: "Mock",
+      lastName: "User 2",
+    },
+  ],
+  totalMembersCount: 2,
+  isLoading: false,
+  mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
+};
+
+const onRowClick = () => {};
+const onRemoveMemberClick = () => {};
 function EditorsMembersList({
   currentUserId,
   owner,
@@ -651,62 +710,6 @@ function EditorsMembersList({
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }, [setPagination]);
 
-  const membersData = {
-    members: [
-      {
-        sId: "mock1",
-        fullName: "Mock User 1",
-        email: "mock1@test.com",
-        image: "https://example.com/image.png",
-        workspaces: [
-          {
-            role: "admin" as const,
-            sId: "mock1",
-            name: "Mock Workspace 1",
-            id: 1,
-            segmentation: null,
-            whiteListedProviders: null,
-            defaultEmbeddingProvider: null,
-            metadata: null,
-          },
-        ],
-        id: 1,
-        createdAt: 0,
-        provider: null,
-        username: "mock1",
-        firstName: "Mock",
-        lastName: "User 1",
-      },
-      {
-        sId: "mock2",
-        fullName: "Mock User 2",
-        email: "mock2@test.com",
-        image: "https://example.com/image.png",
-        workspaces: [
-          {
-            role: "admin" as const,
-            sId: "mock1",
-            name: "Mock Workspace 1",
-            id: 1,
-            segmentation: null,
-            whiteListedProviders: null,
-            defaultEmbeddingProvider: null,
-            metadata: null,
-          },
-        ],
-        id: 2,
-        createdAt: 0,
-        provider: null,
-        username: "mock2",
-        firstName: "Mock",
-        lastName: "User 2",
-      },
-    ],
-    totalMembersCount: 2,
-    isLoading: false,
-    mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
-  };
-
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-row items-center gap-2">
@@ -720,12 +723,11 @@ function EditorsMembersList({
       <MembersList
         currentUserId={currentUserId}
         membersData={membersData}
-        onRowClick={() => {}}
-        onRemoveMemberClick={() => {}}
+        onRowClick={onRowClick}
+        onRemoveMemberClick={onRemoveMemberClick}
         showColumns={["name", "email", "remove"]}
         pagination={pagination}
-        // TODO(pr, 2025-04-29): Remove this once issue from PR is fixed
-        setPagination={() => {}}
+        setPagination={setPagination}
       />
     </div>
   );

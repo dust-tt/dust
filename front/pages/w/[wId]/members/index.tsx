@@ -398,7 +398,7 @@ function WorkspaceMembersList({
       <MembersList
         currentUserId={currentUserId}
         membersData={membersData}
-        onRowClick={(user) => setSelectedMember(user)}
+        onRowClick={setSelectedMember}
         showColumns={["name", "email", "role"]}
         pagination={pagination}
         setPagination={setPagination}
