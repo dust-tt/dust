@@ -1,4 +1,4 @@
-import type { ApiAppType } from "@dust-tt/client";
+import type { ApiAppImportType, ApiAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import _ from "lodash";
 
@@ -21,7 +21,7 @@ async function updateOrCreateApp(
     appToImport,
     space,
   }: {
-    appToImport: ApiAppType;
+    appToImport: ApiAppImportType;
     space: SpaceResource;
   }
 ): Promise<
@@ -94,7 +94,7 @@ async function updateDatasets(
     datasetsToImport,
   }: {
     app: AppResource;
-    datasetsToImport: ApiAppType["datasets"];
+    datasetsToImport: ApiAppImportType["datasets"];
   }
 ): Promise<Result<boolean, CoreAPIError>> {
   if (datasetsToImport) {
@@ -225,7 +225,7 @@ async function updateAppSpecifications(
 export async function importApp(
   auth: Authenticator,
   space: SpaceResource,
-  appToImport: ApiAppType
+  appToImport: ApiAppImportType
 ): Promise<
   Result<{ app: AppResource; updated: boolean }, CoreAPIError | Error>
 > {
@@ -316,7 +316,7 @@ interface ImportRes {
 export async function importApps(
   auth: Authenticator,
   space: SpaceResource,
-  appsToImport: ApiAppType[]
+  appsToImport: ApiAppImportType[]
 ): Promise<ImportRes[]> {
   const apps: ImportRes[] = [];
 
