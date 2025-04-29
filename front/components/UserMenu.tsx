@@ -16,7 +16,6 @@ import {
   LightbulbIcon,
   LogoutIcon,
   StarIcon,
-  UserGroupIcon,
   UserIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -110,6 +109,33 @@ export function UserMenu({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
+        {hasMultipleWorkspaces && (
+          <>
+            <DropdownMenuLabel label="Workspace" />
+            <DropdownMenuRadioGroup value={owner.name}>
+              {"workspaces" in user &&
+                user.workspaces.map((w) => (
+                  <DropdownMenuRadioItem
+                    key={w.sId}
+                    value={w.name}
+                    onClick={async () => {
+                      await setNavigationSelection({
+                        lastWorkspaceId: w.sId,
+                      });
+                      if (w.id !== owner.id) {
+                        await router
+                          .push(`/w/${w.sId}/assistant/new`)
+                          .then(() => router.reload());
+                      }
+                    }}
+                  >
+                    {w.name}
+                  </DropdownMenuRadioItem>
+                ))}
+            </DropdownMenuRadioGroup>
+          </>
+        )}
+
         <DropdownMenuLabel label="Beta" />
         <DropdownMenuItem
           label="Exploratory features"
@@ -132,81 +158,51 @@ export function UserMenu({
           label="Sign&nbsp;out"
         />
 
-        {(hasMultipleWorkspaces || showDebugTools(featureFlags)) && (
-          <DropdownMenuLabel label="Advanced" />
-        )}
-
-        {hasMultipleWorkspaces && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Workspace" icon={UserGroupIcon} />
-            <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup value={owner.name}>
-                {"workspaces" in user &&
-                  user.workspaces.map((w) => (
-                    <DropdownMenuRadioItem
-                      key={w.sId}
-                      value={w.name}
-                      onClick={async () => {
-                        await setNavigationSelection({
-                          lastWorkspaceId: w.sId,
-                        });
-                        if (w.id !== owner.id) {
-                          await router
-                            .push(`/w/${w.sId}/assistant/new`)
-                            .then(() => router.reload());
-                        }
-                      }}
-                    >
-                      {w.name}
-                    </DropdownMenuRadioItem>
-                  ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )}
-
         {showDebugTools(featureFlags) && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Dev Tools" icon={<BugIcon />} />
-            <DropdownMenuSubContent>
-              {router.route === "/w/[wId]/assistant/[cId]" && (
-                <DropdownMenuItem
-                  label="Debug conversation"
-                  onClick={() => {
-                    const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
-                    const match = window.location.href.match(regexp);
-                    if (match) {
-                      void router.push(
-                        `/poke/${match[1]}/conversations/${match[2]}`
-                      );
-                    }
-                  }}
-                  icon={<BugIcon />}
-                />
-              )}
-              {!isOnlyAdmin(owner) && (
-                <DropdownMenuItem
-                  label="Become Admin"
-                  onClick={() => forceRoleUpdate("admin")}
-                  icon={StarIcon}
-                />
-              )}
-              {!isOnlyBuilder(owner) && (
-                <DropdownMenuItem
-                  label="Become Builder"
-                  onClick={() => forceRoleUpdate("builder")}
-                  icon={LightbulbIcon}
-                />
-              )}
-              {!isOnlyUser(owner) && (
-                <DropdownMenuItem
-                  label="Become User"
-                  onClick={() => forceRoleUpdate("user")}
-                  icon={UserIcon}
-                />
-              )}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <>
+            <DropdownMenuLabel label="Advanced" />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger label="Dev Tools" icon={<BugIcon />} />
+              <DropdownMenuSubContent>
+                {router.route === "/w/[wId]/assistant/[cId]" && (
+                  <DropdownMenuItem
+                    label="Debug conversation"
+                    onClick={() => {
+                      const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
+                      const match = window.location.href.match(regexp);
+                      if (match) {
+                        void router.push(
+                          `/poke/${match[1]}/conversations/${match[2]}`
+                        );
+                      }
+                    }}
+                    icon={<BugIcon />}
+                  />
+                )}
+                {!isOnlyAdmin(owner) && (
+                  <DropdownMenuItem
+                    label="Become Admin"
+                    onClick={() => forceRoleUpdate("admin")}
+                    icon={StarIcon}
+                  />
+                )}
+                {!isOnlyBuilder(owner) && (
+                  <DropdownMenuItem
+                    label="Become Builder"
+                    onClick={() => forceRoleUpdate("builder")}
+                    icon={LightbulbIcon}
+                  />
+                )}
+                {!isOnlyUser(owner) && (
+                  <DropdownMenuItem
+                    label="Become User"
+                    onClick={() => forceRoleUpdate("user")}
+                    icon={UserIcon}
+                  />
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
