@@ -782,63 +782,6 @@ async function fetchWithErr<T>(
 
 const DEFAULT_PAGE_SIZE = 25;
 
-// TODO: Mock data
-const membersData = {
-  members: [
-    {
-      sId: "mock1",
-      fullName: "Mock User 1",
-      email: "mock1@test.com",
-      image: "https://example.com/image.png",
-      workspaces: [
-        {
-          role: "admin" as const,
-          sId: "mock1",
-          name: "Mock Workspace 1",
-          id: 1,
-          segmentation: null,
-          whiteListedProviders: null,
-          defaultEmbeddingProvider: null,
-          metadata: null,
-        },
-      ],
-      id: 1,
-      createdAt: 0,
-      provider: null,
-      username: "mock1",
-      firstName: "Mock",
-      lastName: "User 1",
-    },
-    {
-      sId: "mock2",
-      fullName: "Mock User 2",
-      email: "mock2@test.com",
-      image: "https://example.com/image.png",
-      workspaces: [
-        {
-          role: "admin" as const,
-          sId: "mock1",
-          name: "Mock Workspace 1",
-          id: 1,
-          segmentation: null,
-          whiteListedProviders: null,
-          defaultEmbeddingProvider: null,
-          metadata: null,
-        },
-      ],
-      id: 2,
-      createdAt: 0,
-      provider: null,
-      username: "mock2",
-      firstName: "Mock",
-      lastName: "User 2",
-    },
-  ],
-  totalMembersCount: 2,
-  isLoading: false,
-  mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
-};
-
 const onRowClick = () => {};
 
 function EditorsMembersList({
@@ -864,21 +807,21 @@ function EditorsMembersList({
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }, [setPagination]);
 
-  const editorsData = useEditors({ owner, agentConfigurationId });
+  const onRemoveMember = useCallback(
+    (removed: UserType) =>
+      setBuilderState((s) => ({
+        ...s,
+        editors: s.editors ? s.editors.filter((m) => m.sId != removed.sId) : [],
+      })),
+    [setBuilderState]
+  );
 
-  const onRemoveMember = useCallback((removed) =>
-          setBuilderState((s) => ({
-            ...s,
-            editors: s.editors
-              ? s.editors.filter((m) => m.sId != removed.sId)
-              : [],
-          })), [setBuilderState]);
   const members = useMemo(
     () =>
       builderState.editors?.map((m) => ({ ...m, workspaces: [owner] })) ?? [],
     [builderState, owner]
   );
-	
+
   const membersData = {
     members,
     totalMembersCount: members.length,
@@ -910,7 +853,7 @@ function EditorsMembersList({
         currentUser={currentUser}
         membersData={membersData}
         onRowClick={onRowClick}
-        onRemoveMemberClick={onRemoveMemberClick}
+        onRemoveMemberClick={onRemoveMember}
         showColumns={["name", "email", "remove"]}
         pagination={pagination}
         setPagination={setPagination}
@@ -930,7 +873,6 @@ function AddEditorDropdown({
 }) {
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const itemsContainerRef = React.useRef<HTMLDivElement>(null);
 
   const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
     useSearchMembers({
@@ -982,7 +924,7 @@ function AddEditorDropdown({
                 onClick={async () => {
                   setSearchTerm("");
                   setIsEditorPickerOpen(false);
-                  await onAddEditor(member);
+                  onAddEditor(member);
                 }}
                 truncateText
                 disabled={editors.some((e) => e.sId === member.sId)}
