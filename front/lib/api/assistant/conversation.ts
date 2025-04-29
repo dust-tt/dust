@@ -450,6 +450,123 @@ export async function generateConversationTitle(
   return new Ok(title);
 }
 
+export async function getSuggestedAgentsForConversation(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<Result<LightAgentConfigurationType[], Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  // We could have passed the usermessage id instead of the conversation id, but user message has a randomly generated sId
+  // and this comes from a route so since we don't want to pass the model id in a route we use the conversation sId.
+  const message = await Message.findOne({
+    where: {
+      conversationId: conversation.id,
+    },
+    order: [
+      ["rank", "DESC"],
+      ["version", "ASC"],
+    ],
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: false,
+      },
+    ],
+  });
+
+  const content = message?.userMessage?.content;
+  if (!content) {
+    return new Err(
+      new Error("Error suggesting agents: no content found in conversation.")
+    );
+  }
+
+  const model = getSmallWhitelistedModel(owner);
+  if (!model) {
+    return new Err(
+      new Error("Error suggesting agents: failed to find a whitelisted model.")
+    );
+  }
+
+  const config = cloneBaseConfig(
+    getDustProdAction("suggest-agent-from-message").config
+  );
+  config.MODEL.provider_id = model.providerId;
+  config.MODEL.model_id = model.modelId;
+
+  // Get all active agents for the workspace
+  const agents = await getAgentConfigurations({
+    auth,
+    agentsGetView: "list",
+    variant: "full", // We load the full agent configuration to get the actions name and description.
+  });
+
+  const formattedAgents = agents.map((a) => ({
+    sId: a.sId,
+    name: a.name,
+    description: a.description,
+    tools: a.actions.map((a) => ({
+      name: a.name,
+      description: a.description,
+    })),
+    visualizationEnabled: a.visualizationEnabled,
+    userFavorite: a.userFavorite,
+  }));
+
+  const res = await runActionStreamed(
+    auth,
+    "suggest-agent-from-message",
+    config,
+    [
+      {
+        agents: formattedAgents,
+        message: content,
+      },
+    ],
+    {
+      conversationId: conversation.sId,
+      workspaceId: owner.sId,
+    }
+  );
+
+  if (res.isErr()) {
+    return new Err(new Error(`Error suggesting agents: ${res.error}`));
+  }
+
+  const { eventStream } = res.value;
+
+  let suggestions: LightAgentConfigurationType[] = [];
+
+  for await (const event of eventStream) {
+    if (event.type === "error") {
+      return new Err(
+        new Error(`Error suggesting agents: ${event.content.message}`)
+      );
+    }
+
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
+        return new Err(new Error(`Error suggesting agents: ${e.error}`));
+      }
+
+      if (event.content.block_name === "OUTPUT" && e.value) {
+        const output = e.value as {
+          suggested_agents: { sId: string; description: string }[];
+        };
+        suggestions = removeNulls(
+          output.suggested_agents.map((a) =>
+            agents.find((a2) => a2.sId === a.sId)
+          )
+        );
+      }
+    }
+  }
+
+  return new Ok(suggestions);
+}
+
 /**
  * Conversation API
  */

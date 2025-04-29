@@ -2,7 +2,7 @@ import {
   AssistantCard,
   AssistantCardMore,
   Button,
-  CardGrid,
+  Page,
   RobotIcon,
   Spinner,
   useSendNotification,
@@ -12,7 +12,10 @@ import { useCallback, useMemo, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useAgentConfigurations,
+  useSuggestedAgentConfigurations,
+} from "@app/lib/swr/assistants";
 import { setQueryParam } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
@@ -26,6 +29,8 @@ interface AgentSuggestionProps {
   userMessage: UserMessageType;
 }
 
+const MAX_SUGGESTED_AGENTS = 4;
+
 export function AgentSuggestion({
   conversationId,
   owner,
@@ -36,6 +41,15 @@ export function AgentSuggestion({
     agentsGetView: "list",
     includes: ["authors", "usage"],
   });
+
+  const {
+    suggestedAgentConfigurations,
+    isSuggestedAgentConfigurationsLoading,
+  } = useSuggestedAgentConfigurations({
+    workspaceId: owner.sId,
+    conversationId,
+  });
+
   const sendNotification = useSendNotification();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -75,12 +89,29 @@ export function AgentSuggestion({
     }
   );
 
-  const [topAgents, otherAgents] = useMemo(() => {
-    const agents = agentConfigurations.sort((a, b) => {
+  const [suggestedAgents, allSortedAgents] = useMemo(() => {
+    const allSortedAgents = agentConfigurations.sort((a, b) => {
       return sortAgents(a, b);
     });
-    return [agents.slice(0, 3), agents.slice(3)];
-  }, [agentConfigurations]);
+
+    if (suggestedAgentConfigurations.length > 0) {
+      const suggested = suggestedAgentConfigurations.slice(
+        0,
+        MAX_SUGGESTED_AGENTS
+      );
+      return [suggested, allSortedAgents];
+    }
+
+    if (isSuggestedAgentConfigurationsLoading || !allSortedAgents.length) {
+      return [[], []];
+    }
+
+    return [allSortedAgents.slice(0, MAX_SUGGESTED_AGENTS), allSortedAgents];
+  }, [
+    agentConfigurations,
+    suggestedAgentConfigurations,
+    isSuggestedAgentConfigurationsLoading,
+  ]);
 
   const showAssistantDetails = useCallback(
     (agentConfiguration: LightAgentConfigurationType) => {
@@ -90,41 +121,19 @@ export function AgentSuggestion({
   );
 
   return (
-    <>
-      <div className="pt-4">
-        <div className="flex items-center gap-2 pb-2">
-          <p className="grow text-base text-muted-foreground">
-            Which Agent would you like to chat with?
-          </p>
-          <AssistantPicker
-            owner={owner}
-            assistants={otherAgents}
-            onItemClick={async (agent) => {
-              if (!isLoading) {
-                setIsLoading(true);
-                await handleSelectSuggestion(agent);
-                setIsLoading(false);
-              }
-            }}
-            pickerButton={
-              <Button
-                variant="outline"
-                size="sm"
-                icon={RobotIcon}
-                label="Select another"
-                isSelect
-              />
-            }
-          />
+    <div className="flex flex-col items-start gap-6">
+      {suggestedAgents.length === 0 ? (
+        <div className="flex min-h-28 w-full items-center justify-center">
+          <Spinner />
         </div>
-
-        {agentConfigurations.length === 0 ? (
-          <div className="flex h-full min-h-28 w-full items-center justify-center">
-            <Spinner />
-          </div>
-        ) : (
-          <CardGrid>
-            {topAgents.map((agent, id) => (
+      ) : (
+        <>
+          <Page.SectionHeader
+            title="Best-matching Agents"
+            description="Selected based on agents' descriptions, names, and available tools."
+          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+            {suggestedAgents.map((agent, id) => (
               <AssistantCard
                 key={`${agent.sId}-${id}`}
                 description={agent.description}
@@ -140,10 +149,33 @@ export function AgentSuggestion({
                 }
               />
             ))}
-          </CardGrid>
-        )}
-      </div>
-    </>
+          </div>
+          <div className="flex flex-row items-center gap-2">
+            <p className="flex text-base text-muted-foreground">Or</p>
+            <AssistantPicker
+              owner={owner}
+              assistants={allSortedAgents}
+              onItemClick={async (agent) => {
+                if (!isLoading) {
+                  setIsLoading(true);
+                  await handleSelectSuggestion(agent);
+                  setIsLoading(false);
+                }
+              }}
+              pickerButton={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={RobotIcon}
+                  label="Pick an agent"
+                  isSelect
+                />
+              }
+            />
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

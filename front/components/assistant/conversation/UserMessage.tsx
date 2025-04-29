@@ -48,20 +48,24 @@ export function UserMessage({
   );
 
   return (
-    <ConversationMessage
-      pictureUrl={message.user?.image || message.context.profilePictureUrl}
-      name={message.context.fullName ?? undefined}
-      renderName={(name) => <div className="heading-base">{name}</div>}
-      type="user"
-      citations={citations}
-    >
-      <Markdown
-        content={message.content}
-        isStreaming={false}
-        isLastMessage={isLastMessage}
-        additionalMarkdownComponents={additionalMarkdownComponents}
-        additionalMarkdownPlugins={additionalMarkdownPlugins}
-      />
+    <div className="flex w-full flex-col">
+      <div className="flex flex-col items-end gap-6">
+        <ConversationMessage
+          pictureUrl={message.user?.image || message.context.profilePictureUrl}
+          name={message.context.fullName ?? undefined}
+          renderName={(name) => <div className="heading-base">{name}</div>}
+          type="user"
+          citations={citations}
+        >
+          <Markdown
+            content={message.content}
+            isStreaming={false}
+            isLastMessage={isLastMessage}
+            additionalMarkdownComponents={additionalMarkdownComponents}
+            additionalMarkdownPlugins={additionalMarkdownPlugins}
+          />
+        </ConversationMessage>
+      </div>
       {message.mentions.length === 0 && isLastMessage && (
         <AgentSuggestion
           conversationId={conversationId}
@@ -69,6 +73,6 @@ export function UserMessage({
           userMessage={message}
         />
       )}
-    </ConversationMessage>
+    </div>
   );
 }
