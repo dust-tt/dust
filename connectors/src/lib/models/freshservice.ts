@@ -84,7 +84,7 @@ export class FreshServiceTicketModel extends ConnectorBaseModel<FreshServiceTick
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare ticketId: number;
+  declare ticketId: string;
 
   declare subject: string | null;
   declare url: string;

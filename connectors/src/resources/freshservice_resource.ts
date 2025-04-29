@@ -174,7 +174,7 @@ export class FreshServiceTicketResource extends BaseResource<FreshServiceTicketM
     ticketId,
   }: {
     connectorId: ModelId;
-    ticketId: number;
+    ticketId: string;
   }): Promise<FreshServiceTicketResource | null> {
     const model = await FreshServiceTicketModel.findOne({
       where: { connectorId, ticketId },
@@ -233,7 +233,7 @@ export class FreshServiceTicketResource extends BaseResource<FreshServiceTicketM
     ticketId,
   }: {
     connectorId: ModelId;
-    ticketId: number;
+    ticketId: string;
   }): Promise<void> {
     await FreshServiceTicketModel.destroy({
       where: { connectorId, ticketId },
