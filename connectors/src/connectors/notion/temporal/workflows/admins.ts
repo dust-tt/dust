@@ -240,29 +240,39 @@ export async function updateOrphanedResourcesParentsWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  const BATCH_SIZE = 24;
+  const BATCH_SIZE = 32;
 
-  const { pageIds, databaseIds } = await getAllOrphanedResources({
-    connectorId,
-  });
+  let cursor: {
+    pageCursor: ModelId | null;
+    databaseCursor: ModelId | null;
+  } | null = null;
 
-  const allResources: Array<{ notionId: string; type: "page" | "database" }> = [
-    ...pageIds.map((p) => ({
-      notionId: p,
-      type: "page" as const,
-    })),
-    ...databaseIds.map((d) => ({ notionId: d, type: "database" as const })),
-    // Sort by notionId to make the order deterministic and avoid processing all pages first, then all databases.
-  ].sort((a, b) => a.notionId.localeCompare(b.notionId));
-
-  const chunks = chunk(allResources, BATCH_SIZE);
-
-  for (const chunk of chunks) {
-    await maybeUpdateOrphaneResourcesParents({
+  do {
+    const { pageIds, databaseIds, nextCursor } = await getAllOrphanedResources({
       connectorId,
-      resources: chunk,
+      cursor,
     });
-  }
+
+    const allResources: Array<{ notionId: string; type: "page" | "database" }> =
+      [
+        ...pageIds.map((p) => ({
+          notionId: p,
+          type: "page" as const,
+        })),
+        ...databaseIds.map((d) => ({ notionId: d, type: "database" as const })),
+      ];
+
+    const chunks = chunk(allResources, BATCH_SIZE);
+
+    for (const chunk of chunks) {
+      await maybeUpdateOrphaneResourcesParents({
+        connectorId,
+        resources: chunk,
+      });
+    }
+
+    cursor = nextCursor;
+  } while (cursor);
 
   await clearParentsLastUpdatedAt({ connectorId });
 }
