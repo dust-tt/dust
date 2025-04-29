@@ -16,7 +16,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { FILE_FORMATS } from "@app/types";
 
 export interface FileUploadedRequestResponseBody {
   file: FileType;
@@ -69,8 +68,7 @@ export function getSecureFileAction(
 
   // For view action, check if the file type is safe to display.
   if (action === "view") {
-    const fileFormat = FILE_FORMATS[file.contentType];
-    if (!fileFormat.isSafeToDisplay) {
+    if (!file.isSafeToDisplay()) {
       return "download";
     }
   }
