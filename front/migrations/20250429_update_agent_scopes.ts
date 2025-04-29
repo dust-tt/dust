@@ -48,11 +48,11 @@ makeScript(
         execute,
         logger
       );
+    } else {
+      await runOnAllWorkspaces(async (workspace) =>
+        migrateWorkspace(workspace, execute, logger)
+      );
     }
-
-    await runOnAllWorkspaces(async (workspace) =>
-      migrateWorkspace(workspace, execute, logger)
-    );
 
     logger.info("Agents migration completed");
   }
