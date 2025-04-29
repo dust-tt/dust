@@ -4,6 +4,7 @@ import {
   proxyActivities,
   workflowInfo,
 } from "@temporalio/workflow";
+import { chunk } from "lodash";
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
@@ -36,6 +37,9 @@ const {
   deletePageOrDatabaseIfArchived,
   updateSingleDocumentParents,
   getParentPageOrDb,
+  maybeUpdateOrphaneResourcesParents,
+  clearParentsLastUpdatedAt,
+  getAllOrphanedResources,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -225,6 +229,42 @@ export async function upsertDatabaseWorkflow({
     notionDocumentId: databaseId,
     documentType: "database",
   });
+}
+
+// Top level workflow to be used by the CLI or by Poké in order to update parents
+// for all orphaned resources of a notion connector.
+// The workflow will attempt to fetch the parent page from notion for every orphaned resource,
+// and will update the parent of the resource in our database if we have it in our database.
+export async function updateOrphanedResourcesParentsWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const BATCH_SIZE = 24;
+
+  const { pageIds, databaseIds } = await getAllOrphanedResources({
+    connectorId,
+  });
+
+  const allResources: Array<{ notionId: string; type: "page" | "database" }> = [
+    ...pageIds.map((p) => ({
+      notionId: p,
+      type: "page" as const,
+    })),
+    ...databaseIds.map((d) => ({ notionId: d, type: "database" as const })),
+    // Sort by notionId to make the order deterministic and avoid processing all pages first, then all databases.
+  ].sort((a, b) => a.notionId.localeCompare(b.notionId));
+
+  const chunks = chunk(allResources, BATCH_SIZE);
+
+  for (const chunk of chunks) {
+    await maybeUpdateOrphaneResourcesParents({
+      connectorId,
+      resources: chunk,
+    });
+  }
+
+  await clearParentsLastUpdatedAt({ connectorId });
 }
 
 async function upsertParent({
