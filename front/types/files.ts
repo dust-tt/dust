@@ -93,6 +93,26 @@ export function ensureFileSize(
 type FileFormat = {
   cat: FileFormatCategory;
   exts: string[];
+  /**
+   * Indicates whether the file type can be safely displayed directly in the browser.
+   *
+   * Security considerations:
+   * - Default is false (not safe to display)
+   * - Only explicitly whitelisted file types should be marked as safe
+   * - File types that could contain executable code or XSS vectors should never be marked as safe
+   * - Unknown content types are treated as unsafe by default
+   *
+   * Safe file types typically include:
+   * - Images (jpeg, png, gif, webp)
+   * - Documents (pdf, doc, ppt)
+   * - Plain text formats (txt, markdown)
+   * - Structured data (json, csv)
+   *
+   * Unsafe file types include:
+   * - HTML and XML files
+   * - Script files (js, ts, py, etc.)
+   * - Any file type that could contain executable code
+   */
   isSafeToDisplay: boolean;
 };
 

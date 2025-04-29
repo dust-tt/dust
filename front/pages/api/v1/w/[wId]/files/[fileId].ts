@@ -15,7 +15,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isPublicySupportedUseCase } from "@app/types";
+import { FILE_FORMATS, isPublicySupportedUseCase } from "@app/types";
 
 export const config = {
   api: {
@@ -115,6 +115,15 @@ async function handler(
       const action: Action = validActions.includes(req.query.action as Action)
         ? (req.query.action as Action)
         : "download";
+
+      // For non-safe file types or unknown content types, always force download regardless of
+      // action.
+      const fileFormat = FILE_FORMATS[file.contentType];
+      if (!fileFormat.isSafeToDisplay) {
+        const url = await file.getSignedUrlForDownload(auth, "original");
+        res.redirect(url);
+        return;
+      }
 
       // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
