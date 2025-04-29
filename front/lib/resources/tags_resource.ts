@@ -134,8 +134,8 @@ export class TagResource extends BaseResource<TagModel> {
           sequelize.literal(`
             (
               SELECT COUNT(*)
-              FROM tag_agents AS tag_agent
-              WHERE tag_agent.id = tags.id
+              FROM tag_agents
+              WHERE "tagId" = tags.id
             )
           `),
           "usage",
