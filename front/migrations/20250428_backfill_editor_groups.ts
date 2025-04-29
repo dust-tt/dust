@@ -37,7 +37,7 @@ const migrateWorkspaceEditorsGroups = async (
 
   await concurrentExecutor(
     agents,
-    (agent) => backfillAgentEditorsGroup(auth, agent),
+    (agent) => backfillAgentEditorsGroup(auth, agent, execute),
     { concurrency: 4 }
   );
 
@@ -61,7 +61,8 @@ makeScript({}, async ({ execute }, logger) => {
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
-  agent: LightAgentConfigurationType
+  agent: LightAgentConfigurationType,
+  execute: boolean
 ): Promise<void> {
   // find all editors of this agent
   const agentConfigs = await AgentConfiguration.findAll({
@@ -93,6 +94,9 @@ async function backfillAgentEditorsGroup(
       editorGroupResult.error instanceof DustError &&
       editorGroupResult.error.code === "group_not_found"
     ) {
+      if (!execute) {
+        return;
+      }
       // create the editor group
       editorGroup = await GroupResource.makeNewAgentEditorsGroup(
         auth,
@@ -107,12 +111,14 @@ async function backfillAgentEditorsGroup(
 
   // set all the editors of the agent to the editor group
   const users = await UserResource.fetchByModelIds(editorIds);
-  const result = await editorGroup.setMembers(
-    auth,
-    users.map((user) => user.toJSON())
-  );
+  if (execute) {
+    const result = await editorGroup.setMembers(
+      auth,
+      users.map((user) => user.toJSON())
+    );
 
-  if (result.isErr()) {
-    throw result.error;
+    if (result.isErr()) {
+      throw result.error;
+    }
   }
 }
