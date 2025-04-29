@@ -36,6 +36,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
@@ -47,6 +48,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
@@ -316,6 +318,12 @@ export async function deleteAgentsActivity({
         agentConfiguration: agent.sId,
       },
     });
+
+    const group = await GroupResource.fetchByAgentConfiguration(auth, agent);
+    if (group.isOk()) {
+      await group.value.delete(auth);
+    }
+
     hardDeleteLogger.info({ agentId: agent.sId }, "Deleting agent");
     await agent.destroy();
   }
