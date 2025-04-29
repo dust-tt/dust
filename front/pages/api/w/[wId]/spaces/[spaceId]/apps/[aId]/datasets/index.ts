@@ -135,6 +135,22 @@ async function handler(
         });
       }
 
+      // Check name validity
+      if (
+        !bodyValidation.right.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
+        bodyValidation.right.dataset.name.length === 0
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The dataset name must only contain alphanumeric characters and " +
+              "underscores and cannot be empty.",
+          },
+        });
+      }
+
       // Check data validity.
       try {
         checkDatasetData({
