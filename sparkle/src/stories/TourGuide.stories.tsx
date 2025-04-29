@@ -1,17 +1,32 @@
 import { Meta, StoryFn } from "@storybook/react";
 import React, { useRef, useState } from "react";
 
-import { ConfettiBackground, Icon, TypingAnimation } from "@sparkle/components";
+import {
+  Avatar,
+  ConfettiBackground,
+  TypingAnimation,
+} from "@sparkle/components";
 import { Button } from "@sparkle/components/Button";
 import {
-  BookOpenIcon,
-  BrainIcon,
-  MagnifyingGlassIcon,
+  ActionGlobeIcon,
+  ActionImageIcon,
+  ActionMagnifyingGlassIcon,
+  ActionScanIcon,
+  ActionTableIcon,
   PlayIcon,
-  RobotIcon,
-  TableIcon,
 } from "@sparkle/icons";
-import { GithubLogo, GoogleLogo, NotionLogo, SlackLogo } from "@sparkle/logo";
+import {
+  BigQueryLogo,
+  ConfluenceLogo,
+  DriveLogo,
+  IntercomLogo,
+  MicrosoftLogo,
+  NotionLogo,
+  SalesforceLogo,
+  SlackLogo,
+  SnowflakeLogo,
+  ZendeskLogo,
+} from "@sparkle/logo";
 
 import {
   TourGuide,
@@ -81,7 +96,6 @@ const Template: StoryFn = () => {
             workspace.
           </TourGuideCardTitle>
           <TourGuideCardContent>
-            {" "}
             Discover Dust’s basics in 3 steps.
           </TourGuideCardContent>
         </TourGuideCard>
@@ -100,7 +114,7 @@ const Template: StoryFn = () => {
           </TourGuideCardTitle>
           <TourGuideCardContent className="s-py-2">
             <Button
-              label="Watch the full video"
+              label="Everythig about Conversations"
               icon={PlayIcon}
               variant={"outline"}
             />
@@ -108,19 +122,80 @@ const Template: StoryFn = () => {
         </TourGuideCard>
         <TourGuideCard anchorRef={topRightRef}>
           <TourGuideCardVisual className="s-flex s-flex-col s-items-center s-justify-center s-gap-4 s-bg-brand-support-rose s-px-6 s-text-center">
-            <div className="s-grid s-grid-cols-4 s-gap-2">
-              <Icon visual={BookOpenIcon} size="lg" />
-              <Icon visual={MagnifyingGlassIcon} size="lg" />
-              <Icon visual={TableIcon} size="lg" />
-              <Icon visual={BrainIcon} size="lg" />
-              <Icon visual={NotionLogo} size="lg" />
-              <Icon visual={GoogleLogo} size="lg" />
-              <Icon visual={SlackLogo} size="lg" />
-              <Icon visual={GithubLogo} size="lg" />
+            <div className="s-grid s-grid-cols-5 s-gap-2">
+              <Avatar
+                size="md"
+                icon={ActionTableIcon}
+                backgroundColor="s-bg-gray-700"
+                iconColor="s-text-gray-50"
+              />
+              <Avatar
+                size="md"
+                icon={ActionMagnifyingGlassIcon}
+                backgroundColor="s-bg-gray-700"
+                iconColor="s-text-gray-50"
+              />
+              <Avatar
+                size="md"
+                icon={ActionImageIcon}
+                backgroundColor="s-bg-gray-700"
+                iconColor="s-text-gray-50"
+              />
+              <Avatar
+                size="md"
+                icon={ActionScanIcon}
+                backgroundColor="s-bg-gray-700"
+                iconColor="s-text-gray-50"
+              />
+              <Avatar
+                size="md"
+                icon={ActionGlobeIcon}
+                backgroundColor="s-bg-gray-700"
+                iconColor="s-text-gray-50"
+              />
+              <Avatar size="md" icon={DriveLogo} backgroundColor="s-bg-white" />
+              <Avatar
+                size="md"
+                icon={NotionLogo}
+                backgroundColor="s-bg-white"
+              />
+              <Avatar size="md" icon={SlackLogo} backgroundColor="s-bg-white" />
+              <Avatar
+                size="md"
+                icon={SnowflakeLogo}
+                backgroundColor="s-bg-white"
+              />
+              <Avatar
+                size="md"
+                icon={BigQueryLogo}
+                backgroundColor="s-bg-white"
+              />
+              <Avatar
+                size="md"
+                icon={ConfluenceLogo}
+                backgroundColor="s-bg-white"
+              />
+              <Avatar
+                size="md"
+                icon={IntercomLogo}
+                backgroundColor="s-bg-white"
+              />
+              <Avatar
+                size="md"
+                icon={MicrosoftLogo}
+                backgroundColor="s-bg-white"
+              />
+              <Avatar
+                size="md"
+                icon={SalesforceLogo}
+                backgroundColor="s-bg-white"
+              />
+              <Avatar
+                size="md"
+                icon={ZendeskLogo}
+                backgroundColor="s-bg-white"
+              />
             </div>
-            <span className="s-heading-2xl">
-              <TypingAnimation text="Knowledge & Tools" />
-            </span>
           </TourGuideCardVisual>
           <TourGuideCardTitle>
             Make your agents smarter with&nbsp;
@@ -135,15 +210,17 @@ const Template: StoryFn = () => {
           </TourGuideCardContent>
         </TourGuideCard>
         <TourGuideCard anchorRef={bottomLeftRef}>
-          <TourGuideCardVisual className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-px-6 s-text-center">
-            <Icon
-              className="s-text-brand-orange-golden"
-              visual={RobotIcon}
-              size="xl"
-            />
-            <span className="s-heading-mono-2xl s-text-brand-orange-golden">
-              <TypingAnimation text="Create an Agent" />
-            </span>
+          <TourGuideCardVisual className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-bg-brand-support-golden s-px-6 s-text-center">
+            <div className="s-grid s-grid-cols-4 s-gap-2">
+              <Avatar size="lg" emoji="❤️" backgroundColor="s-bg-rose-100" />
+              <Avatar size="lg" emoji="💀" backgroundColor="s-bg-lime-800" />
+              <Avatar size="lg" emoji="😂" backgroundColor="s-bg-golden-200" />
+              <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-violet-800" />
+              <Avatar size="lg" emoji="👕" backgroundColor="s-bg-blue-200" />
+              <Avatar size="lg" emoji="🚒" backgroundColor="s-bg-red-200" />
+              <Avatar size="lg" emoji="🏆" backgroundColor="s-bg-yellow-200" />
+              <Avatar size="lg" emoji="🎯" backgroundColor="s-bg-pink-100" />
+            </div>
           </TourGuideCardVisual>
           <TourGuideCardTitle>
             Create new custom agents{" "}
