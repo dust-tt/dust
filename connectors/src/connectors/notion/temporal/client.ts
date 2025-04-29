@@ -11,6 +11,7 @@ import {
 import {
   notionGarbageCollectionWorkflow,
   notionSyncWorkflow,
+  updateOrphanedResourcesParentsWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
@@ -229,6 +230,26 @@ export async function stopNotionGarbageCollectorWorkflow(
     { workspaceId: dataSourceConfig.workspaceId, provider: "notion" },
     "Terminated Notion garbage collector workflow."
   );
+}
+
+export async function launchUpdateOrphanedResourcesParentsWorkflow(
+  connectorId: ModelId
+) {
+  const client = await getTemporalClient();
+
+  const workflowId = `${getNotionWorkflowId(connectorId, false)}-update-orphaned-resources-parents`;
+
+  await client.workflow.start(updateOrphanedResourcesParentsWorkflow, {
+    args: [{ connectorId }],
+    workflowId,
+    taskQueue: QUEUE_NAME,
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    memo: {
+      connectorId,
+    },
+  });
 }
 
 async function getSyncWorkflow(connectorId: ModelId): Promise<{
