@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
   Label,
   LightModeIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import { Page } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
@@ -19,6 +20,7 @@ import { isSubmitMessageKey } from "@app/lib/keymaps";
 
 export function Preferences() {
   const { theme, setTheme } = useTheme();
+  const sendNotification = useSendNotification();
   const [submitMessageKey, setSubmitMessageKey] =
     useState<SubmitMessageKey>("enter");
 
@@ -27,9 +29,18 @@ export function Preferences() {
     setSubmitMessageKey(key && isSubmitMessageKey(key) ? key : "enter");
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("submitMessageKey", submitMessageKey);
-  }, [submitMessageKey]);
+  const handleSubmitKeyChange = (key: SubmitMessageKey) => {
+    setSubmitMessageKey(key);
+    localStorage.setItem("submitMessageKey", key);
+    sendNotification({
+      title: "Submit key changed successfully !",
+      description:
+        key === "enter"
+          ? "Submit key is now Enter."
+          : "Submit key is now Cmd+Enter.",
+      type: "success",
+    });
+  };
 
   return (
     <Page.Layout direction="horizontal">
@@ -96,7 +107,7 @@ export function Preferences() {
           <DropdownMenuContent>
             <DropdownMenuItem
               onClick={() => {
-                setSubmitMessageKey("enter");
+                handleSubmitKeyChange("enter");
               }}
             >
               Send message when pressing Enter
@@ -104,7 +115,7 @@ export function Preferences() {
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
-                setSubmitMessageKey("cmd+enter");
+                handleSubmitKeyChange("cmd+enter");
               }}
             >
               Send message when pressing Cmd+Enter
