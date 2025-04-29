@@ -29,7 +29,7 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, FILE_FORMATS, Ok, removeNulls } from "@app/types";
 
 export type FileVersion = "processed" | "original" | "public";
 
@@ -362,5 +362,9 @@ export class FileResource extends BaseResource<FileModel> {
       ...blob,
       uploadUrl: this.getPublicUrl(auth),
     };
+  }
+
+  isSafeToDisplay(): boolean {
+    return FILE_FORMATS[this.contentType].isSafeToDisplay;
   }
 }

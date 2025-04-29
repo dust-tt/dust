@@ -93,86 +93,206 @@ export function ensureFileSize(
 type FileFormat = {
   cat: FileFormatCategory;
   exts: string[];
+  /**
+   * Indicates whether the file type can be safely displayed directly in the browser.
+   *
+   * Security considerations:
+   * - Default is false (not safe to display)
+   * - Only explicitly whitelisted file types should be marked as safe
+   * - File types that could contain executable code or XSS vectors should never be marked as safe
+   * - Unknown content types are treated as unsafe by default
+   *
+   * Safe file types typically include:
+   * - Images (jpeg, png, gif, webp)
+   * - Documents (pdf, doc, ppt)
+   * - Plain text formats (txt, markdown)
+   * - Structured data (json, csv)
+   *
+   * Unsafe file types include:
+   * - HTML and XML files
+   * - Script files (js, ts, py, etc.)
+   * - Any file type that could contain executable code
+   */
+  isSafeToDisplay: boolean;
 };
 
-// NOTE: if we add more content types, we need to update the public api package. (but the typechecker should catch it)
+// NOTE: if we add more content types, we need to update the public api package. (but the
+// typechecker should catch it).
 export const FILE_FORMATS = {
-  // Images
-  "image/jpeg": { cat: "image", exts: [".jpg", ".jpeg"] },
-  "image/png": { cat: "image", exts: [".png"] },
-  "image/gif": { cat: "image", exts: [".gif"] },
-  "image/webp": { cat: "image", exts: [".webp"] },
+  // Images.
+  "image/jpeg": {
+    cat: "image",
+    exts: [".jpg", ".jpeg"],
+    isSafeToDisplay: true,
+  },
+  "image/png": { cat: "image", exts: [".png"], isSafeToDisplay: true },
+  "image/gif": { cat: "image", exts: [".gif"], isSafeToDisplay: true },
+  "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
 
-  // Structured
-  "text/csv": { cat: "delimited", exts: [".csv"] },
-  "text/comma-separated-values": { cat: "delimited", exts: [".csv"] },
-  "text/tsv": { cat: "delimited", exts: [".tsv"] },
-  "text/tab-separated-values": { cat: "delimited", exts: [".tsv"] },
-  "application/vnd.ms-excel": { cat: "delimited", exts: [".xls"] },
-  "application/vnd.google-apps.spreadsheet": { cat: "delimited", exts: [] },
+  // Structured.
+  "text/csv": { cat: "delimited", exts: [".csv"], isSafeToDisplay: true },
+  "text/comma-separated-values": {
+    cat: "delimited",
+    exts: [".csv"],
+    isSafeToDisplay: true,
+  },
+  "text/tsv": { cat: "delimited", exts: [".tsv"], isSafeToDisplay: true },
+  "text/tab-separated-values": {
+    cat: "delimited",
+    exts: [".tsv"],
+    isSafeToDisplay: true,
+  },
+  "application/vnd.ms-excel": {
+    cat: "delimited",
+    exts: [".xls"],
+    isSafeToDisplay: true,
+  },
+  "application/vnd.google-apps.spreadsheet": {
+    cat: "delimited",
+    exts: [],
+    isSafeToDisplay: true,
+  },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
     cat: "delimited",
     exts: [".xlsx"],
+    isSafeToDisplay: true,
   },
 
   // Custom for section json files generated from tables query results.
   "application/vnd.dust.section.json": {
     cat: "data",
     exts: [".json"],
+    isSafeToDisplay: true,
   },
 
-  // Data
-  "text/plain": { cat: "data", exts: [".txt", ".log", ".cfg", ".conf"] },
-  "text/markdown": { cat: "data", exts: [".md", ".markdown"] },
-  "text/vnd.dust.attachment.slack.thread": { cat: "data", exts: [".txt"] },
-  "text/calendar": { cat: "data", exts: [".ics"] },
-  "application/json": { cat: "data", exts: [".json"] },
-  "application/msword": { cat: "data", exts: [".doc", ".docx"] },
+  // Data.
+  "text/plain": {
+    cat: "data",
+    exts: [".txt", ".log", ".cfg", ".conf"],
+    isSafeToDisplay: true,
+  },
+  "text/markdown": {
+    cat: "data",
+    exts: [".md", ".markdown"],
+    isSafeToDisplay: true,
+  },
+  "text/vnd.dust.attachment.slack.thread": {
+    cat: "data",
+    exts: [".txt"],
+    isSafeToDisplay: true,
+  },
+  "text/calendar": { cat: "data", exts: [".ics"], isSafeToDisplay: true },
+  "application/json": { cat: "data", exts: [".json"], isSafeToDisplay: true },
+  "application/msword": {
+    cat: "data",
+    exts: [".doc", ".docx"],
+    isSafeToDisplay: true,
+  },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
     cat: "data",
     exts: [".doc", ".docx"],
+    isSafeToDisplay: true,
   },
-  "application/vnd.ms-powerpoint": { cat: "data", exts: [".ppt", ".pptx"] },
+  "application/vnd.ms-powerpoint": {
+    cat: "data",
+    exts: [".ppt", ".pptx"],
+    isSafeToDisplay: true,
+  },
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
     cat: "data",
     exts: [".ppt", ".pptx"],
+    isSafeToDisplay: true,
   },
-  "application/pdf": { cat: "data", exts: [".pdf"] },
-  "application/vnd.google-apps.document": { cat: "data", exts: [] },
-  "application/vnd.google-apps.presentation": { cat: "data", exts: [] },
+  "application/pdf": { cat: "data", exts: [".pdf"], isSafeToDisplay: true },
+  "application/vnd.google-apps.document": {
+    cat: "data",
+    exts: [],
+    isSafeToDisplay: true,
+  },
+  "application/vnd.google-apps.presentation": {
+    cat: "data",
+    exts: [],
+    isSafeToDisplay: true,
+  },
 
-  // Code
-  "text/xml": { cat: "data", exts: [".xml"] },
-  "application/xml": { cat: "data", exts: [".xml"] },
-  "text/html": { cat: "data", exts: [".html", ".htm", ".xhtml", ".xhtml+xml"] },
-  "text/css": { cat: "code", exts: [".css"] },
-  "text/javascript": { cat: "code", exts: [".js", ".mjs", "*.jsx"] },
-  "text/typescript": { cat: "code", exts: [".ts", ".tsx"] },
-  "application/x-sh": { cat: "code", exts: [".sh"] },
-  "text/x-sh": { cat: "code", exts: [".sh"] },
-  "text/x-python": { cat: "code", exts: [".py"] },
-  "text/x-python-script": { cat: "code", exts: [".py"] },
-  "application/x-yaml": { cat: "code", exts: [".yaml", ".yml"] },
-  "text/yaml": { cat: "code", exts: [".yaml", ".yml"] },
-  "text/vnd.yaml": { cat: "code", exts: [".yaml", ".yml"] },
+  // Code - most code files are not safe to display by default.
+  "text/xml": { cat: "data", exts: [".xml"], isSafeToDisplay: false },
+  "application/xml": { cat: "data", exts: [".xml"], isSafeToDisplay: false },
+  "text/html": {
+    cat: "data",
+    exts: [".html", ".htm", ".xhtml", ".xhtml+xml"],
+    isSafeToDisplay: false,
+  },
+  "text/css": { cat: "code", exts: [".css"], isSafeToDisplay: false },
+  "text/javascript": {
+    cat: "code",
+    exts: [".js", ".mjs", ".jsx"],
+    isSafeToDisplay: false,
+  },
+  "text/typescript": {
+    cat: "code",
+    exts: [".ts", ".tsx"],
+    isSafeToDisplay: false,
+  },
+  "application/x-sh": { cat: "code", exts: [".sh"], isSafeToDisplay: false },
+  "text/x-sh": { cat: "code", exts: [".sh"], isSafeToDisplay: false },
+  "text/x-python": { cat: "code", exts: [".py"], isSafeToDisplay: false },
+  "text/x-python-script": {
+    cat: "code",
+    exts: [".py"],
+    isSafeToDisplay: false,
+  },
+  "application/x-yaml": {
+    cat: "code",
+    exts: [".yaml", ".yml"],
+    isSafeToDisplay: false,
+  },
+  "text/yaml": { cat: "code", exts: [".yaml", ".yml"], isSafeToDisplay: false },
+  "text/vnd.yaml": {
+    cat: "code",
+    exts: [".yaml", ".yml"],
+    isSafeToDisplay: false,
+  },
   "text/x-c": {
     cat: "code",
     exts: [".c", ".cc", ".cpp", ".cxx", ".dic", ".h", ".hh"],
+    isSafeToDisplay: false,
   },
-  "text/x-csharp": { cat: "code", exts: [".cs"] },
-  "text/x-java-source": { cat: "code", exts: [".java"] },
-  "text/x-php": { cat: "code", exts: [".php"] },
-  "text/x-ruby": { cat: "code", exts: [".rb"] },
-  "text/x-sql": { cat: "code", exts: [".sql"] },
-  "text/x-swift": { cat: "code", exts: [".swift"] },
-  "text/x-rust": { cat: "code", exts: [".rs"] },
-  "text/x-go": { cat: "code", exts: [".go"] },
-  "text/x-kotlin": { cat: "code", exts: [".kt", ".kts"] },
-  "text/x-scala": { cat: "code", exts: [".scala"] },
-  "text/x-groovy": { cat: "code", exts: [".groovy"] },
-  "text/x-perl": { cat: "code", exts: [".pl", ".pm"] },
-  "text/x-perl-script": { cat: "code", exts: [".pl", ".pm"] },
-  // declare type here using satisfies to allow flexible typing for keys, FileFormat type for values and yet infer the keys of FILE_FORMATS correctly below
+  "text/x-csharp": { cat: "code", exts: [".cs"], isSafeToDisplay: false },
+  "text/x-java-source": {
+    cat: "code",
+    exts: [".java"],
+    isSafeToDisplay: false,
+  },
+  "text/x-php": { cat: "code", exts: [".php"], isSafeToDisplay: false },
+  "text/x-ruby": { cat: "code", exts: [".rb"], isSafeToDisplay: false },
+  "text/x-sql": { cat: "code", exts: [".sql"], isSafeToDisplay: false },
+  "text/x-swift": { cat: "code", exts: [".swift"], isSafeToDisplay: false },
+  "text/x-rust": { cat: "code", exts: [".rs"], isSafeToDisplay: false },
+  "text/x-go": { cat: "code", exts: [".go"], isSafeToDisplay: false },
+  "text/x-kotlin": {
+    cat: "code",
+    exts: [".kt", ".kts"],
+    isSafeToDisplay: false,
+  },
+  "text/x-scala": { cat: "code", exts: [".scala"], isSafeToDisplay: false },
+  "text/x-groovy": { cat: "code", exts: [".groovy"], isSafeToDisplay: false },
+  "text/x-perl": { cat: "code", exts: [".pl", ".pm"], isSafeToDisplay: false },
+  "text/x-perl-script": {
+    cat: "code",
+    exts: [".pl", ".pm"],
+    isSafeToDisplay: false,
+  },
+
+  // Unknown.
+  "application/octet-stream": {
+    cat: "data",
+    exts: [],
+    isSafeToDisplay: false,
+  },
+
+  // Declare type with satisfies to allow flexible key typing while ensuring FileFormat values
+  // and correct FILE_FORMATS key inference.
 } as const satisfies Record<string, FileFormat>;
 
 // Define a type that is the list of all keys from FILE_FORMATS.
