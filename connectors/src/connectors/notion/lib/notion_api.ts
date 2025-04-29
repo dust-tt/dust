@@ -950,6 +950,9 @@ export async function retrieveDatabaseChildrenResultPage({
   const notionClient = new Client({
     auth: accessToken,
     logger: notionClientLogger,
+    // Default is 60_000: https://github.com/makenotion/notion-sdk-js/blob/main/src/Client.ts#L135
+    // Bumped as we observed some timeouts with the default value.
+    timeoutMs: 120_000,
   });
 
   localLogger.info("Fetching database children result page from Notion API.");
