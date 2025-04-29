@@ -16,6 +16,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { FILE_FORMATS } from "@app/types";
 
 export interface FileUploadedRequestResponseBody {
   file: FileType;
@@ -118,6 +119,15 @@ async function handler(
       const action = isValidAction(req.query.action)
         ? req.query.action
         : "download";
+
+      // For non-safe file types or unknown content types, always force download regardless of
+      // action.
+      const fileFormat = FILE_FORMATS[file.contentType];
+      if (!fileFormat.isSafeToDisplay) {
+        const url = await file.getSignedUrlForDownload(auth, "original");
+        res.redirect(url);
+        return;
+      }
 
       if (action === "view") {
         // Get the version of the file.
