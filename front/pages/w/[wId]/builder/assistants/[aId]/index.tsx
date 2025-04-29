@@ -25,12 +25,15 @@ import type {
   PlanType,
   SpaceType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
+import { GroupResource } from "@app/lib/resources/group_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration: AgentConfigurationType;
+  agentEditors: UserType[];
   baseUrl: string;
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
@@ -89,10 +92,23 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
+  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    auth,
+    configuration
+  );
+  if (editorGroupRes.isErr()) {
+    throw new Error("Failed to find editor group for agent");
+  }
+
+  const agentEditors = (await editorGroupRes.value.getActiveMembers(auth)).map(
+    (m) => m.toJSON()
+  );
+
   return {
     props: {
       actions,
       agentConfiguration: configuration,
+      agentEditors,
       baseUrl: config.getClientFacingUrl(),
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
@@ -109,6 +125,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function EditAssistant({
   actions,
   agentConfiguration,
+  agentEditors,
   baseUrl,
   spaces,
   dataSourceViews,
@@ -120,11 +137,6 @@ export default function EditAssistant({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   throwIfInvalidAgentConfiguration(agentConfiguration);
-
-  const { editors } = useEditors({
-    owner,
-    agentConfigurationId: agentConfiguration.sId,
-  });
 
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global agent");
@@ -166,7 +178,7 @@ export default function EditAssistant({
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
           tags: agentConfiguration.tags,
-          editors,
+          editors: agentEditors,
         }}
         agentConfigurationId={agentConfiguration.sId}
         baseUrl={baseUrl}
