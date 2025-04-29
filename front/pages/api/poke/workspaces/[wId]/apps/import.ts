@@ -1,4 +1,3 @@
-import type { ApiAppType } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -69,6 +68,17 @@ async function handler(
     session,
     req.query.wId as string
   );
+
+  if (!auth.isDustSuperUser()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "user_not_found",
+        message: "Could not find the user.",
+      },
+    });
+  }
+
   if (req.method !== "POST") {
     return apiError(req, res, {
       status_code: 405,
