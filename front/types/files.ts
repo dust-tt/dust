@@ -116,9 +116,10 @@ type FileFormat = {
   isSafeToDisplay: boolean;
 };
 
-// NOTE: if we add more content types, we need to update the public api package. (but the typechecker should catch it)
+// NOTE: if we add more content types, we need to update the public api package. (but the
+// typechecker should catch it).
 export const FILE_FORMATS = {
-  // Images
+  // Images.
   "image/jpeg": {
     cat: "image",
     exts: [".jpg", ".jpeg"],
@@ -128,7 +129,7 @@ export const FILE_FORMATS = {
   "image/gif": { cat: "image", exts: [".gif"], isSafeToDisplay: true },
   "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
 
-  // Structured
+  // Structured.
   "text/csv": { cat: "delimited", exts: [".csv"], isSafeToDisplay: true },
   "text/comma-separated-values": {
     cat: "delimited",
@@ -164,7 +165,7 @@ export const FILE_FORMATS = {
     isSafeToDisplay: true,
   },
 
-  // Data
+  // Data.
   "text/plain": {
     cat: "data",
     exts: [".txt", ".log", ".cfg", ".conf"],
@@ -214,7 +215,7 @@ export const FILE_FORMATS = {
     isSafeToDisplay: true,
   },
 
-  // Code - most code files are not safe to display by default
+  // Code - most code files are not safe to display by default.
   "text/xml": { cat: "data", exts: [".xml"], isSafeToDisplay: false },
   "application/xml": { cat: "data", exts: [".xml"], isSafeToDisplay: false },
   "text/html": {
@@ -282,7 +283,16 @@ export const FILE_FORMATS = {
     exts: [".pl", ".pm"],
     isSafeToDisplay: false,
   },
-  // declare type here using satisfies to allow flexible typing for keys, FileFormat type for values and yet infer the keys of FILE_FORMATS correctly below
+
+  // Unknown.
+  "application/octet-stream": {
+    cat: "data",
+    exts: [],
+    isSafeToDisplay: false,
+  },
+
+  // Declare type with satisfies to allow flexible key typing while ensuring FileFormat values
+  // and correct FILE_FORMATS key inference.
 } as const satisfies Record<string, FileFormat>;
 
 // Define a type that is the list of all keys from FILE_FORMATS.

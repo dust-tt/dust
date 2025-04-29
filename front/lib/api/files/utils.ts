@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { Result } from "@app/types";
-import { contentTypeForExtension, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export const parseUploadRequest = async (
   file: FileResource,
@@ -38,22 +38,7 @@ export const parseUploadRequest = async (
       maxFileSize: file.fileSize,
 
       // Ensure the file is of the correct type.
-      filter: function (part) {
-        if (
-          part.mimetype != file.contentType &&
-          part.mimetype == "application/octet-stream"
-        ) {
-          const fileExtension = file.fileName.split(".").at(-1)?.toLowerCase();
-          if (fileExtension) {
-            // Lookup by extension
-            return (
-              contentTypeForExtension("." + fileExtension) === file.contentType
-            );
-          }
-        }
-
-        return part.mimetype === file.contentType;
-      },
+      filter: (part) => part.mimetype === file.contentType,
     });
 
     const [, files] = await form.parse(req);
