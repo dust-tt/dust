@@ -192,14 +192,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   private static async baseFetch(
     auth: Authenticator,
-    { where }: ResourceFindOptions<MCPServerViewModel> = {}
+    options: ResourceFindOptions<MCPServerViewModel> = {}
   ) {
     const views = await this.baseFetchWithAuthorization(auth, {
+      ...options,
       where: {
-        ...where,
+        ...options.where,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       includes: [
+        ...(options.includes || []),
         {
           model: UserModel,
           as: "editedByUser",
@@ -291,14 +293,21 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   static async listByWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    options?: ResourceFindOptions<MCPServerViewModel>
   ): Promise<MCPServerViewResource[]> {
-    return this.baseFetch(auth);
+    return this.baseFetch(auth, options);
   }
 
-  static async listBySpaces(auth: Authenticator, spaces: SpaceResource[]) {
+  static async listBySpaces(
+    auth: Authenticator,
+    spaces: SpaceResource[],
+    options?: ResourceFindOptions<MCPServerViewModel>
+  ): Promise<MCPServerViewResource[]> {
     return this.baseFetch(auth, {
+      ...options,
       where: {
+        ...options?.where,
         workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: spaces.map((s) => s.id),
       },
@@ -307,9 +316,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   static async listBySpace(
     auth: Authenticator,
-    space: SpaceResource
+    space: SpaceResource,
+    options?: ResourceFindOptions<MCPServerViewModel>
   ): Promise<MCPServerViewResource[]> {
-    return this.listBySpaces(auth, [space]);
+    return this.listBySpaces(auth, [space], options);
   }
 
   static async countBySpace(
