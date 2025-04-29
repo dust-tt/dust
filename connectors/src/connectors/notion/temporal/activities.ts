@@ -1280,30 +1280,65 @@ export async function markParentsAsUpdated({
 
 export async function getAllOrphanedResources({
   connectorId,
+  cursor = null,
 }: {
   connectorId: ModelId;
+  cursor: {
+    pageCursor: ModelId | null;
+    databaseCursor: ModelId | null;
+  } | null;
 }): Promise<{
   pageIds: string[];
   databaseIds: string[];
+  nextCursor: {
+    pageCursor: ModelId | null;
+    databaseCursor: ModelId | null;
+  } | null;
 }> {
-  const pages = await NotionPage.findAll({
-    where: {
-      connectorId,
-      parentType: "unknown",
-    },
-    attributes: ["notionPageId"],
-  });
-  const databases = await NotionDatabase.findAll({
-    where: {
-      connectorId,
-      parentType: "unknown",
-    },
-    attributes: ["notionDatabaseId"],
-  });
+  const pages =
+    cursor && !cursor.pageCursor
+      ? ([] as NotionPage[])
+      : await NotionPage.findAll({
+          where: {
+            connectorId,
+            parentType: "unknown",
+            id: {
+              [Op.gt]: cursor?.pageCursor ?? 0,
+            },
+          },
+          attributes: ["notionPageId", "id"],
+          order: [["id", "ASC"]],
+          limit: 128,
+        });
+
+  const databases =
+    cursor && !cursor.databaseCursor
+      ? ([] as NotionDatabase[])
+      : await NotionDatabase.findAll({
+          where: {
+            connectorId,
+            parentType: "unknown",
+            id: {
+              [Op.gt]: cursor?.databaseCursor ?? 0,
+            },
+          },
+          attributes: ["notionDatabaseId", "id"],
+          order: [["id", "ASC"]],
+          limit: 128,
+        });
+
+  const nextCursor = {
+    pageCursor: pages.at(-1)?.id ?? null,
+    databaseCursor: databases.at(-1)?.id ?? null,
+  };
 
   return {
     pageIds: pages.map((page) => page.notionPageId),
     databaseIds: databases.map((db) => db.notionDatabaseId),
+    nextCursor:
+      nextCursor.pageCursor !== null || nextCursor.databaseCursor !== null
+        ? nextCursor
+        : null,
   };
 }
 
