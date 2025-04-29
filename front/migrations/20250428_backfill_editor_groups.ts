@@ -1,3 +1,6 @@
+import assert from "assert";
+import type { Logger } from "pino";
+
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -7,9 +10,11 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { LightAgentConfigurationType, LightWorkspaceType } from "@app/types";
-import assert from "assert";
-import { Logger } from "pino";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
@@ -54,6 +59,14 @@ async function backfillAgentEditorsGroup(
       groupAgentRelationships[0].groupId
     );
     assert(editorGroup, "Editor group not found");
+    // if group is not of kind agent_editors, update it
+    if (editorGroup.kind !== "agent_editors") {
+      const groupModel = await GroupModel.findByPk(editorGroup.id);
+      assert(groupModel, "Group model not found");
+      await groupModel.update({
+        kind: "agent_editors",
+      });
+    }
   } else {
     // Create an editor group for the agent without author
     editorGroup = await GroupResource.makeNew({
