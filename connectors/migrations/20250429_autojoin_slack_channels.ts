@@ -2,28 +2,19 @@ import type { Channel } from "@slack/web-api/dist/response/ConversationsListResp
 import { makeScript } from "scripts/helpers";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
-import {
-  getSlackChannelSourceUrl,
-  slackChannelInternalIdFromSlackChannelId,
-} from "@connectors/connectors/slack/lib/utils";
 import { getChannels } from "@connectors/connectors/slack/temporal/activities";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 async function setupSlackChannel({
   channel,
   connector,
-  slackConfiguration,
   logger,
 }: {
   channel: Channel;
   connector: ConnectorResource;
-  slackConfiguration: SlackConfigurationResource;
   logger: typeof Logger;
 }) {
   // Skip private channels.
@@ -64,21 +55,6 @@ async function setupSlackChannel({
     });
     logger.info(`Created configuration for channel #${channel.name}`);
   }
-
-  // Create/update folder in data source
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const folderId = slackChannelInternalIdFromSlackChannelId(channel.id);
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId,
-    title: `#${channel.name}`,
-    parentId: null,
-    parents: [folderId],
-    mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
-    sourceUrl: getSlackChannelSourceUrl(channel.id, slackConfiguration),
-    providerVisibility: channel.is_private ? "private" : "public",
-  });
-  logger.info(`Upserted data source folder for channel #${channel.name}`);
 }
 
 makeScript(
@@ -119,7 +95,6 @@ makeScript(
         await setupSlackChannel({
           channel,
           connector,
-          slackConfiguration,
           logger: logger.child({
             channelId: channel.id,
             channelName: channel.name,
