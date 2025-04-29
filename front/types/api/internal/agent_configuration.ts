@@ -230,6 +230,8 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
       t.literal("workspace"),
       t.literal("published"),
       t.literal("private"),
+      t.literal("hidden"),
+      t.literal("visible"),
     ]),
     model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
     actions: t.array(ActionConfigurationSchema),

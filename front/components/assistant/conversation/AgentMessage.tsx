@@ -159,7 +159,6 @@ export function AgentMessage({
   message,
   messageFeedback,
   owner,
-  user,
 }: AgentMessageProps) {
   const { isDark } = useTheme();
   const [streamedAgentMessage, setStreamedAgentMessage] =
@@ -623,9 +622,7 @@ export function AgentMessage({
     [activeReferences]
   );
 
-  const canMention =
-    agentConfiguration.scope !== "private" ||
-    agentConfiguration.versionAuthorId === user.id;
+  const canMention = agentConfiguration.canRead;
 
   return (
     <ConversationMessage

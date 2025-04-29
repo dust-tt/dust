@@ -26,5 +26,7 @@ export default async function setup() {
     NEXT_PUBLIC_DUST_CLIENT_FACING_URL: "http://fake-url",
     DUST_US_URL: "http://fake-url",
     LOG_LEVEL: process.env.TEST_LOG_LEVEL ?? "silent",
+    DUST_APPS_HELPER_DATASOURCE_VIEW_ID: "dsv_xx",
+    DUST_APPS_WORKSPACE_ID: "xx",
   };
 }

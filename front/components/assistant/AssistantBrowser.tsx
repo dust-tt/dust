@@ -32,7 +32,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isBuilder } from "@app/types";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
@@ -137,12 +137,7 @@ export function AssistantBrowser({
       // do not show the "all" tab while still loading all agents
       all: allAgents,
       favorites: allAgents.filter((a) => a.userFavorite),
-      editable_by_me: allAgents.filter(
-        (a) =>
-          isAdmin(owner) ||
-          (a.scope === "published" && isBuilder(owner)) ||
-          a.scope === "private" // TODO: add/replace with editors group check
-      ),
+      editable_by_me: allAgents.filter((a) => a.canEdit),
       most_popular: allAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(

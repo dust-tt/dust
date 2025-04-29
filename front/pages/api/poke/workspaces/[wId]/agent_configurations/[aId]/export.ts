@@ -111,6 +111,8 @@ async function handler(
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           visualizationEnabled: agentConfiguration.visualizationEnabled,
           tags: agentConfiguration.tags,
+          canRead: agentConfiguration.canRead,
+          canEdit: agentConfiguration.canEdit,
         },
       });
       return;

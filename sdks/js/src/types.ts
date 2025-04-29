@@ -929,7 +929,7 @@ const AgentConfigurationStatusSchema = z.union([
 ]);
 
 const AgentConfigurationScopeSchema = FlexibleEnumSchema<
-  "global" | "workspace" | "published" | "private"
+  "global" | "workspace" | "published" | "private" | "hidden" | "visible"
 >();
 
 export const AgentConfigurationViewSchema = FlexibleEnumSchema<
