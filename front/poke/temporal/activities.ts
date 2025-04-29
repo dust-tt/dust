@@ -596,7 +596,13 @@ export async function deleteSpacesActivity({
     }
 
     // Soft delete all the mcp server views of the space.
-    const mcpServerViews = await MCPServerViewResource.listBySpace(auth, space);
+    const mcpServerViews = await MCPServerViewResource.listBySpace(
+      auth,
+      space,
+      {
+        includeDeleted: true,
+      }
+    );
     for (const mcpServerView of mcpServerViews) {
       await mcpServerView.delete(auth, { hardDelete: false });
     }
