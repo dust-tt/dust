@@ -36,7 +36,6 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin } from "@app/types";
 
 export const AGENT_MANAGER_TABS_LEGACY = [
   {
@@ -191,8 +190,7 @@ export default function WorkspaceAssistants({
       workspaceId: owner.sId,
       agentsGetView: "archived",
       includes: ["usage", "feedbacks"],
-      disabled:
-        !hasAgentDiscovery || !isAdmin(owner) || selectedTab !== "archived",
+      disabled: !hasAgentDiscovery || selectedTab !== "archived",
     });
 
   const agentsByTab = useMemo(() => {
@@ -308,9 +306,6 @@ export default function WorkspaceAssistants({
         ).filter((tab) => tab.id !== "search");
   }, [assistantSearch, hasAgentDiscovery]);
 
-  const disabledTablineClass =
-    "!border-primary-500 !text-primary-500 !cursor-default";
-
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -384,8 +379,6 @@ export default function WorkspaceAssistants({
                       key={tab.id}
                       value={tab.id}
                       label={tab.label}
-                      icon={tab.icon}
-                      className={assistantSearch ? disabledTablineClass : ""}
                       onClick={() => !assistantSearch && setSelectedTab(tab.id)}
                       tooltip={
                         AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
