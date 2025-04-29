@@ -195,7 +195,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     { where }: ResourceFindOptions<MCPServerViewModel> = {}
   ) {
     const views = await this.baseFetchWithAuthorization(auth, {
-      where,
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       includes: [
         {
           model: UserModel,
