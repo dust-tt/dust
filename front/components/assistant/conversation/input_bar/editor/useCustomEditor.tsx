@@ -15,6 +15,7 @@ import { createMarkdownSerializer } from "@app/components/assistant/conversation
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { isMobile } from "@app/lib/utils";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
@@ -256,13 +257,23 @@ const useCustomEditor = ({
         class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
       },
       handleKeyDown: (view, event) => {
-        if (
-          event.key === "Enter" &&
-          !event.shiftKey &&
-          !event.ctrlKey &&
-          !event.metaKey &&
-          !event.altKey
-        ) {
+        const submitMessageKey = localStorage.getItem("submitMessageKey");
+        const isCmdEnterForSubmission =
+          isSubmitMessageKey(submitMessageKey) &&
+          submitMessageKey === "cmd+enter";
+        const isEnterForSubmission = !isCmdEnterForSubmission;
+
+        // Check if this is a submission key combination based on user preferences
+        const isSubmissionKey =
+          (isEnterForSubmission &&
+            event.key === "Enter" &&
+            !event.shiftKey &&
+            !event.ctrlKey &&
+            !event.metaKey &&
+            !event.altKey) ||
+          (isCmdEnterForSubmission && event.key === "Enter" && event.metaKey);
+
+        if (isSubmissionKey) {
           const mentionPluginState = MentionPluginKey.getState(view.state);
           // Let the mention extension handle the event if its dropdown is currently opened.
           if (mentionPluginState?.active) {
