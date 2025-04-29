@@ -64,7 +64,6 @@ async function handler(
       const dataSetsToFetch = (await getDatasets(auth, app.toJSON())).map(
         (ds) => ({ datasetId: ds.name, hash: "latest" })
       );
-      console.log(dataSetsToFetch);
       const datasets = [];
       for (const dataset of dataSetsToFetch) {
         const fromCore = await getDatasetHash(
