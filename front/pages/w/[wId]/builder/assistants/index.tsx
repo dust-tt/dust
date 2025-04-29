@@ -230,7 +230,7 @@ export default function WorkspaceAssistants({
           (a) =>
             a.status === "active" &&
             // Filters on search query
-            subFilter(assistantSearch, a.name.toLowerCase())
+            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase())
         )
         .sort((a, b) => {
           return compareForFuzzySort(
