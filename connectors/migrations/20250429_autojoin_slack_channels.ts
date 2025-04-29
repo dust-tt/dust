@@ -82,8 +82,8 @@ async function setupSlackChannel({
 
 makeScript(
   {
-    pattern: { type: "string" },
-    connectorId: { type: "string" },
+    pattern: { type: "string", required: true },
+    connectorId: { type: "string", required: true },
   },
   async ({ pattern, connectorId, execute }, logger) => {
     const connector = await ConnectorResource.fetchById(
