@@ -1772,6 +1772,21 @@ const AppTypeSchema = z.object({
 
 export type ApiAppType = z.infer<typeof AppTypeSchema>;
 
+const AppImportTypeSchema = z.object({
+  id: ModelIdSchema.optional(),
+  sId: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  savedSpecification: z.string().nullable(),
+  savedConfig: z.string().nullable(),
+  savedRun: z.string().nullable(),
+  dustAPIProjectId: z.string(),
+  datasets: z.array(DatasetSchema).optional(),
+  coreSpecifications: z.record(z.string()).optional(),
+});
+
+export type ApiAppImportType = z.infer<typeof AppImportTypeSchema>;
+
 export const RunAppResponseSchema = z.object({
   run: RunTypeSchema,
 });
@@ -2103,7 +2118,7 @@ export const GetAppsResponseSchema = z.object({
 });
 
 export const PostAppsRequestSchema = z.object({
-  apps: AppTypeSchema.array(),
+  apps: AppImportTypeSchema.array(),
 });
 
 export type GetAppsResponseType = z.infer<typeof GetAppsResponseSchema>;
