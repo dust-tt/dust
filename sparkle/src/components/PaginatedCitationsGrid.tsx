@@ -50,7 +50,7 @@ export function PaginatedCitationsGrid({
           return (
             <Citation href={d.href} variant="primary">
               <CitationIcons>
-                <CitationIndex>{idx}</CitationIndex>
+                <CitationIndex>{startIndex + idx + 1}</CitationIndex>
                 {d.icon}
               </CitationIcons>
               <CitationTitle>{d.title}</CitationTitle>
