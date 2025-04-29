@@ -12,6 +12,7 @@ const migrateWorkspace = async (
   execute: boolean,
   logger: Logger
 ) => {
+  logger.info({ workspace: workspace.sId }, "Migrating agents");
   const agents = await AgentConfiguration.findAll({
     where: {
       workspaceId: workspace.id,
