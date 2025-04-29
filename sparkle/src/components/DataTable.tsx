@@ -15,7 +15,13 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import React, { ReactNode, useEffect, useRef, useState } from "react";
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import {
   Avatar,
@@ -92,7 +98,7 @@ interface DataTableProps<TData extends TBaseData> {
   filter?: string;
   filterColumn?: string;
   pagination?: PaginationState;
-  setPagination?: (pagination: PaginationState) => void;
+  setPagination?: React.Dispatch<React.SetStateAction<PaginationState>>;
   columnsBreakpoints?: ColumnBreakpoint;
   sorting?: SortingState;
   setSorting?: (sorting: SortingState) => void;
@@ -131,14 +137,17 @@ export function DataTable<TData extends TBaseData>({
   const isClientSideSortingEnabled =
     !isServerSideSorting && !isServerSidePagination;
 
-  const onPaginationChange =
-    pagination && setPagination
-      ? (updater: Updater<PaginationState>) => {
-          const newValue =
-            typeof updater === "function" ? updater(pagination) : updater;
-          setPagination(newValue);
-        }
-      : undefined;
+  const onPaginationChange = useCallback(
+    (updater: Updater<PaginationState>) => {
+      if (setPagination) {
+        // Use the functional update form of setState to avoid dependency on `pagination` object reference
+        setPagination((old) =>
+          typeof updater === "function" ? updater(old) : updater
+        );
+      }
+    },
+    [setPagination] // Depends only on the stable setPagination function
+  );
 
   const onSortingChange =
     sorting && setSorting

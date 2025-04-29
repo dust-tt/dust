@@ -130,7 +130,7 @@ export function MembersList({
   onRemoveMemberClick?: (user: UserTypeWithWorkspaces) => void;
   showColumns: ("name" | "email" | "role" | "remove")[];
   pagination: PaginationState;
-  setPagination: (pagination: PaginationState) => void;
+  setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
 }) {
   assert(
     !showColumns.includes("remove") || onRemoveMemberClick,
