@@ -97,7 +97,7 @@ async function handler(
       // endpoint.
       const groupRes = await GroupResource.fetchByAgentConfiguration(
         auth,
-        assistant
+        agent
       );
 
       if (groupRes.isErr()) {
@@ -105,7 +105,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "assistant_saving_error",
-            message: `Error fetching group for agent ${assistant.sId}: ${groupRes.error}`,
+            message: `Error fetching group for agent ${agent.sId}: ${groupRes.error}`,
           },
         });
       }

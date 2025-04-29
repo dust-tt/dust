@@ -58,9 +58,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, isAdmin, Ok } from "@app/types";
-import { useEditors } from "@app/lib/swr/editors";
-import { LightAgentConfigurationType } from "@dust-tt/client";
-import { m } from "motion/react";
 import type { TagType } from "@app/types/tag";
 
 export function removeLeadingAt(handle: string) {

@@ -49,6 +49,7 @@ export class AgentConfigurationFactory {
         templateId: null,
         requestedGroupIds: [], // Let createAgentConfiguration handle group creation
         tags: [], // Added missing tags property
+        editors: [],
       },
       t
     );
