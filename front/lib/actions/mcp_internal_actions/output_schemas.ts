@@ -77,6 +77,27 @@ export function isThinkingOutput(
   );
 }
 
+// Final output of the reasoning when successful with the non-CoT tokens.
+
+export const ReasoningSuccessOutputSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.REASONING_SUCCESS),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type ReasoningSuccessOutputType = z.infer<
+  typeof ReasoningSuccessOutputSchema
+>;
+
+export function isReasoningSuccessOutput(
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: ReasoningSuccessOutputType } {
+  return (
+    outputBlock.type === "resource" &&
+    ReasoningSuccessOutputSchema.safeParse(outputBlock.resource).success
+  );
+}
+
 // SQL query generated during the tool execution.
 
 const SqlQueryOutputSchema = z.object({
