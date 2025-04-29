@@ -724,7 +724,8 @@ function EditorsMembersList({
         onRemoveMemberClick={() => {}}
         showColumns={["name", "email", "remove"]}
         pagination={pagination}
-        setPagination={setPagination}
+        // TODO(pr, 2025-04-29): Remove this once issue from PR is fixed
+        setPagination={() => {}}
       />
     </div>
   );
