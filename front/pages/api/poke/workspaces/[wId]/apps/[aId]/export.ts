@@ -10,7 +10,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { AppType, DatasetType, WithAPIErrorResponse } from "@app/types";
 
 export type ExportAppResponseBody = {
-  app: AppType & { datasets: DatasetType[] };
+  app: Omit<AppType, "space" | "id"> & { datasets: DatasetType[] };
 };
 
 /**
