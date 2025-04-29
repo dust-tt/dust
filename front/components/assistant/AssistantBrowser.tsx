@@ -125,13 +125,7 @@ export function AssistantBrowser({
         }
         return a.tags.some((t) => selectedTags.includes(t.sId));
       })
-      .sort((a, b) => {
-        return compareForFuzzySort(
-          "",
-          a.name.toLowerCase(),
-          b.name.toLowerCase()
-        );
-      });
+      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
     return {
       // do not show the "all" tab while still loading all agents
