@@ -449,7 +449,7 @@ export function SharingDropdown({
             <DropdownMenuItem
               key={entryData.label}
               label={entryData.label}
-              icon={entryData.icon || undefined}
+              icon={entryData.icon}
               onClick={() => {
                 /**
                  * Skip confirmation modal in the following cases:

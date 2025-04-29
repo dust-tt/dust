@@ -152,7 +152,7 @@ export const TagsSelector = ({
             {filteredTags.map((c) => (
               <DropdownMenuItem
                 className="p-1"
-                key={`assistant-picker-${c.sId}`}
+                key={c.sId}
                 onClick={() => {
                   setBuilderState((state) => ({
                     ...state,
