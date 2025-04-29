@@ -406,8 +406,7 @@ export function AssistantDetails({
               {isAgentConfigurationError?.error.type ===
                 "agent_configuration_not_found" && (
                 <ContentMessage title="Not Available" icon={LockIcon} size="md">
-                  This is a private agent that can't be shared with other
-                  workspace members.
+                  This agent is not available.
                 </ContentMessage>
               )}
             </SheetContainer>

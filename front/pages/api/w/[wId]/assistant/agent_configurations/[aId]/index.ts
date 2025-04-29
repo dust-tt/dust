@@ -76,10 +76,10 @@ async function handler(
 
       if (!agent.canEdit) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 403,
           api_error: {
             type: "app_auth_error",
-            message: "Only builders can modify workspace agent.",
+            message: "Only editors can modify workspace agent.",
           },
         });
       }
@@ -148,10 +148,10 @@ async function handler(
     case "DELETE":
       if (!agent.canEdit) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 403,
           api_error: {
             type: "app_auth_error",
-            message: "Only builders can modify workspace agent.",
+            message: "Only editors can delete workspace agent.",
           },
         });
       }

@@ -119,7 +119,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async findAgentIdsForGroups(
     auth: Authenticator,
     groupIds: ModelId[]
-  ): Promise<ModelId[]> {
+  ): Promise<{ agentConfigurationId: ModelId; groupId: ModelId }[]> {
     const owner = auth.getNonNullableWorkspace();
 
     const groupAgents = await GroupAgentModel.findAll({
@@ -129,9 +129,12 @@ export class GroupResource extends BaseResource<GroupModel> {
         },
         workspaceId: owner.id,
       },
-      attributes: ["agentConfigurationId"],
+      attributes: ["agentConfigurationId", "groupId"],
     });
-    return groupAgents.map((ga) => ga.agentConfigurationId);
+    return groupAgents.map((ga) => ({
+      agentConfigurationId: ga.agentConfigurationId,
+      groupId: ga.groupId,
+    }));
   }
 
   /**

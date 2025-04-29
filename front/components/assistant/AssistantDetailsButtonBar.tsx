@@ -163,12 +163,7 @@ export function AssistantDetailsButtonBar({
           onClick={(e) => !canEditAssistant && e.preventDefault()}
           href={`/w/${owner.sId}/builder/assistants/${
             agentConfiguration.sId
-          }?flow=${
-            //TODO(agent-discovery): How can we have !agentConfiguration.scope ?
-            agentConfiguration.scope
-              ? "workspace_assistants"
-              : "personal_assistants"
-          }`}
+          }?flow=workspace_assistants`}
         >
           <Button
             size="sm"

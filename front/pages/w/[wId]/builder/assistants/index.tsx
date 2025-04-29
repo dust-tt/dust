@@ -123,11 +123,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
-
   // TODO(agent-discovery) Remove feature-flag
   const featureFlags = await getFeatureFlags(owner);
   const hasAgentDiscovery = featureFlags.includes("agent_discovery");
+
+  if (!auth.isBuilder() && !hasAgentDiscovery) {
+    return {
+      notFound: true,
+    };
+  }
+
+  await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
 
   return {
     props: {

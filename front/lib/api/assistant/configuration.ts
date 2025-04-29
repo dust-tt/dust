@@ -471,7 +471,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
 ) {
   const user = auth.user();
 
-  const agentIdsForUserAsEditor = user
+  const agentIdsForGroups = user
     ? await GroupResource.findAgentIdsForGroups(auth, [
         ...auth
           .groups()
@@ -479,6 +479,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
           .map((g) => g.id),
       ])
     : [];
+
+  const agentIdsForUserAsEditor = agentIdsForGroups.map(
+    (g) => g.agentConfigurationId
+  );
 
   const agentConfigurations =
     await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
@@ -1750,7 +1754,7 @@ export async function getAgentPermissions(
   memberAgents: ModelId[]
 ) {
   if (auth.isAdmin()) {
-    return { canRead: true, canEdit: true };
+    return { canRead: true, canEdit: agentConfiguration.scope !== "global" };
   }
 
   switch (agentConfiguration.scope) {
