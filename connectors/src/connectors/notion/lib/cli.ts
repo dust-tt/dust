@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 
 import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
 import {
+  clearParentsLastUpdatedAt,
   deleteDatabase,
   deletePage,
   getNotionAccessToken,
@@ -20,11 +21,7 @@ import {
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/admins";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import {
-  NotionConnectorState,
-  NotionDatabase,
-  NotionPage,
-} from "@connectors/lib/models/notion";
+import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { default as topLogger } from "@connectors/logger/logger";
@@ -518,17 +515,7 @@ export const notion = async ({
     // Clearing the parentsLastUpdatedAt field will force a resync of all parents at the end of the next sync
     case "clear-parents-last-updated-at": {
       const connector = await getConnector(args);
-      const notionConnectorState = await NotionConnectorState.findOne({
-        where: {
-          connectorId: connector.id,
-        },
-      });
-      if (!notionConnectorState) {
-        throw new Error("No notion connector state found");
-      }
-      await notionConnectorState.update({
-        parentsLastUpdatedAt: null,
-      });
+      await clearParentsLastUpdatedAt({ connectorId: connector.id });
       return { success: true };
     }
 

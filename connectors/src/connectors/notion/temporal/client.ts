@@ -11,6 +11,7 @@ import {
 import {
   notionGarbageCollectionWorkflow,
   notionSyncWorkflow,
+  updateOrphanedResourcesParentsWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
@@ -238,8 +239,8 @@ export async function launchUpdateOrphanedResourcesParentsWorkflow(
 
   const workflowId = `${getNotionWorkflowId(connectorId, false)}-update-orphaned-resources-parents`;
 
-  await client.workflow.start(launchUpdateOrphanedResourcesParentsWorkflow, {
-    args: [connectorId],
+  await client.workflow.start(updateOrphanedResourcesParentsWorkflow, {
+    args: [{ connectorId }],
     workflowId,
     taskQueue: QUEUE_NAME,
     searchAttributes: {

@@ -27,7 +27,6 @@ import {
   retrieveDatabaseChildrenResultPage,
   retrievePage,
 } from "@connectors/connectors/notion/lib/notion_api";
-import { getAllOrphanedResources } from "@connectors/connectors/notion/lib/orphaned";
 import {
   getParents,
   updateAllParentsFields,
@@ -1279,43 +1278,33 @@ export async function markParentsAsUpdated({
   });
 }
 
-export async function updateAllOrphanedParents({
+export async function getAllOrphanedResources({
   connectorId,
 }: {
   connectorId: ModelId;
-}) {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
-
-  const localLogger = logger.child({
-    workspaceId: connector.workspaceId,
-    dataSourceId: connector.dataSourceId,
-    connectorId,
-    provider: "notion",
-  });
-
-  const { pageIds, databaseIds } = await getAllOrphanedResources({
-    connectorId,
-  });
-
-  localLogger.info(
-    {
-      pageIdsCount: pageIds.length,
-      databaseIdsCount: databaseIds.length,
+}): Promise<{
+  pageIds: string[];
+  databaseIds: string[];
+}> {
+  const pages = await NotionPage.findAll({
+    where: {
+      connectorId,
+      parentType: "unknown",
     },
-    "Found orphaned resources to update parents for."
-  );
+    attributes: ["notionPageId"],
+  });
+  const databases = await NotionDatabase.findAll({
+    where: {
+      connectorId,
+      parentType: "unknown",
+    },
+    attributes: ["notionDatabaseId"],
+  });
 
-  await updateAllParentsFields(
-    connectorId,
-    pageIds,
-    databaseIds,
-    `${Date.now()}`
-  );
-
-  localLogger.info("Updated parents for all orphaned resources.");
+  return {
+    pageIds: pages.map((page) => page.notionPageId),
+    databaseIds: databases.map((db) => db.notionDatabaseId),
+  };
 }
 
 export async function cachePage({
@@ -2903,4 +2892,127 @@ export async function getParentPageOrDb({
     "Could not find page or database in Notion."
   );
   return null;
+}
+
+export async function maybeUpdateOrphaneResourcesParents({
+  connectorId,
+  resources,
+}: {
+  connectorId: ModelId;
+  resources: Array<{
+    type: "page" | "database";
+    notionId: string;
+  }>;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const localLogger = logger.child({
+    connectorId,
+    workspaceId: connector.workspaceId,
+    dataSourceId: connector.dataSourceId,
+  });
+
+  for (const resource of resources) {
+    const iterationLogger = localLogger.child({
+      resourceId: resource.notionId,
+      resourceType: resource.type,
+    });
+
+    iterationLogger.info("Checking parent for resource.");
+
+    const parent = await getParentPageOrDb({
+      connectorId,
+      pageOrDbId: resource.notionId,
+    });
+
+    const parentObject =
+      parent?.parentType === "page"
+        ? await getNotionPageFromConnectorsDb(connectorId, parent.parentId)
+        : parent?.parentType === "database"
+          ? await getNotionDatabaseFromConnectorsDb(
+              connectorId,
+              parent.parentId
+            )
+          : parent?.parentType === "workspace"
+            ? {
+                parentId: "workspace" as const,
+                parentType: "workspace" as const,
+              }
+            : null;
+
+    if (!parent || !parentObject) {
+      // We don't have the parent in our DB.
+      iterationLogger.info(
+        {
+          parentId: parent?.parentId,
+          parentType: parent?.parentType,
+        },
+        "Parent not found in our DB."
+      );
+      continue;
+    }
+
+    iterationLogger.info(
+      {
+        parentId: parent.parentId,
+        parentType: parent.parentType,
+      },
+      "Parent found in our DB. Updating resource."
+    );
+
+    const updateParams: Partial<NotionPage | NotionDatabase> = {
+      parentId: parent.parentId,
+      parentType: parent.parentType,
+      lastCreatedOrMovedRunTs: new Date(),
+    };
+
+    if (resource.type === "page") {
+      await NotionPage.update(updateParams, {
+        where: {
+          notionPageId: resource.notionId,
+          connectorId,
+        },
+      });
+    } else if (resource.type === "database") {
+      await NotionDatabase.update(updateParams, {
+        where: {
+          notionDatabaseId: resource.notionId,
+          connectorId,
+        },
+      });
+    }
+
+    iterationLogger.info("Updated parent for resource.");
+  }
+}
+
+export async function clearParentsLastUpdatedAt({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!connector || !notionConnectorState) {
+    throw new Error("Could not find notion connector state");
+  }
+
+  logger.info(
+    {
+      connectorId,
+      workspaceId: connector.workspaceId,
+      dataSourceId: connector.dataSourceId,
+      provider: "notion",
+    },
+    "Clearing parents last updated at"
+  );
+
+  await notionConnectorState.update({ parentsLastUpdatedAt: null });
 }

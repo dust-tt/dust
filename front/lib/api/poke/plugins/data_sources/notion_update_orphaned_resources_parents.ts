@@ -4,7 +4,7 @@ import logger from "@app/logger/logger";
 import type { AdminCommandType } from "@app/types";
 import { ConnectorsAPI, Err, Ok } from "@app/types";
 
-export const notion = createPlugin({
+export const notionUpdateOrphanedParents = createPlugin({
   manifest: {
     id: "notion-update-orphaned-resources-parents",
     name: "Update orphaned resources parents",
