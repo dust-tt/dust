@@ -226,7 +226,7 @@ export const FILE_FORMATS = {
   "text/css": { cat: "code", exts: [".css"], isSafeToDisplay: false },
   "text/javascript": {
     cat: "code",
-    exts: [".js", ".mjs", "*.jsx"],
+    exts: [".js", ".mjs", ".jsx"],
     isSafeToDisplay: false,
   },
   "text/typescript": {
