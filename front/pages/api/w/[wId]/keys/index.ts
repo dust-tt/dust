@@ -84,7 +84,7 @@ async function handler(
         });
       }
 
-      const rateLimitKey = `ust_app_key_creation`;
+      const rateLimitKey = `api_key_creation`;
       const remaining = await rateLimiter({
         key: rateLimitKey,
         maxPerTimeframe: MAX_API_KEY_CREATION_PER_DAY,
