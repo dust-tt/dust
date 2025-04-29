@@ -23,6 +23,7 @@ export type DustErrorCode =
   | "user_already_member"
   | "user_not_found"
   | "user_not_member"
+  | "group_not_found"
   // MCP Server errors
   | "remote_server_not_found"
   | "internal_server_not_found"
