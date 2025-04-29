@@ -231,6 +231,26 @@ export async function stopNotionGarbageCollectorWorkflow(
   );
 }
 
+export async function launchUpdateOrphanedResourcesParentsWorkflow(
+  connectorId: ModelId
+) {
+  const client = await getTemporalClient();
+
+  const workflowId = `${getNotionWorkflowId(connectorId, false)}-update-orphaned-resources-parents`;
+
+  await client.workflow.start(launchUpdateOrphanedResourcesParentsWorkflow, {
+    args: [connectorId],
+    workflowId,
+    taskQueue: QUEUE_NAME,
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    memo: {
+      connectorId,
+    },
+  });
+}
+
 async function getSyncWorkflow(connectorId: ModelId): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;

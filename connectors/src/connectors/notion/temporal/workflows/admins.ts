@@ -36,6 +36,7 @@ const {
   deletePageOrDatabaseIfArchived,
   updateSingleDocumentParents,
   getParentPageOrDb,
+  updateAllOrphanedParents,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -225,6 +226,16 @@ export async function upsertDatabaseWorkflow({
     notionDocumentId: databaseId,
     documentType: "database",
   });
+}
+
+// Top level workflow to be used by the CLI or by Poké in order to update parents
+// for all orphaned resources of a notion connector.
+export async function launchUpdateOrphanedResourcesParentsWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  await updateAllOrphanedParents({ connectorId });
 }
 
 async function upsertParent({

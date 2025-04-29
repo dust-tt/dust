@@ -8,7 +8,10 @@ import {
   getNotionAccessToken,
   updateParentsFields,
 } from "@connectors/connectors/notion/temporal/activities";
-import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
+import {
+  launchUpdateOrphanedResourcesParentsWorkflow,
+  stopNotionGarbageCollectorWorkflow,
+} from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import {
   getUpsertDatabaseWorkflowId,
@@ -526,6 +529,13 @@ export const notion = async ({
       await notionConnectorState.update({
         parentsLastUpdatedAt: null,
       });
+      return { success: true };
+    }
+
+    // Update the parents of all orphaned resources of a notion connector.
+    case "update-orphaned-resources-parents": {
+      const connector = await getConnector(args);
+      await launchUpdateOrphanedResourcesParentsWorkflow(connector.id);
       return { success: true };
     }
 

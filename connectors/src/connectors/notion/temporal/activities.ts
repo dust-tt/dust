@@ -27,6 +27,7 @@ import {
   retrieveDatabaseChildrenResultPage,
   retrievePage,
 } from "@connectors/connectors/notion/lib/notion_api";
+import { getAllOrphanedResources } from "@connectors/connectors/notion/lib/orphaned";
 import {
   getParents,
   updateAllParentsFields,
@@ -1276,6 +1277,45 @@ export async function markParentsAsUpdated({
   await notionConnectorState.update({
     parentsLastUpdatedAt: new Date(runTimestamp),
   });
+}
+
+export async function updateAllOrphanedParents({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const localLogger = logger.child({
+    workspaceId: connector.workspaceId,
+    dataSourceId: connector.dataSourceId,
+    connectorId,
+    provider: "notion",
+  });
+
+  const { pageIds, databaseIds } = await getAllOrphanedResources({
+    connectorId,
+  });
+
+  localLogger.info(
+    {
+      pageIdsCount: pageIds.length,
+      databaseIdsCount: databaseIds.length,
+    },
+    "Found orphaned resources to update parents for."
+  );
+
+  await updateAllParentsFields(
+    connectorId,
+    pageIds,
+    databaseIds,
+    `${Date.now()}`
+  );
+
+  localLogger.info("Updated parents for all orphaned resources.");
 }
 
 export async function cachePage({
