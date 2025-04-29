@@ -4,21 +4,137 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib";
 
-interface TourStep {
-  ref?: React.RefObject<HTMLElement>;
-  content: React.ReactNode;
+interface TourGuideCardProps {
+  anchorRef?: React.RefObject<HTMLDivElement>;
   title?: string;
+  content?: React.ReactNode;
   visual?: React.ReactNode;
+  onNext?: () => void;
+  onDismiss?: () => void;
+  isLastStep?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+  asPopover?: boolean;
+  align?: "start" | "center" | "end";
+  side?: "top" | "right" | "bottom" | "left";
+  sideOffset?: number;
 }
 
+export const TourGuideCardTitle = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, children, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("s-heading-lg s-px-3 s-pt-4", className)}
+    {...props}
+  >
+    {children}
+  </div>
+));
+TourGuideCardTitle.displayName = "TourGuideCardTitle";
+
+export const TourGuideCardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, children, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "s-copy-base s-px-3 s-text-muted-foreground dark:s-text-muted-foreground-night",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </div>
+));
+TourGuideCardContent.displayName = "TourGuideCardContent";
+
+export const TourGuideCardVisual = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, children, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "s-aspect-video s-bg-muted-background dark:s-bg-muted-background-night",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </div>
+));
+TourGuideCardVisual.displayName = "TourGuideCardVisual";
+
+export const TourGuideCardActions = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, children, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("s-flex s-justify-end s-space-x-2 s-p-2 s-pt-4", className)}
+    {...props}
+  >
+    {children}
+  </div>
+));
+TourGuideCardActions.displayName = "TourGuideCardActions";
+
+export const TourGuideCard = React.forwardRef<
+  HTMLDivElement,
+  TourGuideCardProps
+>(
+  ({
+    onNext,
+    onDismiss,
+    isLastStep,
+    className,
+    children,
+    align = "center",
+    side = "bottom",
+    sideOffset = 4,
+  }) => {
+    return (
+      <PopoverPrimitive.Content
+        align={align}
+        side={side}
+        sideOffset={sideOffset}
+        className={cn(
+          "s-z-50 s-w-[420px] s-max-w-xs s-space-y-0.5 s-overflow-hidden s-rounded-2xl s-border s-shadow-xl s-transition-all s-duration-300 s-ease-in-out",
+          "s-border-highlight-400 s-bg-background s-text-foreground s-ring-2 s-ring-highlight-400/30",
+          "dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night",
+          className
+        )}
+      >
+        {children}
+        <TourGuideCardActions>
+          {!isLastStep && onDismiss && (
+            <Button variant="outline" label="Dismiss" onClick={onDismiss} />
+          )}
+          {onNext && (
+            <Button
+              onClick={onNext}
+              variant="highlight"
+              label={isLastStep ? "Finish" : "Start Tour"}
+            />
+          )}
+        </TourGuideCardActions>
+      </PopoverPrimitive.Content>
+    );
+  }
+);
+TourGuideCard.displayName = "TourGuideCard";
+
 export interface TourGuideProps {
-  steps: TourStep[];
+  children: React.ReactNode;
   autoStart?: boolean;
   onStart?: () => void;
 }
 
 export function TourGuide({
-  steps,
+  children,
   autoStart = true,
   onStart,
 }: TourGuideProps) {
@@ -31,6 +147,16 @@ export function TourGuide({
     height: "0px",
   });
 
+  // Get all TourGuideCard children - memoize to prevent unnecessary re-renders
+  const cards = React.useMemo(
+    () =>
+      React.Children.toArray(children).filter(
+        (child): child is React.ReactElement<TourGuideCardProps> =>
+          React.isValidElement(child) && child.type === TourGuideCard
+      ),
+    [children]
+  );
+
   // Only run on mount and when autoStart changes
   useEffect(() => {
     if (autoStart) {
@@ -40,35 +166,59 @@ export function TourGuide({
     }
   }, [autoStart, onStart]);
 
-  // Handle position updates
+  // Handle position updates - use requestAnimationFrame to prevent excessive updates
   useEffect(() => {
-    const currentStep = steps[currentIndex];
-    if (!currentStep?.ref) {
+    if (!isActive) {
+      return;
+    }
+
+    const updatePosition = () => {
+      const currentCard = cards[currentIndex];
+      if (!currentCard?.props.anchorRef) {
+        setPosition({
+          top: "50%",
+          left: "50%",
+          width: "0px",
+          height: "0px",
+        });
+        return;
+      }
+
+      const element = currentCard.props.anchorRef.current;
+      if (!element) {
+        return;
+      }
+
+      const rect = element.getBoundingClientRect();
       setPosition({
-        top: "50%",
-        left: "50%",
-        width: "0px",
-        height: "0px",
+        top: `${rect.top}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
       });
-      return;
+    };
+
+    // Initial update
+    updatePosition();
+
+    // Set up resize observer
+    const resizeObserver = new ResizeObserver(updatePosition);
+    const currentCard = cards[currentIndex];
+    if (currentCard?.props.anchorRef?.current) {
+      resizeObserver.observe(currentCard.props.anchorRef.current);
     }
 
-    const element = currentStep.ref.current;
-    if (!element) {
-      return;
-    }
+    // Set up scroll listener
+    window.addEventListener("scroll", updatePosition, true);
 
-    const rect = element.getBoundingClientRect();
-    setPosition({
-      top: `${rect.top}px`,
-      left: `${rect.left}px`,
-      width: `${rect.width}px`,
-      height: `${rect.height}px`,
-    });
-  }, [currentIndex, steps]);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [currentIndex, cards, isActive]);
 
   const handleNext = () => {
-    if (currentIndex + 1 < steps.length) {
+    if (currentIndex + 1 < cards.length) {
       setCurrentIndex(currentIndex + 1);
     } else {
       setIsActive(false);
@@ -79,16 +229,15 @@ export function TourGuide({
     setIsActive(false);
   };
 
-  if (!isActive || steps.length === 0) {
+  if (!isActive || cards.length === 0) {
     return null;
   }
 
-  const currentStep = steps[currentIndex];
-  const { content, title, visual } = currentStep;
-  const isLastStep = currentIndex === steps.length - 1;
+  const currentCard = cards[currentIndex];
+  const isLastStep = currentIndex === cards.length - 1;
 
   return (
-    <PopoverPrimitive.Root open modal={false}>
+    <PopoverPrimitive.Root open={isActive} modal={false}>
       <PopoverPrimitive.Anchor
         className="s-fixed s-transition-all s-duration-300 s-ease-in-out"
         style={{
@@ -98,30 +247,13 @@ export function TourGuide({
           height: position.height,
         }}
       />
-      <PopoverPrimitive.Content
-        className={cn(
-          "s-w-96 s-max-w-xs s-overflow-hidden s-rounded-2xl s-border s-shadow-xl s-transition-all s-duration-300 s-ease-in-out",
-          !currentStep.ref && "s-translate-y-[-50%]",
-          "s-border-highlight-400 s-bg-background s-text-foreground s-ring-2 s-ring-highlight-400/30",
-          "dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night"
-        )}
-      >
-        <div className="s-aspect-video s-bg-muted-background">{visual}</div>
-        <div className="s-space-y-4 s-p-4">
-          <div className="s-space-y-2">
-            {title && <div className="s-heading-base">{title}</div>}
-            <div className="s-copy-sm">{content}</div>
-          </div>
-          <div className="s-flex s-justify-end s-space-x-2">
-            <Button variant="outline" label="Dismiss" onClick={handleDismiss} />
-            <Button
-              onClick={handleNext}
-              variant="highlight"
-              label={isLastStep ? "Finish" : "Next"}
-            />
-          </div>
-        </div>
-      </PopoverPrimitive.Content>
+      {React.cloneElement(currentCard, {
+        asPopover: true,
+        onNext: handleNext,
+        onDismiss: handleDismiss,
+        isLastStep,
+        className: !currentCard.props.anchorRef ? "s-translate-y-[-50%]" : "",
+      })}
     </PopoverPrimitive.Root>
   );
 }
