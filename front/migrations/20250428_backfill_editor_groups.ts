@@ -6,6 +6,8 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
@@ -14,7 +16,6 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
@@ -95,10 +96,20 @@ async function backfillAgentEditorsGroup(
 
   // set all the editors of the agent to the editor group
   const users = await UserResource.fetchByModelIds(editorIds);
+  // filter out users that aren't part of the workspace
+  const memberships = await MembershipResource.getActiveMemberships({
+    users,
+    workspace,
+  });
+
+  const usersToAdd = users.filter((user) =>
+    memberships.memberships.some((membership) => membership.userId === user.id)
+  );
+
   if (execute) {
     const result = await editorGroup.setMembers(
       auth,
-      users.map((user) => user.toJSON())
+      usersToAdd.map((user) => user.toJSON())
     );
 
     if (result.isErr()) {
