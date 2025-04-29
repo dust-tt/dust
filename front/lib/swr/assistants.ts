@@ -653,3 +653,59 @@ export function useUpdateUserFavorite({
   );
   return { updateUserFavorite: doUpdate, isUpdatingFavorite };
 }
+
+export function useRestoreAgentConfiguration({
+  owner,
+  agentConfiguration,
+}: {
+  owner: LightWorkspaceType;
+  agentConfiguration?: LightAgentConfigurationType;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list", // Anything would work
+      disabled: true, // We only use the hook to mutate the cache
+    });
+
+  const { mutateAgentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+    disabled: true, // We only use the hook to mutate the cache
+  });
+
+  const doRestore = async () => {
+    if (!agentConfiguration) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/restore`,
+      {
+        method: "POST",
+      }
+    );
+
+    if (res.ok) {
+      void mutateAgentConfiguration();
+      void mutateAgentConfigurations();
+
+      sendNotification({
+        type: "success",
+        title: `Successfully restored ${agentConfiguration.name}`,
+        description: `${agentConfiguration.name} was successfully restored.`,
+      });
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: `Error restoring ${agentConfiguration.name}`,
+        description: `Error: ${errorData.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doRestore;
+}

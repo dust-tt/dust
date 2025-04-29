@@ -341,11 +341,14 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         const maxIds = result.map(
           (entry) => (entry as unknown as { maxId: number }).maxId
         );
+        const filteredIds = maxIds.filter(
+          (id) => agentIdsForUserAsEditor.includes(id) || auth.isAdmin()
+        );
 
         return AgentConfiguration.findAll({
           where: {
             id: {
-              [Op.in]: maxIds,
+              [Op.in]: filteredIds,
             },
             status: "archived",
           },
@@ -670,10 +673,6 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     throw new Error(
       "Superuser view is for dust superusers or internal admin auths only."
     );
-  }
-
-  if (agentsGetView === "archived" && !auth.isAdmin()) {
-    throw new Error("Archived view is for admins only.");
   }
 
   if (
