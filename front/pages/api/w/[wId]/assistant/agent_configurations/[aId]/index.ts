@@ -74,21 +74,7 @@ async function handler(
         });
       }
 
-<<<<<<< HEAD
       if (!agent.canEdit) {
-=======
-      if (assistant.scope === "global") {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "app_auth_error",
-            message: "Can't modify global agent.",
-          },
-        });
-      }
-
-      if (assistant.scope === "workspace" && !auth.isBuilder()) {
->>>>>>> main
         return apiError(req, res, {
           status_code: 404,
           api_error: {
