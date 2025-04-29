@@ -59,6 +59,28 @@ import {
   removeNulls,
 } from "@app/types";
 
+function sanitizeRecord(
+  record: Record<string, unknown>
+): Record<string, unknown> {
+  const regex = /[^a-zA-Z0-9._-]/g;
+
+  const sanitize = (value: unknown): unknown => {
+    if (typeof value === "string") {
+      return value.replace(regex, "_");
+    }
+    if (typeof value === "object" && value !== null) {
+      return Object.fromEntries(
+        Object.entries(value).map(([k, v]) => [k, sanitize(v)])
+      );
+    }
+    return value;
+  };
+
+  return Object.fromEntries(
+    Object.entries(record).map(([k, v]) => [k, sanitize(v)])
+  );
+}
+
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
 
@@ -333,7 +355,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       functionCallName: actionConfiguration.name,
       generatedFiles: [],
       mcpServerConfigurationId: `${actionConfiguration.id}`,
-      params: rawInputs,
+      params: sanitizeRecord(rawInputs),
       step,
     };
 
@@ -382,7 +404,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         action: mcpAction,
-        inputs: rawInputs,
+        inputs: sanitizeRecord(rawInputs),
         stake: isPlatformMCPToolConfiguration(actionConfiguration)
           ? actionConfiguration.permission
           : FALLBACK_MCP_TOOL_STAKE_LEVEL,
