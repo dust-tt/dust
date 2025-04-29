@@ -15,6 +15,7 @@ import { createMarkdownSerializer } from "@app/components/assistant/conversation
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { isMobile } from "@app/lib/utils";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
@@ -256,9 +257,10 @@ const useCustomEditor = ({
         class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
       },
       handleKeyDown: (view, event) => {
-        const submitMessageKey =
-          localStorage.getItem("submitMessageKey") || "enter";
-        const isCmdEnterForSubmission = submitMessageKey === "cmd+enter";
+        const submitMessageKey = localStorage.getItem("submitMessageKey");
+        const isCmdEnterForSubmission =
+          isSubmitMessageKey(submitMessageKey) &&
+          submitMessageKey === "cmd+enter";
         const isEnterForSubmission = !isCmdEnterForSubmission;
 
         // Check if this is a submission key combination based on user preferences

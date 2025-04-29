@@ -14,13 +14,17 @@ import { Page } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { SubmitMessageKey } from "@app/lib/keymaps";
+import { isSubmitMessageKey } from "@app/lib/keymaps";
 
 export function Preferences() {
   const { theme, setTheme } = useTheme();
-  const [submitMessageKey, setSubmitMessageKey] = useState("enter");
+  const [submitMessageKey, setSubmitMessageKey] =
+    useState<SubmitMessageKey>("enter");
 
   useEffect(() => {
-    setSubmitMessageKey(localStorage.getItem("submitMessageKey") || "enter");
+    const key = localStorage.getItem("submitMessageKey");
+    setSubmitMessageKey(key && isSubmitMessageKey(key) ? key : "enter");
   }, []);
 
   useEffect(() => {
@@ -28,7 +32,7 @@ export function Preferences() {
   }, [submitMessageKey]);
 
   return (
-    <Page.Layout direction="horizontal" align="stretch" sizing="grow">
+    <Page.Layout direction="horizontal">
       <Page.Layout direction="vertical">
         <Label>Theme</Label>
         <DropdownMenu>
