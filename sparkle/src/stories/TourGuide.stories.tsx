@@ -1,7 +1,7 @@
 import { Meta, StoryFn } from "@storybook/react";
 import React, { useRef, useState } from "react";
 
-import { ConfettiBackground } from "@sparkle/components";
+import { ConfettiBackground, TypingAnimation } from "@sparkle/components";
 import { Button } from "@sparkle/components/Button";
 
 import {
@@ -58,14 +58,18 @@ const Template: StoryFn = () => {
         <TourGuideCard>
           <TourGuideCardVisual
             ref={referentRef}
-            className="s-bg-support-rose s-flex s-items-center s-justify-center s-text-center"
+            className="s-flex s-items-center s-justify-center s-bg-brand-support-blue s-px-6 s-text-center"
           >
             <ConfettiBackground variant="confetti" referentSize={referentRef} />
-            <span className="s-heading-3xl">Rise and shine, Edouard! 🌅</span>
+            <span className="s-heading-3xl">
+              <TypingAnimation text="Rise and shine, Edouard! 🌅" />
+            </span>
           </TourGuideCardVisual>
           <TourGuideCardTitle>
             Welcome to the{" "}
-            <span className="s-font-semibold s-text-rose-400">Qonto</span>{" "}
+            <span className="s-font-semibold s-text-brand-electric-blue">
+              Qonto
+            </span>{" "}
             workspace.
           </TourGuideCardTitle>
           <TourGuideCardContent>
