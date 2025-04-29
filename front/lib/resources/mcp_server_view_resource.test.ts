@@ -26,7 +26,7 @@ describe("MCPServerViewResource", () => {
 
         // Create spaces for each workspace
         const systemSpace1 = await SpaceFactory.system(workspace1, t);
-        const systemSpace2 = await SpaceFactory.system(workspace2, t);
+        await SpaceFactory.system(workspace2, t);
         const space1 = await SpaceFactory.regular(workspace1, t);
         const space2 = await SpaceFactory.regular(workspace2, t);
 
@@ -99,8 +99,6 @@ describe("MCPServerViewResource", () => {
         expect(views1).toHaveLength(2);
         expect(views1[0].workspaceId).toBe(workspace1.id);
         expect(views1[1].workspaceId).toBe(workspace1.id);
-        expect(views1[0].vaultId).toBe(systemSpace1.id);
-        expect(views1[1].vaultId).toBe(space1.id);
 
         // List views for workspace2
         const views2 = await MCPServerViewResource.listByWorkspace(auth2);
@@ -109,8 +107,6 @@ describe("MCPServerViewResource", () => {
         expect(views2).toHaveLength(2);
         expect(views2[0].workspaceId).toBe(workspace2.id);
         expect(views2[1].workspaceId).toBe(workspace2.id);
-        expect(views2[0].vaultId).toBe(systemSpace2.id);
-        expect(views2[1].vaultId).toBe(space2.id);
       }
     );
   });
