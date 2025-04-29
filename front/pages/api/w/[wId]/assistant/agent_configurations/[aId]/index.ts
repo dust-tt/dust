@@ -33,16 +33,12 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(
+  const agent = await getAgentConfiguration(
     auth,
     req.query.aId as string,
     "full"
   );
-  if (
-    !assistant ||
-    (assistant.scope === "private" &&
-      assistant.versionAuthorId !== auth.user()?.id)
-  ) {
+  if (!agent || !agent.canRead) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -56,9 +52,9 @@ async function handler(
     case "GET":
       return res.status(200).json({
         agentConfiguration: {
-          ...assistant,
+          ...agent,
           lastAuthors: await getAgentRecentAuthors({
-            agent: assistant,
+            agent,
             auth,
           }),
         },
@@ -78,22 +74,12 @@ async function handler(
         });
       }
 
-      if (assistant.scope === "global") {
+      if (!agent.canEdit) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 403,
           api_error: {
             type: "app_auth_error",
-            message: "Can't modify global agent.",
-          },
-        });
-      }
-
-      if (assistant.scope === "workspace" && !auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only builders can modify workspace agent.",
+            message: "Only editors can modify workspace agent.",
           },
         });
       }
@@ -160,12 +146,12 @@ async function handler(
       });
 
     case "DELETE":
-      if (assistant.scope === "workspace" && !auth.isBuilder()) {
+      if (!agent.canEdit) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 403,
           api_error: {
             type: "app_auth_error",
-            message: "Only builders can modify workspace agent.",
+            message: "Only editors can delete workspace agent.",
           },
         });
       }

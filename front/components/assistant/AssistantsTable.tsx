@@ -233,7 +233,9 @@ function GlobalAgentAction({
           await handleToggleAgentStatus(agent);
         }}
         selected={agent.status === "active"}
-        disabled={agent.status === "disabled_missing_datasource"}
+        disabled={
+          !isBuilder(owner) || agent.status === "disabled_missing_datasource"
+        }
       />
       <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
         <Dialog

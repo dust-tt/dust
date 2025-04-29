@@ -62,13 +62,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth),
     ]);
 
-  if (configuration?.scope === "workspace" && !auth.isBuilder()) {
+  if (!configuration) {
     return {
       notFound: true,
     };
   }
 
-  if (!configuration) {
+  if (!configuration.canEdit) {
     return {
       notFound: true,
     };

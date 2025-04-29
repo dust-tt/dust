@@ -79,6 +79,7 @@ import type {
   AgentsGetViewType,
   AgentStatus,
   LightAgentConfigurationType,
+  ModelId,
   Result,
   UserType,
   WorkspaceType,
@@ -271,12 +272,14 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
   {
     agentPrefix,
     agentsGetView,
+    agentIdsForUserAsEditor,
     limit,
     owner,
     sort,
   }: {
     agentPrefix?: string;
     agentsGetView: Exclude<AgentsGetViewType, "global">;
+    agentIdsForUserAsEditor: ModelId[];
     limit?: number;
     owner: WorkspaceType;
     sort?: SortStrategyType;
@@ -352,7 +355,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     case "all":
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
-        where: baseConditionsAndScopesIn(["workspace", "published"]),
+        where: baseConditionsAndScopesIn(["workspace", "published", "visible"]),
       });
 
     case "workspace":
@@ -370,29 +373,21 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     case "list":
     case "manage":
       const user = auth.user();
-
-      const sharedAssistants = await AgentConfiguration.findAll({
+      return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
         where: {
           ...baseWhereConditions,
-          scope: { [Op.in]: ["workspace", "published"] },
+          [Op.or]: [
+            { scope: { [Op.in]: ["workspace", "published", "visible"] } },
+            ...(user
+              ? [
+                  { authorId: user.id, scope: "private" },
+                  { id: { [Op.in]: agentIdsForUserAsEditor }, scope: "hidden" },
+                ]
+              : []),
+          ],
         },
       });
-      if (!user) {
-        return sharedAssistants;
-      }
-
-      const userAssistants = await AgentConfiguration.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: {
-          ...baseWhereConditions,
-          authorId: user.id,
-          scope: "private",
-        },
-      });
-
-      return [...sharedAssistants, ...userAssistants];
-
     case "favorites":
       const userId = auth.user()?.id;
       if (!userId) {
@@ -476,10 +471,24 @@ async function fetchWorkspaceAgentConfigurationsForView(
 ) {
   const user = auth.user();
 
+  const agentIdsForGroups = user
+    ? await GroupResource.findAgentIdsForGroups(auth, [
+        ...auth
+          .groups()
+          .filter((g) => g.kind === "agent_editors")
+          .map((g) => g.id),
+      ])
+    : [];
+
+  const agentIdsForUserAsEditor = agentIdsForGroups.map(
+    (g) => g.agentConfigurationId
+  );
+
   const agentConfigurations =
     await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
       agentPrefix,
       agentsGetView,
+      agentIdsForUserAsEditor,
       limit,
       owner,
       sort,
@@ -604,7 +613,18 @@ async function fetchWorkspaceAgentConfigurationsForView(
       tags: tags
         .map((t) => t.toJSON())
         .sort((a, b) => a.name.localeCompare(b.name)),
+      canRead: false,
+      canEdit: false,
     };
+
+    const { canRead, canEdit } = await getAgentPermissions(
+      auth,
+      agentConfigurationType,
+      agentIdsForUserAsEditor
+    );
+
+    agentConfigurationType.canRead = canRead;
+    agentConfigurationType.canEdit = canEdit;
 
     agentConfigurationTypes.push(agentConfigurationType);
   }
@@ -985,6 +1005,8 @@ export async function createAgentConfiguration(
         )
       ),
       tags,
+      canRead: true,
+      canEdit: true,
     };
 
     await agentConfigurationWasUpdatedBy({
@@ -1723,5 +1745,36 @@ export async function updateAgentPermissions(
   } catch (error) {
     // Catch errors thrown from within the transaction
     return new Err(error as Error);
+  }
+}
+
+export async function getAgentPermissions(
+  auth: Authenticator,
+  agentConfiguration: LightAgentConfigurationType,
+  memberAgents: ModelId[]
+) {
+  if (auth.isAdmin()) {
+    return { canRead: true, canEdit: agentConfiguration.scope !== "global" };
+  }
+
+  switch (agentConfiguration.scope) {
+    case "global":
+      return { canRead: true, canEdit: false };
+    case "hidden":
+    case "visible":
+      const member = memberAgents.includes(agentConfiguration.id);
+      return {
+        canRead: member || agentConfiguration.scope === "visible",
+        canEdit: member,
+      };
+    case "private":
+      const isAuthor = agentConfiguration.versionAuthorId === auth.user()?.id;
+      return { canRead: isAuthor, canEdit: isAuthor };
+    case "workspace":
+      return { canRead: true, canEdit: auth.isBuilder() };
+    case "published":
+      return { canRead: true, canEdit: true };
+    default:
+      assertNever(agentConfiguration.scope);
   }
 }

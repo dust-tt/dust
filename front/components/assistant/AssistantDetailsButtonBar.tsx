@@ -21,7 +21,6 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -58,9 +57,7 @@ export function AssistantDetailsButtonBar({
     return <></>;
   }
 
-  const allowDeletion =
-    agentConfiguration.scope !== "global" &&
-    (isBuilder(owner) || agentConfiguration.scope !== "workspace");
+  const allowDeletion = agentConfiguration.canEdit;
 
   function AssistantDetailsDropdownMenu() {
     return (
@@ -120,9 +117,7 @@ export function AssistantDetailsButtonBar({
     );
   }
 
-  const canEditAssistant =
-    // builders can all edit, non-builders can only edit personal/shared assistants
-    isBuilder(owner) || !(agentConfiguration.scope === "workspace");
+  const canEditAssistant = agentConfiguration.canEdit;
 
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
@@ -168,11 +163,7 @@ export function AssistantDetailsButtonBar({
           onClick={(e) => !canEditAssistant && e.preventDefault()}
           href={`/w/${owner.sId}/builder/assistants/${
             agentConfiguration.sId
-          }?flow=${
-            agentConfiguration.scope
-              ? "workspace_assistants"
-              : "personal_assistants"
-          }`}
+          }?flow=workspace_assistants`}
         >
           <Button
             size="sm"

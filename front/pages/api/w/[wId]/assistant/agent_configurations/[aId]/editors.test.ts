@@ -2,22 +2,15 @@ import type { RequestMethod } from "node-mocks-http";
 import type { Transaction } from "sequelize";
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  createAgentConfiguration,
-  updateAgentPermissions,
-} from "@app/lib/api/assistant/configuration";
+import { updateAgentPermissions } from "@app/lib/api/assistant/configuration";
 import { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
-import type {
-  LightAgentConfigurationType,
-  ModelIdType,
-  ModelProviderIdType,
-  UserType,
-} from "@app/types";
+import type { UserType } from "@app/types";
 
 import handler from "./editors";
 
@@ -25,58 +18,6 @@ import handler from "./editors";
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
   agentConfigurationWasUpdatedBy: vi.fn(),
 }));
-
-// Helper to create a test agent configuration
-async function createTestAgent(
-  auth: Authenticator,
-  t?: Transaction,
-  overrides: Partial<{
-    name: string;
-    description: string;
-    scope: Exclude<LightAgentConfigurationType["scope"], "global">;
-    model: {
-      providerId: ModelProviderIdType;
-      modelId: ModelIdType;
-      temperature?: number;
-    };
-  }> = {}
-): Promise<LightAgentConfigurationType> {
-  const name = overrides.name ?? "Test Agent";
-  const description = overrides.description ?? "Test Agent Description";
-  const scope = overrides.scope ?? "workspace";
-  const providerId = overrides.model?.providerId ?? "openai";
-  const modelId = overrides.model?.modelId ?? "gpt-4-turbo";
-  const temperature = overrides.model?.temperature ?? 0.7;
-
-  const result = await createAgentConfiguration(
-    auth,
-    {
-      name,
-      description,
-      instructions: "Test Instructions",
-      maxStepsPerRun: 5,
-      visualizationEnabled: false,
-      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
-      status: "active",
-      scope,
-      model: {
-        providerId,
-        modelId,
-        temperature,
-      },
-      templateId: null,
-      requestedGroupIds: [], // Let createAgentConfiguration handle group creation
-      tags: [], // Added missing tags property
-    },
-    t
-  );
-
-  if (result.isErr()) {
-    throw result.error;
-  }
-
-  return result.value;
-}
 
 async function setupTest(
   options: {
@@ -123,7 +64,10 @@ async function setupTest(
   }
 
   // Create agent owned by agentOwner
-  const agent = await createTestAgent(agentOwnerAuth, t);
+  const agent = await AgentConfigurationFactory.createTestAgent(
+    agentOwnerAuth,
+    t
+  );
 
   // Regenerate the agentOwnerAuth who's now in the agent editors group.
   agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(

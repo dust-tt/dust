@@ -116,6 +116,27 @@ export class GroupResource extends BaseResource<GroupModel> {
     return defaultGroup;
   }
 
+  static async findAgentIdsForGroups(
+    auth: Authenticator,
+    groupIds: ModelId[]
+  ): Promise<{ agentConfigurationId: ModelId; groupId: ModelId }[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const groupAgents = await GroupAgentModel.findAll({
+      where: {
+        groupId: {
+          [Op.in]: groupIds,
+        },
+        workspaceId: owner.id,
+      },
+      attributes: ["agentConfigurationId", "groupId"],
+    });
+    return groupAgents.map((ga) => ({
+      agentConfigurationId: ga.agentConfigurationId,
+      groupId: ga.groupId,
+    }));
+  }
+
   /**
    * Finds the specific editor group associated with an agent configuration.
    */
@@ -546,6 +567,30 @@ export class GroupResource extends BaseResource<GroupModel> {
     const groups = [...(globalGroup ? [globalGroup] : []), ...userGroups];
 
     return groups.map((group) => new this(GroupModel, group.get()));
+  }
+
+  async isMember(auth: Authenticator): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+
+    if (this.isGlobal()) {
+      return true;
+    }
+
+    if (this.isSystem()) {
+      return false;
+    }
+
+    const membership = await GroupMembershipModel.findOne({
+      where: {
+        groupId: this.id,
+        workspaceId: owner.id,
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+
+    return !!membership;
   }
 
   async getActiveMembers(auth: Authenticator): Promise<UserResource[]> {

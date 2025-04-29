@@ -36,7 +36,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isAdmin } from "@app/types";
 
 export const AGENT_MANAGER_TABS_LEGACY = [
   {
@@ -117,17 +117,23 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !auth.isBuilder() || !subscription) {
+  if (!owner || !subscription) {
+    return {
+      notFound: true,
+    };
+  }
+
+  // TODO(agent-discovery) Remove feature-flag
+  const featureFlags = await getFeatureFlags(owner);
+  const hasAgentDiscovery = featureFlags.includes("agent_discovery");
+
+  if (!auth.isBuilder() && !hasAgentDiscovery) {
     return {
       notFound: true,
     };
   }
 
   await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
-
-  // TODO(agent-discovery) Remove feature-flag
-  const featureFlags = await getFeatureFlags(owner);
-  const hasAgentDiscovery = featureFlags.includes("agent_discovery");
 
   return {
     props: {
@@ -185,7 +191,8 @@ export default function WorkspaceAssistants({
       workspaceId: owner.sId,
       agentsGetView: "archived",
       includes: ["usage", "feedbacks"],
-      disabled: !hasAgentDiscovery || !isAdmin(owner),
+      disabled:
+        !hasAgentDiscovery || !isAdmin(owner) || selectedTab !== "archived",
     });
 
   const agentsByTab = useMemo(() => {
@@ -207,13 +214,7 @@ export default function WorkspaceAssistants({
     return {
       // do not show the "all" tab while still loading all agents
       all_custom: allAgents.filter((a) => a.scope !== "global"),
-      editable_by_me: allAgents.filter(
-        (a) =>
-          a.scope !== "global" &&
-          (isAdmin(owner) ||
-            (a.scope === "published" && isBuilder(owner)) ||
-            a.scope === "private") // TODO: add/replace with editors group check
-      ),
+      editable_by_me: allAgents.filter((a) => a.canEdit),
       global: allAgents.filter((a) => a.scope === "global"),
       archived: archivedAgentConfigurations.sort((a, b) => {
         return compareForFuzzySort(
@@ -244,7 +245,6 @@ export default function WorkspaceAssistants({
     agentConfigurations,
     archivedAgentConfigurations,
     selectedTags,
-    owner,
     assistantSearch,
   ]);
 

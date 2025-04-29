@@ -30,6 +30,7 @@ import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -105,6 +106,32 @@ export const SCOPE_INFO: Record<
     icon: DustIcon,
     text: "Default agents provided by Dust.",
     confirmationModalData: null,
+  },
+  hidden: {
+    shortLabel: "Hidden",
+    label: "Hidden",
+    color: "primary",
+    icon: LockIcon,
+    text: "Hidden agents.",
+    confirmationModalData: {
+      title: "Moving to Hidden Agents",
+      text: "The agent is editable and viewable by editors only.",
+      confirmText: "Move to Hidden",
+      variant: "primary",
+    },
+  },
+  visible: {
+    shortLabel: "Visible",
+    label: "Visible",
+    color: "green",
+    icon: CompanyIcon,
+    text: "Visible agents.",
+    confirmationModalData: {
+      title: "Moving to Visible Agents",
+      text: "The agent is viewable by all workspace members, and can be edited by editors only.",
+      confirmText: "Move to Visible",
+      variant: "primary",
+    },
   },
 } as const;
 
@@ -330,6 +357,29 @@ export function SharingDropdown({
   });
   const assistantName = agentConfiguration?.name;
 
+  const featureFlags = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  let scopes = Object.entries(SCOPE_INFO).filter(
+    ([entryScope]) =>
+      entryScope !== "global" &&
+      (isBuilder(owner) || entryScope !== "workspace")
+  );
+
+  if (!featureFlags.hasFeature("agent_discovery")) {
+    scopes = scopes.filter(
+      ([entryScope]) => entryScope !== "hidden" && entryScope !== "visible"
+    );
+  } else {
+    scopes = scopes.filter(
+      ([entryScope]) =>
+        entryScope === agentConfiguration?.scope ||
+        entryScope === "hidden" ||
+        entryScope === "visible"
+    );
+  }
+
   const usageText = assistantName
     ? assistantUsageMessage({
         assistantName,
@@ -395,40 +445,33 @@ export function SharingDropdown({
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          {Object.entries(SCOPE_INFO)
-            .filter(
-              // can't change to those scopes
-              ([entryScope]) =>
-                entryScope !== "global" &&
-                (isBuilder(owner) || entryScope !== "workspace")
-            )
-            .map(([entryScope, entryData]) => (
-              <DropdownMenuItem
-                key={entryData.label}
-                label={entryData.label}
-                icon={entryData.icon}
-                onClick={() => {
-                  /**
-                   * Skip confirmation modal in the following cases:
-                   * 1. Agent is being created (agentConfiguration is null)
-                   * 2. Selection is unchanged (newScope === value)
-                   * 3. Selection reverts to initial state (value === initialScope)
-                   */
-                  const shouldSkipModal =
-                    !agentConfiguration ||
-                    newScope === entryScope ||
-                    entryScope === initialScope;
+          {scopes.map(([entryScope, entryData]) => (
+            <DropdownMenuItem
+              key={entryData.label}
+              label={entryData.label}
+              icon={entryData.icon}
+              onClick={() => {
+                /**
+                 * Skip confirmation modal in the following cases:
+                 * 1. Agent is being created (agentConfiguration is null)
+                 * 2. Selection is unchanged (newScope === value)
+                 * 3. Selection reverts to initial state (value === initialScope)
+                 */
+                const shouldSkipModal =
+                  !agentConfiguration ||
+                  newScope === entryScope ||
+                  entryScope === initialScope;
 
-                  if (shouldSkipModal) {
-                    setNewScope(entryScope as NonGlobalScope);
-                    return;
-                  }
+                if (shouldSkipModal) {
+                  setNewScope(entryScope as NonGlobalScope);
+                  return;
+                }
 
-                  // Show confirmation modal for scope changes on existing agents
-                  setModalNewScope(entryScope as NonGlobalScope);
-                }}
-              />
-            ))}
+                // Show confirmation modal for scope changes on existing agents
+                setModalNewScope(entryScope as NonGlobalScope);
+              }}
+            />
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -437,7 +480,10 @@ export function SharingDropdown({
 
 export function SharingChip({ scope }: { scope: AgentConfigurationScope }) {
   return (
-    <Chip color={SCOPE_INFO[scope].color} icon={SCOPE_INFO[scope].icon}>
+    <Chip
+      color={SCOPE_INFO[scope].color}
+      icon={SCOPE_INFO[scope].icon || undefined}
+    >
       {SCOPE_INFO[scope].label}
     </Chip>
   );
