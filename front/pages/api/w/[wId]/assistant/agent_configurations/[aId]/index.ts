@@ -9,6 +9,7 @@ import {
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentConfigurationType, WithAPIErrorResponse } from "@app/types";
@@ -77,6 +78,16 @@ async function handler(
         });
       }
 
+      if (assistant.scope === "global") {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "app_auth_error",
+            message: "Can't modify global agent.",
+          },
+        });
+      }
+
       if (assistant.scope === "workspace" && !auth.isBuilder()) {
         return apiError(req, res, {
           status_code: 404,
@@ -92,6 +103,23 @@ async function handler(
       const isLegacyConfiguration =
         bodyValidation.right.assistant.actions.length === 1 &&
         !bodyValidation.right.assistant.actions[0].description;
+
+      const agentConfiguration = await AgentConfiguration.findOne({
+        where: {
+          sId: req.query.aId as string,
+          workspaceId: auth.workspace()?.id,
+        },
+      });
+
+      if (!agentConfiguration) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "agent_configuration_not_found",
+            message: "The Agent you're trying to access was not found.",
+          },
+        });
+      }
 
       if (isLegacyConfiguration && maxStepsPerRun !== undefined) {
         return apiError(req, res, {
