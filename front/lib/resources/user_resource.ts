@@ -25,6 +25,8 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
+import { frontSequelize } from "./storage";
+
 export interface SearchMembersPaginationParams {
   orderColumn: "name";
   orderDirection: "asc" | "desc";
@@ -393,5 +395,28 @@ export class UserResource extends BaseResource<UserModel> {
       users: users.map((u) => new UserResource(UserModel, u.get())),
       total: count,
     };
+  }
+
+  static async listEditorsForAgent(auth: Authenticator, agentId: string) {
+    const owner = auth.getNonNullableWorkspace();
+
+    const users = await frontSequelize.query(
+      `
+SELECT DISTINCT users.*
+FROM agent_configurations AS ac
+INNER JOIN group_agents AS ga ON ac.id = ga."agentConfigurationId" AND ga."workspaceId" = :workspaceId
+INNER JOIN groups ON "groupId" = groups.id AND groups."workspaceId" = :workspaceId
+INNER JOIN group_memberships AS gm ON groups.id = gm."groupId" AND gm."workspaceId" = :workspaceId
+INNER JOIN users ON gm."userId" = users.id
+WHERE ac."sId" = :agentId AND ac."workspaceId" = :workspaceId
+`,
+      {
+        replacements: { agentId, workspaceId: owner.id },
+        model: UserModel,
+        mapToModel: true,
+      }
+    );
+
+    return users.map((user) => new this(this.model, user.get()));
   }
 }
