@@ -113,13 +113,26 @@ const migrateWorkspaceEditorsGroups = async (
   workspace: LightWorkspaceType
 ) => {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const agents = (
-    await getAgentConfigurations({
-      auth,
-      agentsGetView: "admin_internal",
-      variant: "light",
-    })
-  ).filter((agent) => agent.scope !== "global");
+  const agents = await (async () => {
+    try {
+      return (
+        await getAgentConfigurations({
+          auth,
+          agentsGetView: "admin_internal",
+          variant: "light",
+        })
+      ).filter((agent) => agent.scope !== "global");
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          workspace,
+        },
+        "Error getting agent configurations"
+      );
+      return [];
+    }
+  })();
 
   if (agents.length === 0) {
     return;
