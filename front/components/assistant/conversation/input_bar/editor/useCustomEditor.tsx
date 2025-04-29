@@ -256,9 +256,10 @@ const useCustomEditor = ({
         class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
       },
       handleKeyDown: (view, event) => {
-        const enterBehavior = localStorage.getItem("enterBehavior") || "enter";
-        const isEnterForSubmission = enterBehavior === "enter";
-        const isCmdEnterForSubmission = enterBehavior === "cmd+enter";
+        const submitMessageKey =
+          localStorage.getItem("submitMessageKey") || "enter";
+        const isCmdEnterForSubmission = submitMessageKey === "cmd+enter";
+        const isEnterForSubmission = !isCmdEnterForSubmission;
 
         // Check if this is a submission key combination based on user preferences
         const isSubmissionKey =

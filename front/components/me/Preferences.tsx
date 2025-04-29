@@ -1,39 +1,35 @@
 import {
-  ActionCommandIcon,
   ActionMoonIcon,
   ActionSunIcon,
   Button,
-  CommandIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
   Label,
+  LightModeIcon,
 } from "@dust-tt/sparkle";
 import { Page } from "@dust-tt/sparkle";
-import { ArrowBigUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+
 export function Preferences() {
-  const [theme, setTheme] = useState("light");
-  const [enterBehavior, setEnterBehavior] = useState("enter");
+  const { theme, setTheme } = useTheme();
+  const [submitMessageKey, setSubmitMessageKey] = useState("enter");
 
   useEffect(() => {
-    setTheme(localStorage.getItem("theme") || "light");
-    setEnterBehavior(localStorage.getItem("enterBehavior") || "enter");
+    setSubmitMessageKey(localStorage.getItem("submitMessageKey") || "enter");
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem("enterBehavior", enterBehavior);
-  }, [enterBehavior]);
+    localStorage.setItem("submitMessageKey", submitMessageKey);
+  }, [submitMessageKey]);
 
   return (
     <Page.Layout direction="horizontal" align="stretch" sizing="grow">
-      <Page.Layout direction="vertical" sizing="grow">
+      <Page.Layout direction="vertical">
         <Label>Theme</Label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -44,7 +40,7 @@ export function Preferences() {
                   ? ActionSunIcon
                   : theme === "dark"
                     ? ActionMoonIcon
-                    : ActionCommandIcon
+                    : LightModeIcon
               }
               label={
                 theme === "light"
@@ -53,6 +49,7 @@ export function Preferences() {
                     ? "Dark"
                     : "System"
               }
+              isSelect
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -60,7 +57,6 @@ export function Preferences() {
               icon={ActionSunIcon}
               onClick={() => {
                 setTheme("light");
-                location.reload();
               }}
               label="Light"
             />
@@ -68,54 +64,50 @@ export function Preferences() {
               icon={ActionMoonIcon}
               onClick={() => {
                 setTheme("dark");
-                location.reload();
               }}
               label="Dark"
             />
             <DropdownMenuItem
-              icon={ActionCommandIcon}
+              icon={LightModeIcon}
               onClick={() => {
                 setTheme("system");
-                location.reload();
               }}
               label="System"
-              description="Follow system settings"
             />
           </DropdownMenuContent>
         </DropdownMenu>
       </Page.Layout>
-      <Page.Layout direction="vertical" sizing="grow">
+      <Page.Layout direction="vertical">
         <Label>Submit Behavior</Label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              icon={enterBehavior === "enter" ? ArrowBigUpIcon : CommandIcon}
-              label={enterBehavior === "enter" ? "Enter" : "Cmd+Enter"}
+              label={
+                submitMessageKey === "enter" ? "Enter (↵)" : "Cmd+Enter (⌘+↵)"
+              }
+              isSelect
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
-              icon={ArrowBigUpIcon}
               onClick={() => {
-                setEnterBehavior("enter");
+                setSubmitMessageKey("enter");
               }}
-              label="Enter"
-              description="Send message when pressing Enter, press Shift+Enter to send a new line"
-            />
+            >
+              Send message when pressing Enter
+              <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+            </DropdownMenuItem>
             <DropdownMenuItem
-              icon={CommandIcon}
               onClick={() => {
-                setEnterBehavior("cmd+enter");
+                setSubmitMessageKey("cmd+enter");
               }}
-              label="Cmd+Enter"
-              description="Send message when pressing Cmd+Enter, press Enter to send a new line"
-            />
+            >
+              Send message when pressing Cmd+Enter
+              <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </Page.Layout>
-      <Page.Layout direction="vertical" sizing="grow">
-        <></>
       </Page.Layout>
     </Page.Layout>
   );
