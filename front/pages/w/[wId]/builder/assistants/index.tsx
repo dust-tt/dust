@@ -203,26 +203,16 @@ export default function WorkspaceAssistants({
         }
         return a.tags.some((t) => selectedTags.includes(t.sId));
       })
-      .sort((a, b) => {
-        return compareForFuzzySort(
-          "",
-          a.name.toLowerCase(),
-          b.name.toLowerCase()
-        );
-      });
+      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
     return {
       // do not show the "all" tab while still loading all agents
       all_custom: allAgents.filter((a) => a.scope !== "global"),
       editable_by_me: allAgents.filter((a) => a.canEdit),
       global: allAgents.filter((a) => a.scope === "global"),
-      archived: archivedAgentConfigurations.sort((a, b) => {
-        return compareForFuzzySort(
-          "",
-          a.name.toLowerCase(),
-          b.name.toLowerCase()
-        );
-      }),
+      archived: archivedAgentConfigurations.sort((a, b) =>
+        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+      ),
       workspace: allAgents.filter((a) => a.scope === "workspace"),
       published: allAgents.filter((a) => a.scope === "published"),
       current_user: allAgents.filter((a) => a.lastAuthors?.includes("Me")),
