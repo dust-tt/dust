@@ -226,9 +226,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   static async fetchById(
     auth: Authenticator,
-    id: string
+    id: string,
+    options?: ResourceFindOptions<MCPServerViewModel>
   ): Promise<Result<MCPServerViewResource, DustError>> {
-    const viewRes = await this.fetchByIds(auth, [id]);
+    const viewRes = await this.fetchByIds(auth, [id], options);
 
     if (viewRes.isErr()) {
       return viewRes;
@@ -239,7 +240,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   static async fetchByIds(
     auth: Authenticator,
-    ids: string[]
+    ids: string[],
+    options?: ResourceFindOptions<MCPServerViewModel>
   ): Promise<Result<MCPServerViewResource[], DustError>> {
     const viewModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
     if (viewModelIds.length !== ids.length) {
@@ -247,7 +249,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
 
     const views = await this.baseFetch(auth, {
+      ...options,
       where: {
+        ...options?.where,
         id: {
           [Op.in]: viewModelIds,
         },

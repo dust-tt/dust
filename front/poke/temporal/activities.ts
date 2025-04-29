@@ -116,7 +116,10 @@ export async function scrubMCPServerViewActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
-    mcpServerViewId
+    mcpServerViewId,
+    {
+      includeDeleted: true,
+    }
   );
   if (mcpServerView.isErr()) {
     throw new Error("MCPServerView not found.");
