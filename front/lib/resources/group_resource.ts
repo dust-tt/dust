@@ -900,6 +900,13 @@ export class GroupResource extends BaseResource<GroupModel> {
         transaction,
       });
 
+      await GroupAgentModel.destroy({
+        where: {
+          groupId: this.id,
+        },
+        transaction,
+      });
+
       await GroupMembershipModel.destroy({
         where: {
           groupId: this.id,

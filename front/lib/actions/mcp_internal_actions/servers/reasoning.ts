@@ -104,8 +104,12 @@ function createServer(
             },
           },
           {
-            type: "text",
-            text: actionOutput.content,
+            type: "resource",
+            resource: {
+              text: actionOutput.content,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.REASONING_SUCCESS,
+              uri: "",
+            },
           },
         ],
       };

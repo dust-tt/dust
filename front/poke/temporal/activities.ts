@@ -18,6 +18,11 @@ import {
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
+  AgentMCPAction,
+  AgentMCPActionOutputItem,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
+import {
   AgentProcessAction,
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
@@ -47,9 +52,12 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";
@@ -98,6 +106,24 @@ export async function scrubDataSourceActivity({
   await hardDeleteDataSource(auth, dataSource);
 }
 
+export async function scrubMCPServerViewActivity({
+  mcpServerViewId,
+  workspaceId,
+}: {
+  mcpServerViewId: string;
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const mcpServerView = await MCPServerViewResource.fetchById(
+    auth,
+    mcpServerViewId
+  );
+  if (mcpServerView.isErr()) {
+    throw new Error("MCPServerView not found.");
+  }
+  await mcpServerView.value.delete(auth, { hardDelete: true });
+}
+
 export async function scrubSpaceActivity({
   spaceId,
   workspaceId,
@@ -127,6 +153,14 @@ export async function scrubSpaceActivity({
     });
   }
 
+  // Delete all the mcp server views of the space.
+  const mcpServerViews = await MCPServerViewResource.listBySpace(auth, space);
+  for (const mcpServerView of mcpServerViews) {
+    await scrubMCPServerViewActivity({
+      mcpServerViewId: mcpServerView.sId,
+      workspaceId,
+    });
+  }
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
   await hardDeleteSpace(auth, space);
@@ -185,6 +219,53 @@ export async function deleteAgentsActivity({
     },
   });
   for (const agent of agents) {
+    const mcpServerConfigurations = await AgentMCPServerConfiguration.findAll({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        retrievalConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
+      },
+    });
+    await AgentTablesQueryConfigurationTable.destroy({
+      where: {
+        tablesQueryConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
+      },
+    });
+    const mcpActions = await AgentMCPAction.findAll({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
+      },
+    });
+
+    await AgentMCPActionOutputItem.destroy({
+      where: {
+        agentMCPActionId: {
+          [Op.in]: mcpActions.map((r) => r.id),
+        },
+      },
+    });
+    await AgentMCPAction.destroy({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
+      },
+    });
+    await AgentMCPServerConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
+
     const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
@@ -316,6 +397,12 @@ export async function deleteAgentsActivity({
         agentConfiguration: agent.sId,
       },
     });
+
+    const group = await GroupResource.fetchByAgentConfiguration(auth, agent);
+    if (group.isOk()) {
+      await group.value.delete(auth);
+    }
+
     hardDeleteLogger.info({ agentId: agent.sId }, "Deleting agent");
     await agent.destroy();
   }
@@ -392,6 +479,18 @@ export async function deleteRunOnDustAppsActivity({
     );
   }
 }
+
+export const deleteRemoteMCPServersActivity = async ({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) => {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const remoteMCPServers = await RemoteMCPServerResource.listByWorkspace(auth);
+  for (const remoteMCPServer of remoteMCPServers) {
+    await remoteMCPServer.delete(auth);
+  }
+};
 
 export const deleteTrackersActivity = async ({
   workspaceId,
@@ -494,6 +593,18 @@ export async function deleteSpacesActivity({
     });
     for (const ds of dataSources) {
       await ds.delete(auth, { hardDelete: false });
+    }
+
+    // Soft delete all the mcp server views of the space.
+    const mcpServerViews = await MCPServerViewResource.listBySpace(
+      auth,
+      space,
+      {
+        includeDeleted: true,
+      }
+    );
+    for (const mcpServerView of mcpServerViews) {
+      await mcpServerView.delete(auth, { hardDelete: false });
     }
 
     await scrubSpaceActivity({
