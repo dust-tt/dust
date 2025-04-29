@@ -60,6 +60,8 @@ export default function ProfilePage({
               mutateUser={mutateUser}
             />
 
+            <Separator />
+
             <Page.SectionHeader title="Preferences" />
             <Preferences />
 
