@@ -26,7 +26,8 @@ async function setupSlackChannel({
   slackConfiguration: SlackConfigurationResource;
   logger: typeof Logger;
 }) {
-  if (!channel.id || !channel.name) {
+  // Skip private channels.
+  if (!channel.id || !channel.name || channel.is_private) {
     return;
   }
 
