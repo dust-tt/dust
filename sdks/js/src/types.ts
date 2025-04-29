@@ -177,6 +177,7 @@ export const supportedOtherFileFormats = {
   "text/x-groovy": [".groovy"],
   "text/x-perl": [".pl", ".pm"],
   "text/x-perl-script": [".pl", ".pm"],
+  "application/octet-stream": [],
 } as const;
 
 // Supported content types for images.

@@ -257,6 +257,7 @@ const getProcessingFunction = ({
         return extractTextFromFileAndUpload;
       }
       break;
+    case "application/octet-stream":
     case "text/plain":
     case "text/markdown":
     case "text/html":
