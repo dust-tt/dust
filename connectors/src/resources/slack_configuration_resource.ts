@@ -64,6 +64,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
         connectorId,
         slackTeamId,
+        restrictedSpaceAgentsEnabled: true,
       },
       { transaction }
     );
@@ -337,6 +338,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       autoReadChannelPatterns: this.autoReadChannelPatterns,
       botEnabled: this.botEnabled,
       whitelistedDomains: this.whitelistedDomains?.map((d) => d),
+      restrictedSpaceAgentsEnabled: this.restrictedSpaceAgentsEnabled,
     };
   }
 }
