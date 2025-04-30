@@ -150,7 +150,7 @@ export async function launchCrawlWebsiteScheduler() {
 export async function updateCrawlerType(
   connectorId: string,
   newCrawler: string
-) {
+): Promise<Result<void, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
