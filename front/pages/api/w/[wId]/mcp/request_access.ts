@@ -113,7 +113,8 @@ async function handler(
   }
 
   const body =
-    `${emailRequester} has sent you a request regarding access to actions: ` +
+    `${emailRequester} has sent you a request regarding access to ` +
+    `tools ${mcpServerView.toJSON().server.name}: ` +
     escape(emailMessage);
 
   const result = await sendEmailWithTemplate({
