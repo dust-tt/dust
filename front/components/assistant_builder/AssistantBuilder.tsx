@@ -75,7 +75,6 @@ import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
-  isAdmin,
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
@@ -256,6 +255,7 @@ export default function AssistantBuilder({
     isUserLoading,
     isUserError,
     user,
+    owner,
     agentConfigurationId,
     initialBuilderState,
   ]);
