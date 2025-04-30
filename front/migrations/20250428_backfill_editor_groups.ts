@@ -150,8 +150,6 @@ const migrateWorkspaceEditorsGroups = async (
             [Op.not]: "draft",
           },
         },
-        attributes: ["sId", "name"],
-        group: ["sId", "name"],
       });
     } catch (error) {
       logger.error(
