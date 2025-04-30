@@ -34,6 +34,8 @@ function redactPluginArgs(
   for (const [key, arg] of Object.entries(plugin.manifest.args)) {
     if (arg.redact) {
       sanitizedArgs[key] = "REDACTED";
+    } else if (arg.type === "file") {
+      sanitizedArgs[key] = (args[key] as File).name;
     } else {
       sanitizedArgs[key] = args[key];
     }

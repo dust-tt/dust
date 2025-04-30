@@ -93,16 +93,36 @@ export function useRunPokePlugin({
   const doRunPlugin = async (
     args: object
   ): Promise<Result<PokeRunPluginResponseBody["result"], string>> => {
-    const res = await fetch(
-      `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(args),
-      }
-    );
+    // Check if any of the args are File objects
+    const hasFiles = Object.values(args).some((arg) => arg instanceof File);
+    let res;
+    if (hasFiles) {
+      // Use FormData for multipart/form-data when files are present
+      const formData = new FormData();
+      Object.entries(args).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+
+      res = await fetch(
+        `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+    } else {
+      // Use JSON when no files are present
+      res = await fetch(
+        `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(args),
+        }
+      );
+    }
 
     if (res.ok) {
       const response: PokeRunPluginResponseBody = await res.json();
