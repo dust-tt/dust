@@ -4,12 +4,13 @@ import OpenAI from "openai";
 import { z } from "zod";
 
 import type {
-  InternalMCPNotificationType,
+  InternalMCPProgressNotificationType,
   MCPToolResultContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import { MCP_PROGRESS_TOKEN } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -34,7 +35,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 const createServer = (auth: Authenticator): McpServer => {
-  const server = new McpServer(serverInfo, { capabilities: { logging: {} } });
+  const server = new McpServer(serverInfo);
 
   server.tool(
     "generate_image",
@@ -70,16 +71,21 @@ const createServer = (auth: Authenticator): McpServer => {
           "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
         ),
     },
-    async ({ prompt, name, quality, size }, { sendNotification }) => {
+    async (args, extra) => {
+      console.log("args", args);
+      console.log("extra", extra);
+
+      const { prompt, name, quality, size } = args;
+      const { sendNotification } = extra;
       const workspace = auth.getNonNullableWorkspace();
 
-      const notification: InternalMCPNotificationType = {
-        method: "notifications/message",
+      const notification: InternalMCPProgressNotificationType = {
+        method: "notifications/progress",
         params: {
-          type: "progress",
-          level: "info",
+          progress: 0,
+          total: 1,
+          progressToken: MCP_PROGRESS_TOKEN,
           data: {
-            progress: 0,
             label: "Generating image...",
             output: {
               type: "image",

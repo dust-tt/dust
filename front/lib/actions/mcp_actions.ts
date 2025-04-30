@@ -1,7 +1,7 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { McpError } from "@modelcontextprotocol/sdk/types.js";
-import { LoggingMessageNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
+import { ProgressNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import EventEmitter from "events";
 import type { JSONSchema7 } from "json-schema";
@@ -27,11 +27,11 @@ import {
   isDefaultInternalMCPServer,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
-  MCPNotificationType,
+  MCPProgressNotificationType,
   MCPToolResult,
   MCPToolResultContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isInternalMCPNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isInternalMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   MCPConnectionParams,
   PlatformMCPConnectionParams,
@@ -55,6 +55,7 @@ import type {
   MCPToolType,
   PlatformMCPToolTypeWithStakeLevel,
 } from "@app/lib/api/mcp";
+import { MCP_PROGRESS_TOKEN } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -120,7 +121,7 @@ function makeLocalMCPToolConfigurations(
 type MCPCallToolEvent =
   | {
       type: "notification";
-      notification: MCPNotificationType;
+      notification: MCPProgressNotificationType;
     }
   | {
       type: "result";
@@ -185,18 +186,22 @@ export async function* tryCallMCPTool(
     const emitter = new EventEmitter();
 
     // Convert the emitter to an async generator.
-    const notificationStream = fromEvent<MCPNotificationType>(
+    const notificationStream = fromEvent<MCPProgressNotificationType>(
       emitter,
       MCP_NOTIFICATION_EVENT_NAME
     );
 
     // Subscribe to notifications before calling the tool.
+    // Longer term we should use the `onprogress` callback of the `callTool` method. Right now,
+    // `progressToken` is not accessible in the `ToolCallback` interface. PR has been merged, but
+    // not released yet (https://github.com/modelcontextprotocol/typescript-sdk/pull/328).
     mcpClient.setNotificationHandler(
-      LoggingMessageNotificationSchema,
+      ProgressNotificationSchema,
       async (notification) => {
+        console.log("got notification", notification);
         // For now, we only handle internal notifications.
         // TODO: Add rate limiting.
-        if (isInternalMCPNotificationType(notification)) {
+        if (isInternalMCPProgressNotificationType(notification)) {
           console.log("notification", notification);
           emitter.emit(MCP_NOTIFICATION_EVENT_NAME, notification);
         }
@@ -208,9 +213,12 @@ export async function* tryCallMCPTool(
       {
         name: agentLoopContext.actionConfiguration.originalName,
         arguments: inputs,
+        progressToken: MCP_PROGRESS_TOKEN,
       },
       undefined,
-      { timeout: DEFAULT_MCP_REQUEST_TIMEOUT_MS }
+      {
+        timeout: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+      }
     );
 
     // Read from notificationStream and yield events until the tool is done.

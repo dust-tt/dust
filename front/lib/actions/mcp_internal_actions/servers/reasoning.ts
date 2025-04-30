@@ -27,7 +27,7 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = new McpServer(serverInfo, { capabilities: { logging: {} } });
+  const server = new McpServer(serverInfo);
 
   server.tool(
     DEFAULT_REASONING_ACTION_NAME,

@@ -14,10 +14,10 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   MCPToolResultContentType,
-  NotificationContentType,
+  ProgressNotificationContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  isInternalMCPNotificationType,
+  isInternalMCPProgressNotificationType,
   isResourceWithName,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -58,12 +58,7 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import {
-  isSupportedFileContentType,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { isSupportedFileContentType, Ok, removeNulls } from "@app/types";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -173,7 +168,7 @@ export type MCPNotificationEvent = {
   configurationId: string;
   messageId: string;
   action: MCPActionType;
-  notification: NotificationContentType;
+  notification: ProgressNotificationContentType;
 };
 
 function hideFileContentForModel({
@@ -585,7 +580,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         toolCallResult = event.result;
       } else if (event.type === "notification") {
         const { notification } = event;
-        if (isInternalMCPNotificationType(notification)) {
+        if (isInternalMCPProgressNotificationType(notification)) {
           // TODO(2025-04-30 MCP): Add rate limit.
           yield {
             type: "tool_notification",

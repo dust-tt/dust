@@ -82,3 +82,8 @@ export type InternalMCPServerDefinitionType = Omit<
 export type MCPServerTypeWithViews = MCPServerType & {
   views: MCPServerViewType[];
 };
+
+// TODO(2025-04-30 MCP) Temporary token to identify MCP progress notifications.
+// As of now `progressToken` is not accessible in the `ToolCallback` interface. PR has been merged,
+// but not released yet (https://github.com/modelcontextprotocol/typescript-sdk/pull/328).
+export const MCP_PROGRESS_TOKEN = 0;

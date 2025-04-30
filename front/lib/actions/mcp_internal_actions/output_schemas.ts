@@ -296,10 +296,13 @@ const NotificationImageContentSchema = z.object({
   mimeType: z.string(),
 });
 
-export const NotificationContentSchema = z.object({
-  type: z.literal("progress"),
+export const ProgressNotificationContentSchema = z.object({
+  // Required for the MCP protocol.
+  progress: z.number(),
+  total: z.number(),
+  progressToken: z.union([z.string(), z.number()]),
+  // Custom data.
   data: z.object({
-    progress: z.number(),
     label: z.string(),
     output: z
       .union([NotificationImageContentSchema, TextContentSchema])
@@ -307,25 +310,24 @@ export const NotificationContentSchema = z.object({
   }),
 });
 
-export type NotificationContentType = z.infer<typeof NotificationContentSchema>;
+export type ProgressNotificationContentType = z.infer<
+  typeof ProgressNotificationContentSchema
+>;
 
-export const InternalMCPNotificationSchema = NotificationSchema.extend({
-  method: z.literal("notifications/message"),
-  params: NotificationContentSchema.extend({
-    // Required for the MCP protocol.
-    level: z.enum(["info", "warning", "error"]),
-  }),
+export const InternalMCPProgressNotificationSchema = NotificationSchema.extend({
+  method: z.literal("notifications/progress"),
+  params: ProgressNotificationContentSchema,
 });
 
-export type InternalMCPNotificationType = z.infer<
-  typeof InternalMCPNotificationSchema
+export type InternalMCPProgressNotificationType = z.infer<
+  typeof InternalMCPProgressNotificationSchema
 >;
 
 // We will support more types of notifications in the future.
-export type MCPNotificationType = InternalMCPNotificationType;
+export type MCPProgressNotificationType = InternalMCPProgressNotificationType;
 
-export function isInternalMCPNotificationType(
+export function isInternalMCPProgressNotificationType(
   notification: Notification
-): notification is InternalMCPNotificationType {
-  return InternalMCPNotificationSchema.safeParse(notification).success;
+): notification is InternalMCPProgressNotificationType {
+  return InternalMCPProgressNotificationSchema.safeParse(notification).success;
 }
