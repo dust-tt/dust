@@ -87,7 +87,8 @@ export async function trackTokenUsageCost(
     // record of over-usage, while hasReachedPublicAPILimits will block subsequent calls when
     // detecting negative credits.
     const newCredits = parseFloat(remainingCredits) - amountWithMarkup;
-    await redis.set(key, newCredits.toString());
+    // Preserve the TTL of the key.
+    await redis.set(key, newCredits.toString(), { KEEPTTL: true });
     return newCredits;
   });
 }
@@ -171,7 +172,7 @@ export async function resetCredits(
 
 export async function getRemainingCredits(
   workspace: LightWorkspaceType
-): Promise<number | null> {
+): Promise<{ expiresInSeconds: number; remainingCredits: number } | null> {
   return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
     const key = getRedisKey(workspace);
     const remainingCredits = await redis.get(key);
@@ -179,6 +180,11 @@ export async function getRemainingCredits(
       return null;
     }
 
-    return parseFloat(remainingCredits);
+    const expiresInSeconds = await redis.ttl(key);
+
+    return {
+      expiresInSeconds,
+      remainingCredits: parseFloat(remainingCredits),
+    };
   });
 }

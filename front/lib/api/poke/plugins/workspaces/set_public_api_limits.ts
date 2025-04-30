@@ -50,13 +50,15 @@ async function adjustCredits(
     return;
   }
 
-  const remainingCredits = await getRemainingCredits(workspace);
+  const remaining = await getRemainingCredits(workspace);
   // If key is not set, credits will be set on the next token usage.
-  if (remainingCredits === null) {
+  if (remaining === null) {
     return;
   }
 
+  const { remainingCredits } = remaining;
   const newCredits = remainingCredits + limitDelta;
+
   await resetCredits(workspace, { newCredits });
 }
 
