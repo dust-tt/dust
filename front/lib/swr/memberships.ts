@@ -70,7 +70,6 @@ export function useMembersCount(owner: LightWorkspaceType) {
   const { total } = useMembers({
     workspaceId: owner.sId,
     pagination: { limit: 0, orderColumn: "createdAt", orderDirection: "asc" },
-    disabled: owner.role !== "admin",
   });
 
   return total;
