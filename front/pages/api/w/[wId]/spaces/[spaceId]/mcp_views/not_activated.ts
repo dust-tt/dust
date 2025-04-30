@@ -13,7 +13,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetMCPServerViewsNotActivatedResponseBody = {
   success: boolean;
-  mcpServerViews: MCPServerViewType[];
+  serverViews: MCPServerViewType[];
 };
 
 async function handler(
@@ -37,15 +37,19 @@ async function handler(
         await MCPServerViewResource.listByWorkspace(auth);
 
       // MCP servers that can be added to a space are the ones that have been activated by the admin
-      // (they are in the system space) but are not already in the company space. Note that this
-      // leaks system mcpServerView ids (not ideal but OK since they are enumerable).
-      const availableMcpServerViews = workspaceServerViews.filter(
-        (s) => s.space.kind !== "global" && s.space.kind === "system"
+      // (they are in the system space) but are not already in the company space (not in the global
+      // space). Note that this leaks system mcpServerView ids (not ideal but OK since they are
+      // enumerable). We also want to make sure we're not taking the MCPServerViews
+      const systemMcpServerViews = workspaceServerViews.filter(
+        (s) => s.space.kind === "system"
+      );
+      const globalMcpServerViews = workspaceServerViews.filter(
+        (s) => s.space.kind === "global"
       );
 
-      const mcpServerViewsNotActivated = _.differenceWith(
-        availableMcpServerViews,
-        spaceMcpServerViews,
+      const activablemcpServerViews = _.differenceWith(
+        systemMcpServerViews,
+        spaceMcpServerViews.concat(globalMcpServerViews),
         (a, b) => {
           return (
             (a.internalMCPServerId ?? a.remoteMCPServerId) ===
@@ -56,10 +60,8 @@ async function handler(
 
       return res.status(200).json({
         success: true,
-        mcpServerViews: removeNulls(
-          mcpServerViewsNotActivated.map((s) => {
-            return s.toJSON();
-          })
+        serverViews: removeNulls(
+          activablemcpServerViews.map((s) => s.toJSON())
         ),
       });
     }
