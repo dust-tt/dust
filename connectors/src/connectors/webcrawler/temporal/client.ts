@@ -163,12 +163,5 @@ export async function updateCrawlerType(
     return new Err(new Error(`CrawlerConfig not found for ${connector.id}`));
   }
 
-  const customCrawler = newCrawler === "default" ? null : newCrawler;
-
-  try {
-    await webcrawlerConfig.update({ customCrawler });
-    return new Ok(undefined);
-  } catch (err) {
-    return new Err(err as Error);
-  }
+  return webcrawlerConfig.updateCustomCrawlerString(newCrawler);
 }
