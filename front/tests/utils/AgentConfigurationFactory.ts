@@ -7,6 +7,7 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types";
+import assert from "assert";
 
 export class AgentConfigurationFactory {
   static async createTestAgent(
@@ -30,6 +31,9 @@ export class AgentConfigurationFactory {
     const modelId = overrides.model?.modelId ?? "gpt-4-turbo";
     const temperature = overrides.model?.temperature ?? 0.7;
 
+    const user = auth.user();
+    assert(user, "User is required");
+
     const result = await createAgentConfiguration(
       auth,
       {
@@ -49,7 +53,7 @@ export class AgentConfigurationFactory {
         templateId: null,
         requestedGroupIds: [], // Let createAgentConfiguration handle group creation
         tags: [], // Added missing tags property
-        editors: [],
+        editors: [user.toJSON()],
       },
       t
     );
