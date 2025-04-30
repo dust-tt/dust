@@ -328,7 +328,7 @@ export default function WorkspaceAssistants({
       >
         <AssistantDetails
           owner={owner}
-          userId={user.sId}
+          user={user}
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
         />

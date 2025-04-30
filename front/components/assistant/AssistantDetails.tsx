@@ -44,13 +44,13 @@ import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {
   useAgentAnalytics,
   useAgentConfiguration,
-  useAgentEditors,
-  useUpdateAgentEditors,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
+import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  UserType,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
@@ -68,7 +68,7 @@ type AssistantDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
   assistantId: string | null;
-  userId: string;
+  user: UserType;
 };
 
 function AssistantDetailsInfo({
@@ -290,33 +290,34 @@ function AssistantDetailsPerformance({
 
 type AssistantDetailsEditorsProps = {
   owner: WorkspaceType;
-  userId: string;
+  user: UserType;
   agentConfiguration: AgentConfigurationType;
 };
 
 function AssistantDetailsEditors({
   owner,
-  userId,
+  user,
   agentConfiguration,
 }: AssistantDetailsEditorsProps) {
-  const updateAgentEditors = useUpdateAgentEditors({
+  const updateEditors = useUpdateEditors({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
-  const { editors, isAgentEditorsLoading } = useAgentEditors({
+  const { editors, isEditorsLoading } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
-  const isCurrentUserEditor = editors.findIndex((u) => u.sId === userId) !== -1;
+  const isCurrentUserEditor =
+    editors.findIndex((u) => u.sId === user.sId) !== -1;
   const onRemoveMember = async (user: UserTypeWithWorkspaces) => {
     if (!isCurrentUserEditor) {
       return;
     }
 
-    await updateAgentEditors({ removeEditorIds: [user.sId] });
+    await updateEditors({ removeEditorIds: [user.sId] });
   };
 
-  if (isAgentEditorsLoading) {
+  if (isEditorsLoading) {
     return (
       <div className="flex flex-row items-center justify-center">
         <Spinner />
@@ -327,24 +328,13 @@ function AssistantDetailsEditors({
   return (
     <div>
       <MembersList
-        currentUserId={userId}
+        currentUser={user}
         membersData={{
           members: editors.map((user) => ({
             ...user,
-            workspaces: [
-              {
-                sId: "mock1",
-                name: "mock workspace 1",
-                role: "user",
-                id: 1,
-                segmentation: null,
-                whiteListedProviders: null,
-                defaultEmbeddingProvider: null,
-                metadata: null,
-              },
-            ],
+            workspaces: [owner],
           })),
-          isLoading: isAgentEditorsLoading,
+          isLoading: isEditorsLoading,
           totalMembersCount: editors.length,
           mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
         }}
@@ -366,7 +356,7 @@ export function AssistantDetails({
   assistantId,
   onClose,
   owner,
-  userId,
+  user,
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
   const [selectedTab, setSelectedTab] = useState<
@@ -519,7 +509,7 @@ export function AssistantDetails({
                   {selectedTab === "editors" && (
                     <AssistantDetailsEditors
                       owner={owner}
-                      userId={userId}
+                      user={user}
                       agentConfiguration={agentConfiguration}
                     />
                   )}

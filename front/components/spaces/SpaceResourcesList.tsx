@@ -509,7 +509,7 @@ export const SpaceResourcesList = ({
     <>
       <AssistantDetails
         owner={owner}
-        userId={user.sId}
+        user={user}
         assistantId={assistantSId}
         onClose={() => setAssistantName(null)}
       />
