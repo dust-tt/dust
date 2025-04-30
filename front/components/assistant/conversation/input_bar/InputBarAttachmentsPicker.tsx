@@ -131,7 +131,7 @@ export const InputBarAttachmentsPicker = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-80 h-80 xs:h-96 xs:w-96"
+        className="h-80 w-80 xs:h-96 xs:w-96"
         collisionPadding={15}
         align="end"
         onInteractOutside={() => setIsOpen(false)}
