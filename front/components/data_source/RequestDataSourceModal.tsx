@@ -67,7 +67,7 @@ export function RequestDataSourceModal({
         await sendRequestDataSourceEmail({
           userTo: userToId,
           emailMessage: message,
-          dataSourceName: selectedDataSource.name,
+          dataSourceId: selectedDataSource.sId,
           owner,
         });
         sendNotification({

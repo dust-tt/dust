@@ -4,19 +4,19 @@ import type { PostRequestActionsAccessBody } from "@app/pages/api/w/[wId]/mcp/re
 import type { LightWorkspaceType } from "@app/types";
 
 export async function sendRequestDataSourceEmail({
+  owner,
   userTo,
   emailMessage,
-  dataSourceName,
-  owner,
+  dataSourceId,
 }: {
   userTo: string;
   emailMessage: string;
-  dataSourceName: string;
+  dataSourceId: string;
   owner: LightWorkspaceType;
 }) {
   const emailBlob: PostRequestAccessBody = {
     emailMessage,
-    dataSourceName,
+    dataSourceId,
     userTo,
   };
 
