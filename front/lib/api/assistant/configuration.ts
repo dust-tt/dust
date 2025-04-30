@@ -88,6 +88,7 @@ import {
   assertNever,
   compareAgentsForSort,
   Err,
+  isBuilder,
   isTimeFrame,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
@@ -931,7 +932,7 @@ export async function createAgentConfiguration(
 
       if (status === "active") {
         assert(
-          editors.some((e) => e.sId === auth.user()?.sId),
+          isBuilder(owner) || editors.some((e) => e.sId === auth.user()?.sId),
           "Unexpected: current user must be in editor group"
         );
         if (!existingAgent) {

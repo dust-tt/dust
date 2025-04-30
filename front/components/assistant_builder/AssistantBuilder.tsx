@@ -240,8 +240,9 @@ export default function AssistantBuilder({
     }
     if (agentConfigurationId && initialBuilderState) {
       assert(
-        initialBuilderState.editors.some((m) => m.sId === user.sId),
-        "Unreachable: User is not in editors"
+        isBuilder(owner) ||
+          initialBuilderState.editors.some((m) => m.sId === user.sId),
+        "Unreachable: User is not in editors nor builder"
       );
     }
     if (!agentConfigurationId) {
@@ -254,6 +255,7 @@ export default function AssistantBuilder({
     isUserLoading,
     isUserError,
     user,
+    owner,
     agentConfigurationId,
     initialBuilderState,
   ]);
