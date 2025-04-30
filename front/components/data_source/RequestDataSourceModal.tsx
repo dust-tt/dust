@@ -22,7 +22,6 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";
-import logger from "@app/logger/logger";
 import type { DataSourceType, LightWorkspaceType } from "@app/types";
 
 interface RequestDataSourceModal {
@@ -55,8 +54,7 @@ export function RequestDataSourceModal({
   };
 
   const onSave = async () => {
-    const userToId = selectedDataSource?.editedByUser?.userId;
-    if (!userToId || !selectedDataSource) {
+    if (!selectedDataSource?.editedByUser) {
       sendNotification({
         type: "error",
         title: "Error sending email",
@@ -65,15 +63,14 @@ export function RequestDataSourceModal({
     } else {
       try {
         await sendRequestDataSourceEmail({
-          userTo: userToId,
           emailMessage: message,
-          dataSourceName: selectedDataSource.name,
+          dataSourceId: selectedDataSource.sId,
           owner,
         });
         sendNotification({
           type: "success",
           title: "Email sent!",
-          description: `Your request was sent to ${selectedDataSource?.editedByUser?.fullName}.`,
+          description: `Your request was sent to ${selectedDataSource.editedByUser.fullName}.`,
         });
       } catch (e) {
         sendNotification({
@@ -82,10 +79,9 @@ export function RequestDataSourceModal({
           description:
             "An unexpected error occurred while sending the request.",
         });
-        logger.error(
+        console.log(
           {
-            userToId,
-            dataSourceName: selectedDataSource.name,
+            dataSourceId: selectedDataSource.name,
             error: e,
           },
           "Error sending email"
