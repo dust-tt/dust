@@ -51,9 +51,11 @@ export async function scrubSpaceWorkflow({
 export async function deleteWorkspaceWorkflow({
   workspaceId,
   workspaceHasBeenRelocated = false,
+  deleteUsersFromAuth0 = false,
 }: {
   workspaceId: string;
   workspaceHasBeenRelocated?: boolean;
+  deleteUsersFromAuth0?: boolean;
 }) {
   const isDeletable = await isWorkflowDeletableActivity({
     workspaceId,
@@ -69,7 +71,10 @@ export async function deleteWorkspaceWorkflow({
   await deleteRunOnDustAppsActivity({ workspaceId });
   await deleteAppsActivity({ workspaceId });
   await deleteTrackersActivity({ workspaceId });
-  await deleteMembersActivity({ workspaceId });
+  await deleteMembersActivity({
+    workspaceId,
+    deleteFromAuth0: deleteUsersFromAuth0,
+  });
   await deleteSpacesActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });

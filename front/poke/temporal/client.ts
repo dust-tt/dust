@@ -69,9 +69,11 @@ export async function launchScrubSpaceWorkflow(
 export async function launchDeleteWorkspaceWorkflow({
   workspaceId,
   workspaceHasBeenRelocated = false,
+  deleteUsersFromAuth0 = false,
 }: {
   workspaceId: string;
   workspaceHasBeenRelocated?: boolean;
+  deleteUsersFromAuth0?: boolean;
 }) {
   const client = await getTemporalClient();
 
@@ -81,6 +83,7 @@ export async function launchDeleteWorkspaceWorkflow({
         {
           workspaceId,
           workspaceHasBeenRelocated,
+          deleteUsersFromAuth0,
         },
       ],
       taskQueue: "poke-queue",

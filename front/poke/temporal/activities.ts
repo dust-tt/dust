@@ -515,8 +515,10 @@ export const deleteTrackersActivity = async ({
 
 export async function deleteMembersActivity({
   workspaceId,
+  deleteFromAuth0 = false,
 }: {
   workspaceId: string;
+  deleteFromAuth0?: boolean;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
@@ -555,7 +557,7 @@ export async function deleteMembersActivity({
         await membership.delete(auth, {});
 
         // Delete the user from Auth0 if they have an Auth0 ID
-        if (user.auth0Sub) {
+        if (deleteFromAuth0 && user.auth0Sub) {
           try {
             hardDeleteLogger.info(
               {

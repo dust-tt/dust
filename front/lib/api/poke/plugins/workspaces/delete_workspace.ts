@@ -30,12 +30,17 @@ export const deleteWorkspacePlugin = createPlugin({
           "data sources and subscription checks.",
         label: "Workspace has been relocated?",
       },
+      deleteUsersFromAuth0: {
+        type: "boolean",
+        description: "Additionally delete the users from Auth0.",
+        label: "Delete users from Auth0?",
+      },
     },
   },
   execute: async (
     auth,
     workspace,
-    { confirmation, workspaceHasBeenRelocated }
+    { confirmation, workspaceHasBeenRelocated, deleteUsersFromAuth0 }
   ) => {
     if (!workspace) {
       return new Err(new Error("Workspace not found"));
@@ -43,6 +48,16 @@ export const deleteWorkspacePlugin = createPlugin({
 
     if (confirmation !== "DELETE") {
       return new Err(new Error("Invalid confirmation, must type 'DELETE'"));
+    }
+
+    if (workspaceHasBeenRelocated && deleteUsersFromAuth0) {
+      // Returning an error in this case since there is currently no use case for this.
+      return new Err(
+        new Error(
+          "You cannot delete users from Auth0 if the workspace has been relocated. " +
+            "If this is really intended please reach out."
+        )
+      );
     }
 
     // If the workspace has been relocated, we can delete it immediately.
@@ -56,7 +71,10 @@ export const deleteWorkspacePlugin = createPlugin({
         );
       }
 
-      await deleteWorkspace(workspace, { workspaceHasBeenRelocated });
+      await deleteWorkspace(workspace, {
+        workspaceHasBeenRelocated,
+        deleteUsersFromAuth0,
+      });
     } else {
       // If the workspace has not been relocated, we need to check if it has data sources or a
       // paid plan.
@@ -81,7 +99,7 @@ export const deleteWorkspacePlugin = createPlugin({
         );
       }
 
-      await deleteWorkspace(workspace);
+      await deleteWorkspace(workspace, { deleteUsersFromAuth0 });
     }
 
     return new Ok({
