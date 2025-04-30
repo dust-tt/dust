@@ -503,8 +503,8 @@ export async function getSuggestedAgentsForConversation(
   });
 
   const formattedAgents = agents.map((a) => ({
-    sId: a.sId,
-    name: a.name,
+    id: a.sId,
+    handle: `@${a.name}`,
     description: a.description,
     tools: a.actions.map((a) => ({
       name: a.name,
@@ -553,11 +553,13 @@ export async function getSuggestedAgentsForConversation(
 
       if (event.content.block_name === "OUTPUT" && e.value) {
         const output = e.value as {
-          suggested_agents: { sId: string; description: string }[];
+          suggested_agents: {
+            id: string;
+          }[];
         };
         suggestions = removeNulls(
           output.suggested_agents.map((a) =>
-            agents.find((a2) => a2.sId === a.sId)
+            agents.find((a2) => a2.sId === a.id)
           )
         );
       }
