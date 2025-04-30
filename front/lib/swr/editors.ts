@@ -28,7 +28,7 @@ export function useEditors({
   );
 
   return {
-    editors: useMemo(() => (data ? data.editors : undefined), [data]),
+    editors: useMemo(() => (data ? data.editors : []), [data]),
     isEditorsLoading: !error && !data && !disabled,
     isEditorsError: !!error,
     mutateEditors: mutate,

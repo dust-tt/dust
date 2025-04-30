@@ -16,8 +16,8 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { useEditors } from "@app/lib/swr/editors";
 import type {
   AgentConfigurationType,
   AppType,
@@ -28,7 +28,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { GroupResource } from "@app/lib/resources/group_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];

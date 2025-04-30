@@ -62,7 +62,6 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useEditors } from "@app/lib/swr/editors";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
@@ -172,8 +171,6 @@ export default function AssistantBuilder({
         }
   );
 
-  const { mutateEditors } = useEditors({ owner, agentConfigurationId });
-
   const [pendingAction, setPendingAction] =
     useState<AssistantBuilderPendingAction>({
       action: null,
@@ -241,7 +238,7 @@ export default function AssistantBuilder({
     if (isUserError || isUserLoading || !user) {
       return;
     }
-    if (agentConfigurationId && initialBuilderState?.editors) {
+    if (agentConfigurationId && initialBuilderState) {
       assert(
         initialBuilderState.editors.some((m) => m.sId === user.sId),
         "Unreachable: User is not in editors"
@@ -250,7 +247,7 @@ export default function AssistantBuilder({
     if (!agentConfigurationId) {
       setBuilderState((state) => ({
         ...state,
-        editors: [...(state.editors ?? []), user],
+        editors: [...state.editors, user],
       }));
     }
   }, [
@@ -411,7 +408,6 @@ export default function AssistantBuilder({
           type: "error",
         });
       } else {
-        void mutateEditors();
         if (slackDataSource) {
           await mutateSlackChannels();
         }

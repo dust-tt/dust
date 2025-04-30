@@ -234,7 +234,7 @@ export type AssistantBuilderState = {
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
-  editors?: UserType[];
+  editors: UserType[];
 };
 
 export type AssistantBuilderInitialState = {
@@ -253,7 +253,7 @@ export type AssistantBuilderInitialState = {
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
-  editors?: UserType[];
+  editors: UserType[];
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
