@@ -60,7 +60,7 @@ async function backfillAgentEditorsGroup(
     assert(editorGroup, "Editor group not found");
     // if group is not of kind agent_editors, update it
     if (editorGroup.kind !== "agent_editors") {
-      console.log(
+      logger.info(
         { agent: agentConfigs[0].sId },
         "Updating group kind for agent"
       );
@@ -73,7 +73,7 @@ async function backfillAgentEditorsGroup(
       }
     }
   } else {
-    console.log(
+    logger.info(
       { agent: agentConfigs[0].sId },
       `Creating editor group for agent : Group for Agent ${agentConfigs[0].name}`
     );
@@ -118,7 +118,7 @@ async function backfillAgentEditorsGroup(
     memberships.memberships.some((membership) => membership.userId === user.id)
   );
 
-  console.log(
+  logger.info(
     { agent: agentConfigs[0].sId, usersToAdd: usersToAdd.length },
     "Adding users to editor group"
   );
