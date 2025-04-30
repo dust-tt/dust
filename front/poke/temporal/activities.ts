@@ -528,6 +528,8 @@ export async function deleteMembersActivity({
   const workspace = auth.getNonNullableWorkspace();
   const auth0Client = getAuth0ManagemementClient();
 
+  // Critical: we should never delete an Auth0 sub for a workspace that was relocated/is being relocated.
+  // The Auth0 sub is kept during the relocation, deleting it would affect the relocated users.
   const workspaceRelocated =
     isWorkspaceRelocationDone(workspace) ||
     isWorkspaceRelocationOngoing(workspace);
