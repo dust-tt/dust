@@ -47,6 +47,7 @@ import {
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -378,6 +379,7 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const doUpdateScope = useUpdateAgentScope({
     owner,
     agentConfigurationId: assistantId,
@@ -487,12 +489,14 @@ export function AssistantDetails({
                       icon={BarChartIcon}
                       onClick={() => setSelectedTab("performance")}
                     />
-                    <TabsTrigger
-                      value="editors"
-                      label="Editors"
-                      icon={UserGroupIcon}
-                      onClick={() => setSelectedTab("editors")}
-                    />
+                    {featureFlags.includes("agent_discovery") && (
+                      <TabsTrigger
+                        value="editors"
+                        label="Editors"
+                        icon={UserGroupIcon}
+                        onClick={() => setSelectedTab("editors")}
+                      />
+                    )}
                   </TabsList>
                 </Tabs>
               )}
@@ -512,13 +516,14 @@ export function AssistantDetails({
                       owner={owner}
                     />
                   )}
-                  {selectedTab === "editors" && (
-                    <AssistantDetailsEditors
-                      owner={owner}
-                      user={user}
-                      agentConfiguration={agentConfiguration}
-                    />
-                  )}
+                  {featureFlags.includes("agent_discovery") &&
+                    selectedTab === "editors" && (
+                      <AssistantDetailsEditors
+                        owner={owner}
+                        user={user}
+                        agentConfiguration={agentConfiguration}
+                      />
+                    )}
                 </>
               )}
               {isAgentConfigurationError?.error.type ===
