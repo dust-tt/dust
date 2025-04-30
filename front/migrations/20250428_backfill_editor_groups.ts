@@ -1,22 +1,21 @@
 import assert from "assert";
+import _ from "lodash";
 import type { Logger } from "pino";
+import { Op } from "sequelize";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
+import { Workspace } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
-import { Workspace } from "@app/lib/models/workspace";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
-import _ from "lodash";
-import { Op } from "sequelize";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
@@ -144,7 +143,7 @@ const migrateWorkspaceEditorsGroups = async (
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const agents = await (async () => {
     try {
-      return AgentConfiguration.findAll({
+      return await AgentConfiguration.findAll({
         where: {
           workspaceId: workspace.id,
           status: {
@@ -166,20 +165,21 @@ const migrateWorkspaceEditorsGroups = async (
     }
   })();
 
-  logger.info({ length: agents.length }, "Active agents");
   if (agents.length === 0) {
     return;
   }
 
+  const groupedAgentsMap = _.groupBy(agents, "sId");
+
+  const groupedAgents = Object.values(groupedAgentsMap);
+
   logger.info(
-    `Found ${agents.length} agents to migrate on workspace ${workspace.sId}`
+    `Found ${groupedAgents.length} agents to migrate on workspace ${workspace.sId}`
   );
 
-  const groupedAgents = _.groupBy(agents, "sId");
-
   await concurrentExecutor(
-    Object.entries(groupedAgents),
-    ([sId, agentConfigs]) =>
+    groupedAgents,
+    (agentConfigs) =>
       backfillAgentEditorsGroup(auth, agentConfigs, workspace, execute, logger),
     { concurrency: 4 }
   );
