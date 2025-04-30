@@ -56,6 +56,7 @@ import type {
 } from "@app/types";
 import { isBuilder, removeNulls } from "@app/types";
 
+import { AddEditorDropdown } from "../members/AddEditorsDropdown";
 import { MembersList } from "../members/MembersList";
 
 const PERIODS = [
@@ -307,23 +308,21 @@ function AssistantDetailsEditors({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
+
   const isCurrentUserEditor =
     editors.findIndex((u) => u.sId === user.sId) !== -1;
-  const onRemoveMember = async (user: UserTypeWithWorkspaces) => {
-    if (!isCurrentUserEditor) {
-      return;
-    }
 
-    await updateEditors({ removeEditorIds: [user.sId] });
+  const onRemoveMember = async (user: UserTypeWithWorkspaces) => {
+    if (isCurrentUserEditor) {
+      await updateEditors({ removeEditorIds: [user.sId] });
+    }
   };
 
-  if (isEditorsLoading) {
-    return (
-      <div className="flex flex-row items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
+  const onAddEditor = async (user: UserType) => {
+    if (isCurrentUserEditor) {
+      await updateEditors({ addEditorIds: [user.sId] });
+    }
+  };
 
   return (
     <div>
@@ -345,7 +344,14 @@ function AssistantDetailsEditors({
 
       {isCurrentUserEditor && (
         <div className="mt-4">
-          <Button label="Add editors" icon={PlusIcon} onClick={() => {}} />
+          <AddEditorDropdown
+            owner={owner}
+            editors={editors}
+            onAddEditor={onAddEditor}
+            trigger={
+              <Button label="Add editors" icon={PlusIcon} onClick={() => {}} />
+            }
+          />
         </div>
       )}
     </div>

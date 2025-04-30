@@ -8,6 +8,7 @@ import type {
   PatchAgentEditorsRequestBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
 import type { LightWorkspaceType } from "@app/types";
+import { pluralize } from "@app/types";
 
 export function useEditors({
   owner,
@@ -84,9 +85,9 @@ export function useUpdateEditors({
           body.removeEditorIds != null &&
           body.removeEditorIds.length > 0
         ) {
-          title = "Successfully removed editors";
+          title = `Successfully removed editor${pluralize(body.removeEditorIds.length)}`;
         } else {
-          title = "Successfully added editors";
+          title = `Successfully added editor${pluralize(body.addEditorIds?.length ?? 0)}`;
         }
 
         sendNotification({
