@@ -88,8 +88,10 @@ import {
   assertNever,
   compareAgentsForSort,
   Err,
+  isAdmin,
   isBuilder,
   isTimeFrame,
+  isUser,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
   removeNulls,
@@ -932,7 +934,9 @@ export async function createAgentConfiguration(
 
       if (status === "active") {
         assert(
-          isBuilder(owner) || editors.some((e) => e.sId === auth.user()?.sId),
+          isLegacyAllowed(owner, agentConfigurationInstance.scope) ||
+            editors.some((e) => e.sId === auth.user()?.sId) ||
+            isAdmin(owner),
           "Unexpected: current user must be in editor group"
         );
         if (!existingAgent) {
@@ -1786,4 +1790,21 @@ export async function getAgentPermissions(
     default:
       assertNever(agentConfiguration.scope);
   }
+}
+
+/**
+ * TODO(agent discovery, 2025-04-30): Delete this function when removing scopes
+ * "workspace" and "published"
+ */
+export function isLegacyAllowed(
+  owner: WorkspaceType,
+  agentConfigurationScope: AgentConfigurationScope
+): boolean {
+  if (agentConfigurationScope === "workspace" && isBuilder(owner)) {
+    return true;
+  }
+  if (agentConfigurationScope === "published" && isUser(owner)) {
+    return true;
+  }
+  return false;
 }

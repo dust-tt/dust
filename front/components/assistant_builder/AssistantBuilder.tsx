@@ -75,9 +75,11 @@ import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
+  isAdmin,
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { isLegacyAllowed } from "@app/lib/api/assistant/configuration";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -240,7 +242,8 @@ export default function AssistantBuilder({
     }
     if (agentConfigurationId && initialBuilderState) {
       assert(
-        isBuilder(owner) ||
+        isLegacyAllowed(owner, initialBuilderState.scope) ||
+          isAdmin(owner) ||
           initialBuilderState.editors.some((m) => m.sId === user.sId),
         "Unreachable: User is not in editors nor builder"
       );
