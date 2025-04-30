@@ -114,7 +114,7 @@ export function usePokeDataSourceViewContentNodes({
     isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,
-    nodes: data?.nodes || EMPTY_ARRAY,
+    nodes: data?.nodes ?? EMPTY_ARRAY,
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,
