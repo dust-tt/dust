@@ -1,6 +1,6 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
@@ -10,20 +10,10 @@ import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spa
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
 import type {
   AppType,
-  DustAppSecretType,
-  KeyType,
   LightWorkspaceType,
-  ProviderType,
   RunRunType,
-  RunType,
   SpaceType,
 } from "@app/types";
-
-const EMPTY_APPS_ARRAY: AppType[] = [];
-const EMPTY_SECRETS_ARRAY: DustAppSecretType[] = [];
-const EMPTY_RUNS_ARRAY: RunType[] = [];
-const EMPTY_PROVIDERS_ARRAY: ProviderType[] = [];
-const EMPTY_KEYS_ARRAY: KeyType[] = [];
 
 export function useApps({
   disabled,
@@ -45,7 +35,7 @@ export function useApps({
   );
 
   return {
-    apps: data?.apps ?? EMPTY_APPS_ARRAY,
+    apps: data?.apps ?? getEmptyArray(),
     isAppsLoading: !error && !data,
     isAppsError: !!error,
     mutateApps: mutate,
@@ -105,7 +95,7 @@ export function useDustAppSecrets(owner: LightWorkspaceType) {
   );
 
   return {
-    secrets: data?.secrets ?? EMPTY_SECRETS_ARRAY,
+    secrets: data?.secrets ?? getEmptyArray(),
     isSecretsLoading: !error && !data,
     isSecretsError: error,
   };
@@ -127,7 +117,7 @@ export function useRuns(
   const { data, error } = useSWRWithDefaults(url, runsFetcher);
 
   return {
-    runs: data?.runs ?? EMPTY_RUNS_ARRAY,
+    runs: data?.runs ?? getEmptyArray(),
     total: data ? data.total : 0,
     isRunsLoading: !error && !data,
     isRunsError: error,
@@ -152,11 +142,12 @@ export function useProviders({
   );
 
   return {
-    providers: data?.providers ?? EMPTY_PROVIDERS_ARRAY,
+    providers: data?.providers ?? getEmptyArray(),
     isProvidersLoading: !error && !data,
     isProvidersError: error,
   };
 }
+
 export function useKeys(owner: LightWorkspaceType) {
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
   const { data, error, isValidating } = useSWRWithDefaults(
@@ -168,6 +159,6 @@ export function useKeys(owner: LightWorkspaceType) {
     isKeysError: error,
     isKeysLoading: !error && !data,
     isValidating,
-    keys: data?.keys ?? EMPTY_KEYS_ARRAY,
+    keys: data?.keys ?? getEmptyArray(),
   };
 }
