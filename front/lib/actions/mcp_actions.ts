@@ -198,11 +198,9 @@ export async function* tryCallMCPTool(
     mcpClient.setNotificationHandler(
       ProgressNotificationSchema,
       async (notification) => {
-        console.log("got notification", notification);
         // For now, we only handle internal notifications.
         // TODO: Add rate limiting.
         if (isInternalMCPProgressNotificationType(notification)) {
-          console.log("notification", notification);
           emitter.emit(MCP_NOTIFICATION_EVENT_NAME, notification);
         }
       }

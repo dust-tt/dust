@@ -71,12 +71,7 @@ const createServer = (auth: Authenticator): McpServer => {
           "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
         ),
     },
-    async (args, extra) => {
-      console.log("args", args);
-      console.log("extra", extra);
-
-      const { prompt, name, quality, size } = args;
-      const { sendNotification } = extra;
+    async ({ prompt, name, quality, size }, { sendNotification }) => {
       const workspace = auth.getNonNullableWorkspace();
 
       const notification: InternalMCPProgressNotificationType = {
