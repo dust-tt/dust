@@ -805,12 +805,14 @@ function EditorsMembersList({
   }, [setPagination]);
 
   const onRemoveMember = useCallback(
-    (removed: UserType) =>
+    (removed: UserType) => {
       setBuilderState((s) => ({
         ...s,
         editors: s.editors ? s.editors.filter((m) => m.sId != removed.sId) : [],
-      })),
-    [setBuilderState]
+      }));
+      setEdited(true);
+    },
+    [setBuilderState, setEdited]
   );
 
   const members = useMemo(
