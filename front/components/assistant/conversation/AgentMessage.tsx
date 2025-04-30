@@ -321,6 +321,11 @@ export function AgentMessage({
           break;
         }
 
+        // TODO(2025-04-30 MCP) Ignoring this event for now. Require to refactor a bit this component.
+        case "tool_notification": {
+          break;
+        }
+
         case "generation_tokens": {
           switch (event.classification) {
             case "closing_delimiter":
