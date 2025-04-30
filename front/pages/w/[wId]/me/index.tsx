@@ -7,11 +7,11 @@ import { AccountSettings } from "@app/components/me/AccountSettings";
 import { Preferences } from "@app/components/me/Preferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -85,5 +85,5 @@ export default function ProfilePage({
 }
 
 ProfilePage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>
-}
+  return <AppRootLayout>{page}</AppRootLayout>;
+};
