@@ -35,6 +35,7 @@ import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -113,6 +114,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   hasAgentDiscovery: boolean;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -134,12 +136,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
+  const user = auth.getNonNullableUser();
 
   return {
     props: {
       owner,
       subscription,
       hasAgentDiscovery,
+      user: user.toJSON(),
     },
   };
 });
@@ -157,6 +161,7 @@ export default function WorkspaceAssistants({
   owner,
   subscription,
   hasAgentDiscovery,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
@@ -324,6 +329,7 @@ export default function WorkspaceAssistants({
       >
         <AssistantDetails
           owner={owner}
+          user={user}
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
         />

@@ -72,17 +72,37 @@ import type {
   AgentConfigurationScope,
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
+  WorkspaceType,
 } from "@app/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
+  isAdmin,
   isBuilder,
+  isUser,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
+}
+
+/**
+ * TODO(agent discovery, 2025-04-30): Delete this function when removing scopes
+ * "workspace" and "published"
+ */
+function isLegacyAllowed(
+  owner: WorkspaceType,
+  agentConfigurationScope: AgentConfigurationScope
+): boolean {
+  if (agentConfigurationScope === "workspace" && isBuilder(owner)) {
+    return true;
+  }
+  if (agentConfigurationScope === "published" && isUser(owner)) {
+    return true;
+  }
+  return false;
 }
 
 export default function AssistantBuilder({
@@ -242,8 +262,10 @@ export default function AssistantBuilder({
     }
     if (agentConfigurationId && initialBuilderState) {
       assert(
-        initialBuilderState.editors.some((m) => m.sId === user.sId),
-        "Unreachable: User is not in editors"
+        isLegacyAllowed(owner, initialBuilderState.scope) ||
+          isAdmin(owner) ||
+          initialBuilderState.editors.some((m) => m.sId === user.sId),
+        "Unreachable: User is not in editors nor admin"
       );
     }
     if (!agentConfigurationId) {
@@ -256,6 +278,7 @@ export default function AssistantBuilder({
     isUserLoading,
     isUserError,
     user,
+    owner,
     agentConfigurationId,
     initialBuilderState,
   ]);

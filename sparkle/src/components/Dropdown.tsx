@@ -342,24 +342,26 @@ const DropdownMenuItem = React.forwardRef<
         {...props}
         asChild={asChild}
       >
-        <LinkWrapper
-          href={href}
-          target={target}
-          rel={rel}
-          replace={replace}
-          shallow={shallow}
-          prefetch={prefetch}
-        >
-          <ItemWithLabelIconAndDescription
-            label={label}
-            icon={icon}
-            description={description}
-            truncate={truncateText}
-            endComponent={endComponent}
+        <div className="s-h-full s-w-full">
+          <LinkWrapper
+            href={href}
+            target={target}
+            rel={rel}
+            replace={replace}
+            shallow={shallow}
+            prefetch={prefetch}
           >
-            {children}
-          </ItemWithLabelIconAndDescription>
-        </LinkWrapper>
+            <ItemWithLabelIconAndDescription
+              label={label}
+              icon={icon}
+              description={description}
+              truncate={truncateText}
+              endComponent={endComponent}
+            >
+              {children}
+            </ItemWithLabelIconAndDescription>
+          </LinkWrapper>
+        </div>
       </DropdownMenuPrimitive.Item>
     );
   }

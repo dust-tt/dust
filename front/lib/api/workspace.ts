@@ -497,6 +497,12 @@ export async function setWorkspaceRelocated(
   return updateWorkspaceMetadata(owner, { maintenance: "relocation-done" });
 }
 
+export function isWorkspaceRelocationOngoing(
+  owner: LightWorkspaceType
+): boolean {
+  return owner.metadata?.maintenance === "relocation";
+}
+
 export function isWorkspaceRelocationDone(owner: LightWorkspaceType): boolean {
   return owner.metadata?.maintenance === "relocation-done";
 }

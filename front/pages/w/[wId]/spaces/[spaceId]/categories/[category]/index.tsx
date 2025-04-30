@@ -22,6 +22,7 @@ import type {
   DataSourceViewCategoryWithoutApps,
   DataSourceWithConnectorDetailsType,
   SpaceType,
+  UserType,
 } from "@app/types";
 import {
   CONNECTOR_PROVIDERS,
@@ -39,12 +40,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     systemSpace: SpaceType;
     integrations: DataSourceIntegration[];
     registryApps: ActionApp[] | null;
+    user: UserType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const plan = auth.getNonNullablePlan();
   const isAdmin = auth.isAdmin();
+  const user = auth.getNonNullableUser();
 
   const { category, setupWithSuffixConnector, setupWithSuffixSuffix, spaceId } =
     context.query;
@@ -145,6 +148,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       isAdmin,
       isBuilder,
       owner,
+      user: user.toJSON(),
       plan,
       registryApps,
       space: space.toJSON(),
@@ -159,6 +163,7 @@ export default function Space({
   isAdmin,
   canWriteInSpace,
   owner,
+  user,
   plan,
   space,
   systemSpace,
@@ -169,6 +174,7 @@ export default function Space({
   return (
     <SpaceResourcesList
       owner={owner}
+      user={user}
       plan={plan}
       space={space}
       systemSpace={systemSpace}
