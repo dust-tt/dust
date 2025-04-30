@@ -207,17 +207,17 @@ async function getMCPClientConnectionParams(
     isPlatformMCPServerConfiguration(config) ||
     isPlatformMCPToolConfiguration(config)
   ) {
-    const res = await MCPServerViewResource.fetchById(
+    const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
       config.mcpServerViewId
     );
-    if (res.isErr()) {
-      return res;
+    if (!mcpServerView) {
+      return new Err(new Error("MCP server view not found"));
     }
 
     return new Ok({
       type: "mcpServerId",
-      mcpServerId: res.value.mcpServerId,
+      mcpServerId: mcpServerView.mcpServerId,
     });
   }
 

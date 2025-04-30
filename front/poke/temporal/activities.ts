@@ -126,10 +126,10 @@ export async function scrubMCPServerViewActivity({
       includeDeleted: true,
     }
   );
-  if (mcpServerView.isErr()) {
+  if (!mcpServerView) {
     throw new Error("MCPServerView not found.");
   }
-  await mcpServerView.value.delete(auth, { hardDelete: true });
+  await mcpServerView.delete(auth, { hardDelete: true });
 }
 
 export async function scrubSpaceActivity({
