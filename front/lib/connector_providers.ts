@@ -357,8 +357,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       unselected: "none",
     },
     isDeletable: true,
-    guideLink:
-      "https://www.notion.so/dust-tt/Dust-Salesforce-Connection-Admin-Guide-for-beta-testers-1b428599d94180508c17ed762af5ef90",
+    guideLink: "https://docs.dust.tt/docs/salesforce",
   },
   gong: {
     name: "Gong",

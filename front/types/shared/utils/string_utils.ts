@@ -81,6 +81,10 @@ export function redactString(str: string, n: number) {
   return redacted;
 }
 
+export function isRedacted(str: string) {
+  return str.includes("•");
+}
+
 export function truncate(text: string, length: number, omission = "...") {
   return text.length > length
     ? `${text.substring(0, length - omission.length)}${omission}`
@@ -110,7 +114,10 @@ export function asDisplayName(name?: string | null) {
     return "";
   }
 
-  return name.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+  return name
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 // UUID utils.

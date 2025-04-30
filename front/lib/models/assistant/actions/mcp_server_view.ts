@@ -24,6 +24,7 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
 
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
+  declare remoteMCPServer: NonAttribute<RemoteMCPServerModel>;
 }
 MCPServerViewModel.init(
   {
@@ -71,14 +72,20 @@ MCPServerViewModel.init(
       { fields: ["workspaceId", "id"] },
       { fields: ["workspaceId", "vaultId"] },
       {
-        fields: ["workspaceId", "remoteMCPServerId", "vaultId", "deletedAt"],
+        fields: ["workspaceId", "remoteMCPServerId", "vaultId"],
+        where: {
+          deletedAt: null,
+        },
         unique: true,
-        name: "mcp_server_view_workspace_remote_mcp_server_vault_deleted_at_un",
+        name: "mcp_server_views_workspace_remote_mcp_server_vault_active",
       },
       {
-        fields: ["workspaceId", "internalMCPServerId", "vaultId", "deletedAt"],
+        fields: ["workspaceId", "internalMCPServerId", "vaultId"],
+        where: {
+          deletedAt: null,
+        },
         unique: true,
-        name: "mcp_server_view_workspace_internal_mcp_server_vault_deleted_at_",
+        name: "mcp_server_views_workspace_internal_mcp_server_vault_active",
       },
     ],
     hooks: {
@@ -127,12 +134,12 @@ MCPServerViewModel.belongsTo(SpaceModel, {
 });
 
 RemoteMCPServerModel.hasMany(MCPServerViewModel, {
-  as: "remoteMCPServerForView",
+  as: "remoteMCPServer",
   foreignKey: { name: "remoteMCPServerId", allowNull: false },
   onDelete: "RESTRICT",
 });
 MCPServerViewModel.belongsTo(RemoteMCPServerModel, {
-  as: "remoteMCPServerForView",
+  as: "remoteMCPServer",
   foreignKey: { name: "remoteMCPServerId", allowNull: false },
 });
 

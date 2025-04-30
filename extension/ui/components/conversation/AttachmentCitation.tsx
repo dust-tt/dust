@@ -98,7 +98,6 @@ export function AttachmentCitation({
     <Tooltip
       trigger={
         <Citation
-          className="w-40"
           href={attachmentCitation.sourceUrl ?? undefined}
           isLoading={
             attachmentCitation.type === "file" && attachmentCitation.isUploading
@@ -147,18 +146,15 @@ export function contentFragmentToAttachmentCitation(
         <Icon visual={logo} size="md" />
       ) : (
         <DoubleIcon
-          mainIconProps={{
-            visual:
-              nodeType === "table"
-                ? TableIcon
-                : nodeType === "folder"
-                  ? FolderIcon
-                  : DocumentIcon,
-            size: "md",
-          }}
-          secondaryIconProps={{
-            visual: logo,
-          }}
+          mainIcon={
+            nodeType === "table"
+              ? TableIcon
+              : nodeType === "folder"
+                ? FolderIcon
+                : DocumentIcon
+          }
+          secondaryIcon={logo}
+          size="md"
         />
       );
 

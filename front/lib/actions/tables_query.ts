@@ -18,7 +18,7 @@ import {
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { CSVRecord } from "@app/lib/api/csv";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -40,8 +40,8 @@ import type {
 } from "@app/types";
 import { assertNever, Ok, removeNulls } from "@app/types";
 
-// Need a model with at least 32k to run tables query.
-const TABLES_QUERY_MIN_TOKEN = 28_000;
+// Need a model with at least 54k to run tables query.
+const TABLES_QUERY_MIN_TOKEN = 50_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 

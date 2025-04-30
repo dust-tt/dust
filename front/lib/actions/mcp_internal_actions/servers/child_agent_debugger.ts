@@ -1,11 +1,11 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import {
+  CHILD_AGENT_CONFIGURATION_URI_PATTERN,
+  INTERNAL_MIME_TYPES,
+} from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import {
-  CHILD_AGENT_CONFIGURATION_URI_PATTERN,
-  ConfigurableToolInputSchemas,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -14,7 +14,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "child_agent_debugger",
   version: "1.0.0",
   description: "Demo server showing a basic interaction with a child agent.",
-  visual: "https://dust.tt/static/droidavatar/Droid_Purple_2.jpg",
+  icon: "ActionRobotIcon",
   authorization: null,
 };
 
@@ -39,7 +39,7 @@ function createServer(): McpServer {
       query: z.string(),
       childAgent:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
         ],
     },
     async ({ childAgent: { uri } }) => {

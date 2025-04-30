@@ -14,6 +14,7 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import assert from "assert";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, {
@@ -65,6 +66,8 @@ import {
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
+import { useUser } from "@app/lib/swr/user";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AssistantBuilderRightPanelStatus,
@@ -73,7 +76,7 @@ import type {
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GPT_4O_MINI_MODEL_CONFIG,
+  GPT_4_1_MINI_MODEL_CONFIG,
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
@@ -95,14 +98,26 @@ export default function AssistantBuilder({
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
+  const { user, isUserLoading, isUserError } = useUser();
 
   const { killSwitches } = useKillSwitches();
   const { models, reasoningModels } = useModels({ owner });
 
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const isAgentDiscoveryEnabled = featureFlags.includes("agent_discovery");
+
   const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
-  const defaultScope =
-    flow === "workspace_assistants" ? "workspace" : "private";
+  const defaultScope = isAgentDiscoveryEnabled
+    ? flow === "personal_assistants"
+      ? "hidden"
+      : "visible"
+    : flow === "personal_assistants"
+      ? "private"
+      : "workspace";
+
   const [currentTab, setCurrentTab] = useHashParam(
     "selectedTab",
     "instructions"
@@ -143,6 +158,8 @@ export default function AssistantBuilder({
             getDefaultAssistantState().maxStepsPerRun,
           visualizationEnabled: initialBuilderState.visualizationEnabled,
           templateId: initialBuilderState.templateId,
+          tags: initialBuilderState.tags,
+          editors: initialBuilderState.editors,
         }
       : {
           ...getDefaultAssistantState(),
@@ -150,7 +167,7 @@ export default function AssistantBuilder({
           generationSettings: {
             ...getDefaultAssistantState().generationSettings,
             modelSettings: !isUpgraded(plan)
-              ? GPT_4O_MINI_MODEL_CONFIG
+              ? GPT_4_1_MINI_MODEL_CONFIG
               : CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
           },
         }
@@ -159,6 +176,7 @@ export default function AssistantBuilder({
   const [pendingAction, setPendingAction] =
     useState<AssistantBuilderPendingAction>({
       action: null,
+      previousActionName: null,
     });
 
   const {
@@ -179,7 +197,8 @@ export default function AssistantBuilder({
   } = useSlackChannel({
     initialChannels: [],
     workspaceId: owner.sId,
-    isPrivateAssistant: builderState.scope === "private",
+    isPrivateAssistant:
+      builderState.scope === "private" || builderState.scope === "hidden",
     isBuilder: isBuilder(owner),
     isEdited: edited,
     agentConfigurationId,
@@ -214,6 +233,32 @@ export default function AssistantBuilder({
       triggerPreviewButtonAnimation();
     }
   }, [isBuilderStateEmpty]);
+
+  // If agent is created, the user creating it should be added to the builder
+  // editors list. If not, then the user should be in this list.
+  useEffect(() => {
+    if (isUserError || isUserLoading || !user) {
+      return;
+    }
+    if (agentConfigurationId && initialBuilderState) {
+      assert(
+        initialBuilderState.editors.some((m) => m.sId === user.sId),
+        "Unreachable: User is not in editors"
+      );
+    }
+    if (!agentConfigurationId) {
+      setBuilderState((state) => ({
+        ...state,
+        editors: [...state.editors, user],
+      }));
+    }
+  }, [
+    isUserLoading,
+    isUserError,
+    user,
+    agentConfigurationId,
+    initialBuilderState,
+  ]);
 
   const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {
     setRightPanelStatus({
@@ -317,7 +362,7 @@ export default function AssistantBuilder({
           previousActionName: p.action.name,
         });
       } else if (p.type === "clear_pending") {
-        setPendingAction({ action: null });
+        setPendingAction({ action: null, previousActionName: null });
       } else if (p.type === "insert") {
         if (builderState.actions.some((a) => a.name === p.action.name)) {
           return;
@@ -447,30 +492,32 @@ export default function AssistantBuilder({
                         data-gtm-location={tab.dataGtm.location}
                       />
                     ))}
-                    <div className="flex w-full items-center justify-end">
-                      <SharingButton
-                        agentConfigurationId={agentConfigurationId}
-                        initialScope={
-                          initialBuilderState?.scope ?? defaultScope
-                        }
-                        newScope={builderState.scope}
-                        owner={owner}
-                        showSlackIntegration={showSlackIntegration}
-                        slackChannelSelected={selectedSlackChannels || []}
-                        slackDataSource={slackDataSource}
-                        setNewScope={(
-                          scope: Exclude<AgentConfigurationScope, "global">
-                        ) => {
-                          setEdited(scope !== initialBuilderState?.scope);
-                          setBuilderState((state) => ({ ...state, scope }));
-                        }}
-                        baseUrl={baseUrl}
-                        setNewLinkedSlackChannels={(channels) => {
-                          setSelectedSlackChannels(channels);
-                          setEdited(true);
-                        }}
-                      />
-                    </div>
+                    {!isAgentDiscoveryEnabled && (
+                      <div className="flex w-full items-center justify-end">
+                        <SharingButton
+                          agentConfigurationId={agentConfigurationId}
+                          initialScope={
+                            initialBuilderState?.scope ?? defaultScope
+                          }
+                          newScope={builderState.scope}
+                          owner={owner}
+                          showSlackIntegration={showSlackIntegration}
+                          slackChannelSelected={selectedSlackChannels || []}
+                          slackDataSource={slackDataSource}
+                          setNewScope={(
+                            scope: Exclude<AgentConfigurationScope, "global">
+                          ) => {
+                            setEdited(scope !== initialBuilderState?.scope);
+                            setBuilderState((state) => ({ ...state, scope }));
+                          }}
+                          baseUrl={baseUrl}
+                          setNewLinkedSlackChannels={(channels) => {
+                            setSelectedSlackChannels(channels);
+                            setEdited(true);
+                          }}
+                        />
+                      </div>
+                    )}
                   </TabsList>
                 </Tabs>
               </div>
@@ -509,6 +556,8 @@ export default function AssistantBuilder({
                   case "naming":
                     return (
                       <NamingScreen
+                        agentConfigurationId={agentConfigurationId}
+                        baseUrl={baseUrl}
                         owner={owner}
                         builderState={builderState}
                         initialHandle={initialBuilderState?.handle}
@@ -516,6 +565,11 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         assistantHandleError={assistantHandleError}
                         descriptionError={descriptionError}
+                        isAgentDiscoveryEnabled={isAgentDiscoveryEnabled}
+                        slackChannelSelected={selectedSlackChannels || []}
+                        slackDataSource={slackDataSource}
+                        setSelectedSlackChannels={setSelectedSlackChannels}
+                        currentUser={user}
                       />
                     );
                   default:

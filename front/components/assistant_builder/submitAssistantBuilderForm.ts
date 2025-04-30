@@ -97,8 +97,8 @@ export async function submitAssistantBuilderForm({
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
   const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
-  let { handle, description, instructions, avatarUrl } = builderState;
-  if (!handle || !description || !instructions || !avatarUrl) {
+  let { handle, description, instructions, avatarUrl, editors } = builderState;
+  if (!handle || !description || !instructions || !avatarUrl || !editors) {
     if (!isDraft) {
       // Should be unreachable, we keep this for TS
       throw new Error("Form not valid (unreachable)");
@@ -107,6 +107,7 @@ export async function submitAssistantBuilderForm({
       description = description?.trim() || "Preview";
       instructions = instructions?.trim() || "Preview";
       avatarUrl = avatarUrl ?? "";
+      editors = [];
     }
   }
 
@@ -127,10 +128,12 @@ export async function submitAssistantBuilderForm({
         timeFrame = "none";
       }
     } else if (a.type === "PROCESS") {
-      timeFrame = {
-        duration: a.configuration.timeFrame.value,
-        unit: a.configuration.timeFrame.unit,
-      };
+      if (a.configuration.timeFrame) {
+        timeFrame = {
+          duration: a.configuration.timeFrame.value,
+          unit: a.configuration.timeFrame.unit,
+        };
+      }
     }
 
     switch (a.type) {
@@ -201,6 +204,7 @@ export async function submitAssistantBuilderForm({
             tablesConfigurations,
             dataSourceConfigurations,
             childAgentId,
+            reasoningModel: mcpReasoningModel,
             additionalConfiguration,
           },
         } = a;
@@ -217,6 +221,13 @@ export async function submitAssistantBuilderForm({
               ? processTableSelection({ owner, tablesConfigurations })
               : null,
             childAgentId,
+            reasoningModel: mcpReasoningModel
+              ? {
+                  providerId: mcpReasoningModel.providerId,
+                  reasoningEffort: mcpReasoningModel.reasoningEffort ?? null,
+                  modelId: mcpReasoningModel.modelId,
+                }
+              : null,
             additionalConfiguration,
           },
         ];
@@ -253,7 +264,7 @@ export async function submitAssistantBuilderForm({
             ),
             tagsFilter: a.configuration.tagsFilter,
             relativeTimeFrame: timeFrame,
-            schema: a.configuration.schema,
+            jsonSchema: a.configuration.jsonSchema,
           },
         ];
 
@@ -319,6 +330,8 @@ export async function submitAssistantBuilderForm({
       maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,
       templateId: builderState.templateId,
+      tags: builderState.tags,
+      editors: editors.map((e) => ({ sId: e.sId })),
     },
   };
 

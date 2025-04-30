@@ -36,6 +36,8 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("upsert-page"),
     t.literal("upsert-pages"),
     t.literal("update-parents"),
+    t.literal("ignore-near-rate-limit"),
+    t.literal("unignore-near-rate-limit"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -73,6 +75,7 @@ export const GithubCommandSchema = t.type({
     t.literal("sync-issue"),
     t.literal("force-daily-code-sync"),
     t.literal("skip-issue"),
+    t.literal("clear-installation-id"),
   ]),
   args: t.record(
     t.string,
@@ -98,6 +101,7 @@ export const NotionCommandSchema = t.type({
     t.literal("stop-all-garbage-collectors"),
     t.literal("update-parents-fields"),
     t.literal("clear-parents-last-updated-at"),
+    t.literal("update-orphaned-resources-parents"),
   ]),
   args: t.record(
     t.string,

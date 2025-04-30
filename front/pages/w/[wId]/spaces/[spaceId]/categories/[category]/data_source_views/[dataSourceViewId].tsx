@@ -87,7 +87,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       dataSourceView.dataSource.connectorId
     );
     if (connectorRes.isOk()) {
-      connector = connectorRes.value;
+      connector = {
+        ...connectorRes.value,
+        connectionId: null,
+      };
     }
   }
 

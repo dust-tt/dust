@@ -46,6 +46,7 @@ makeScript({}, async ({ execute }) => {
             await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
               workspaceId: w.sId,
               planCode: FREE_TEST_PLAN_CODE,
+              endDate: null,
             });
           }
         })();

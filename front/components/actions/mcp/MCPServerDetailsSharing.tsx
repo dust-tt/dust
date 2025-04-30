@@ -1,6 +1,5 @@
 import {
   DataTable,
-  Label,
   Page,
   ScrollArea,
   SearchInput,
@@ -92,12 +91,14 @@ export function MCPServerDetailsSharing({
   const { addToSpace } = useAddMCPServerToSpace(owner);
   const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
 
-  const rows: RowData[] = availableSpaces.map((space) => ({
-    name: space.name,
-    space: space,
-    serverView: views.find((view) => view.spaceId === space.sId),
-    onClick: () => {},
-  }));
+  const rows: RowData[] = availableSpaces
+    .map((space) => ({
+      name: space.name,
+      space: space,
+      serverView: views.find((view) => view.spaceId === space.sId),
+      onClick: () => {},
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const columns: ColumnDef<RowData, any>[] = [
     {
       id: "name",
@@ -145,16 +146,20 @@ export function MCPServerDetailsSharing({
             }}
           />
         </div>
-        {isRestricted ? (
-          <Label>
-            This action is only available to the users of the selected spaces :
-          </Label>
-        ) : (
-          <Label>
-            Restricted access is disabled. This action is accessible to everyone
-            in the workspace.
-          </Label>
-        )}
+
+        <div className="text-foreground dark:text-foreground-night">
+          {isRestricted ? (
+            <>
+              This action is only available to the users of the selected spaces:
+            </>
+          ) : (
+            <>
+              Restricted access is disabled.
+              <br />
+              This action is accessible to everyone in the workspace.
+            </>
+          )}
+        </div>
       </div>
 
       {isRestricted && (
@@ -162,7 +167,7 @@ export function MCPServerDetailsSharing({
           <div className="flex flex-row gap-2">
             <SearchInput
               name="filter"
-              placeholder="Filter"
+              placeholder="Search a space"
               value={filter}
               onChange={(e) => setFilter(e)}
             />

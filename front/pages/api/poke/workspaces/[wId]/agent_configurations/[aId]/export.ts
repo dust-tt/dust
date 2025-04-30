@@ -42,6 +42,16 @@ async function handler(
     req.query.wId as string
   );
 
+  if (!auth.isDustSuperUser()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "user_not_found",
+        message: "Could not find the user.",
+      },
+    });
+  }
+
   const { aId } = req.query;
   if (typeof aId !== "string") {
     return apiError(req, res, {
@@ -100,6 +110,9 @@ async function handler(
           templateId: agentConfiguration.templateId,
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           visualizationEnabled: agentConfiguration.visualizationEnabled,
+          tags: agentConfiguration.tags,
+          canRead: agentConfiguration.canRead,
+          canEdit: agentConfiguration.canEdit,
         },
       });
       return;

@@ -54,6 +54,7 @@ const API_ERROR_TYPES = [
   "connector_provider_not_supported",
   "connector_credentials_error",
   "agent_configuration_not_found",
+  "agent_group_permission_error",
   "agent_message_error",
   "message_not_found",
   "plan_message_limit_exceeded",
@@ -90,6 +91,7 @@ const API_ERROR_TYPES = [
   "transcripts_configuration_not_found",
   "transcripts_configuration_default_not_allowed",
   "transcripts_configuration_already_exists",
+  "labs_connection_configuration_already_exists",
   // Files:
   "file_not_found",
   "file_too_large",

@@ -687,6 +687,10 @@ export class Authenticator {
     return !!this._key?.isSystem;
   }
 
+  isKey(): boolean {
+    return !!this._key;
+  }
+
   workspace(): WorkspaceType | null {
     return this._workspace
       ? {

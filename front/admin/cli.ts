@@ -1,7 +1,7 @@
 import parseArgs from "minimist";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
 import { default as config } from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -80,6 +80,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
         workspaceId: w.sId,
         planCode: FREE_UPGRADED_PLAN_CODE,
+        endDate: null,
       });
       await workspace("show", args);
       return;
@@ -366,7 +367,10 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
             if (m.role === "function") {
               return {
                 ...m,
-                content: m.content.slice(0, 200) + "...",
+                content:
+                  typeof m.content === "string"
+                    ? m.content.slice(0, 200) + "..."
+                    : m.content,
               };
             }
             return m;

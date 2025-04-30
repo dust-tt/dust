@@ -2,6 +2,8 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
@@ -20,8 +22,7 @@ import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
-
+import type { LightWorkspaceType, OAuthProvider, SpaceType } from "@app/types";
 /**
  * Hook to fetch a specific remote MCP server by ID
  */
@@ -72,14 +73,23 @@ export function useAvailableMCPServers({
     ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp/available`
     : `/api/w/${owner.sId}/mcp/available`;
 
-  const { data, error } = useSWRWithDefaults(url, configFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher);
 
-  const availableMCPServers = useMemo(() => (data ? data.servers : []), [data]);
+  const availableMCPServers = useMemo(
+    () =>
+      data
+        ? data.servers.sort((a, b) =>
+            mcpServersSortingFn({ mcpServer: a }, { mcpServer: b })
+          )
+        : [],
+    [data]
+  );
 
   return {
     availableMCPServers,
     isAvailableMCPServersLoading: !error && !data,
     isAvailableMCPServersError: error,
+    mutateAvailableMCPServers: mutate,
   };
 }
 
@@ -336,9 +346,11 @@ export function useCreateMCPServerConnection({
   const createMCPServerConnection = async ({
     connectionId,
     mcpServerId,
+    provider,
   }: {
     connectionId: string;
     mcpServerId: string;
+    provider: OAuthProvider;
   }): Promise<PostConnectionResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp/connections`, {
       method: "POST",
@@ -348,6 +360,7 @@ export function useCreateMCPServerConnection({
       body: JSON.stringify({
         connectionId,
         mcpServerId,
+        provider,
       }),
     });
     if (response.ok) {
@@ -467,7 +480,7 @@ export function useUpdateMCPServerToolsPermissions({
     permission,
   }: {
     toolName: string;
-    permission: string;
+    permission: RemoteMCPToolStakeLevelType;
   }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
     const response = await fetch(
       `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,

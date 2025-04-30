@@ -1,8 +1,6 @@
 import {
-  Avatar,
   Button,
   Chip,
-  classNames,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -28,7 +26,7 @@ import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetai
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServer,
@@ -145,22 +143,12 @@ export function MCPServerDetails({
               <SheetTitle />
             </VisuallyHidden>
             <div className="flex flex-col items-center gap-3 sm:flex-row">
-              {effectiveMCPServer && (
-                <Avatar visual={getVisual(effectiveMCPServer)} />
-              )}
-              <div className="flex grow flex-col gap-1">
-                <div
-                  className={classNames(
-                    "text-foreground dark:text-foreground-night",
-                    effectiveMCPServer?.name &&
-                      effectiveMCPServer.name.length > 20
-                      ? "heading-md"
-                      : "heading-lg"
-                  )}
-                >
+              {effectiveMCPServer && getAvatar(effectiveMCPServer, "md")}
+              <div className="flex grow flex-col gap-0 pr-9">
+                <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
                   {asDisplayName(effectiveMCPServer?.name)}
                 </div>
-                <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <div className="line-clamp-1 overflow-hidden text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {effectiveMCPServer?.description}
                 </div>
                 {authorization && !connection && (
@@ -205,19 +193,6 @@ export function MCPServerDetails({
                   />
                 </div>
               )}
-              {effectiveMCPServer && !effectiveMCPServer.isDefault && (
-                <div>
-                  <Button
-                    variant="outline"
-                    icon={TrashIcon}
-                    label={"Remove"}
-                    size="sm"
-                    onClick={() => {
-                      setMCPServerToDelete(effectiveMCPServer);
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             <Tabs value={selectedTab}>
@@ -235,6 +210,21 @@ export function MCPServerDetails({
                     icon={LockIcon}
                     onClick={() => setSelectedTab("sharing")}
                   />
+                )}
+
+                {effectiveMCPServer && !effectiveMCPServer.isDefault && (
+                  <>
+                    <div className="grow" />
+                    <Button
+                      variant="outline"
+                      icon={TrashIcon}
+                      label={"Remove"}
+                      size="sm"
+                      onClick={() => {
+                        setMCPServerToDelete(effectiveMCPServer);
+                      }}
+                    />
+                  </>
                 )}
               </TabsList>
             </Tabs>

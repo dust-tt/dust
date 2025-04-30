@@ -214,8 +214,12 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return this.update({ pausedAt: new Date() });
   }
 
+  // Unpausing a connector necessarily means clearing the connector errorType.
   async markAsUnpaused() {
-    return this.update({ pausedAt: null });
+    return this.update({
+      errorType: null,
+      pausedAt: null,
+    });
   }
 
   get isAuthTokenRevoked() {

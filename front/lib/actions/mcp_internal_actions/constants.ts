@@ -8,15 +8,21 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server, but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
-  "image_generator",
-  "file_generator",
+  "image_generation",
+  "file_generation",
   "github",
+  "search",
+  "hubspot",
   "data_sources_debugger",
   "authentication_debugger",
   "tables_debugger",
   "child_agent_debugger",
   "primitive_types_debugger",
-  "web_search_&_browse",
+  "web_search_&_browse_v2",
+  "tables_query",
+  "think",
+  "ask_agent",
+  "reasoning_v2",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -25,6 +31,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: number;
     isDefault: boolean;
     flag: WhitelistableFeature | null;
+    tools_stakes?: Record<string, MCPToolStakeLevelType>;
   }
 > = {
   // Notes:
@@ -38,22 +45,54 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1,
     isDefault: false,
     flag: "mcp_actions",
+    tools_stakes: {
+      get_pull_request: "never_ask",
+    },
   },
-  image_generator: {
+  image_generation: {
     id: 2,
     isDefault: true,
-    flag: "mcp_actions",
+    flag: null,
   },
-  file_generator: {
+  file_generation: {
     id: 3,
     isDefault: true,
     flag: "mcp_actions",
+  },
+  tables_query: {
+    id: 4,
+    isDefault: true,
+    flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
+  },
+  "web_search_&_browse_v2": {
+    id: 5,
+    isDefault: true,
+    flag: "mcp_actions",
+  },
+  think: {
+    id: 6,
+    isDefault: true,
+    flag: "experimental_mcp_actions",
+  },
+  hubspot: {
+    id: 7,
+    isDefault: false,
+    flag: "experimental_mcp_actions",
+    tools_stakes: {
+      get_object_properties: "never_ask",
+      get_objects_by_properties: "low",
+      get_object_by_email: "low",
+      get_object_by_id: "low",
+      count_objects_by_properties: "low",
+      create_object: "high",
+      update_object: "high",
+    },
   },
 
   // Dev
   data_sources_debugger: {
     id: 1000,
-    isDefault: true,
+    isDefault: false,
     flag: "dev_mcp_actions",
   },
   child_agent_debugger: {
@@ -65,6 +104,9 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1002,
     isDefault: false,
     flag: "dev_mcp_actions",
+    tools_stakes: {
+      hello_world: "never_ask",
+    },
   },
   tables_debugger: {
     id: 1003,
@@ -76,18 +118,20 @@ export const INTERNAL_MCP_SERVERS: Record<
     isDefault: false,
     flag: "dev_mcp_actions",
   },
-  "web_search_&_browse": {
-    id: 1005,
+  search: {
+    id: 1006,
     isDefault: true,
     flag: "dev_mcp_actions",
   },
-};
-
-export const INTERNAL_TOOLS_STAKE_LEVEL: Partial<
-  Record<InternalMCPServerNameType, Record<string, MCPToolStakeLevelType>>
-> = {
-  authentication_debugger: {
-    hello_world: "low",
+  reasoning_v2: {
+    id: 1007,
+    isDefault: true,
+    flag: "dev_mcp_actions",
+  },
+  ask_agent: {
+    id: 1008,
+    isDefault: false,
+    flag: "experimental_mcp_actions",
   },
 };
 
@@ -113,7 +157,7 @@ export const getInternalMCPServerNameAndWorkspaceId = (
 ): Result<
   {
     name: InternalMCPServerNameType;
-    workspaceId: ModelId;
+    workspaceModelId: ModelId;
   },
   Error
 > => {
@@ -133,7 +177,7 @@ export const getInternalMCPServerNameAndWorkspaceId = (
 
   // Swap keys and values.
   const details = Object.entries(INTERNAL_MCP_SERVERS).find(
-    ([, internalMCPServer]) => internalMCPServer.id === sIdParts.resourceId
+    ([, internalMCPServer]) => internalMCPServer.id === sIdParts.resourceModelId
   );
 
   if (!details) {
@@ -154,7 +198,7 @@ export const getInternalMCPServerNameAndWorkspaceId = (
 
   return new Ok({
     name,
-    workspaceId: sIdParts.workspaceId,
+    workspaceModelId: sIdParts.workspaceModelId,
   });
 };
 
@@ -166,12 +210,12 @@ export const isInternalMCPServerName = (
   );
 
 export const isValidInternalMCPServerId = (
-  workspaceId: ModelId,
+  workspaceModelId: ModelId,
   sId: string
 ): boolean => {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
   if (r.isOk()) {
-    return r.value.workspaceId === workspaceId;
+    return r.value.workspaceModelId === workspaceModelId;
   }
 
   return false;

@@ -85,8 +85,12 @@ export default function LandingLayout({
               size="sm"
               label="Sign in"
               icon={LoginIcon}
-              onClick={() => {
-                window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                if (e.shiftKey) {
+                  window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
+                } else {
+                  window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
+                }
               }}
             />
           </div>

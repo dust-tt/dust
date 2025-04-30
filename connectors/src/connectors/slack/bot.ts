@@ -27,6 +27,7 @@ import {
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import {
+  isSlackWebAPIPlatformError,
   SlackExternalUserError,
   SlackMessageError,
 } from "@connectors/connectors/slack/lib/errors";
@@ -128,6 +129,10 @@ export async function botAnswerMessage(
       },
       "Unexpected exception answering to Slack Chat Bot message"
     );
+    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
+      // This means that the message has been deleted, so we don't need to send an error message.
+      return new Ok(undefined);
+    }
     const slackClient = await getSlackClient(connector.id);
     try {
       await slackClient.chat.postMessage({
@@ -294,12 +299,34 @@ async function answerMessage(
   const slackClient = await getSlackClient(connector.id);
 
   let slackUserInfo: SlackUserInfo | null = null;
+
   // The order is important here because we want to prioritize the user id over the bot id.
   // When a bot sends a message "as a user", we want to honor the user and not the bot.
   if (slackUserId) {
     slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
   } else if (slackBotId) {
-    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+    try {
+      slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+    } catch (e) {
+      if (isSlackWebAPIPlatformError(e)) {
+        if (e.data.error === "bot_not_found") {
+          // We received a bot message from a bot that is not accessible to us. We log and ignore
+          // the message.
+          logger.warn(
+            {
+              error: e,
+              connectorId: connector.id,
+              slackUserId,
+              slackBotId,
+              slackTeamId,
+            },
+            "Received bot_not_found"
+          );
+          return new Ok(undefined);
+        }
+      }
+      throw e;
+    }
   }
 
   if (!slackUserInfo) {

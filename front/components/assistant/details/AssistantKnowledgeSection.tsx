@@ -11,6 +11,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   SparklesIcon,
+  Spinner,
   TableIcon,
   Tree,
 } from "@dust-tt/sparkle";
@@ -61,9 +62,12 @@ export function AssistantKnowledgeSection({
   agentConfiguration,
   owner,
 }: AssistantKnowledgeSectionProps) {
-  const { dataSourceViews } = useDataSourceViews(owner, {
-    disabled: agentConfiguration.actions.length === 0,
-  });
+  const { dataSourceViews, isDataSourceViewsLoading } = useDataSourceViews(
+    owner,
+    {
+      disabled: agentConfiguration.actions.length === 0,
+    }
+  );
 
   const categorizedActions = useMemo(() => {
     const initial = {
@@ -167,60 +171,61 @@ export function AssistantKnowledgeSection({
     return acc;
   }, [categorizedActions.queryTables, dataSourceViews]);
 
-  if (
-    Object.values(retrievalByDataSources).length === 0 &&
-    Object.values(queryTableByDataSources).length === 0
-  ) {
+  const hasDocuments = Object.values(retrievalByDataSources).length > 0;
+  const hasTables = Object.values(queryTableByDataSources).length > 0;
+
+  if (!hasDocuments && !hasTables) {
     return null;
   }
+
+  const dataSourcesDocuments = Object.values(retrievalByDataSources).map(
+    (dataSources, index) => (
+      <div className="flex flex-col gap-2" key={`retrieval-${index}`}>
+        <DataSourceViewsSection
+          owner={owner}
+          dataSourceViews={dataSourceViews}
+          isLoading={isDataSourceViewsLoading}
+          dataSourceConfigurations={[dataSources]}
+          viewType="document"
+        />
+      </div>
+    )
+  );
+
+  const dataSourcesTables = Object.values(queryTableByDataSources).map(
+    (dataSources, index) => (
+      <div className="flex flex-col gap-2" key={`query-tables-${index}`}>
+        <DataSourceViewsSection
+          owner={owner}
+          dataSourceViews={dataSourceViews}
+          isLoading={isDataSourceViewsLoading}
+          dataSourceConfigurations={[dataSources]}
+          viewType="table"
+        />
+      </div>
+    )
+  );
 
   return (
     <div className="flex flex-col gap-5">
       <div className="heading-lg text-foreground dark:text-foreground-night">
         Knowledge
       </div>
-      <div className="rounded-xl border bg-muted-background p-2 dark:bg-muted-background-night">
-        <Tree>
-          {Object.values(retrievalByDataSources).length > 0 && (
-            <Tree.Item label="Documents" visual={DocumentIcon}>
-              {Object.values(retrievalByDataSources).map(
-                (dataSources, index) => (
-                  <div
-                    className="flex flex-col gap-2"
-                    key={`retrieval-${index}`}
-                  >
-                    <DataSourceViewsSection
-                      owner={owner}
-                      dataSourceViews={dataSourceViews}
-                      dataSourceConfigurations={[dataSources]}
-                      viewType="document"
-                    />
-                  </div>
-                )
-              )}
-            </Tree.Item>
-          )}
-          {Object.values(queryTableByDataSources).length > 0 && (
-            <Tree.Item label="Tables" visual={TableIcon}>
-              {Object.values(queryTableByDataSources).map(
-                (dataSources, index) => (
-                  <div
-                    className="flex flex-col gap-2"
-                    key={`query-tables-${index}`}
-                  >
-                    <DataSourceViewsSection
-                      owner={owner}
-                      dataSourceViews={dataSourceViews}
-                      dataSourceConfigurations={[dataSources]}
-                      viewType="table"
-                    />
-                  </div>
-                )
-              )}
-            </Tree.Item>
-          )}
+      {hasDocuments && hasTables ? (
+        <Tree isBoxed>
+          <Tree.Item label="Documents" visual={DocumentIcon}>
+            {dataSourcesDocuments}
+          </Tree.Item>
+          <Tree.Item label="Tables" visual={TableIcon}>
+            {dataSourcesTables}
+          </Tree.Item>
         </Tree>
-      </div>
+      ) : (
+        <Tree isBoxed>
+          {hasDocuments && dataSourcesDocuments}
+          {hasTables && dataSourcesTables}
+        </Tree>
+      )}
     </div>
   );
 }
@@ -268,6 +273,7 @@ interface DataSourceViewsSectionProps {
   dataSourceViews: DataSourceViewType[];
   dataSourceConfigurations: DataSourceConfiguration[];
   viewType: ContentNodesViewType;
+  isLoading: boolean;
 }
 
 function DataSourceViewsSection({
@@ -275,6 +281,7 @@ function DataSourceViewsSection({
   dataSourceViews,
   dataSourceConfigurations,
   viewType,
+  isLoading,
 }: DataSourceViewsSectionProps) {
   const router = useRouter();
   const { isDark } = useTheme();
@@ -287,75 +294,81 @@ function DataSourceViewsSection({
         owner={owner}
         dataSourceView={dataSourceViewToDisplay}
       />
-      <Tree>
-        {dataSourceConfigurations.map((dsConfig) => {
-          const dataSourceView = dataSourceViews.find(
-            (dsv) => dsv.sId === dsConfig.dataSourceViewId
-          );
+      {isLoading ? (
+        <Spinner variant="sm" />
+      ) : (
+        <Tree>
+          {dataSourceConfigurations.map((dsConfig) => {
+            const dataSourceView = dataSourceViews.find(
+              (dsv) => dsv.sId === dsConfig.dataSourceViewId
+            );
 
-          // We won't throw here if dataSourceView is null to avoid crashing the UI but this is not
-          // supposed to happen as we delete the configurations when data sources are deleted.
-          let dsLogo = null;
-          let dataSourceName = "Deleted data source";
+            // We won't throw here if dataSourceView is null to avoid crashing the UI but this is not
+            // supposed to happen as we delete the configurations when data sources are deleted.
+            let dsLogo = null;
+            let dataSourceName = "Deleted data source";
 
-          if (dataSourceView) {
-            const { dataSource } = dataSourceView;
-            dsLogo = getConnectorProviderLogoWithFallback({
-              provider: dataSource.connectorProvider,
-              isDark,
-            });
-            dataSourceName = getDisplayNameForDataSource(dataSource);
-          }
+            if (dataSourceView) {
+              const { dataSource } = dataSourceView;
+              dsLogo = getConnectorProviderLogoWithFallback({
+                provider: dataSource.connectorProvider,
+                isDark,
+              });
+              dataSourceName = getDisplayNameForDataSource(dataSource);
+            }
 
-          const isAllSelected = dsConfig.filter.parents === null;
+            const isAllSelected = dsConfig.filter.parents === null;
 
-          return (
-            <Tree.Item
-              key={`${dsConfig.dataSourceViewId}-${JSON.stringify(dsConfig.filter)}`}
-              type={canBeExpanded(dataSourceView?.dataSource) ? "node" : "leaf"}
-              label={dataSourceName}
-              visual={dsLogo ?? FolderIcon}
-              className="whitespace-nowrap"
-              actions={
-                <RetrievalActionTagsFilterPopover
-                  dustAPIDataSourceId={dsConfig.dataSourceViewId}
-                  tagsFilter={dsConfig.filter.tags ?? null}
-                  connectorProvider={
-                    dataSourceView?.dataSource.connectorProvider ?? null
-                  }
-                />
-              }
-              areActionsFading={false}
-            >
-              {dataSourceView && isAllSelected && (
-                <DataSourceViewPermissionTree
-                  owner={owner}
-                  dataSourceView={dataSourceView}
-                  onDocumentViewClick={(documentId: string) => {
-                    setDataSourceViewToDisplay(dataSourceView);
-                    setQueryParam(router, DocumentViewRawContentKey, "true");
-                    setQueryParam(router, "documentId", documentId);
-                  }}
-                  viewType={viewType}
-                />
-              )}
-              {dataSourceView && !isAllSelected && (
-                <DataSourceViewSelectedNodes
-                  owner={owner}
-                  dataSourceView={dataSourceView}
-                  dataSourceConfiguration={dsConfig}
-                  setDataSourceViewToDisplay={setDataSourceViewToDisplay}
-                  setDocumentToDisplay={(documentId: string) => {
-                    setQueryParam(router, DocumentViewRawContentKey, "true");
-                    setQueryParam(router, "documentId", documentId);
-                  }}
-                  viewType={viewType}
-                />
-              )}
-            </Tree.Item>
-          );
-        })}
-      </Tree>
+            return (
+              <Tree.Item
+                key={`${dsConfig.dataSourceViewId}-${JSON.stringify(dsConfig.filter)}`}
+                type={
+                  canBeExpanded(dataSourceView?.dataSource) ? "node" : "leaf"
+                }
+                label={dataSourceName}
+                visual={dsLogo ?? FolderIcon}
+                className="whitespace-nowrap"
+                actions={
+                  <RetrievalActionTagsFilterPopover
+                    dustAPIDataSourceId={dsConfig.dataSourceViewId}
+                    tagsFilter={dsConfig.filter.tags ?? null}
+                    connectorProvider={
+                      dataSourceView?.dataSource.connectorProvider ?? null
+                    }
+                  />
+                }
+                areActionsFading={false}
+              >
+                {dataSourceView && isAllSelected && (
+                  <DataSourceViewPermissionTree
+                    owner={owner}
+                    dataSourceView={dataSourceView}
+                    onDocumentViewClick={(documentId: string) => {
+                      setDataSourceViewToDisplay(dataSourceView);
+                      setQueryParam(router, DocumentViewRawContentKey, "true");
+                      setQueryParam(router, "documentId", documentId);
+                    }}
+                    viewType={viewType}
+                  />
+                )}
+                {dataSourceView && !isAllSelected && (
+                  <DataSourceViewSelectedNodes
+                    owner={owner}
+                    dataSourceView={dataSourceView}
+                    dataSourceConfiguration={dsConfig}
+                    setDataSourceViewToDisplay={setDataSourceViewToDisplay}
+                    setDocumentToDisplay={(documentId: string) => {
+                      setQueryParam(router, DocumentViewRawContentKey, "true");
+                      setQueryParam(router, "documentId", documentId);
+                    }}
+                    viewType={viewType}
+                  />
+                )}
+              </Tree.Item>
+            );
+          })}
+        </Tree>
+      )}
     </div>
   );
 }

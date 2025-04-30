@@ -39,6 +39,7 @@ import {
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceSearch } from "@app/lib/swr/spaces";
 import type {
+  ContentNode,
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
@@ -56,6 +57,7 @@ import {
 } from "@app/types";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
+const ITEMS_PER_PAGE = 50;
 
 const getUseResourceHook =
   (
@@ -65,24 +67,76 @@ const getUseResourceHook =
     useContentNodes: typeof useDataSourceViewContentNodes
   ) =>
   (parentId: string | null) => {
+    // State for accumulating nodes for "load more".
+    const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+    const [accumulatedNodes, setAccumulatedNodes] = useState<ContentNode[]>([]);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
     const {
-      nodes,
-      isNodesLoading,
+      nodes: fetchedNodes,
+      isNodesLoading: isInitialNodesLoading,
       isNodesError,
       totalNodesCountIsAccurate,
       totalNodesCount,
+      nextPageCursor,
     } = useContentNodes({
       owner,
       dataSourceView,
       parentId: parentId ?? undefined,
       viewType,
+      pagination: { cursor: currentCursor, limit: ITEMS_PER_PAGE },
     });
+
+    useEffect(() => {
+      // Skip if no nodes were fetched yet
+      if (!fetchedNodes || fetchedNodes.length === 0) {
+        return;
+      }
+
+      if (currentCursor === null) {
+        // Initial load - just set the nodes directly
+        setAccumulatedNodes(fetchedNodes);
+        return;
+      }
+
+      if (isLoadingMore) {
+        // Load more case - append new nodes to existing ones
+        setAccumulatedNodes((prev) => {
+          // Dedup new nodes.
+          const existingIds = new Set(prev.map((node) => node.internalId));
+          const newNodes = fetchedNodes.filter(
+            (node) => !existingIds.has(node.internalId)
+          );
+          if (newNodes.length === 0) {
+            // Avoid re-rendering if no new nodes are added.
+            return prev;
+          }
+
+          return [...prev, ...newNodes];
+        });
+
+        setIsLoadingMore(false);
+      }
+    }, [fetchedNodes, currentCursor, isLoadingMore]);
+
+    // Function to load more items
+    const loadMore = useCallback(() => {
+      if (nextPageCursor && !isLoadingMore) {
+        setIsLoadingMore(true);
+        setCurrentCursor(nextPageCursor);
+      }
+    }, [nextPageCursor, isLoadingMore]);
+
     return {
-      resources: nodes,
+      resources: accumulatedNodes,
       totalResourceCount: totalNodesCount,
-      isResourcesLoading: isNodesLoading,
+      isResourcesLoading:
+        isInitialNodesLoading || (isLoadingMore && currentCursor === null),
       isResourcesError: isNodesError,
       isResourcesTruncated: !totalNodesCountIsAccurate,
+      nextPageCursor,
+      loadMore,
+      isLoadingMore,
     };
   };
 
@@ -103,17 +157,27 @@ const getNodesFromConfig = (
     {}
   );
 
-const updateSelection = (
-  item: DataSourceViewContentNode,
-  prevState: DataSourceViewSelectionConfigurations,
-  selectionMode: "checkbox" | "radio" = "checkbox"
-): DataSourceViewSelectionConfigurations => {
+const updateSelection = ({
+  item,
+  prevState,
+  selectionMode = "checkbox",
+  onlyAdd = false,
+}: {
+  item: DataSourceViewContentNode;
+  prevState: DataSourceViewSelectionConfigurations;
+  selectionMode: "checkbox" | "radio";
+  onlyAdd?: boolean;
+}): DataSourceViewSelectionConfigurations => {
   const { dataSourceView: dsv } = item;
   const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
 
   const exists = prevConfig.selectedResources.some(
     (r) => r.internalId === item.internalId
   );
+
+  if (onlyAdd && exists) {
+    return _.cloneDeep(prevState);
+  }
 
   if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
     return {
@@ -320,7 +384,13 @@ export function DataSourceViewsSelector({
     // Update all selections in a single state update.
     setSelectionConfigurations((prevState) => {
       const newState = searchResultNodes.reduce(
-        (acc, item) => updateSelection(item, acc, selectionMode),
+        (acc, item) =>
+          updateSelection({
+            item,
+            prevState: acc,
+            selectionMode,
+            onlyAdd: true,
+          }),
         prevState
       );
       return newState;
@@ -355,7 +425,11 @@ export function DataSourceViewsSelector({
           setSearchResult(item);
           setSearchSpaceText("");
           setSelectionConfigurations((prevState) =>
-            updateSelection(item, prevState, selectionMode)
+            updateSelection({
+              item,
+              prevState,
+              selectionMode,
+            })
           );
         }}
         displayItemCount={useCase === "assistantBuilder"}
@@ -372,7 +446,11 @@ export function DataSourceViewsSelector({
                 setSearchResult(item);
                 setSearchSpaceText("");
                 setSelectionConfigurations((prevState) =>
-                  updateSelection(item, prevState, selectionMode)
+                  updateSelection({
+                    item,
+                    prevState,
+                    selectionMode,
+                  })
                 );
               }}
             >

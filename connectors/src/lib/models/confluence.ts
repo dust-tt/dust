@@ -11,6 +11,7 @@ export class ConfluenceConfiguration extends ConnectorBaseModel<ConfluenceConfig
   declare cloudId: string;
   declare url: string;
   declare userAccountId: string;
+  declare ignoreNearRateLimit: boolean;
 }
 ConfluenceConfiguration.init(
   {
@@ -35,6 +36,11 @@ ConfluenceConfiguration.init(
     userAccountId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    ignoreNearRateLimit: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
     },
   },
   {

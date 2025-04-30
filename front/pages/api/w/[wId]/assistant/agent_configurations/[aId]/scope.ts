@@ -11,6 +11,7 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentStatus, WithAPIErrorResponse } from "@app/types";
@@ -20,6 +21,8 @@ export const PostAgentScopeRequestBodySchema = t.type({
     t.literal("workspace"),
     t.literal("published"),
     t.literal("private"),
+    t.literal("hidden"),
+    t.literal("visible"),
   ]),
 });
 
@@ -32,16 +35,13 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(
+  const agent = await getAgentConfiguration(
     auth,
     req.query.aId as string,
     "full"
   );
-  if (
-    !assistant ||
-    (assistant.scope === "private" &&
-      assistant.versionAuthorId !== auth.user()?.id)
-  ) {
+
+  if (!agent || !agent.canRead) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -65,18 +65,19 @@ async function handler(
         });
       }
 
-      if (assistant.scope === "workspace" && !auth.isBuilder()) {
+      if (!agent.canEdit) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "app_auth_error",
-            message: "Only builders can modify workspace agents.",
+            type: "agent_configuration_not_found",
+            message: "Only editors can modify agents.",
           },
         });
       }
 
+      //TODO(agent-discovery): Remove this once old scopes are removed
       if (
-        assistant.scope !== "private" &&
+        agent.scope !== "private" &&
         bodyValidation.right.scope === "private"
       ) {
         // switching an agent back to private: the caller must be a user
@@ -92,14 +93,35 @@ async function handler(
         }
       }
 
+      // This won't stay long since Agent Discovery initiative removes the scope
+      // endpoint.
+      const groupRes = await GroupResource.fetchByAgentConfiguration(
+        auth,
+        agent
+      );
+
+      if (groupRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "assistant_saving_error",
+            message: `Error fetching group for agent ${agent.sId}: ${groupRes.error}`,
+          },
+        });
+      }
+
+      const group = groupRes.value;
+
+      const editors = await group.getActiveMembers(auth);
+
       // Cast the assistant to ensure TypeScript understands the correct types.
       const typedAssistant = {
-        ...assistant,
+        ...agent,
         scope: bodyValidation.right.scope,
-        status: assistant.status as AgentStatus,
-        templateId: assistant.templateId,
+        status: agent.status as AgentStatus,
+        templateId: agent.templateId,
         // Ensure actions are correctly typed.
-        actions: assistant.actions.map((action) => {
+        actions: agent.actions.map((action) => {
           // If MCP actions are present, they must be platform MCP actions.
           if (isMCPServerConfiguration(action)) {
             assert(
@@ -110,12 +132,13 @@ async function handler(
 
           return action;
         }),
+        editors,
       };
 
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
         assistant: typedAssistant,
-        agentConfigurationId: assistant.sId,
+        agentConfigurationId: agent.sId,
       });
 
       if (agentConfigurationRes.isErr()) {

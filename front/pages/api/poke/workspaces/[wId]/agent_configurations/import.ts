@@ -25,6 +25,17 @@ async function handler(
     session,
     req.query.wId as string
   );
+
+  if (!auth.isDustSuperUser()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "user_not_found",
+        message: "Could not find the user.",
+      },
+    });
+  }
+
   if (req.method !== "POST") {
     return apiError(req, res, {
       status_code: 405,

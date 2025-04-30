@@ -60,11 +60,7 @@ async function handler(
     "light"
   );
 
-  if (
-    !assistant ||
-    (assistant.scope === "private" &&
-      assistant.versionAuthorId !== auth.user()?.id)
-  ) {
+  if (!assistant || !assistant.canRead) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -74,12 +70,12 @@ async function handler(
     });
   }
 
-  if (assistant.scope === "workspace" && !auth.isBuilder()) {
+  if (!assistant.canEdit) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
         type: "app_auth_error",
-        message: "Only builders can get agent analytics.",
+        message: "Only editors can get agent analytics.",
       },
     });
   }

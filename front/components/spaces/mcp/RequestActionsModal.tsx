@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -20,12 +19,13 @@ import {
 import _ from "lodash";
 import { useState } from "react";
 
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { sendRequestActionsAccessEmail } from "@app/lib/email";
 import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_server_views";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 interface RequestActionsModal {
   owner: LightWorkspaceType;
@@ -89,12 +89,12 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button label="Request Action" icon={PlusIcon} />
+        <Button label="Request Tool" icon={PlusIcon} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
-            Requesting Access to {selectedMcpServer?.server.name}
+            Requesting Access to {asDisplayName(selectedMcpServer?.server.name)}
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
@@ -106,7 +106,8 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                 {!isLoading && serverViews.length === 0 && (
                   <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                     <p>
-                      You have no actions set up. Ask an admin to set one up.
+                      There are no extra tools set up that you can request
+                      access to. Ask an admin to set one up.
                     </p>
                   </label>
                 )}
@@ -114,24 +115,21 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                 {serverViews.length >= 1 && (
                   <>
                     <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
-                      <p>Which actions you want to get access to?</p>
+                      <p>Which tools you want to get access to?</p>
                     </label>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         {selectedMcpServer ? (
                           <Button
                             variant="outline"
-                            label={selectedMcpServer.server.name}
-                            icon={() => (
-                              <Avatar
-                                visual={getVisual(selectedMcpServer.server)}
-                                size="xs"
-                              />
-                            )}
+                            label={asDisplayName(selectedMcpServer.server.name)}
+                            icon={() =>
+                              getAvatar(selectedMcpServer.server, "xs")
+                            }
                           />
                         ) : (
                           <Button
-                            label="Pick your MCP Server"
+                            label="Pick Tools"
                             variant="outline"
                             size="sm"
                             isSelect
@@ -142,10 +140,8 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                         {serverViews.map((v) => (
                           <DropdownMenuItem
                             key={v.id}
-                            label={v.server.name}
-                            icon={() => (
-                              <Avatar visual={getVisual(v.server)} size="xs" />
-                            )}
+                            label={asDisplayName(v.server.name)}
+                            icon={() => getAvatar(v.server, "xs")}
                             onClick={() => setSelectedMcpServer(v)}
                           />
                         ))}
@@ -161,8 +157,9 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                     {_.capitalize(
                       selectedMcpServer.editedByUser?.fullName ?? ""
                     )}{" "}
-                    is the administrator for the {selectedMcpServer.server.name}{" "}
-                    action within Dust. Send an email to{" "}
+                    is the administrator for the{" "}
+                    {asDisplayName(selectedMcpServer.server.name)} tool within
+                    Dust. Send an email to{" "}
                     {_.capitalize(
                       selectedMcpServer.editedByUser?.fullName ?? ""
                     )}

@@ -45,6 +45,7 @@ export const useMCPConnectionManagement = ({
       return createMCPServerConnection({
         connectionId: cRes.value.connection_id,
         mcpServerId,
+        provider: authorizationInfo.provider,
       });
     },
     [owner, sendNotification, createMCPServerConnection]

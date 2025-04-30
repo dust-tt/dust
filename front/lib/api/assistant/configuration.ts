@@ -18,11 +18,13 @@ import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configurati
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
@@ -57,12 +59,19 @@ import {
   AgentConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -70,7 +79,9 @@ import type {
   AgentsGetViewType,
   AgentStatus,
   LightAgentConfigurationType,
+  ModelId,
   Result,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -82,6 +93,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -201,6 +213,7 @@ function determineGlobalAgentIdsToFetch(
       return []; // fetch no global agents
     case "global":
     case "list":
+    case "manage":
     case "all":
     case "favorites":
     case "admin_internal":
@@ -232,6 +245,7 @@ async function fetchGlobalAgentConfigurationForView(
 
   if (
     agentsGetView === "global" ||
+    agentsGetView === "manage" ||
     (typeof agentsGetView === "object" && "agentIds" in agentsGetView)
   ) {
     // All global agents in global and agent views.
@@ -258,12 +272,14 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
   {
     agentPrefix,
     agentsGetView,
+    agentIdsForUserAsEditor,
     limit,
     owner,
     sort,
   }: {
     agentPrefix?: string;
     agentsGetView: Exclude<AgentsGetViewType, "global">;
+    agentIdsForUserAsEditor: ModelId[];
     limit?: number;
     owner: WorkspaceType;
     sort?: SortStrategyType;
@@ -325,11 +341,14 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         const maxIds = result.map(
           (entry) => (entry as unknown as { maxId: number }).maxId
         );
+        const filteredIds = maxIds.filter(
+          (id) => agentIdsForUserAsEditor.includes(id) || auth.isAdmin()
+        );
 
         return AgentConfiguration.findAll({
           where: {
             id: {
-              [Op.in]: maxIds,
+              [Op.in]: filteredIds,
             },
             status: "archived",
           },
@@ -339,7 +358,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     case "all":
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
-        where: baseConditionsAndScopesIn(["workspace", "published"]),
+        where: baseConditionsAndScopesIn(["workspace", "published", "visible"]),
       });
 
     case "workspace":
@@ -355,30 +374,23 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
 
     case "list":
+    case "manage":
       const user = auth.user();
-
-      const sharedAssistants = await AgentConfiguration.findAll({
+      return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
         where: {
           ...baseWhereConditions,
-          scope: { [Op.in]: ["workspace", "published"] },
+          [Op.or]: [
+            { scope: { [Op.in]: ["workspace", "published", "visible"] } },
+            ...(user
+              ? [
+                  { authorId: user.id, scope: "private" },
+                  { id: { [Op.in]: agentIdsForUserAsEditor }, scope: "hidden" },
+                ]
+              : []),
+          ],
         },
       });
-      if (!user) {
-        return sharedAssistants;
-      }
-
-      const userAssistants = await AgentConfiguration.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: {
-          ...baseWhereConditions,
-          authorId: user.id,
-          scope: "private",
-        },
-      });
-
-      return [...sharedAssistants, ...userAssistants];
-
     case "favorites":
       const userId = auth.user()?.id;
       if (!userId) {
@@ -462,10 +474,24 @@ async function fetchWorkspaceAgentConfigurationsForView(
 ) {
   const user = auth.user();
 
+  const agentIdsForGroups = user
+    ? await GroupResource.findAgentIdsForGroups(auth, [
+        ...auth
+          .groups()
+          .filter((g) => g.kind === "agent_editors")
+          .map((g) => g.id),
+      ])
+    : [];
+
+  const agentIdsForUserAsEditor = agentIdsForGroups.map(
+    (g) => g.agentConfigurationId
+  );
+
   const agentConfigurations =
     await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
       agentPrefix,
       agentsGetView,
+      agentIdsForUserAsEditor,
       limit,
       owner,
       sort,
@@ -484,6 +510,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     reasoningActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
+    tagsPerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
     fetchAgentProcessActionConfigurations({ configurationIds, variant }),
@@ -496,6 +523,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
+    TagResource.listForAgents(auth, configurationIds),
   ]);
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -558,6 +586,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
       model.reasoningEffort = agent.reasoningEffort;
     }
 
+    const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
+
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -583,7 +613,21 @@ async function fetchWorkspaceAgentConfigurationsForView(
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
+      tags: tags
+        .map((t) => t.toJSON())
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      canRead: false,
+      canEdit: false,
     };
+
+    const { canRead, canEdit } = await getAgentPermissions(
+      auth,
+      agentConfigurationType,
+      agentIdsForUserAsEditor
+    );
+
+    agentConfigurationType.canRead = canRead;
+    agentConfigurationType.canEdit = canEdit;
 
     agentConfigurationTypes.push(agentConfigurationType);
   }
@@ -631,17 +675,13 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     );
   }
 
-  if (agentsGetView === "archived" && !auth.isDustSuperUser()) {
-    throw new Error("Archived view is for dust superusers only.");
-  }
-
-  if (agentsGetView === "list" && !user) {
-    throw new Error(
-      "`list` or `assistants-search` view is specific to a user."
-    );
-  }
-  if (agentsGetView === "favorites" && !user) {
-    throw new Error("`favorites` view is specific to a user.");
+  if (
+    !user &&
+    (agentsGetView === "list" ||
+      agentsGetView === "manage" ||
+      agentsGetView === "favorites")
+  ) {
+    throw new Error(`'${agentsGetView}' view is specific to a user.`);
   }
 
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);
@@ -746,6 +786,8 @@ export async function createAgentConfiguration(
     agentConfigurationId,
     templateId,
     requestedGroupIds,
+    tags,
+    editors,
   }: {
     name: string;
     description: string;
@@ -759,7 +801,10 @@ export async function createAgentConfiguration(
     agentConfigurationId?: string;
     templateId: string | null;
     requestedGroupIds: number[][];
-  }
+    tags: TagType[];
+    editors: UserType[];
+  },
+  transaction?: Transaction
 ): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -794,79 +839,148 @@ export async function createAgentConfiguration(
     if (templateId) {
       template = await TemplateResource.fetchByExternalId(templateId);
     }
-    const agent = await frontSequelize.transaction(
-      async (t): Promise<AgentConfiguration> => {
-        if (agentConfigurationId) {
-          const [existing, userRelation] = await Promise.all([
-            AgentConfiguration.findOne({
-              where: {
-                sId: agentConfigurationId,
-                workspaceId: owner.id,
-              },
-              attributes: ["scope", "version"],
-              order: [["version", "DESC"]],
-              transaction: t,
-              limit: 1,
-            }),
-            AgentUserRelation.findOne({
-              where: {
-                workspaceId: owner.id,
-                agentConfiguration: agentConfigurationId,
-                userId: user.id,
-              },
-              transaction: t,
-            }),
-          ]);
+    const performCreation = async (
+      t: Transaction
+    ): Promise<AgentConfiguration> => {
+      let existingAgent = null;
+      if (agentConfigurationId) {
+        const [agentConfiguration, userRelation] = await Promise.all([
+          AgentConfiguration.findOne({
+            where: {
+              sId: agentConfigurationId,
+              workspaceId: owner.id,
+            },
+            attributes: ["scope", "version", "id", "sId"],
+            order: [["version", "DESC"]],
+            transaction: t,
+            limit: 1,
+          }),
+          AgentUserRelation.findOne({
+            where: {
+              workspaceId: owner.id,
+              agentConfiguration: agentConfigurationId,
+              userId: user.id,
+            },
+            transaction: t,
+          }),
+        ]);
 
-          if (existing) {
-            // Bump the version of the agent.
-            version = existing.version + 1;
-          }
+        existingAgent = agentConfiguration;
 
-          await AgentConfiguration.update(
-            { status: "archived" },
-            {
-              where: {
-                sId: agentConfigurationId,
-                workspaceId: owner.id,
-              },
-              transaction: t,
-            }
-          );
-          userFavorite = userRelation?.favorite ?? false;
+        if (existingAgent) {
+          // Bump the version of the agent.
+          version = existingAgent.version + 1;
         }
 
-        const sId = agentConfigurationId || generateRandomModelSId();
-
-        // Create Agent config.
-        return AgentConfiguration.create(
+        await AgentConfiguration.update(
+          { status: "archived" },
           {
-            sId,
-            version,
-            status,
-            scope,
-            name,
-            description,
-            instructions,
-            providerId: model.providerId,
-            modelId: model.modelId,
-            temperature: model.temperature,
-            reasoningEffort: model.reasoningEffort,
-            maxStepsPerRun,
-            visualizationEnabled,
-            pictureUrl,
-            workspaceId: owner.id,
-            authorId: user.id,
-            templateId: template?.id,
-            requestedGroupIds,
-            responseFormat: model.responseFormat,
-          },
-          {
+            where: {
+              sId: agentConfigurationId,
+              workspaceId: owner.id,
+            },
             transaction: t,
           }
         );
+        userFavorite = userRelation?.favorite ?? false;
       }
-    );
+
+      const sId = agentConfigurationId || generateRandomModelSId();
+
+      // Create Agent config.
+      const agentConfigurationInstance = await AgentConfiguration.create(
+        {
+          sId,
+          version,
+          status,
+          scope,
+          name,
+          description,
+          instructions,
+          providerId: model.providerId,
+          modelId: model.modelId,
+          temperature: model.temperature,
+          reasoningEffort: model.reasoningEffort,
+          maxStepsPerRun,
+          visualizationEnabled,
+          pictureUrl,
+          workspaceId: owner.id,
+          authorId: user.id,
+          templateId: template?.id,
+          requestedGroupIds,
+          responseFormat: model.responseFormat,
+        },
+        {
+          transaction: t,
+        }
+      );
+
+      for (const tag of tags) {
+        const id = getResourceIdFromSId(tag.sId);
+        if (id) {
+          await TagAgentModel.create(
+            {
+              workspaceId: owner.id,
+              tagId: id,
+              agentConfigurationId: agentConfigurationInstance.id,
+            },
+            { transaction: t }
+          );
+        }
+      }
+
+      if (status === "active") {
+        assert(
+          editors.some((e) => e.sId === auth.user()?.sId),
+          "Unexpected: current user must be in editor group"
+        );
+        if (!existingAgent) {
+          const group = await GroupResource.makeNewAgentEditorsGroup(
+            auth,
+            agentConfigurationInstance,
+            { transaction: t }
+          );
+          await group.setMembers(auth, editors, { transaction: t });
+        } else {
+          const groupRes = await GroupResource.fetchByAgentConfiguration(
+            auth,
+            existingAgent
+          );
+          if (groupRes.isOk()) {
+            const group = groupRes.value;
+            const result = await group.addGroupToAgentConfiguration({
+              auth,
+              agentConfiguration: agentConfigurationInstance,
+              transaction: t,
+            });
+            if (result.isErr()) {
+              logger.warn(
+                {
+                  workspaceId: owner.id,
+                  agentConfigurationId: existingAgent.sId,
+                },
+                `Error adding group to agent ${existingAgent.sId}: ${result.error}`
+              );
+            }
+            await group.setMembers(auth, editors, { transaction: t });
+          } else {
+            logger.warn(
+              {
+                workspaceId: owner.id,
+                agentConfigurationId: existingAgent.sId,
+              },
+              `Error fetching group for agent ${existingAgent.sId}: ${groupRes.error}`
+            );
+          }
+        }
+      }
+
+      return agentConfigurationInstance;
+    };
+
+    const agent = await (transaction
+      ? performCreation(transaction)
+      : frontSequelize.transaction(performCreation));
 
     /*
      * Final rendering.
@@ -898,6 +1012,9 @@ export async function createAgentConfiguration(
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
+      tags,
+      canRead: true,
+      canEdit: true,
     };
 
     await agentConfigurationWasUpdatedBy({
@@ -1096,7 +1213,7 @@ export async function createAgentActionConfiguration(
               ? action.relativeTimeFrame.unit
               : null,
             agentConfigurationId: agentConfiguration.id,
-            schema: action.schema,
+            jsonSchema: action.jsonSchema,
             name: action.name,
             description: action.description,
             workspaceId: owner.id,
@@ -1115,7 +1232,7 @@ export async function createAgentActionConfiguration(
           sId: processConfig.sId,
           type: "process_configuration",
           relativeTimeFrame: action.relativeTimeFrame,
-          schema: action.schema,
+          jsonSchema: action.jsonSchema,
           dataSources: action.dataSources,
           name: action.name || DEFAULT_PROCESS_ACTION_NAME,
           description: action.description,
@@ -1160,6 +1277,7 @@ export async function createAgentActionConfiguration(
       const reasoningConfig = await AgentReasoningConfiguration.create({
         sId: generateRandomModelSId(),
         agentConfigurationId: agentConfiguration.id,
+        mcpServerConfigurationId: null,
         name: action.name,
         description: action.description,
         providerId: action.providerId,
@@ -1239,6 +1357,14 @@ export async function createAgentActionConfiguration(
             mcpConfig,
           });
         }
+        // Creating the AgentTablesQueryConfigurationTable if configured
+        if (action.reasoningModel) {
+          await createReasoningConfiguration(auth, t, {
+            reasoningModel: action.reasoningModel,
+            mcpConfig,
+            agentConfiguration,
+          });
+        }
 
         return new Ok({
           id: mcpConfig.id,
@@ -1250,6 +1376,7 @@ export async function createAgentActionConfiguration(
           dataSources: action.dataSources,
           tables: action.tables,
           childAgentId: action.childAgentId,
+          reasoningModel: action.reasoningModel,
           additionalConfiguration: action.additionalConfiguration,
         });
       });
@@ -1418,6 +1545,36 @@ async function createChildAgentConfiguration(
   );
 }
 
+async function createReasoningConfiguration(
+  auth: Authenticator,
+  t: Transaction,
+  {
+    reasoningModel,
+    mcpConfig,
+    agentConfiguration,
+  }: {
+    reasoningModel: ReasoningModelConfiguration;
+    mcpConfig: AgentMCPServerConfiguration;
+    agentConfiguration: LightAgentConfigurationType;
+  }
+) {
+  return AgentReasoningConfiguration.create(
+    {
+      sId: generateRandomModelSId(),
+      agentConfigurationId: null,
+      mcpServerConfigurationId: mcpConfig.id,
+      name: DEFAULT_RETRIEVAL_ACTION_NAME,
+      description: DEFAULT_REASONING_ACTION_DESCRIPTION,
+      providerId: reasoningModel.providerId,
+      modelId: reasoningModel.modelId,
+      temperature: agentConfiguration.model.temperature,
+      reasoningEffort: reasoningModel.reasoningEffort,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    { transaction: t }
+  );
+}
+
 export async function getAgentSIdFromName(
   auth: Authenticator,
   name: string
@@ -1494,4 +1651,138 @@ export async function unsafeHardDeleteAgentConfiguration(
       id: agentConfiguration.id,
     },
   });
+}
+
+/**
+ * Removes the association between a group and an agent configuration.
+ */
+export async function removeGroupFromAgentConfiguration({
+  auth,
+  group,
+  agentConfiguration,
+  transaction,
+}: {
+  auth: Authenticator;
+  group: GroupResource;
+  agentConfiguration: AgentConfiguration;
+  transaction?: Transaction;
+}): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  if (
+    owner.id !== group.workspaceId ||
+    owner.id !== agentConfiguration.workspaceId
+  ) {
+    return new Err(
+      new Error(
+        "Group and agent configuration must belong to the same workspace."
+      )
+    );
+  }
+
+  try {
+    const deletedCount = await GroupAgentModel.destroy({
+      where: {
+        groupId: group.id,
+        agentConfigurationId: agentConfiguration.id,
+      },
+      transaction,
+    });
+
+    if (deletedCount === 0) {
+      // Association did not exist, which is fine.
+      return new Ok(undefined);
+    }
+
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(error as Error);
+  }
+}
+
+/**
+ * Updates the permissions (editors) for an agent configuration.
+ */
+export async function updateAgentPermissions(
+  auth: Authenticator,
+  {
+    agent,
+    usersToAdd,
+    usersToRemove,
+  }: {
+    agent: LightAgentConfigurationType;
+    usersToAdd: UserType[];
+    usersToRemove: UserType[];
+  }
+): Promise<Result<undefined, Error>> {
+  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    auth,
+    agent
+  );
+  if (editorGroupRes.isErr()) {
+    return editorGroupRes;
+  }
+
+  // The canWrite check for agent_editors groups (allowing members and admins)
+  // is implicitly handled by addMembers and removeMembers.
+  try {
+    const result = await frontSequelize.transaction(async (t) => {
+      if (usersToAdd.length > 0) {
+        const addRes = await editorGroupRes.value.addMembers(auth, usersToAdd, {
+          transaction: t,
+        });
+        if (addRes.isErr()) {
+          return addRes;
+        }
+      }
+
+      if (usersToRemove.length > 0) {
+        const removeRes = await editorGroupRes.value.removeMembers(
+          auth,
+          usersToRemove,
+          {
+            transaction: t,
+          }
+        );
+        if (removeRes.isErr()) {
+          return removeRes;
+        }
+      }
+      return new Ok(undefined);
+    });
+    return result;
+  } catch (error) {
+    // Catch errors thrown from within the transaction
+    return new Err(error as Error);
+  }
+}
+
+export async function getAgentPermissions(
+  auth: Authenticator,
+  agentConfiguration: LightAgentConfigurationType,
+  memberAgents: ModelId[]
+) {
+  if (auth.isAdmin()) {
+    return { canRead: true, canEdit: agentConfiguration.scope !== "global" };
+  }
+
+  switch (agentConfiguration.scope) {
+    case "global":
+      return { canRead: true, canEdit: false };
+    case "hidden":
+    case "visible":
+      const member = memberAgents.includes(agentConfiguration.id);
+      return {
+        canRead: member || agentConfiguration.scope === "visible",
+        canEdit: member,
+      };
+    case "private":
+      const isAuthor = agentConfiguration.versionAuthorId === auth.user()?.id;
+      return { canRead: isAuthor, canEdit: isAuthor };
+    case "workspace":
+      return { canRead: true, canEdit: auth.isBuilder() };
+    case "published":
+      return { canRead: true, canEdit: true };
+    default:
+      assertNever(agentConfiguration.scope);
+  }
 }

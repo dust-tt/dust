@@ -1,6 +1,10 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPServerType, RemoteMCPServerType } from "@app/lib/api/mcp";
+import type {
+  MCPServerType,
+  MCPServerViewType,
+  RemoteMCPServerType,
+} from "@app/lib/api/mcp";
 import {
   getResourceNameAndIdFromSId,
   makeSId,
@@ -18,13 +22,13 @@ export const getServerTypeAndIdFromSId = (
     throw new Error(`Invalid MCP server ID: ${mcpServerId}`);
   }
 
-  const { resourceName, resourceId } = sIdParts;
+  const { resourceName, resourceModelId } = sIdParts;
 
   switch (resourceName) {
     case "internal_mcp_server":
-      return { serverType: "internal" as const, id: resourceId };
+      return { serverType: "internal" as const, id: resourceModelId };
     case "remote_mcp_server":
-      return { serverType: "remote" as const, id: resourceId };
+      return { serverType: "remote" as const, id: resourceModelId };
     default:
       throw new Error(
         `Invalid MCP server ID: ${mcpServerId} resourceName: ${resourceName}`
@@ -56,6 +60,13 @@ export const remoteMCPServerNameToSId = ({
     id: remoteMCPServerId,
     workspaceId,
   });
+};
+
+export const mcpServerViewSortingFn = (
+  a: MCPServerViewType,
+  b: MCPServerViewType
+) => {
+  return mcpServersSortingFn({ mcpServer: a.server }, { mcpServer: b.server });
 };
 
 export const mcpServersSortingFn = (

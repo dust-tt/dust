@@ -5,6 +5,7 @@ import {
   CardGrid,
   ChatBubbleLeftRightIcon,
   ChatBubbleThoughtIcon,
+  Chip,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,7 @@ import { AssistantKnowledgeSection } from "@app/components/assistant/details/Ass
 import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
+import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {
@@ -42,7 +44,6 @@ import {
   useAgentConfiguration,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
-import { classNames } from "@app/lib/utils";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -71,6 +72,14 @@ function AssistantDetailsInfo({
 }) {
   return (
     <>
+      {agentConfiguration.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {agentConfiguration.tags.map((tag) => (
+            <Chip key={tag.sId} color="golden" label={tag.name} />
+          ))}
+        </div>
+      )}
+
       <div className="text-sm text-foreground dark:text-foreground-night">
         {agentConfiguration?.description}
       </div>
@@ -280,6 +289,7 @@ export function AssistantDetails({
   const [selectedTab, setSelectedTab] = useState("info");
   const {
     agentConfiguration,
+    isAgentConfigurationLoading,
     isAgentConfigurationValidating,
     isAgentConfigurationError,
   } = useAgentConfiguration({
@@ -291,6 +301,8 @@ export function AssistantDetails({
     owner,
     agentConfigurationId: assistantId,
   });
+
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
 
   const updateScope = useCallback(
     async (scope: Exclude<AgentConfigurationScope, "global">) => {
@@ -310,14 +322,7 @@ export function AssistantDetails({
           size="lg"
         />
         <div className="flex grow flex-col gap-1">
-          <div
-            className={classNames(
-              "text-foreground dark:text-foreground-night",
-              agentConfiguration?.name && agentConfiguration.name.length > 20
-                ? "heading-md"
-                : "heading-lg"
-            )}
-          >{`@${agentConfiguration?.name ?? ""}`}</div>
+          <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">{`${agentConfiguration?.name ?? ""}`}</div>
           {agentConfiguration?.status === "active" && (
             <SharingDropdown
               owner={owner}
@@ -340,13 +345,34 @@ export function AssistantDetails({
       )}
 
       {agentConfiguration?.status === "archived" && (
-        <ContentMessage
-          title="This agent has been deleted."
-          icon={InformationCircleIcon}
-          size="md"
-        >
-          It is no longer active and cannot be used.
-        </ContentMessage>
+        <>
+          <ContentMessage
+            title="This agent has been deleted."
+            icon={InformationCircleIcon}
+            size="md"
+          >
+            It is no longer active and cannot be used.
+          </ContentMessage>
+
+          <RestoreAssistantDialog
+            owner={owner}
+            isOpen={showRestoreModal}
+            agentConfiguration={agentConfiguration}
+            onClose={() => {
+              setShowRestoreModal(false);
+            }}
+          />
+
+          <div className="flex justify-center">
+            <Button
+              variant="warning"
+              label="Restore"
+              onClick={() => {
+                setShowRestoreModal(true);
+              }}
+            />
+          </div>
+        </>
       )}
     </div>
   );
@@ -354,55 +380,62 @@ export function AssistantDetails({
   return (
     <Sheet open={!!assistantId} onOpenChange={onClose}>
       <SheetContent size="lg">
-        <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
-          <VisuallyHidden>
-            <SheetTitle />
-          </VisuallyHidden>
-          <DescriptionSection />
-          {isBuilder(owner) && (
-            <Tabs value={selectedTab}>
-              <TabsList border={false}>
-                <TabsTrigger
-                  value="info"
-                  label="Info"
-                  icon={InformationCircleIcon}
-                  onClick={() => setSelectedTab("info")}
-                />
-                <TabsTrigger
-                  value="performance"
-                  label="Performance"
-                  icon={BarChartIcon}
-                  onClick={() => setSelectedTab("performance")}
-                />
-              </TabsList>
-            </Tabs>
-          )}
-        </SheetHeader>
-        <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
-          {agentConfiguration && (
-            <>
-              {selectedTab === "info" && (
-                <AssistantDetailsInfo
-                  agentConfiguration={agentConfiguration}
-                  owner={owner}
-                />
+        {isAgentConfigurationLoading ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <>
+            <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
+              <VisuallyHidden>
+                <SheetTitle />
+              </VisuallyHidden>
+              <DescriptionSection />
+              {isBuilder(owner) && (
+                <Tabs value={selectedTab}>
+                  <TabsList border={false}>
+                    <TabsTrigger
+                      value="info"
+                      label="Info"
+                      icon={InformationCircleIcon}
+                      onClick={() => setSelectedTab("info")}
+                    />
+                    <TabsTrigger
+                      value="performance"
+                      label="Performance"
+                      icon={BarChartIcon}
+                      onClick={() => setSelectedTab("performance")}
+                    />
+                  </TabsList>
+                </Tabs>
               )}
-              {selectedTab === "performance" && (
-                <AssistantDetailsPerformance
-                  agentConfiguration={agentConfiguration}
-                  owner={owner}
-                />
+            </SheetHeader>
+            <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
+              {agentConfiguration && (
+                <>
+                  {selectedTab === "info" && (
+                    <AssistantDetailsInfo
+                      agentConfiguration={agentConfiguration}
+                      owner={owner}
+                    />
+                  )}
+                  {selectedTab === "performance" && (
+                    <AssistantDetailsPerformance
+                      agentConfiguration={agentConfiguration}
+                      owner={owner}
+                    />
+                  )}
+                </>
               )}
-            </>
-          )}
-          {isAgentConfigurationError?.error.type ===
-            "agent_configuration_not_found" && (
-            <ContentMessage title="Not Available" icon={LockIcon} size="md">
-              This is a private agent that can't be shared with other workspace
-              members.
-            </ContentMessage>
-          )}
-        </SheetContainer>
+              {isAgentConfigurationError?.error.type ===
+                "agent_configuration_not_found" && (
+                <ContentMessage title="Not Available" icon={LockIcon} size="md">
+                  This agent is not available.
+                </ContentMessage>
+              )}
+            </SheetContainer>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );

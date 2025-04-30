@@ -1,17 +1,23 @@
 import {
-  Avatar,
+  ActionEyeIcon,
+  Button,
   Card,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Label,
   RadioGroup,
   RadioGroupCustomItem,
+  ScrollArea,
+  ScrollBar,
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import { sortBy } from "lodash";
 import React, { useMemo } from "react";
 
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
-import { getVisual } from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -53,12 +59,8 @@ export function MCPServerSelector({
 
   return (
     <>
-      <div className="text-sm text-foreground dark:text-foreground-night">
-        The agent will execute an{" "}
-        <a className="font-bold" href="https://docs.dust.tt" target="_blank">
-          Action
-        </a>{" "}
-        made available to you.
+      <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
+        Pick a set of tools
       </div>
       {isSpacesLoading ? (
         <Spinner />
@@ -81,54 +83,86 @@ export function MCPServerSelector({
               mcpServerViewsInSpace.length === 0 ||
               hasNoMCPServerViewsInAllowedSpaces
             ) {
-              return <>No Actions available.</>;
+              return <>No tools available.</>;
             }
 
             return (
               <RadioGroup defaultValue={selectedMCPServerView?.id}>
-                {sortBy(mcpServerViewsInSpace, "server.name")
-                  // Default servers can be added as capabilities or in the first level of the Add actions list
+                {mcpServerViewsInSpace
+                  // Default servers can be added as capabilities or in the first level of the "Add tools" list
                   .filter((view) => !view.server.isDefault)
                   .map((mcpServerView, idx, arr) => (
                     <React.Fragment key={mcpServerView.id}>
-                      <RadioGroupCustomItem
-                        value={mcpServerView.id}
-                        id={mcpServerView.id}
-                        iconPosition="start"
-                        customItem={
-                          <Label
-                            htmlFor={mcpServerView.id}
-                            className="font-normal"
-                          >
-                            <Card
-                              variant="tertiary"
-                              size="sm"
-                              onClick={() => {
-                                handleServerSelection(mcpServerView);
-                              }}
+                      <div className="flex w-full flex-row items-center justify-between gap-2">
+                        <RadioGroupCustomItem
+                          value={mcpServerView.id}
+                          id={mcpServerView.id}
+                          iconPosition="start"
+                          customItem={
+                            <Label
+                              htmlFor={mcpServerView.id}
+                              className="font-normal"
                             >
-                              <div className="flex flex-row items-center gap-2">
-                                <Avatar
-                                  visual={getVisual(mcpServerView.server)}
-                                />
-                                <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
-                                  <div className="flex flex-col gap-1">
-                                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                                      {asDisplayName(mcpServerView.server.name)}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                                      {mcpServerView.server.description}
+                              <Card
+                                variant="tertiary"
+                                size="sm"
+                                onClick={() => {
+                                  handleServerSelection(mcpServerView);
+                                }}
+                              >
+                                <div className="flex flex-row items-center gap-2">
+                                  {getAvatar(mcpServerView.server)}
+                                  <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
+                                    <div className="flex flex-col gap-1">
+                                      <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                                        {asDisplayName(
+                                          mcpServerView.server.name
+                                        )}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                                        {mcpServerView.server.description}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            </Card>
-                          </Label>
-                        }
-                        onClick={() => {
-                          handleServerSelection(mcpServerView);
-                        }}
-                      ></RadioGroupCustomItem>
+                              </Card>
+                            </Label>
+                          }
+                          onClick={() => {
+                            handleServerSelection(mcpServerView);
+                          }}
+                        />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              isSelect
+                              icon={ActionEyeIcon}
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <ScrollArea
+                              hideScrollBar
+                              className="flex max-h-96 w-96 flex-col"
+                            >
+                              {mcpServerView.server.tools.map((tool) => (
+                                <DropdownMenuItem key={tool.name}>
+                                  <div className="flex flex-col gap-1">
+                                    <p className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                                      {tool.name}
+                                    </p>
+                                    <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                                      {tool.description}
+                                    </p>
+                                  </div>
+                                </DropdownMenuItem>
+                              ))}
+                              <ScrollBar className="py-0" />
+                            </ScrollArea>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                       {idx !== arr.length - 1 && <Separator />}
                     </React.Fragment>
                   ))}

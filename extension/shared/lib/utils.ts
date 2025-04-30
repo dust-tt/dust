@@ -118,6 +118,18 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
   return a.localeCompare(b);
 }
 
+/**
+ * Converts a string to a display name by replacing underscores with spaces
+ * and capitalizing the first letter of each word.
+ */
+export function asDisplayName(name?: string | null) {
+  if (!name) {
+    return "";
+  }
+
+  return name.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 /* Measures how much string a is 'spread out' in string b, assuming a is a
  * subfilter of b;  e.g.
  * - 'god' in 'sqlGod': spread is 3 (index of d minus index of g in 'sqlGod')

@@ -18,6 +18,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
@@ -57,6 +58,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
+  isAgentDiscoveryEnabled: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -76,6 +78,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     ? (context.query.flow as BuilderFlow)
     : "personal_assistants";
 
+  const featureFlag = await getFeatureFlags(owner);
+  const isAgentDiscoveryEnabled = featureFlag.includes("agent_discovery");
+
   let configuration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -93,8 +98,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     }
     // We reset the scope according to the current flow. This ensures that cloning a workspace
     // agent with flow `personal_assistants` will initialize the agent as private.
-    configuration.scope =
-      flow === "personal_assistants" ? "private" : "workspace";
+    configuration.scope = isAgentDiscoveryEnabled
+      ? flow === "personal_assistants"
+        ? "hidden"
+        : "visible"
+      : flow === "personal_assistants"
+        ? "private"
+        : "workspace";
   } else if (templateId) {
     const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
       templateId,
@@ -134,6 +144,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       templateId,
       spaces: spaces.map((s) => s.toJSON()),
+      isAgentDiscoveryEnabled,
     },
   };
 });
@@ -151,6 +162,7 @@ export default function CreateAssistant({
   plan,
   subscription,
   templateId,
+  isAgentDiscoveryEnabled,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
 
@@ -181,7 +193,9 @@ export default function CreateAssistant({
                 scope:
                   agentConfiguration.scope !== "global"
                     ? agentConfiguration.scope
-                    : "private",
+                    : isAgentDiscoveryEnabled
+                      ? "hidden"
+                      : "private",
                 handle: `${agentConfiguration.name}${
                   "isTemplate" in agentConfiguration ? "" : "_Copy"
                 }`,
@@ -202,6 +216,9 @@ export default function CreateAssistant({
                 maxStepsPerRun: agentConfiguration.maxStepsPerRun ?? null,
                 visualizationEnabled: agentConfiguration.visualizationEnabled,
                 templateId: templateId,
+                tags: agentConfiguration.tags,
+                // either new, or template, or duplicate, so initially no editors
+                editors: [],
               }
             : null
         }

@@ -17,7 +17,7 @@ export const labsFeatures = [
 ] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 
-export const labsConnections = ["hubspot"] as const;
+export const labsConnections = ["hubspot", "linear"] as const;
 export type LabsConnectionType = (typeof labsConnections)[number];
 
 // Types
@@ -25,7 +25,6 @@ export type LabsConnectionType = (typeof labsConnections)[number];
 export type LabsTranscriptsConfigurationType = {
   id: ModelId;
   workspaceId: ModelId;
-  connectionId: string | null;
   provider: LabsTranscriptsProviderType;
   agentConfigurationId: string | null;
   isActive: boolean;
@@ -54,6 +53,7 @@ export type LabsFeatureItemType = {
   icon: React.ComponentType;
   label: string;
   description: string;
+  onlyAdminCanManage?: boolean;
 };
 
 export enum SyncStatus {

@@ -1,22 +1,30 @@
 import type { GetContentToDownloadFunction } from "@dust-tt/sparkle";
 import {
   Chip,
+  Citation,
+  CitationIcons,
+  CitationTitle,
   CodeBlock,
   CollapsibleComponent,
   ContentBlockWrapper,
+  Icon,
   ScanIcon,
   Tooltip,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import type { ProcessActionType } from "@app/lib/actions/process";
+import { getExtractFileTitle } from "@app/lib/actions/process/utils";
+import type { LightWorkspaceType } from "@app/types";
 
 export function ProcessActionDetails({
   action,
   defaultOpen,
+  owner,
 }: ActionDetailsComponentBaseProps<ProcessActionType>) {
   return (
     <ActionDetailsWrapper
@@ -40,7 +48,9 @@ export function ProcessActionDetails({
                 Results
               </span>
             }
-            contentChildren={<ProcessActionOutputDetails action={action} />}
+            contentChildren={
+              <ProcessActionOutputDetails action={action} owner={owner} />
+            }
           />
         </div>
       </div>
@@ -108,8 +118,15 @@ function makeQueryDescription(action: ProcessActionType) {
   }
 }
 
-function ProcessActionOutputDetails({ action }: { action: ProcessActionType }) {
+function ProcessActionOutputDetails({
+  action,
+  owner,
+}: {
+  action: ProcessActionType;
+  owner: LightWorkspaceType;
+}) {
   const { outputs } = action;
+  const sendNotification = useSendNotification();
 
   const stringifiedOutput = useMemo(
     () => (outputs ? JSON.stringify(outputs.data, null, 2) : ""),
@@ -124,21 +141,92 @@ function ProcessActionOutputDetails({ action }: { action: ProcessActionType }) {
     };
   };
 
+  const handleDownload = useCallback(() => {
+    if (action.jsonFileId) {
+      try {
+        const downloadUrl = `/api/w/${owner.sId}/files/${action.jsonFileId}?action=download`;
+        window.open(downloadUrl, "_blank");
+      } catch (error) {
+        console.error("Download failed:", error);
+        sendNotification({
+          title: "Download Failed",
+          type: "error",
+          description: "An error occurred while opening the download link.",
+        });
+      }
+    } else {
+      sendNotification({
+        title: "No Results Available",
+        type: "error",
+        description: "There are no results available to download.",
+      });
+    }
+  }, [action.jsonFileId, sendNotification, owner.sId]);
+
   if (!outputs) {
     return null;
   }
 
+  if (outputs.data.length === 0) {
+    return (
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        No data was extracted.
+      </div>
+    );
+  }
+
+  const fileTitle = getExtractFileTitle({ schema: action.jsonSchema });
+
   return (
-    <ContentBlockWrapper
-      content={stringifiedOutput}
-      getContentToDownload={getContentToDownload}
-    >
-      <CodeBlock
-        className="language-json max-h-60 overflow-y-auto"
-        wrapLongLines={true}
-      >
-        {stringifiedOutput}
-      </CodeBlock>
-    </ContentBlockWrapper>
+    <div className="flex flex-col gap-4">
+      {action.jsonFileId ? (
+        <>
+          <div>
+            <Citation
+              className="w-48 min-w-48 max-w-48"
+              containerClassName="my-2"
+              onClick={handleDownload}
+              tooltip={fileTitle}
+            >
+              <CitationIcons>
+                <Icon visual={ScanIcon} />
+              </CitationIcons>
+              <CitationTitle>{fileTitle}</CitationTitle>
+            </Citation>
+          </div>
+
+          <CollapsibleComponent
+            rootProps={{ defaultOpen: false }}
+            triggerChildren={
+              <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
+                Preview
+              </span>
+            }
+            contentChildren={
+              <div className="py-2">
+                <CodeBlock
+                  className="language-json max-h-60 overflow-y-auto"
+                  wrapLongLines={true}
+                >
+                  {action.jsonFileSnippet}
+                </CodeBlock>
+              </div>
+            }
+          />
+        </>
+      ) : (
+        <ContentBlockWrapper
+          content={stringifiedOutput}
+          getContentToDownload={getContentToDownload}
+        >
+          <CodeBlock
+            className="language-json max-h-60 overflow-y-auto"
+            wrapLongLines={true}
+          >
+            {stringifiedOutput}
+          </CodeBlock>
+        </ContentBlockWrapper>
+      )}
+    </div>
   );
 }

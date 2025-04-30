@@ -1,18 +1,31 @@
 import {
   Avatar,
   Button,
+  ClipboardIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Icon,
   IconButton,
   Input,
   Page,
   PencilSquareIcon,
+  PlusIcon,
+  SlackLogo,
+  SliderToggle,
   SparklesIcon,
   Spinner,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
+import type { PaginationState } from "@tanstack/react-table";
 import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -26,17 +39,26 @@ import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
+import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
+import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
+import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import { MembersList } from "@app/components/members/MembersList";
+import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useCreateTag, useTags } from "@app/lib/swr/tags";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
   APIError,
   BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
+  DataSourceType,
   Result,
+  UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isAdmin, Ok } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -45,6 +67,14 @@ export function removeLeadingAt(handle: string) {
 function assistantHandleIsValid(handle: string) {
   return /^[a-zA-Z0-9_-]{1,30}$/.test(removeLeadingAt(handle));
 }
+
+const VISIBILITY_DESCRIPTIONS = {
+  visible: "Visible & usable by the members of Company Space.",
+  hidden: "Limited to editors.",
+  published: "Visible to all members [legacy Shared]",
+  workspace: "Visible to all members [legacy Workspace]",
+  private: "Limited to current user[legacy Private]",
+};
 
 async function assistantHandleIsAvailable({
   owner,
@@ -128,16 +158,10 @@ export async function validateHandle({
   };
 }
 
-export default function NamingScreen({
-  owner,
-  builderState,
-  initialHandle,
-  setBuilderState,
-  setEdited,
-  assistantHandleError,
-  descriptionError,
-}: {
+type NamingScreenProps = {
   owner: WorkspaceType;
+  agentConfigurationId: string | null;
+  baseUrl: string;
   builderState: AssistantBuilderState;
   initialHandle: string | undefined;
   setBuilderState: (
@@ -146,10 +170,36 @@ export default function NamingScreen({
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
   descriptionError: string | null;
-}) {
+  isAgentDiscoveryEnabled: boolean;
+  slackChannelSelected: SlackChannel[];
+  slackDataSource: DataSourceType | undefined;
+  setSelectedSlackChannels: (channels: SlackChannel[]) => void;
+  currentUser: UserType | null;
+};
+
+export default function NamingScreen({
+  owner,
+  agentConfigurationId,
+  baseUrl,
+  builderState,
+  initialHandle,
+  setBuilderState,
+  setEdited,
+  assistantHandleError,
+  descriptionError,
+  isAgentDiscoveryEnabled,
+  slackChannelSelected,
+  slackDataSource,
+  setSelectedSlackChannels,
+  currentUser,
+}: NamingScreenProps) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [slackDrawerOpened, setSlackDrawerOpened] = useState(false);
+
+  const shareLink = `${baseUrl}/w/${owner.sId}/assistant/new?assistantDetails=${agentConfigurationId}`;
+  const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
 
   // Name suggestions handling
   const [nameSuggestions, setNameSuggestions] =
@@ -315,8 +365,27 @@ export default function NamingScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isVisible =
+    builderState.scope === "visible" ||
+    builderState.scope === "published" ||
+    builderState.scope === "workspace";
+
   return (
     <>
+      {slackDataSource && (
+        <SlackAssistantDefaultManager
+          existingSelection={slackChannelSelected}
+          owner={owner}
+          onSave={(slackChannels: SlackChannel[]) => {
+            setSelectedSlackChannels(slackChannels);
+            setEdited(true);
+          }}
+          assistantHandle="@Dust"
+          show={slackDrawerOpened}
+          slackDataSource={slackDataSource}
+          onClose={() => setSlackDrawerOpened(false)}
+        />
+      )}
       <AvatarPicker
         owner={owner}
         isOpen={isAvatarModalOpen}
@@ -468,6 +537,128 @@ export default function NamingScreen({
             )}
           </div>
         </div>
+        {isAgentDiscoveryEnabled && (
+          <>
+            <div className="flex flex-row gap-4">
+              <div className="flex flex-[1_0_0] flex-col gap-4">
+                <Page.SectionHeader title="Visibility" />
+                <div className="flex flex-row items-start gap-2">
+                  <div className="min-w-12">
+                    <SliderToggle
+                      selected={isVisible}
+                      onClick={() => {
+                        setBuilderState((state) => ({
+                          ...state,
+                          scope: isVisible ? "hidden" : "visible",
+                        }));
+                        setEdited(true);
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      {isVisible ? "Visible" : "Hidden"}
+                    </span>
+                    <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                      {VISIBILITY_DESCRIPTIONS[builderState.scope]}
+                    </span>
+
+                    {agentConfigurationId && (
+                      <div className="pt-2">
+                        <Button
+                          size="xs"
+                          icon={ClipboardIcon}
+                          label={copyLinkSuccess ? "Copied!" : "Copy link"}
+                          variant="outline"
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(shareLink);
+                            setCopyLinkSuccess(true);
+                            setTimeout(() => {
+                              setCopyLinkSuccess(false);
+                            }, 1000);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {isVisible && (
+                  <>
+                    <div className="flex flex-row items-start gap-2">
+                      <div className="min-w-12">
+                        <SliderToggle
+                          selected={slackChannelSelected.length > 0}
+                          disabled={
+                            !slackDataSource ||
+                            (slackChannelSelected.length > 0 && !isAdmin(owner))
+                          }
+                          onClick={() => {
+                            if (slackChannelSelected.length > 0) {
+                              setSelectedSlackChannels([]);
+                              setEdited(true);
+                            } else {
+                              setSlackDrawerOpened(true);
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="flex flex-row items-center gap-1 text-sm font-semibold text-foreground dark:text-foreground-night">
+                          <Icon visual={SlackLogo} size="sm" />
+                          Slack integration
+                        </span>
+                        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                          {slackChannelSelected.length > 0
+                            ? `Default agent for ${slackChannelSelected.map((c) => c.slackChannelName).join(", ")}`
+                            : "Set this agent as the default agent on one or several of your Slack channels."}
+                        </span>
+
+                        {slackChannelSelected.length > 0 && (
+                          <div className="pt-2">
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              icon={PencilSquareIcon}
+                              label="Manage channels"
+                              onClick={() => {
+                                setSlackDrawerOpened(true);
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div></div>
+                  </>
+                )}
+              </div>
+              <div className="flex flex-[1_0_0] flex-col gap-4">
+                <Page.SectionHeader title="Tags" />
+                <TagsSuggestions
+                  owner={owner}
+                  builderState={builderState}
+                  setBuilderState={setBuilderState}
+                  setEdited={setEdited}
+                />
+                <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                  <TagsSelector
+                    owner={owner}
+                    builderState={builderState}
+                    setBuilderState={setBuilderState}
+                    setEdited={setEdited}
+                  />
+                </div>
+              </div>
+            </div>
+            <EditorsMembersList
+              currentUser={currentUser}
+              owner={owner}
+              builderState={builderState}
+              setBuilderState={setBuilderState}
+              setEdited={setEdited}
+            />
+          </>
+        )}
       </div>
     </>
   );
@@ -534,6 +725,34 @@ async function getDescriptionSuggestions({
   });
 }
 
+async function getTagsSuggestions({
+  owner,
+  instructions,
+  description,
+  tags,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+  description: string;
+  tags: string[];
+}): Promise<Result<BuilderSuggestionsType, APIError>> {
+  return fetchWithErr(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "tags",
+      inputs: {
+        instructions,
+        description,
+        tags,
+        isAdmin: isAdmin(owner),
+      },
+    }),
+  });
+}
+
 async function fetchWithErr<T>(
   input: RequestInfo | URL,
   init?: RequestInit
@@ -556,4 +775,272 @@ async function fetchWithErr<T>(
       message: `Failed to fetch.\nError: ${e}`,
     });
   }
+}
+
+const DEFAULT_PAGE_SIZE = 25;
+
+const onRowClick = () => {};
+
+function EditorsMembersList({
+  currentUser,
+  owner,
+  builderState,
+  setBuilderState,
+  setEdited,
+}: {
+  currentUser: UserType | null;
+  owner: WorkspaceType;
+  builderState: AssistantBuilderState;
+  setBuilderState: (
+    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
+  setEdited: (edited: boolean) => void;
+}) {
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [setPagination]);
+
+  const onRemoveMember = useCallback(
+    (removed: UserType) => {
+      setBuilderState((s) => ({
+        ...s,
+        editors: s.editors ? s.editors.filter((m) => m.sId != removed.sId) : [],
+      }));
+      setEdited(true);
+    },
+    [setBuilderState, setEdited]
+  );
+
+  const members = useMemo(
+    () =>
+      builderState.editors?.map((m) => ({ ...m, workspaces: [owner] })) ?? [],
+    [builderState, owner]
+  );
+
+  const membersData = {
+    members,
+    totalMembersCount: members.length,
+    isLoading: false,
+    mutateRegardlessOfQueryParams: () => {},
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-row items-center gap-2">
+        <Page.SectionHeader title="Editors" />
+        <div className="flex flex-grow" />
+        <AddEditorDropdown
+          owner={owner}
+          editors={builderState.editors ?? []}
+          onAddEditor={(added) => {
+            if (builderState.editors?.some((e) => e.sId === added.sId)) {
+              return;
+            }
+            setBuilderState((s) => ({
+              ...s,
+              editors: [...(s.editors ?? []), added],
+            }));
+            setEdited(true);
+          }}
+        />
+      </div>
+      <MembersList
+        currentUser={currentUser}
+        membersData={membersData}
+        onRowClick={onRowClick}
+        onRemoveMemberClick={onRemoveMember}
+        showColumns={["name", "email", "remove"]}
+        pagination={pagination}
+        setPagination={setPagination}
+      />
+    </div>
+  );
+}
+
+function AddEditorDropdown({
+  owner,
+  editors,
+  onAddEditor,
+}: {
+  owner: WorkspaceType;
+  editors: UserType[];
+  onAddEditor: (member: UserType) => void;
+}) {
+  const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
+    useSearchMembers({
+      workspaceId: owner.sId,
+      searchTerm,
+      pageIndex: 0,
+      pageSize: 25,
+    });
+
+  return (
+    <DropdownMenu
+      open={isEditorPickerOpen}
+      onOpenChange={setIsEditorPickerOpen}
+    >
+      <DropdownMenuTrigger asChild>
+        <Button
+          icon={PlusIcon}
+          variant="outline"
+          size="sm"
+          isSelect
+          label="Add editor"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="h-96 w-[380px]"
+        dropdownHeaders={
+          <>
+            <DropdownMenuSearchbar
+              name="search"
+              onChange={(value) => setSearchTerm(value)}
+              placeholder="Search members"
+              value={searchTerm}
+              button={<Button icon={PlusIcon} label="Add member" />}
+            />
+            <DropdownMenuSeparator />
+          </>
+        }
+      >
+        {isWorkspaceMembersLoading ? (
+          <Spinner size="sm" />
+        ) : (
+          workspaceMembers.map((member) => {
+            return (
+              <DropdownMenuItem
+                key={member.sId}
+                label={member.fullName}
+                description={member.email}
+                icon={() => <Avatar size="sm" visual={member.image} />}
+                onClick={async () => {
+                  setSearchTerm("");
+                  setIsEditorPickerOpen(false);
+                  onAddEditor(member);
+                }}
+                truncateText
+                disabled={editors.some((e) => e.sId === member.sId)}
+              />
+            );
+          })
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function TagsSuggestions({
+  owner,
+  builderState,
+  setBuilderState,
+  setEdited,
+}: {
+  owner: WorkspaceType;
+  builderState: AssistantBuilderState;
+  setBuilderState: (
+    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
+  setEdited: (edited: boolean) => void;
+}) {
+  const { tags, isTagsLoading } = useTags({ owner });
+
+  const { createTag } = useCreateTag({ owner });
+  const tagsDebounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+  const [tagsSuggestions, setTagsSuggestions] =
+    useState<BuilderSuggestionsType>({
+      status: "unavailable",
+      reason: "irrelevant",
+    });
+
+  const filteredTagsSuggestions = useMemo(() => {
+    if (tagsSuggestions.status !== "ok") {
+      return [];
+    }
+
+    // As only admin can create tag, we make sure the suggestions we received exist
+    if (isAdmin(owner)) {
+      return (
+        tagsSuggestions.suggestions
+          ?.slice(0, 3)
+          .filter((tag) => tags.findIndex((t) => t.name === tag) !== -1) ?? []
+      );
+    }
+
+    return tagsSuggestions.suggestions ?? [];
+  }, [owner, tagsSuggestions, tags]);
+
+  const updateTagsSuggestions = useCallback(async () => {
+    const tagsSuggestions = await getTagsSuggestions({
+      owner,
+      instructions: builderState.instructions || "",
+      description: builderState.description || "",
+      tags: tags.map((t) => t.name),
+    });
+
+    if (tagsSuggestions.isOk()) {
+      setTagsSuggestions(tagsSuggestions.value);
+    }
+  }, [owner, builderState.description, builderState.instructions, tags]);
+
+  useEffect(() => {
+    if (!isTagsLoading) {
+      debounce(tagsDebounceHandle, updateTagsSuggestions);
+    }
+  }, [
+    owner,
+    builderState.description,
+    builderState.instructions,
+    updateTagsSuggestions,
+    tags,
+    isTagsLoading,
+  ]);
+
+  const addTag = async (name: string) => {
+    const isTagInAssistant =
+      builderState.tags.findIndex((t) => t.name === name) !== -1;
+    let tag: TagType | null = tags.find((t) => t.name === name) ?? null;
+
+    if (tag === null && !isTagInAssistant && isAdmin(owner)) {
+      tag = await createTag(name);
+    }
+
+    if (tag != null && !isTagInAssistant) {
+      setBuilderState((state) => ({
+        ...state,
+        tags: state.tags.concat(tag),
+      }));
+    }
+
+    setEdited(true);
+  };
+
+  return (
+    <>
+      {tagsSuggestions.status === "ok" &&
+        filteredTagsSuggestions.length > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="text-muted-foregroup text-xs font-semibold dark:text-muted-foreground-night">
+              Suggestions:
+            </div>
+
+            {filteredTagsSuggestions.map((tag) => (
+              <Button
+                key={`tag-suggestion-${tag}`}
+                size="xs"
+                variant="outline"
+                label={tag}
+                onClick={() => addTag(tag)}
+              />
+            ))}
+          </div>
+        )}
+    </>
+  );
 }

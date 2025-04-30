@@ -9,12 +9,16 @@ import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
-import { getMembers } from "@app/lib/api/workspace";
+import {
+  getMembers,
+  getWorkspaceAdministrationVersionLock,
+} from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -60,6 +64,7 @@ import {
 } from "@app/types";
 
 import { ConversationResource } from "../resources/conversation_resource";
+import { frontSequelize } from "../resources/storage";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -100,6 +105,28 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
     });
   }
 
+  // Soft delete all ds views for that data source.
+  const views = await DataSourceViewResource.listForDataSources(auth, [
+    dataSource,
+  ]);
+  await concurrentExecutor(
+    views,
+    async (view) => {
+      const r = await view.delete(auth, { transaction, hardDelete: false });
+      if (r.isErr()) {
+        logger.error(
+          { viewId: view.id, error: r.error },
+          "Error deleting data source view"
+        );
+        throw r.error;
+      }
+    },
+    {
+      concurrency: 8,
+    }
+  );
+
+  // Soft delete the data source.
   await dataSource.delete(auth, { transaction, hardDelete: false });
 
   // The scrubbing workflow will delete associated resources and hard delete the data source.
@@ -139,11 +166,45 @@ export async function hardDeleteDataSource(
     await Promise.all(
       chunk.map((f) => {
         return (async () => {
-          await f.delete();
+          try {
+            await f.delete();
+          } catch (error) {
+            if (isGCSNotFoundError(error)) {
+              logger.warn(
+                {
+                  path: f.name,
+                  dataSourceId: dataSource.sId,
+                  dustAPIProjectId,
+                },
+                "File not found during deletion, skipping"
+              );
+            } else {
+              throw error;
+            }
+          }
         })();
       })
     );
   }
+
+  // Ensure all content fragments from dsviews are expired.
+  // Only used temporarily to unstuck queues -- TODO(fontanierh)
+  const views = await DataSourceViewResource.listForDataSources(
+    auth,
+    [dataSource],
+    {
+      includeDeleted: true,
+    }
+  );
+  await concurrentExecutor(
+    views,
+    async (view) => {
+      await view.expireContentFragments(auth);
+    },
+    {
+      concurrency: 8,
+    }
+  );
 
   // Delete all connectors associated with the data source.
   if (dataSource.connectorId && dataSource.connectorProvider) {
@@ -242,7 +303,7 @@ export async function augmentDataSourceWithConnectorDetails(
       fetchConnectorError = true;
       fetchConnectorErrorMessage = statusRes.error.message;
     } else {
-      connector = statusRes.value;
+      connector = { ...statusRes.value, connectionId: null };
     }
   } catch (e) {
     // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
@@ -822,6 +883,11 @@ export async function upsertTable({
   return new Ok(tableRes.value);
 }
 
+type DataSourceCreationError = Omit<DustError, "code"> & {
+  code: "invalid_request_error" | "plan_limit_error" | "internal_server_error";
+  dataSourceError?: CoreAPIError;
+};
+
 /**
  * Data sources without provider = folders
  */
@@ -842,18 +908,7 @@ export async function createDataSourceWithoutProvider(
     description: string | null;
     conversation?: ConversationWithoutContentType;
   }
-): Promise<
-  Result<
-    DataSourceViewResource,
-    Omit<DustError, "code"> & {
-      code:
-        | "invalid_request_error"
-        | "plan_limit_error"
-        | "internal_server_error";
-      dataSourceError?: CoreAPIError;
-    }
-  >
-> {
+): Promise<Result<DataSourceViewResource, DataSourceCreationError>> {
   if (name.startsWith("managed-")) {
     return new Err({
       name: "dust_error",
@@ -868,102 +923,121 @@ export async function createDataSourceWithoutProvider(
       message: "Data source names cannot be empty.",
     });
   }
-  const dataSources = await DataSourceResource.listByWorkspace(auth);
-  if (
-    plan.limits.dataSources.count != -1 &&
-    dataSources.length >= plan.limits.dataSources.count
-  ) {
-    return new Err({
-      name: "dust_error",
-      code: "plan_limit_error",
-      message: "Your plan does not allow you to create more data sources.",
-    });
-  }
 
-  if (dataSources.some((ds) => ds.name === name)) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "Data source with that name already exist.",
-    });
-  }
+  return frontSequelize.transaction(
+    async (
+      t
+    ): Promise<Result<DataSourceViewResource, DataSourceCreationError>> => {
+      // Only setup the lock if the workspace has a limit of data source
+      if (plan.limits.dataSources.count !== -1) {
+        await getWorkspaceAdministrationVersionLock(owner, t);
+      }
 
-  const dataSourceEmbedder =
-    owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
-  const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const dataSources = await DataSourceResource.listByWorkspace(
+        auth,
+        undefined,
+        undefined,
+        t
+      );
+      if (
+        plan.limits.dataSources.count != -1 &&
+        dataSources.length >= plan.limits.dataSources.count
+      ) {
+        return new Err({
+          name: "dust_error",
+          code: "plan_limit_error",
+          message: "Your plan does not allow you to create more data sources.",
+        });
+      }
 
-  const dustProject = await coreAPI.createProject();
-  if (dustProject.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: "Failed to create internal project for the data source.",
-      dataSourceError: dustProject.error,
-    });
-  }
+      if (dataSources.some((ds) => ds.name === name)) {
+        return new Err({
+          name: "dust_error",
+          code: "invalid_request_error",
+          message: "Data source with that name already exist.",
+        });
+      }
 
-  const dustDataSource = await coreAPI.createDataSource({
-    projectId: dustProject.value.project.project_id.toString(),
-    config: {
-      qdrant_config: {
-        cluster: DEFAULT_QDRANT_CLUSTER,
-        shadow_write_cluster: null,
-      },
-      embedder_config: {
-        embedder: {
-          max_chunk_size: embedderConfig.max_chunk_size,
-          model_id: embedderConfig.model_id,
-          provider_id: embedderConfig.provider_id,
-          splitter_id: embedderConfig.splitter_id,
+      const dataSourceEmbedder =
+        owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
+      const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+      const dustProject = await coreAPI.createProject();
+      if (dustProject.isErr()) {
+        return new Err({
+          name: "dust_error",
+          code: "internal_server_error",
+          message: "Failed to create internal project for the data source.",
+          dataSourceError: dustProject.error,
+        });
+      }
+
+      const dustDataSource = await coreAPI.createDataSource({
+        projectId: dustProject.value.project.project_id.toString(),
+        config: {
+          qdrant_config: {
+            cluster: DEFAULT_QDRANT_CLUSTER,
+            shadow_write_cluster: null,
+          },
+          embedder_config: {
+            embedder: {
+              max_chunk_size: embedderConfig.max_chunk_size,
+              model_id: embedderConfig.model_id,
+              provider_id: embedderConfig.provider_id,
+              splitter_id: embedderConfig.splitter_id,
+            },
+          },
         },
-      },
-    },
-    credentials: dustManagedCredentials(),
-    name,
-  });
-
-  if (dustDataSource.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: "Failed to create the data source.",
-      dataSourceError: dustDataSource.error,
-    });
-  }
-
-  const dataSourceView =
-    await DataSourceViewResource.createDataSourceAndDefaultView(
-      {
+        credentials: dustManagedCredentials(),
         name,
-        description,
-        dustAPIProjectId: dustProject.value.project.project_id.toString(),
-        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-        workspaceId: owner.id,
-        assistantDefaultSelected: false,
-        conversationId: conversation?.id,
-      },
-      space,
-      auth.user()
-    );
+      });
 
-  try {
-    // Asynchronous tracking without awaiting, handled safely
-    void ServerSideTracking.trackDataSourceCreated({
-      user: auth.user() ?? undefined,
-      workspace: owner,
-      dataSource: dataSourceView.dataSource.toJSON(),
-    });
-  } catch (error) {
-    logger.error(
-      {
-        error,
-      },
-      "Failed to track data source creation"
-    );
-  }
+      if (dustDataSource.isErr()) {
+        return new Err({
+          name: "dust_error",
+          code: "internal_server_error",
+          message: "Failed to create the data source.",
+          dataSourceError: dustDataSource.error,
+        });
+      }
 
-  return new Ok(dataSourceView);
+      const dataSourceView =
+        await DataSourceViewResource.createDataSourceAndDefaultView(
+          {
+            name,
+            description,
+            dustAPIProjectId: dustProject.value.project.project_id.toString(),
+            dustAPIDataSourceId:
+              dustDataSource.value.data_source.data_source_id,
+            workspaceId: owner.id,
+            assistantDefaultSelected: false,
+            conversationId: conversation?.id,
+          },
+          space,
+          auth.user(),
+          t
+        );
+
+      try {
+        // Asynchronous tracking without awaiting, handled safely
+        void ServerSideTracking.trackDataSourceCreated({
+          user: auth.user() ?? undefined,
+          workspace: owner,
+          dataSource: dataSourceView.dataSource.toJSON(),
+        });
+      } catch (error) {
+        logger.error(
+          {
+            error,
+          },
+          "Failed to track data source creation"
+        );
+      }
+
+      return new Ok(dataSourceView);
+    }
+  );
 }
 
 async function getOrCreateConversationDataSource(

@@ -1,5 +1,4 @@
 import {
-  BracesIcon,
   Button,
   CommandLineIcon,
   DataTable,
@@ -10,7 +9,6 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { sortBy } from "lodash";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
 import { useState } from "react";
@@ -146,7 +144,7 @@ const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
 };
 
 interface SpaceAppsListProps {
-  canWriteInSpace: boolean;
+  isBuilder: boolean;
   onSelect: (sId: string) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
@@ -155,12 +153,11 @@ interface SpaceAppsListProps {
 
 export const SpaceAppsList = ({
   owner,
-  canWriteInSpace,
+  isBuilder,
   space,
   onSelect,
   registryApps,
 }: SpaceAppsListProps) => {
-  const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const { q: searchParam } = useQueryParams(["q"]);
@@ -208,27 +205,16 @@ export const SpaceAppsList = ({
 
   const actionButtons = (
     <>
-      {canWriteInSpace && (
-        <>
-          <Button
-            label="New App"
-            variant="primary"
-            icon={PlusIcon}
-            size="sm"
-            onClick={() => {
-              setIsCreateAppModalOpened(true);
-            }}
-          />
-          <Button
-            label="Dev secrets"
-            variant="primary"
-            icon={BracesIcon}
-            size="sm"
-            onClick={() => {
-              void router.push(`/w/${owner.sId}/developers/dev-secrets`);
-            }}
-          />
-        </>
+      {isBuilder && (
+        <Button
+          label="New App"
+          variant="primary"
+          icon={PlusIcon}
+          size="sm"
+          onClick={() => {
+            setIsCreateAppModalOpened(true);
+          }}
+        />
       )}
     </>
   );
@@ -240,7 +226,7 @@ export const SpaceAppsList = ({
         <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-muted-background dark:bg-muted-background-night">
           <Button
             label="Create App"
-            disabled={!canWriteInSpace}
+            disabled={!isBuilder}
             onClick={() => {
               setIsCreateAppModalOpened(true);
             }}

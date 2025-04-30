@@ -16,13 +16,15 @@ const LimitCodec = createRangeCodec(0, 100);
 // of AgentGetViewType
 export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
-    t.literal("current_user"),
-    t.literal("list"),
-    t.literal("workspace"),
-    t.literal("published"),
-    t.literal("global"),
     t.literal("admin_internal"),
     t.literal("all"),
+    t.literal("archived"),
+    t.literal("current_user"),
+    t.literal("global"),
+    t.literal("list"),
+    t.literal("manage"),
+    t.literal("published"),
+    t.literal("workspace"),
     t.undefined,
   ]),
   withUsage: t.union([t.literal("true"), t.literal("false"), t.undefined]),
@@ -38,18 +40,6 @@ export const GetAgentConfigurationsQuerySchema = t.type({
 
 export const GetAgentConfigurationsHistoryQuerySchema = t.type({
   limit: t.union([LimitCodec, t.undefined]),
-});
-
-export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
-  view: t.union([
-    t.literal("list"),
-    t.literal("workspace"),
-    t.literal("published"),
-    t.literal("global"),
-    t.literal("admin_internal"),
-    t.literal("manage-assistants-search"),
-    t.literal("all"),
-  ]),
 });
 
 // Data sources
@@ -95,6 +85,14 @@ const TablesConfigurationsCodec = t.array(
     workspaceId: t.string,
   })
 );
+
+// Reasoning
+
+const ReasoningModelConfigurationSchema = t.type({
+  modelId: ModelIdCodec,
+  providerId: ModelProviderIdCodec,
+  reasoningEffort: t.union([t.null, ReasoningEffortCodec]),
+});
 
 // Actions
 
@@ -147,6 +145,7 @@ const MCPServerActionConfigurationSchema = t.type({
   dataSources: t.union([t.null, DataSourcesConfigurationsCodec]),
   tables: t.union([t.null, TablesConfigurationsCodec]),
   childAgentId: t.union([t.null, t.string]),
+  reasoningModel: t.union([t.null, ReasoningModelConfigurationSchema]),
   additionalConfiguration: t.record(
     t.string,
     t.union([t.boolean, t.number, t.string, t.null])
@@ -164,17 +163,7 @@ const ProcessActionConfigurationSchema = t.type({
       unit: TimeframeUnitCodec,
     }),
   ]),
-  schema: t.array(
-    t.type({
-      name: t.string,
-      type: t.union([
-        t.literal("string"),
-        t.literal("number"),
-        t.literal("boolean"),
-      ]),
-      description: t.string,
-    })
-  ),
+  jsonSchema: t.union([t.record(t.unknown, t.unknown), t.null]),
 });
 
 const multiActionsCommonFields = {
@@ -221,6 +210,15 @@ const IsSupportedModelSchema = new t.Type<SupportedModel>(
   t.identity
 );
 
+const TagSchema = t.type({
+  sId: t.string,
+  name: t.string,
+});
+
+const EditorSchema = t.type({
+  sId: t.string,
+});
+
 export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
   assistant: t.type({
     name: t.string,
@@ -236,12 +234,16 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
       t.literal("workspace"),
       t.literal("published"),
       t.literal("private"),
+      t.literal("hidden"),
+      t.literal("visible"),
     ]),
     model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
     actions: t.array(ActionConfigurationSchema),
     templateId: t.union([t.string, t.null, t.undefined]),
     maxStepsPerRun: t.union([t.number, t.undefined]),
     visualizationEnabled: t.boolean,
+    tags: t.array(TagSchema),
+    editors: t.array(EditorSchema),
   }),
 });
 

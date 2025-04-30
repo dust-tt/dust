@@ -232,7 +232,7 @@ impl Table {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         search_store: Option<Box<dyn SearchStore + Sync + Send>>,
     ) -> Result<()> {
-        if self.table_type()? == TableType::Local {
+        if self.remote_database_table_id().is_none() {
             // Invalidate the databases that use the table.
             try_join_all(
                 (store

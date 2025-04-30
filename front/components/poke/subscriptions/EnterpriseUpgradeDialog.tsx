@@ -1,6 +1,7 @@
 import {
   Button,
   Dialog,
+  DialogContainer,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -11,7 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { PokeForm } from "@app/components/poke/shadcn/ui/form";
@@ -44,62 +45,65 @@ export default function EnterpriseUpgradeDialog({
     },
   });
 
-  const onSubmit = (values: EnterpriseUpgradeFormType) => {
-    const cleanedValues = Object.fromEntries(
-      removeNulls(
-        Object.entries(values).map(([key, value]) => {
-          if (typeof value !== "string") {
-            return [key, value];
-          }
-          const cleanedValue = value.trim();
-          if (!cleanedValue) {
-            return null;
-          }
-          return [key, cleanedValue];
-        })
-      )
-    );
+  const onSubmit = useCallback(
+    (values: EnterpriseUpgradeFormType) => {
+      const cleanedValues = Object.fromEntries(
+        removeNulls(
+          Object.entries(values).map(([key, value]) => {
+            if (typeof value !== "string") {
+              return [key, value];
+            }
+            const cleanedValue = value.trim();
+            if (!cleanedValue) {
+              return null;
+            }
+            return [key, cleanedValue];
+          })
+        )
+      );
 
-    const submit = async () => {
-      setIsSubmitting(true);
-      setError(null);
-      try {
-        const r = await fetch(
-          `/api/poke/workspaces/${owner.sId}/upgrade_enterprise`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(cleanedValues),
-          }
-        );
-
-        if (!r.ok) {
-          throw new Error(
-            `Something went wrong: ${r.status} ${await r.text()}`
+      const submit = async () => {
+        setIsSubmitting(true);
+        setError(null);
+        try {
+          const r = await fetch(
+            `/api/poke/workspaces/${owner.sId}/upgrade_enterprise`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(cleanedValues),
+            }
           );
-        }
 
-        form.reset();
-        setOpen(false);
-        router.reload();
-      } catch (e) {
-        setIsSubmitting(false);
-        if (e instanceof Error) {
-          setError(e.message);
+          if (!r.ok) {
+            throw new Error(
+              `Something went wrong: ${r.status} ${await r.text()}`
+            );
+          }
+
+          form.reset();
+          setOpen(false);
+          router.reload();
+        } catch (e) {
+          setIsSubmitting(false);
+          if (e instanceof Error) {
+            setError(e.message);
+          }
         }
-      }
-    };
-    void submit();
-  };
+      };
+      void submit();
+    },
+    [form, owner.sId, router, setError, setIsSubmitting, setOpen]
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" label="🏢 Upgrade to Enterprise" />
       </DialogTrigger>
-      <DialogContent className="bg-primary-50 sm:max-w-[600px]">
+      <DialogContent className="bg-primary-50 dark:bg-primary-50-night sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Upgrade {owner.name} to Enterprise.</DialogTitle>
           <DialogDescription>
@@ -107,40 +111,49 @@ export default function EnterpriseUpgradeDialog({
             the customer.
           </DialogDescription>
         </DialogHeader>
-        {error && <div className="text-warning">{error}</div>}
-        {isSubmitting && <Spinner />}
-        {!isSubmitting && (
-          <PokeForm {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <div className="grid gap-4 py-4">
-                <div className="grid-cols grid items-center gap-4">
-                  <SelectField
-                    control={form.control}
-                    name="planCode"
-                    title="Enterprise Plan"
-                    options={plans
-                      .filter((plan) => isEntreprisePlan(plan.code))
-                      .map((plan) => ({
-                        value: plan.code,
-                        display: `${plan.name} (${plan.code})`,
-                      }))}
-                  />
+        <DialogContainer>
+          {error && <div className="text-warning">{error}</div>}
+          {isSubmitting && (
+            <div className="flex justify-center">
+              <Spinner size="lg" />
+            </div>
+          )}
+          {!isSubmitting && (
+            <PokeForm {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-8"
+              >
+                <div className="grid gap-4 py-4">
+                  <div className="grid-cols grid items-center gap-4">
+                    <SelectField
+                      control={form.control}
+                      name="planCode"
+                      title="Enterprise Plan"
+                      options={plans
+                        .filter((plan) => isEntreprisePlan(plan.code))
+                        .map((plan) => ({
+                          value: plan.code,
+                          display: `${plan.name} (${plan.code})`,
+                        }))}
+                    />
+                  </div>
+                  <div className="grid-cols grid items-center gap-4">
+                    <InputField
+                      control={form.control}
+                      name="stripeSubscriptionId"
+                      title="Stripe Subscription id"
+                      placeholder="sub_1234567890"
+                    />
+                  </div>
                 </div>
-                <div className="grid-cols grid items-center gap-4">
-                  <InputField
-                    control={form.control}
-                    name="stripeSubscriptionId"
-                    title="Stripe Subscription id"
-                    placeholder="sub_1234567890"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit" variant="warning" label="Upgrade" />
-              </DialogFooter>
-            </form>
-          </PokeForm>
-        )}
+                <DialogFooter>
+                  <Button type="submit" variant="warning" label="Upgrade" />
+                </DialogFooter>
+              </form>
+            </PokeForm>
+          )}
+        </DialogContainer>
       </DialogContent>
     </Dialog>
   );

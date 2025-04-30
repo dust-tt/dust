@@ -33,7 +33,8 @@ export type InferPluginArgs<T extends PluginArgs> = {
 
 export type PluginResponse =
   | { display: "text"; value: string }
-  | { display: "json"; value: Record<string, unknown> };
+  | { display: "json"; value: Record<string, unknown> }
+  | { display: "textWithLink"; value: string; link: string; linkText: string };
 
 export interface Plugin<
   T extends PluginArgs,

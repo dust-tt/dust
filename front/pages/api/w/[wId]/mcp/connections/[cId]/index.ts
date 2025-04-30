@@ -1,4 +1,3 @@
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -7,11 +6,6 @@ import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_conn
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-
-export const PostConnectionBodySchema = t.type({
-  connectionId: t.string,
-  internalMCPServerId: t.string,
-});
 
 async function handler(
   req: NextApiRequest,

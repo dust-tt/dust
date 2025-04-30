@@ -26,6 +26,7 @@ jobs:
           MONITORED_PATHS=(
             'front/lib/models/'
             'front/lib/resources/storage/models/'
+            'front/lib/registry.ts'
             'connectors/src/lib/models/'
             'connectors/src/resources/storage/models/'
             'front/pages/api/v1/'

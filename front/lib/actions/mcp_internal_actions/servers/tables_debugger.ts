@@ -10,7 +10,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "Demo server showing a basic interaction with a table configuration.",
-  visual: "https://dust.tt/static/droidavatar/Droid_Indigo_1.jpg",
+  icon: "ActionTableIcon",
   authorization: null,
 };
 
@@ -23,7 +23,7 @@ function createServer(): McpServer {
     {
       query: z.string(),
       tables:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.CONFIGURATION.TABLE],
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
     async ({ tables }) => {
       return {

@@ -17,6 +17,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
@@ -25,12 +26,14 @@ import type {
   PlanType,
   SpaceType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration: AgentConfigurationType;
+  agentEditors: UserType[];
   baseUrl: string;
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
@@ -63,13 +66,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth),
     ]);
 
-  if (configuration?.scope === "workspace" && !auth.isBuilder()) {
+  if (!configuration) {
     return {
       notFound: true,
     };
   }
 
-  if (!configuration) {
+  if (!configuration.canEdit) {
     return {
       notFound: true,
     };
@@ -89,10 +92,23 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
+  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    auth,
+    configuration
+  );
+  if (editorGroupRes.isErr()) {
+    throw new Error("Failed to find editor group for agent");
+  }
+
+  const agentEditors = (await editorGroupRes.value.getActiveMembers(auth)).map(
+    (m) => m.toJSON()
+  );
+
   return {
     props: {
       actions,
       agentConfiguration: configuration,
+      agentEditors,
       baseUrl: config.getClientFacingUrl(),
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
@@ -109,6 +125,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function EditAssistant({
   actions,
   agentConfiguration,
+  agentEditors,
   baseUrl,
   spaces,
   dataSourceViews,
@@ -160,6 +177,8 @@ export default function EditAssistant({
           visualizationEnabled: agentConfiguration.visualizationEnabled,
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
+          tags: agentConfiguration.tags,
+          editors: agentEditors,
         }}
         agentConfigurationId={agentConfiguration.sId}
         baseUrl={baseUrl}

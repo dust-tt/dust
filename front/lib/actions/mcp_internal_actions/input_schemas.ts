@@ -1,10 +1,15 @@
-import type { InternalConfigurationMimeType } from "@dust-tt/client";
-import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { InternalToolInputMimeType } from "@dust-tt/client";
+import {
+  assertNever,
+  CHILD_AGENT_CONFIGURATION_URI_PATTERN,
+  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
+  INTERNAL_MIME_TYPES,
+  TABLE_CONFIGURATION_URI_PATTERN,
+} from "@dust-tt/client";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -14,75 +19,86 @@ import {
 } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
-  findMatchingSchemaKeys,
+  findMatchingSubSchemas,
   findSchemaAtPath,
   followInternalRef,
   isJSONSchemaObject,
-  schemasAreEqual,
+  schemaIsConfigurable,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 
-export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
-  /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
-
-export const TABLE_CONFIGURATION_URI_PATTERN =
-  /^table_configuration:\/\/dust\/w\/(\w+)\/table_configurations\/(\w+)$/;
-
-// URI pattern for configuring the agent to use within an action (agent calls agent, sort of Russian doll situation).
-export const CHILD_AGENT_CONFIGURATION_URI_PATTERN =
-  /^agent:\/\/dust\/w\/(\w+)\/agents\/(\w+)$/;
+// TODO(mcp): use the definitions from the client instead of copying them here.
+// Currently the type inference does not work as is.
 
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
+ * Not all mime types have a fixed schema, for instance the ENUM mime type is flexible.
  */
 export const ConfigurableToolInputSchemas = {
-  [INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE]: z.array(
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]: z.array(
     z.object({
       uri: z.string().regex(DATA_SOURCE_CONFIGURATION_URI_PATTERN),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE),
     })
   ),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.TABLE]: z.array(
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE]: z.array(
     z.object({
       uri: z.string().regex(TABLE_CONFIGURATION_URI_PATTERN),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.TABLE),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE),
     })
   ),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT]: z.object({
     uri: z.string().regex(CHILD_AGENT_CONFIGURATION_URI_PATTERN),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT),
   }),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.STRING]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.STRING]: z.object({
     value: z.string(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.STRING),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.STRING),
   }),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER]: z.object({
     value: z.number(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER),
   }),
-  [INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN]: z.object({
     value: z.boolean(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN),
   }),
-  // We use a satisfies here to ensure that all the InternalConfigurationMimeType are covered whilst preserving the type
-  // inference in tools definitions (server.tool is templated).
-} as const satisfies Record<InternalConfigurationMimeType, z.ZodSchema>;
-
-export type ConfigurableToolInputType = z.infer<
-  (typeof ConfigurableToolInputSchemas)[InternalConfigurationMimeType]
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL]: z.object({
+    modelId: z.string(),
+    providerId: z.string(),
+    temperature: z.number().nullable(),
+    reasoningEffort: z.string().nullable(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
+  }),
+  // All mime types do not necessarily have a fixed schema,
+  // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
+} as const satisfies Omit<
+  Record<InternalToolInputMimeType, z.ZodType>,
+  typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM
 >;
 
-/**
- * Mapping between the mime types we used to identify a configurable resource
- * and the JSON schema resulting from the Zod schema defined above.
- */
-export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
-  Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
-    key,
-    zodToJsonSchema(schema),
-  ])
-) as Record<InternalConfigurationMimeType, JSONSchema>;
+// Type for the tool inputs that have a flexible schema, which are schemas that can vary between tools.
+type FlexibleConfigurableToolInput = {
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM]: {
+    value: string;
+    mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM;
+  };
+};
+
+export type ConfigurableToolInputType =
+  | z.infer<
+      (typeof ConfigurableToolInputSchemas)[keyof typeof ConfigurableToolInputSchemas]
+    >
+  | FlexibleConfigurableToolInput[keyof FlexibleConfigurableToolInput];
+
+export type DataSourcesToolConfigurationType = z.infer<
+  (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]
+>;
+
+export type TablesConfigurationToolType = z.infer<
+  (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE]
+>;
 
 /**
  * Defines how we fill the actual inputs of the tool for each mime type.
@@ -95,7 +111,7 @@ export function generateConfiguredInput({
 }: {
   owner: WorkspaceType;
   actionConfiguration: MCPToolConfigurationType;
-  mimeType: InternalConfigurationMimeType;
+  mimeType: InternalToolInputMimeType;
   keyPath: string;
 }): ConfigurableToolInputType {
   assert(
@@ -104,7 +120,7 @@ export function generateConfiguredInput({
   );
 
   switch (mimeType) {
-    case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE:
       return (
         actionConfiguration.dataSources?.map((config) => ({
           uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
@@ -112,7 +128,7 @@ export function generateConfiguredInput({
         })) || []
       );
 
-    case INTERNAL_MIME_TYPES.CONFIGURATION.TABLE:
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE:
       return (
         actionConfiguration.tables?.map((config) => ({
           uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
@@ -120,7 +136,7 @@ export function generateConfiguredInput({
         })) || []
       );
 
-    case INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT: {
       const { childAgentId } = actionConfiguration;
       if (!childAgentId) {
         // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
@@ -134,7 +150,18 @@ export function generateConfiguredInput({
       };
     }
 
-    case INTERNAL_MIME_TYPES.CONFIGURATION.STRING: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL: {
+      const { reasoningModel } = actionConfiguration;
+      if (!reasoningModel) {
+        // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the reasoning model.
+        throw new Error("Unreachable: missing reasoning model configuration.");
+      }
+      const { modelId, providerId, temperature, reasoningEffort } =
+        reasoningModel;
+      return { modelId, providerId, temperature, reasoningEffort, mimeType };
+    }
+
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
       // For primitive types, we have rendered the key from the path and use it to look up the value.
       const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "string") {
@@ -145,7 +172,7 @@ export function generateConfiguredInput({
       return { value, mimeType };
     }
 
-    case INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER: {
       const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "number") {
         throw new Error(
@@ -155,11 +182,21 @@ export function generateConfiguredInput({
       return { value, mimeType };
     }
 
-    case INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN: {
       const value = actionConfiguration.additionalConfiguration[keyPath];
       if (typeof value !== "boolean") {
         throw new Error(
           `Expected boolean value for key ${keyPath}, got ${typeof value}`
+        );
+      }
+      return { value, mimeType };
+    }
+
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
+      const value = actionConfiguration.additionalConfiguration[keyPath];
+      if (typeof value !== "string") {
+        throw new Error(
+          `Expected string value for key ${keyPath}, got ${typeof value}`
         );
       }
       return { value, mimeType };
@@ -172,27 +209,29 @@ export function generateConfiguredInput({
 
 /**
  * Returns all paths in a server's tools' inputSchemas that match the schema for the specified mimeType.
- * @returns An array of paths where the schema matches the specified mimeType
+ * @returns A record of paths where the schema matches the specified mimeType
  */
 export function findPathsToConfiguration({
   mcpServer,
   mimeType,
 }: {
   mcpServer: MCPServerType;
-  mimeType: InternalConfigurationMimeType;
-}): string[] {
-  return mcpServer.tools.flatMap((tool) =>
-    tool.inputSchema
-      ? findMatchingSchemaKeys(
-          tool.inputSchema,
-          ConfigurableToolInputJSONSchemas[mimeType]
-        )
-      : []
-  );
+  mimeType: InternalToolInputMimeType;
+}): Record<string, JSONSchema> {
+  let matches: Record<string, JSONSchema> = {};
+  for (const tool of mcpServer.tools) {
+    if (tool.inputSchema) {
+      matches = {
+        ...matches,
+        ...findMatchingSubSchemas(tool.inputSchema, mimeType),
+      };
+    }
+  }
+  return matches;
 }
 
 /**
- * Recursively filters out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION.
+ * Recursively filters out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT.
  * This function handles nested objects and arrays.
  */
 export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
@@ -207,14 +246,14 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
       let shouldInclude = true;
 
       if (isJSONSchemaObject(property)) {
-        for (const schema of Object.values(ConfigurableToolInputJSONSchemas)) {
+        for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
           // Check if the property matches the schema, following references if $ref points to a schema internally.
-          let schemasMatch = schemasAreEqual(property, schema);
+          let schemasMatch = schemaIsConfigurable(property, mimeType);
 
           if (!schemasMatch && property.$ref) {
             const refSchema = followInternalRef(inputSchema, property.$ref);
             if (refSchema) {
-              schemasMatch = schemasAreEqual(refSchema, schema);
+              schemasMatch = schemaIsConfigurable(refSchema, mimeType);
             }
           }
 
@@ -269,7 +308,7 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
 
 /**
  * Augments the inputs with configuration data from actionConfiguration.
- * For each missing property that has a mimeType matching a value in INTERNAL_MIME_TYPES.CONFIGURATION,
+ * For each missing property that has a mimeType matching a value in INTERNAL_MIME_TYPES.TOOL_INPUT,
  * it adds the corresponding data from actionConfiguration.
  * This function uses Ajv validation errors to identify missing properties.
  */
@@ -295,6 +334,11 @@ export function augmentInputsWithConfiguration({
   const inputs = rawInputs;
 
   const ajv = new Ajv({ allErrors: true });
+
+  // Note: When using AJV validation, string patterns must use regex syntax (e.g. /^fil_/) instead
+  // of startsWith() to avoid "Invalid escape" errors. This is important because our Zod schemas are
+  // converted to JSON Schema for AJV validation, and AJV requires regex patterns for string
+  // validation.
   const validate = ajv.compile(inputSchema);
   const isValid = validate(inputs);
 
@@ -319,15 +363,8 @@ export function augmentInputsWithConfiguration({
 
       // If we found a schema and it has a matching MIME type, inject the value
       if (propSchema) {
-        for (const mimeType of Object.values(
-          INTERNAL_MIME_TYPES.CONFIGURATION
-        )) {
-          if (
-            schemasAreEqual(
-              propSchema,
-              ConfigurableToolInputJSONSchemas[mimeType]
-            )
-          ) {
+        for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
+          if (schemaIsConfigurable(propSchema, mimeType)) {
             // We found a matching mimeType, augment the inputs
             setValueAtPath(
               inputs,
@@ -354,9 +391,11 @@ export function getMCPServerRequirements(
   requiresDataSourceConfiguration: boolean;
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
-  requiredStrings: Record<string, string>;
-  requiredNumbers: Record<string, number>;
-  requiredBooleans: Record<string, boolean>;
+  requiresReasoningConfiguration: boolean;
+  requiredStrings: string[];
+  requiredNumbers: string[];
+  requiredBooleans: string[];
+  requiredEnums: Record<string, string[]>;
   noRequirement: boolean;
 } {
   if (!mcpServerView) {
@@ -364,61 +403,106 @@ export function getMCPServerRequirements(
       requiresDataSourceConfiguration: false,
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
-      requiredStrings: {},
-      requiredNumbers: {},
-      requiredBooleans: {},
+      requiresReasoningConfiguration: false,
+      requiredStrings: [],
+      requiredNumbers: [],
+      requiredBooleans: [],
+      requiredEnums: {},
       noRequirement: false,
     };
   }
   const { server } = mcpServerView;
+
   const requiresDataSourceConfiguration =
-    findPathsToConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
-    }).length > 0;
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      })
+    ).length > 0;
+
   const requiresTableConfiguration =
-    findPathsToConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.TABLE,
-    }).length > 0;
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
+      })
+    ).length > 0;
+
   const requiresChildAgentConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT,
+      })
+    ).length > 0;
+
+  const requiresReasoningConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+      })
+    ).length > 0;
+
+  const requiredStrings = Object.keys(
     findPathsToConfiguration({
       mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.CHILD_AGENT,
-    }).length > 0;
-  const requiredStrings = Object.fromEntries(
-    findPathsToConfiguration({
-      mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.STRING,
-    }).map((path) => [path, ""])
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+    })
   );
-  const requiredNumbers = Object.fromEntries(
+
+  const requiredNumbers = Object.keys(
     findPathsToConfiguration({
       mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.NUMBER,
-    }).map((path) => [path, 0])
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
+    })
   );
-  const requiredBooleans = Object.fromEntries(
+
+  const requiredBooleans = Object.keys(
     findPathsToConfiguration({
       mcpServer: server,
-      mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.BOOLEAN,
-    }).map((path) => [path, false])
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
+    })
+  );
+
+  const requiredEnums = Object.fromEntries(
+    Object.entries(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+      })
+    ).map(([key, schema]) => {
+      const valueProperty = schema.properties?.value;
+      if (!valueProperty || !isJSONSchemaObject(valueProperty)) {
+        return [key, []];
+      }
+      return [
+        key,
+        valueProperty.enum?.filter((v): v is string => typeof v === "string") ??
+          [],
+      ];
+    })
   );
 
   return {
     requiresDataSourceConfiguration,
     requiresTableConfiguration,
     requiresChildAgentConfiguration,
+    requiresReasoningConfiguration,
     requiredStrings,
     requiredNumbers,
     requiredBooleans,
+    requiredEnums,
 
     noRequirement:
       !requiresDataSourceConfiguration &&
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
-      Object.keys(requiredStrings).length === 0 &&
-      Object.keys(requiredNumbers).length === 0 &&
-      Object.keys(requiredBooleans).length === 0,
+      !requiresReasoningConfiguration &&
+      requiredStrings.length === 0 &&
+      requiredNumbers.length === 0 &&
+      requiredBooleans.length === 0 &&
+      Object.keys(requiredEnums).length === 0,
   };
 }

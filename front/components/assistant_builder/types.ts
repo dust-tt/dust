@@ -1,7 +1,8 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { uniqueId } from "lodash";
-import type { SVGProps } from "react";
 import type React from "react";
+import type { SVGProps } from "react";
 
 import {
   DEFAULT_MCP_ACTION_NAME,
@@ -14,7 +15,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
@@ -28,6 +29,7 @@ import type {
   SubscriptionType,
   SupportedModel,
   TimeframeUnit,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -35,6 +37,7 @@ import {
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 export const ACTION_MODES = [
   "GENERIC",
@@ -107,11 +110,12 @@ export type AssistantBuilderTableConfiguration =
 // Process configuration
 
 export type AssistantBuilderProcessConfiguration = {
-  timeFrame: AssistantBuilderTimeFrame;
+  timeFrame?: AssistantBuilderTimeFrame | null;
 } & {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   tagsFilter: AssistantBuilderTagsFilter | null;
-  schema: ProcessSchemaPropertyType[];
+  jsonSchema: JSONSchema | null;
+  _jsonSchemaString?: string | null;
 };
 
 // Websearch configuration (no configuration)
@@ -131,6 +135,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
+  reasoningModel: ReasoningModelConfiguration | null;
   additionalConfiguration: Record<string, boolean | number | string>;
 };
 
@@ -210,6 +215,7 @@ export type AssistantBuilderPendingAction =
     }
   | {
       action: null;
+      previousActionName: null;
     };
 
 export type AssistantBuilderState = {
@@ -227,6 +233,8 @@ export type AssistantBuilderState = {
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
+  tags: TagType[];
+  editors: UserType[];
 };
 
 export type AssistantBuilderInitialState = {
@@ -244,6 +252,8 @@ export type AssistantBuilderInitialState = {
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
+  tags: TagType[];
+  editors: UserType[];
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
@@ -265,6 +275,8 @@ export function getDefaultAssistantState() {
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
+    tags: [],
+    editors: [],
   } satisfies AssistantBuilderState;
 }
 
@@ -326,12 +338,10 @@ export function getDefaultProcessActionConfiguration() {
     type: "PROCESS",
     configuration: {
       dataSourceConfigurations: {},
-      timeFrame: {
-        value: 1,
-        unit: "day",
-      },
+      timeFrame: null,
       tagsFilter: null,
-      schema: [],
+      jsonSchema: null,
+      _jsonSchemaString: null,
     } as AssistantBuilderProcessConfiguration,
     name: DEFAULT_PROCESS_ACTION_NAME,
     description: "",
@@ -375,6 +385,7 @@ export function getDefaultMCPServerActionConfiguration(
       dataSourceConfigurations: null,
       tablesConfigurations: null,
       childAgentId: null,
+      reasoningModel: null,
       additionalConfiguration: {},
     },
     name: mcpServerView?.server.name ?? "",
@@ -469,7 +480,7 @@ export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
     },
     actions: {
       id: "actions",
-      label: "Tools & Data sources",
+      label: "Tools & Knowledge",
       dataGtm: {
         label: "assistantToolsButton",
         location: "assistantBuilder",

@@ -6,6 +6,7 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -25,31 +26,51 @@ async function handler(
 
   switch (method) {
     // We get the server that are:
-    // - installed in the workspace but not in global (so can be restricted but not yet assign to spaces)
+    // - not in global (so can be restricted but not yet assign to spaces)
     // - not in the current space
     case "GET": {
-      const workspaceServerViews =
-        await MCPServerViewResource.listByWorkspace(auth);
+      const [
+        internalInstalledServers,
+        remoteInstalledServers,
+        workspaceServerViews,
+      ] = await Promise.all([
+        InternalMCPServerInMemoryResource.listByWorkspace(auth),
+        RemoteMCPServerResource.listByWorkspace(auth),
+        MCPServerViewResource.listByWorkspace(auth),
+      ]);
+
       const globalServersId = workspaceServerViews
         .filter((s) => s.space.kind === "global")
         .map((s) => s.toJSON().server.id);
 
-      const workspaceInstalledServer =
-        await InternalMCPServerInMemoryResource.listByWorkspace(auth);
-
-      const spaceServerViews = await MCPServerViewResource.listBySpace(
-        auth,
-        space
+      const spaceServerViews = workspaceServerViews.filter(
+        (s) => s.space.id === space.id
       );
       const spaceServersId = spaceServerViews.map((s) => s.toJSON().server.id);
 
-      const availableServer = workspaceInstalledServer.filter(
-        (s) => !spaceServersId.includes(s.id) && !globalServersId.includes(s.id)
-      );
+      const availableServer: MCPServerType[] = [];
+
+      for (const srv of internalInstalledServers) {
+        if (
+          !spaceServersId.includes(srv.id) &&
+          !globalServersId.includes(srv.id)
+        ) {
+          availableServer.push(srv.toJSON());
+        }
+      }
+
+      for (const srv of remoteInstalledServers) {
+        if (
+          !spaceServersId.includes(srv.sId) &&
+          !globalServersId.includes(srv.sId)
+        ) {
+          availableServer.push(srv.toJSON());
+        }
+      }
 
       return res.status(200).json({
         success: true,
-        servers: availableServer.map((s) => s.toJSON()),
+        servers: availableServer,
       });
     }
 

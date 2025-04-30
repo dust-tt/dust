@@ -97,7 +97,6 @@ export interface BaseActionConfigurationStaticMethods<
 
 export interface BaseActionRunParams {
   agentConfiguration: AgentConfigurationType;
-  actionConfiguration: ActionConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
   rawInputs: Record<string, unknown>;
@@ -133,3 +132,13 @@ export abstract class BaseActionConfigurationServerRunner<
     customParams: Record<string, unknown>
   ): AsyncGenerator<unknown>;
 }
+
+export type AgentLoopContextType = {
+  agentConfiguration: AgentConfigurationType;
+  actionConfiguration: ActionConfigurationType;
+  conversation: ConversationType;
+  agentMessage: AgentMessageType;
+  stepActionIndex: number;
+  stepActions: ActionConfigurationType[];
+  citationsRefsOffset: number;
+};

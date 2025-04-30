@@ -13,6 +13,7 @@ import {
   DocumentIcon,
   DocumentPileIcon,
   EyeIcon,
+  InteractiveImage,
   Markdown,
   Page,
   Popover,
@@ -33,11 +34,13 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
+import {
+  getDocumentIcon,
+  makeDocumentCitation,
+} from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -59,9 +62,14 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
+import {
+  isSearchResultResourceType,
+  isWebsearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import {
+  isMCPActionType,
   isRetrievalActionType,
   isWebsearchActionType,
 } from "@app/lib/actions/types/guards";
@@ -151,7 +159,6 @@ export function AgentMessage({
   message,
   messageFeedback,
   owner,
-  user,
 }: AgentMessageProps) {
   const { isDark } = useTheme();
   const [streamedAgentMessage, setStreamedAgentMessage] =
@@ -168,8 +175,6 @@ export function AgentMessage({
     { index: number; document: MarkdownCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
-
-  const { setIsImageUrl } = useConversationsNavigation();
 
   const isGlobalAgent = useMemo(() => {
     return Object.values(GLOBAL_AGENTS_SID).includes(
@@ -268,6 +273,7 @@ export function AgentMessage({
             action: event.action,
             inputs: event.inputs,
             stake: event.stake,
+            metadata: event.metadata,
           });
           break;
 
@@ -537,8 +543,53 @@ export function AgentMessage({
       return acc;
     }, {});
 
+    // MCP actions with search results
+    const searchResultsWithDocs = removeNulls(
+      agentMessageToRender.actions
+        .filter(isMCPActionType)
+        .flatMap((action) =>
+          action.output
+            ?.filter(isSearchResultResourceType)
+            .map((o) => o.resource)
+        )
+    );
+    const allMCPSearchResultsReferences = searchResultsWithDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.ref] = {
+        href: d.uri,
+        title: d.text,
+        icon: getDocumentIcon(d.source.provider),
+      };
+      return acc;
+    }, {});
+
+    const websearchResultsWithDocs = removeNulls(
+      agentMessageToRender.actions
+        .filter(isMCPActionType)
+        .flatMap((action) =>
+          action.output?.filter(isWebsearchResultResourceType)
+        )
+    );
+
+    const allMCPWebsearchResultsReferences = websearchResultsWithDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.resource.reference] = {
+        href: d.resource.uri,
+        title: d.resource.title,
+        icon: <DocumentIcon />,
+      };
+      return acc;
+    }, {});
+
     // Merge all references
-    setReferences({ ...allDocsReferences, ...allWebReferences });
+    setReferences({
+      ...allDocsReferences,
+      ...allWebReferences,
+      ...allMCPSearchResultsReferences,
+      ...allMCPWebsearchResultsReferences,
+    });
   }, [
     agentMessageToRender.actions,
     agentMessageToRender.status,
@@ -571,9 +622,7 @@ export function AgentMessage({
     [activeReferences]
   );
 
-  const canMention =
-    agentConfiguration.scope !== "private" ||
-    agentConfiguration.versionAuthorId === user.id;
+  const canMention = agentConfiguration.canRead;
 
   return (
     <ConversationMessage
@@ -667,16 +716,14 @@ export function AgentMessage({
         {generatedImages.length > 0 && (
           <div className="mt-2 grid grid-cols-4 gap-2">
             {generatedImages.map((image) => (
-              <div key={image.fileId}>
-                <img
-                  className="cursor-zoom-in rounded-md"
-                  src={`/api/w/${owner.sId}/files/${image.fileId}`}
-                  alt={`${image.title}`}
-                  onClick={() => {
-                    setIsImageUrl(`/api/w/${owner.sId}/files/${image.fileId}`);
-                  }}
-                />
-              </div>
+              <InteractiveImage
+                key={image.fileId}
+                imageUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=view`}
+                downloadUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=download`}
+                alt={`${image.title}`}
+                title={`${image.title}`}
+                isLoading={false}
+              />
             ))}
           </div>
         )}
@@ -829,7 +876,7 @@ function ErrorMessage({
           }
           content={
             <div className="flex flex-col gap-3">
-              <div className="text-sm font-normal text-warning-800">
+              <div className="whitespace-normal break-words text-sm font-normal text-warning-800">
                 {fullMessage}
               </div>
               <div className="self-end">

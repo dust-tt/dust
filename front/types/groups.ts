@@ -1,19 +1,25 @@
 import type { ModelId } from "./shared/model_id";
 
 /**
- * system group:
- * Accessible by no-one other than our system API keys.
- * Has access to the system Space which holds the connected data sources.
+ * system group: Accessible by no-one other than our system API keys. Has access
+ * to the system Space which holds the connected data sources.
  *
- * global group:
- * Contains all users from the workspace.
- * Has access to the global Space which holds all existing datasource created before spaces.
+ * global group: Contains all users from the workspace. Has access to the global
+ * Space which holds all existing datasource created before spaces.
  *
- * regular group:
- * Contains specific users added by workspace admins.
- * Has access to the list of spaces configured by workspace admins.
+ * regular group: Contains specific users added by workspace admins. Has access
+ * to the list of spaces configured by workspace admins.
+ *
+ * agent_editors group: Group specific to represent agent editors, tied to an
+ *  agent. Has special permissions: not restricted only to admins. Users can
+ *  create, and members of the group can update it.
  */
-export const GROUP_KINDS = ["regular", "global", "system"] as const;
+export const GROUP_KINDS = [
+  "regular",
+  "global",
+  "system",
+  "agent_editors",
+] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
 
 export function isGroupKind(value: unknown): value is GroupKind {
@@ -26,9 +32,16 @@ export function isGlobalGroupKind(value: GroupKind): boolean {
   return value === "global";
 }
 
+export function isAgentEditorGroupKind(value: GroupKind): boolean {
+  return value === "agent_editors";
+}
+
 export function prettifyGroupName(group: GroupType) {
   if (group.kind === "global") {
     return "Company Data";
+  }
+  if (group.kind === "agent_editors") {
+    return group.name.replace("Group for Agent ", "");
   }
   return group.name.replace("Group for Space ", "");
 }

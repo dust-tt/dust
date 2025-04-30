@@ -30,20 +30,27 @@ export const getServerSideProps = withDefaultUserAuthRequirements(
       }
     }
 
-    // Fall back to the global space.
-    const space = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    if (!space) {
+    if (owner.role === "admin") {
+      // Fall back to the system space (connection admin).
+      const space = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
       return {
-        notFound: true,
+        redirect: {
+          destination: `/w/${owner.sId}/spaces/${space.sId}`,
+          permanent: false,
+        },
+      };
+    } else {
+      // Fall back to the global space (company data).
+      const space = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+      return {
+        redirect: {
+          destination: `/w/${owner.sId}/spaces/${space.sId}`,
+          permanent: false,
+        },
       };
     }
-
-    return {
-      redirect: {
-        destination: `/w/${owner.sId}/spaces/${space.sId}`,
-        permanent: false,
-      },
-    };
   }
 );
 

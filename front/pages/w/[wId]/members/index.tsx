@@ -7,14 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
   Page,
-  Popup,
   SearchInput,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
+import type { PaginationState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
@@ -24,6 +24,7 @@ import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
 import config from "@app/lib/api/config";
@@ -38,11 +39,13 @@ import {
 } from "@app/lib/api/workspace";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useSearchMembers } from "@app/lib/swr/memberships";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
   SubscriptionType,
   UserType,
+  UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
@@ -75,7 +78,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails =
     {
       callbackUrl: config.getAuth0TenantUrl(),
-      initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(owner.sId),
+      initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(
+        owner.sId,
+        null
+      ),
       // SAML specific.
       audienceUri: makeAudienceUri(owner),
       samlAcsUrl: makeSamlAcsUrl(owner),
@@ -207,17 +213,32 @@ export default function WorkspaceAdmin({
                   }}
                 />
               )}
-              <Popup
-                show={showNoInviteLinkPopup}
-                chipLabel="Free plan"
-                description="You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
-                buttonLabel="Check Dust plans"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                className="absolute bottom-8 right-0"
-                onClose={() => setShowNoInviteLinkPopup(false)}
-              />
+              <Dialog open={showNoInviteLinkPopup}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Free plan</DialogTitle>
+                  </DialogHeader>
+                  <p className="text-sm text-gray-500">
+                    You cannot enable auto-join with the free plan. Upgrade your
+                    plan to invite other members.
+                  </p>
+                  <DialogFooter>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setShowNoInviteLinkPopup(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        void router.push(`/w/${owner.sId}/subscription`);
+                      }}
+                    >
+                      Check Dust plans
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </Page.Vertical>
         )}
@@ -244,10 +265,10 @@ export default function WorkspaceAdmin({
           />
         </div>
         <InvitationsList owner={owner} searchText={searchTerm} />
-        <MembersList
-          currentUserId={user.sId}
+        <WorkspaceMembersList
+          currentUser={user}
           owner={owner}
-          searchText={searchTerm}
+          searchTerm={searchTerm}
         />
         {popup}
       </Page.Vertical>
@@ -339,6 +360,56 @@ function DomainAutoJoinModal({
         />
       </DialogContent>
     </Dialog>
+  );
+}
+
+const DEFAULT_PAGE_SIZE = 25;
+
+function WorkspaceMembersList({
+  currentUser,
+  owner,
+  searchTerm,
+}: {
+  currentUser: UserType | null;
+  owner: WorkspaceType;
+  searchTerm: string;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+
+  const membersData = useSearchMembers({
+    workspaceId: owner.sId,
+    searchTerm,
+    pageIndex: pagination.pageIndex,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [setPagination]);
+
+  const [selectedMember, setSelectedMember] =
+    useState<UserTypeWithWorkspaces | null>(null);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Page.H variant="h5">Members</Page.H>
+      <MembersList
+        currentUser={currentUser}
+        membersData={membersData}
+        onRowClick={setSelectedMember}
+        showColumns={["name", "email", "role"]}
+        pagination={pagination}
+        setPagination={setPagination}
+      />
+      <ChangeMemberModal
+        onClose={() => setSelectedMember(null)}
+        member={selectedMember}
+        mutateMembers={membersData.mutateRegardlessOfQueryParams}
+      />
+    </div>
   );
 }
 
