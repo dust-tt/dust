@@ -54,7 +54,7 @@ import type {
   BuilderSuggestionsType,
   DataSourceType,
   Result,
-  UserTypeWithWorkspaces,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { Err, isAdmin, Ok } from "@app/types";
@@ -174,6 +174,7 @@ type NamingScreenProps = {
   slackChannelSelected: SlackChannel[];
   slackDataSource: DataSourceType | undefined;
   setSelectedSlackChannels: (channels: SlackChannel[]) => void;
+  currentUser: UserType | null;
 };
 
 export default function NamingScreen({
@@ -190,6 +191,7 @@ export default function NamingScreen({
   slackChannelSelected,
   slackDataSource,
   setSelectedSlackChannels,
+  currentUser,
 }: NamingScreenProps) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
@@ -648,7 +650,13 @@ export default function NamingScreen({
                 </div>
               </div>
             </div>
-            <EditorsMembersList currentUserId={"mock1"} owner={owner} />
+            <EditorsMembersList
+              currentUser={currentUser}
+              owner={owner}
+              builderState={builderState}
+              setBuilderState={setBuilderState}
+              setEdited={setEdited}
+            />
           </>
         )}
       </div>
@@ -771,71 +779,22 @@ async function fetchWithErr<T>(
 
 const DEFAULT_PAGE_SIZE = 25;
 
-// TODO: Mock data
-const membersData = {
-  members: [
-    {
-      sId: "mock1",
-      fullName: "Mock User 1",
-      email: "mock1@test.com",
-      image: "https://example.com/image.png",
-      workspaces: [
-        {
-          role: "admin" as const,
-          sId: "mock1",
-          name: "Mock Workspace 1",
-          id: 1,
-          segmentation: null,
-          whiteListedProviders: null,
-          defaultEmbeddingProvider: null,
-          metadata: null,
-        },
-      ],
-      id: 1,
-      createdAt: 0,
-      provider: null,
-      username: "mock1",
-      firstName: "Mock",
-      lastName: "User 1",
-    },
-    {
-      sId: "mock2",
-      fullName: "Mock User 2",
-      email: "mock2@test.com",
-      image: "https://example.com/image.png",
-      workspaces: [
-        {
-          role: "admin" as const,
-          sId: "mock1",
-          name: "Mock Workspace 1",
-          id: 1,
-          segmentation: null,
-          whiteListedProviders: null,
-          defaultEmbeddingProvider: null,
-          metadata: null,
-        },
-      ],
-      id: 2,
-      createdAt: 0,
-      provider: null,
-      username: "mock2",
-      firstName: "Mock",
-      lastName: "User 2",
-    },
-  ],
-  totalMembersCount: 2,
-  isLoading: false,
-  mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
-};
-
 const onRowClick = () => {};
-const onRemoveMemberClick = () => {};
+
 function EditorsMembersList({
-  currentUserId,
+  currentUser,
   owner,
+  builderState,
+  setBuilderState,
+  setEdited,
 }: {
-  currentUserId: string;
+  currentUser: UserType | null;
   owner: WorkspaceType;
+  builderState: AssistantBuilderState;
+  setBuilderState: (
+    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
+  setEdited: (edited: boolean) => void;
 }) {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -845,6 +804,30 @@ function EditorsMembersList({
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }, [setPagination]);
 
+  const onRemoveMember = useCallback(
+    (removed: UserType) => {
+      setBuilderState((s) => ({
+        ...s,
+        editors: s.editors ? s.editors.filter((m) => m.sId != removed.sId) : [],
+      }));
+      setEdited(true);
+    },
+    [setBuilderState, setEdited]
+  );
+
+  const members = useMemo(
+    () =>
+      builderState.editors?.map((m) => ({ ...m, workspaces: [owner] })) ?? [],
+    [builderState, owner]
+  );
+
+  const membersData = {
+    members,
+    totalMembersCount: members.length,
+    isLoading: false,
+    mutateRegardlessOfQueryParams: () => {},
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-row items-center gap-2">
@@ -852,14 +835,24 @@ function EditorsMembersList({
         <div className="flex flex-grow" />
         <AddEditorDropdown
           owner={owner}
-          onAddEditor={() => membersData.mutateRegardlessOfQueryParams()}
+          editors={builderState.editors ?? []}
+          onAddEditor={(added) => {
+            if (builderState.editors?.some((e) => e.sId === added.sId)) {
+              return;
+            }
+            setBuilderState((s) => ({
+              ...s,
+              editors: [...(s.editors ?? []), added],
+            }));
+            setEdited(true);
+          }}
         />
       </div>
       <MembersList
-        currentUserId={currentUserId}
+        currentUser={currentUser}
         membersData={membersData}
         onRowClick={onRowClick}
-        onRemoveMemberClick={onRemoveMemberClick}
+        onRemoveMemberClick={onRemoveMember}
         showColumns={["name", "email", "remove"]}
         pagination={pagination}
         setPagination={setPagination}
@@ -870,14 +863,15 @@ function EditorsMembersList({
 
 function AddEditorDropdown({
   owner,
+  editors,
   onAddEditor,
 }: {
   owner: WorkspaceType;
-  onAddEditor: (member: UserTypeWithWorkspaces) => Promise<void>;
+  editors: UserType[];
+  onAddEditor: (member: UserType) => void;
 }) {
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
     useSearchMembers({
@@ -906,12 +900,11 @@ function AddEditorDropdown({
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
-              ref={searchInputRef}
               name="search"
               onChange={(value) => setSearchTerm(value)}
               placeholder="Search members"
               value={searchTerm}
-              button={<Button icon={PlusIcon} label="Create" />}
+              button={<Button icon={PlusIcon} label="Add member" />}
             />
             <DropdownMenuSeparator />
           </>
@@ -930,9 +923,10 @@ function AddEditorDropdown({
                 onClick={async () => {
                   setSearchTerm("");
                   setIsEditorPickerOpen(false);
-                  await onAddEditor(member);
+                  onAddEditor(member);
                 }}
                 truncateText
+                disabled={editors.some((e) => e.sId === member.sId)}
               />
             );
           })

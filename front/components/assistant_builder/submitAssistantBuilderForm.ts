@@ -97,8 +97,8 @@ export async function submitAssistantBuilderForm({
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
   const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
-  let { handle, description, instructions, avatarUrl } = builderState;
-  if (!handle || !description || !instructions || !avatarUrl) {
+  let { handle, description, instructions, avatarUrl, editors } = builderState;
+  if (!handle || !description || !instructions || !avatarUrl || !editors) {
     if (!isDraft) {
       // Should be unreachable, we keep this for TS
       throw new Error("Form not valid (unreachable)");
@@ -107,6 +107,7 @@ export async function submitAssistantBuilderForm({
       description = description?.trim() || "Preview";
       instructions = instructions?.trim() || "Preview";
       avatarUrl = avatarUrl ?? "";
+      editors = [];
     }
   }
 
@@ -330,6 +331,7 @@ export async function submitAssistantBuilderForm({
       visualizationEnabled: builderState.visualizationEnabled,
       templateId: builderState.templateId,
       tags: builderState.tags,
+      editors: editors.map((e) => ({ sId: e.sId })),
     },
   };
 

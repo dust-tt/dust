@@ -216,6 +216,8 @@ export default function CreateAssistant({
                 visualizationEnabled: agentConfiguration.visualizationEnabled,
                 templateId: templateId,
                 tags: agentConfiguration.tags,
+                // either new, or template, or duplicate, so initially no editors
+                editors: [],
               }
             : null
         }
