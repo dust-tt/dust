@@ -16,6 +16,7 @@ import {
   InformationCircleIcon,
   LockIcon,
   Page,
+  PlusIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -26,6 +27,7 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
+  UserGroupIcon,
   ValueCard,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -44,12 +46,19 @@ import {
   useAgentConfiguration,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
+import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  UserType,
+  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
 import { isBuilder, removeNulls } from "@app/types";
+
+import { AddEditorDropdown } from "../members/AddEditorsDropdown";
+import { MembersList } from "../members/MembersList";
 
 const PERIODS = [
   { value: 7, label: "Last 7 days" },
@@ -61,6 +70,7 @@ type AssistantDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
   assistantId: string | null;
+  user: UserType;
 };
 
 function AssistantDetailsInfo({
@@ -280,13 +290,85 @@ function AssistantDetailsPerformance({
   );
 }
 
+type AssistantDetailsEditorsProps = {
+  owner: WorkspaceType;
+  user: UserType;
+  agentConfiguration: AgentConfigurationType;
+};
+
+function AssistantDetailsEditors({
+  owner,
+  user,
+  agentConfiguration,
+}: AssistantDetailsEditorsProps) {
+  const updateEditors = useUpdateEditors({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
+  });
+  const { editors, isEditorsLoading } = useEditors({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
+  });
+
+  const isCurrentUserEditor =
+    editors.findIndex((u) => u.sId === user.sId) !== -1;
+
+  const onRemoveMember = async (user: UserTypeWithWorkspaces) => {
+    if (isCurrentUserEditor) {
+      await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
+    }
+  };
+
+  const onAddEditor = async (user: UserType) => {
+    if (isCurrentUserEditor) {
+      await updateEditors({ removeEditorIds: [], addEditorIds: [user.sId] });
+    }
+  };
+
+  return (
+    <div>
+      <MembersList
+        currentUser={user}
+        membersData={{
+          members: editors.map((user) => ({
+            ...user,
+            workspaces: [owner],
+          })),
+          isLoading: isEditorsLoading,
+          totalMembersCount: editors.length,
+          mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
+        }}
+        showColumns={isCurrentUserEditor ? ["name", "remove"] : ["name"]}
+        onRemoveMemberClick={onRemoveMember}
+        onRowClick={function noRefCheck() {}}
+      />
+
+      {isCurrentUserEditor && (
+        <div className="mt-4">
+          <AddEditorDropdown
+            owner={owner}
+            editors={editors}
+            onAddEditor={onAddEditor}
+            trigger={
+              <Button label="Add editors" icon={PlusIcon} onClick={() => {}} />
+            }
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AssistantDetails({
   assistantId,
   onClose,
   owner,
+  user,
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
-  const [selectedTab, setSelectedTab] = useState("info");
+  const [selectedTab, setSelectedTab] = useState<
+    "info" | "performance" | "editors"
+  >("info");
   const {
     agentConfiguration,
     isAgentConfigurationLoading,
@@ -297,6 +379,7 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const doUpdateScope = useUpdateAgentScope({
     owner,
     agentConfigurationId: assistantId,
@@ -406,6 +489,14 @@ export function AssistantDetails({
                       icon={BarChartIcon}
                       onClick={() => setSelectedTab("performance")}
                     />
+                    {featureFlags.includes("agent_discovery") && (
+                      <TabsTrigger
+                        value="editors"
+                        label="Editors"
+                        icon={UserGroupIcon}
+                        onClick={() => setSelectedTab("editors")}
+                      />
+                    )}
                   </TabsList>
                 </Tabs>
               )}
@@ -425,6 +516,14 @@ export function AssistantDetails({
                       owner={owner}
                     />
                   )}
+                  {featureFlags.includes("agent_discovery") &&
+                    selectedTab === "editors" && (
+                      <AssistantDetailsEditors
+                        owner={owner}
+                        user={user}
+                        agentConfiguration={agentConfiguration}
+                      />
+                    )}
                 </>
               )}
               {isAgentConfigurationError?.error.type ===
