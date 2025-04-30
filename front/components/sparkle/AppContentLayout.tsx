@@ -96,7 +96,7 @@ export default function AppContentLayout({
             className={cn(
               "flex h-14 w-full shrink-0 flex-col px-4 pl-14 lg:pl-4",
               !hideSidebar &&
-              "border-b border-border bg-background dark:border-border-night dark:bg-background-night",
+                "border-b border-border bg-background dark:border-border-night dark:bg-background-night",
               titleChildren ? "" : "lg:hidden"
             )}
           >
