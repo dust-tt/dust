@@ -14,10 +14,7 @@ import {
 } from "@connectors/connectors/notion/temporal/workflows/children";
 import type { ModelId } from "@connectors/types";
 
-const {
-  garbageCollectorMarkAsSeenAndReturnNewEntities,
-  fetchDatabaseChildPages,
-} = proxyActivities<typeof activities>({
+const { fetchDatabaseChildPages } = proxyActivities<typeof activities>({
   startToCloseTimeout: "15 minutes",
 });
 
@@ -27,86 +24,16 @@ const { upsertDatabaseStructuredDataFromCache } = proxyActivities<
   startToCloseTimeout: "30 minutes",
 });
 
-export async function upsertDatabase({
-  connectorId,
-  databaseId,
-  runTimestamp,
-  topLevelWorkflowId,
-  isGarbageCollectionRun,
-  isBatchSync,
-  queue,
-  forceResync,
-}: {
-  connectorId: ModelId;
-  databaseId: string;
-  runTimestamp: number;
-  topLevelWorkflowId: string;
-  isGarbageCollectionRun: boolean;
-  isBatchSync: boolean;
-  queue: PQueue;
-  forceResync: boolean;
-}) {
-  let cursor: string | null = null;
-  let pageIndex = 0;
-  const loggerArgs = {
-    connectorId,
-  };
-  const promises = [];
-  do {
-    const { pageIds, nextCursor } = await fetchDatabaseChildPages({
-      connectorId,
-      databaseId,
-      cursor,
-      loggerArgs: {
-        ...loggerArgs,
-        pageIndex,
-      },
-      // This prevents syncing pages that are already up to date, unless
-      // this is the first run for this database, a garbage collection run or a force resync.
-      returnUpToDatePageIdsForExistingDatabase:
-        isGarbageCollectionRun || forceResync,
-      runTimestamp,
-      topLevelWorkflowId,
-      storeInCache: true,
-    });
-    cursor = nextCursor;
-    pageIndex += 1;
-    const upsertsPromise = performUpserts({
-      connectorId,
-      pageIds,
-      // we don't upsert any databases in this workflow
-      databaseIds: [],
-      isGarbageCollectionRun,
-      runTimestamp,
-      pageIndex,
-      isBatchSync,
-      queue,
-      childWorkflowsNameSuffix: `database-children-${databaseId}`,
-      topLevelWorkflowId,
-      forceResync,
-    });
+const { markDatabasesAsUpserted } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+});
 
-    promises.push(upsertsPromise);
-  } while (cursor);
-
-  promises.push(
-    upsertDatabaseStructuredDataFromCache({
-      databaseId,
-      connectorId,
-      topLevelWorkflowId,
-      loggerArgs,
-      runTimestamp,
-    })
-  );
-
-  return Promise.all(promises);
-}
-
+// This function triggers all the necessary child workflow to upsert
+// pages and databases (from the pageIds and databaseIds arrays).
 export async function performUpserts({
   connectorId,
   pageIds,
   databaseIds,
-  isGarbageCollectionRun,
   runTimestamp,
   pageIndex,
   isBatchSync,
@@ -118,7 +45,6 @@ export async function performUpserts({
   connectorId: ModelId;
   pageIds: string[];
   databaseIds: string[];
-  isGarbageCollectionRun: boolean;
   runTimestamp: number;
   pageIndex: number | null;
   isBatchSync: boolean;
@@ -127,47 +53,21 @@ export async function performUpserts({
   topLevelWorkflowId: string;
   forceResync: boolean;
 }): Promise<void> {
-  let pagesToSync: string[] = [];
-  let databasesToSync: string[] = [];
-
   const promises: Promise<void>[] = [];
 
-  if (isGarbageCollectionRun) {
-    // Mark pages and databases as visited to avoid deleting them and return pages and databases
-    // that are new.
-    const { newPageIds, newDatabaseIds } =
-      await garbageCollectorMarkAsSeenAndReturnNewEntities({
-        connectorId,
-        pageIds,
-        databaseIds,
-        runTimestamp,
-      });
-    pagesToSync = newPageIds;
-    databasesToSync = newDatabaseIds;
-  } else {
-    pagesToSync = pageIds;
-    databasesToSync = databaseIds;
-  }
-
-  if (!pagesToSync.length && !databasesToSync.length) {
+  if (!pageIds.length && !databaseIds.length) {
     return;
   }
 
-  if (pagesToSync.length) {
-    for (
-      let i = 0;
-      i < pagesToSync.length;
-      i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
-    ) {
-      const batch = pagesToSync.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
+  if (pageIds.length) {
+    for (let i = 0; i < pageIds.length; i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW) {
+      const batch = pageIds.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
       const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
       let workflowId =
         pageIndex !== null
           ? `${topLevelWorkflowId}-result-page-${pageIndex}-pages-${batchIndex}`
           : `${topLevelWorkflowId}-upserts-pages-${batchIndex}`;
-      if (isGarbageCollectionRun) {
-        workflowId += "-gc";
-      }
+
       if (childWorkflowsNameSuffix) {
         workflowId += `-${childWorkflowsNameSuffix}`;
       }
@@ -196,24 +96,19 @@ export async function performUpserts({
     }
   }
 
-  if (databasesToSync.length) {
+  if (databaseIds.length) {
     for (
       let i = 0;
-      i < databasesToSync.length;
+      i < databaseIds.length;
       i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
     ) {
-      const batch = databasesToSync.slice(
-        i,
-        i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW
-      );
+      const batch = databaseIds.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
       const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
       let workflowId =
         pageIndex !== null
           ? `${topLevelWorkflowId}-result-page-${pageIndex}-databases-${batchIndex}`
           : `${topLevelWorkflowId}-upserts-databases-${batchIndex}`;
-      if (isGarbageCollectionRun) {
-        workflowId += "-gc";
-      }
+
       if (childWorkflowsNameSuffix) {
         workflowId += `-${childWorkflowsNameSuffix}`;
       }
@@ -226,7 +121,6 @@ export async function performUpserts({
               {
                 connectorId,
                 runTimestamp,
-                isGarbageCollectionRun,
                 isBatchSync,
                 databaseIds: batch,
                 topLevelWorkflowId,
@@ -243,6 +137,94 @@ export async function performUpserts({
       );
     }
   }
+
+  await Promise.all(promises);
+}
+
+// This function triggers all the necessary child workflows to update a database.
+// Called in:
+// - incremental sync, when the database is reported to have been updated
+// - force resyncs
+// - garbage collection runs, if the database is fully new
+// Unless this is a force resync, we skip processing up-to-date pages.
+export async function upsertDatabase({
+  connectorId,
+  databaseId,
+  runTimestamp,
+  topLevelWorkflowId,
+  queue,
+  forceResync,
+  isBatchSync,
+}: {
+  connectorId: ModelId;
+  databaseId: string;
+  runTimestamp: number;
+  topLevelWorkflowId: string;
+  isBatchSync: boolean;
+  queue: PQueue;
+  forceResync: boolean;
+}) {
+  let cursor: string | null = null;
+  let pageIndex = 0;
+  const loggerArgs = {
+    connectorId,
+  };
+  const promises = [];
+
+  // We immediately mark the database as upserted, to allow the sync process
+  // to queue it again while it is being processed.
+  await markDatabasesAsUpserted({
+    connectorId,
+    databaseIds: [databaseId],
+    runTimestamp,
+  });
+
+  do {
+    const { pageIds, nextCursor } = await fetchDatabaseChildPages({
+      connectorId,
+      databaseId,
+      cursor,
+      loggerArgs: {
+        ...loggerArgs,
+        pageIndex,
+      },
+      // Skip processing up-to-date pages unless this is a force resync.
+      returnUpToDatePageIdsForExistingDatabase: forceResync,
+      topLevelWorkflowId,
+      // Store all the child pages in cache.
+      storeInCache: true,
+    });
+    cursor = nextCursor;
+    pageIndex += 1;
+    const upsertsPromise = performUpserts({
+      connectorId,
+      pageIds,
+      // we don't upsert any additional databases in this workflow
+      databaseIds: [],
+      // We always upsert all pages of the DB in this workflow, regardless of GC.
+      // If we're in GC, it means the DB is new (so we want to upsert everything anyway)
+      // If we're in incremental sync
+      runTimestamp,
+      pageIndex,
+      isBatchSync,
+      queue,
+      childWorkflowsNameSuffix: `database-children-${databaseId}`,
+      topLevelWorkflowId,
+      forceResync,
+    });
+
+    promises.push(upsertsPromise);
+  } while (cursor);
+
+  promises.push(
+    upsertDatabaseStructuredDataFromCache({
+      databaseId,
+      connectorId,
+      topLevelWorkflowId,
+      loggerArgs,
+      runTimestamp,
+    })
+  );
 
   await Promise.all(promises);
 }

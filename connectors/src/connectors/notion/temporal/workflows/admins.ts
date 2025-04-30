@@ -102,7 +102,6 @@ export async function upsertPageWorkflow({
         connectorId,
         pageIds: discoveredResources.pageIds,
         databaseIds: discoveredResources.databaseIds,
-        isGarbageCollectionRun: false,
         runTimestamp,
         pageIndex: null,
         isBatchSync: true,
@@ -168,20 +167,22 @@ export async function upsertDatabaseWorkflow({
 
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
 
-  await upsertDatabaseInConnectorsDb(
+  await upsertDatabaseInConnectorsDb({
     connectorId,
     databaseId,
-    Date.now(),
+    runTimestamp,
     topLevelWorkflowId,
-    loggerArgs
-  );
+    loggerArgs,
+    // In this workflow, we manually trigger the database upsert,
+    // so we don't queue the database for upsert
+    requestUpsert: false,
+  });
 
   await upsertDatabase({
     connectorId,
     databaseId,
     runTimestamp,
     topLevelWorkflowId,
-    isGarbageCollectionRun: false,
     isBatchSync: false,
     queue,
     forceResync,
@@ -203,7 +204,6 @@ export async function upsertDatabaseWorkflow({
         connectorId,
         pageIds: discoveredResources.pageIds,
         databaseIds: discoveredResources.databaseIds,
-        isGarbageCollectionRun: false,
         runTimestamp,
         pageIndex: null,
         isBatchSync: true,

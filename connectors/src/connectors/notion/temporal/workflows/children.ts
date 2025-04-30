@@ -199,7 +199,6 @@ export async function syncResultPageDatabaseChildWorkflow({
   connectorId,
   databaseIds,
   runTimestamp,
-  isGarbageCollectionRun,
   isBatchSync,
   topLevelWorkflowId,
   forceResync,
@@ -207,7 +206,6 @@ export async function syncResultPageDatabaseChildWorkflow({
   connectorId: ModelId;
   databaseIds: string[];
   runTimestamp: number;
-  isGarbageCollectionRun: boolean;
   isBatchSync: boolean;
   topLevelWorkflowId: string;
   forceResync: boolean;
@@ -229,13 +227,16 @@ export async function syncResultPageDatabaseChildWorkflow({
 
     promises.push(
       upsertQueue.add(() =>
-        upsertDatabaseInConnectorsDb(
+        upsertDatabaseInConnectorsDb({
           connectorId,
           databaseId,
           runTimestamp,
           topLevelWorkflowId,
-          loggerArgs
-        )
+          loggerArgs,
+          // In a force resync, we want to upsert the database immediately,
+          // we don't want to wait for the upsert queue to process it.
+          requestUpsert: !forceResync,
+        })
       )
     );
   }
@@ -246,18 +247,22 @@ export async function syncResultPageDatabaseChildWorkflow({
   promises = [];
 
   for (const databaseId of databaseIds) {
-    promises.push(
-      upsertDatabase({
-        connectorId,
-        databaseId,
-        runTimestamp,
-        topLevelWorkflowId,
-        isGarbageCollectionRun,
-        isBatchSync,
-        queue: workflowQueue,
-        forceResync,
-      })
-    );
+    // If we're doing a force resync, then we immediately upsert the database.
+    if (forceResync) {
+      promises.push(
+        upsertDatabase({
+          connectorId,
+          databaseId,
+          runTimestamp,
+          topLevelWorkflowId,
+          isBatchSync,
+          queue: workflowQueue,
+          forceResync,
+        })
+      );
+      // Otherwise, we push the database ID to the DB processing queue, which
+      // handles debouncing the DB processing and avoid processing the same DB several times in a day.
+    }
   }
 
   await Promise.all(promises);
