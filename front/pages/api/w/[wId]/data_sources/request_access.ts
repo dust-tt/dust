@@ -113,8 +113,8 @@ async function handler(
   }
 
   const body =
-    `${emailRequester} has sent you a request regarding your connection ` +
-    `${dataSource.name}: ${escape(emailMessage)}`;
+    `${emailRequester} has sent you a request regarding access to connection ` +
+    `${escape(dataSource.name)}: ${escape(emailMessage)}`;
 
   const result = await sendEmailWithTemplate({
     to: dataSource.editedByUser.email,

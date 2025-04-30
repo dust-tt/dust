@@ -88,7 +88,7 @@ async function handler(
   }
 
   const body =
-    `${emailRequester} requests access to the ${featureName} labs feature for ` +
+    `${emailRequester} requests access to the ${escape(featureName)} labs feature for ` +
     `workspace <em>${auth.getNonNullableWorkspace().sId}</em>:
   <br />
   <br />
