@@ -15,8 +15,8 @@ export function useModels({ owner }: { owner: LightWorkspaceType }) {
   );
 
   return {
-    models: data ? data.models : EMPTY_MODELS_ARRAY,
-    reasoningModels: data ? data.reasoningModels : EMPTY_MODELS_ARRAY,
+    models: data?.models ?? EMPTY_MODELS_ARRAY,
+    reasoningModels: data?.reasoningModels ?? EMPTY_MODELS_ARRAY,
     isModelsLoading: !error && !data,
     isModelsError: !!error,
   };
