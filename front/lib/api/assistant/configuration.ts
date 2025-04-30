@@ -937,7 +937,7 @@ export async function createAgentConfiguration(
           isLegacyAllowed(owner, agentConfigurationInstance.scope) ||
             editors.some((e) => e.sId === auth.user()?.sId) ||
             isAdmin(owner),
-          "Unexpected: current user must be in editor group"
+          "Unexpected: current user must be in editor group or admin"
         );
         if (!existingAgent) {
           const group = await GroupResource.makeNewAgentEditorsGroup(

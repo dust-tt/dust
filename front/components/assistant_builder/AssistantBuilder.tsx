@@ -61,6 +61,7 @@ import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
+import { isLegacyAllowed } from "@app/lib/api/assistant/configuration";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
@@ -79,7 +80,6 @@ import {
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { isLegacyAllowed } from "@app/lib/api/assistant/configuration";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -245,7 +245,7 @@ export default function AssistantBuilder({
         isLegacyAllowed(owner, initialBuilderState.scope) ||
           isAdmin(owner) ||
           initialBuilderState.editors.some((m) => m.sId === user.sId),
-        "Unreachable: User is not in editors nor builder"
+        "Unreachable: User is not in editors nor admin"
       );
     }
     if (!agentConfigurationId) {
