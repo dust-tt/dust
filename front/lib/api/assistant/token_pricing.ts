@@ -109,7 +109,7 @@ export const MODEL_PRICING: Record<
     input: 3.0,
     output: 12.0,
   },
-  "o4-mini-2025-04-16": {
+  "o4-mini": {
     input: 1.1,
     output: 4.4,
   },
