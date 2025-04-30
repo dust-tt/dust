@@ -27,32 +27,34 @@ export const appLayoutBack = async (
 };
 
 interface AppContentLayoutProps {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  isWideMode?: boolean;
-  hideSidebar?: boolean;
-  subNavigation?: SidebarNavigation[] | null;
-  pageTitle?: string;
-  navChildren?: React.ReactNode;
-  titleChildren?: React.ReactNode;
   children: React.ReactNode;
   hasTopPadding?: boolean;
+  hideSidebar?: boolean;
+  isConversationView?: boolean;
+  isWideMode?: boolean;
+  navChildren?: React.ReactNode;
+  owner: WorkspaceType;
+  pageTitle?: string;
+  subNavigation?: SidebarNavigation[] | null;
+  subscription: SubscriptionType;
+  titleChildren?: React.ReactNode;
 }
 
 // TODO(2025-04-11 yuka) We need to refactor AppLayout to avoid re-mounting on every page navigation.
 // Until then, AppLayout has been split into AppRootLayout and AppContentLayout.
 // When you need to use AppContentLayout, add `getLayout` function to your page and wrap the page with AppRootLayout.
 export default function AppContentLayout({
-  owner,
-  subscription,
-  isWideMode = false,
-  hideSidebar = false,
-  subNavigation,
-  pageTitle,
-  navChildren,
-  titleChildren,
-  hasTopPadding,
   children,
+  hasTopPadding,
+  hideSidebar = false,
+  isConversationView,
+  isWideMode = false,
+  navChildren,
+  owner,
+  pageTitle,
+  subNavigation,
+  subscription,
+  titleChildren,
 }: AppContentLayoutProps) {
   const [loaded, setLoaded] = useState(false);
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
@@ -104,7 +106,12 @@ export default function AppContentLayout({
             </div>
           </div>
 
-          <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 sm:px-8">
+          <div
+            className={cn(
+              "flex h-full w-full flex-col items-center overflow-y-auto",
+              !isConversationView && "px-4 sm:px-8"
+            )}
+          >
             {isWideMode ? (
               loaded && children
             ) : (
