@@ -1,9 +1,13 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetTrackersResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/trackers";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type {
+  LightWorkspaceType,
+  SpaceType,
+  TrackerConfigurationType,
+} from "@app/types";
+const EMPTY_TRACKERS_ARRAY: TrackerConfigurationType[] = [];
 
 export function useTrackers({
   disabled,
@@ -25,7 +29,7 @@ export function useTrackers({
   );
 
   return {
-    trackers: useMemo(() => (data ? data.trackers : []), [data]),
+    trackers: data?.trackers ?? EMPTY_TRACKERS_ARRAY,
     isTrackersLoading: !error && !data,
     isTrackersError: !!error,
     mutateTrackers: mutate,

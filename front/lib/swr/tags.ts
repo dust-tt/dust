@@ -1,12 +1,13 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
 import type { GetTagsUsageResponseBody } from "@app/pages/api/w/[wId]/tags/usage";
 import type { LightWorkspaceType } from "@app/types";
-import type { TagType } from "@app/types/tag";
+import type { TagType, TagTypeWithUsage } from "@app/types/tag";
+const EMPTY_TAGS_ARRAY: TagType[] = [];
+const EMPTY_TAGS_WITH_USAGES_ARRAY: TagTypeWithUsage[] = [];
 
 export function useTags({
   owner,
@@ -26,7 +27,7 @@ export function useTags({
   );
 
   return {
-    tags: useMemo(() => (data ? data.tags : []), [data]),
+    tags: data?.tags ?? EMPTY_TAGS_ARRAY,
     isTagsLoading: !error && !data && !disabled,
     isTagsError: !!error,
     mutateTags: mutate,
@@ -51,7 +52,7 @@ export function useTagsUsage({
   );
 
   return {
-    tags: useMemo(() => (data ? data.tags : []), [data]),
+    tags: data?.tags ?? EMPTY_TAGS_WITH_USAGES_ARRAY,
     isTagsLoading: !error && !data && !disabled,
     isTagsError: !!error,
     mutateTagsUsage: mutate,

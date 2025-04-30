@@ -2,7 +2,9 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAvailableModelsResponseType } from "@app/pages/api/w/[wId]/models";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, ModelConfigurationType } from "@app/types";
+
+const EMPTY_MODELS_ARRAY: ModelConfigurationType[] = [];
 
 export function useModels({ owner }: { owner: LightWorkspaceType }) {
   const modelsFetcher: Fetcher<GetAvailableModelsResponseType> = fetcher;
@@ -13,8 +15,8 @@ export function useModels({ owner }: { owner: LightWorkspaceType }) {
   );
 
   return {
-    models: data ? data.models : [],
-    reasoningModels: data ? data.reasoningModels : [],
+    models: data ? data.models : EMPTY_MODELS_ARRAY,
+    reasoningModels: data ? data.reasoningModels : EMPTY_MODELS_ARRAY,
     isModelsLoading: !error && !data,
     isModelsError: !!error,
   };

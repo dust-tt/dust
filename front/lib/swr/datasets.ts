@@ -1,10 +1,11 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets";
 import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets/[name]";
-import type { AppType, LightWorkspaceType } from "@app/types";
+import type { AppType, DatasetType, LightWorkspaceType } from "@app/types";
+
+const EMPTY_DATASETS_ARRAY: DatasetType[] = [];
 
 export function useDatasets({
   owner,
@@ -26,7 +27,7 @@ export function useDatasets({
   );
 
   return {
-    datasets: useMemo(() => (data ? data.datasets : []), [data]),
+    datasets: data?.datasets ?? EMPTY_DATASETS_ARRAY,
     isDatasetsLoading: !error && !data,
     isDatasetsError: !!error,
   };

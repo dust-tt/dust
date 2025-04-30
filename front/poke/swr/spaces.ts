@@ -4,6 +4,9 @@ import type { Fetcher } from "swr";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListSpaces } from "@app/pages/api/poke/workspaces/[wId]/spaces";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import { SpaceType } from "@dust-tt/client";
+
+const EMPTY_ARRAY: SpaceType[] = [];
 
 export function usePokeSpaces({ disabled, owner }: PokeConditionalFetchProps) {
   const spacesFetcher: Fetcher<PokeListSpaces> = fetcher;
@@ -14,7 +17,7 @@ export function usePokeSpaces({ disabled, owner }: PokeConditionalFetchProps) {
   );
 
   return {
-    data: useMemo(() => (data ? data.spaces : []), [data]),
+    data: data?.spaces ?? EMPTY_ARRAY,
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

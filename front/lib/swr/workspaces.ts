@@ -6,10 +6,12 @@ import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type {
+  SubscriptionType,
   WhitelistableFeature,
   WorkspaceEnterpriseConnection,
 } from "@app/types";
-
+const EMPTY_SUBSCRIPTIONS_ARRAY: SubscriptionType[] = [];
+const EMPTY_FEATURE_FLAGS_ARRAY: WhitelistableFeature[] = [];
 export function useWorkspaceSubscriptions({
   workspaceId,
 }: {
@@ -24,7 +26,7 @@ export function useWorkspaceSubscriptions({
   );
 
   return {
-    subscriptions: useMemo(() => (data ? data.subscriptions : []), [data]),
+    subscriptions: data?.subscriptions ?? EMPTY_SUBSCRIPTIONS_ARRAY,
     isSubscriptionsLoading: !error && !data,
     isSubscriptionsError: error,
   };
@@ -145,7 +147,7 @@ export function useFeatureFlags({
   );
 
   return {
-    featureFlags: data ? data.feature_flags : [],
+    featureFlags: data?.feature_flags ?? EMPTY_FEATURE_FLAGS_ARRAY,
     isFeatureFlagsLoading: !error && !data,
     isFeatureFlagsError: error,
     hasFeature,

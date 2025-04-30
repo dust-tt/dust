@@ -27,6 +27,7 @@ type DataSourceViewsAndNodes = {
   dataSourceView: DataSourceViewType;
   nodes: GetDataSourceViewContentNodes["nodes"];
 };
+const EMPTY_DATA_SOURCE_VIEWS_ARRAY: DataSourceViewType[] = [];
 
 export function useDataSourceViews(
   owner: LightWorkspaceType,
@@ -42,7 +43,7 @@ export function useDataSourceViews(
   );
 
   return {
-    dataSourceViews: useMemo(() => (data ? data.dataSourceViews : []), [data]),
+    dataSourceViews: data?.dataSourceViews ?? EMPTY_DATA_SOURCE_VIEWS_ARRAY,
     isDataSourceViewsLoading: disabled ? false : !error && !data,
     isDataSourceViewsError: disabled ? false : error,
     mutateDataSourceViews: mutate,
@@ -175,7 +176,7 @@ export function useDataSourceViewContentNodes({
     isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,
-    nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    nodes: data?.nodes ?? EMPTY_DATA_SOURCE_VIEWS_ARRAY,
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,

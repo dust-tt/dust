@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -11,10 +10,20 @@ import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spa
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
 import type {
   AppType,
+  DustAppSecretType,
+  KeyType,
   LightWorkspaceType,
+  ProviderType,
   RunRunType,
+  RunType,
   SpaceType,
 } from "@app/types";
+
+const EMPTY_APPS_ARRAY: AppType[] = [];
+const EMPTY_SECRETS_ARRAY: DustAppSecretType[] = [];
+const EMPTY_RUNS_ARRAY: RunType[] = [];
+const EMPTY_PROVIDERS_ARRAY: ProviderType[] = [];
+const EMPTY_KEYS_ARRAY: KeyType[] = [];
 
 export function useApps({
   disabled,
@@ -36,7 +45,7 @@ export function useApps({
   );
 
   return {
-    apps: useMemo(() => (data ? data.apps : []), [data]),
+    apps: data?.apps ?? EMPTY_APPS_ARRAY,
     isAppsLoading: !error && !data,
     isAppsError: !!error,
     mutateApps: mutate,
@@ -96,7 +105,7 @@ export function useDustAppSecrets(owner: LightWorkspaceType) {
   );
 
   return {
-    secrets: useMemo(() => (data ? data.secrets : []), [data]),
+    secrets: data?.secrets ?? EMPTY_SECRETS_ARRAY,
     isSecretsLoading: !error && !data,
     isSecretsError: error,
   };
@@ -118,7 +127,7 @@ export function useRuns(
   const { data, error } = useSWRWithDefaults(url, runsFetcher);
 
   return {
-    runs: useMemo(() => (data ? data.runs : []), [data]),
+    runs: data?.runs ?? EMPTY_RUNS_ARRAY,
     total: data ? data.total : 0,
     isRunsLoading: !error && !data,
     isRunsError: error,
@@ -143,7 +152,7 @@ export function useProviders({
   );
 
   return {
-    providers: useMemo(() => (data ? data.providers : []), [data]),
+    providers: data?.providers ?? EMPTY_PROVIDERS_ARRAY,
     isProvidersLoading: !error && !data,
     isProvidersError: error,
   };
@@ -159,6 +168,6 @@ export function useKeys(owner: LightWorkspaceType) {
     isKeysError: error,
     isKeysLoading: !error && !data,
     isValidating,
-    keys: useMemo(() => (data ? data.keys : []), [data]),
+    keys: data?.keys ?? EMPTY_KEYS_ARRAY,
   };
 }

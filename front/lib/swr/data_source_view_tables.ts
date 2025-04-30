@@ -1,5 +1,4 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
@@ -13,10 +12,12 @@ import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/
 import type { SearchTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search";
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
 import type {
+  DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
   PatchDataSourceTableRequestBody,
 } from "@app/types";
+const EMPTY_TABLES_ARRAY: DataSourceViewContentNode[] = [];
 
 export function useDataSourceViewTable({
   dataSourceView,
@@ -95,7 +96,7 @@ export function useDataSourceViewTables({
   );
 
   return {
-    tables: useMemo(() => (data ? data.tables : []), [data]),
+    tables: data?.tables ?? EMPTY_TABLES_ARRAY,
     nextPageCursor: data?.nextPageCursor || null,
     isTablesLoading: !isDisabled && !error && !data,
     isTablesError: error,

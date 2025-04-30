@@ -6,7 +6,11 @@ import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { LightWorkspaceType } from "@app/types";
+import type {
+  LightWorkspaceType,
+  MembershipInvitationType,
+  UserTypeWithWorkspaces,
+} from "@app/types";
 
 type PaginationParams = {
   orderColumn: "createdAt";
@@ -14,6 +18,8 @@ type PaginationParams = {
   limit: number;
   // lastValue is directly set when using the nextPageUrl
 };
+const EMPTY_MEMBERS_ARRAY: UserTypeWithWorkspaces[] = [];
+const EMPTY_INVITATIONS_ARRAY: MembershipInvitationType[] = [];
 
 const appendPaginationParams = (
   params: URLSearchParams,
@@ -52,7 +58,7 @@ export function useMembers({
     });
 
   return {
-    members: useMemo(() => (data ? data.members : []), [data]),
+    members: data?.members ?? EMPTY_MEMBERS_ARRAY,
     isMembersLoading: !error && !data,
     isMembersError: error,
     hasNextPage: !!data?.nextPageUrl,
@@ -90,7 +96,7 @@ export function useAdmins(
   );
 
   return {
-    admins: useMemo(() => (data ? data.members : []), [data]),
+    admins: data?.members ?? EMPTY_MEMBERS_ARRAY,
     isAdminsLoading: !error && !data,
     iAdminsError: error,
     mutateMembers: mutate,
@@ -106,7 +112,7 @@ export function useWorkspaceInvitations(owner: LightWorkspaceType) {
   );
 
   return {
-    invitations: useMemo(() => (data ? data.invitations : []), [data]),
+    invitations: data?.invitations ?? EMPTY_INVITATIONS_ARRAY,
     isInvitationsLoading: !error && !data,
     isInvitationsError: error,
     mutateInvitations: mutate,
@@ -138,7 +144,7 @@ export function useMembersByEmails({
     );
 
   return {
-    members: useMemo(() => (data ? data.members : []), [data]),
+    members: data?.members ?? EMPTY_MEMBERS_ARRAY,
     isMembersLoading: !error && !data && !disabled,
     isMembersError: error,
     mutate,
@@ -191,7 +197,7 @@ export function useSearchMembers({
     );
 
   return {
-    members: useMemo(() => (data ? data.members : []), [data]),
+    members: data?.members ?? EMPTY_MEMBERS_ARRAY,
     totalMembersCount: data?.total ?? 0,
     isLoading: !error && !data,
     isError: !!error,

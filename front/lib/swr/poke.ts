@@ -13,6 +13,10 @@ import type {
   DataSourceType,
   LightWorkspaceType,
 } from "@app/types";
+const EMPTY_RESOURCES_ARRAY: any[] = [];
+const EMPTY_PLANS_ARRAY: any[] = [];
+const EMPTY_WORKSPACES_ARRAY: any[] = [];
+const EMPTY_FEATURES_ARRAY: any[] = [];
 
 export function usePokeRegion() {
   const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;
@@ -58,7 +62,7 @@ export function usePokeConnectorPermissions({
   });
 
   return {
-    resources: useMemo(() => (data ? data.resources : []), [data]),
+    resources: data?.resources ?? EMPTY_RESOURCES_ARRAY,
     isResourcesLoading: !error && !data,
     isResourcesError: error,
   };
@@ -97,7 +101,7 @@ export function usePokeWorkspaces({
   );
 
   return {
-    workspaces: useMemo(() => (data ? data.workspaces : []), [data]),
+    workspaces: data?.workspaces ?? EMPTY_WORKSPACES_ARRAY,
     isWorkspacesLoading: !error && !data,
     isWorkspacesError: error,
   };
@@ -109,7 +113,7 @@ export function usePokePlans() {
   const { data, error } = useSWRWithDefaults("/api/poke/plans", plansFetcher);
 
   return {
-    plans: useMemo(() => (data ? data.plans : []), [data]),
+    plans: data?.plans ?? EMPTY_PLANS_ARRAY,
     isPlansLoading: !error && !data,
     isPlansError: error,
   };
@@ -124,7 +128,7 @@ export function usePokeFeatureFlags({ workspaceId }: { workspaceId: string }) {
   );
 
   return {
-    featureFlags: useMemo(() => (data ? data.features : []), [data]),
+    featureFlags: data?.features ?? EMPTY_FEATURES_ARRAY,
     isFeatureFlagsLoading: !error && !data,
     isFeatureFlagsError: error,
   };

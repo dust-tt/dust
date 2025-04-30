@@ -3,6 +3,9 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokeSearchItemsResponseBody } from "@app/pages/api/poke/search";
+import { PokeItemBase } from "@app/types";
+
+const EMPTY_ARRAY: PokeItemBase[] = [];
 
 export function usePokeSearch({
   disabled,
@@ -26,7 +29,7 @@ export function usePokeSearch({
   );
 
   return {
-    results: useMemo(() => (data ? data.results : []), [data]),
+    results: data?.results ?? EMPTY_ARRAY,
     isLoading: !error && !data && !disabled,
     isError: error,
   };

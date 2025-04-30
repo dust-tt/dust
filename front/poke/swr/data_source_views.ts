@@ -12,6 +12,9 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 
+const EMPTY_DATA_SOURCES_ARRAY: DataSourceViewType[] = [];
+const EMPTY_ARRAY: any[] = [];
+
 export function usePokeDataSourceViews({
   disabled,
   owner,
@@ -24,7 +27,7 @@ export function usePokeDataSourceViews({
   );
 
   return {
-    data: useMemo(() => (data ? data.data_source_views : []), [data]),
+    data: data?.data_source_views ?? EMPTY_DATA_SOURCES_ARRAY,
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
@@ -111,7 +114,7 @@ export function usePokeDataSourceViewContentNodes({
     isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,
-    nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    nodes: data?.nodes || EMPTY_ARRAY,
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,

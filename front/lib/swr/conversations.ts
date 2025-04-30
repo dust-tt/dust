@@ -20,6 +20,9 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 
+const EMPTY_CONVERSATIONS_ARRAY: ConversationType[] = [];
+const EMPTY_FEEDBACKS_ARRAY: AgentMessageFeedbackType[] = [];
+
 export function useConversation({
   conversationId,
   workspaceId,
@@ -69,7 +72,7 @@ export function useConversations({
   );
 
   return {
-    conversations: useMemo(() => (data ? data.conversations : []), [data]),
+    conversations: data?.conversations ?? EMPTY_CONVERSATIONS_ARRAY,
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
@@ -93,7 +96,7 @@ export function useConversationFeedbacks({
   );
 
   return {
-    feedbacks: useMemo(() => (data ? data.feedbacks : []), [data]),
+    feedbacks: data?.feedbacks ?? EMPTY_FEEDBACKS_ARRAY,
     isFeedbacksLoading: !error && !data,
     isFeedbacksError: error,
     mutateReactions: mutate,

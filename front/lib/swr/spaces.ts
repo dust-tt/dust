@@ -41,6 +41,7 @@ import type {
   SpaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+const EMPTY_SPACES_ARRAY: SpaceType[] = [];
 
 export function useSpaces({
   workspaceId,
@@ -58,7 +59,7 @@ export function useSpaces({
   );
 
   return {
-    spaces: useMemo(() => (data ? data.spaces : []), [data]),
+    spaces: data?.spaces ?? EMPTY_SPACES_ARRAY,
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
@@ -81,7 +82,7 @@ export function useSpacesAsAdmin({
   );
 
   return {
-    spaces: useMemo(() => (data ? data.spaces : []), [data]),
+    spaces: data?.spaces ?? EMPTY_SPACES_ARRAY,
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,

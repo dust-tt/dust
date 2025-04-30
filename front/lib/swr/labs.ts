@@ -1,7 +1,6 @@
 // LABS - CAN BE REMOVED ANYTIME
 
 import { useSendNotification } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -24,6 +23,8 @@ import {
   isOAuthProvider,
   setupOAuthConnection,
 } from "@app/types";
+const EMPTY_SALESFORCE_DATA_SOURCES_ARRAY: SalesforceDataSourceWithPersonalConnection[] =
+  [];
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
@@ -142,7 +143,7 @@ export function useLabsSalesforceDataSourcesWithPersonalConnection({
   );
 
   return {
-    dataSources: useMemo(() => (data ? data.dataSources : []), [data]),
+    dataSources: data?.dataSources ?? EMPTY_SALESFORCE_DATA_SOURCES_ARRAY,
     isLoading,
     isError: error,
     mutate,
