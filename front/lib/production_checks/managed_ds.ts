@@ -55,7 +55,7 @@ export async function getCoreDocuments(
   }
 
   let lastDocumentId = "";
-  const batchSize = 10000;
+  const batchSize = 5000;
   const coreDocuments: CoreDSDocument[] = [];
   let batchDocuments: CoreDSDocument[] = [];
 
