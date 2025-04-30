@@ -75,6 +75,7 @@ import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
+  isAdmin,
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
@@ -240,8 +241,9 @@ export default function AssistantBuilder({
     }
     if (agentConfigurationId && initialBuilderState) {
       assert(
-        initialBuilderState.editors.some((m) => m.sId === user.sId),
-        "Unreachable: User is not in editors"
+        isAdmin(owner) ||
+          initialBuilderState.editors.some((m) => m.sId === user.sId),
+        "Unreachable: User is not in editors nor admin"
       );
     }
     if (!agentConfigurationId) {
