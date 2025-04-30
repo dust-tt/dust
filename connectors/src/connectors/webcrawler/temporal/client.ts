@@ -146,3 +146,29 @@ export async function launchCrawlWebsiteScheduler() {
     },
   });
 }
+
+export async function updateCrawlerType(
+  connectorId: string,
+  newCrawler: string
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const webcrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
+
+  if (!webcrawlerConfig) {
+    return new Err(new Error(`CrawlerConfig not found for ${connector.id}`));
+  }
+
+  const customCrawler = newCrawler === "default" ? null : newCrawler;
+
+  try {
+    await webcrawlerConfig.update({ customCrawler });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(err);
+  }
+}

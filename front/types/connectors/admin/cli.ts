@@ -171,7 +171,8 @@ export type BatchCommandType = t.TypeOf<typeof BatchCommandSchema>;
 
 export const WebcrawlerCommandSchema = t.type({
   majorCommand: t.literal("webcrawler"),
-  command: t.literal("start-scheduler"),
+  command: t.union([t.literal("start-scheduler"), t.literal("update-crawler")]),
+  args: t.record(t.string, t.string),
 });
 
 export const BatchAllResponseSchema = t.type({
