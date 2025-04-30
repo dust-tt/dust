@@ -520,6 +520,7 @@ export async function deleteMembersActivity({
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
+  const auth0Client = getAuth0ManagemementClient();
 
   await MembershipInvitation.destroy({
     where: {
@@ -563,7 +564,7 @@ export async function deleteMembersActivity({
               },
               "Deleting user from Auth0"
             );
-            await getAuth0ManagemementClient().users.delete({
+            await auth0Client.users.delete({
               id: user.auth0Sub,
             });
             hardDeleteLogger.info(
