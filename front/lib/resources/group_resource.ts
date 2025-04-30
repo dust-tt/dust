@@ -82,7 +82,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const defaultGroup = await GroupResource.makeNew(
       {
         workspaceId: workspace.id,
-        name: `Group for Agent ${agent.name}`,
+        name: `Group for Agent ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
       { transaction }
