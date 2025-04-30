@@ -7,7 +7,10 @@ import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
-import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
+import {
+  areAllSubscriptionsCanceled,
+  isWorkspaceRelocationDone,
+} from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentBrowseAction,
@@ -524,6 +527,8 @@ export async function deleteMembersActivity({
   const workspace = auth.getNonNullableWorkspace();
   const auth0Client = getAuth0ManagemementClient();
 
+  const workspaceHasBeenRelocated = isWorkspaceRelocationDone(workspace);
+
   await MembershipInvitation.destroy({
     where: {
       workspaceId: workspace.id,
@@ -558,6 +563,11 @@ export async function deleteMembersActivity({
 
         // Delete the user from Auth0 if they have an Auth0 ID
         if (deleteFromAuth0 && user.auth0Sub) {
+          assert(
+            !workspaceHasBeenRelocated,
+            "Trying to delete an Auth0 sub for a workspace that was relocated."
+          );
+
           try {
             hardDeleteLogger.info(
               {
