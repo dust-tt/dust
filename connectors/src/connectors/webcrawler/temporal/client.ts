@@ -169,6 +169,6 @@ export async function updateCrawlerType(
     await webcrawlerConfig.update({ customCrawler });
     return new Ok(undefined);
   } catch (err) {
-    return new Err(err);
+    return new Err(err as Error);
   }
 }
