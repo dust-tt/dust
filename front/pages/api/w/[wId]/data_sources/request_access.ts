@@ -67,7 +67,9 @@ async function handler(
   const emailRequester = user.email;
   const { emailMessage, dataSourceId } = bodyValidation.right;
 
-  const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  const dataSource = await DataSourceResource.fetchById(auth, dataSourceId, {
+    includeEditedBy: true,
+  });
 
   if (!dataSource) {
     return apiError(req, res, {
