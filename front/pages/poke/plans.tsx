@@ -168,7 +168,7 @@ const PlansPage = () => {
                           />
                         </React.Fragment>
                       ))}
-                      <td className="w-12 min-w-[4rem] flex-none border px-4 py-2">
+                      <td className="w-12 min-w-16 flex-none border px-4 py-2">
                         {plan.code === editingPlan?.code || plan.isNewPlan ? (
                           <div className="flex flex-row justify-center">
                             <IconButton
