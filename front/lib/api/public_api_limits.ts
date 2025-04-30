@@ -87,7 +87,8 @@ export async function trackTokenUsageCost(
     // record of over-usage, while hasReachedPublicAPILimits will block subsequent calls when
     // detecting negative credits.
     const newCredits = parseFloat(remainingCredits) - amountWithMarkup;
-    await redis.set(key, newCredits.toString());
+    // Preserve the TTL of the key.
+    await redis.set(key, newCredits.toString(), { KEEPTTL: true });
     return newCredits;
   });
 }
