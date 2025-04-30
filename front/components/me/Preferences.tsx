@@ -117,7 +117,7 @@ export function Preferences() {
                 handleSubmitKeyChange("enter");
               }}
             >
-              Send message when pressing Enter
+              Enter
               <DropdownMenuShortcut>↵</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -125,7 +125,7 @@ export function Preferences() {
                 handleSubmitKeyChange("cmd+enter");
               }}
             >
-              Send message when pressing Cmd+Enter
+              Cmd + Enter
               <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
             </DropdownMenuItem>
           </DropdownMenuContent>
