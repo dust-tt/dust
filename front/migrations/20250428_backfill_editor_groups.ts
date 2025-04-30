@@ -16,6 +16,8 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
+import { Workspace } from "@app/lib/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
@@ -49,7 +51,7 @@ async function backfillAgentEditorsGroup(
   );
 
   if (groupSet.size > 1) {
-    logger.info("Multiple groups found for agent", agent);
+    logger.info({ agent: agent.sId }, "Multiple groups found for agent");
     throw new Error("Multiple groups found for agent");
   }
 
@@ -62,37 +64,45 @@ async function backfillAgentEditorsGroup(
     assert(editorGroup, "Editor group not found");
     // if group is not of kind agent_editors, update it
     if (editorGroup.kind !== "agent_editors") {
+      console.log({ agent: agent.sId }, "Updating group kind for agent");
       const groupModel = await GroupModel.findByPk(editorGroup.id);
       assert(groupModel, "Group model not found");
-      await groupModel.update({
+      if (execute) {
+        await groupModel.update({
+          kind: "agent_editors",
+        });
+      }
+    }
+  } else {
+    console.log({ agent: agent.sId }, "Creating editor group for agent");
+    if (execute) {
+      // Create an editor group for the agent without author
+      editorGroup = await GroupResource.makeNew({
+        workspaceId: workspace.id,
+        name: `Group for Agent ${agent.name}`,
         kind: "agent_editors",
       });
     }
-  } else {
-    // Create an editor group for the agent without author
-    editorGroup = await GroupResource.makeNew({
-      workspaceId: workspace.id,
-      name: `Group for Agent ${agent.name}`,
-      kind: "agent_editors",
-    });
   }
 
-  // Associate the group with all agent configurations that don't yet have the
-  // association
-  await GroupAgentModel.bulkCreate(
-    agentConfigs
-      .filter(
-        (config) =>
-          !groupAgentRelationships.some(
-            (relationship) => relationship.agentConfigurationId === config.id
-          )
-      )
-      .map((config) => ({
-        groupId: editorGroup.id,
-        agentConfigurationId: config.id,
-        workspaceId: workspace.id,
-      }))
-  );
+  if (execute && editorGroup) {
+    // Associate the group with all agent configurations that don't yet have the
+    // association
+    await GroupAgentModel.bulkCreate(
+      agentConfigs
+        .filter(
+          (config) =>
+            !groupAgentRelationships.some(
+              (relationship) => relationship.agentConfigurationId === config.id
+            )
+        )
+        .map((config) => ({
+          groupId: editorGroup.id,
+          agentConfigurationId: config.id,
+          workspaceId: workspace.id,
+        }))
+    );
+  }
 
   // set all the editors of the agent to the editor group
   const users = await UserResource.fetchByModelIds(editorIds);
@@ -106,7 +116,12 @@ async function backfillAgentEditorsGroup(
     memberships.memberships.some((membership) => membership.userId === user.id)
   );
 
-  if (execute) {
+  console.log(
+    { agent: agent.sId, usersToAdd: usersToAdd.length },
+    "Adding users to editor group"
+  );
+
+  if (execute && editorGroup) {
     const result = await editorGroup.setMembers(
       auth,
       usersToAdd.map((user) => user.toJSON())
@@ -153,10 +168,6 @@ const migrateWorkspaceEditorsGroups = async (
     `Found ${agents.length} agents to migrate on workspace ${workspace.sId}`
   );
 
-  if (!execute) {
-    return;
-  }
-
   await concurrentExecutor(
     agents,
     (agent) =>
@@ -169,15 +180,32 @@ const migrateWorkspaceEditorsGroups = async (
   );
 };
 
-makeScript({}, async ({ execute }, logger) => {
-  logger.info("Starting agent editors group backfill");
+makeScript(
+  {
+    wId: { type: "string", required: false },
+  },
+  async ({ wId, execute }, logger) => {
+    logger.info("Starting agent editors group backfill");
 
-  await runOnAllWorkspaces(
-    async (workspace) => {
-      await migrateWorkspaceEditorsGroups(execute, logger, workspace);
-    },
-    { concurrency: 4 }
-  );
+    if (wId) {
+      const ws = await Workspace.findOne({ where: { sId: wId } });
+      if (!ws) {
+        throw new Error(`Workspace not found: ${wId}`);
+      }
+      await migrateWorkspaceEditorsGroups(
+        execute,
+        logger,
+        renderLightWorkspaceType({ workspace: ws })
+      );
+    } else {
+      await runOnAllWorkspaces(
+        async (workspace) => {
+          await migrateWorkspaceEditorsGroups(execute, logger, workspace);
+        },
+        { concurrency: 4 }
+      );
+    }
 
-  logger.info("Agent editors group backfill completed");
-});
+    logger.info("Agents migration completed");
+  }
+);
