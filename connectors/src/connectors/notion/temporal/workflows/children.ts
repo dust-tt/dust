@@ -199,14 +199,12 @@ export async function syncResultPageDatabaseChildWorkflow({
   connectorId,
   databaseIds,
   runTimestamp,
-  isBatchSync,
   topLevelWorkflowId,
   forceResync,
 }: {
   connectorId: ModelId;
   databaseIds: string[];
   runTimestamp: number;
-  isBatchSync: boolean;
   topLevelWorkflowId: string;
   forceResync: boolean;
 }): Promise<void> {
@@ -255,7 +253,6 @@ export async function syncResultPageDatabaseChildWorkflow({
           databaseId,
           runTimestamp,
           topLevelWorkflowId,
-          isBatchSync,
           queue: workflowQueue,
           forceResync,
         })

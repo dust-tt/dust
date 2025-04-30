@@ -183,7 +183,6 @@ export async function upsertDatabaseWorkflow({
     databaseId,
     runTimestamp,
     topLevelWorkflowId,
-    isBatchSync: false,
     queue,
     forceResync,
   });

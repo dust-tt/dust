@@ -121,7 +121,6 @@ export async function performUpserts({
               {
                 connectorId,
                 runTimestamp,
-                isBatchSync,
                 databaseIds: batch,
                 topLevelWorkflowId,
                 forceResync,
@@ -154,13 +153,11 @@ export async function upsertDatabase({
   topLevelWorkflowId,
   queue,
   forceResync,
-  isBatchSync,
 }: {
   connectorId: ModelId;
   databaseId: string;
   runTimestamp: number;
   topLevelWorkflowId: string;
-  isBatchSync: boolean;
   queue: PQueue;
   forceResync: boolean;
 }) {
@@ -173,11 +170,15 @@ export async function upsertDatabase({
 
   // We immediately mark the database as upserted, to allow the sync process
   // to queue it again while it is being processed.
-  await markDatabasesAsUpserted({
+  const { isNewDatabase } = await markDatabasesAsUpserted({
     connectorId,
     databaseIds: [databaseId],
     runTimestamp,
   });
+
+  // If the database is new, we consider this to be a "batch sync".
+  // We won't trigger individual post upsert hooks for each page.
+  const isBatchSync = isNewDatabase;
 
   do {
     const { pageIds, nextCursor } = await fetchDatabaseChildPages({

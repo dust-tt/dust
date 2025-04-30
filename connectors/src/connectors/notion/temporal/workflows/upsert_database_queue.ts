@@ -58,7 +58,6 @@ export async function upsertDatabaseQueueWorkflow({
       databaseId: notionDatabaseId,
       runTimestamp: Date.now(),
       topLevelWorkflowId: workflowInfo().workflowId,
-      isBatchSync: false,
       queue: new PQueue({
         concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
       }),
