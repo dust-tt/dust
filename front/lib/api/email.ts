@@ -192,9 +192,8 @@ interface sendEmailWithTemplateParams {
   body: string;
 }
 
-// This function sends an email using a predefined template.
-// Note: The salutation and footer are automatically included by the template,
-// so do not add them manually to the email body.
+// This function sends an email using a predefined template. Note: The salutation and footer are
+// automatically included by the template, so do not add them manually to the email body.
 export async function sendEmailWithTemplate({
   to,
   from,
