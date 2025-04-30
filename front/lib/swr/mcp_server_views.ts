@@ -127,7 +127,7 @@ export function useMCPServerViewsNotActivated({
     [data]
   );
   return {
-    mcpServerViews: serverViews,
+    serverViews,
     isMCPServerViewsLoading: !error && !data && !disabled,
     isMCPServerViewsError: error,
     mutateMCPServerViews: mutate,

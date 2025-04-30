@@ -33,7 +33,7 @@ interface RequestActionsModal {
 }
 
 export function RequestActionsModal({ owner, space }: RequestActionsModal) {
-  const { mcpServerViews, isMCPServerViewsLoading: isLoading } =
+  const { serverViews, isMCPServerViewsLoading: isLoading } =
     useMCPServerViewsNotActivated({ owner, space });
   const [selectedMcpServer, setSelectedMcpServer] =
     useState<MCPServerViewType | null>(null);
@@ -102,7 +102,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
               <div className="flex items-center gap-2">
                 {isLoading && <Spinner size="lg" />}
 
-                {!isLoading && mcpServerViews.length === 0 && (
+                {!isLoading && serverViews.length === 0 && (
                   <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                     <p>
                       There are no extra tools set up that you can request
@@ -111,7 +111,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                   </label>
                 )}
 
-                {mcpServerViews.length >= 1 && (
+                {serverViews.length >= 1 && (
                   <>
                     <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                       <p>Which tools you want to get access to?</p>
@@ -136,7 +136,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                         )}
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        {mcpServerViews.map((v) => (
+                        {serverViews.map((v) => (
                           <DropdownMenuItem
                             key={v.id}
                             label={asDisplayName(v.server.name)}
