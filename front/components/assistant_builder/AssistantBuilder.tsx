@@ -61,6 +61,7 @@ import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
+import { isLegacyAllowed } from "@app/lib/api/assistant/configuration";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
@@ -75,6 +76,7 @@ import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
+  isAdmin,
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
@@ -240,9 +242,10 @@ export default function AssistantBuilder({
     }
     if (agentConfigurationId && initialBuilderState) {
       assert(
-        isBuilder(owner) ||
+        isLegacyAllowed(owner, initialBuilderState.scope) ||
+          isAdmin(owner) ||
           initialBuilderState.editors.some((m) => m.sId === user.sId),
-        "Unreachable: User is not in editors nor builder"
+        "Unreachable: User is not in editors nor admin"
       );
     }
     if (!agentConfigurationId) {
