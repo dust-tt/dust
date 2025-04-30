@@ -90,6 +90,7 @@ import {
   assertNever,
   ConversationError,
   Err,
+  GEMINI_2_FLASH_MODEL_CONFIG,
   getSmallWhitelistedModel,
   isAgentMention,
   isAgentMessageType,
@@ -487,11 +488,16 @@ export async function getSuggestedAgentsForConversation(
     );
   }
 
-  const model = getSmallWhitelistedModel(owner);
+  let model = getSmallWhitelistedModel(owner);
   if (!model) {
     return new Err(
       new Error("Error suggesting agents: failed to find a whitelisted model.")
     );
+  }
+
+  // TODO(daphne): See if we can put Flash 2 as the default model.
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    model = GEMINI_2_FLASH_MODEL_CONFIG;
   }
 
   const config = cloneBaseConfig(
