@@ -6,15 +6,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export const PostRequestActionsAccessBodySchema = t.type({
   emailMessage: t.string,
-  userTo: t.string,
-  serverName: t.string,
+  mcpServerViewId: t.string,
 });
 
 export type PostRequestActionsAccessBody = t.TypeOf<
@@ -65,16 +64,31 @@ async function handler(
   }
 
   const emailRequester = user.email;
-  const { emailMessage, userTo } = bodyValidation.right;
+  const { emailMessage, mcpServerViewId } = bodyValidation.right;
 
-  const userRecipient = await UserResource.fetchById(userTo);
+  const mcpServerViewRes = await MCPServerViewResource.fetchById(
+    auth,
+    mcpServerViewId
+  );
 
-  if (!userRecipient) {
+  if (mcpServerViewRes.isErr()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
+        type: "mcp_server_view_not_found",
+        message: "The MCP server view was not found",
+      },
+    });
+  }
+
+  const mcpServerView = mcpServerViewRes.value;
+
+  if (!mcpServerView.editedByUser?.sId) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
         type: "user_not_found",
-        message: "The user was not found",
+        message: "No admin user found for this data source",
       },
     });
   }
@@ -92,15 +106,19 @@ async function handler(
       status_code: 429,
       api_error: {
         type: "rate_limit_error",
-        message: `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access requests per day. Please try again tomorrow.`,
+        message:
+          `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access requests ` +
+          "per day. Please try again tomorrow.",
       },
     });
   }
 
-  const body = `${emailRequester} has sent you a request regarding access to actions: ${emailMessage}`;
+  const body =
+    `${emailRequester} has sent you a request regarding access to actions: ` +
+    emailMessage;
 
   const result = await sendEmailWithTemplate({
-    to: userRecipient.email,
+    to: mcpServerView.editedByUser.email,
     from: { name: "Dust team", email: "support@dust.help" },
     subject: `[Dust] Tools request from ${emailRequester}`,
     body,
@@ -115,7 +133,9 @@ async function handler(
       },
     });
   }
-  return res.status(200).json({ success: true, emailTo: userRecipient.email });
+  return res
+    .status(200)
+    .json({ success: true, emailTo: mcpServerView.editedByUser.email });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

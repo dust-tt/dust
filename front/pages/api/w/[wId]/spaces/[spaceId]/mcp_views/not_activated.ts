@@ -8,13 +8,12 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetMCPServerViewsNotActivatedResponseBody = {
   success: boolean;
-  serverViews: MCPServerViewType[];
+  mcpServerViews: MCPServerViewType[];
 };
 
 async function handler(
@@ -29,22 +28,24 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      const workspaceServerViews =
-        await MCPServerViewResource.listByWorkspace(auth);
-
-      const spaceServerViews = await MCPServerViewResource.listBySpace(
+      const spaceMcpServerViews = await MCPServerViewResource.listBySpace(
         auth,
         space
       );
 
-      const nonCompanyDataServerViews = workspaceServerViews.filter(
-        (s) => s.space.kind !== "global" && s.space.kind !== "system"
+      const workspaceServerViews =
+        await MCPServerViewResource.listByWorkspace(auth);
+
+      // MCP servers that can be added to a space are the ones that have been activated by the admin
+      // (they are in the system space) but are not already in the company space. Note that this
+      // leaks system mcpServerView ids (not ideal but OK since they are enumerable).
+      const availableMcpServerViews = workspaceServerViews.filter(
+        (s) => s.space.kind !== "global" && s.space.kind === "system"
       );
 
-      // We get the actions that aren't activated in Company Data and not in the space making the request
-      const serverViewsNotActivated = _.differenceWith(
-        nonCompanyDataServerViews,
-        spaceServerViews,
+      const mcpServerViewsNotActivated = _.differenceWith(
+        availableMcpServerViews,
+        spaceMcpServerViews,
         (a, b) => {
           return (
             (a.internalMCPServerId ?? a.remoteMCPServerId) ===
@@ -53,32 +54,11 @@ async function handler(
         }
       );
 
-      // We can have duplicate because some actions can be activated in many spaces
-      const serverViews = _.uniqBy(
-        serverViewsNotActivated,
-        (s) => s.internalMCPServerId ?? s.remoteMCPServerId
-      );
-
       return res.status(200).json({
         success: true,
-        serverViews: removeNulls(
-          serverViews.map((s) => {
-            // WARN: Probably due to Intenal MCP Server view pointing to `internalMCPServerId` that doesn't exists anymore.
-            // Need to think about migration of mcp_server_view when we're updating internal mcp servers.
-            try {
-              return s.toJSON();
-            } catch (err) {
-              logger.error(
-                {
-                  serverViewId: s.sId,
-                  workspaceId: s.workspaceId,
-                  spaceId: space.sId,
-                  userId: auth.getNonNullableUser().id,
-                },
-                "couldn't toJSON() a mcp_server_view"
-              );
-              return null;
-            }
+        mcpServerViews: removeNulls(
+          mcpServerViewsNotActivated.map((s) => {
+            return s.toJSON();
           })
         ),
       });

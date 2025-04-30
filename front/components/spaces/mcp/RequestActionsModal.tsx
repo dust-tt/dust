@@ -33,7 +33,7 @@ interface RequestActionsModal {
 }
 
 export function RequestActionsModal({ owner, space }: RequestActionsModal) {
-  const { serverViews, isMCPServerViewsLoading: isLoading } =
+  const { mcpServerViews, isMCPServerViewsLoading: isLoading } =
     useMCPServerViewsNotActivated({ owner, space });
   const [selectedMcpServer, setSelectedMcpServer] =
     useState<MCPServerViewType | null>(null);
@@ -56,9 +56,8 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
     } else {
       try {
         await sendRequestActionsAccessEmail({
-          userTo: userToId,
           emailMessage: message,
-          serverName: selectedMcpServer.server.name,
+          mcpServerViewId: selectedMcpServer.id,
           owner,
         });
         sendNotification({
@@ -103,7 +102,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
               <div className="flex items-center gap-2">
                 {isLoading && <Spinner size="lg" />}
 
-                {!isLoading && serverViews.length === 0 && (
+                {!isLoading && mcpServerViews.length === 0 && (
                   <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                     <p>
                       There are no extra tools set up that you can request
@@ -112,7 +111,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                   </label>
                 )}
 
-                {serverViews.length >= 1 && (
+                {mcpServerViews.length >= 1 && (
                   <>
                     <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                       <p>Which tools you want to get access to?</p>
@@ -137,7 +136,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                         )}
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        {serverViews.map((v) => (
+                        {mcpServerViews.map((v) => (
                           <DropdownMenuItem
                             key={v.id}
                             label={asDisplayName(v.server.name)}

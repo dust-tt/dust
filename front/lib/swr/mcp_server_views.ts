@@ -122,12 +122,12 @@ export function useMCPServerViewsNotActivated({
       disabled,
     }
   );
-  const serverViews = useMemo(
-    () => (data ? data.serverViews.sort(mcpServerViewSortingFn) : []),
+  const mcpServerViews = useMemo(
+    () => (data ? data.mcpServerViews.sort(mcpServerViewSortingFn) : []),
     [data]
   );
   return {
-    serverViews,
+    mcpServerViews,
     isMCPServerViewsLoading: !error && !data && !disabled,
     isMCPServerViewsError: error,
     mutateMCPServerViews: mutate,
