@@ -10,6 +10,7 @@ import { hardDeleteSpace } from "@app/lib/api/spaces";
 import {
   areAllSubscriptionsCanceled,
   isWorkspaceRelocationDone,
+  isWorkspaceRelocationOngoing,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -527,7 +528,9 @@ export async function deleteMembersActivity({
   const workspace = auth.getNonNullableWorkspace();
   const auth0Client = getAuth0ManagemementClient();
 
-  const workspaceHasBeenRelocated = isWorkspaceRelocationDone(workspace);
+  const workspaceRelocated =
+    isWorkspaceRelocationDone(workspace) ||
+    isWorkspaceRelocationOngoing(workspace);
 
   await MembershipInvitation.destroy({
     where: {
@@ -564,8 +567,8 @@ export async function deleteMembersActivity({
         // Delete the user from Auth0 if they have an Auth0 ID
         if (deleteFromAuth0 && user.auth0Sub) {
           assert(
-            !workspaceHasBeenRelocated,
-            "Trying to delete an Auth0 sub for a workspace that was relocated."
+            !workspaceRelocated,
+            "Trying to delete an Auth0 sub for a workspace that was relocated/is being relocated."
           );
 
           try {
