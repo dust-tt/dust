@@ -56,7 +56,9 @@ import {
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
 import { useTemplate } from "@app/components/assistant_builder/useTemplate";
-import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
+import AppContentLayout, {
+  appLayoutBack,
+} from "@app/components/sparkle/AppContentLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
@@ -460,7 +462,7 @@ export default function AssistantBuilder({
 
   return (
     <>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         hideSidebar
         isWideMode
@@ -680,7 +682,7 @@ export default function AssistantBuilder({
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}
         />
-      </AppLayout>
+      </AppContentLayout>
     </>
   );
 }

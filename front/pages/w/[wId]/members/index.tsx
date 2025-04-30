@@ -22,7 +22,8 @@ import { InviteEmailModal } from "@app/components/members/InvitationModal";
 import { InvitationsList } from "@app/components/members/InvitationsList";
 import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
@@ -154,7 +155,7 @@ export default function WorkspaceAdmin({
   }, [inviteBlockedPopupReason, owner, subscription]);
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
@@ -271,7 +272,7 @@ export default function WorkspaceAdmin({
         />
         {popup}
       </Page.Vertical>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
 
@@ -411,3 +412,7 @@ function WorkspaceMembersList({
     </div>
   );
 }
+
+WorkspaceAdmin.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

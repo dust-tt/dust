@@ -21,7 +21,7 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -111,7 +111,7 @@ const ConversationLayoutContent = ({
 
   return (
     <InputBarProvider>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         isWideMode
@@ -152,7 +152,7 @@ const ConversationLayoutContent = ({
             </CoEditionProvider>
           </>
         )}
-      </AppLayout>
+      </AppContentLayout>
     </InputBarProvider>
   );
 };
