@@ -193,15 +193,8 @@ export async function sendWorkspaceInvitationEmail(
     },
   };
 
-  if (process.env.NODE_ENV !== "development") {
-    sgMail.setApiKey(config.getSendgridApiKey());
-    await sgMail.send(message);
-  } else {
-    logger.debug(
-      { message },
-      "[INVITATION] invitation not sent in development"
-    );
-  }
+  sgMail.setApiKey(config.getSendgridApiKey());
+  await sgMail.send(message);
 }
 /**
  * Returns the pending inviations associated with the authenticator's owner workspace.
