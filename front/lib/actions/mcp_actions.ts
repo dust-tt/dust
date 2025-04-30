@@ -199,7 +199,7 @@ export async function* tryCallMCPTool(
       ProgressNotificationSchema,
       async (notification) => {
         // For now, we only handle internal notifications.
-        // TODO: Add rate limiting.
+        // TODO(MCP 2025-04-30): Add rate limiting.
         if (isInternalMCPProgressNotificationType(notification)) {
           emitter.emit(MCP_NOTIFICATION_EVENT_NAME, notification);
         }

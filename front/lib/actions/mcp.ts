@@ -581,7 +581,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       } else if (event.type === "notification") {
         const { notification } = event;
         if (isInternalMCPProgressNotificationType(notification)) {
-          // TODO(2025-04-30 MCP): Add rate limit.
           yield {
             type: "tool_notification",
             created: Date.now(),

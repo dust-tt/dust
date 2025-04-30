@@ -321,7 +321,7 @@ export function AgentMessage({
           break;
         }
 
-        // TODO(2025-04-30 MCP) Ignoring this event for now. Require to refactor a bit this component.
+        // TODO(MCP 2025-04-30) Ignoring this event for now. Require to refactor a bit this component.
         case "tool_notification": {
           break;
         }
