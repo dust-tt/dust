@@ -23,7 +23,7 @@ async function backfillAgentEditorsGroup(
   execute: boolean,
   logger: Logger
 ): Promise<void> {
-  logger.info({ agent: agent.sId }, "Migrating agent");
+  logger.info({ agent }, "Migrating agent");
   // find all editors of this agent
   const agentConfigs = await AgentConfiguration.findAll({
     where: {
@@ -72,7 +72,10 @@ async function backfillAgentEditorsGroup(
       }
     }
   } else {
-    console.log({ agent: agent.sId }, "Creating editor group for agent");
+    console.log(
+      { agent: agent.sId },
+      `Creating editor group for agent : Group for Agent ${agent.name}`
+    );
     if (execute) {
       // Create an editor group for the agent without author
       editorGroup = await GroupResource.makeNew({
@@ -142,8 +145,9 @@ const migrateWorkspaceEditorsGroups = async (
       return AgentConfiguration.findAll({
         where: {
           workspaceId: workspace.id,
-          status: "active",
         },
+        attributes: ["sId", "name"],
+        group: ["sId", "name"],
       });
     } catch (error) {
       logger.error(
