@@ -77,11 +77,12 @@ async function backfillAgentEditorsGroup(
       { agent: agentConfigs[0].sId },
       `Creating editor group for agent : Group for Agent ${agentConfigs[0].name}`
     );
+
     if (execute) {
       // Create an editor group for the agent without author
       editorGroup = await GroupResource.makeNew({
         workspaceId: workspace.id,
-        name: `Group for Agent ${agentConfigs[0].name}`,
+        name: `Group for Agent ${agentConfigs[0].name} (${agentConfigs[0].sId})`,
         kind: "agent_editors",
       });
     }
