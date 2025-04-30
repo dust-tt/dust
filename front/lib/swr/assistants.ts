@@ -146,14 +146,16 @@ export function useAgentConfigurations({
 export function useSuggestedAgentConfigurations({
   workspaceId,
   conversationId,
+  messageId,
 }: {
   workspaceId: string;
   conversationId: string;
+  messageId: string;
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
 
-  const key = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/suggest`;
+  const key = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/suggest?messageId=${messageId}`;
   const { cache } = useSWRConfig();
   const cachedData: GetAgentConfigurationsResponseBody | undefined =
     cache.get(key)?.data;

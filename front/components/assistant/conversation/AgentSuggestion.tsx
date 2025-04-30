@@ -48,6 +48,7 @@ export function AgentSuggestion({
   } = useSuggestedAgentConfigurations({
     workspaceId: owner.sId,
     conversationId,
+    messageId: userMessage.sId,
   });
 
   const sendNotification = useSendNotification();
