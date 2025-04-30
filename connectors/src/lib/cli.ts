@@ -389,6 +389,14 @@ export const webcrawler = async ({
       return { success: true };
     }
     case "update-crawler": {
+      if (!args.connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+
+      if (!args.customCrawler) {
+        throw new Error("Missing --customCrawler argument");
+      }
+
       await throwOnError(
         updateCrawlerType(args.connectorId, args.customCrawler)
       );
