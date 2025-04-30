@@ -44,7 +44,7 @@ export function Preferences() {
 
   return (
     <Page.Layout direction="horizontal">
-      <Page.Layout direction="vertical">
+      <Page.Vertical sizing="grow" align="stretch">
         <Label>Theme</Label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -65,6 +65,7 @@ export function Preferences() {
                     : "System"
               }
               isSelect
+              className="w-fit"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -91,18 +92,24 @@ export function Preferences() {
             />
           </DropdownMenuContent>
         </DropdownMenu>
-      </Page.Layout>
-      <Page.Layout direction="vertical">
-        <Label>Submit Behavior</Label>
+      </Page.Vertical>
+      <Page.Vertical sizing="grow" align="stretch">
+        <Label>Keyboard Shortcuts</Label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              label={
-                submitMessageKey === "enter" ? "Enter (↵)" : "Cmd+Enter (⌘+↵)"
-              }
-              isSelect
-            />
+            <div className="copy-sm flex items-center gap-2 text-foreground dark:text-foreground-night">
+              Send message:
+              <Button
+                variant="outline"
+                label={
+                  submitMessageKey === "enter"
+                    ? "Enter (↵)"
+                    : "Cmd + Enter (⌘ + ↵)"
+                }
+                isSelect
+                className="w-fit"
+              />
+            </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
@@ -110,7 +117,7 @@ export function Preferences() {
                 handleSubmitKeyChange("enter");
               }}
             >
-              Send message when pressing Enter
+              Enter
               <DropdownMenuShortcut>↵</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -118,12 +125,12 @@ export function Preferences() {
                 handleSubmitKeyChange("cmd+enter");
               }}
             >
-              Send message when pressing Cmd+Enter
+              Cmd + Enter
               <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </Page.Layout>
+      </Page.Vertical>
     </Page.Layout>
   );
 }

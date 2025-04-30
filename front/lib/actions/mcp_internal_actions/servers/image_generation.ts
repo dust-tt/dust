@@ -1,19 +1,13 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import OpenAI from "openai";
 import { z } from "zod";
 
-import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
-import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { FileResource } from "@app/lib/resources/file_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials, Err } from "@app/types";
+import { dustManagedCredentials } from "@app/types";
 
 const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
 const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
@@ -141,79 +135,14 @@ const createServer = (auth: Authenticator): McpServer => {
 
       const fileName = `${name}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
 
-      const fileResults = await concurrentExecutor(
-        result.data,
-        async (image) => {
-          try {
-            const res = await uploadBase64ImageToFileStorage(auth, {
-              base64: image.b64_json!,
-              contentType: DEFAULT_IMAGE_MIME_TYPE,
-              fileName,
-            });
-
-            return res;
-          } catch (error) {
-            logger.error(
-              {
-                action: "mcp_tool",
-                tool: "generate_image",
-                workspaceId: workspace.sId,
-                error,
-              },
-              "Failed to save the generated image."
-            );
-
-            return new Err(new Error("Failed to save the generated image."));
-          }
-        },
-        { concurrency: 10 }
-      );
-
-      const { errors, files } = fileResults.reduce<{
-        errors: Err<Error | ProcessAndStoreFileError>[];
-        files: FileResource[];
-      }>(
-        (acc, r) => {
-          if (r.isErr()) {
-            acc.errors.push(r);
-          } else {
-            acc.files.push(r.value);
-          }
-          return acc;
-        },
-        { errors: [], files: [] }
-      );
-
-      if (errors.length > 0) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Failed to generate image: ${errors.map((e) => e.error).join(", ")}`,
-            },
-          ],
-        };
-      }
-
-      const content: MCPToolResultContentType[] = files.map((file) => {
-        return {
-          type: "resource",
-          resource: {
-            contentType: file.contentType,
-            fileId: file.sId,
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-            snippet: null,
-            text: "Your image was generated successfully.",
-            title: file.fileName,
-            uri: file.getPublicUrl(auth),
-          },
-        };
-      });
-
       return {
         isError: false,
-        content,
+        content: result.data.map((r) => ({
+          type: "image" as const,
+          mimeType: DEFAULT_IMAGE_MIME_TYPE,
+          data: r.b64_json!,
+          name: fileName,
+        })),
       };
     }
   );

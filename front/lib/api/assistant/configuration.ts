@@ -1312,13 +1312,13 @@ export async function createAgentActionConfiguration(
           auth,
           action.mcpServerViewId
         );
-        if (mcpServerView.isErr()) {
-          return new Err(mcpServerView.error);
+        if (!mcpServerView) {
+          return new Err(new Error("MCP server view not found"));
         }
 
         const {
           server: { name: serverName, description: serverDescription, tools },
-        } = mcpServerView.value.toJSON();
+        } = mcpServerView.toJSON();
 
         const isSingleTool = tools.length === 1;
 
@@ -1327,7 +1327,7 @@ export async function createAgentActionConfiguration(
             sId: generateRandomModelSId(),
             agentConfigurationId: agentConfiguration.id,
             workspaceId: owner.id,
-            mcpServerViewId: mcpServerView.value.id,
+            mcpServerViewId: mcpServerView.id,
             additionalConfiguration: action.additionalConfiguration,
             name: serverName !== action.name ? action.name : null,
             singleToolDescriptionOverride:
@@ -1796,7 +1796,7 @@ export async function getAgentPermissions(
  * TODO(agent discovery, 2025-04-30): Delete this function when removing scopes
  * "workspace" and "published"
  */
-export function isLegacyAllowed(
+function isLegacyAllowed(
   owner: WorkspaceType,
   agentConfigurationScope: AgentConfigurationScope
 ): boolean {

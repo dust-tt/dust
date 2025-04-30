@@ -415,12 +415,7 @@ export function SharingDropdown({
         : SCOPE_INFO[requestNewScope].confirmationModalData;
   }
 
-  const allowedToChange =
-    !disabled &&
-    // never change global agent
-    initialScope !== "global" &&
-    // only builders can change company agents
-    (isBuilder(owner) || initialScope !== "workspace");
+  const allowedToChange = !disabled && agentConfiguration?.canEdit;
 
   return (
     <div>

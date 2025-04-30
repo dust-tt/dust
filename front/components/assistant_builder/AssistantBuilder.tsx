@@ -56,12 +56,13 @@ import {
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
 import { useTemplate } from "@app/components/assistant_builder/useTemplate";
-import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
+import AppContentLayout, {
+  appLayoutBack,
+} from "@app/components/sparkle/AppContentLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
-import { isLegacyAllowed } from "@app/lib/api/assistant/configuration";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
@@ -71,6 +72,7 @@ import type {
   AgentConfigurationScope,
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
+  WorkspaceType,
 } from "@app/types";
 import {
   assertNever,
@@ -78,11 +80,29 @@ import {
   GPT_4_1_MINI_MODEL_CONFIG,
   isAdmin,
   isBuilder,
+  isUser,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
+}
+
+/**
+ * TODO(agent discovery, 2025-04-30): Delete this function when removing scopes
+ * "workspace" and "published"
+ */
+function isLegacyAllowed(
+  owner: WorkspaceType,
+  agentConfigurationScope: AgentConfigurationScope
+): boolean {
+  if (agentConfigurationScope === "workspace" && isBuilder(owner)) {
+    return true;
+  }
+  if (agentConfigurationScope === "published" && isUser(owner)) {
+    return true;
+  }
+  return false;
 }
 
 export default function AssistantBuilder({
@@ -442,7 +462,7 @@ export default function AssistantBuilder({
 
   return (
     <>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         hideSidebar
         isWideMode
@@ -662,7 +682,7 @@ export default function AssistantBuilder({
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}
         />
-      </AppLayout>
+      </AppContentLayout>
     </>
   );
 }

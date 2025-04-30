@@ -228,25 +228,18 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     id: string,
     options?: ResourceFindOptions<MCPServerViewModel>
-  ): Promise<Result<MCPServerViewResource, DustError>> {
-    const viewRes = await this.fetchByIds(auth, [id], options);
+  ): Promise<MCPServerViewResource | null> {
+    const [mcpServerView] = await this.fetchByIds(auth, [id], options);
 
-    if (viewRes.isErr()) {
-      return viewRes;
-    }
-
-    return new Ok(viewRes.value[0]);
+    return mcpServerView ?? null;
   }
 
   static async fetchByIds(
     auth: Authenticator,
     ids: string[],
     options?: ResourceFindOptions<MCPServerViewModel>
-  ): Promise<Result<MCPServerViewResource[], DustError>> {
+  ): Promise<MCPServerViewResource[]> {
     const viewModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
-    if (viewModelIds.length !== ids.length) {
-      return new Err(new DustError("invalid_id", "Invalid id"));
-    }
 
     const views = await this.baseFetch(auth, {
       ...options,
@@ -258,16 +251,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       },
     });
 
-    if (views.length !== ids.length) {
-      return new Err(
-        new DustError(
-          "resource_not_found",
-          ids.length === 1 ? "View not found" : "Some views were not found"
-        )
-      );
-    }
-
-    return new Ok(views);
+    return views ?? [];
   }
 
   static async fetchByModelPk(auth: Authenticator, id: ModelId) {

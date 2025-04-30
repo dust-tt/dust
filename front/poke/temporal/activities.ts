@@ -3,10 +3,15 @@ import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
+import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
-import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
+import {
+  areAllSubscriptionsCanceled,
+  isWorkspaceRelocationDone,
+  isWorkspaceRelocationOngoing,
+} from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentBrowseAction,
@@ -121,10 +126,10 @@ export async function scrubMCPServerViewActivity({
       includeDeleted: true,
     }
   );
-  if (mcpServerView.isErr()) {
+  if (!mcpServerView) {
     throw new Error("MCPServerView not found.");
   }
-  await mcpServerView.value.delete(auth, { hardDelete: true });
+  await mcpServerView.delete(auth, { hardDelete: true });
 }
 
 export async function scrubSpaceActivity({
@@ -514,11 +519,20 @@ export const deleteTrackersActivity = async ({
 
 export async function deleteMembersActivity({
   workspaceId,
+  deleteFromAuth0 = false,
 }: {
   workspaceId: string;
+  deleteFromAuth0?: boolean;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
+  const auth0Client = getAuth0ManagemementClient();
+
+  // Critical: we should never delete an Auth0 sub for a workspace that was relocated/is being relocated.
+  // The Auth0 sub is kept during the relocation, deleting it would affect the relocated users.
+  const workspaceRelocated =
+    isWorkspaceRelocationDone(workspace) ||
+    isWorkspaceRelocationOngoing(workspace);
 
   await MembershipInvitation.destroy({
     where: {
@@ -551,6 +565,45 @@ export async function deleteMembersActivity({
         // Delete the user's files.
         await FileResource.deleteAllForUser(user.toJSON());
         await membership.delete(auth, {});
+
+        // Delete the user from Auth0 if they have an Auth0 ID
+        if (deleteFromAuth0 && user.auth0Sub) {
+          assert(
+            !workspaceRelocated,
+            "Trying to delete an Auth0 sub for a workspace that was relocated/is being relocated."
+          );
+
+          try {
+            hardDeleteLogger.info(
+              {
+                userId: user.sId,
+                auth0Sub: user.auth0Sub,
+              },
+              "Deleting user from Auth0"
+            );
+            await auth0Client.users.delete({
+              id: user.auth0Sub,
+            });
+            hardDeleteLogger.info(
+              {
+                userId: user.sId,
+                auth0Sub: user.auth0Sub,
+              },
+              "Successfully deleted user from Auth0"
+            );
+          } catch (error) {
+            hardDeleteLogger.error(
+              {
+                userId: user.sId,
+                auth0Sub: user.auth0Sub,
+                error,
+              },
+              "Failed to delete user from Auth0"
+            );
+            // Continue with user deletion in our database even if Auth0 deletion fails
+          }
+        }
+
         await user.delete(auth, {});
       }
     } else {
