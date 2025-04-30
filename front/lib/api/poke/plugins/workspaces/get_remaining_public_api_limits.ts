@@ -42,21 +42,37 @@ export const getRemainingPublicAPILimitsPlugin = createPlugin({
     const limits = getWorkspacePublicAPILimits(auth.getNonNullableWorkspace());
     assert(limits && limits.enabled, "Limits should be enabled");
 
-    const remainingCredits =
-      (await getRemainingCredits(auth.getNonNullableWorkspace())) ??
-      limits.monthlyLimit;
+    const remaining = await getRemainingCredits(auth.getNonNullableWorkspace());
 
     if (reset) {
       await resetCredits(auth.getNonNullableWorkspace());
     }
 
+    const resetLabel = reset ? "reset" : undefined;
+
+    if (remaining === null) {
+      return new Ok({
+        display: "json",
+        value: {
+          remainingCredits: limits.monthlyLimit,
+          remainingCreditsPercentage: 100,
+          expiresAt: null,
+          reset: resetLabel,
+        },
+      });
+    }
+
+    const { expiresAt, remainingCredits } = remaining;
+    const remainingCreditsPercentage =
+      (remainingCredits / limits.monthlyLimit) * 100;
+
     return new Ok({
       display: "json",
       value: {
         remainingCredits,
-        remainingCreditsPercentage:
-          (remainingCredits / limits.monthlyLimit) * 100,
-        reset: reset ? "reset" : undefined,
+        remainingCreditsPercentage,
+        expiresAt,
+        reset: resetLabel,
       },
     });
   },

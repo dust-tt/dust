@@ -172,7 +172,7 @@ export async function resetCredits(
 
 export async function getRemainingCredits(
   workspace: LightWorkspaceType
-): Promise<number | null> {
+): Promise<{ expiresAt: number; remainingCredits: number } | null> {
   return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
     const key = getRedisKey(workspace);
     const remainingCredits = await redis.get(key);
@@ -180,6 +180,11 @@ export async function getRemainingCredits(
       return null;
     }
 
-    return parseFloat(remainingCredits);
+    const expiresAt = await redis.ttl(key);
+
+    return {
+      remainingCredits: parseFloat(remainingCredits),
+      expiresAt,
+    };
   });
 }
