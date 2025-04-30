@@ -5,11 +5,9 @@ import type { LightWorkspaceType } from "@app/types";
 
 export async function sendRequestDataSourceEmail({
   owner,
-  userTo,
   emailMessage,
   dataSourceId,
 }: {
-  userTo: string;
   emailMessage: string;
   dataSourceId: string;
   owner: LightWorkspaceType;
@@ -17,7 +15,6 @@ export async function sendRequestDataSourceEmail({
   const emailBlob: PostRequestAccessBody = {
     emailMessage,
     dataSourceId,
-    userTo,
   };
 
   const res = await fetch(`/api/w/${owner.sId}/data_sources/request_access`, {

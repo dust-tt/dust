@@ -7,14 +7,12 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export const PostRequestAccessBodySchema = t.type({
   emailMessage: t.string,
-  userTo: t.string,
   dataSourceId: t.string,
 });
 
@@ -67,19 +65,7 @@ async function handler(
   }
 
   const emailRequester = user.email;
-  const { emailMessage, userTo, dataSourceId } = bodyValidation.right;
-
-  const userReceipent = await UserResource.fetchById(userTo);
-
-  if (!userReceipent) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "The user was not found.",
-      },
-    });
-  }
+  const { emailMessage, dataSourceId } = bodyValidation.right;
 
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
 
@@ -93,12 +79,12 @@ async function handler(
     });
   }
 
-  if (dataSource.editedByUser?.sId !== userReceipent.sId) {
+  if (!dataSource.editedByUser?.sId) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "user_not_found",
-        message: "You are not authorized to send a request to this user.",
+        message: "No admin user found for this data source",
       },
     });
   }
@@ -124,7 +110,7 @@ async function handler(
   const body = `${emailRequester} has sent you a request regarding your connection ${dataSource.name}: ${emailMessage}`;
 
   const result = await sendEmailWithTemplate({
-    to: userReceipent.email,
+    to: dataSource.editedByUser.email,
     from: { name: "Dust team", email: "support@dust.help" },
     subject: `[Dust] Request Data source from ${emailRequester}`,
     body,
@@ -139,7 +125,9 @@ async function handler(
       },
     });
   }
-  return res.status(200).json({ success: true, emailTo: userReceipent.email });
+  return res
+    .status(200)
+    .json({ success: true, emailTo: dataSource.editedByUser.email });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
