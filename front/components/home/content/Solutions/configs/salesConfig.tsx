@@ -146,9 +146,9 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/sales/prospectQuestions.png"],
     },
     {
-      title: "Sales coaching",
+      title: "Sales insights",
       content:
-        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
+        "Extract winning narratives from calls and coach teams on pitch delivery and objection response.",
       images: ["/static/landing/sales/salesCoach.png"],
     },
   ],
