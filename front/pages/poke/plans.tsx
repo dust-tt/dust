@@ -127,7 +127,7 @@ const PlansPage = () => {
           <div className="h-full py-8 text-2xl font-bold">Plans</div>
           <div className="h-full w-full overflow-x-auto pb-52 pt-12">
             <table className="mx-auto h-full table-auto overflow-visible rounded-lg">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted dark:bg-muted-night">
                 <tr>
                   {Object.keys(PLAN_FIELDS).map((fieldName) => {
                     const field =
@@ -147,7 +147,7 @@ const PlansPage = () => {
                   <th className="px-4 py-2">Edit</th>
                 </tr>
               </thead>
-              <tbody className="h-full bg-white pb-48 text-gray-700">
+              <tbody className="h-full bg-background pb-48 text-primary-light dark:bg-background-night dark:text-primary-light-night">
                 {plansToRender?.map((plan) => {
                   const planId = plan.isNewPlan ? "newPlan" : plan.code;
 

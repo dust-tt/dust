@@ -83,7 +83,7 @@ makeScript(
     // Get all channels from Slack
     const remoteChannels = await getChannels(parseInt(connectorId, 10), false);
     const matchingChannels = remoteChannels.filter(
-      (c) => c.name && new RegExp(pattern).test(c.name)
+      (c) => c.name && c.name.startsWith(pattern)
     );
 
     logger.info(
