@@ -1,4 +1,5 @@
 import { isLeft } from "fp-ts/Either";
+import { escape } from "html-escaper";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -104,12 +105,16 @@ async function handler(
       status_code: 429,
       api_error: {
         type: "rate_limit_error",
-        message: `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access requests per day. Please try again tomorrow.`,
+        message:
+          `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access ` +
+          "requests per day. Please try again tomorrow.",
       },
     });
   }
 
-  const body = `${emailRequester} has sent you a request regarding your connection ${dataSource.name}: ${emailMessage}`;
+  const body =
+    `${emailRequester} has sent you a request regarding your connection ` +
+    `${dataSource.name}: ${escape(emailMessage)}`;
 
   const result = await sendEmailWithTemplate({
     to: dataSource.editedByUser.email,
