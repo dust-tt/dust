@@ -241,9 +241,9 @@ export default function AssistantBuilder({
     }
     if (agentConfigurationId && initialBuilderState) {
       assert(
-        isAdmin(owner) ||
+        isBuilder(owner) ||
           initialBuilderState.editors.some((m) => m.sId === user.sId),
-        "Unreachable: User is not in editors nor admin"
+        "Unreachable: User is not in editors nor builder"
       );
     }
     if (!agentConfigurationId) {
