@@ -134,6 +134,7 @@ const ConversationLayoutContent = ({
           <>
             <AssistantDetails
               owner={owner}
+              userId={user.sId}
               assistantId={assistantSId}
               onClose={() => onOpenChangeAssistantModal(false)}
             />

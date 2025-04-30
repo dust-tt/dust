@@ -17,6 +17,10 @@ import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
+import type {
+  GetAgentEditorsResponseBody,
+  PatchAgentEditorsRequestBody,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
 import type { PostAgentScopeRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/scope";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
@@ -708,4 +712,96 @@ export function useRestoreAgentConfiguration({
   };
 
   return doRestore;
+}
+
+export function useAgentEditors({
+  owner,
+  agentConfigurationId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  agentConfigurationId: string | null;
+  disabled?: boolean;
+}) {
+  const agentEditorsFetcher: Fetcher<GetAgentEditorsResponseBody> = fetcher;
+
+  const fetchUrl =
+    agentConfigurationId != null
+      ? `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/editors`
+      : null;
+  const { data, error, mutate } = useSWRWithDefaults(
+    fetchUrl,
+    agentEditorsFetcher,
+    { disabled }
+  );
+
+  return {
+    editors: data?.editors ?? [],
+    isAgentEditorsLoading: !error && !data && !disabled,
+    isAgentEditorsError: error,
+    mutateAgentEditors: mutate,
+  };
+}
+
+export function useUpdateAgentEditors({
+  owner,
+  agentConfigurationId,
+}: {
+  owner: LightWorkspaceType;
+  agentConfigurationId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateAgentEditors } = useAgentEditors({
+    owner,
+    agentConfigurationId,
+    disabled: true,
+  });
+
+  const updateAgentEditors = useCallback(
+    async (body: PatchAgentEditorsRequestBody) => {
+      const res = await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/editors`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (res.ok) {
+        void mutateAgentEditors();
+
+        let title = "";
+        let description: string | undefined = undefined;
+        if (
+          body.addEditorIds != null &&
+          body.addEditorIds.length > 0 &&
+          body.removeEditorIds != null &&
+          body.removeEditorIds.length > 0
+        ) {
+          title = "Successfully update editors";
+          description = "Successfully added and removed editors";
+        } else if (
+          (body.addEditorIds == null || body.addEditorIds.length <= 0) &&
+          body.removeEditorIds != null &&
+          body.removeEditorIds.length > 0
+        ) {
+          title = "Successfully removed editors";
+        } else {
+          title = "Successfully added editors";
+        }
+
+        sendNotification({
+          type: "success",
+          title,
+          description,
+        });
+      }
+    },
+    [owner, agentConfigurationId, mutateAgentEditors, sendNotification]
+  );
+
+  return updateAgentEditors;
 }

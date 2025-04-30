@@ -16,6 +16,7 @@ import {
   InformationCircleIcon,
   LockIcon,
   Page,
+  PlusIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -26,6 +27,7 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
+  UserGroupIcon,
   ValueCard,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -42,14 +44,19 @@ import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {
   useAgentAnalytics,
   useAgentConfiguration,
+  useAgentEditors,
+  useUpdateAgentEditors,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
 import { isBuilder, removeNulls } from "@app/types";
+
+import { MembersList } from "../members/MembersList";
 
 const PERIODS = [
   { value: 7, label: "Last 7 days" },
@@ -61,6 +68,7 @@ type AssistantDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
   assistantId: string | null;
+  userId: string;
 };
 
 function AssistantDetailsInfo({
@@ -280,13 +288,90 @@ function AssistantDetailsPerformance({
   );
 }
 
+type AssistantDetailsEditorsProps = {
+  owner: WorkspaceType;
+  userId: string;
+  agentConfiguration: AgentConfigurationType;
+};
+
+function AssistantDetailsEditors({
+  owner,
+  userId,
+  agentConfiguration,
+}: AssistantDetailsEditorsProps) {
+  const updateAgentEditors = useUpdateAgentEditors({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
+  });
+  const { editors, isAgentEditorsLoading } = useAgentEditors({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
+  });
+  const isCurrentUserEditor = editors.findIndex((u) => u.sId === userId) !== -1;
+  const onRemoveMember = async (user: UserTypeWithWorkspaces) => {
+    if (!isCurrentUserEditor) {
+      return;
+    }
+
+    await updateAgentEditors({ removeEditorIds: [user.sId] });
+  };
+
+  if (isAgentEditorsLoading) {
+    return (
+      <div className="flex flex-row items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <MembersList
+        currentUserId={userId}
+        membersData={{
+          members: editors.map((user) => ({
+            ...user,
+            workspaces: [
+              {
+                sId: "mock1",
+                name: "mock workspace 1",
+                role: "user",
+                id: 1,
+                segmentation: null,
+                whiteListedProviders: null,
+                defaultEmbeddingProvider: null,
+                metadata: null,
+              },
+            ],
+          })),
+          isLoading: isAgentEditorsLoading,
+          totalMembersCount: editors.length,
+          mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
+        }}
+        showColumns={isCurrentUserEditor ? ["name", "remove"] : ["name"]}
+        onRemoveMemberClick={onRemoveMember}
+        onRowClick={function noRefCheck() {}}
+      />
+
+      {isCurrentUserEditor && (
+        <div className="mt-4">
+          <Button label="Add editors" icon={PlusIcon} onClick={() => {}} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AssistantDetails({
   assistantId,
   onClose,
   owner,
+  userId,
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
-  const [selectedTab, setSelectedTab] = useState("info");
+  const [selectedTab, setSelectedTab] = useState<
+    "info" | "performance" | "editors"
+  >("info");
   const {
     agentConfiguration,
     isAgentConfigurationLoading,
@@ -406,6 +491,12 @@ export function AssistantDetails({
                       icon={BarChartIcon}
                       onClick={() => setSelectedTab("performance")}
                     />
+                    <TabsTrigger
+                      value="editors"
+                      label="Editors"
+                      icon={UserGroupIcon}
+                      onClick={() => setSelectedTab("editors")}
+                    />
                   </TabsList>
                 </Tabs>
               )}
@@ -423,6 +514,13 @@ export function AssistantDetails({
                     <AssistantDetailsPerformance
                       agentConfiguration={agentConfiguration}
                       owner={owner}
+                    />
+                  )}
+                  {selectedTab === "editors" && (
+                    <AssistantDetailsEditors
+                      owner={owner}
+                      userId={userId}
+                      agentConfiguration={agentConfiguration}
                     />
                   )}
                 </>

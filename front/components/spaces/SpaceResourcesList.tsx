@@ -53,6 +53,7 @@ import type {
   DataSourceViewType,
   PlanType,
   SpaceType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { isWebsiteOrFolderCategory } from "@app/types";
@@ -240,6 +241,7 @@ interface SpaceResourcesListProps {
   category: DataSourceViewCategoryWithoutApps;
   onSelect: (sId: string) => void;
   integrations: DataSourceIntegration[];
+  user: UserType;
 }
 
 export const SpaceResourcesList = ({
@@ -252,6 +254,7 @@ export const SpaceResourcesList = ({
   category,
   onSelect,
   integrations,
+  user,
 }: SpaceResourcesListProps) => {
   const { isDark } = useTheme();
   const [assistantName, setAssistantName] = useState<string | null>(null);
@@ -506,6 +509,7 @@ export const SpaceResourcesList = ({
     <>
       <AssistantDetails
         owner={owner}
+        userId={user.sId}
         assistantId={assistantSId}
         onClose={() => setAssistantName(null)}
       />

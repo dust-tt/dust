@@ -66,8 +66,10 @@ const memberColumns = [
     header: "Name",
     cell: (info: Info) => (
       <DataTable.CellContent avatarUrl={info.row.original.icon}>
-        {info.row.original.name}{" "}
-        {info.row.original.isCurrentUser ? " (you)" : ""}
+        {info.row.original.name}
+        {info.row.original.isCurrentUser && (
+          <span className="ml-3 text-muted-foreground">(you)</span>
+        )}
       </DataTable.CellContent>
     ),
     enableSorting: false,
@@ -135,8 +137,8 @@ export function MembersList({
   onRowClick: (user: UserTypeWithWorkspaces) => void;
   onRemoveMemberClick?: (user: UserTypeWithWorkspaces) => void;
   showColumns: ("name" | "email" | "role" | "remove")[];
-  pagination: PaginationState;
-  setPagination: (pagination: PaginationState) => void;
+  pagination?: PaginationState;
+  setPagination?: (pagination: PaginationState) => void;
 }) {
   assert(
     !showColumns.includes("remove") || onRemoveMemberClick,
