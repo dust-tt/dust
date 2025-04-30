@@ -51,11 +51,9 @@ export async function scrubSpaceWorkflow({
 export async function deleteWorkspaceWorkflow({
   workspaceId,
   workspaceHasBeenRelocated = false,
-  deleteUsersFromAuth0 = false,
 }: {
   workspaceId: string;
   workspaceHasBeenRelocated?: boolean;
-  deleteUsersFromAuth0?: boolean;
 }) {
   const isDeletable = await isWorkflowDeletableActivity({
     workspaceId,
@@ -73,7 +71,10 @@ export async function deleteWorkspaceWorkflow({
   await deleteTrackersActivity({ workspaceId });
   await deleteMembersActivity({
     workspaceId,
-    deleteFromAuth0: deleteUsersFromAuth0,
+    // If the workspace was not relocated we delete users from Auth0 to prevent having these dangling.
+    // If the workspace was relocated we keep it since it is still in use in the other region 
+    // (we keep the Auth0 sub when relocating).
+    deleteFromAuth0: !workspaceHasBeenRelocated,
   });
   await deleteSpacesActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
