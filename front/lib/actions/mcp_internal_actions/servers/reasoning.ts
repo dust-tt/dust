@@ -6,6 +6,7 @@ import {
   DEFAULT_REASONING_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { InternalMCPNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runReasoning } from "@app/lib/actions/reasoning";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -26,7 +27,7 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = new McpServer(serverInfo);
+  const server = new McpServer(serverInfo, { capabilities: { logging: {} } });
 
   server.tool(
     DEFAULT_REASONING_ACTION_NAME,
@@ -37,9 +38,10 @@ function createServer(
           INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
         ],
     },
-    async ({
-      model: { modelId, providerId, temperature, reasoningEffort },
-    }) => {
+    async (
+      { model: { modelId, providerId, temperature, reasoningEffort } },
+      { sendNotification }
+    ) => {
       if (!agentLoopContext) {
         throw new Error("Unreachable: missing agentLoopContext.");
       }
@@ -83,6 +85,25 @@ function createServer(
             } else {
               actionOutput.content += text;
             }
+
+            const notification: InternalMCPNotificationType = {
+              method: "notifications/message",
+              params: {
+                type: "progress",
+                level: "info",
+                data: {
+                  progress: 0,
+                  label: "Thinking...",
+                  output: {
+                    type: "text",
+                    text,
+                  },
+                },
+              },
+            };
+
+            await sendNotification(notification);
+
             break;
           }
           case "runId":

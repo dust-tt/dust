@@ -3,7 +3,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import OpenAI from "openai";
 import { z } from "zod";
 
-import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  InternalMCPNotificationType,
+  MCPToolResultContentType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -31,7 +34,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 const createServer = (auth: Authenticator): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = new McpServer(serverInfo, { capabilities: { logging: {} } });
 
   server.tool(
     "generate_image",
@@ -67,8 +70,27 @@ const createServer = (auth: Authenticator): McpServer => {
           "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
         ),
     },
-    async ({ prompt, name, quality, size }) => {
+    async ({ prompt, name, quality, size }, { sendNotification }) => {
       const workspace = auth.getNonNullableWorkspace();
+
+      const notification: InternalMCPNotificationType = {
+        method: "notifications/message",
+        params: {
+          type: "progress",
+          level: "info",
+          data: {
+            progress: 0,
+            label: "Generating image...",
+            output: {
+              type: "image",
+              mimeType: DEFAULT_IMAGE_MIME_TYPE,
+            },
+          },
+        },
+      };
+
+      // Send a notification to the MCP Client, to display a placeholder for the image.
+      await sendNotification(notification);
 
       const { limits } = auth.getNonNullablePlan();
       const { maxImagesPerWeek } = limits.capabilities.images;
