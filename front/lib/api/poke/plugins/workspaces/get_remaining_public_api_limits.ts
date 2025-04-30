@@ -54,24 +54,26 @@ export const getRemainingPublicAPILimitsPlugin = createPlugin({
       return new Ok({
         display: "json",
         value: {
+          limits,
+          expiresInSeconds: -1,
           remainingCredits: limits.monthlyLimit,
           remainingCreditsPercentage: 100,
-          expiresAt: null,
           reset: resetLabel,
         },
       });
     }
 
-    const { expiresAt, remainingCredits } = remaining;
+    const { expiresInSeconds, remainingCredits } = remaining;
     const remainingCreditsPercentage =
       (remainingCredits / limits.monthlyLimit) * 100;
 
     return new Ok({
       display: "json",
       value: {
+        limits,
+        expiresInSeconds,
         remainingCredits,
         remainingCreditsPercentage,
-        expiresAt,
         reset: resetLabel,
       },
     });
