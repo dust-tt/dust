@@ -193,8 +193,15 @@ export async function sendWorkspaceInvitationEmail(
     },
   };
 
-  sgMail.setApiKey(config.getSendgridApiKey());
-  await sgMail.send(message);
+  if (process.env.NODE_ENV !== "development") {
+    sgMail.setApiKey(config.getSendgridApiKey());
+    await sgMail.send(message);
+  } else {
+    logger.debug(
+      { message },
+      "[INVITATION] invitation not sent in development"
+    );
+  }
 }
 /**
  * Returns the pending inviations associated with the authenticator's owner workspace.
@@ -357,24 +364,27 @@ export async function handleMembershipInvitations(
     ): Promise<
       Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>
     > => {
-      await getWorkspaceAdministrationVersionLock(owner, t);
+      // Only lock and check seats available if the workspace has a limits
+      if (maxUsers !== -1) {
+        await getWorkspaceAdministrationVersionLock(owner, t);
 
-      const availableSeats =
-        maxUsers -
-        (await MembershipResource.getMembersCountForWorkspace({
-          workspace: owner,
-          activeOnly: true,
-          transaction: t,
-        }));
+        const availableSeats =
+          maxUsers -
+          (await MembershipResource.getMembersCountForWorkspace({
+            workspace: owner,
+            activeOnly: true,
+            transaction: t,
+          }));
 
-      if (maxUsers !== -1 && availableSeats < invitationRequests.length) {
-        return new Err({
-          status_code: 400,
-          api_error: {
-            type: "plan_limit_error",
-            message: `Not enough seats lefts (${availableSeats} seats remaining). Please upgrade or remove inactive members to add more.`,
-          },
-        });
+        if (availableSeats < invitationRequests.length) {
+          return new Err({
+            status_code: 400,
+            api_error: {
+              type: "plan_limit_error",
+              message: `Not enough seats lefts (${availableSeats} seats remaining). Please upgrade or remove inactive members to add more.`,
+            },
+          });
+        }
       }
 
       const invalidEmails = invitationRequests.filter(
@@ -460,11 +470,13 @@ export async function handleMembershipInvitations(
           },
         });
       }
+
       await batchUnrevokeInvitations(
         auth,
         invitationsToUnrevoke.map((i) => i.sId),
         t
       );
+
       const invitationResults = await Promise.all(
         emailsToSendInvitations.map(async ({ email, role }) => {
           if (existingMembers.find((m) => m.email === email)) {
