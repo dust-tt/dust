@@ -4,7 +4,11 @@ import type { Transaction } from "sequelize";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { runAgent } from "@app/lib/api/assistant/agent";
-import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
+import type { AgentUsageCount } from "@app/lib/api/assistant/agent_usage";
+import {
+  getAgentsUsage,
+  signalAgentUsage,
+} from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfigurations,
   getLightAgentConfiguration,
@@ -51,6 +55,7 @@ import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   AgentActionSuccessEvent,
+  AgentConfigurationType,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -501,10 +506,22 @@ export async function getSuggestedAgentsForConversation(
     agentsGetView: "list",
     variant: "full", // We load the full agent configuration to get the actions name and description.
   });
+  const agentUsages = await getAgentsUsage({
+    workspaceId: owner.sId,
+  });
 
-  const formattedAgents = agents.map((a) => ({
+  // Filter out agents that have not been used in any conversation.
+  const usedAgents = agents.filter((a: AgentConfigurationType) => {
+    const usage = agentUsages.find((u: AgentUsageCount) => u.agentId === a.sId);
+    return usage?.messageCount ? usage.conversationCount > 0 : false;
+  });
+
+  // If no agents have been used, suggest all agents any way.
+  const agentsToSuggest = usedAgents.length > 0 ? usedAgents : agents;
+
+  const formattedAgents = agentsToSuggest.map((a) => ({
     id: a.sId,
-    handle: `@${a.name}`,
+    displayName: `@${a.name}`,
     description: a.description,
     tools: a.actions.map((a) => ({
       name: a.name,
