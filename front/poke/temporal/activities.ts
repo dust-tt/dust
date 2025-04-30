@@ -3,6 +3,7 @@ import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
+import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
@@ -551,6 +552,40 @@ export async function deleteMembersActivity({
         // Delete the user's files.
         await FileResource.deleteAllForUser(user.toJSON());
         await membership.delete(auth, {});
+
+        // Delete the user from Auth0 if they have an Auth0 ID
+        if (user.auth0Sub) {
+          try {
+            hardDeleteLogger.info(
+              {
+                userId: user.sId,
+                auth0Sub: user.auth0Sub,
+              },
+              "Deleting user from Auth0"
+            );
+            await getAuth0ManagemementClient().users.delete({
+              id: user.auth0Sub,
+            });
+            hardDeleteLogger.info(
+              {
+                userId: user.sId,
+                auth0Sub: user.auth0Sub,
+              },
+              "Successfully deleted user from Auth0"
+            );
+          } catch (error) {
+            hardDeleteLogger.error(
+              {
+                userId: user.sId,
+                auth0Sub: user.auth0Sub,
+                error,
+              },
+              "Failed to delete user from Auth0"
+            );
+            // Continue with user deletion in our database even if Auth0 deletion fails
+          }
+        }
+
         await user.delete(auth, {});
       }
     } else {
