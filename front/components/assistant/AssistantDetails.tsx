@@ -314,13 +314,13 @@ function AssistantDetailsEditors({
 
   const onRemoveMember = async (user: UserTypeWithWorkspaces) => {
     if (isCurrentUserEditor) {
-      await updateEditors({ removeEditorIds: [user.sId] });
+      await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
     }
   };
 
   const onAddEditor = async (user: UserType) => {
     if (isCurrentUserEditor) {
-      await updateEditors({ addEditorIds: [user.sId] });
+      await updateEditors({ removeEditorIds: [], addEditorIds: [user.sId] });
     }
   };
 

@@ -16,19 +16,12 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
 
 // Changed schema to accept optional add/remove lists
-export const PatchAgentEditorsRequestBodySchema = t.union([
-  t.type({
+export const PatchAgentEditorsRequestBodySchema = t.intersection([
+  t.type({}),
+  t.partial({
     addEditorIds: t.array(t.string),
     removeEditorIds: t.array(t.string),
   }),
-  t.intersection([
-    t.partial({ addEditorIds: t.array(t.string) }),
-    t.type({ removeEditorIds: t.array(t.string) }),
-  ]),
-  t.intersection([
-    t.type({ addEditorIds: t.array(t.string) }),
-    t.partial({ removeEditorIds: t.array(t.string) }),
-  ]),
   // Refinement to ensure at least one of the arrays exists and is not empty
   t.refinement(
     t.type({
