@@ -372,9 +372,7 @@ export async function deleteWorkspace(
   owner: LightWorkspaceType,
   {
     workspaceHasBeenRelocated = false,
-  }: {
-    workspaceHasBeenRelocated?: boolean;
-  } = {}
+  }: { workspaceHasBeenRelocated?: boolean } = {}
 ): Promise<Result<void, Error>> {
   // If the workspace has not been relocated, we expect all subscriptions to be canceled.
   if (!workspaceHasBeenRelocated) {

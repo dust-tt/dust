@@ -56,9 +56,7 @@ export const deleteWorkspacePlugin = createPlugin({
         );
       }
 
-      await deleteWorkspace(workspace, {
-        workspaceHasBeenRelocated,
-      });
+      await deleteWorkspace(workspace, { workspaceHasBeenRelocated });
     } else {
       // If the workspace has not been relocated, we need to check if it has data sources or a
       // paid plan.
@@ -83,7 +81,7 @@ export const deleteWorkspacePlugin = createPlugin({
         );
       }
 
-      await deleteWorkspace(workspace, { deleteUsersFromAuth0 });
+      await deleteWorkspace(workspace);
     }
 
     return new Ok({
