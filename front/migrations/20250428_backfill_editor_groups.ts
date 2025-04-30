@@ -15,21 +15,17 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
 import { Workspace } from "@app/lib/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import _ from "lodash";
+import { Op } from "sequelize";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
-  agent: AgentConfiguration,
+  agentConfigs: AgentConfiguration[],
   workspace: LightWorkspaceType,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
-  logger.info({ agent }, "Migrating agent");
-  // find all editors of this agent
-  const agentConfigs = await AgentConfiguration.findAll({
-    where: {
-      sId: agent.sId,
-    },
-  });
+  logger.info({ agent: agentConfigs[0].sId }, "Migrating agent");
 
   const editorIds = [
     ...new Set(agentConfigs.map((agentConfig) => agentConfig.authorId)),
@@ -49,7 +45,10 @@ async function backfillAgentEditorsGroup(
   );
 
   if (groupSet.size > 1) {
-    logger.info({ agent: agent.sId }, "Multiple groups found for agent");
+    logger.info(
+      { agent: agentConfigs[0].sId },
+      "Multiple groups found for agent"
+    );
     throw new Error("Multiple groups found for agent");
   }
 
@@ -62,7 +61,10 @@ async function backfillAgentEditorsGroup(
     assert(editorGroup, "Editor group not found");
     // if group is not of kind agent_editors, update it
     if (editorGroup.kind !== "agent_editors") {
-      console.log({ agent: agent.sId }, "Updating group kind for agent");
+      console.log(
+        { agent: agentConfigs[0].sId },
+        "Updating group kind for agent"
+      );
       const groupModel = await GroupModel.findByPk(editorGroup.id);
       assert(groupModel, "Group model not found");
       if (execute) {
@@ -73,14 +75,14 @@ async function backfillAgentEditorsGroup(
     }
   } else {
     console.log(
-      { agent: agent.sId },
-      `Creating editor group for agent : Group for Agent ${agent.name}`
+      { agent: agentConfigs[0].sId },
+      `Creating editor group for agent : Group for Agent ${agentConfigs[0].name}`
     );
     if (execute) {
       // Create an editor group for the agent without author
       editorGroup = await GroupResource.makeNew({
         workspaceId: workspace.id,
-        name: `Group for Agent ${agent.name}`,
+        name: `Group for Agent ${agentConfigs[0].name}`,
         kind: "agent_editors",
       });
     }
@@ -118,7 +120,7 @@ async function backfillAgentEditorsGroup(
   );
 
   console.log(
-    { agent: agent.sId, usersToAdd: usersToAdd.length },
+    { agent: agentConfigs[0].sId, usersToAdd: usersToAdd.length },
     "Adding users to editor group"
   );
 
@@ -145,6 +147,9 @@ const migrateWorkspaceEditorsGroups = async (
       return AgentConfiguration.findAll({
         where: {
           workspaceId: workspace.id,
+          status: {
+            [Op.not]: "draft",
+          },
         },
         attributes: ["sId", "name"],
         group: ["sId", "name"],
@@ -170,10 +175,12 @@ const migrateWorkspaceEditorsGroups = async (
     `Found ${agents.length} agents to migrate on workspace ${workspace.sId}`
   );
 
+  const groupedAgents = _.groupBy(agents, "sId");
+
   await concurrentExecutor(
-    agents,
-    (agent) =>
-      backfillAgentEditorsGroup(auth, agent, workspace, execute, logger),
+    Object.entries(groupedAgents),
+    ([sId, agentConfigs]) =>
+      backfillAgentEditorsGroup(auth, agentConfigs, workspace, execute, logger),
     { concurrency: 4 }
   );
 
