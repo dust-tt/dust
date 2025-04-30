@@ -12,20 +12,18 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 import { Workspace } from "@app/lib/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentConfiguration,
   workspace: LightWorkspaceType,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
+  logger.info({ agent: agent.sId }, "Migrating agent");
   // find all editors of this agent
   const agentConfigs = await AgentConfiguration.findAll({
     where: {
@@ -141,13 +139,12 @@ const migrateWorkspaceEditorsGroups = async (
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const agents = await (async () => {
     try {
-      return (
-        await getAgentConfigurations({
-          auth,
-          agentsGetView: "admin_internal",
-          variant: "light",
-        })
-      ).filter((agent) => agent.scope !== "global");
+      return AgentConfiguration.findAll({
+        where: {
+          workspaceId: workspace.id,
+          status: "active",
+        },
+      });
     } catch (error) {
       logger.error(
         {
@@ -160,6 +157,7 @@ const migrateWorkspaceEditorsGroups = async (
     }
   })();
 
+  logger.info({ length: agents.length }, "Active agents");
   if (agents.length === 0) {
     return;
   }
