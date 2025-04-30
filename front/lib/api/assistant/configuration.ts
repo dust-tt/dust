@@ -1796,7 +1796,7 @@ export async function getAgentPermissions(
  * TODO(agent discovery, 2025-04-30): Delete this function when removing scopes
  * "workspace" and "published"
  */
-export function isLegacyAllowed(
+function isLegacyAllowed(
   owner: WorkspaceType,
   agentConfigurationScope: AgentConfigurationScope
 ): boolean {
