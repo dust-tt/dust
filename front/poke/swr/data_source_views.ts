@@ -5,7 +5,7 @@ import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import {
   fetcher,
   fetcherWithBody,
-  getEmptyArray,
+  emptyArray,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { PokeListDataSourceViews } from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
@@ -29,7 +29,7 @@ export function usePokeDataSourceViews({
   );
 
   return {
-    data: data?.data_source_views ?? getEmptyArray(),
+    data: data?.data_source_views ?? emptyArray(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
@@ -116,7 +116,7 @@ export function usePokeDataSourceViewContentNodes({
     isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,
-    nodes: data?.nodes ?? getEmptyArray(),
+    nodes: data?.nodes ?? emptyArray(),
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,

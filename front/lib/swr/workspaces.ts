@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
@@ -24,7 +24,7 @@ export function useWorkspaceSubscriptions({
   );
 
   return {
-    subscriptions: data?.subscriptions ?? getEmptyArray(),
+    subscriptions: data?.subscriptions ?? emptyArray(),
     isSubscriptionsLoading: !error && !data,
     isSubscriptionsError: error,
   };
@@ -145,7 +145,7 @@ export function useFeatureFlags({
   );
 
   return {
-    featureFlags: data?.feature_flags ?? getEmptyArray(),
+    featureFlags: data?.feature_flags ?? emptyArray(),
     isFeatureFlagsLoading: !error && !data,
     isFeatureFlagsError: error,
     hasFeature,

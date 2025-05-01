@@ -4,7 +4,7 @@ import type { Fetcher } from "swr";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   fetcher,
-  getEmptyArray,
+  emptyArray,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -95,7 +95,7 @@ export function useDataSourceViewTables({
   );
 
   return {
-    tables: data?.tables ?? getEmptyArray(),
+    tables: data?.tables ?? emptyArray(),
     nextPageCursor: data?.nextPageCursor || null,
     isTablesLoading: !isDisabled && !error && !data,
     isTablesError: error,

@@ -1,6 +1,6 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets";
 import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets/[name]";
 import type { AppType, LightWorkspaceType } from "@app/types";
@@ -25,7 +25,7 @@ export function useDatasets({
   );
 
   return {
-    datasets: data?.datasets ?? getEmptyArray(),
+    datasets: data?.datasets ?? emptyArray(),
     isDatasetsLoading: !error && !data,
     isDatasetsError: !!error,
   };

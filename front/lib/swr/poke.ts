@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import type { RegionType } from "@app/lib/api/regions/config";
-import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
@@ -58,7 +58,7 @@ export function usePokeConnectorPermissions({
   });
 
   return {
-    resources: data?.resources ?? getEmptyArray(),
+    resources: data?.resources ?? emptyArray(),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
   };
@@ -97,7 +97,7 @@ export function usePokeWorkspaces({
   );
 
   return {
-    workspaces: data?.workspaces ?? getEmptyArray(),
+    workspaces: data?.workspaces ?? emptyArray(),
     isWorkspacesLoading: !error && !data,
     isWorkspacesError: error,
   };
@@ -109,7 +109,7 @@ export function usePokePlans() {
   const { data, error } = useSWRWithDefaults("/api/poke/plans", plansFetcher);
 
   return {
-    plans: data?.plans ?? getEmptyArray(),
+    plans: data?.plans ?? emptyArray(),
     isPlansLoading: !error && !data,
     isPlansError: error,
   };
@@ -124,7 +124,7 @@ export function usePokeFeatureFlags({ workspaceId }: { workspaceId: string }) {
   );
 
   return {
-    featureFlags: data?.features ?? getEmptyArray(),
+    featureFlags: data?.features ?? emptyArray(),
     isFeatureFlagsLoading: !error && !data,
     isFeatureFlagsError: error,
   };

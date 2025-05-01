@@ -1,6 +1,6 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 
@@ -27,7 +27,7 @@ export function usePokeAgentConfigurations({
   );
 
   return {
-    data: data?.agentConfigurations ?? getEmptyArray(),
+    data: data?.agentConfigurations ?? emptyArray(),
     isLoading: !error && !data,
     isError: error,
     mutate,

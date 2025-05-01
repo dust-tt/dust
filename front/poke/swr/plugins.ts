@@ -3,7 +3,7 @@ import type { Fetcher } from "swr";
 import { PluginListItem } from "@app/lib/api/poke/types";
 import {
   fetcher,
-  getEmptyArray,
+  emptyArray,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -43,7 +43,7 @@ export function usePokeListPluginForResourceType({
   );
 
   return {
-    plugins: data?.plugins ?? getEmptyArray(),
+    plugins: data?.plugins ?? emptyArray(),
     isLoading: !error && !data && !disabled,
     isError: error,
   };

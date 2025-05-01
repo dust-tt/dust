@@ -13,7 +13,7 @@ import { isAPIErrorResponse, safeParseJSON } from "@app/types";
 
 const EMPTY_ARRAY = Object.freeze([]);
 
-export function getEmptyArray<T>(): T[] {
+export function emptyArray<T>(): T[] {
   return EMPTY_ARRAY as unknown as T[];
 }
 

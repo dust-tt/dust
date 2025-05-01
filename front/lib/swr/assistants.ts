@@ -9,7 +9,7 @@ import type {
 } from "@app/lib/api/assistant/feedback";
 import {
   fetcher,
-  getEmptyArray,
+  emptyArray,
   getErrorFromResponse,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
@@ -41,7 +41,7 @@ export function useAssistantTemplates() {
   );
 
   return {
-    assistantTemplates: data?.templates ?? getEmptyArray(),
+    assistantTemplates: data?.templates ?? emptyArray(),
     isAssistantTemplatesLoading: !error && !data,
     isAssistantTemplatesError: error,
     mutateAssistantTemplates: mutate,
@@ -135,7 +135,7 @@ export function useAgentConfigurations({
   return {
     agentConfigurations: data
       ? data.agentConfigurations
-      : getEmptyArray<LightAgentConfigurationType>(),
+      : emptyArray<LightAgentConfigurationType>(),
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutate,
@@ -426,7 +426,7 @@ export function useSlackChannelsLinkedWithAgent({
   );
 
   return {
-    slackChannels: data?.slackChannels ?? getEmptyArray(),
+    slackChannels: data?.slackChannels ?? emptyArray(),
     slackDataSource: data?.slackDataSource,
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,

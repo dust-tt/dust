@@ -1,6 +1,6 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
@@ -35,7 +35,7 @@ export function useApps({
   );
 
   return {
-    apps: data?.apps ?? getEmptyArray(),
+    apps: data?.apps ?? emptyArray(),
     isAppsLoading: !error && !data,
     isAppsError: !!error,
     mutateApps: mutate,
@@ -95,7 +95,7 @@ export function useDustAppSecrets(owner: LightWorkspaceType) {
   );
 
   return {
-    secrets: data?.secrets ?? getEmptyArray(),
+    secrets: data?.secrets ?? emptyArray(),
     isSecretsLoading: !error && !data,
     isSecretsError: error,
   };
@@ -117,7 +117,7 @@ export function useRuns(
   const { data, error } = useSWRWithDefaults(url, runsFetcher);
 
   return {
-    runs: data?.runs ?? getEmptyArray(),
+    runs: data?.runs ?? emptyArray(),
     total: data ? data.total : 0,
     isRunsLoading: !error && !data,
     isRunsError: error,
@@ -142,7 +142,7 @@ export function useProviders({
   );
 
   return {
-    providers: data?.providers ?? getEmptyArray(),
+    providers: data?.providers ?? emptyArray(),
     isProvidersLoading: !error && !data,
     isProvidersError: error,
   };
@@ -159,6 +159,6 @@ export function useKeys(owner: LightWorkspaceType) {
     isKeysError: error,
     isKeysLoading: !error && !data,
     isValidating,
-    keys: data?.keys ?? getEmptyArray(),
+    keys: data?.keys ?? emptyArray(),
   };
 }

@@ -8,7 +8,7 @@ import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/m
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import {
   fetcher,
-  getEmptyArray,
+  emptyArray,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -70,7 +70,7 @@ export function useConversations({
   );
 
   return {
-    conversations: data?.conversations ?? getEmptyArray(),
+    conversations: data?.conversations ?? emptyArray(),
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
@@ -94,7 +94,7 @@ export function useConversationFeedbacks({
   );
 
   return {
-    feedbacks: data?.feedbacks ?? getEmptyArray(),
+    feedbacks: data?.feedbacks ?? emptyArray(),
     isFeedbacksLoading: !error && !data,
     isFeedbacksError: error,
     mutateReactions: mutate,

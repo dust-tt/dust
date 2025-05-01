@@ -8,7 +8,7 @@ import { getSpaceName } from "@app/lib/spaces";
 import {
   fetcher,
   fetcherWithBody,
-  getEmptyArray,
+  emptyArray,
   getErrorFromResponse,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
@@ -59,7 +59,7 @@ export function useSpaces({
   );
 
   return {
-    spaces: data?.spaces ?? getEmptyArray(),
+    spaces: data?.spaces ?? emptyArray(),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
@@ -82,7 +82,7 @@ export function useSpacesAsAdmin({
   );
 
   return {
-    spaces: data?.spaces ?? getEmptyArray(),
+    spaces: data?.spaces ?? emptyArray(),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,

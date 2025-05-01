@@ -1,6 +1,6 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListApps } from "@app/pages/api/poke/workspaces/[wId]/apps";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 
@@ -13,7 +13,7 @@ export function usePokeApps({ disabled, owner }: PokeConditionalFetchProps) {
   );
 
   return {
-    data: data?.apps ?? getEmptyArray(),
+    data: data?.apps ?? emptyArray(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

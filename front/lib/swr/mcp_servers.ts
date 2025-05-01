@@ -5,7 +5,7 @@ import type { Fetcher } from "swr";
 import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
-import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   CreateMCPServerResponseBody,
   GetMCPServersResponseBody,
@@ -82,7 +82,7 @@ export function useAvailableMCPServers({
         ? data.servers.sort((a, b) =>
             mcpServersSortingFn({ mcpServer: a }, { mcpServer: b })
           )
-        : getEmptyArray<MCPServerTypeWithViews>(),
+        : emptyArray<MCPServerTypeWithViews>(),
     [data]
   );
 
@@ -113,7 +113,7 @@ export function useMCPServers({
     }
   );
 
-  const mcpServers = data?.servers ?? getEmptyArray();
+  const mcpServers = data?.servers ?? emptyArray();
 
   return {
     mcpServers,
@@ -327,7 +327,7 @@ export function useMCPServerConnections({
   );
 
   return {
-    connections: data?.connections ?? getEmptyArray(),
+    connections: data?.connections ?? emptyArray(),
     isConnectionsLoading: !error && !data && !disabled,
     isConnectionsError: error,
     mutateConnections: mutate,

@@ -1,6 +1,6 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokeSearchItemsResponseBody } from "@app/pages/api/poke/search";
 import { PokeItemBase } from "@app/types";
 
@@ -28,7 +28,7 @@ export function usePokeSearch({
   );
 
   return {
-    results: data?.results ?? getEmptyArray(),
+    results: data?.results ?? emptyArray(),
     isLoading: !error && !data && !disabled,
     isError: error,
   };

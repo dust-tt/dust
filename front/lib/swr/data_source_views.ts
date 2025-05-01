@@ -6,7 +6,7 @@ import {
   fetcher,
   fetcherMultiple,
   fetcherWithBody,
-  getEmptyArray,
+  emptyArray,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
@@ -43,7 +43,7 @@ export function useDataSourceViews(
   );
 
   return {
-    dataSourceViews: data?.dataSourceViews ?? getEmptyArray(),
+    dataSourceViews: data?.dataSourceViews ?? emptyArray(),
     isDataSourceViewsLoading: disabled ? false : !error && !data,
     isDataSourceViewsError: disabled ? false : error,
     mutateDataSourceViews: mutate,
@@ -176,7 +176,7 @@ export function useDataSourceViewContentNodes({
     isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,
-    nodes: data?.nodes ?? getEmptyArray(),
+    nodes: data?.nodes ?? emptyArray(),
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,
