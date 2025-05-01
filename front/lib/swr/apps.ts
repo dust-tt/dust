@@ -1,6 +1,6 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";

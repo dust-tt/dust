@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import type { RegionType } from "@app/lib/api/regions/config";
-import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";

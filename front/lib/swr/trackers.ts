@@ -1,6 +1,6 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetTrackersResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/trackers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 

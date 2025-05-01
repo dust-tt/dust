@@ -6,9 +6,9 @@ import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
 import {
+  emptyArray,
   fetcher,
   fetcherWithBody,
-  emptyArray,
   getErrorFromResponse,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,

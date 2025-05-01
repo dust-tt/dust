@@ -5,7 +5,7 @@ import type { Fetcher } from "swr";
 import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
-import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   CreateMCPServerResponseBody,
   GetMCPServersResponseBody,

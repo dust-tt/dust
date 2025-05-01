@@ -1,7 +1,7 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { Fetcher } from "swr";
 
-import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
 import type { GetTagsUsageResponseBody } from "@app/pages/api/w/[wId]/tags/usage";
 import type { LightWorkspaceType } from "@app/types";

@@ -3,8 +3,8 @@ import type { Fetcher } from "swr";
 
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
-  fetcher,
   emptyArray,
+  fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";

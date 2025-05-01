@@ -5,7 +5,7 @@ import type { Fetcher } from "swr";
 
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { LabsConnectionsConfigurationResource } from "@app/lib/resources/labs_connections_resource";
-import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import type { GetLabsConnectionsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/connections";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";

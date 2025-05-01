@@ -1,6 +1,6 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAvailableModelsResponseType } from "@app/pages/api/w/[wId]/models";
 import type { LightWorkspaceType } from "@app/types";
 

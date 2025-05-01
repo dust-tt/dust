@@ -3,10 +3,10 @@ import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import {
+  emptyArray,
   fetcher,
   fetcherMultiple,
   fetcherWithBody,
-  emptyArray,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";

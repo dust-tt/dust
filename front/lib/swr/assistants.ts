@@ -8,8 +8,8 @@ import type {
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
 import {
-  fetcher,
   emptyArray,
+  fetcher,
   getErrorFromResponse,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
