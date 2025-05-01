@@ -3,6 +3,8 @@ import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DatasetResource } from "@app/lib/resources/dataset_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -101,6 +103,34 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       },
       includeDeleted,
     });
+  }
+
+  async getUsagesByAgents(auth: Authenticator) {
+    const owner = auth.getNonNullableWorkspace();
+
+    const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll(
+      {
+        where: {
+          appId: this.id,
+          workspaceId: owner.id,
+        },
+      }
+    );
+    const agentConfigurations = await AgentConfiguration.findAll({
+      where: {
+        workspaceId: owner.id,
+        status: "active",
+        sId: {
+          [Op.in]: dustAppRunConfigurations.map((c) => c.agentConfigurationId),
+        },
+      },
+    });
+
+    const agentNames = [
+      ...new Set(agentConfigurations.map((a) => a.name)),
+    ].sort();
+
+    return new Ok({ count: agentNames.length, agentNames });
   }
 
   // Clone.

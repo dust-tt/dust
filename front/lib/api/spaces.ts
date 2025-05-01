@@ -61,6 +61,14 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   }
 
   const apps = await AppResource.listBySpace(auth, space);
+  for (const app of apps) {
+    const usage = await app.getUsagesByAgents(auth);
+    if (usage.isErr()) {
+      throw usage.error;
+    } else if (usage.value.count > 0) {
+      usages.push(usage.value);
+    }
+  }
 
   if (usages.length > 0) {
     const agentNames = uniq(usages.map((u) => u.agentNames).flat());
