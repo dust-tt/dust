@@ -1,11 +1,9 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets";
 import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets/[name]";
-import type { AppType, DatasetType, LightWorkspaceType } from "@app/types";
-
-const EMPTY_DATASETS_ARRAY: DatasetType[] = [];
+import type { AppType, LightWorkspaceType } from "@app/types";
 
 export function useDatasets({
   owner,
@@ -27,7 +25,7 @@ export function useDatasets({
   );
 
   return {
-    datasets: data?.datasets ?? EMPTY_DATASETS_ARRAY,
+    datasets: data?.datasets ?? getEmptyArray(),
     isDatasetsLoading: !error && !data,
     isDatasetsError: !!error,
   };

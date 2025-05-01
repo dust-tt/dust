@@ -3,13 +3,13 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
-import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
 import {
   fetcher,
+  getEmptyArray,
   getErrorFromResponse,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
@@ -31,12 +31,6 @@ import type {
   UserType,
 } from "@app/types";
 
-const EMPTY_TEMPLATES_ARRAY: FetchAssistantTemplateResponse[] = [];
-const EMPTY_AGENT_CONFIGURATIONS_ARRAY: LightAgentConfigurationType[] = [];
-const EMPTY_SLACK_CHANNELS_ARRAY: (SlackChannel & {
-  agentConfigurationId: string;
-})[] = [];
-
 export function useAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
     fetcher;
@@ -47,7 +41,7 @@ export function useAssistantTemplates() {
   );
 
   return {
-    assistantTemplates: data?.templates ?? EMPTY_TEMPLATES_ARRAY,
+    assistantTemplates: data?.templates ?? getEmptyArray(),
     isAssistantTemplatesLoading: !error && !data,
     isAssistantTemplatesError: error,
     mutateAssistantTemplates: mutate,
@@ -141,7 +135,7 @@ export function useAgentConfigurations({
   return {
     agentConfigurations: data
       ? data.agentConfigurations
-      : EMPTY_AGENT_CONFIGURATIONS_ARRAY,
+      : getEmptyArray<LightAgentConfigurationType>(),
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutate,
@@ -432,7 +426,7 @@ export function useSlackChannelsLinkedWithAgent({
   );
 
   return {
-    slackChannels: data?.slackChannels ?? EMPTY_SLACK_CHANNELS_ARRAY,
+    slackChannels: data?.slackChannels ?? getEmptyArray(),
     slackDataSource: data?.slackDataSource,
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,

@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
-import { fetcher } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
 import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
@@ -16,10 +16,6 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 import { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
-
-const EMPTY_TEMPLATES_ARRAY: FetchAssistantTemplateResponse[] = [];
-const EMPTY_DOCUMENTS_ARRAY: CoreAPIDocument[] = [];
-const EMPTY_TABLES_ARRAY: CoreAPITable[] = [];
 
 export function usePokePullTemplates() {
   const { mutateAssistantTemplates } = usePokeAssistantTemplates();
@@ -62,7 +58,7 @@ export function usePokeAssistantTemplates() {
   );
 
   return {
-    assistantTemplates: data?.templates ?? EMPTY_TEMPLATES_ARRAY,
+    assistantTemplates: data?.templates ?? getEmptyArray(),
     isAssistantTemplatesLoading: !error && !data,
     isAssistantTemplatesError: error,
     mutateAssistantTemplates: mutate,
@@ -128,7 +124,7 @@ export function usePokeDocuments(
   );
 
   return {
-    documents: data?.documents ?? EMPTY_DOCUMENTS_ARRAY,
+    documents: data?.documents ?? getEmptyArray(),
     total: data ? data.total : 0,
     isDocumentsLoading: !error && !data,
     isDocumentsError: error,
@@ -149,7 +145,7 @@ export function usePokeTables(
   );
 
   return {
-    tables: data?.tables ?? EMPTY_TABLES_ARRAY,
+    tables: data?.tables ?? getEmptyArray(),
     total: data ? data.total : 0,
     isTablesLoading: !error && !data,
     isTablesError: error,

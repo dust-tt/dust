@@ -8,6 +8,7 @@ import { getSpaceName } from "@app/lib/spaces";
 import {
   fetcher,
   fetcherWithBody,
+  getEmptyArray,
   getErrorFromResponse,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
@@ -41,7 +42,6 @@ import type {
   SpaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
-const EMPTY_SPACES_ARRAY: SpaceType[] = [];
 
 export function useSpaces({
   workspaceId,
@@ -59,7 +59,7 @@ export function useSpaces({
   );
 
   return {
-    spaces: data?.spaces ?? EMPTY_SPACES_ARRAY,
+    spaces: data?.spaces ?? getEmptyArray(),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
@@ -82,7 +82,7 @@ export function useSpacesAsAdmin({
   );
 
   return {
-    spaces: data?.spaces ?? EMPTY_SPACES_ARRAY,
+    spaces: data?.spaces ?? getEmptyArray(),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,

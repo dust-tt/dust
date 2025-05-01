@@ -1,16 +1,12 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
-import { LightAgentConfigurationType } from "@app/types";
 
 type PokeAgentConfigurationsProps = PokeConditionalFetchProps & {
   agentsGetView?: "admin_internal" | "archived";
 };
-
-const EMPTY_ARRAY: LightAgentConfigurationType[] = [];
 
 /*
  * Agent configurations for poke. Currently only supports archived agent.
@@ -31,7 +27,7 @@ export function usePokeAgentConfigurations({
   );
 
   return {
-    data: data?.agentConfigurations ?? EMPTY_ARRAY,
+    data: data?.agentConfigurations ?? getEmptyArray(),
     isLoading: !error && !data,
     isError: error,
     mutate,

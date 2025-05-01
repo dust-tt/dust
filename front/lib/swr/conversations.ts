@@ -8,6 +8,7 @@ import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/m
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import {
   fetcher,
+  getEmptyArray,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -19,9 +20,6 @@ import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
-
-const EMPTY_CONVERSATIONS_ARRAY: ConversationType[] = [];
-const EMPTY_FEEDBACKS_ARRAY: AgentMessageFeedbackType[] = [];
 
 export function useConversation({
   conversationId,
@@ -72,7 +70,7 @@ export function useConversations({
   );
 
   return {
-    conversations: data?.conversations ?? EMPTY_CONVERSATIONS_ARRAY,
+    conversations: data?.conversations ?? getEmptyArray(),
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
@@ -96,7 +94,7 @@ export function useConversationFeedbacks({
   );
 
   return {
-    feedbacks: data?.feedbacks ?? EMPTY_FEEDBACKS_ARRAY,
+    feedbacks: data?.feedbacks ?? getEmptyArray(),
     isFeedbacksLoading: !error && !data,
     isFeedbacksError: error,
     mutateReactions: mutate,

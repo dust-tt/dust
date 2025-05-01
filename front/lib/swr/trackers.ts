@@ -1,13 +1,8 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetTrackersResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/trackers";
-import type {
-  LightWorkspaceType,
-  SpaceType,
-  TrackerConfigurationType,
-} from "@app/types";
-const EMPTY_TRACKERS_ARRAY: TrackerConfigurationType[] = [];
+import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 export function useTrackers({
   disabled,
@@ -29,7 +24,7 @@ export function useTrackers({
   );
 
   return {
-    trackers: data?.trackers ?? EMPTY_TRACKERS_ARRAY,
+    trackers: data?.trackers ?? getEmptyArray(),
     isTrackersLoading: !error && !data,
     isTrackersError: !!error,
     mutateTrackers: mutate,

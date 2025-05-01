@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import type { RegionType } from "@app/lib/api/regions/config";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
@@ -13,10 +13,6 @@ import type {
   DataSourceType,
   LightWorkspaceType,
 } from "@app/types";
-const EMPTY_RESOURCES_ARRAY: any[] = [];
-const EMPTY_PLANS_ARRAY: any[] = [];
-const EMPTY_WORKSPACES_ARRAY: any[] = [];
-const EMPTY_FEATURES_ARRAY: any[] = [];
 
 export function usePokeRegion() {
   const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;
@@ -62,7 +58,7 @@ export function usePokeConnectorPermissions({
   });
 
   return {
-    resources: data?.resources ?? EMPTY_RESOURCES_ARRAY,
+    resources: data?.resources ?? getEmptyArray(),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
   };
@@ -101,7 +97,7 @@ export function usePokeWorkspaces({
   );
 
   return {
-    workspaces: data?.workspaces ?? EMPTY_WORKSPACES_ARRAY,
+    workspaces: data?.workspaces ?? getEmptyArray(),
     isWorkspacesLoading: !error && !data,
     isWorkspacesError: error,
   };
@@ -113,7 +109,7 @@ export function usePokePlans() {
   const { data, error } = useSWRWithDefaults("/api/poke/plans", plansFetcher);
 
   return {
-    plans: data?.plans ?? EMPTY_PLANS_ARRAY,
+    plans: data?.plans ?? getEmptyArray(),
     isPlansLoading: !error && !data,
     isPlansError: error,
   };
@@ -128,7 +124,7 @@ export function usePokeFeatureFlags({ workspaceId }: { workspaceId: string }) {
   );
 
   return {
-    featureFlags: data?.features ?? EMPTY_FEATURES_ARRAY,
+    featureFlags: data?.features ?? getEmptyArray(),
     isFeatureFlagsLoading: !error && !data,
     isFeatureFlagsError: error,
   };

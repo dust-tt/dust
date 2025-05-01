@@ -1,17 +1,15 @@
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type {
-  SubscriptionType,
   WhitelistableFeature,
   WorkspaceEnterpriseConnection,
 } from "@app/types";
-const EMPTY_SUBSCRIPTIONS_ARRAY: SubscriptionType[] = [];
-const EMPTY_FEATURE_FLAGS_ARRAY: WhitelistableFeature[] = [];
+
 export function useWorkspaceSubscriptions({
   workspaceId,
 }: {
@@ -26,7 +24,7 @@ export function useWorkspaceSubscriptions({
   );
 
   return {
-    subscriptions: data?.subscriptions ?? EMPTY_SUBSCRIPTIONS_ARRAY,
+    subscriptions: data?.subscriptions ?? getEmptyArray(),
     isSubscriptionsLoading: !error && !data,
     isSubscriptionsError: error,
   };
@@ -147,7 +145,7 @@ export function useFeatureFlags({
   );
 
   return {
-    featureFlags: data?.feature_flags ?? EMPTY_FEATURE_FLAGS_ARRAY,
+    featureFlags: data?.feature_flags ?? getEmptyArray(),
     isFeatureFlagsLoading: !error && !data,
     isFeatureFlagsError: error,
     hasFeature,

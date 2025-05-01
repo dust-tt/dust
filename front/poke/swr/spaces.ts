@@ -1,7 +1,6 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListSpaces } from "@app/pages/api/poke/workspaces/[wId]/spaces";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import { SpaceType } from "@dust-tt/client";
@@ -17,7 +16,7 @@ export function usePokeSpaces({ disabled, owner }: PokeConditionalFetchProps) {
   );
 
   return {
-    data: data?.spaces ?? EMPTY_ARRAY,
+    data: data?.spaces ?? getEmptyArray(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

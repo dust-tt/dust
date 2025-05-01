@@ -1,12 +1,8 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListDataSources } from "@app/pages/api/poke/workspaces/[wId]/data_sources";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
-import { DataSourceType } from "@app/types";
-
-export const EMPTY_ARRAY: DataSourceType[] = [];
 
 export function usePokeDataSources({
   disabled,
@@ -20,7 +16,7 @@ export function usePokeDataSources({
   );
 
   return {
-    data: data?.data_sources ?? EMPTY_ARRAY,
+    data: data?.data_sources ?? getEmptyArray(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

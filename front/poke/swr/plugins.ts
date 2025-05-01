@@ -1,8 +1,9 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import { PluginListItem } from "@app/lib/api/poke/types";
 import {
   fetcher,
+  getEmptyArray,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -11,7 +12,6 @@ import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugi
 import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/run";
 import type { PluginResourceTarget, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { PluginListItem } from "@app/lib/api/poke/types";
 
 const EMPTY_ARRAY: PluginListItem[] = [];
 
@@ -43,7 +43,7 @@ export function usePokeListPluginForResourceType({
   );
 
   return {
-    plugins: data?.plugins ?? EMPTY_ARRAY,
+    plugins: data?.plugins ?? getEmptyArray(),
     isLoading: !error && !data && !disabled,
     isError: error,
   };

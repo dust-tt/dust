@@ -1,7 +1,6 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokeSearchItemsResponseBody } from "@app/pages/api/poke/search";
 import { PokeItemBase } from "@app/types";
 
@@ -29,7 +28,7 @@ export function usePokeSearch({
   );
 
   return {
-    results: data?.results ?? EMPTY_ARRAY,
+    results: data?.results ?? getEmptyArray(),
     isLoading: !error && !data && !disabled,
     isError: error,
   };

@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, getEmptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type {
-  LightWorkspaceType,
-  MembershipInvitationType,
-  UserTypeWithWorkspaces,
-} from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 
 type PaginationParams = {
   orderColumn: "createdAt";
@@ -18,8 +14,6 @@ type PaginationParams = {
   limit: number;
   // lastValue is directly set when using the nextPageUrl
 };
-const EMPTY_MEMBERS_ARRAY: UserTypeWithWorkspaces[] = [];
-const EMPTY_INVITATIONS_ARRAY: MembershipInvitationType[] = [];
 
 const appendPaginationParams = (
   params: URLSearchParams,
@@ -58,7 +52,7 @@ export function useMembers({
     });
 
   return {
-    members: data?.members ?? EMPTY_MEMBERS_ARRAY,
+    members: data?.members ?? getEmptyArray(),
     isMembersLoading: !error && !data,
     isMembersError: error,
     hasNextPage: !!data?.nextPageUrl,
@@ -96,7 +90,7 @@ export function useAdmins(
   );
 
   return {
-    admins: data?.members ?? EMPTY_MEMBERS_ARRAY,
+    admins: data?.members ?? getEmptyArray(),
     isAdminsLoading: !error && !data,
     iAdminsError: error,
     mutateMembers: mutate,
@@ -112,7 +106,7 @@ export function useWorkspaceInvitations(owner: LightWorkspaceType) {
   );
 
   return {
-    invitations: data?.invitations ?? EMPTY_INVITATIONS_ARRAY,
+    invitations: data?.invitations ?? getEmptyArray(),
     isInvitationsLoading: !error && !data,
     isInvitationsError: error,
     mutateInvitations: mutate,
@@ -144,7 +138,7 @@ export function useMembersByEmails({
     );
 
   return {
-    members: data?.members ?? EMPTY_MEMBERS_ARRAY,
+    members: data?.members ?? getEmptyArray(),
     isMembersLoading: !error && !data && !disabled,
     isMembersError: error,
     mutate,
@@ -197,7 +191,7 @@ export function useSearchMembers({
     );
 
   return {
-    members: data?.members ?? EMPTY_MEMBERS_ARRAY,
+    members: data?.members ?? getEmptyArray(),
     totalMembersCount: data?.total ?? 0,
     isLoading: !error && !data,
     isError: !!error,

@@ -6,6 +6,7 @@ import {
   fetcher,
   fetcherMultiple,
   fetcherWithBody,
+  getEmptyArray,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
@@ -27,7 +28,6 @@ type DataSourceViewsAndNodes = {
   dataSourceView: DataSourceViewType;
   nodes: GetDataSourceViewContentNodes["nodes"];
 };
-const EMPTY_DATA_SOURCE_VIEWS_ARRAY: DataSourceViewType[] = [];
 
 export function useDataSourceViews(
   owner: LightWorkspaceType,
@@ -43,7 +43,7 @@ export function useDataSourceViews(
   );
 
   return {
-    dataSourceViews: data?.dataSourceViews ?? EMPTY_DATA_SOURCE_VIEWS_ARRAY,
+    dataSourceViews: data?.dataSourceViews ?? getEmptyArray(),
     isDataSourceViewsLoading: disabled ? false : !error && !data,
     isDataSourceViewsError: disabled ? false : error,
     mutateDataSourceViews: mutate,
@@ -176,7 +176,7 @@ export function useDataSourceViewContentNodes({
     isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,
-    nodes: data?.nodes ?? EMPTY_DATA_SOURCE_VIEWS_ARRAY,
+    nodes: data?.nodes ?? getEmptyArray(),
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,
