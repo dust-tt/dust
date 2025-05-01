@@ -38,9 +38,9 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(space.isRegular(), "Cannot delete non regular spaces.");
 
-  const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
-
   const usages: DataSourceWithAgentsUsageType[] = [];
+
+  const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
   for (const view of dataSourceViews) {
     const usage = await view.getUsagesByAgents(auth);
     if (usage.isErr()) {
@@ -59,6 +59,8 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       usages.push(usage.value);
     }
   }
+
+  const apps = await AppResource.listBySpace(auth, space);
 
   if (usages.length > 0) {
     const agentNames = uniq(usages.map((u) => u.agentNames).flat());
@@ -97,6 +99,14 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     // Soft delete data sources they will be hard deleted in the scrubbing job.
     for (const ds of dataSources) {
       const res = await ds.delete(auth, { hardDelete: false, transaction: t });
+      if (res.isErr()) {
+        throw res.error;
+      }
+    }
+
+    // Soft delete the apps, which will be hard deleted in the scrubbing job.
+    for (const app of apps) {
+      const res = await app.delete(auth, { hardDelete: false, transaction: t });
       if (res.isErr()) {
         throw res.error;
       }

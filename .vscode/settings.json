@@ -21,5 +21,8 @@
   "rust-analyzer.inlayHints.parameterHints.enable": false,
   "rust-analyzer.inlayHints.typeHints.enable": false,
   "rust-analyzer.lens.implementations.enable": false,
-  "git.ignoreLimitWarning": true
+  "git.ignoreLimitWarning": true,
+  "[sql]": {
+    "editor.defaultFormatter": "inferrinizzard.prettier-sql-vscode"
+  }
 }
