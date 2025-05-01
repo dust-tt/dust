@@ -225,10 +225,16 @@ const FormUpload = React.forwardRef<
         type="file"
         className="hidden"
         ref={(el) => {
-          if (fileInputRef) fileInputRef.current = el;
-          if (typeof ref === "function") ref(el);
-          else if (ref) ref.current = el;
+          if (fileInputRef) {
+            fileInputRef.current = el;
+          }
+          if (typeof ref === "function") {
+            ref(el);
+          } else if (ref) {
+            ref.current = el;
+          }
         }}
+        value={value ?? undefined}
         {...props}
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -247,6 +253,7 @@ const FormUpload = React.forwardRef<
       />
       <div>
         <Button
+          className={className}
           variant="outline"
           label={selectedFile?.name ?? "Select"}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {

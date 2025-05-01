@@ -1,8 +1,9 @@
+import { readFileSync } from "fs";
+
 import { createPlugin } from "@app/lib/api/poke/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApp } from "@app/lib/utils/apps";
 import { Err, Ok } from "@app/types";
-import { readFileSync } from "fs";
 
 export const importAppPlugin = createPlugin({
   manifest: {
