@@ -75,6 +75,7 @@ import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  AgentFetchVariant,
   AgentModelConfigurationType,
   AgentsGetViewType,
   AgentStatus,
@@ -99,7 +100,6 @@ import {
 import type { TagType } from "@app/types/tag";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
-
 interface SortStrategy {
   dbOrder: Order | undefined;
   compareFunction: (
@@ -127,7 +127,7 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
 /**
  * Get an agent configuration
  */
-export async function getAgentConfiguration<V extends "light" | "full">(
+export async function getAgentConfiguration<V extends AgentFetchVariant>(
   auth: Authenticator,
   agentId: string,
   variant: V
@@ -472,7 +472,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     agentsGetView: Exclude<AgentsGetViewType, "global">;
     limit?: number;
     sort?: SortStrategyType;
-    variant: "light" | "full";
+    variant: AgentFetchVariant;
   }
 ) {
   const user = auth.user();
@@ -523,10 +523,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchBrowseActionConfigurations({ configurationIds, variant }),
     fetchReasoningActionConfigurations({ configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
-    user
+    user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
-    TagResource.listForAgents(auth, configurationIds),
+    user && variant !== "extra_light"
+      ? TagResource.listForAgents(auth, configurationIds)
+      : Promise.resolve([]),
   ]);
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -623,14 +625,16 @@ async function fetchWorkspaceAgentConfigurationsForView(
       canEdit: false,
     };
 
-    const { canRead, canEdit } = await getAgentPermissions(
-      auth,
-      agentConfigurationType,
-      agentIdsForUserAsEditor
-    );
+    if (variant !== "extra_light") {
+      const { canRead, canEdit } = await getAgentPermissions(
+        auth,
+        agentConfigurationType,
+        agentIdsForUserAsEditor
+      );
 
-    agentConfigurationType.canRead = canRead;
-    agentConfigurationType.canEdit = canEdit;
+      agentConfigurationType.canRead = canRead;
+      agentConfigurationType.canEdit = canEdit;
+    }
 
     agentConfigurationTypes.push(agentConfigurationType);
   }
@@ -638,7 +642,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
   return agentConfigurationTypes;
 }
 
-export async function getAgentConfigurations<V extends "light" | "full">({
+export async function getAgentConfigurations<V extends AgentFetchVariant>({
   auth,
   agentsGetView,
   agentPrefix,
