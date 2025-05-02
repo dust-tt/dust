@@ -146,7 +146,7 @@ export async function performUpserts({
 // - force resyncs
 // - garbage collection runs, if the database is fully new
 // Unless this is a force resync, we skip processing up-to-date pages.
-export async function upsertDatabase({
+export async function upsertDatabaseInCore({
   connectorId,
   databaseId,
   runTimestamp,

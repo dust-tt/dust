@@ -12,7 +12,7 @@ import { MAX_CONCURRENT_CHILD_WORKFLOWS } from "@connectors/connectors/notion/te
 import { upsertPageChildWorkflow } from "@connectors/connectors/notion/temporal/workflows/children";
 import {
   performUpserts,
-  upsertDatabase,
+  upsertDatabaseInCore,
 } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
 
@@ -178,7 +178,7 @@ export async function upsertDatabaseWorkflow({
     requestQueuingForUpsertToCore: false,
   });
 
-  await upsertDatabase({
+  await upsertDatabaseInCore({
     connectorId,
     databaseId,
     runTimestamp,

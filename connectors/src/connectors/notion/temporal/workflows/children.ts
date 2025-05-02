@@ -11,7 +11,7 @@ import {
   MAX_CONCURRENT_CHILD_WORKFLOWS,
   MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW,
 } from "@connectors/connectors/notion/temporal/config";
-import { upsertDatabase } from "@connectors/connectors/notion/temporal/workflows/upserts";
+import { upsertDatabaseInCore } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
 
 const {
@@ -248,7 +248,7 @@ export async function syncResultPageDatabaseChildWorkflow({
     // If we're doing a force resync, then we immediately upsert the database.
     if (forceResync) {
       promises.push(
-        upsertDatabase({
+        upsertDatabaseInCore({
           connectorId,
           databaseId,
           runTimestamp,
