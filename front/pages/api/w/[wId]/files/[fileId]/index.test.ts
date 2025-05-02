@@ -3,12 +3,11 @@ import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, vi } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 import { FileResource } from "@app/lib/resources/file_resource";
-
 // Import the handler directly
 import handler from "@app/pages/api/w/[wId]/files/[fileId]/index";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { itInTransaction } from "@app/tests/utils/utils";
 
 // Mock the FileResource methods we need
 vi.mock("@app/lib/resources/file_resource", () => ({

@@ -2,12 +2,11 @@ import type { RequestMethod } from "node-mocks-http";
 import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, vi } from "vitest";
 
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 import { FileResource } from "@app/lib/resources/file_resource";
-
 // Import the handler directly
 import handler from "@app/pages/api/v1/w/[wId]/files/[fileId]";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { itInTransaction } from "@app/tests/utils/utils";
 
 // Mock the FileResource methods we need
 vi.mock("@app/lib/resources/file_resource", () => ({
@@ -33,7 +32,7 @@ vi.mock("@app/lib/api/auth_wrappers", async () => {
 
 // Mock function for secure file action
 vi.mock("@app/pages/api/w/[wId]/files/[fileId]", () => ({
-  getSecureFileAction: vi.fn().mockImplementation((action, file) => {
+  getSecureFileAction: vi.fn().mockImplementation((action) => {
     // Return "download" when action is "download", otherwise default to "view"
     return action === "download" ? "download" : "view";
   }),
