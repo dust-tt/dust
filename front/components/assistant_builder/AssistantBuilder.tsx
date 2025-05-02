@@ -35,10 +35,10 @@ import {
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   InstructionScreen,
 } from "@app/components/assistant_builder/InstructionScreen";
-import NamingScreen, {
-  validateHandle,
-} from "@app/components/assistant_builder/NamingScreen";
 import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
+import SettingsScreen, {
+  validateHandle,
+} from "@app/components/assistant_builder/SettingsScreen";
 import { SharingButton } from "@app/components/assistant_builder/Sharing";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
@@ -410,7 +410,7 @@ export default function AssistantBuilder({
     } else if (hasAnyActionsError) {
       setScreen("actions");
     } else if (assistantHandleError || descriptionError) {
-      setScreen("naming");
+      setScreen("settings");
     } else {
       setDisableUnsavedChangesPrompt(true);
       setIsSavingOrDeleting(true);
@@ -576,9 +576,9 @@ export default function AssistantBuilder({
                       />
                     );
 
-                  case "naming":
+                  case "settings":
                     return (
-                      <NamingScreen
+                      <SettingsScreen
                         agentConfigurationId={agentConfigurationId}
                         baseUrl={baseUrl}
                         owner={owner}

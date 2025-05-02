@@ -82,7 +82,7 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
     moreMenuItems: [
       {
         icon: PencilSquareIcon,
-        label: "Edit tag label",
+        label: "Edit tag",
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           setTagActionModal({ type: "edit", tag });

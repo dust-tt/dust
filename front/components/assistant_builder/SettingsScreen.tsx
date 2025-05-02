@@ -64,11 +64,15 @@ function assistantHandleIsValid(handle: string) {
 }
 
 const VISIBILITY_DESCRIPTIONS = {
-  visible: "Visible & usable by the members of Company Space.",
-  hidden: "Limited to editors.",
-  published: "Visible to all members [legacy Shared]",
-  workspace: "Visible to all members [legacy Workspace]",
-  private: "Limited to current user[legacy Private]",
+  visible: (
+    <span>
+      Visible & usable by the members of <b>Company Space</b>.
+    </span>
+  ),
+  hidden: <span>Limited to editors.</span>,
+  published: <span>Visible to all members [legacy Shared]</span>,
+  workspace: <span>Visible to all members [legacy Workspace]</span>,
+  private: <span>Limited to current user[legacy Private]</span>,
 };
 
 async function assistantHandleIsAvailable({
@@ -153,7 +157,7 @@ export async function validateHandle({
   };
 }
 
-type NamingScreenProps = {
+type SettingsScreenProps = {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
   baseUrl: string;
@@ -172,7 +176,7 @@ type NamingScreenProps = {
   currentUser: UserType | null;
 };
 
-export default function NamingScreen({
+export default function SettingsScreen({
   owner,
   agentConfigurationId,
   baseUrl,
@@ -187,7 +191,7 @@ export default function NamingScreen({
   slackDataSource,
   setSelectedSlackChannels,
   currentUser,
-}: NamingScreenProps) {
+}: SettingsScreenProps) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -398,7 +402,7 @@ export default function NamingScreen({
       />
 
       <div className="flex w-full flex-col gap-5">
-        <Page.Header title="Naming" />
+        <Page.Header title="Settings" />
         <div className="flex gap-8">
           <div className="flex flex-grow flex-col gap-4">
             <div>
