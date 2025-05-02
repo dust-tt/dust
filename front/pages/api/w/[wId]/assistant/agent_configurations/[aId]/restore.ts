@@ -27,7 +27,10 @@ async function handler(
         req.query.aId as string,
         "light"
       );
-      if (!agentConfiguration || !agentConfiguration.canEdit) {
+      if (
+        !agentConfiguration ||
+        (!agentConfiguration.canEdit && !auth.isAdmin())
+      ) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
