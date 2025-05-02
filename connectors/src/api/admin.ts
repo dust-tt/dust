@@ -53,6 +53,10 @@ const whitelistedCommands = [
     majorCommand: "zendesk",
     command: "fetch-ticket",
   },
+  {
+    majorCommand: "webcrawler",
+    command: "update-crawler",
+  },
 ];
 
 const _adminAPIHandler = async (
