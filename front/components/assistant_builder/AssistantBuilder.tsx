@@ -410,7 +410,7 @@ export default function AssistantBuilder({
     } else if (hasAnyActionsError) {
       setScreen("actions");
     } else if (assistantHandleError || descriptionError) {
-      setScreen("naming");
+      setScreen("settings");
     } else {
       setDisableUnsavedChangesPrompt(true);
       setIsSavingOrDeleting(true);

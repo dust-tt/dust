@@ -1,9 +1,7 @@
 import {
   Avatar,
   Button,
-  Chip,
   ClipboardIcon,
-  CompanyIcon,
   Icon,
   IconButton,
   Input,
