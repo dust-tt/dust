@@ -165,7 +165,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   };
 
   return (
-    <div className="space-y-5 text-foreground">
+    <div className="space-y-5 text-foreground dark:text-foreground-night">
       {syncError && (
         <ContentMessage
           variant="warning"
@@ -283,7 +283,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                   mcpServer.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION
                 }
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-500-night">
                 This is only for internal reference and is not shown to the
                 model.
               </p>
@@ -348,13 +348,13 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 )}
               </div>
               {isRedacted(sharedSecret) ? (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-500-night">
                   This is the secret key used to authenticate your MCP server
                   with Dust. It is now hidden for security reasons. You can
                   retrieve it in the calls made to your MCP server.
                 </p>
               ) : (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-500-night">
                   This is the secret key used to authenticate your MCP server
                   with Dust. Keep it secure. It will be hidden after 10 minutes
                   of creation.
