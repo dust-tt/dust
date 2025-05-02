@@ -58,6 +58,7 @@ import { findMatchingSubSchemas } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 const MAX_OUTPUT_ITEMS = 128;
 
@@ -236,7 +237,7 @@ async function getMCPClientConnectionParams(
 function getPrefixedToolName(
   config: MCPServerConfigurationType,
   originalName: string
-): string {
+): Result<string, Error> {
   const slugifiedConfigName = slugify(config.name);
   const slugifiedOriginalName = slugify(originalName);
 
@@ -244,10 +245,17 @@ function getPrefixedToolName(
 
   // If the prefixed name is too long, we return the unprefixed original name directly.
   if (prefixedName.length >= MAX_TOOL_NAME_LENGTH) {
-    return slugifiedOriginalName;
+    if (slugifiedOriginalName.length >= MAX_TOOL_NAME_LENGTH) {
+      return new Err(
+        new Error(
+          `Tool name too long: ${originalName} (max length is ${MAX_TOOL_NAME_LENGTH})`
+        )
+      );
+    }
+    return new Ok(slugifiedOriginalName);
   }
 
-  return prefixedName;
+  return new Ok(prefixedName);
 }
 
 /**
@@ -272,8 +280,9 @@ export async function tryListMCPTools(
   const mcpServerActions = agentActions.filter(isMCPServerConfiguration);
 
   // Discover all the tools exposed by all the mcp servers available.
-  const toolsResults = await Promise.all(
-    mcpServerActions.map(async (action) => {
+  const toolsResults = await concurrentExecutor(
+    mcpServerActions,
+    async (action) => {
       const toolsRes = await listMCPServerTools(auth, action, {
         conversationId,
         messageId,
@@ -336,20 +345,25 @@ export async function tryListMCPTools(
         }
       }
 
-      return new Ok(
-        toolConfigurations.map((toolConfig) => {
-          const prefixedName = getPrefixedToolName(action, toolConfig.name);
+      const tools = [];
 
-          return {
-            ...toolConfig,
-            originalName: toolConfig.name,
-            mcpServerName: action.name,
-            name: prefixedName,
-            description: toolConfig.description + extraDescription,
-          };
-        })
-      );
-    })
+      for (const toolConfig of toolConfigurations) {
+        const prefixedName = getPrefixedToolName(action, toolConfig.name);
+        if (prefixedName.isErr()) {
+          return new Err(prefixedName.error);
+        }
+        tools.push({
+          ...toolConfig,
+          originalName: toolConfig.name,
+          mcpServerName: action.name,
+          name: prefixedName.value,
+          description: toolConfig.description + extraDescription,
+        });
+      }
+
+      return new Ok(tools);
+    },
+    { concurrency: 10 }
   );
 
   // Aggregate results
