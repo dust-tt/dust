@@ -233,7 +233,7 @@ export async function syncResultPageDatabaseChildWorkflow({
           loggerArgs,
           // In a force resync, we want to upsert the database immediately,
           // we don't want to wait for the upsert queue to process it.
-          requestUpsert: !forceResync,
+          requestQueuingForUpsertToCore: !forceResync,
         })
       )
     );

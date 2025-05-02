@@ -441,14 +441,14 @@ export async function upsertDatabaseInConnectorsDb({
   databaseId,
   runTimestamp,
   topLevelWorkflowId,
-  requestUpsert,
+  requestQueuingForUpsertToCore,
   loggerArgs,
 }: {
   connectorId: ModelId;
   databaseId: string;
   runTimestamp: number;
   topLevelWorkflowId: string;
-  requestUpsert: boolean;
+  requestQueuingForUpsertToCore: boolean;
   loggerArgs: Record<string, string | number>;
 }): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -534,7 +534,7 @@ export async function upsertDatabaseInConnectorsDb({
     title: parsedDb ? parsedDb.title : null,
     notionUrl: parsedDb ? parsedDb.url : null,
     lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
-    requestUpsert,
+    requestQueuingForUpsertToCore,
   });
 }
 

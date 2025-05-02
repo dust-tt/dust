@@ -115,7 +115,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   notionUrl,
   skipReason,
   lastCreatedOrMovedRunTs,
-  requestUpsert,
+  requestQueuingForUpsertToCore,
 }: {
   connectorId: ModelId;
   notionDatabaseId: string;
@@ -126,7 +126,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   notionUrl?: string | null;
   skipReason?: string;
   lastCreatedOrMovedRunTs?: number;
-  requestUpsert: boolean;
+  requestQueuingForUpsertToCore: boolean;
 }): Promise<NotionDatabase> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -177,7 +177,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
     updateParams.firstSeenTs = new Date(runTimestamp);
   }
 
-  if (requestUpsert) {
+  if (requestQueuingForUpsertToCore) {
     // We want to queue the database for upsert.
     // If we never queued the database for upsert, or if we haven't queued it since
     // the last time we upserted it, we queue it.

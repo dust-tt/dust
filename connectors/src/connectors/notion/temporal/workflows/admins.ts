@@ -175,7 +175,7 @@ export async function upsertDatabaseWorkflow({
     loggerArgs,
     // In this workflow, we manually trigger the database upsert,
     // so we don't queue the database for upsert
-    requestUpsert: false,
+    requestQueuingForUpsertToCore: false,
   });
 
   await upsertDatabase({
