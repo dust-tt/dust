@@ -1,17 +1,25 @@
-import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
-import { RetrievalTimeframe } from "@app/lib/actions/retrieval";
-import { LightWorkspaceType, TimeFrame, TimeframeUnit } from "@app/types";
-import { Checkbox, classNames, DropdownMenuTrigger, DropdownMenuItem, DropdownMenu, DropdownMenuContent, Input, Button } from "@dust-tt/sparkle";
+import {
+  Button,
+  Checkbox,
+  classNames,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
+import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
+import type { TimeFrame, TimeframeUnit } from "@app/types";
+
 interface DurationConfigurationSectionProps {
-  owner: LightWorkspaceType;
   timeFrame: RetrievalTimeframe | null;
   onConfigUpdate: (timeFrame: RetrievalTimeframe | null) => void;
 }
 
 export function DurationConfigurationSection({
-  owner,
   timeFrame,
   onConfigUpdate,
 }: DurationConfigurationSectionProps) {
@@ -20,8 +28,6 @@ export function DurationConfigurationSection({
     unit: "day",
   };
 
-  console.log("hello")
-  
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
   const timeFrameDisabled = !timeFrame;
 
@@ -32,8 +38,8 @@ export function DurationConfigurationSection({
       </div>
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         By default, the time frame is determined automatically based on the
-        conversation context. Enable manual time frame selection when you
-        need to specify an exact range for data extraction.
+        conversation context. Enable manual time frame selection when you need
+        to specify an exact range for data extraction.
       </div>
       <div className={"flex flex-row items-center gap-4 pb-4"}>
         <Checkbox
@@ -54,7 +60,9 @@ export function DurationConfigurationSection({
           type="text"
           messageStatus={timeFrameError ? "error" : "default"}
           value={
-            timeFrame && typeof timeFrame === "object" && !isNaN(timeFrame.duration)
+            timeFrame &&
+            typeof timeFrame === "object" &&
+            !isNaN(timeFrame.duration)
               ? timeFrame.duration.toString()
               : ""
           }
@@ -62,10 +70,14 @@ export function DurationConfigurationSection({
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
               setTimeFrameError(null);
-              onConfigUpdate(typeof timeFrame === "object" && timeFrame?.unit ? {
-                ...timeFrame,
-                duration: value,
-              } : "auto");
+              onConfigUpdate(
+                typeof timeFrame === "object" && timeFrame?.unit
+                  ? {
+                      ...timeFrame,
+                      duration: value,
+                    }
+                  : "auto"
+              );
             }
           }}
           disabled={timeFrameDisabled}
@@ -74,7 +86,13 @@ export function DurationConfigurationSection({
           <DropdownMenuTrigger asChild>
             <Button
               isSelect
-              label={TIME_FRAME_UNIT_TO_LABEL[timeFrame && typeof timeFrame === "object" ? timeFrame.unit : "day"]}
+              label={
+                TIME_FRAME_UNIT_TO_LABEL[
+                  timeFrame && typeof timeFrame === "object"
+                    ? timeFrame.unit
+                    : "day"
+                ]
+              }
               variant="outline"
               size="sm"
               disabled={timeFrameDisabled}
@@ -86,10 +104,14 @@ export function DurationConfigurationSection({
                 key={key}
                 label={value}
                 onClick={() => {
-                  onConfigUpdate(timeFrame && typeof timeFrame === "object" ? {
-                      ...timeFrame,
-                      unit: key as TimeframeUnit,
-                    } : defaultTimeFrame);
+                  onConfigUpdate(
+                    timeFrame && typeof timeFrame === "object"
+                      ? {
+                          ...timeFrame,
+                          unit: key as TimeframeUnit,
+                        }
+                      : defaultTimeFrame
+                  );
                 }}
               />
             ))}
@@ -97,5 +119,5 @@ export function DurationConfigurationSection({
         </DropdownMenu>
       </div>
     </>
-  )
+  );
 }

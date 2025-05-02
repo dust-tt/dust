@@ -5,6 +5,7 @@ import { AdditionalConfigurationSection } from "@app/components/assistant_builde
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
+import { DurationConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DurationConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
@@ -14,11 +15,10 @@ import type {
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";
-import { DurationConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DurationConfigurationSection";
-import { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -286,7 +286,6 @@ export function MCPAction({
             handleConfigUpdate((old) => ({ ...old, timeFrame }));
           }}
           timeFrame={actionConfiguration.timeFrame}
-          owner={owner}
         />
       )}
       <AdditionalConfigurationSection
