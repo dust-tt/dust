@@ -2,6 +2,7 @@ import {
   fetchTree,
   isConnectionReadonly,
 } from "@connectors/connectors/bigquery/lib/bigquery_api";
+import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import { sync } from "@connectors/lib/remote_databases/activities";
 import { getConnectorAndCredentials } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
@@ -36,11 +37,24 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
   }
   const tree = treeRes.value;
 
+  const connectorConfig = await BigQueryConfigurationModel.findOne({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+  if (!connectorConfig) {
+    throw new Error(
+      `Connector configuration not found for connector ${connector.id}`
+    );
+  }
+
+  const useMetadataForDBML = connectorConfig.useMetadataForDBML;
+
   await sync({
     remoteDBTree: tree,
     mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
     connector,
-    tags: [],
+    tags: useMetadataForDBML ? ["bigquery:useMetadataForDBML"] : [],
   });
 
   await syncSucceeded(connectorId);
