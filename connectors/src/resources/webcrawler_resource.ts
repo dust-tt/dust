@@ -249,32 +249,6 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     return this.update({ customCrawler: crawler });
   }
 
-  /**
-   * In case you don't have a WebcrawlerCustomCrawler type,
-   * you can still try to update the customCrawler of the config.
-   * You can use 'default' to remove it.
-   *
-   * @param crawler string | null =
-   */
-  async updateCustomCrawlerString(
-    crawler: string | null
-  ): Promise<Result<void, Error>> {
-    let customCrawler: WebcrawlerCustomCrawler | null = null;
-    // If not default, then we try to match
-    if (crawler !== "default") {
-      customCrawler =
-        Object.values(WebcrawlerCustomCrawler).find(
-          (value) => value === crawler
-        ) ?? null;
-      if (customCrawler === null) {
-        return new Err(new Error(`"${crawler}" is not a valid crawler`));
-      }
-    }
-
-    await this.updateCustomCrawler(customCrawler);
-    return new Ok(undefined);
-  }
-
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await WebCrawlerPage.destroy({
       where: {

@@ -16,6 +16,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { ModelId } from "@connectors/types";
+import { WebcrawlerCustomCrawler } from "@connectors/types";
 
 import { WebCrawlerQueueNames } from "./config";
 import {
@@ -163,5 +164,18 @@ export async function updateCrawlerType(
     return new Err(new Error(`CrawlerConfig not found for ${connector.id}`));
   }
 
-  return webcrawlerConfig.updateCustomCrawlerString(newCrawler);
+  let customCrawler: WebcrawlerCustomCrawler | null = null;
+  // If not default, then we try to match
+  if (newCrawler !== "default") {
+    customCrawler =
+      Object.values(WebcrawlerCustomCrawler).find(
+        (value) => value === newCrawler
+      ) ?? null;
+    if (customCrawler === null) {
+      return new Err(new Error(`"${newCrawler}" is not a valid crawler`));
+    }
+  }
+
+  await webcrawlerConfig.updateCustomCrawler(customCrawler);
+  return new Ok(undefined);
 }
