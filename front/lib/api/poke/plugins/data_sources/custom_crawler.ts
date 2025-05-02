@@ -18,7 +18,7 @@ export const customCrawlerPlugin = createPlugin({
       },
     },
   },
-  isApplicableTo: (_auth, dataSource) => {
+  isApplicableTo: (_, dataSource) => {
     if (!dataSource) {
       return false;
     }
