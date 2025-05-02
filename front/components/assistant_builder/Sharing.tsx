@@ -361,7 +361,7 @@ export function SharingDropdown({
     workspaceId: owner.sId,
   });
 
-  let scopes = Object.entries(SCOPE_INFO).filter(
+  const scopes = Object.entries(SCOPE_INFO).filter(
     ([entryScope]) =>
       entryScope !== "global" &&
       entryScope !== "hidden" &&

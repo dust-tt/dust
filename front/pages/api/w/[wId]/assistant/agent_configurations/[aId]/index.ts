@@ -38,7 +38,7 @@ async function handler(
     req.query.aId as string,
     "full"
   );
-  if (!agent || !agent.canRead) {
+  if (!agent || (!agent.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

@@ -20,11 +20,8 @@ import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistant
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
-import {
-  isAdmin,
-  type LightAgentConfigurationType,
-  type WorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
