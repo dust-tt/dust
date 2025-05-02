@@ -8,6 +8,13 @@ import type {
   SupportedResourceType,
 } from "@app/types";
 
+interface FormidableFile {
+  filepath: string;
+  originalFilename: string;
+  mimetype: string;
+  size: number;
+}
+
 // Helper type to infer the correct TypeScript type from SupportedArgType.
 type InferArgType<
   T extends PluginArgDefinition["type"],
@@ -20,9 +27,11 @@ type InferArgType<
       ? number
       : T extends "boolean"
         ? boolean
-        : T extends "enum"
-          ? V
-          : never;
+        : T extends "file"
+          ? FormidableFile
+          : T extends "enum"
+            ? V
+            : never;
 
 export type InferPluginArgs<T extends PluginArgs> = {
   [K in keyof T]: InferArgType<
