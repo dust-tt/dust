@@ -234,13 +234,19 @@ async function fetchGlobalAgentConfigurationForView(
   {
     agentPrefix,
     agentsGetView,
+    variant,
   }: {
     agentPrefix?: string;
     agentsGetView: AgentsGetViewType;
+    variant: AgentFetchVariant;
   }
 ) {
   const globalAgentIdsToFetch = determineGlobalAgentIdsToFetch(agentsGetView);
-  const allGlobalAgents = await getGlobalAgents(auth, globalAgentIdsToFetch);
+  const allGlobalAgents = await getGlobalAgents(
+    auth,
+    globalAgentIdsToFetch,
+    variant
+  );
   const matchingGlobalAgents = allGlobalAgents.filter(
     (a) =>
       !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
@@ -697,6 +703,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>({
     const allGlobalAgents = await fetchGlobalAgentConfigurationForView(auth, {
       agentPrefix,
       agentsGetView,
+      variant,
     });
 
     return applySortAndLimit(allGlobalAgents);
@@ -706,6 +713,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>({
     fetchGlobalAgentConfigurationForView(auth, {
       agentPrefix,
       agentsGetView,
+      variant,
     }),
     fetchWorkspaceAgentConfigurationsForView(auth, owner, {
       agentPrefix,
