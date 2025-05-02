@@ -61,7 +61,7 @@ function DustAgentDataSourceVisual({
 }: {
   dataSourceView: DataSourceViewType;
 }) {
-  const { isDark } = useTheme();
+  const { isDark } = { isDark: false };
 
   return (
     <ContextItem.Visual
