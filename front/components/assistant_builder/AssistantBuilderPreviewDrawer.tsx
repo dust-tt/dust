@@ -106,7 +106,7 @@ export default function AssistantBuilderRightPanel({
   }, [draftAssistant?.sId, setConversation]);
 
   useEffect(() => {
-    if (rightPanelStatus.tab === "Template" && screen === "naming") {
+    if (rightPanelStatus.tab === "Template" && screen === "settings") {
       openRightPanelTab("Preview");
     }
   }, [screen, rightPanelStatus.tab, openRightPanelTab]);
@@ -155,7 +155,7 @@ export default function AssistantBuilderRightPanel({
             : ""
         )}
       >
-        {(rightPanelStatus.tab === "Preview" || screen === "naming") &&
+        {(rightPanelStatus.tab === "Preview" || screen === "settings") &&
           user && (
             <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
               {draftAssistant ? (

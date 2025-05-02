@@ -35,10 +35,10 @@ import {
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   InstructionScreen,
 } from "@app/components/assistant_builder/InstructionScreen";
+import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
 import SettingsScreen, {
   validateHandle,
 } from "@app/components/assistant_builder/SettingsScreen";
-import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
 import { SharingButton } from "@app/components/assistant_builder/Sharing";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
