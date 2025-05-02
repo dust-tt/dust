@@ -13,6 +13,7 @@ import { isAPIErrorResponse, safeParseJSON } from "@app/types";
 
 const EMPTY_ARRAY = Object.freeze([]);
 
+// Returns a frozen constant empty array of the required type- use to avoid creating new arrays
 export function emptyArray<T>(): T[] {
   return EMPTY_ARRAY as unknown as T[];
 }
