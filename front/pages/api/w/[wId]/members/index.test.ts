@@ -2,12 +2,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
 import { describe, expect, vi } from "vitest";
 
-import type { UserTypeWithWorkspaces } from "@app/types";
 import { parseQueryString } from "@app/lib/utils/router";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
+import type { UserTypeWithWorkspaces } from "@app/types";
 
 import handler, { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "./index";
 
