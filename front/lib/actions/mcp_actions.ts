@@ -348,15 +348,18 @@ export async function tryListMCPTools(
       const tools = [];
 
       for (const toolConfig of toolConfigurations) {
-        const prefixedName = getPrefixedToolName(action, toolConfig.name);
-        if (prefixedName.isErr()) {
-          return new Err(prefixedName.error);
+        const toolName = getPrefixedToolName(action, toolConfig.name);
+        // If we fail here we fail for the entire action because the tool potentially interact
+        // so we end up with a weird state if some of them are added and some are not.
+        // It's more principled to reject the action altogether in this case.
+        if (toolName.isErr()) {
+          return new Err(toolName.error);
         }
         tools.push({
           ...toolConfig,
           originalName: toolConfig.name,
           mcpServerName: action.name,
-          name: prefixedName.value,
+          name: toolName.value,
           description: toolConfig.description + extraDescription,
         });
       }
