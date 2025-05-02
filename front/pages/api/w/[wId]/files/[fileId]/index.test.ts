@@ -16,17 +16,17 @@ vi.mock("@app/lib/resources/file_resource", () => ({
   },
 }));
 
-// Mock Auth0 for session auth
-vi.mock("@app/lib/auth", async () => {
-  const actual = await vi.importActual("@app/lib/auth");
+// Mock Auth0 and authentication
+vi.mock("@app/lib/api/auth_wrappers", async () => {
+  const actual = await vi.importActual("@app/lib/api/auth_wrappers");
   return {
     ...actual,
-    getSession: vi.fn().mockResolvedValue({ user: { sub: "auth0|test-user-id" } }),
     withSessionAuthenticationForWorkspace: (handler) => {
       return async (req, res) => {
         // Extract mock auth from req for testing
         const auth = req.auth;
-        return handler(req, res, auth);
+        // Pass the mocked session too
+        return handler(req, res, auth, { user: { sub: "auth0|test-user-id" } });
       };
     },
   };
@@ -145,7 +145,9 @@ async function setupTest(
     isAdmin: vi.fn().mockReturnValue(userRole === "admin"),
     isSystemKey: vi.fn().mockReturnValue(false),
     workspace: () => workspace,
+    getNonNullableWorkspace: () => workspace,
     user: () => user,
+    plan: () => ({ isTest: false, isPro: true, isFree: false }),
   };
   
   // Attach the auth to the request for our mocked wrapper
