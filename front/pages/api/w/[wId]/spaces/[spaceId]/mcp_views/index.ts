@@ -67,6 +67,16 @@ async function handler(
 
       const { mcpServerId } = r.right;
 
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "mcp_auth_error",
+            message: "User is not authorized to add tools to a space.",
+          },
+        });
+      }
+
       const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
       if (!allowedSpaceKinds.includes(space.kind)) {
         return apiError(req, res, {
