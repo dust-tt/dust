@@ -40,6 +40,7 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
     remoteDBTree: tree,
     mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
     connector,
+    tags: [],
   });
 
   await syncSucceeded(connectorId);
