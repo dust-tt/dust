@@ -1,0 +1,101 @@
+import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
+import { RetrievalTimeframe } from "@app/lib/actions/retrieval";
+import { LightWorkspaceType, TimeFrame, TimeframeUnit } from "@app/types";
+import { Checkbox, classNames, DropdownMenuTrigger, DropdownMenuItem, DropdownMenu, DropdownMenuContent, Input, Button } from "@dust-tt/sparkle";
+import { useState } from "react";
+
+interface DurationConfigurationSectionProps {
+  owner: LightWorkspaceType;
+  timeFrame: RetrievalTimeframe | null;
+  onConfigUpdate: (timeFrame: RetrievalTimeframe | null) => void;
+}
+
+export function DurationConfigurationSection({
+  owner,
+  timeFrame,
+  onConfigUpdate,
+}: DurationConfigurationSectionProps) {
+  const defaultTimeFrame: TimeFrame = {
+    duration: 1,
+    unit: "day",
+  };
+
+  console.log("hello")
+  
+  const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
+  const timeFrameDisabled = !timeFrame;
+
+  return (
+    <>
+      <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
+        Time Range
+      </div>
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        By default, the time frame is determined automatically based on the
+        conversation context. Enable manual time frame selection when you
+        need to specify an exact range for data extraction.
+      </div>
+      <div className={"flex flex-row items-center gap-4 pb-4"}>
+        <Checkbox
+          checked={!!timeFrame}
+          onCheckedChange={(checked) => {
+            checked ? onConfigUpdate(defaultTimeFrame) : onConfigUpdate(null);
+          }}
+        />
+        <div
+          className={classNames(
+            "text-sm font-semibold",
+            timeFrameDisabled ? "text-slate-400" : "text-element-900"
+          )}
+        >
+          Process data from the last
+        </div>
+        <Input
+          type="text"
+          messageStatus={timeFrameError ? "error" : "default"}
+          value={
+            timeFrame && typeof timeFrame === "object" && !isNaN(timeFrame.duration)
+              ? timeFrame.duration.toString()
+              : ""
+          }
+          onChange={(e) => {
+            const value = parseInt(e.target.value, 10);
+            if (!isNaN(value) || !e.target.value) {
+              setTimeFrameError(null);
+              onConfigUpdate(typeof timeFrame === "object" && timeFrame?.unit ? {
+                ...timeFrame,
+                duration: value,
+              } : "auto");
+            }
+          }}
+          disabled={timeFrameDisabled}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              isSelect
+              label={TIME_FRAME_UNIT_TO_LABEL[timeFrame && typeof timeFrame === "object" ? timeFrame.unit : "day"]}
+              variant="outline"
+              size="sm"
+              disabled={timeFrameDisabled}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(([key, value]) => (
+              <DropdownMenuItem
+                key={key}
+                label={value}
+                onClick={() => {
+                  onConfigUpdate(timeFrame && typeof timeFrame === "object" ? {
+                      ...timeFrame,
+                      unit: key as TimeframeUnit,
+                    } : defaultTimeFrame);
+                }}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </>
+  )
+}

@@ -17,6 +17,8 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";
+import { DurationConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DurationConfigurationSection";
+import { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -125,6 +127,7 @@ export function MCPAction({
           tablesConfigurations: null,
           childAgentId: null,
           reasoningModel: null,
+          timeFrame: null,
           // We initialize boolean with false because leaving them unset means false (toggle on the left).
           additionalConfiguration: Object.fromEntries(
             requirements.requiredBooleans.map((key) => [key, false])
@@ -274,6 +277,15 @@ export function MCPAction({
             handleConfigUpdate((old) => ({ ...old, reasoningModel }));
           }}
           selectedReasoningModel={actionConfiguration.reasoningModel}
+          owner={owner}
+        />
+      )}
+      {requirements.requiresDurationConfiguration && (
+        <DurationConfigurationSection
+          onConfigUpdate={(timeFrame: RetrievalTimeframe | null) => {
+            handleConfigUpdate((old) => ({ ...old, timeFrame }));
+          }}
+          timeFrame={actionConfiguration.timeFrame}
           owner={owner}
         />
       )}

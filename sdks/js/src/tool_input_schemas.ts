@@ -55,6 +55,11 @@ export const ConfigurableToolInputSchemas = {
     reasoningEffort: z.string().nullable(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
   }),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION]: z.object({
+    duration: z.number(),
+    unit: z.enum(["hour", "day", "week", "month", "year"]),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION),
+  }),
   // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Omit<

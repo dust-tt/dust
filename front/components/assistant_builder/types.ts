@@ -38,6 +38,7 @@ import {
   DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 
 export const ACTION_MODES = [
   "GENERIC",
@@ -136,6 +137,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
   reasoningModel: ReasoningModelConfiguration | null;
+  timeFrame: RetrievalTimeframe | null;
   additionalConfiguration: Record<string, boolean | number | string>;
 };
 
@@ -386,6 +388,7 @@ export function getDefaultMCPServerActionConfiguration(
       tablesConfigurations: null,
       childAgentId: null,
       reasoningModel: null,
+      timeFrame: null,
       additionalConfiguration: {},
     },
     name: mcpServerView?.server.name ?? "",
