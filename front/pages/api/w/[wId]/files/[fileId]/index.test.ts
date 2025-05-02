@@ -198,24 +198,42 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction("should return 403 when user is not a builder", async (t) => {
-    const { req, res } = await setupTest(t, {
-      userRole: "user",
-      method: "POST",
-    });
+  itInTransaction(
+    "should return 403 when user is not a builder for non-conversation files",
+    async (t) => {
+      const { req, res } = await setupTest(t, {
+        userRole: "user",
+        method: "POST",
+        useCase: "folders_document",
+      });
 
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `builders` for the current workspace can modify files.",
-      },
-    });
-  });
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(403);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "workspace_auth_error",
+          message:
+            "Only users that are `builders` for the current workspace can modify files.",
+        },
+      });
+    }
+  );
 
-  itInTransaction("should allow admin to modify file", async (t) => {
+  itInTransaction(
+    "should allow regular user to modify conversation files",
+    async (t) => {
+      const { req, res } = await setupTest(t, {
+        userRole: "user",
+        method: "POST",
+        useCase: "conversation",
+      });
+
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(200);
+    }
+  );
+
+  itInTransaction("should allow admin to modify any file", async (t) => {
     const { req, res } = await setupTest(t, {
       userRole: "admin",
       method: "POST",
@@ -225,7 +243,7 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  itInTransaction("should allow builder to modify file", async (t) => {
+  itInTransaction("should allow builder to modify any file", async (t) => {
     const { req, res } = await setupTest(t, {
       userRole: "builder",
       method: "POST",
@@ -241,24 +259,43 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction("should return 403 when user is not a builder", async (t) => {
-    const { req, res } = await setupTest(t, {
-      userRole: "user",
-      method: "DELETE",
-    });
+  itInTransaction(
+    "should return 403 when user is not a builder for non-conversation files",
+    async (t) => {
+      const { req, res } = await setupTest(t, {
+        userRole: "user",
+        method: "DELETE",
+        useCase: "folders_document",
+      });
 
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `builders` for the current workspace can delete files.",
-      },
-    });
-  });
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(403);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "workspace_auth_error",
+          message:
+            "Only users that are `builders` for the current workspace can delete files.",
+        },
+      });
+    }
+  );
 
-  itInTransaction("should allow admin to delete file", async (t) => {
+  itInTransaction(
+    "should allow regular user to delete conversation files",
+    async (t) => {
+      const { req, res } = await setupTest(t, {
+        userRole: "user",
+        method: "DELETE",
+        useCase: "conversation",
+      });
+
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(204);
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  itInTransaction("should allow admin to delete any file", async (t) => {
     const { req, res } = await setupTest(t, {
       userRole: "admin",
       method: "DELETE",
@@ -269,7 +306,7 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
-  itInTransaction("should allow builder to delete file", async (t) => {
+  itInTransaction("should allow builder to delete any file", async (t) => {
     const { req, res } = await setupTest(t, {
       userRole: "builder",
       method: "DELETE",

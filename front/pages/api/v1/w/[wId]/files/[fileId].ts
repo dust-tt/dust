@@ -140,8 +140,7 @@ async function handler(
     }
 
     case "DELETE": {
-      // Check if the user is a builder for the workspace
-      if (!auth.isBuilder()) {
+      if (!auth.isBuilder() && file.useCase !== "conversation") {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -168,8 +167,7 @@ async function handler(
     }
 
     case "POST": {
-      // Check if the user is a builder for the workspace
-      if (!auth.isBuilder()) {
+      if (!auth.isBuilder() && file.useCase !== "conversation") {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

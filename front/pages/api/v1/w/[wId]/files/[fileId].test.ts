@@ -204,13 +204,39 @@ describe("POST /api/v1/w/[wId]/files/[fileId]", () => {
   });
 
   itInTransaction(
-    "should return 403 when API key doesn't have builder permissions",
+    "should return error for non-supported use cases for non-system keys",
     async (t) => {
-      // Setup with default API key (not system key) and POST method
+      // Setup with default API key (not system key) and POST method for a non-conversation file
       const { req, res } = await setupTest(t, {
         method: "POST",
         systemKey: false,
         isBuilder: false,
+        useCase: "folders_document",
+        useCaseMetadata: { spaceId: "test-space-id" },
+      });
+
+      await handler(req, res);
+
+      // For folders_document, the endpoint first checks if it's a supported use case (which it isn't)
+      // So it returns a 400 error about unsupported use case before even checking builder permissions
+      expect(res._getStatusCode()).toBe(400);
+      expect(res._getJSONData().error).toEqual({
+        type: "invalid_request_error",
+        message: "The file use case is not supported by the API.",
+      });
+    }
+  );
+
+  itInTransaction(
+    "should return 403 without builder permissions on non-conversation files",
+    async (t) => {
+      // Setup with system key (bypasses use case check) but not builder permissions
+      const { req, res } = await setupTest(t, {
+        method: "POST",
+        systemKey: true,
+        isBuilder: false, // Explicitly set builder to false even though system key
+        useCase: "folders_document",
+        useCaseMetadata: { spaceId: "test-space-id" },
       });
 
       await handler(req, res);
@@ -225,17 +251,36 @@ describe("POST /api/v1/w/[wId]/files/[fileId]", () => {
     }
   );
 
-  itInTransaction("should allow system API key to modify file", async (t) => {
-    // Use system key which has builder permissions
-    const { req, res } = await setupTest(t, {
-      method: "POST",
-      systemKey: true,
-      isBuilder: true,
-    });
+  itInTransaction(
+    "should allow non-builder to modify conversation files",
+    async (t) => {
+      // Setup with a non-builder key but for a conversation file
+      const { req, res } = await setupTest(t, {
+        method: "POST",
+        systemKey: false,
+        isBuilder: false,
+        useCase: "conversation",
+      });
 
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
-  });
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(200);
+    }
+  );
+
+  itInTransaction(
+    "should allow system API key to modify any file",
+    async (t) => {
+      // Use system key which has builder permissions
+      const { req, res } = await setupTest(t, {
+        method: "POST",
+        systemKey: true,
+        isBuilder: true,
+      });
+
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(200);
+    }
+  );
 });
 
 describe("DELETE /api/v1/w/[wId]/files/[fileId]", () => {
@@ -244,13 +289,39 @@ describe("DELETE /api/v1/w/[wId]/files/[fileId]", () => {
   });
 
   itInTransaction(
-    "should return 403 when API key doesn't have builder permissions",
+    "should return error for non-supported use cases for non-system keys",
     async (t) => {
-      // Setup with default API key (not system key) and DELETE method
+      // Setup with default API key (not system key) and DELETE method for a non-conversation file
       const { req, res } = await setupTest(t, {
         method: "DELETE",
         systemKey: false,
         isBuilder: false,
+        useCase: "folders_document",
+        useCaseMetadata: { spaceId: "test-space-id" },
+      });
+
+      await handler(req, res);
+
+      // For folders_document, the endpoint first checks if it's a supported use case (which it isn't)
+      // So it returns a 400 error about unsupported use case before even checking builder permissions
+      expect(res._getStatusCode()).toBe(400);
+      expect(res._getJSONData().error).toEqual({
+        type: "invalid_request_error",
+        message: "The file use case is not supported by the API.",
+      });
+    }
+  );
+
+  itInTransaction(
+    "should return 403 when using system key without builder permissions",
+    async (t) => {
+      // Setup with system key (bypasses use case check) but not builder permissions
+      const { req, res } = await setupTest(t, {
+        method: "DELETE",
+        systemKey: true,
+        isBuilder: false, // Explicitly set builder to false even though system key
+        useCase: "folders_document",
+        useCaseMetadata: { spaceId: "test-space-id" },
       });
 
       await handler(req, res);
@@ -265,18 +336,38 @@ describe("DELETE /api/v1/w/[wId]/files/[fileId]", () => {
     }
   );
 
-  itInTransaction("should allow system API key to delete file", async (t) => {
-    // Use system key which has builder permissions
-    const { req, res } = await setupTest(t, {
-      method: "DELETE",
-      systemKey: true,
-      isBuilder: true,
-    });
+  itInTransaction(
+    "should allow non-builder to delete conversation files",
+    async (t) => {
+      // Setup with a non-builder key but for a conversation file
+      const { req, res } = await setupTest(t, {
+        method: "DELETE",
+        systemKey: false,
+        isBuilder: false,
+        useCase: "conversation",
+      });
 
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(204);
-    expect(mockDelete).toHaveBeenCalledTimes(1);
-  });
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(204);
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  itInTransaction(
+    "should allow system API key to delete any file",
+    async (t) => {
+      // Use system key which has builder permissions
+      const { req, res } = await setupTest(t, {
+        method: "DELETE",
+        systemKey: true,
+        isBuilder: true,
+      });
+
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(204);
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    }
+  );
 });
 
 describe("Method Support /api/v1/w/[wId]/files/[fileId]", () => {
