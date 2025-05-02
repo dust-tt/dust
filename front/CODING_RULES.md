@@ -262,7 +262,7 @@ export function useFolders({ owner, spaceId } : { owner: LightWorkspaceType, spa
     folders: data?.folders ?? emptyArray(),
     mutate,
     isFoldersLoading: !error && !data && !disabled,
-    isFoldersError
+    isFoldersError: error
   };
 }
 ```
