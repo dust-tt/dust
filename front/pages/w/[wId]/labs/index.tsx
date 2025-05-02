@@ -50,7 +50,7 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     icon: BookOpenIcon,
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
-    onlyAdminCanManage: true,
+    onlyAdminCanManage: false,
   },
   {
     id: "salesforce_personal_connections",
