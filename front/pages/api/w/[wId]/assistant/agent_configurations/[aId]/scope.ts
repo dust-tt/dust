@@ -65,7 +65,7 @@ async function handler(
         });
       }
 
-      if (!agent.canEdit) {
+      if (!agent.canEdit && !auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {

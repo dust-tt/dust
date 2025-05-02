@@ -20,7 +20,11 @@ import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistant
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import {
+  isAdmin,
+  type LightAgentConfigurationType,
+  type WorkspaceType,
+} from "@app/types";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -57,7 +61,7 @@ export function AssistantDetailsButtonBar({
     return <></>;
   }
 
-  const allowDeletion = agentConfiguration.canEdit;
+  const allowDeletion = agentConfiguration.canEdit || isAdmin(owner);
 
   function AssistantDetailsDropdownMenu() {
     return (
@@ -117,7 +121,7 @@ export function AssistantDetailsButtonBar({
     );
   }
 
-  const canEditAssistant = agentConfiguration.canEdit;
+  const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
 
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;

@@ -28,7 +28,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder, pluralize } from "@app/types";
+import { isAdmin, isBuilder, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 type MoreMenuItem = {
@@ -344,6 +344,7 @@ export function AssistantsTable({
                     "data-gtm-label": "assistantEditButton",
                     "data-gtm-location": "assistantDetails",
                     icon: PencilSquareIcon,
+                    disabled: !agentConfiguration.canEdit && !isAdmin(owner),
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
@@ -389,6 +390,7 @@ export function AssistantsTable({
                     "data-gtm-label": "assistantDeletionButton",
                     "data-gtm-location": "assistantDetails",
                     icon: TrashIcon,
+                    disabled: !agentConfiguration.canEdit && !isAdmin(owner),
                     variant: "warning",
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
@@ -396,7 +398,7 @@ export function AssistantsTable({
                     },
                     kind: "item",
                   },
-                ]
+                ].filter((item) => !item.disabled)
               : [],
         };
       }),

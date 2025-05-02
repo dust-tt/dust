@@ -1770,10 +1770,6 @@ export async function getAgentPermissions(
   agentConfiguration: LightAgentConfigurationType,
   memberAgents: ModelId[]
 ) {
-  if (auth.isAdmin()) {
-    return { canRead: true, canEdit: agentConfiguration.scope !== "global" };
-  }
-
   switch (agentConfiguration.scope) {
     case "global":
       return { canRead: true, canEdit: false };

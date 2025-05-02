@@ -70,7 +70,7 @@ async function handler(
     });
   }
 
-  if (!assistant.canEdit) {
+  if (!assistant.canEdit && !auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
