@@ -245,8 +245,11 @@ export function Component({ name }: MyComponentProps) { }
 
 ### [REACT2] All network operations should be abstracted in SWR files
 
-Data fetching should rely on useSWR hooks and be abstracted in a `lib/swr/*` file. Data posting
-should be done in hooks colocated with the SWR hooks. Do not fetch direclty in componenets.
+Data fetching should rely on useSWR hooks and be abstracted in a `lib/swr/*` file.
+
+When using a disabled param and returning a loading flag, ensure `loading` is `false` if `disabled` is `true`.
+
+When a hook is expected to return an array of objects, return an empty array (from `emptyArray()`) while loading/error/disabled instead of `undefined`.
 
 Example:
 
@@ -255,9 +258,18 @@ export function useFolders({ owner, spaceId } : { owner: LightWorkspaceType, spa
   // ...
   const { data, error, mutate } = useSWRWithDefaults(...);
   // ...
-  return { folders, mutate, isFoldersLoading, isFoldersError };
+  return {
+    folders: data?.folders ?? emptyArray(),
+    mutate,
+    isFoldersLoading: !error && !data && !disabled,
+    isFoldersError: error
+  };
 }
+```
 
+Data posting should be done in hooks colocated with the SWR hooks. Do not fetch directly in componenets.
+
+```
 export function useCreateFolder({
   owner,
   spaceId,
@@ -271,8 +283,6 @@ export function useCreateFolder({
     // ...
   };
 };
-
-
 ```
 
 ### [REACT3] Any async network operation should have a visual loading state
