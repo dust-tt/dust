@@ -576,7 +576,7 @@ export default function AssistantBuilder({
                       />
                     );
 
-                  case "naming":
+                  case "settings":
                     return (
                       <NamingScreen
                         agentConfigurationId={agentConfigurationId}
