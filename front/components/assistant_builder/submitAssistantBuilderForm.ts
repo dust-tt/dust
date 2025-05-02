@@ -206,6 +206,7 @@ export async function submitAssistantBuilderForm({
             childAgentId,
             reasoningModel: mcpReasoningModel,
             additionalConfiguration,
+            timeFrame: timeRange,
           },
         } = a;
         return [
@@ -228,6 +229,7 @@ export async function submitAssistantBuilderForm({
                   modelId: mcpReasoningModel.modelId,
                 }
               : null,
+            timeRange: timeRange ?? "none",
             additionalConfiguration,
           },
         ];

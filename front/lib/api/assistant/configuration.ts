@@ -1226,6 +1226,7 @@ export async function createAgentActionConfiguration(
             name: action.name,
             description: action.description,
             workspaceId: owner.id,
+            mcpServerConfigurationId: null,
           },
           { transaction: t }
         );
@@ -1379,7 +1380,7 @@ export async function createAgentActionConfiguration(
           await createProcessConfiguration(auth, t, {
             timeFrame: action.timeFrame,
             // TODO(mcp): Update this to use the correct schema when implemented
-            schema: JSON.parse("{}"),
+            schema: null,
             mcpConfig,  
           });
         }
@@ -1603,7 +1604,7 @@ async function createProcessConfiguration(
     mcpConfig,
   }: {
     timeFrame: RetrievalTimeframe;
-    schema: JSONSchema7;
+    schema: JSONSchema7 | null;
     mcpConfig: AgentMCPServerConfiguration;
   }
 ) {

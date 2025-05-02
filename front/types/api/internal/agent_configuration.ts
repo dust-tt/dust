@@ -146,7 +146,7 @@ const MCPServerActionConfigurationSchema = t.type({
   tables: t.union([t.null, TablesConfigurationsCodec]),
   childAgentId: t.union([t.null, t.string]),
   reasoningModel: t.union([t.null, ReasoningModelConfigurationSchema]),
-  timeRange: t.union([t.literal("none"), t.literal("all"), t.type({
+  timeRange: t.union([t.literal("none"), t.literal("auto"), t.type({
     duration: t.number,
     unit: TimeframeUnitCodec,
   })]),
