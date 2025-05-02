@@ -7,7 +7,6 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
-import type { UserTypeWithWorkspaces } from "@app/types";
 
 import handler, { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "./index";
 
