@@ -244,9 +244,10 @@ export async function syncResultPageDatabaseChildWorkflow({
   await Promise.all(promises);
   promises = [];
 
-  for (const databaseId of databaseIds) {
-    // If we're doing a force resync, then we immediately upsert the database.
-    if (forceResync) {
+  // If we're doing a force resync, then we immediately upsert the databases.
+  // Otherwise, we'll let the database upsert queue workflow handle the upserts.
+  if (forceResync) {
+    for (const databaseId of databaseIds) {
       promises.push(
         upsertDatabaseInCore({
           connectorId,
@@ -257,8 +258,6 @@ export async function syncResultPageDatabaseChildWorkflow({
           forceResync,
         })
       );
-      // Otherwise, we push the database ID to the DB processing queue, which
-      // handles debouncing the DB processing and avoid processing the same DB several times in a day.
     }
   }
 
