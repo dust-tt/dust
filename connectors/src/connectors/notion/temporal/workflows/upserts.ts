@@ -200,11 +200,7 @@ export async function upsertDatabaseInCore({
     const upsertsPromise = performUpserts({
       connectorId,
       pageIds,
-      // we don't upsert any additional databases in this workflow
-      databaseIds: [],
-      // We always upsert all pages of the DB in this workflow, regardless of GC.
-      // If we're in GC, it means the DB is new (so we want to upsert everything anyway)
-      // If we're in incremental sync
+      databaseIds: [], // we don't upsert any additional databases in this workflow
       runTimestamp,
       pageIndex,
       isBatchSync,
