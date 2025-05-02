@@ -8,6 +8,7 @@ import type {
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
 import {
+  emptyArray,
   fetcher,
   getErrorFromResponse,
   useSWRInfiniteWithDefaults,
@@ -40,7 +41,7 @@ export function useAssistantTemplates() {
   );
 
   return {
-    assistantTemplates: useMemo(() => (data ? data.templates : []), [data]),
+    assistantTemplates: data?.templates ?? emptyArray(),
     isAssistantTemplatesLoading: !error && !data,
     isAssistantTemplatesError: error,
     mutateAssistantTemplates: mutate,
@@ -132,10 +133,9 @@ export function useAgentConfigurations({
     });
 
   return {
-    agentConfigurations: useMemo(
-      () => (data ? data.agentConfigurations : []),
-      [data]
-    ),
+    agentConfigurations: data
+      ? data.agentConfigurations
+      : emptyArray<LightAgentConfigurationType>(),
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutate,
@@ -463,7 +463,7 @@ export function useSlackChannelsLinkedWithAgent({
   );
 
   return {
-    slackChannels: useMemo(() => (data ? data.slackChannels : []), [data]),
+    slackChannels: data?.slackChannels ?? emptyArray(),
     slackDataSource: data?.slackDataSource,
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,

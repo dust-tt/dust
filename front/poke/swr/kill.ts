@@ -1,9 +1,10 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
-import { fetcher } from "@app/lib/swr/swr";
+import { fetcher, emptyArray } from "@app/lib/swr/swr";
 import type { GetKillSwitchesResponseBody } from "@app/pages/api/poke/kill";
+
+const EMPTY_ARRAY: GetKillSwitchesResponseBody["killSwitches"] = [];
 
 export function usePokeKillSwitches() {
   const killSwitchesFetcher: Fetcher<GetKillSwitchesResponseBody> = fetcher;
@@ -11,7 +12,7 @@ export function usePokeKillSwitches() {
   const { data, error, mutate } = useSWR("/api/poke/kill", killSwitchesFetcher);
 
   return {
-    killSwitches: useMemo(() => (data ? data.killSwitches : []), [data]),
+    killSwitches: data?.killSwitches ?? emptyArray(),
     isKillSwitchesLoading: !error && !data,
     isKillSwitchesError: error,
     mutateKillSwitches: mutate,
