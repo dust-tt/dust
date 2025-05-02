@@ -328,10 +328,10 @@ export const getInactiveUserUsageData = async (
   const readReplica = getFrontReplicaDbConnection();
   const users = await readReplica.query(
     `
-SELECT DISTINCT u.*
+SELECT DISTINCT u.id, u.name, u.name
 FROM "users" u
 LEFT JOIN "user_messages" um ON u.id = um."userId"
-WHERE u."createdAt" >= $startDate
+WHERE u."createdAt" <= $endDate
 AND NOT EXISTS (
   SELECT 1 
   WHERE um."userId" = u.id
