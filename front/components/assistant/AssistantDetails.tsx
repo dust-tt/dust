@@ -31,7 +31,7 @@ import {
   ValueCard,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
@@ -385,9 +385,9 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
-const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
-  agentConfiguration?.sId as GLOBAL_AGENTS_SID
-);
+  const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
+    agentConfiguration?.sId as GLOBAL_AGENTS_SID
+  );
 
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs =
