@@ -333,7 +333,7 @@ const createTableAndHierarchy = async ({
       tableName: tableInternalId,
       remoteDatabaseTableId: internalTableIdToRemoteTableId(tableInternalId),
       remoteDatabaseSecretId: connector.connectionId,
-      tableDescription: "",
+      tableDescription: table.description ?? "",
       parents: [tableInternalId, schemaInternalId, databaseInternalId],
       parentId: schemaInternalId,
       title: tableName,

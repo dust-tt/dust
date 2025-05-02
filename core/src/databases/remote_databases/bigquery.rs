@@ -15,10 +15,13 @@ use gcp_bigquery_client::{
 };
 use serde_json::Value;
 
-use crate::databases::{
-    database::{QueryDatabaseError, QueryResult, SqlDialect},
-    table::Table,
-    table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
+use crate::{
+    databases::{
+        database::{QueryDatabaseError, QueryResult, SqlDialect},
+        table::Table,
+        table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
+    },
+    search_filter::Filterable,
 };
 
 use super::remote_database::RemoteDatabase;
@@ -68,6 +71,7 @@ impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSc
                         },
                         possible_values: None,
                         non_filterable: None,
+                        description: f.description.clone(),
                     })
                     .collect(),
             )),
@@ -78,6 +82,9 @@ impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSc
 
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 pub const PAGE_SIZE: i32 = 500;
+
+// Must be kept in sync with the tag in connectors.
+pub const USE_METADATA_FOR_DBML_TAG: &str = "bigquery:useMetadataForDBML";
 
 impl BigQueryRemoteDatabase {
     pub fn new(
@@ -378,6 +385,11 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(schemas)
+    }
+    fn should_use_column_description(&self, table: &Table) -> bool {
+        table
+            .get_tags()
+            .contains(&USE_METADATA_FOR_DBML_TAG.to_string())
     }
 }
 
