@@ -3,40 +3,33 @@ import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, vi } from "vitest";
 
 import { FileResource } from "@app/lib/resources/file_resource";
-// Import the handler directly
 import handler from "@app/pages/api/w/[wId]/files/[fileId]/index";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { itInTransaction } from "@app/tests/utils/utils";
 
-// Mock the FileResource methods we need
 vi.mock("@app/lib/resources/file_resource", () => ({
   FileResource: {
     fetchById: vi.fn(),
   },
 }));
 
-// Mock Auth0 and authentication
 vi.mock("@app/lib/api/auth_wrappers", async () => {
   const actual = await vi.importActual("@app/lib/api/auth_wrappers");
   return {
     ...actual,
     withSessionAuthenticationForWorkspace: (handler: any) => {
       return async (req: any, res: any) => {
-        // Extract mock auth from req for testing
         const auth = req.auth;
-        // Pass the mocked session too
         return handler(req, res, auth, { user: { sub: "auth0|test-user-id" } });
       };
     },
   };
 });
 
-// Mock processAndStoreFile
 vi.mock("@app/lib/api/files/upload", () => ({
   processAndStoreFile: vi.fn().mockResolvedValue({ isErr: () => false }),
 }));
 
-// Mock processAndUpsertToDataSource
 vi.mock("@app/lib/api/files/upsert", () => ({
   isFileTypeUpsertableForUseCase: vi.fn().mockReturnValue(true),
   processAndUpsertToDataSource: vi
@@ -44,7 +37,6 @@ vi.mock("@app/lib/api/files/upsert", () => ({
     .mockResolvedValue({ isErr: () => false }),
 }));
 
-// Mock getOrCreateConversationDataSourceFromFile
 vi.mock("@app/lib/api/data_sources", () => ({
   getOrCreateConversationDataSourceFromFile: vi.fn().mockResolvedValue({
     isErr: () => false,
@@ -52,7 +44,6 @@ vi.mock("@app/lib/api/data_sources", () => ({
   }),
 }));
 
-// Setup conversation and space verification mocks
 vi.mock("@app/lib/resources/conversation_resource", () => ({
   ConversationResource: {
     fetchById: vi.fn().mockResolvedValue({ id: "test-conversation-id" }),
@@ -69,7 +60,6 @@ vi.mock("@app/lib/resources/space_resource", () => ({
   },
 }));
 
-// Mock file functionality
 const mockDelete = vi.fn().mockResolvedValue({ isErr: () => false });
 const mockGetSignedUrlForDownload = vi
   .fn()
@@ -81,7 +71,6 @@ const mockGetReadStream = vi.fn().mockReturnValue({
   pipe: vi.fn(),
 });
 
-// Setup the test
 async function setupTest(
   t: Transaction,
   options: {
@@ -100,13 +89,11 @@ async function setupTest(
     conversationId: "test_conversation_id",
   };
 
-  // Create test workspace, user with proper role
   const { req, res, workspace, user } = await createPrivateApiMockRequest({
     role: userRole,
     method: method,
   });
 
-  // Create a mock file directly instead of using the factory
   const mockFile = fileExists
     ? {
         id: "123",
@@ -136,18 +123,15 @@ async function setupTest(
       }
     : null;
 
-  // Mock the fetchById to return our file
   vi.mocked(FileResource.fetchById).mockResolvedValue(
     mockFile as unknown as FileResource
   );
 
-  // Setup request with proper parameter
   req.query = {
     wId: workspace.sId,
     fileId: fileExists ? "test_file_id" : "non-existent-file-id",
   };
 
-  // Create a mock Authenticator
   const auth = {
     isBuilder: vi
       .fn()
@@ -161,7 +145,6 @@ async function setupTest(
     plan: () => ({ isTest: false, isPro: true, isFree: false }),
   };
 
-  // Attach the auth to the request for our mocked wrapper
   req.auth = auth;
 
   return {
