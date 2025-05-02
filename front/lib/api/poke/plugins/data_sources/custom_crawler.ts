@@ -7,7 +7,7 @@ export const customCrawlerPlugin = createPlugin({
   manifest: {
     id: "custom-crawler",
     name: "Custom Crawler",
-    description: "Setup custom crawler to webcrawler data source",
+    description: "Set up a custom crawler for the webcrawler data source",
     resourceTypes: ["data_sources"],
     args: {
       crawler: {
