@@ -140,7 +140,7 @@ export async function performUpserts({
   await Promise.all(promises);
 }
 
-// This function triggers all the necessary child workflows to update a database.
+// This function triggers all the necessary child workflows to upsert a database.
 // Called in:
 // - incremental sync, when the database is reported to have been updated
 // - force resyncs
