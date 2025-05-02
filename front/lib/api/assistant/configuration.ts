@@ -1790,7 +1790,7 @@ export async function getAgentPermissions(
     case "workspace":
       return { canRead: true, canEdit: auth.isBuilder() };
     case "published":
-      return { canRead: true, canEdit: true };
+      return { canRead: true, canEdit: auth.isUser() };
     default:
       assertNever(agentConfiguration.scope);
   }
