@@ -159,7 +159,7 @@ export async function validateHandle({
   };
 }
 
-type NamingScreenProps = {
+type SettingsScreenProps = {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
   baseUrl: string;
@@ -178,7 +178,7 @@ type NamingScreenProps = {
   currentUser: UserType | null;
 };
 
-export default function NamingScreen({
+export default function SettingsScreen({
   owner,
   agentConfigurationId,
   baseUrl,
@@ -193,7 +193,7 @@ export default function NamingScreen({
   slackDataSource,
   setSelectedSlackChannels,
   currentUser,
-}: NamingScreenProps) {
+}: SettingsScreenProps) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);

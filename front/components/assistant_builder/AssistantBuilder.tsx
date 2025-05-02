@@ -35,9 +35,9 @@ import {
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   InstructionScreen,
 } from "@app/components/assistant_builder/InstructionScreen";
-import NamingScreen, {
+import SettingsScreen, {
   validateHandle,
-} from "@app/components/assistant_builder/NamingScreen";
+} from "@app/components/assistant_builder/SettingsScreen";
 import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
 import { SharingButton } from "@app/components/assistant_builder/Sharing";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
@@ -578,7 +578,7 @@ export default function AssistantBuilder({
 
                   case "settings":
                     return (
-                      <NamingScreen
+                      <SettingsScreen
                         agentConfigurationId={agentConfigurationId}
                         baseUrl={baseUrl}
                         owner={owner}
