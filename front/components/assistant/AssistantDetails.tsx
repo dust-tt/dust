@@ -55,7 +55,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder, removeNulls } from "@app/types";
+import { GLOBAL_AGENTS_SID, isBuilder, removeNulls } from "@app/types";
 
 import { AddEditorDropdown } from "../members/AddEditorsDropdown";
 import { MembersList } from "../members/MembersList";
@@ -385,7 +385,15 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
+  const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
+    agentConfiguration?.sId as GLOBAL_AGENTS_SID
+  );
+
   const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const showEditorsTabs =
+    featureFlags.includes("agent_discovery") &&
+    assistantId != null &&
+    !isGlobalAgent;
 
   const updateScope = useCallback(
     async (scope: Exclude<AgentConfigurationScope, "global">) => {
@@ -489,7 +497,7 @@ export function AssistantDetails({
                       icon={BarChartIcon}
                       onClick={() => setSelectedTab("performance")}
                     />
-                    {featureFlags.includes("agent_discovery") && (
+                    {showEditorsTabs && (
                       <TabsTrigger
                         value="editors"
                         label="Editors"
@@ -516,14 +524,13 @@ export function AssistantDetails({
                       owner={owner}
                     />
                   )}
-                  {featureFlags.includes("agent_discovery") &&
-                    selectedTab === "editors" && (
-                      <AssistantDetailsEditors
-                        owner={owner}
-                        user={user}
-                        agentConfiguration={agentConfiguration}
-                      />
-                    )}
+                  {showEditorsTabs && selectedTab === "editors" && (
+                    <AssistantDetailsEditors
+                      owner={owner}
+                      user={user}
+                      agentConfiguration={agentConfiguration}
+                    />
+                  )}
                 </>
               )}
               {isAgentConfigurationError?.error.type ===
