@@ -213,11 +213,10 @@ FormTextArea.displayName = "FormTextArea";
 const FormUpload = React.forwardRef<
   HTMLInputElement,
   Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> & {
-    value?: React.ComponentProps<typeof Input>["value"];
+    value?: File | null;
   }
 >(({ className, value, ...props }, ref) => {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
 
   return (
     <>
@@ -234,12 +233,10 @@ const FormUpload = React.forwardRef<
             ref.current = el;
           }
         }}
-        value={value ?? undefined}
         {...props}
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) {
-            setSelectedFile(file);
             if (props.onChange) {
               const event = {
                 target: {
@@ -255,7 +252,7 @@ const FormUpload = React.forwardRef<
         <Button
           className={className}
           variant="outline"
-          label={selectedFile?.name ?? "Select"}
+          label={value?.name ?? "Select"}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.preventDefault();
             fileInputRef.current?.click();

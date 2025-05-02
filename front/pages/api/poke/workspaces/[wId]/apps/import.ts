@@ -10,7 +10,7 @@ import { importApp } from "@app/lib/utils/apps";
 import { apiError } from "@app/logger/withlogging";
 import type { AppType, WithAPIErrorResponse } from "@app/types";
 
-const AppTypeSchema = t.type({
+export const AppTypeSchema = t.type({
   sId: t.string,
   name: t.string,
   description: t.union([t.string, t.null]),
@@ -51,7 +51,7 @@ const AppTypeSchema = t.type({
   coreSpecifications: t.union([t.record(t.string, t.string), t.undefined]),
 });
 
-const ImportAppBody = t.type({
+export const ImportAppBody = t.type({
   app: AppTypeSchema,
 });
 

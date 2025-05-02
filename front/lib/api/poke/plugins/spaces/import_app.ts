@@ -1,8 +1,11 @@
+import { isLeft } from "fp-ts/lib/Either";
 import { readFileSync } from "fs";
+import * as reporter from "io-ts-reporters";
 
 import { createPlugin } from "@app/lib/api/poke/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApp } from "@app/lib/utils/apps";
+import { ImportAppBody } from "@app/pages/api/poke/workspaces/[wId]/apps/import";
 import { Err, Ok } from "@app/types";
 
 export const importAppPlugin = createPlugin({
@@ -20,9 +23,6 @@ export const importAppPlugin = createPlugin({
     },
   },
   execute: async (auth, space, args) => {
-    const { file } = args;
-    const fileContent = readFileSync(file.filepath, "utf-8");
-    const appData = JSON.parse(fileContent);
     if (!space) {
       return new Err(new Error("Space not found"));
     }
@@ -31,7 +31,19 @@ export const importAppPlugin = createPlugin({
       return new Err(new Error("Space not found"));
     }
 
-    const result = await importApp(auth, spaceResource, appData.app);
+    const { file } = args;
+    const fileContent = readFileSync(file.filepath, "utf-8");
+    const appData = JSON.parse(fileContent);
+    const contentValidation = ImportAppBody.decode(appData);
+
+    if (isLeft(contentValidation)) {
+      const pathError = reporter.formatValidationErrors(contentValidation.left);
+
+      return new Err(new Error(`Invalid content: ${pathError}`));
+    }
+    const { app } = contentValidation.right;
+
+    const result = await importApp(auth, spaceResource, app);
     if (result.isErr()) {
       return new Err(new Error(result.error.message));
     }
