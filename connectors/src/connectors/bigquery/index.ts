@@ -82,7 +82,9 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     }
 
     // We can create the connector.
-    const configBlob = {};
+    const configBlob = {
+      useMetadataForDBML: false,
+    };
     const connector = await ConnectorResource.makeNew(
       "bigquery",
       {

@@ -56,7 +56,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -120,7 +122,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -199,7 +203,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -302,7 +308,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -361,7 +369,9 @@ describe("sync remote databases", async () => {
         dataSourceId: dataSourceConfig.dataSourceId,
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
       },
-      {},
+      {
+        useMetadataForDBML: false,
+      },
       t
     );
 
@@ -397,7 +407,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -530,7 +542,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
