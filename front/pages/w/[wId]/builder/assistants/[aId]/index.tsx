@@ -72,7 +72,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  if (!configuration.canEdit) {
+  if (!configuration.canEdit && !auth.isAdmin()) {
     return {
       notFound: true,
     };

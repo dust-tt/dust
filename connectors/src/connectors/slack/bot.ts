@@ -596,6 +596,45 @@ async function answerMessage(
     .splice(0, 100)
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  // Check if agent is from a restricted space
+  if (!slackConfig.restrictedSpaceAgentsEnabled) {
+    const isRestrictedRes = await isAgentAccessingRestrictedSpace(
+      dustAPI,
+      activeAgentConfigurations,
+      mention.assistantId
+    );
+
+    if (isRestrictedRes.isErr()) {
+      logger.error(
+        {
+          error: isRestrictedRes.error,
+          agentId: mention.assistantId,
+          connectorId: connector.id,
+        },
+        "Error determining if agent is from restricted space"
+      );
+      return isRestrictedRes;
+    }
+
+    // If agent is from a restricted space, we send an error message to Slack
+    if (isRestrictedRes.value) {
+      const errorMsg = new RestrictedSpaceAgentError();
+      const errorBlock = makeErrorBlock(
+        null, // No conversation URL for this error
+        connector.workspaceId,
+        errorMsg.message
+      );
+
+      await slackClient.chat.postMessage({
+        ...errorBlock,
+        channel: slackChannel,
+        thread_ts: slackMessageTs,
+      });
+
+      return new Ok(undefined);
+    }
+  }
+
   const mainMessage = await slackClient.chat.postMessage({
     ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
       assistantName: mention.assistantName,
@@ -993,4 +1032,76 @@ async function makeContentFragments(
   });
 
   return new Ok(allContentFragments);
+}
+
+class RestrictedSpaceAgentError extends Error {
+  constructor() {
+    super(
+      "This agent belongs to a restricted space and cannot be invoked on Slack for this workspace. Contact your workspace administrator if you need access."
+    );
+    this.name = "RestrictedSpaceAgentError";
+  }
+}
+
+async function isAgentAccessingRestrictedSpace(
+  dustAPI: DustAPI,
+  activeAgentConfigurations: LightAgentConfigurationType[],
+  agentId: string
+): Promise<Result<boolean, Error>> {
+  try {
+    const agent = activeAgentConfigurations.find((ac) => ac.sId === agentId);
+    if (!agent) {
+      logger.warn(
+        { agentId },
+        "Agent not found when checking for restricted space"
+      );
+      return new Err(new Error(`Agent ${agentId} not found`));
+    }
+
+    // If the agent has no requestedGroupIds, it's not from a restricted space
+    if (!agent.requestedGroupIds || agent.requestedGroupIds.length === 0) {
+      return new Ok(false);
+    }
+
+    const agentGroupIds = agent.requestedGroupIds.flat();
+
+    const spacesRes = await dustAPI.getSpaces();
+    if (spacesRes.isErr()) {
+      logger.error(
+        { error: spacesRes.error, agentId },
+        "Error fetching spaces when checking for restricted space"
+      );
+      return new Err(
+        new Error(`Error fetching spaces: ${spacesRes.error.message}`)
+      );
+    }
+
+    // Check if any of the agent's group IDs match with groups from restricted spaces
+    const restrictedSpaces = spacesRes.value.filter(
+      (space) => space.isRestricted
+    );
+    const isFromRestrictedSpace = restrictedSpaces.some((space) => {
+      return space.groupIds.some((groupId) => agentGroupIds.includes(groupId));
+    });
+
+    logger.info(
+      {
+        agentId,
+        isRestricted: isFromRestrictedSpace,
+      },
+      "Checked if agent is from restricted space"
+    );
+
+    return new Ok(isFromRestrictedSpace);
+  } catch (error) {
+    logger.error(
+      { error, agentId },
+      "Error checking if agent is from restricted space"
+    );
+    return new Err(
+      new Error(
+        `Error checking if agent ${agentId} is from restricted space: ${error}`
+      )
+    );
+  }
 }

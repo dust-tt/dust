@@ -70,10 +70,7 @@ export default function ProfilePage({
 
             {hasFeature("mcp_actions") && (
               <>
-                <Page.SectionHeader
-                  title="Tools Confirmation Preferences"
-                  description="Manage your tool approbation history per action"
-                />
+                <Page.SectionHeader title="Tools Confirmation Preferences" />
                 <UserToolsTable owner={owner} />
               </>
             )}

@@ -11,14 +11,14 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import type { ModelId } from "@app/types";
+import type { AgentFetchVariant, ModelId } from "@app/types";
 
 export async function fetchAgentProcessActionConfigurations({
   configurationIds,
   variant,
 }: {
   configurationIds: ModelId[];
-  variant: "light" | "full";
+  variant: AgentFetchVariant;
 }): Promise<Map<ModelId, ProcessConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();

@@ -1,4 +1,5 @@
 import { isLeft } from "fp-ts/Either";
+import { escape } from "html-escaper";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -79,15 +80,19 @@ async function handler(
       status_code: 429,
       api_error: {
         type: "rate_limit_error",
-        message: `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access requests per day. Please try again tomorrow.`,
+        message:
+          `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access ` +
+          "requests per day. Please try again tomorrow.",
       },
     });
   }
 
-  const body = `${emailRequester} requests access to the ${featureName} labs feature for workspace <em>${auth.getNonNullableWorkspace().sId}</em>:
+  const body =
+    `${emailRequester} requests access to the ${escape(featureName)} labs feature for ` +
+    `workspace <em>${auth.getNonNullableWorkspace().sId}</em>:
   <br />
   <br />
-  ${emailMessage}`;
+  ${escape(emailMessage)}`;
 
   const result = await sendEmailWithTemplate({
     to: "support@dust.tt",

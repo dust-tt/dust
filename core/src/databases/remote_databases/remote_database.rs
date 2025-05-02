@@ -31,6 +31,9 @@ pub trait RemoteDatabase {
         query: &str,
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError>;
     async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>>;
+    fn should_use_column_description(&self, _table: &Table) -> bool {
+        false
+    }
 }
 
 pub async fn get_remote_database(

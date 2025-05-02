@@ -7,6 +7,7 @@ import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import {
+  emptyArray,
   fetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
@@ -69,7 +70,7 @@ export function useConversations({
   );
 
   return {
-    conversations: useMemo(() => (data ? data.conversations : []), [data]),
+    conversations: data?.conversations ?? emptyArray(),
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
@@ -93,7 +94,7 @@ export function useConversationFeedbacks({
   );
 
   return {
-    feedbacks: useMemo(() => (data ? data.feedbacks : []), [data]),
+    feedbacks: data?.feedbacks ?? emptyArray(),
     isFeedbacksLoading: !error && !data,
     isFeedbacksError: error,
     mutateReactions: mutate,

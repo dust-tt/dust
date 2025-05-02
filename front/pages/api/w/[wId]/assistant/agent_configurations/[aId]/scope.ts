@@ -41,7 +41,7 @@ async function handler(
     "full"
   );
 
-  if (!agent || !agent.canRead) {
+  if (!agent || (!agent.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -65,7 +65,7 @@ async function handler(
         });
       }
 
-      if (!agent.canEdit) {
+      if (!agent.canEdit && !auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -95,22 +95,7 @@ async function handler(
 
       // This won't stay long since Agent Discovery initiative removes the scope
       // endpoint.
-      const groupRes = await GroupResource.fetchByAgentConfiguration(
-        auth,
-        agent
-      );
-
-      if (groupRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "assistant_saving_error",
-            message: `Error fetching group for agent ${agent.sId}: ${groupRes.error}`,
-          },
-        });
-      }
-
-      const group = groupRes.value;
+      const group = await GroupResource.fetchByAgentConfiguration(auth, agent);
 
       const editors = await group.getActiveMembers(auth);
 

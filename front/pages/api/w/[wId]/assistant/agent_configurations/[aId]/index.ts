@@ -38,7 +38,7 @@ async function handler(
     req.query.aId as string,
     "full"
   );
-  if (!agent || !agent.canRead) {
+  if (!agent || (!agent.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -74,7 +74,7 @@ async function handler(
         });
       }
 
-      if (!agent.canEdit) {
+      if (!agent.canEdit && !auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -146,7 +146,7 @@ async function handler(
       });
 
     case "DELETE":
-      if (!agent.canEdit) {
+      if (!agent.canEdit && !auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

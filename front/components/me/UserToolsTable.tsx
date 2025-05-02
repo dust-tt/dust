@@ -117,7 +117,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           <DataTable.MoreButton
             menuItems={[
               {
-                label: "Delete tool approbation history",
+                label: "Delete confirmation preferences",
                 onClick: () => handleDeleteToolMetadata(row.original.id),
                 kind: "item",
               },

@@ -297,6 +297,7 @@ const handleDataSourceWithProvider = async ({
       botEnabled: true,
       whitelistedDomains: undefined,
       autoReadChannelPatterns: [],
+      restrictedSpaceAgentsEnabled: true,
     };
   }
 

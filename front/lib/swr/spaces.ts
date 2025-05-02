@@ -6,6 +6,7 @@ import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
 import {
+  emptyArray,
   fetcher,
   fetcherWithBody,
   getErrorFromResponse,
@@ -58,7 +59,7 @@ export function useSpaces({
   );
 
   return {
-    spaces: useMemo(() => (data ? data.spaces : []), [data]),
+    spaces: data?.spaces ?? emptyArray(),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
@@ -81,7 +82,7 @@ export function useSpacesAsAdmin({
   );
 
   return {
-    spaces: useMemo(() => (data ? data.spaces : []), [data]),
+    spaces: data?.spaces ?? emptyArray(),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,

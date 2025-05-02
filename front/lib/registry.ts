@@ -289,6 +289,21 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
+  "suggest-agent-from-message": {
+    app: {
+      appId: "fcYLVzSHdU",
+      appHash:
+        "b988e0a0b7c347edcfc5f263a0fff591fe4a8cd643ab9480a8bfdd5d79fca6c9",
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "suggest_agents",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
 };
 
 export type DustRegistryActionName = keyof typeof BaseDustProdActionRegistry;

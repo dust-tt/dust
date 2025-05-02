@@ -1,4 +1,5 @@
 import { isLeft } from "fp-ts/lib/Either";
+import { escape } from "html-escaper";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -66,12 +67,12 @@ async function handler(
   const emailRequester = user.email;
   const { emailMessage, mcpServerViewId } = bodyValidation.right;
 
-  const mcpServerViewRes = await MCPServerViewResource.fetchById(
+  const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
     mcpServerViewId
   );
 
-  if (mcpServerViewRes.isErr()) {
+  if (!mcpServerView) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -80,8 +81,6 @@ async function handler(
       },
     });
   }
-
-  const mcpServerView = mcpServerViewRes.value;
 
   if (!mcpServerView.editedByUser?.sId) {
     return apiError(req, res, {
@@ -114,8 +113,9 @@ async function handler(
   }
 
   const body =
-    `${emailRequester} has sent you a request regarding access to actions: ` +
-    emailMessage;
+    `${emailRequester} has sent you a request regarding access to ` +
+    `tools ${mcpServerView.toJSON().server.name}: ` +
+    escape(emailMessage);
 
   const result = await sendEmailWithTemplate({
     to: mcpServerView.editedByUser.email,

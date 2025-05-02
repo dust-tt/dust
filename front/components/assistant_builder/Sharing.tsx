@@ -361,24 +361,13 @@ export function SharingDropdown({
     workspaceId: owner.sId,
   });
 
-  let scopes = Object.entries(SCOPE_INFO).filter(
+  const scopes = Object.entries(SCOPE_INFO).filter(
     ([entryScope]) =>
       entryScope !== "global" &&
+      entryScope !== "hidden" &&
+      entryScope !== "visible" &&
       (isBuilder(owner) || entryScope !== "workspace")
   );
-
-  if (!featureFlags.hasFeature("agent_discovery")) {
-    scopes = scopes.filter(
-      ([entryScope]) => entryScope !== "hidden" && entryScope !== "visible"
-    );
-  } else {
-    scopes = scopes.filter(
-      ([entryScope]) =>
-        entryScope === agentConfiguration?.scope ||
-        entryScope === "hidden" ||
-        entryScope === "visible"
-    );
-  }
 
   const usageText = assistantName
     ? assistantUsageMessage({
@@ -415,7 +404,10 @@ export function SharingDropdown({
         : SCOPE_INFO[requestNewScope].confirmationModalData;
   }
 
-  const allowedToChange = !disabled && agentConfiguration?.canEdit;
+  const allowedToChange =
+    !featureFlags.hasFeature("agent_discovery") &&
+    !disabled &&
+    (agentConfiguration?.canEdit || isAdmin(owner));
 
   return (
     <div>

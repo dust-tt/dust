@@ -13,11 +13,12 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
+  getActiveUserUsageData,
   getAssistantsUsageData,
   getBuildersUsageData,
   getFeedbacksUsageData,
+  getInactiveUserUsageData,
   getMessageUsageData,
-  getUserUsageData,
 } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
 import type { WorkspaceType } from "@app/types";
@@ -72,6 +73,7 @@ import { assertNever } from "@app/types";
  *         description: |
  *           The name of the usage table to retrieve:
  *           - "users": The list of users categorized by their activity level.
+ *           - 'inactive_users': The of users that didn't sent any messages
  *           - "assistant_messages": The list of messages sent by users including the mentioned agents.
  *           - "builders": The list of builders categorized by their activity level.
  *           - "assistants": The list of workspace agents and their corresponding usage.
@@ -258,7 +260,11 @@ async function fetchUsageData({
 }): Promise<Partial<Record<UsageTableType, string>>> {
   switch (table) {
     case "users":
-      return { users: await getUserUsageData(start, end, workspace) };
+      return { users: await getActiveUserUsageData(start, end, workspace) };
+    case "inactive_users":
+      return {
+        inactive_users: await getInactiveUserUsageData(start, end, workspace),
+      };
     case "assistant_messages":
       return {
         assistant_messages: await getMessageUsageData(start, end, workspace),
@@ -274,15 +280,29 @@ async function fetchUsageData({
         feedbacks: await getFeedbacksUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants, feedbacks] =
-        await Promise.all([
-          getUserUsageData(start, end, workspace),
-          getMessageUsageData(start, end, workspace),
-          getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace),
-          getFeedbacksUsageData(start, end, workspace),
-        ]);
-      return { users, assistant_messages, builders, assistants, feedbacks };
+      const [
+        users,
+        inactive_users,
+        assistant_messages,
+        builders,
+        assistants,
+        feedbacks,
+      ] = await Promise.all([
+        getActiveUserUsageData(start, end, workspace),
+        getInactiveUserUsageData(start, end, workspace),
+        getMessageUsageData(start, end, workspace),
+        getBuildersUsageData(start, end, workspace),
+        getAssistantsUsageData(start, end, workspace),
+        getFeedbacksUsageData(start, end, workspace),
+      ]);
+      return {
+        users,
+        inactive_users,
+        assistant_messages,
+        builders,
+        assistants,
+        feedbacks,
+      };
     default:
       return {};
   }

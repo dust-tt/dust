@@ -109,6 +109,10 @@ export const MODEL_PRICING: Record<
     input: 3.0,
     output: 12.0,
   },
+  "o4-mini": {
+    input: 1.1,
+    output: 4.4,
+  },
   "gemini-1.5-pro-latest": {
     input: 3.5,
     output: 10.5,
