@@ -951,36 +951,26 @@ export async function createAgentConfiguration(
           );
           await group.setMembers(auth, editors, { transaction: t });
         } else {
-          const groupRes = await GroupResource.fetchByAgentConfiguration(
+          const group = await GroupResource.fetchByAgentConfiguration(
             auth,
             existingAgent
           );
-          if (groupRes.isOk()) {
-            const group = groupRes.value;
-            const result = await group.addGroupToAgentConfiguration({
-              auth,
-              agentConfiguration: agentConfigurationInstance,
-              transaction: t,
-            });
-            if (result.isErr()) {
-              logger.warn(
-                {
-                  workspaceId: owner.id,
-                  agentConfigurationId: existingAgent.sId,
-                },
-                `Error adding group to agent ${existingAgent.sId}: ${result.error}`
-              );
-            }
-            await group.setMembers(auth, editors, { transaction: t });
-          } else {
-            logger.warn(
+          const result = await group.addGroupToAgentConfiguration({
+            auth,
+            agentConfiguration: agentConfigurationInstance,
+            transaction: t,
+          });
+          if (result.isErr()) {
+            logger.error(
               {
                 workspaceId: owner.id,
                 agentConfigurationId: existingAgent.sId,
               },
-              `Error fetching group for agent ${existingAgent.sId}: ${groupRes.error}`
+              `Error adding group to agent ${existingAgent.sId}: ${result.error}`
             );
+            throw result.error;
           }
+          await group.setMembers(auth, editors, { transaction: t });
         }
       }
 
