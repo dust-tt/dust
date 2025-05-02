@@ -99,6 +99,8 @@ export type AgentModelConfigurationType = {
   responseFormat?: string;
 };
 
+export type AgentFetchVariant = "light" | "full" | "extra_light";
+
 export type LightAgentConfigurationType = {
   id: ModelId;
 

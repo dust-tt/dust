@@ -251,6 +251,11 @@ export async function getConversation(
         required: false,
       },
       {
+        model: Mention,
+        as: "mentions",
+        required: false,
+      },
+      {
         model: AgentMessage,
         as: "agentMessage",
         required: false,
