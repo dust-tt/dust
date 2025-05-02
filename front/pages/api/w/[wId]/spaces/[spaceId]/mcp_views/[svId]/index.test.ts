@@ -84,7 +84,9 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 
       const regularSpace = await SpaceFactory.regular(workspace, t);
 
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const auth = await Authenticator.internalBuilderForWorkspace(
+        workspace.sId
+      );
 
       await FeatureFlagFactory.basic(
         INTERNAL_MCP_SERVERS["authentication_debugger"]
