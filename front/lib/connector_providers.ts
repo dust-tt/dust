@@ -18,6 +18,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
+import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
@@ -328,6 +329,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return BigQueryLogo;
     },
+    optionsComponent: BigQueryUseMetadataForDBMLView,
     isNested: true,
     guideLink: "https://docs.dust.tt/docs/bigquery",
     selectLabel: "Select tables",

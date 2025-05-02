@@ -30,6 +30,7 @@ export async function syncSalesforceConnection(connectorId: ModelId) {
     // Only keep the table name in the remote table id.
     internalTableIdToRemoteTableId: (internalTableId: string) =>
       parseInternalId(internalTableId).tableName ?? internalTableId,
+    tags: [],
   });
 
   await syncSucceeded(connectorId);

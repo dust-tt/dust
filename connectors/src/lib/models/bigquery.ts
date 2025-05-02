@@ -7,6 +7,7 @@ import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model
 export class BigQueryConfigurationModel extends ConnectorBaseModel<BigQueryConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare useMetadataForDBML: boolean;
 }
 BigQueryConfigurationModel.init(
   {
@@ -19,6 +20,11 @@ BigQueryConfigurationModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    useMetadataForDBML: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

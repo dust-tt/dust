@@ -57,6 +57,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     await sync({
       mimeTypes: INTERNAL_MIME_TYPES.SNOWFLAKE,
       connector,
+      tags: [],
     });
 
     // ... and we mark the connector as errored.
@@ -76,6 +77,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
       remoteDBTree: tree,
       mimeTypes: INTERNAL_MIME_TYPES.SNOWFLAKE,
       connector,
+      tags: [],
     });
 
     await syncSucceeded(connectorId);

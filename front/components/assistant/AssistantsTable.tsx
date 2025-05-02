@@ -28,7 +28,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder, pluralize } from "@app/types";
+import { isAdmin, isBuilder, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 type MoreMenuItem = {
@@ -344,6 +344,7 @@ export function AssistantsTable({
                     "data-gtm-label": "assistantEditButton",
                     "data-gtm-location": "assistantDetails",
                     icon: PencilSquareIcon,
+                    disabled: !agentConfiguration.canEdit && !isAdmin(owner),
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
@@ -356,7 +357,7 @@ export function AssistantsTable({
                         }`
                       );
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
                   {
                     label: "Copy agent ID",
@@ -369,7 +370,7 @@ export function AssistantsTable({
                         agentConfiguration.sId
                       );
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
                   {
                     label: "Duplicate (New)",
@@ -382,21 +383,22 @@ export function AssistantsTable({
                         `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
                       );
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
                   {
                     label: "Delete",
                     "data-gtm-label": "assistantDeletionButton",
                     "data-gtm-location": "assistantDetails",
                     icon: TrashIcon,
-                    variant: "warning",
+                    disabled: !agentConfiguration.canEdit && !isAdmin(owner),
+                    variant: "warning" as const,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       setShowDeleteDialog({ open: true, agentConfiguration });
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
-                ]
+                ].filter((item) => !item.disabled)
               : [],
         };
       }),

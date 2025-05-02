@@ -55,7 +55,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID, isBuilder, removeNulls } from "@app/types";
+import { GLOBAL_AGENTS_SID, isAdmin, removeNulls } from "@app/types";
 
 import { AddEditorDropdown } from "../members/AddEditorsDropdown";
 import { MembersList } from "../members/MembersList";
@@ -482,7 +482,7 @@ export function AssistantDetails({
                 <SheetTitle />
               </VisuallyHidden>
               <DescriptionSection />
-              {isBuilder(owner) && (
+              {(agentConfiguration?.canEdit || isAdmin(owner)) && (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
                     <TabsTrigger

@@ -116,6 +116,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
     const allTablesRes = await fetchTables({
       credentials,
       dataset: datasetName,
+      fetchTablesDescription: false,
     });
     if (allTablesRes.isErr()) {
       return new Err(allTablesRes.error);
