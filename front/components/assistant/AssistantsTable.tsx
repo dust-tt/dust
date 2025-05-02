@@ -357,7 +357,7 @@ export function AssistantsTable({
                         }`
                       );
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
                   {
                     label: "Copy agent ID",
@@ -370,7 +370,7 @@ export function AssistantsTable({
                         agentConfiguration.sId
                       );
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
                   {
                     label: "Duplicate (New)",
@@ -383,7 +383,7 @@ export function AssistantsTable({
                         `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
                       );
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
                   {
                     label: "Delete",
@@ -391,12 +391,12 @@ export function AssistantsTable({
                     "data-gtm-location": "assistantDetails",
                     icon: TrashIcon,
                     disabled: !agentConfiguration.canEdit && !isAdmin(owner),
-                    variant: "warning",
+                    variant: "warning" as const,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       setShowDeleteDialog({ open: true, agentConfiguration });
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
                 ].filter((item) => !item.disabled)
               : [],
