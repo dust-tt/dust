@@ -25,7 +25,7 @@ export const customCrawlerPlugin = createPlugin({
 
     return dataSource.connectorProvider === "webcrawler";
   },
-  execute: async (_auth, dataSource, args) => {
+  execute: async (_, dataSource, args) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found"));
     }
