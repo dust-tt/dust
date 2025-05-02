@@ -65,6 +65,10 @@ const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 
+const MAX_TOOL_NAME_LENGTH = 64;
+
+const TOOL_NAME_SEPARATOR = "___";
+
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
   tools: PlatformMCPToolTypeWithStakeLevel[]
@@ -235,18 +239,19 @@ function getPrefixedToolName(
 ): string {
   const slugifiedConfigName = slugify(config.name);
   const slugifiedOriginalName = slugify(originalName);
-  const separator = "___";
-  const MAX_SIZE = 64;
 
-  const prefixedName = `${slugifiedConfigName}${separator}${slugifiedOriginalName}`;
+  const prefixedName = `${slugifiedConfigName}${TOOL_NAME_SEPARATOR}${slugifiedOriginalName}`;
 
   // If the prefixed name is too long, we try to shorten the config name
-  if (prefixedName.length >= MAX_SIZE) {
+  if (prefixedName.length >= MAX_TOOL_NAME_LENGTH) {
     const maxLength =
-      MAX_SIZE - separator.length - slugifiedOriginalName.length - 1;
+      MAX_TOOL_NAME_LENGTH -
+      TOOL_NAME_SEPARATOR.length -
+      slugifiedOriginalName.length -
+      1;
     // with a minimum of 4 characters.
     if (maxLength > 4) {
-      return `${slugifiedConfigName.slice(0, maxLength)}${separator}${slugifiedOriginalName}`;
+      return `${slugifiedConfigName.slice(0, maxLength)}${TOOL_NAME_SEPARATOR}${slugifiedOriginalName}`;
     } else {
       // Otherwise, we just use the original name.
       return slugifiedOriginalName;
