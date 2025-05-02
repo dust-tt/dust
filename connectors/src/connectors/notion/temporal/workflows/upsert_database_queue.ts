@@ -4,7 +4,7 @@ import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import { MAX_CONCURRENT_CHILD_WORKFLOWS } from "@connectors/connectors/notion/temporal/config";
-import { upsertDatabase } from "@connectors/connectors/notion/temporal/workflows/upserts";
+import { upsertDatabaseInCore } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
 
 export type UpsertDatabaseQueueSignal = {
@@ -53,7 +53,7 @@ export async function processDatabaseUpsertQueueWorkflow({
 
   if (notionDatabaseId) {
     // We either haven't processed the DB recently, or we have no trace of ever processing it.
-    await upsertDatabase({
+    await upsertDatabaseInCore({
       connectorId,
       databaseId: notionDatabaseId,
       runTimestamp: Date.now(),
