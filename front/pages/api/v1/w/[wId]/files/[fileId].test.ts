@@ -20,8 +20,8 @@ vi.mock("@app/lib/api/auth_wrappers", async () => {
   const actual = await vi.importActual("@app/lib/api/auth_wrappers");
   return {
     ...actual,
-    withPublicAPIAuthentication: (handler) => {
-      return async (req, res) => {
+    withPublicAPIAuthentication: (handler: any) => {
+      return async (req: any, res: any) => {
         // Extract mock auth from req for testing
         const auth = req.auth;
         return handler(req, res, auth, null);
