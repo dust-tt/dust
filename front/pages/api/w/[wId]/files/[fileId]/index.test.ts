@@ -1,14 +1,31 @@
 import type { RequestMethod } from "node-mocks-http";
+import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, vi } from "vitest";
 
-import { FileResource } from "@app/lib/resources/file_resource";
-import handler from "@app/pages/api/w/[wId]/files/[fileId]/index";
+import { Authenticator } from "@app/lib/auth";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { itInTransaction } from "@app/tests/utils/utils";
+import { FileResource } from "@app/lib/resources/file_resource";
+
+// Import the handler directly
+import handler from "@app/pages/api/w/[wId]/files/[fileId]/index";
+
+// Mock the FileResource methods we need
+vi.mock("@app/lib/resources/file_resource", () => ({
+  FileResource: {
+    fetchById: vi.fn(),
+  },
+}));
 
 // Mock processAndStoreFile
 vi.mock("@app/lib/api/files/upload", () => ({
   processAndStoreFile: vi.fn().mockResolvedValue({ isErr: () => false }),
+}));
+
+// Mock processAndUpsertToDataSource
+vi.mock("@app/lib/api/files/upsert", () => ({
+  isFileTypeUpsertableForUseCase: vi.fn().mockReturnValue(true),
+  processAndUpsertToDataSource: vi.fn().mockResolvedValue({ isErr: () => false }),
 }));
 
 // Mock getOrCreateConversationDataSourceFromFile
@@ -19,87 +36,36 @@ vi.mock("@app/lib/api/data_sources", () => ({
   }),
 }));
 
-// Mock processAndUpsertToDataSource
-vi.mock("@app/lib/api/files/upsert", () => ({
-  isFileTypeUpsertableForUseCase: vi.fn().mockReturnValue(true),
-  processAndUpsertToDataSource: vi
-    .fn()
-    .mockResolvedValue({ isErr: () => false }),
-}));
-
-// Mock conversation and space resources
+// Setup conversation and space verification mocks
 vi.mock("@app/lib/resources/conversation_resource", () => ({
   ConversationResource: {
-    fetchById: vi.fn().mockResolvedValue({
-      id: "test_conversation_id",
-      sId: "test_conversation_id",
-    }),
+    fetchById: vi.fn().mockResolvedValue({ id: "test-conversation-id" }),
     canAccessConversation: vi.fn().mockReturnValue(true),
   },
 }));
 
 vi.mock("@app/lib/resources/space_resource", () => ({
   SpaceResource: {
-    fetchById: vi.fn().mockResolvedValue({
-      id: "test_space_id",
-      sId: "test_space_id",
+    fetchById: vi.fn().mockResolvedValue({ 
+      id: "test-space-id",
       canRead: vi.fn().mockReturnValue(true),
     }),
   },
 }));
 
-// Mock file.delete, getSignedUrlForDownload and file.getReadStream
+// Mock file functionality
 const mockDelete = vi.fn().mockResolvedValue({ isErr: () => false });
-const mockGetSignedUrlForDownload = vi
-  .fn()
-  .mockResolvedValue("http://signed-url.example");
+const mockGetSignedUrlForDownload = vi.fn().mockResolvedValue("http://signed-url.example");
 const mockGetReadStream = vi.fn().mockReturnValue({
-  on: vi.fn().mockImplementation(function (this: any) {
+  on: vi.fn().mockImplementation(function(this: any) {
     return this;
   }),
   pipe: vi.fn(),
 });
 
-// Mock FileResource
-vi.mock("@app/lib/resources/file_resource", async () => {
-  const original = (await vi.importActual(
-    "@app/lib/resources/file_resource"
-  )) as any;
-  return {
-    ...original,
-    FileResource: {
-      ...original.FileResource,
-      fetchById: vi.fn(),
-    },
-  };
-});
-
-// Mock auth object
-vi.mock("@app/lib/api/auth_wrappers", async () => {
-  const actual = (await vi.importActual("@app/lib/api/auth_wrappers")) as any;
-  return {
-    ...actual,
-    withSessionAuthenticationForWorkspace: (handler: any) => {
-      return async (req: any, res: any) => {
-        const auth = {
-          workspace: () => ({
-            id: req.query.wId,
-            sId: req.query.wId,
-          }),
-          getNonNullableWorkspace: () => ({
-            id: req.query.wId,
-            sId: req.query.wId,
-          }),
-          isBuilder: () => req._isBuilder === true,
-          isSystemKey: () => false,
-        };
-        return handler(req, res, auth);
-      };
-    },
-  };
-});
-
+// Setup the test
 async function setupTest(
+  t: Transaction,
   options: {
     userRole?: "admin" | "builder" | "user";
     method?: RequestMethod;
@@ -112,60 +78,64 @@ async function setupTest(
   const method = options.method ?? "GET";
   const fileExists = options.fileExists ?? true;
   const useCase = options.useCase ?? "conversation";
-  const useCaseMetadata = options.useCaseMetadata ?? {
-    conversationId: "test_conversation_id",
-  };
+  const useCaseMetadata = options.useCaseMetadata ?? { conversationId: "test_conversation_id" };
 
+  // Create test workspace, user with proper role
   const { req, res, workspace, user } = await createPrivateApiMockRequest({
     role: userRole,
     method: method,
   });
 
-  // Set builder flag based on role
-  req._isBuilder = userRole === "admin" || userRole === "builder";
-
-  req.query = { wId: workspace.sId, fileId: "test_file_id" };
-
-  if (fileExists) {
-    const mockFile = {
-      id: "123",
-      workspaceId: workspace.id,
+  // Create a mock file directly instead of using the factory
+  const mockFile = fileExists ? {
+    id: "123",
+    sId: "test_file_id",
+    workspaceId: workspace.id,
+    contentType: "application/pdf",
+    fileName: "test.pdf",
+    fileSize: 1024,
+    status: "ready",
+    useCase,
+    useCaseMetadata,
+    isReady: true,
+    isUpsertUseCase: () => false,
+    isSafeToDisplay: () => true,
+    delete: mockDelete,
+    getSignedUrlForDownload: mockGetSignedUrlForDownload,
+    getReadStream: mockGetReadStream,
+    toJSON: () => ({
+      id: "test_file_id",
       sId: "test_file_id",
       contentType: "application/pdf",
       fileName: "test.pdf",
       fileSize: 1024,
       status: "ready",
       useCase,
-      useCaseMetadata,
-      isReady: true,
-      isUpsertUseCase: () => false,
-      isSafeToDisplay: () => true,
-      delete: mockDelete,
-      getSignedUrlForDownload: mockGetSignedUrlForDownload,
-      getReadStream: mockGetReadStream,
-      toJSON: () => ({
-        id: "test_file_id",
-        sId: "test_file_id",
-        contentType: "application/pdf",
-        fileName: "test.pdf",
-        fileSize: 1024,
-        status: "ready",
-        useCase,
-      }),
-    };
+    }),
+  } : null;
+    
+  // Mock the fetchById to return our file
+  vi.mocked(FileResource.fetchById).mockResolvedValue(mockFile as unknown as FileResource);
 
-    vi.mocked(FileResource.fetchById).mockResolvedValue(
-      mockFile as unknown as FileResource
-    );
-  } else {
-    vi.mocked(FileResource.fetchById).mockResolvedValue(null);
-  }
+  // Setup request with proper parameter
+  req.query = { 
+    wId: workspace.sId, 
+    fileId: fileExists ? "test_file_id" : "non-existent-file-id" 
+  };
+
+  // Create authenticator for the test
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
 
   return {
     req,
     res,
     workspace,
     user,
+    file: mockFile,
+    auth
   };
 }
 
@@ -174,31 +144,32 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction("should return 404 for non-existent file", async () => {
-    const { req, res } = await setupTest({ fileExists: false });
+  itInTransaction("should return 404 for non-existent file", async (t) => {
+    const { req, res } = await setupTest(t, { fileExists: false });
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(404);
     expect(res._getJSONData()).toEqual({
       error: {
         type: "file_not_found",
-        message: "Missing fileId query parameter.",
+        message: "File not found.",
       },
     });
   });
 
-  itInTransaction(
-    "should allow any role to view file for GET request",
-    async () => {
-      for (const role of ["admin", "builder", "user"] as const) {
-        const { req, res } = await setupTest({ userRole: role });
-
-        await handler(req, res);
-        expect(res._getStatusCode()).toBe(302); // Redirected to signed URL
-        expect(res._getRedirectUrl()).toBe("http://signed-url.example");
-      }
+  itInTransaction("should allow any role to view file for GET request", async (t) => {
+    for (const role of ["admin", "builder", "user"] as const) {
+      const { req, res } = await setupTest(t, { userRole: role });
+      
+      // Reset for each test
+      mockGetSignedUrlForDownload.mockClear();
+      
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(302); // Should redirect to the signed URL
+      expect(res._getRedirectUrl()).toBe("http://signed-url.example");
+      expect(mockGetSignedUrlForDownload).toHaveBeenCalledTimes(1);
     }
-  );
+  });
 });
 
 describe("POST /api/w/[wId]/files/[fileId]", () => {
@@ -206,32 +177,28 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction("should return 403 when user is not a builder", async () => {
-    const { req, res } = await setupTest({ userRole: "user", method: "POST" });
+  itInTransaction("should return 403 when user is not a builder", async (t) => {
+    const { req, res } = await setupTest(t, { userRole: "user", method: "POST" });
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(403);
     expect(res._getJSONData()).toEqual({
       error: {
         type: "workspace_auth_error",
-        message:
-          "Only users that are `builders` for the current workspace can modify files.",
+        message: "Only users that are `builders` for the current workspace can modify files.",
       },
     });
   });
 
-  itInTransaction("should allow admin to modify file", async () => {
-    const { req, res } = await setupTest({ userRole: "admin", method: "POST" });
+  itInTransaction("should allow admin to modify file", async (t) => {
+    const { req, res } = await setupTest(t, { userRole: "admin", method: "POST" });
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
   });
 
-  itInTransaction("should allow builder to modify file", async () => {
-    const { req, res } = await setupTest({
-      userRole: "builder",
-      method: "POST",
-    });
+  itInTransaction("should allow builder to modify file", async (t) => {
+    const { req, res } = await setupTest(t, { userRole: "builder", method: "POST" });
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -243,39 +210,29 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction("should return 403 when user is not a builder", async () => {
-    const { req, res } = await setupTest({
-      userRole: "user",
-      method: "DELETE",
-    });
+  itInTransaction("should return 403 when user is not a builder", async (t) => {
+    const { req, res } = await setupTest(t, { userRole: "user", method: "DELETE" });
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(403);
     expect(res._getJSONData()).toEqual({
       error: {
         type: "workspace_auth_error",
-        message:
-          "Only users that are `builders` for the current workspace can delete files.",
+        message: "Only users that are `builders` for the current workspace can delete files.",
       },
     });
   });
 
-  itInTransaction("should allow admin to delete file", async () => {
-    const { req, res } = await setupTest({
-      userRole: "admin",
-      method: "DELETE",
-    });
+  itInTransaction("should allow admin to delete file", async (t) => {
+    const { req, res } = await setupTest(t, { userRole: "admin", method: "DELETE" });
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(204);
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
-  itInTransaction("should allow builder to delete file", async () => {
-    const { req, res } = await setupTest({
-      userRole: "builder",
-      method: "DELETE",
-    });
+  itInTransaction("should allow builder to delete file", async (t) => {
+    const { req, res } = await setupTest(t, { userRole: "builder", method: "DELETE" });
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(204);
@@ -284,9 +241,9 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
 });
 
 describe("Method Support /api/w/[wId]/files/[fileId]", () => {
-  itInTransaction("should return 405 for unsupported methods", async () => {
+  itInTransaction("should return 405 for unsupported methods", async (t) => {
     for (const method of ["PUT", "PATCH"] as const) {
-      const { req, res } = await setupTest({ method });
+      const { req, res } = await setupTest(t, { method });
 
       await handler(req, res);
 
