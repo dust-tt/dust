@@ -16,6 +16,22 @@ vi.mock("@app/lib/resources/file_resource", () => ({
   },
 }));
 
+// Mock Auth0 for session auth
+vi.mock("@app/lib/auth", async () => {
+  const actual = await vi.importActual("@app/lib/auth");
+  return {
+    ...actual,
+    getSession: vi.fn().mockResolvedValue({ user: { sub: "auth0|test-user-id" } }),
+    withSessionAuthenticationForWorkspace: (handler) => {
+      return async (req, res) => {
+        // Extract mock auth from req for testing
+        const auth = req.auth;
+        return handler(req, res, auth);
+      };
+    },
+  };
+});
+
 // Mock processAndStoreFile
 vi.mock("@app/lib/api/files/upload", () => ({
   processAndStoreFile: vi.fn().mockResolvedValue({ isErr: () => false }),
@@ -122,11 +138,18 @@ async function setupTest(
     fileId: fileExists ? "test_file_id" : "non-existent-file-id" 
   };
 
-  // Create authenticator for the test
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    workspace.sId
-  );
+  // Create a mock Authenticator
+  const auth = {
+    isBuilder: vi.fn().mockReturnValue(userRole === "admin" || userRole === "builder"),
+    isUser: vi.fn().mockReturnValue(true),
+    isAdmin: vi.fn().mockReturnValue(userRole === "admin"),
+    isSystemKey: vi.fn().mockReturnValue(false),
+    workspace: () => workspace,
+    user: () => user,
+  };
+  
+  // Attach the auth to the request for our mocked wrapper
+  req.auth = auth;
 
   return {
     req,
