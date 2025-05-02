@@ -242,20 +242,9 @@ function getPrefixedToolName(
 
   const prefixedName = `${slugifiedConfigName}${TOOL_NAME_SEPARATOR}${slugifiedOriginalName}`;
 
-  // If the prefixed name is too long, we try to shorten the config name
+  // If the prefixed name is too long, we return the unprefixed original name directly.
   if (prefixedName.length >= MAX_TOOL_NAME_LENGTH) {
-    const maxLength =
-      MAX_TOOL_NAME_LENGTH -
-      TOOL_NAME_SEPARATOR.length -
-      slugifiedOriginalName.length -
-      1;
-    // with a minimum of 4 characters.
-    if (maxLength > 4) {
-      return `${slugifiedConfigName.slice(0, maxLength)}${TOOL_NAME_SEPARATOR}${slugifiedOriginalName}`;
-    } else {
-      // Otherwise, we just use the original name.
-      return slugifiedOriginalName;
-    }
+    return slugifiedOriginalName;
   }
 
   return prefixedName;
