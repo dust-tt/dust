@@ -68,7 +68,7 @@ export async function launchNotionSyncWorkflow(
       },
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: getNotionWorkflowId(connectorId, false),
+    workflowId: getNotionWorkflowId(connectorId, "sync"),
     searchAttributes: {
       connectorId: [connectorId],
     },
@@ -83,7 +83,7 @@ export async function launchNotionSyncWorkflow(
   );
 
   await launchNotionGarbageCollectorWorkflow(connectorId);
-  await launchlprocessDatabaseUpsertQueueWorkflow(connectorId);
+  await launchProcessDatabaseUpsertQueueWorkflow(connectorId);
 }
 
 export async function launchNotionGarbageCollectorWorkflow(
@@ -115,7 +115,7 @@ export async function launchNotionGarbageCollectorWorkflow(
       },
     ],
     taskQueue: GARBAGE_COLLECT_QUEUE_NAME,
-    workflowId: getNotionWorkflowId(connectorId, true),
+    workflowId: getNotionWorkflowId(connectorId, "garbage-collector"),
     searchAttributes: {
       connectorId: [connectorId],
     },
@@ -187,7 +187,7 @@ export async function stopNotionSyncWorkflow(
   );
 
   await stopNotionGarbageCollectorWorkflow(connectorId);
-  await stopprocessDatabaseUpsertQueueWorkflow(connectorId);
+  await stopProcessDatabaseUpsertQueueWorkflow(connectorId);
 }
 
 export async function stopNotionGarbageCollectorWorkflow(
@@ -235,7 +235,7 @@ export async function stopNotionGarbageCollectorWorkflow(
   );
 }
 
-export async function stopprocessDatabaseUpsertQueueWorkflow(
+export async function stopProcessDatabaseUpsertQueueWorkflow(
   connectorId: ModelId
 ): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -243,14 +243,14 @@ export async function stopprocessDatabaseUpsertQueueWorkflow(
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
 
-  const workflow = await getprocessDatabaseUpsertQueueWorkflow(connectorId);
+  const workflow = await getProcessDatabaseUpsertQueueWorkflow(connectorId);
 
   if (!workflow) {
     logger.warn(
       {
         connectorId,
       },
-      "stopprocessDatabaseUpsertQueueWorkflow: Upsert database queue workflow not found."
+      "stopProcessDatabaseUpsertQueueWorkflow: Process database upsert queue workflow not found."
     );
     return;
   }
@@ -262,19 +262,22 @@ export async function stopprocessDatabaseUpsertQueueWorkflow(
       {
         connectorId,
       },
-      "stopprocessDatabaseUpsertQueueWorkflow: Upsert database queue workflow is not running."
+      "stopProcessDatabaseUpsertQueueWorkflow: Process database upsert queue workflow is not running."
     );
     return;
   }
 
   logger.info(
     { connectorId },
-    "Terminating existing Upsert database queue workflow."
+    "Terminating existing Process database upsert queue workflow."
   );
 
   await handle.terminate();
 
-  logger.info({ connectorId }, "Terminated Upsert database queue workflow.");
+  logger.info(
+    { connectorId },
+    "Terminated Process database upsert queue workflow."
+  );
 }
 
 export async function launchUpdateOrphanedResourcesParentsWorkflow(
@@ -282,7 +285,7 @@ export async function launchUpdateOrphanedResourcesParentsWorkflow(
 ) {
   const client = await getTemporalClient();
 
-  const workflowId = `${getNotionWorkflowId(connectorId, false)}-update-orphaned-resources-parents`;
+  const workflowId = `${getNotionWorkflowId(connectorId, "sync")}-update-orphaned-resources-parents`;
 
   await client.workflow.start(updateOrphanedResourcesParentsWorkflow, {
     args: [{ connectorId }],
@@ -297,26 +300,29 @@ export async function launchUpdateOrphanedResourcesParentsWorkflow(
   });
 }
 
-export async function launchlprocessDatabaseUpsertQueueWorkflow(
+export async function launchProcessDatabaseUpsertQueueWorkflow(
   connectorId: ModelId
 ) {
   const client = await getTemporalClient();
 
-  const workflow = await getprocessDatabaseUpsertQueueWorkflow(connectorId);
+  const workflow = await getProcessDatabaseUpsertQueueWorkflow(connectorId);
 
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
     logger.warn(
       {
         connectorId,
       },
-      "launchlprocessDatabaseUpsertQueueWorkflow: Upsert database queue workflow already running."
+      "launchProcessDatabaseUpsertQueueWorkflow: Process database upsert queue workflow already running."
     );
     return;
   }
 
   await client.workflow.start(processDatabaseUpsertQueueWorkflow, {
     args: [{ connectorId }],
-    workflowId: `${getNotionWorkflowId(connectorId, false)}-upsert-database-queue`,
+    workflowId: getNotionWorkflowId(
+      connectorId,
+      "process-database-upsert-queue"
+    ),
     taskQueue: QUEUE_NAME,
     searchAttributes: {
       connectorId: [connectorId],
@@ -325,9 +331,14 @@ export async function launchlprocessDatabaseUpsertQueueWorkflow(
       connectorId,
     },
   });
+
+  logger.info(
+    { connectorId },
+    "launchProcessDatabaseUpsertQueueWorkflow: Started Notion process database upsert queue workflow."
+  );
 }
 
-async function getSyncWorkflow(connectorId: ModelId): Promise<{
+export async function getSyncWorkflow(connectorId: ModelId): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;
 } | null> {
@@ -336,7 +347,7 @@ async function getSyncWorkflow(connectorId: ModelId): Promise<{
   const handle:
     | WorkflowHandle<typeof notionSyncWorkflow>
     | WorkflowHandle<typeof notionGarbageCollectionWorkflow> =
-    client.workflow.getHandle(getNotionWorkflowId(connectorId, false));
+    client.workflow.getHandle(getNotionWorkflowId(connectorId, "sync"));
 
   try {
     return { executionDescription: await handle.describe(), handle };
@@ -348,7 +359,9 @@ async function getSyncWorkflow(connectorId: ModelId): Promise<{
   }
 }
 
-async function getGarbageCollectorWorkflow(connectorId: ModelId): Promise<{
+export async function getGarbageCollectorWorkflow(
+  connectorId: ModelId
+): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;
 } | null> {
@@ -357,7 +370,9 @@ async function getGarbageCollectorWorkflow(connectorId: ModelId): Promise<{
   const handle:
     | WorkflowHandle<typeof notionSyncWorkflow>
     | WorkflowHandle<typeof notionGarbageCollectionWorkflow> =
-    client.workflow.getHandle(getNotionWorkflowId(connectorId, true));
+    client.workflow.getHandle(
+      getNotionWorkflowId(connectorId, "garbage-collector")
+    );
 
   try {
     return { executionDescription: await handle.describe(), handle };
@@ -369,7 +384,7 @@ async function getGarbageCollectorWorkflow(connectorId: ModelId): Promise<{
   }
 }
 
-async function getprocessDatabaseUpsertQueueWorkflow(
+export async function getProcessDatabaseUpsertQueueWorkflow(
   connectorId: ModelId
 ): Promise<{
   executionDescription: WorkflowExecutionDescription;
@@ -379,7 +394,7 @@ async function getprocessDatabaseUpsertQueueWorkflow(
 
   const handle: WorkflowHandle<typeof processDatabaseUpsertQueueWorkflow> =
     client.workflow.getHandle(
-      `${getNotionWorkflowId(connectorId, false)}-upsert-database-queue`
+      getNotionWorkflowId(connectorId, "process-database-upsert-queue")
     );
 
   try {
