@@ -304,6 +304,6 @@ export default function EditDustAssistant({
   );
 }
 
-DustAgentDataSourceVisual.getLayout = (page: React.ReactElement) => {
+EditDustAssistant.getLayout = (page: React.ReactElement) => {
   return <AppRootLayout>{page}</AppRootLayout>;
 };
