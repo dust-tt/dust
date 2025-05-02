@@ -11,10 +11,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import {
-  frontSequelize,
-  getFrontReplicaDbConnection,
-} from "@app/lib/resources/storage";
+import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
   LightAgentConfigurationType,
@@ -328,7 +325,8 @@ export const getInactiveUserUsageData = async (
   /* Fetch users that were created after the startDate
    * and don't have any user_messages in the given period
    */
-  const users = await frontSequelize.query(
+  const readReplica = getFrontReplicaDbConnection();
+  const users = await readReplica.query(
     `
 SELECT DISTINCT u.*
 FROM "users" u
