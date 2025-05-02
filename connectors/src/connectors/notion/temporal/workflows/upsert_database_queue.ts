@@ -27,7 +27,7 @@ const { getNextDatabaseToUpsert } = proxyActivities<typeof activities>({
 // It fetches the next database to upsert, based on the last
 // upserted timestamp, or the last requested upsert timestamp.
 // It allows debouncing multiple requests to upsert the same database.
-export async function upsertDatabaseQueueWorkflow({
+export async function processDatabaseUpsertQueueWorkflow({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -42,7 +42,7 @@ export async function upsertDatabaseQueueWorkflow({
     // found by the full sync via the notion `search` endpoint.
 
     await sleep(60_000 * 5); // 5 minutes
-    await continueAsNew<typeof upsertDatabaseQueueWorkflow>({
+    await continueAsNew<typeof processDatabaseUpsertQueueWorkflow>({
       connectorId,
     });
   }
@@ -67,7 +67,7 @@ export async function upsertDatabaseQueueWorkflow({
     await sleep("5 minutes");
   }
 
-  await continueAsNew<typeof upsertDatabaseQueueWorkflow>({
+  await continueAsNew<typeof processDatabaseUpsertQueueWorkflow>({
     connectorId,
   });
 }
