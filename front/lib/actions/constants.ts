@@ -10,6 +10,8 @@ export const DEFAULT_BROWSE_ACTION_DESCRIPTION =
 
 export const DEFAULT_PROCESS_ACTION_NAME =
   "extract_structured_data_from_data_sources";
+export const DEFAULT_PROCESS_ACTION_DESCRIPTION =
+  "Extract structured data from a data source";
 
 export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
 

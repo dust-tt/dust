@@ -17,6 +17,7 @@ import { fetchTableQueryActionConfigurations } from "@app/lib/actions/configurat
 import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configuration/websearch";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_PROCESS_ACTION_DESCRIPTION,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_REASONING_ACTION_NAME,
@@ -25,7 +26,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
+import type { DataSourceConfiguration, RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
@@ -98,6 +99,7 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import { JSONSchema7 } from "json-schema";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 interface SortStrategy {
@@ -1373,6 +1375,15 @@ export async function createAgentActionConfiguration(
           });
         }
 
+        if (action.timeFrame) {
+          await createProcessConfiguration(auth, t, {
+            timeFrame: action.timeFrame,
+            // TODO(mcp): Update this to use the correct schema when implemented
+            schema: JSON.parse("{}"),
+            mcpConfig,  
+          });
+        }
+
         return new Ok({
           id: mcpConfig.id,
           sId: mcpConfig.sId,
@@ -1384,6 +1395,7 @@ export async function createAgentActionConfiguration(
           tables: action.tables,
           childAgentId: action.childAgentId,
           reasoningModel: action.reasoningModel,
+          timeFrame: action.timeFrame,
           additionalConfiguration: action.additionalConfiguration,
         });
       });
@@ -1577,6 +1589,36 @@ async function createReasoningConfiguration(
       temperature: agentConfiguration.model.temperature,
       reasoningEffort: reasoningModel.reasoningEffort,
       workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    { transaction: t }
+  );
+}
+
+async function createProcessConfiguration(
+  auth: Authenticator,
+  t: Transaction,
+  {
+    timeFrame,
+    schema,
+    mcpConfig,
+  }: {
+    timeFrame: RetrievalTimeframe;
+    schema: JSONSchema7;
+    mcpConfig: AgentMCPServerConfiguration;
+  }
+) {
+  return AgentProcessConfiguration.create(
+    {
+      sId: generateRandomModelSId(),
+      agentConfigurationId: null,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      relativeTimeFrame: typeof timeFrame === "object" ? "custom" : timeFrame,
+      relativeTimeFrameDuration: typeof timeFrame === "object" ? timeFrame.duration : null,
+      relativeTimeFrameUnit: typeof timeFrame === "object" ? timeFrame.unit : null,
+      jsonSchema: schema,
+      name: DEFAULT_PROCESS_ACTION_NAME,
+      description: DEFAULT_PROCESS_ACTION_DESCRIPTION,
+      mcpServerConfigurationId: mcpConfig.id,
     },
     { transaction: t }
   );

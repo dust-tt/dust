@@ -174,11 +174,10 @@ export function generateConfiguredInput({
       }
 
       if (typeof timeFrame === "string") {
-        // If the time frame is a string, we assume it's a number of seconds.
         return {
           value: timeFrame,
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-        }
+        };
       }
 
       return { ...timeFrame, mimeType };
