@@ -11,6 +11,7 @@
     "start:worker": "tsx ./src/start_worker.ts",
     "test": "vitest",
     "test:ci": "vitest --reporter=junit --outputFile=junit.xml --watch=false",
+    "tsc": "tsc",
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh"
