@@ -385,11 +385,9 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
-  const isGlobalAgent = useMemo(() => {
-    return Object.values(GLOBAL_AGENTS_SID).includes(
-      agentConfiguration?.sId as GLOBAL_AGENTS_SID
-    );
-  }, [agentConfiguration?.sId]);
+const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
+  agentConfiguration?.sId as GLOBAL_AGENTS_SID
+);
 
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs =
