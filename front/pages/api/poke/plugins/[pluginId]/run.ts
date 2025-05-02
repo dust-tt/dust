@@ -113,7 +113,10 @@ async function handler(
 
       // Convert fields to a plain object
       const formData = Object.fromEntries([
-        ...Object.entries(fields).map(([key, value]) => [key, value?.[0]]),
+        ...Object.entries(fields).map(([key, value]) => [
+          key,
+          Array.isArray(value) ? value?.[0] : value,
+        ]),
         ...Object.entries(files).map(([key, value]) => [key, value?.[0]]),
       ]);
       const pluginCodec = createIoTsCodecFromArgs(plugin.manifest.args);
