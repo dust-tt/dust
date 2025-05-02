@@ -57,10 +57,16 @@ async function batchRenderUserMessages(
     ),
   ];
 
-  const users =
+  const [mentions, users] = await Promise.all([
+    Mention.findAll({
+      where: {
+        messageId: userMessages.map((m) => m.id),
+      },
+    }),
     userIds.length === 0
       ? []
-      : await UserResource.fetchByModelIds([...new Set(userIds)]);
+      : UserResource.fetchByModelIds([...new Set(userIds)]),
+  ]);
 
   return userMessages.map((message) => {
     if (!message.userMessage) {
@@ -69,7 +75,7 @@ async function batchRenderUserMessages(
       );
     }
     const userMessage = message.userMessage;
-    const messageMentions = message.mentions;
+    const messageMentions = mentions.filter((m) => m.messageId === message.id);
     const user = users.find((u) => u.id === userMessage.userId) || null;
 
     const m = {
@@ -362,11 +368,6 @@ async function fetchMessagesForPage(
       {
         model: UserMessage,
         as: "userMessage",
-        required: false,
-      },
-      {
-        model: Mention,
-        as: "mentions",
         required: false,
       },
       {
