@@ -1,4 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { Notification } from "@modelcontextprotocol/sdk/types.js";
+import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import type { SupportedFileContentType } from "@app/types";
@@ -74,6 +76,27 @@ export function isThinkingOutput(
   return (
     outputBlock.type === "resource" &&
     ThinkingOutputSchema.safeParse(outputBlock.resource).success
+  );
+}
+
+// Final output of the reasoning when successful with the non-CoT tokens.
+
+export const ReasoningSuccessOutputSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.REASONING_SUCCESS),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type ReasoningSuccessOutputType = z.infer<
+  typeof ReasoningSuccessOutputSchema
+>;
+
+export function isReasoningSuccessOutput(
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: ReasoningSuccessOutputType } {
+  return (
+    outputBlock.type === "resource" &&
+    ReasoningSuccessOutputSchema.safeParse(outputBlock.resource).success
   );
 }
 
@@ -158,6 +181,83 @@ export const isSearchResultResourceType = (
   );
 };
 
+// Websearch results.
+
+export const WebsearchQueryResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_QUERY),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type WebsearchQueryResourceType = z.infer<
+  typeof WebsearchQueryResourceSchema
+>;
+
+export const isWebsearchQueryResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is {
+  type: "resource";
+  resource: WebsearchQueryResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    WebsearchQueryResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const WebsearchResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT),
+  title: z.string(),
+  text: z.string(),
+  uri: z.string(),
+  reference: z.string(),
+});
+
+export type WebsearchResultResourceType = z.infer<
+  typeof WebsearchResultResourceSchema
+>;
+
+export const isWebsearchResultResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is {
+  type: "resource";
+  resource: WebsearchResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    WebsearchResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+// Browse results.
+
+export const BrowseResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT),
+  requestedUrl: z.string(),
+  uri: z.string(), // Browsed url, might differ from the requested url
+  text: z.string(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  responseCode: z.string(),
+  errorMessage: z.string().optional(),
+});
+
+export type BrowseResultResourceType = z.infer<
+  typeof BrowseResultResourceSchema
+>;
+
+export const isBrowseResultResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is {
+  type: "resource";
+  resource: BrowseResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    BrowseResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Generic output types and schemas.
 
 const EmbeddedResourceSchema = z.object({
@@ -186,3 +286,45 @@ export type MCPToolResult = {
   isError: boolean;
   content: MCPToolResultContentType[];
 };
+
+/**
+ * Notification output types.
+ */
+
+const NotificationImageContentSchema = z.object({
+  type: z.literal("image"),
+  mimeType: z.string(),
+});
+
+export const ProgressNotificationContentSchema = z.object({
+  // Required for the MCP protocol.
+  progress: z.number(),
+  total: z.number(),
+  progressToken: z.union([z.string(), z.number()]),
+  // Custom data.
+  data: z.object({
+    label: z.string(),
+    output: z
+      .union([NotificationImageContentSchema, TextContentSchema])
+      .optional(),
+  }),
+});
+
+export type ProgressNotificationContentType = z.infer<
+  typeof ProgressNotificationContentSchema
+>;
+
+export const MCPProgressNotificationSchema = NotificationSchema.extend({
+  method: z.literal("notifications/progress"),
+  params: ProgressNotificationContentSchema,
+});
+
+export type MCPProgressNotificationType = z.infer<
+  typeof MCPProgressNotificationSchema
+>;
+
+export function isMCPProgressNotificationType(
+  notification: Notification
+): notification is MCPProgressNotificationType {
+  return MCPProgressNotificationSchema.safeParse(notification).success;
+}

@@ -245,6 +245,10 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     return this.headers;
   }
 
+  async updateCustomCrawler(crawler: WebcrawlerCustomCrawler | null) {
+    return this.update({ customCrawler: crawler });
+  }
+
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await WebCrawlerPage.destroy({
       where: {

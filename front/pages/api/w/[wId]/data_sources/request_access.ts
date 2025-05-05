@@ -1,4 +1,5 @@
 import { isLeft } from "fp-ts/Either";
+import { escape } from "html-escaper";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -6,15 +7,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export const PostRequestAccessBodySchema = t.type({
   emailMessage: t.string,
-  userTo: t.string,
-  dataSourceName: t.string,
+  dataSourceId: t.string,
 });
 
 export type PostRequestAccessBody = t.TypeOf<
@@ -66,16 +66,28 @@ async function handler(
   }
 
   const emailRequester = user.email;
-  const { emailMessage, userTo, dataSourceName } = bodyValidation.right;
+  const { emailMessage, dataSourceId } = bodyValidation.right;
 
-  const userReceipent = await UserResource.fetchById(userTo);
+  const dataSource = await DataSourceResource.fetchById(auth, dataSourceId, {
+    includeEditedBy: true,
+  });
 
-  if (!userReceipent) {
+  if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
+        type: "data_source_not_found",
+        message: "The data source was not found.",
+      },
+    });
+  }
+
+  if (!dataSource.editedByUser?.sId) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
         type: "user_not_found",
-        message: "The user was not found.",
+        message: "No admin user found for this data source",
       },
     });
   }
@@ -93,15 +105,19 @@ async function handler(
       status_code: 429,
       api_error: {
         type: "rate_limit_error",
-        message: `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access requests per day. Please try again tomorrow.`,
+        message:
+          `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access ` +
+          "requests per day. Please try again tomorrow.",
       },
     });
   }
 
-  const body = `${emailRequester} has sent you a request regarding your connection ${dataSourceName}: ${emailMessage}`;
+  const body =
+    `${emailRequester} has sent you a request regarding access to connection ` +
+    `${escape(dataSource.name)}: ${escape(emailMessage)}`;
 
   const result = await sendEmailWithTemplate({
-    to: userReceipent.email,
+    to: dataSource.editedByUser.email,
     from: { name: "Dust team", email: "support@dust.help" },
     subject: `[Dust] Request Data source from ${emailRequester}`,
     body,
@@ -116,7 +132,9 @@ async function handler(
       },
     });
   }
-  return res.status(200).json({ success: true, emailTo: userReceipent.email });
+  return res
+    .status(200)
+    .json({ success: true, emailTo: dataSource.editedByUser.email });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

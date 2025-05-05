@@ -51,6 +51,8 @@ export const ConfigurableToolInputSchemas = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL]: z.object({
     modelId: z.string(),
     providerId: z.string(),
+    temperature: z.number().nullable(),
+    reasoningEffort: z.string().nullable(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
   }),
   // All mime types do not necessarily have a fixed schema,

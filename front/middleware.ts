@@ -9,6 +9,11 @@ import {
 import logger from "@app/logger/logger";
 
 export function middleware(request: NextRequest) {
+  // Block TRACE requests
+  if (request.method === "TRACE") {
+    return new NextResponse(null, { status: 405 });
+  }
+
   const url = request.nextUrl.pathname;
 
   // The CASA test attempts to at least double encode the string to bypass checks hence why we

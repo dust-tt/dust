@@ -1,6 +1,6 @@
+import type { JSONSchema7 } from "json-schema";
 import moment from "moment-timezone";
 import { z } from "zod";
-import type { JSONSchema7 } from "json-schema";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 
@@ -177,6 +177,7 @@ export const supportedOtherFileFormats = {
   "text/x-groovy": [".groovy"],
   "text/x-perl": [".pl", ".pm"],
   "text/x-perl-script": [".pl", ".pm"],
+  "application/octet-stream": [],
 } as const;
 
 // Supported content types for images.
@@ -242,18 +243,19 @@ export function isSupportedImageContentType(
 }
 
 const UserMessageOriginSchema = FlexibleEnumSchema<
+  | "api"
+  | "email"
+  | "extension"
+  | "github-copilot-chat"
+  | "gsheet"
+  | "make"
+  | "mcp"
+  | "n8n"
+  | "raycast"
   | "slack"
   | "web"
-  | "api"
-  | "gsheet"
   | "zapier"
-  | "n8n"
-  | "make"
   | "zendesk"
-  | "raycast"
-  | "github-copilot-chat"
-  | "extension"
-  | "email"
 >()
   .or(z.null())
   .or(z.undefined());
@@ -928,7 +930,7 @@ const AgentConfigurationStatusSchema = z.union([
 ]);
 
 const AgentConfigurationScopeSchema = FlexibleEnumSchema<
-  "global" | "workspace" | "published" | "private"
+  "global" | "workspace" | "published" | "private" | "hidden" | "visible"
 >();
 
 export const AgentConfigurationViewSchema = FlexibleEnumSchema<
@@ -1316,6 +1318,37 @@ const MCPParamsEventSchema = z.object({
   action: MCPActionTypeSchema,
 });
 
+const NotificationImageContentSchema = z.object({
+  type: z.literal("image"),
+  mimeType: z.string(),
+});
+
+const NotificationTextContentSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
+
+const NotificationContentSchema = z.union([
+  NotificationImageContentSchema,
+  NotificationTextContentSchema,
+]);
+
+const MCPNotificationEventSchema = z.object({
+  type: z.literal("tool_notification"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: MCPActionTypeSchema,
+  notification: z.object({
+    progress: z.number(),
+    total: z.number(),
+    data: z.object({
+      label: z.string(),
+      output: NotificationContentSchema.optional(),
+    }),
+  }),
+});
+
 const MCPValidationMetadataSchema = z.object({
   mcpServerName: z.string(),
   toolName: z.string(),
@@ -1365,6 +1398,7 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryStartedEventSchema,
   WebsearchParamsEventSchema,
   MCPParamsEventSchema,
+  MCPNotificationEventSchema,
   MCPApproveExecutionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
@@ -1771,6 +1805,21 @@ const AppTypeSchema = z.object({
 
 export type ApiAppType = z.infer<typeof AppTypeSchema>;
 
+const AppImportTypeSchema = z.object({
+  id: ModelIdSchema.optional(),
+  sId: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  savedSpecification: z.string().nullable(),
+  savedConfig: z.string().nullable(),
+  savedRun: z.string().nullable(),
+  dustAPIProjectId: z.string(),
+  datasets: z.array(DatasetSchema).optional(),
+  coreSpecifications: z.record(z.string()).optional(),
+});
+
+export type ApiAppImportType = z.infer<typeof AppImportTypeSchema>;
+
 export const RunAppResponseSchema = z.object({
   run: RunTypeSchema,
 });
@@ -2102,7 +2151,7 @@ export const GetAppsResponseSchema = z.object({
 });
 
 export const PostAppsRequestSchema = z.object({
-  apps: AppTypeSchema.array(),
+  apps: AppImportTypeSchema.array(),
 });
 
 export type GetAppsResponseType = z.infer<typeof GetAppsResponseSchema>;

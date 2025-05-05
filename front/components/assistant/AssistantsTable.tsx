@@ -4,8 +4,13 @@ import {
   ClipboardIcon,
   Cog6ToothIcon,
   DataTable,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   PencilSquareIcon,
-  Popup,
   SliderToggle,
   Tooltip,
   TrashIcon,
@@ -23,7 +28,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder, pluralize } from "@app/types";
+import { isAdmin, isBuilder, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 type MoreMenuItem = {
@@ -228,22 +233,42 @@ function GlobalAgentAction({
           await handleToggleAgentStatus(agent);
         }}
         selected={agent.status === "active"}
-        disabled={agent.status === "disabled_missing_datasource"}
+        disabled={
+          !isBuilder(owner) || agent.status === "disabled_missing_datasource"
+        }
       />
       <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
-        <Popup
-          show={showDisabledFreeWorkspacePopup === agent.sId}
-          className="absolute bottom-8 right-0"
-          chipLabel={`Free plan`}
-          description={`@${agent.name} is only available on our paid plans.`}
-          buttonLabel="Check Dust plans"
-          buttonClick={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
+        <Dialog
+          open={showDisabledFreeWorkspacePopup === agent.sId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowDisabledFreeWorkspacePopup(null);
+            }
           }}
-          onClose={() => {
-            setShowDisabledFreeWorkspacePopup(null);
-          }}
-        />
+        >
+          <DialogContent size="md">
+            <DialogHeader hideButton={false}>
+              <DialogTitle>Free plan</DialogTitle>
+            </DialogHeader>
+            <DialogContainer>
+              {`@${agent.name} is only available on our paid plans.`}
+            </DialogContainer>
+            <DialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+                onClick: () => setShowDisabledFreeWorkspacePopup(null),
+              }}
+              rightButtonProps={{
+                label: "Check Dust plans",
+                variant: "primary",
+                onClick: () => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                },
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );
@@ -319,6 +344,7 @@ export function AssistantsTable({
                     "data-gtm-label": "assistantEditButton",
                     "data-gtm-location": "assistantDetails",
                     icon: PencilSquareIcon,
+                    disabled: !agentConfiguration.canEdit && !isAdmin(owner),
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
@@ -331,7 +357,7 @@ export function AssistantsTable({
                         }`
                       );
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
                   {
                     label: "Copy agent ID",
@@ -344,7 +370,7 @@ export function AssistantsTable({
                         agentConfiguration.sId
                       );
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
                   {
                     label: "Duplicate (New)",
@@ -357,21 +383,22 @@ export function AssistantsTable({
                         `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
                       );
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
                   {
                     label: "Delete",
                     "data-gtm-label": "assistantDeletionButton",
                     "data-gtm-location": "assistantDetails",
                     icon: TrashIcon,
-                    variant: "warning",
+                    disabled: !agentConfiguration.canEdit && !isAdmin(owner),
+                    variant: "warning" as const,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       setShowDeleteDialog({ open: true, agentConfiguration });
                     },
-                    kind: "item",
+                    kind: "item" as const,
                   },
-                ]
+                ].filter((item) => !item.disabled)
               : [],
         };
       }),

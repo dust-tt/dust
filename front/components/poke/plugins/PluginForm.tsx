@@ -15,6 +15,7 @@ import {
   PokeFormLabel,
   PokeFormMessage,
   PokeFormTextArea,
+  PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
 import {
   PokeSelect,
@@ -145,6 +146,9 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                             </div>
                           </PokeSelectContent>
                         </PokeSelect>
+                      )}
+                      {arg.type === "file" && (
+                        <PokeFormUpload type="file" {...field} />
                       )}
                     </>
                   </PokeFormControl>

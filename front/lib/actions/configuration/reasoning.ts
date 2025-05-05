@@ -3,14 +3,14 @@ import { Op } from "sequelize";
 import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import type { ModelId } from "@app/types";
+import type { AgentFetchVariant, ModelId } from "@app/types";
 
 export async function fetchReasoningActionConfigurations({
   configurationIds,
   variant,
 }: {
   configurationIds: ModelId[];
-  variant: "light" | "full";
+  variant: AgentFetchVariant;
 }): Promise<Map<ModelId, ReasoningConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();

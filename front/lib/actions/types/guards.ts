@@ -13,6 +13,7 @@ import type {
   PlatformMCPServerConfigurationType,
   PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import type {
@@ -119,39 +120,6 @@ export function isMCPActionType(arg: AgentActionType): arg is MCPActionType {
   return arg.type === "tool_action";
 }
 
-export function isMCPActionConfiguration(
-  arg: unknown
-): arg is MCPToolConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "mcp_configuration"
-  );
-}
-
-export function isMCPActionWithDataSource(
-  arg: unknown
-): arg is MCPToolConfigurationType {
-  if (isMCPActionConfiguration(arg)) {
-    return (
-      Object.keys(
-        findMatchingSubSchemas(
-          arg.inputSchema,
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        )
-      ).length > 0
-    );
-  }
-  return false;
-}
-
-export function isPlatformMCPToolConfiguration(
-  action: unknown
-): action is PlatformMCPToolConfigurationType {
-  return isMCPActionConfiguration(action) && "mcpServerViewId" in action;
-}
-
 export function isMCPServerConfiguration(
   arg: unknown
 ): arg is MCPServerConfigurationType {
@@ -167,6 +135,59 @@ export function isPlatformMCPServerConfiguration(
   arg: unknown
 ): arg is PlatformMCPServerConfigurationType {
   return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
+}
+
+export function isMCPConfigurationWithDataSource(
+  arg: unknown
+): arg is PlatformMCPServerConfigurationType {
+  return (
+    isPlatformMCPServerConfiguration(arg) &&
+    !!arg.dataSources &&
+    arg.dataSources.length > 0
+  );
+}
+
+export function isMCPConfigurationWithWebsearch(
+  arg: unknown
+): arg is PlatformMCPServerConfigurationType {
+  const internalWebsearchV2ActionName: InternalMCPServerNameType =
+    "web_search_&_browse_v2";
+
+  return (
+    isPlatformMCPServerConfiguration(arg) &&
+    arg.name === internalWebsearchV2ActionName
+  );
+}
+
+// MCP Tools
+
+export function isMCPActionConfiguration(
+  arg: unknown
+): arg is MCPToolConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "mcp_configuration"
+  );
+}
+
+export function isMCPActionWithDataSource(
+  arg: unknown
+): arg is MCPToolConfigurationType {
+  return (
+    isMCPActionConfiguration(arg) &&
+    !!findMatchingSubSchemas(
+      arg.inputSchema,
+      INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+    )
+  );
+}
+
+export function isPlatformMCPToolConfiguration(
+  action: unknown
+): action is PlatformMCPToolConfigurationType {
+  return isMCPActionConfiguration(action) && "mcpServerViewId" in action;
 }
 
 export function isWebsearchActionType(

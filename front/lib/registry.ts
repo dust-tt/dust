@@ -219,6 +219,20 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
+  "assistant-builder-tags-suggestions": {
+    app: {
+      appId: "7mjFTd4e45",
+      appHash:
+        "430bb302f09d43230f5772f700c7f9823d18be44dd264e002a9d67849ab13d02",
+    },
+    config: {
+      CREATE_SUGGESTIONS: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "send_suggestions",
+        use_cache: false,
+      },
+    },
+  },
   "assistant-builder-process-action-schema-generator": {
     app: {
       appId: "b36c7416bd",
@@ -270,6 +284,21 @@ export const BaseDustProdActionRegistry = {
     config: {
       MODEL: {
         // `provider_id` and `model_id` must be set by caller.
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
+  "suggest-agent-from-message": {
+    app: {
+      appId: "fcYLVzSHdU",
+      appHash:
+        "b988e0a0b7c347edcfc5f263a0fff591fe4a8cd643ab9480a8bfdd5d79fca6c9",
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "suggest_agents",
         use_cache: false,
         use_stream: true,
       },

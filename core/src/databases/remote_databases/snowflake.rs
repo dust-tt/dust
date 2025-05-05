@@ -70,6 +70,7 @@ impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
             value_type: col_type,
             possible_values: None,
             non_filterable: None,
+            description: None,
         })
     }
 }

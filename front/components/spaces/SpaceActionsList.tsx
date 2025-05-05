@@ -100,14 +100,17 @@ export const SpaceActionsList = ({
         id: "actions",
         cell: (info: CellContext<RowData, string>) => (
           <DataTable.MoreButton
-            menuItems={[
-              {
-                label: "Remove tools from space",
-                onClick: async () => onRemoveServer(info.row.original.id),
-                kind: "item",
-                disabled: !isAdmin && space.kind === "global",
-              },
-            ]}
+            menuItems={
+              isAdmin
+                ? [
+                    {
+                      label: "Remove tools from space",
+                      onClick: async () => onRemoveServer(info.row.original.id),
+                      kind: "item",
+                    },
+                  ]
+                : []
+            }
           />
         ),
         meta: {

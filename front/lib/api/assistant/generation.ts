@@ -1,7 +1,8 @@
 import moment from "moment-timezone";
 
 import {
-  isMCPActionWithDataSource,
+  isMCPConfigurationWithDataSource,
+  isMCPConfigurationWithWebsearch,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { isRetrievalConfiguration } from "@app/lib/actions/types/guards";
@@ -27,12 +28,14 @@ export async function constructPromptMultiActions(
     fallbackPrompt,
     model,
     hasAvailableActions,
+    errorContext,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
     fallbackPrompt?: string;
     model: ModelConfigurationType;
     hasAvailableActions: boolean;
+    errorContext?: string;
   }
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
@@ -94,11 +97,19 @@ export async function constructPromptMultiActions(
   // ADDITIONAL INSTRUCTIONS section
   let additionalInstructions = "";
 
+  if (errorContext) {
+    additionalInstructions +=
+      "\nNote: There was an error while building instructions:\n" +
+      errorContext +
+      "\n";
+  }
+
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
       isRetrievalConfiguration(action) ||
       isWebsearchConfiguration(action) ||
-      isMCPActionWithDataSource(action)
+      isMCPConfigurationWithDataSource(action) ||
+      isMCPConfigurationWithWebsearch(action)
   );
 
   if (canRetrieveDocuments) {

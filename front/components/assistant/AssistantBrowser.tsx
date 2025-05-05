@@ -32,7 +32,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isBuilder } from "@app/types";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
@@ -119,30 +119,13 @@ export function AssistantBrowser({
   const agentsByTab = useMemo(() => {
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter((a) => a.status === "active")
-      .filter((a) => {
-        if (selectedTags.length === 0) {
-          return true;
-        }
-        return a.tags.some((t) => selectedTags.includes(t.sId));
-      })
-      .sort((a, b) => {
-        return compareForFuzzySort(
-          "",
-          a.name.toLowerCase(),
-          b.name.toLowerCase()
-        );
-      });
+      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
     return {
       // do not show the "all" tab while still loading all agents
       all: allAgents,
       favorites: allAgents.filter((a) => a.userFavorite),
-      editable_by_me: allAgents.filter(
-        (a) =>
-          isAdmin(owner) ||
-          (a.scope === "published" && isBuilder(owner)) ||
-          a.scope === "private" // TODO: add/replace with editors group check
-      ),
+      editable_by_me: allAgents.filter((a) => a.canEdit),
       most_popular: allAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(
@@ -156,7 +139,7 @@ export function AssistantBrowser({
       workspace: allAgents.filter((a) => a.scope === "workspace"),
       // END-TODO(agent-discovery)
     };
-  }, [agentConfigurations, selectedTags, owner]);
+  }, [agentConfigurations, selectedTags]);
 
   const { filteredAgents, filteredTags, uniqueTags } = useMemo(() => {
     const tags = agentConfigurations.flatMap((a) => a.tags);
@@ -301,7 +284,7 @@ export function AssistantBrowser({
               size="sm"
             />
 
-            {isBuilder(owner) && (
+            {(isBuilder(owner) || hasAgentDiscovery) && (
               <Button
                 tooltip="Manage agents"
                 href={`/w/${owner.sId}/builder/assistants/`}
@@ -336,63 +319,65 @@ export function AssistantBrowser({
         </ScrollArea>
       </div>
 
-      <div className="mb-2 flex flex-wrap gap-2">
-        {uniqueTags.map((tag) => (
-          <Button
-            size="xs"
-            variant={selectedTags.includes(tag.sId) ? "primary" : "outline"}
-            key={tag.sId}
-            label={tag.name}
-            onClick={() => {
-              if (selectedTags.includes(tag.sId)) {
-                setSelectedTags(selectedTags.filter((t) => t !== tag.sId));
-              } else {
-                setSelectedTags([...selectedTags, tag.sId]);
-              }
-            }}
-          />
-        ))}
-      </div>
-
       {viewTab === "all" && hasAgentDiscovery ? (
-        <div className="flex flex-col gap-4">
-          {selectedTags.length === 0 && (
-            <>
-              <span className="heading-base">Most popular</span>
-              <AgentGrid
-                agentConfigurations={agentsByTab.most_popular}
-                handleAssistantClick={handleAssistantClick}
-                handleMoreClick={handleMoreClick}
+        <>
+          <div className="mb-2 flex flex-wrap gap-2">
+            {uniqueTags.map((tag) => (
+              <Button
+                size="xs"
+                variant={selectedTags.includes(tag.sId) ? "primary" : "outline"}
+                key={tag.sId}
+                label={tag.name}
+                onClick={() => {
+                  if (selectedTags.includes(tag.sId)) {
+                    setSelectedTags(selectedTags.filter((t) => t !== tag.sId));
+                  } else {
+                    setSelectedTags([...selectedTags, tag.sId]);
+                  }
+                }}
               />
-            </>
-          )}
-          {uniqueTags
-            .filter(
-              (t) => selectedTags.length === 0 || selectedTags.includes(t.sId)
-            )
-            .map((tag) => (
-              <React.Fragment key={tag.sId}>
-                <span className="heading-base">{tag.name}</span>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-4">
+            {selectedTags.length === 0 && (
+              <>
+                <span className="heading-base">Most popular</span>
                 <AgentGrid
-                  agentConfigurations={agentsByTab.all.filter((a) =>
-                    a.tags.some((t) => t.sId === tag.sId)
-                  )}
+                  agentConfigurations={agentsByTab.most_popular}
+                  handleAssistantClick={handleAssistantClick}
+                  handleMoreClick={handleMoreClick}
+                />
+              </>
+            )}
+            {uniqueTags
+              .filter(
+                (t) => selectedTags.length === 0 || selectedTags.includes(t.sId)
+              )
+              .map((tag) => (
+                <React.Fragment key={tag.sId}>
+                  <span className="heading-base">{tag.name}</span>
+                  <AgentGrid
+                    agentConfigurations={agentsByTab.all.filter((a) =>
+                      a.tags.some((t) => t.sId === tag.sId)
+                    )}
+                    handleAssistantClick={handleAssistantClick}
+                    handleMoreClick={handleMoreClick}
+                  />
+                </React.Fragment>
+              ))}
+            {selectedTags.length === 0 && agentsByTab.untagged.length > 0 && (
+              <React.Fragment>
+                <span className="heading-base">Others</span>
+                <AgentGrid
+                  agentConfigurations={agentsByTab.untagged}
                   handleAssistantClick={handleAssistantClick}
                   handleMoreClick={handleMoreClick}
                 />
               </React.Fragment>
-            ))}
-          {selectedTags.length === 0 && agentsByTab.untagged.length > 0 && (
-            <React.Fragment>
-              <span className="heading-base">Others</span>
-              <AgentGrid
-                agentConfigurations={agentsByTab.untagged}
-                handleAssistantClick={handleAssistantClick}
-                handleMoreClick={handleMoreClick}
-              />
-            </React.Fragment>
-          )}
-        </div>
+            )}
+          </div>
+        </>
       ) : (
         viewTab && (
           <AgentGrid

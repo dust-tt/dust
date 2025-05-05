@@ -75,10 +75,12 @@ import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  AgentFetchVariant,
   AgentModelConfigurationType,
   AgentsGetViewType,
   AgentStatus,
   LightAgentConfigurationType,
+  ModelId,
   Result,
   UserType,
   WorkspaceType,
@@ -87,7 +89,10 @@ import {
   assertNever,
   compareAgentsForSort,
   Err,
+  isAdmin,
+  isBuilder,
   isTimeFrame,
+  isUser,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
   removeNulls,
@@ -95,7 +100,6 @@ import {
 import type { TagType } from "@app/types/tag";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
-
 interface SortStrategy {
   dbOrder: Order | undefined;
   compareFunction: (
@@ -123,7 +127,7 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
 /**
  * Get an agent configuration
  */
-export async function getAgentConfiguration<V extends "light" | "full">(
+export async function getAgentConfiguration<V extends AgentFetchVariant>(
   auth: Authenticator,
   agentId: string,
   variant: V
@@ -230,13 +234,19 @@ async function fetchGlobalAgentConfigurationForView(
   {
     agentPrefix,
     agentsGetView,
+    variant,
   }: {
     agentPrefix?: string;
     agentsGetView: AgentsGetViewType;
+    variant: AgentFetchVariant;
   }
 ) {
   const globalAgentIdsToFetch = determineGlobalAgentIdsToFetch(agentsGetView);
-  const allGlobalAgents = await getGlobalAgents(auth, globalAgentIdsToFetch);
+  const allGlobalAgents = await getGlobalAgents(
+    auth,
+    globalAgentIdsToFetch,
+    variant
+  );
   const matchingGlobalAgents = allGlobalAgents.filter(
     (a) =>
       !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
@@ -271,12 +281,14 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
   {
     agentPrefix,
     agentsGetView,
+    agentIdsForUserAsEditor,
     limit,
     owner,
     sort,
   }: {
     agentPrefix?: string;
     agentsGetView: Exclude<AgentsGetViewType, "global">;
+    agentIdsForUserAsEditor: ModelId[];
     limit?: number;
     owner: WorkspaceType;
     sort?: SortStrategyType;
@@ -338,11 +350,14 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         const maxIds = result.map(
           (entry) => (entry as unknown as { maxId: number }).maxId
         );
+        const filteredIds = maxIds.filter(
+          (id) => agentIdsForUserAsEditor.includes(id) || auth.isAdmin()
+        );
 
         return AgentConfiguration.findAll({
           where: {
             id: {
-              [Op.in]: maxIds,
+              [Op.in]: filteredIds,
             },
             status: "archived",
           },
@@ -352,7 +367,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     case "all":
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
-        where: baseConditionsAndScopesIn(["workspace", "published"]),
+        where: baseConditionsAndScopesIn(["workspace", "published", "visible"]),
       });
 
     case "workspace":
@@ -370,29 +385,21 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     case "list":
     case "manage":
       const user = auth.user();
-
-      const sharedAssistants = await AgentConfiguration.findAll({
+      return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
         where: {
           ...baseWhereConditions,
-          scope: { [Op.in]: ["workspace", "published"] },
+          [Op.or]: [
+            { scope: { [Op.in]: ["workspace", "published", "visible"] } },
+            ...(user
+              ? [
+                  { authorId: user.id, scope: "private" },
+                  { id: { [Op.in]: agentIdsForUserAsEditor }, scope: "hidden" },
+                ]
+              : []),
+          ],
         },
       });
-      if (!user) {
-        return sharedAssistants;
-      }
-
-      const userAssistants = await AgentConfiguration.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: {
-          ...baseWhereConditions,
-          authorId: user.id,
-          scope: "private",
-        },
-      });
-
-      return [...sharedAssistants, ...userAssistants];
-
     case "favorites":
       const userId = auth.user()?.id;
       if (!userId) {
@@ -471,15 +478,29 @@ async function fetchWorkspaceAgentConfigurationsForView(
     agentsGetView: Exclude<AgentsGetViewType, "global">;
     limit?: number;
     sort?: SortStrategyType;
-    variant: "light" | "full";
+    variant: AgentFetchVariant;
   }
 ) {
   const user = auth.user();
+
+  const agentIdsForGroups = user
+    ? await GroupResource.findAgentIdsForGroups(auth, [
+        ...auth
+          .groups()
+          .filter((g) => g.kind === "agent_editors")
+          .map((g) => g.id),
+      ])
+    : [];
+
+  const agentIdsForUserAsEditor = agentIdsForGroups.map(
+    (g) => g.agentConfigurationId
+  );
 
   const agentConfigurations =
     await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
       agentPrefix,
       agentsGetView,
+      agentIdsForUserAsEditor,
       limit,
       owner,
       sort,
@@ -508,10 +529,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchBrowseActionConfigurations({ configurationIds, variant }),
     fetchReasoningActionConfigurations({ configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
-    user
+    user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
-    TagResource.listForAgents(auth, configurationIds),
+    user && variant !== "extra_light"
+      ? TagResource.listForAgents(auth, configurationIds)
+      : Promise.resolve([]),
   ]);
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -604,7 +627,20 @@ async function fetchWorkspaceAgentConfigurationsForView(
       tags: tags
         .map((t) => t.toJSON())
         .sort((a, b) => a.name.localeCompare(b.name)),
+      canRead: false,
+      canEdit: false,
     };
+
+    if (variant !== "extra_light") {
+      const { canRead, canEdit } = await getAgentPermissions(
+        auth,
+        agentConfigurationType,
+        agentIdsForUserAsEditor
+      );
+
+      agentConfigurationType.canRead = canRead;
+      agentConfigurationType.canEdit = canEdit;
+    }
 
     agentConfigurationTypes.push(agentConfigurationType);
   }
@@ -612,7 +648,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
   return agentConfigurationTypes;
 }
 
-export async function getAgentConfigurations<V extends "light" | "full">({
+export async function getAgentConfigurations<V extends AgentFetchVariant>({
   auth,
   agentsGetView,
   agentPrefix,
@@ -652,10 +688,6 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     );
   }
 
-  if (agentsGetView === "archived" && !auth.isAdmin()) {
-    throw new Error("Archived view is for admins only.");
-  }
-
   if (
     !user &&
     (agentsGetView === "list" ||
@@ -671,6 +703,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     const allGlobalAgents = await fetchGlobalAgentConfigurationForView(auth, {
       agentPrefix,
       agentsGetView,
+      variant,
     });
 
     return applySortAndLimit(allGlobalAgents);
@@ -680,6 +713,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     fetchGlobalAgentConfigurationForView(auth, {
       agentPrefix,
       agentsGetView,
+      variant,
     }),
     fetchWorkspaceAgentConfigurationsForView(auth, owner, {
       agentPrefix,
@@ -768,6 +802,7 @@ export async function createAgentConfiguration(
     templateId,
     requestedGroupIds,
     tags,
+    editors,
   }: {
     name: string;
     description: string;
@@ -782,6 +817,7 @@ export async function createAgentConfiguration(
     templateId: string | null;
     requestedGroupIds: number[][];
     tags: TagType[];
+    editors: UserType[];
   },
   transaction?: Transaction
 ): Promise<Result<LightAgentConfigurationType, Error>> {
@@ -909,41 +945,40 @@ export async function createAgentConfiguration(
       }
 
       if (status === "active") {
+        assert(
+          isLegacyAllowed(owner, agentConfigurationInstance.scope) ||
+            editors.some((e) => e.sId === auth.user()?.sId) ||
+            isAdmin(owner),
+          "Unexpected: current user must be in editor group or admin"
+        );
         if (!existingAgent) {
-          await GroupResource.makeNewAgentEditorsGroup(
+          const group = await GroupResource.makeNewAgentEditorsGroup(
             auth,
             agentConfigurationInstance,
             { transaction: t }
           );
+          await group.setMembers(auth, editors, { transaction: t });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration(
             auth,
             existingAgent
           );
-          if (group.isOk()) {
-            const result = await group.value.addGroupToAgentConfiguration({
-              auth,
-              agentConfiguration: agentConfigurationInstance,
-              transaction: t,
-            });
-            if (result.isErr()) {
-              logger.warn(
-                {
-                  workspaceId: owner.id,
-                  agentConfigurationId: existingAgent.sId,
-                },
-                `Error adding group to agent ${existingAgent.sId}: ${result.error}`
-              );
-            }
-          } else {
-            logger.warn(
+          const result = await group.addGroupToAgentConfiguration({
+            auth,
+            agentConfiguration: agentConfigurationInstance,
+            transaction: t,
+          });
+          if (result.isErr()) {
+            logger.error(
               {
                 workspaceId: owner.id,
                 agentConfigurationId: existingAgent.sId,
               },
-              `Error fetching group for agent ${existingAgent.sId}: ${group.error}`
+              `Error adding group to agent ${existingAgent.sId}: ${result.error}`
             );
+            throw result.error;
           }
+          await group.setMembers(auth, editors, { transaction: t });
         }
       }
 
@@ -985,6 +1020,8 @@ export async function createAgentConfiguration(
         )
       ),
       tags,
+      canRead: true,
+      canEdit: true,
     };
 
     await agentConfigurationWasUpdatedBy({
@@ -1277,13 +1314,13 @@ export async function createAgentActionConfiguration(
           auth,
           action.mcpServerViewId
         );
-        if (mcpServerView.isErr()) {
-          return new Err(mcpServerView.error);
+        if (!mcpServerView) {
+          return new Err(new Error("MCP server view not found"));
         }
 
         const {
           server: { name: serverName, description: serverDescription, tools },
-        } = mcpServerView.value.toJSON();
+        } = mcpServerView.toJSON();
 
         const isSingleTool = tools.length === 1;
 
@@ -1292,7 +1329,7 @@ export async function createAgentActionConfiguration(
             sId: generateRandomModelSId(),
             agentConfigurationId: agentConfiguration.id,
             workspaceId: owner.id,
-            mcpServerViewId: mcpServerView.value.id,
+            mcpServerViewId: mcpServerView.id,
             additionalConfiguration: action.additionalConfiguration,
             name: serverName !== action.name ? action.name : null,
             singleToolDescriptionOverride:
@@ -1724,4 +1761,48 @@ export async function updateAgentPermissions(
     // Catch errors thrown from within the transaction
     return new Err(error as Error);
   }
+}
+
+export async function getAgentPermissions(
+  auth: Authenticator,
+  agentConfiguration: LightAgentConfigurationType,
+  memberAgents: ModelId[]
+) {
+  switch (agentConfiguration.scope) {
+    case "global":
+      return { canRead: true, canEdit: false };
+    case "hidden":
+    case "visible":
+      const member = memberAgents.includes(agentConfiguration.id);
+      return {
+        canRead: member || agentConfiguration.scope === "visible",
+        canEdit: member,
+      };
+    case "private":
+      const isAuthor = agentConfiguration.versionAuthorId === auth.user()?.id;
+      return { canRead: isAuthor, canEdit: isAuthor };
+    case "workspace":
+      return { canRead: true, canEdit: auth.isBuilder() };
+    case "published":
+      return { canRead: true, canEdit: auth.isUser() };
+    default:
+      assertNever(agentConfiguration.scope);
+  }
+}
+
+/**
+ * TODO(agent discovery, 2025-04-30): Delete this function when removing scopes
+ * "workspace" and "published"
+ */
+function isLegacyAllowed(
+  owner: WorkspaceType,
+  agentConfigurationScope: AgentConfigurationScope
+): boolean {
+  if (agentConfigurationScope === "workspace" && isBuilder(owner)) {
+    return true;
+  }
+  if (agentConfigurationScope === "published" && isUser(owner)) {
+    return true;
+  }
+  return false;
 }

@@ -16,7 +16,8 @@ import type { InferGetServerSidePropsType } from "next";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
@@ -49,6 +50,7 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     icon: BookOpenIcon,
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
+    onlyAdminCanManage: false,
   },
   {
     id: "salesforce_personal_connections",
@@ -65,7 +67,7 @@ const LABS_CONNECTIONS: LabsConnectionItemType[] = [
     id: "hubspot",
     label: "Hubspot",
     featureFlag: "labs_connection_hubspot",
-    visibleWithoutAccess: true,
+    visibleWithoutAccess: false,
     logo: HubspotLogo,
     description: "Import Hubspot account summaries into Dust.",
     authType: "apiKey",
@@ -142,7 +144,7 @@ export default function LabsTranscriptsIndex({
 
   return (
     <ConversationsNavigationProvider>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Exploratory features"
@@ -172,6 +174,7 @@ export default function LabsTranscriptsIndex({
                       managePath={`/w/${owner.sId}/labs/${item.id}`}
                       owner={owner}
                       canRequestAccess={isAdmin}
+                      canManage={!item.onlyAdminCanManage || isAdmin}
                     />
                   }
                   visual={<Icon visual={item.icon} />}
@@ -231,6 +234,7 @@ export default function LabsTranscriptsIndex({
                                 featureName={`${item.label} connection`}
                                 owner={owner}
                                 canRequestAccess={isAdmin}
+                                canManage={true}
                                 connection={item}
                                 dataSourcesViews={dataSourceViews}
                                 spaces={spaces}
@@ -253,7 +257,11 @@ export default function LabsTranscriptsIndex({
             </ContextItem.List>
           </Page.Layout>
         </Page>
-      </AppLayout>
+      </AppContentLayout>
     </ConversationsNavigationProvider>
   );
 }
+
+LabsTranscriptsIndex.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

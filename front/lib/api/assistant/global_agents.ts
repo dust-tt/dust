@@ -22,6 +22,7 @@ import logger from "@app/logger/logger";
 import type {
   AgentConfigurationStatus,
   AgentConfigurationType,
+  AgentFetchVariant,
   AgentModelConfigurationType,
   ConnectorProvider,
   DataSourceViewType,
@@ -217,6 +218,8 @@ function _getHelperGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -254,6 +257,8 @@ function _getGPT35TurboGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 function _getGPT4GlobalAgent({
@@ -300,6 +305,8 @@ function _getGPT4GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 function _getO3MiniGlobalAgent({
@@ -342,6 +349,8 @@ function _getO3MiniGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 function _getO1GlobalAgent({
@@ -380,6 +389,8 @@ function _getO1GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 function _getO1MiniGlobalAgent({
@@ -418,6 +429,8 @@ function _getO1MiniGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -458,6 +471,8 @@ function _getO1HighReasoningGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -497,6 +512,8 @@ function _getO3GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -530,6 +547,8 @@ function _getClaudeInstantGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -570,6 +589,8 @@ function _getClaude2GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -604,6 +625,8 @@ function _getClaude3HaikuGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -643,6 +666,8 @@ function _getClaude3OpusGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -685,6 +710,8 @@ function _getClaude3GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -727,6 +754,8 @@ function _getClaude3_7GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -770,6 +799,8 @@ function _getMistralLargeGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -813,6 +844,8 @@ function _getMistralMediumGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -850,6 +883,8 @@ function _getMistralSmallGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -892,6 +927,8 @@ function _getGeminiProGlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -932,6 +969,8 @@ function _getDeepSeekR1GlobalAgent({
     templateId: null,
     requestedGroupIds: [],
     tags: [],
+    canRead: true,
+    canEdit: false,
   };
 }
 
@@ -958,7 +997,7 @@ function _getManagedDataSourceAgent(
     description: string;
     instructions: string | null;
     pictureUrl: string;
-    preFetchedDataSources: PrefetchedDataSourcesType;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -975,63 +1014,7 @@ function _getManagedDataSourceAgent(
       }
     : dummyModelConfiguration;
 
-  // Check if deactivated by an admin
-  if (
-    (settings && settings.status === "disabled_by_admin") ||
-    !modelConfiguration
-  ) {
-    return {
-      id: -1,
-      sId: agentId,
-      version: 0,
-      versionCreatedAt: null,
-      versionAuthorId: null,
-      name: name,
-      description,
-      instructions: null,
-      pictureUrl,
-      status: "disabled_by_admin",
-      scope: "global",
-      userFavorite: false,
-      model,
-      actions: [],
-      maxStepsPerRun: 0,
-      visualizationEnabled: false,
-      templateId: null,
-      requestedGroupIds: [],
-      tags: [],
-    };
-  }
-
-  // Check if there's a data source view for this agent
-  const filteredDataSourceViews = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) => dsView.dataSource.connectorProvider === connectorProvider
-  );
-  if (filteredDataSourceViews.length === 0) {
-    return {
-      id: -1,
-      sId: agentId,
-      version: 0,
-      versionCreatedAt: null,
-      versionAuthorId: null,
-      name: name,
-      description,
-      instructions: null,
-      pictureUrl,
-      status: "disabled_missing_datasource",
-      scope: "global",
-      userFavorite: false,
-      model,
-      actions: [],
-      maxStepsPerRun: 0,
-      visualizationEnabled: false,
-      templateId: null,
-      requestedGroupIds: [],
-      tags: [],
-    };
-  }
-
-  return {
+  const agent = {
     id: -1,
     sId: agentId,
     version: 0,
@@ -1041,10 +1024,56 @@ function _getManagedDataSourceAgent(
     description,
     instructions,
     pictureUrl,
-    status: "active",
-    scope: "global",
+    scope: "global" as const,
     userFavorite: false,
     model,
+    visualizationEnabled: false,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+
+  // Check if deactivated by an admin
+  if (
+    (settings && settings.status === "disabled_by_admin") ||
+    !modelConfiguration
+  ) {
+    return {
+      ...agent,
+      status: "disabled_by_admin",
+      maxStepsPerRun: 0,
+      actions: [],
+    };
+  }
+
+  if (!preFetchedDataSources) {
+    return {
+      ...agent,
+      status: "active",
+      actions: [],
+      maxStepsPerRun: 1,
+    };
+  }
+
+  // Check if there's a data source view for this agent
+  const filteredDataSourceViews = preFetchedDataSources.dataSourceViews.filter(
+    (dsView) => dsView.dataSource.connectorProvider === connectorProvider
+  );
+
+  if (filteredDataSourceViews.length === 0) {
+    return {
+      ...agent,
+      status: "disabled_missing_datasource",
+      actions: [],
+      maxStepsPerRun: 0,
+    };
+  }
+
+  return {
+    ...agent,
+    status: "active",
     actions: [
       {
         id: -1,
@@ -1064,10 +1093,6 @@ function _getManagedDataSourceAgent(
       },
     ],
     maxStepsPerRun: 1,
-    visualizationEnabled: false,
-    templateId: null,
-    requestedGroupIds: [],
-    tags: [],
   };
 }
 
@@ -1078,7 +1103,7 @@ function _getGoogleDriveGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: PrefetchedDataSourcesType;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
   }
 ): AgentConfigurationType | null {
   return _getManagedDataSourceAgent(auth, {
@@ -1102,7 +1127,7 @@ function _getSlackGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: PrefetchedDataSourcesType;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -1126,7 +1151,7 @@ function _getGithubGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: PrefetchedDataSourcesType;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -1150,7 +1175,7 @@ function _getNotionGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: PrefetchedDataSourcesType;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -1174,7 +1199,7 @@ function _getIntercomGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: PrefetchedDataSourcesType;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -1198,7 +1223,7 @@ function _getDustGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: PrefetchedDataSourcesType;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -1219,34 +1244,57 @@ function _getDustGlobalAgent(
       }
     : dummyModelConfiguration;
 
+  const instructions = `The agent answers with precision and brevity. It produces short and straight to the point answers. The agent should not provide additional information or content that the user did not ask for. When possible, the agent should answer using a single sentence.
+    # When the user asks a questions to the agent, the agent should analyze the situation as follows.
+    1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the agent's own knowledge), the agent should search in the company's internal data sources to answer the question. Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
+    2. If the users's question requires information that is recent and likely to be found on the public internet, the agent should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
+    3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the agent should both search the internal company data sources and the public internet before answering the user's question.
+    4. If the user's query require neither internal company data or recent public knowledge, the agent is allowed to answer without using any tool.
+    The agent always respects the mardown format and generates spaces to nest content.`;
+
+  const dustAgent = {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.DUST,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name,
+    description,
+    instructions,
+    pictureUrl,
+    scope: "global" as const,
+    userFavorite: false,
+    model,
+    visualizationEnabled: true,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+
   if (
     (settings && settings.status === "disabled_by_admin") ||
     !modelConfiguration
   ) {
     return {
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST,
-      version: 0,
-      versionCreatedAt: null,
-      versionAuthorId: null,
-      name,
-      description,
-      instructions: null,
-      pictureUrl,
+      ...dustAgent,
       status: "disabled_by_admin",
-      scope: "global",
-      userFavorite: false,
-      model,
       actions: [
         ..._getDefaultWebActionsForGlobalAgent({
           agentSid: GLOBAL_AGENTS_SID.DUST,
         }),
       ],
       maxStepsPerRun: 0,
-      visualizationEnabled: true,
-      templateId: null,
-      requestedGroupIds: [],
-      tags: [],
+    };
+  }
+
+  if (!preFetchedDataSources) {
+    return {
+      ...dustAgent,
+      status: "active",
+      actions: [],
+      maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     };
   }
 
@@ -1256,35 +1304,12 @@ function _getDustGlobalAgent(
 
   if (dataSourceViews.length === 0) {
     return {
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST,
-      version: 0,
-      versionCreatedAt: null,
-      versionAuthorId: null,
-      name,
-      description,
-      instructions: null,
-      pictureUrl,
+      ...dustAgent,
       status: "disabled_missing_datasource",
-      scope: "global",
-      userFavorite: false,
-      model,
       actions: [],
       maxStepsPerRun: 0,
-      visualizationEnabled: true,
-      templateId: null,
-      requestedGroupIds: [],
-      tags: [],
     };
   }
-
-  const instructions = `The agent answers with precision and brevity. It produces short and straight to the point answers. The agent should not provide additional information or content that the user did not ask for. When possible, the agent should answer using a single sentence.
-    # When the user asks a questions to the agent, the agent should analyze the situation as follows.
-    1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the agent's own knowledge), the agent should search in the company's internal data sources to answer the question. Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-    2. If the users's question requires information that is recent and likely to be found on the public internet, the agent should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
-    3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the agent should both search the internal company data sources and the public internet before answering the user's question.
-    4. If the user's query require neither internal company data or recent public knowledge, the agent is allowed to answer without using any tool.
-    The agent always respects the mardown format and generates spaces to nest content.`;
 
   // We push one action with all data sources
   const actions: AgentActionConfigurationType[] = [
@@ -1362,32 +1387,17 @@ function _getDustGlobalAgent(
   });
 
   return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST,
-    version: 0,
-    versionCreatedAt: null,
-    versionAuthorId: null,
-    name,
-    description,
-    instructions,
-    pictureUrl,
+    ...dustAgent,
     status: "active",
-    scope: "global",
-    userFavorite: false,
-    model,
     actions,
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
-    visualizationEnabled: true,
-    templateId: null,
-    requestedGroupIds: [],
-    tags: [],
   };
 }
 
 function getGlobalAgent(
   auth: Authenticator,
   sId: string | number,
-  preFetchedDataSources: PrefetchedDataSourcesType,
+  preFetchedDataSources: PrefetchedDataSourcesType | null,
   helperPromptInstance: HelperAssistantPrompt,
   globaAgentSettings: GlobalAgentSettings[]
 ): AgentConfigurationType | null {
@@ -1540,7 +1550,8 @@ const RETIRED_GLOABL_AGENTS_SID = [
 
 export async function getGlobalAgents(
   auth: Authenticator,
-  agentIds?: string[]
+  agentIds?: string[],
+  variant: AgentFetchVariant = "full"
 ): Promise<AgentConfigurationType[]> {
   if (agentIds !== undefined && agentIds.some((sId) => !isGlobalAgentId(sId))) {
     throw new Error("Invalid agentIds.");
@@ -1559,7 +1570,9 @@ export async function getGlobalAgents(
 
   const [preFetchedDataSources, globaAgentSettings, helperPromptInstance] =
     await Promise.all([
-      getDataSourcesAndWorkspaceIdForGlobalAgents(auth),
+      variant === "full"
+        ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
+        : null,
       GlobalAgentSettings.findAll({
         where: { workspaceId: owner.id },
       }),

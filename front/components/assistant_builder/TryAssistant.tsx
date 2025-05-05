@@ -96,6 +96,7 @@ export function usePreviewAssistant({
         visualizationEnabled: builderState.visualizationEnabled,
         templateId: builderState.templateId,
         tags: builderState.tags,
+        editors: builderState.editors,
       },
       agentConfigurationId: null,
       slackData: {
@@ -132,6 +133,7 @@ export function usePreviewAssistant({
     builderState.avatarUrl,
     builderState.generationSettings,
     builderState.actions,
+    builderState.editors,
     builderState.maxStepsPerRun,
     builderState.templateId,
     builderState.visualizationEnabled,

@@ -34,6 +34,10 @@ const whitelistedCommands = [
     command: "clear-parents-last-updated-at",
   },
   {
+    majorCommand: "notion",
+    command: "update-orphaned-resources-parents",
+  },
+  {
     majorCommand: "slack",
     command: "whitelist-bot",
   },
@@ -48,6 +52,10 @@ const whitelistedCommands = [
   {
     majorCommand: "zendesk",
     command: "fetch-ticket",
+  },
+  {
+    majorCommand: "webcrawler",
+    command: "update-crawler",
   },
 ];
 

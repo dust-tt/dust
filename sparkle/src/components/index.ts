@@ -8,6 +8,7 @@ export {
 export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
+export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type {
   ButtonProps,
@@ -87,6 +88,7 @@ export { Hoverable } from "./Hoverable";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export { Input } from "./Input";
+export { InteractiveImage } from "./InteractiveImage";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
@@ -107,7 +109,6 @@ export {
   PopoverRoot,
   PopoverTrigger,
 } from "./Popover";
-export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
@@ -146,6 +147,7 @@ export {
   TooltipRoot,
   TooltipTrigger,
 } from "./Tooltip";
+export { TourGuide } from "./TourGuide";
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
 export { ValueCard } from "./ValueCard";

@@ -21,6 +21,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse_v2",
   "tables_query",
   "think",
+  "ask_agent",
   "reasoning_v2",
 ] as const;
 
@@ -77,6 +78,15 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 7,
     isDefault: false,
     flag: "experimental_mcp_actions",
+    tools_stakes: {
+      get_object_properties: "never_ask",
+      get_objects_by_properties: "low",
+      get_object_by_email: "low",
+      get_object_by_id: "low",
+      count_objects_by_properties: "low",
+      create_object: "high",
+      update_object: "high",
+    },
   },
 
   // Dev
@@ -117,6 +127,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1007,
     isDefault: true,
     flag: "dev_mcp_actions",
+  },
+  ask_agent: {
+    id: 1008,
+    isDefault: false,
+    flag: "experimental_mcp_actions",
   },
 };
 

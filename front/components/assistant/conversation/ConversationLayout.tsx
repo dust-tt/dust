@@ -21,7 +21,7 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -111,7 +111,7 @@ const ConversationLayoutContent = ({
 
   return (
     <InputBarProvider>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         isWideMode
@@ -120,6 +120,7 @@ const ConversationLayoutContent = ({
             ? `Dust - ${conversation?.title}`
             : `Dust - New Conversation`
         }
+        isConversationView
         titleChildren={
           activeConversationId && (
             <ConversationTitle owner={owner} baseUrl={baseUrl} />
@@ -133,6 +134,7 @@ const ConversationLayoutContent = ({
           <>
             <AssistantDetails
               owner={owner}
+              user={user}
               assistantId={assistantSId}
               onClose={() => onOpenChangeAssistantModal(false)}
             />
@@ -150,7 +152,7 @@ const ConversationLayoutContent = ({
             </CoEditionProvider>
           </>
         )}
-      </AppLayout>
+      </AppContentLayout>
     </InputBarProvider>
   );
 };
@@ -179,7 +181,9 @@ function ConversationInnerLayout({
         <ResizablePanel defaultSize={100}>
           <FileDropProvider>
             <GenerationContextProvider>
-              <div className="h-full overflow-y-auto">{children}</div>
+              <div className="h-full overflow-y-auto px-4 sm:px-8">
+                {children}
+              </div>
             </GenerationContextProvider>
           </FileDropProvider>
         </ResizablePanel>

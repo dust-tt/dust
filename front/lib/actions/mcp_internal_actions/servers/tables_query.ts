@@ -336,6 +336,7 @@ function createServer(
           output: sanitizedOutput,
         });
 
+        //TODO(mcp): return the CSV file itself as a MCP resource and let the other side handle it
         // Generate the CSV file.
         const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
           title: queryTitle,
@@ -363,6 +364,7 @@ function createServer(
           },
         });
 
+        //TODO(mcp) probably do the same for the section file
         // Check if we should generate a section JSON file.
         const shouldGenerateSectionFile = results.some((result) =>
           Object.values(result).some(

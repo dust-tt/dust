@@ -75,6 +75,7 @@ export const GithubCommandSchema = t.type({
     t.literal("sync-issue"),
     t.literal("force-daily-code-sync"),
     t.literal("skip-issue"),
+    t.literal("clear-installation-id"),
   ]),
   args: t.record(
     t.string,
@@ -100,6 +101,7 @@ export const NotionCommandSchema = t.type({
     t.literal("stop-all-garbage-collectors"),
     t.literal("update-parents-fields"),
     t.literal("clear-parents-last-updated-at"),
+    t.literal("update-orphaned-resources-parents"),
   ]),
   args: t.record(
     t.string,
@@ -174,7 +176,8 @@ export type BatchCommandType = t.TypeOf<typeof BatchCommandSchema>;
 
 export const WebcrawlerCommandSchema = t.type({
   majorCommand: t.literal("webcrawler"),
-  command: t.literal("start-scheduler"),
+  command: t.union([t.literal("start-scheduler"), t.literal("update-crawler")]),
+  args: t.record(t.string, t.string),
 });
 
 export const BatchAllResponseSchema = t.type({

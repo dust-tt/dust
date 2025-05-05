@@ -469,6 +469,7 @@ impl SalesforceRemoteDatabase {
                     value_type,
                     possible_values: possible_values.flatten(),
                     non_filterable: Some(!filterable),
+                    description: None,
                 })
             })
             .collect::<Result<Vec<_>>>()?;

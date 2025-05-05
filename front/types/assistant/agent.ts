@@ -43,6 +43,8 @@ export const AGENT_CONFIGURATION_SCOPES = [
   "workspace",
   "published",
   "private",
+  "visible",
+  "hidden",
 ] as const;
 export type AgentConfigurationScope =
   (typeof AGENT_CONFIGURATION_SCOPES)[number];
@@ -97,6 +99,8 @@ export type AgentModelConfigurationType = {
   responseFormat?: string;
 };
 
+export type AgentFetchVariant = "light" | "full" | "extra_light";
+
 export type LightAgentConfigurationType = {
   id: ModelId;
 
@@ -142,6 +146,9 @@ export type LightAgentConfigurationType = {
   requestedGroupIds: string[][];
 
   reasoningEffort?: AgentReasoningEffort;
+
+  canRead: boolean;
+  canEdit: boolean;
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {
@@ -164,8 +171,21 @@ export interface TemplateAgentConfigurationType {
   tags: TagType[];
 }
 
+export function isTemplateAgentConfiguration(
+  agentConfiguration:
+    | LightAgentConfigurationType
+    | TemplateAgentConfigurationType
+    | null
+): agentConfiguration is TemplateAgentConfigurationType {
+  return !!(
+    agentConfiguration &&
+    "isTemplate" in agentConfiguration &&
+    agentConfiguration.isTemplate === true
+  );
+}
+
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
-export const MAX_STEPS_USE_PER_RUN_LIMIT = 12;
+export const MAX_STEPS_USE_PER_RUN_LIMIT = 24;
 
 /**
  * Agent events

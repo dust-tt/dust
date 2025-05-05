@@ -21,7 +21,7 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "DELETE"
 ) {
-  const { req, res, workspace } = await createPrivateApiMockRequest({
+  const { req, res, workspace, user } = await createPrivateApiMockRequest({
     role,
     method,
   });
@@ -32,7 +32,7 @@ async function setupTest(
   req.query.wId = workspace.sId;
   req.query.spaceId = space.sId;
 
-  return { req, res, workspace, space };
+  return { req, res, workspace, space, user };
 }
 
 describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
@@ -74,17 +74,24 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
       serverView.sId
     );
 
-    expect(deletedServerView.isErr()).toBe(true);
+    expect(deletedServerView).toBe(null);
   });
 
   itInTransaction(
     "should return 403 when user is not authorized to delete a server view",
     async (t) => {
-      const { req, res, workspace } = await setupTest(t, "admin", "DELETE");
-
-      const regularSpace = await SpaceFactory.regular(workspace, t);
+      const { req, res, workspace, user } = await setupTest(
+        t,
+        "builder",
+        "DELETE"
+      );
 
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const regularSpace = await SpaceFactory.regular(workspace, t);
+      await regularSpace.groups[0].addMember(auth, user.toJSON(), {
+        transaction: t,
+      });
 
       await FeatureFlagFactory.basic(
         INTERNAL_MCP_SERVERS["authentication_debugger"]

@@ -15,6 +15,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
@@ -22,13 +23,13 @@ import type {
   AgentReasoningEffort,
   AppType,
   DataSourceViewSelectionConfigurations,
-  ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   PlanType,
   SubscriptionType,
   SupportedModel,
   TimeframeUnit,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -134,7 +135,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
-  reasoningModel: ModelConfigurationType | null;
+  reasoningModel: ReasoningModelConfiguration | null;
   additionalConfiguration: Record<string, boolean | number | string>;
 };
 
@@ -233,6 +234,7 @@ export type AssistantBuilderState = {
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
+  editors: UserType[];
 };
 
 export type AssistantBuilderInitialState = {
@@ -251,6 +253,7 @@ export type AssistantBuilderInitialState = {
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
+  editors: UserType[];
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
@@ -273,6 +276,7 @@ export function getDefaultAssistantState() {
     visualizationEnabled: true,
     templateId: null,
     tags: [],
+    editors: [],
   } satisfies AssistantBuilderState;
 }
 
@@ -449,7 +453,7 @@ export type AssistantBuilderProps = {
   subscription: SubscriptionType;
 };
 
-export const BUILDER_SCREENS = ["instructions", "actions", "naming"] as const;
+export const BUILDER_SCREENS = ["instructions", "actions", "settings"] as const;
 
 export type BuilderScreen = (typeof BUILDER_SCREENS)[number];
 
@@ -483,9 +487,9 @@ export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
       },
       icon: SquareIcon,
     },
-    naming: {
-      id: "naming",
-      label: "Naming",
+    settings: {
+      id: "settings",
+      label: "Settings",
       dataGtm: {
         label: "assistantNamingButton",
         location: "assistantBuilder",

@@ -70,19 +70,26 @@ pub struct TableSchemaColumn {
     pub possible_values: Option<Vec<String>>,
     // Set to true if this field can't be used in a where clause. False by default
     pub non_filterable: Option<bool>,
+    pub description: Option<String>,
 }
 
 impl TableSchemaColumn {
-    pub fn new(name: &str, field_type: TableSchemaFieldType, non_filterable: Option<bool>) -> Self {
+    pub fn new(
+        name: &str,
+        field_type: TableSchemaFieldType,
+        non_filterable: Option<bool>,
+        description: Option<String>,
+    ) -> Self {
         Self {
             name: name.to_string(),
             value_type: field_type,
             possible_values: None,
             non_filterable,
+            description,
         }
     }
 
-    pub fn render_dbml(&self) -> String {
+    pub fn render_dbml(&self, use_description: bool) -> String {
         let mut dbml = format!("{} {}", self.name, self.value_type);
         if let Some(possible_values) = &self.possible_values {
             if !possible_values.is_empty() {
@@ -94,6 +101,12 @@ impl TableSchemaColumn {
 
         if self.non_filterable.unwrap_or(false) {
             dbml.push_str(" [note: non filterable - this field cannot be used in a where clause]");
+        }
+
+        if use_description {
+            if let Some(description) = &self.description {
+                dbml.push_str(&format!(" [Description: '{}']", description));
+            }
         }
 
         dbml
@@ -228,6 +241,7 @@ impl TableSchema {
                             value_type,
                             possible_values: Some(vec![]),
                             non_filterable: None,
+                            description: None,
                         };
                         Self::accumulate_value(&mut column, v);
                         schema_map.insert(k.clone(), column);
@@ -406,13 +420,18 @@ impl TableSchema {
         Ok(TableSchema(merged_schema))
     }
 
-    pub fn render_dbml(&self, name: &str, description: &str) -> String {
+    pub fn render_dbml(
+        &self,
+        name: &str,
+        description: &str,
+        use_column_description: bool,
+    ) -> String {
         let mut result = format!(
             "Table {} {{\n{}",
             name,
             self.columns()
                 .iter()
-                .map(|c| format!("  {}", c.render_dbml()))
+                .map(|c| format!("  {}", c.render_dbml(use_column_description)))
                 .join("\n")
         );
 
@@ -484,30 +503,35 @@ mod tests {
                 value_type: TableSchemaFieldType::Int,
                 possible_values: Some(vec!["1".to_string(), "2".to_string()]),
                 non_filterable: None,
+                description: None,
             },
             TableSchemaColumn {
                 name: "field2".to_string(),
                 value_type: TableSchemaFieldType::Float,
                 possible_values: Some(vec!["1.2".to_string(), "2.4".to_string()]),
                 non_filterable: None,
+                description: None,
             },
             TableSchemaColumn {
                 name: "field3".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: None,
                 non_filterable: None,
+                description: None,
             },
             TableSchemaColumn {
                 name: "field4".to_string(),
                 value_type: TableSchemaFieldType::Bool,
                 possible_values: Some(vec!["TRUE".to_string(), "FALSE".to_string()]),
                 non_filterable: None,
+                description: None,
             },
             TableSchemaColumn {
                 name: "field5".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: Some(vec!["\"not null anymore\"".to_string()]),
                 non_filterable: None,
+                description: None,
             },
         ]);
 
@@ -690,24 +714,28 @@ mod tests {
                 value_type: TableSchemaFieldType::Int,
                 possible_values: None,
                 non_filterable: None,
+                description: None,
             },
             TableSchemaColumn {
                 name: "field2".to_string(),
                 value_type: TableSchemaFieldType::Float,
                 possible_values: None,
                 non_filterable: None,
+                description: None,
             },
             TableSchemaColumn {
                 name: "field3".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: None,
                 non_filterable: None,
+                description: None,
             },
             TableSchemaColumn {
                 name: "field4".to_string(),
                 value_type: TableSchemaFieldType::Bool,
                 possible_values: None,
                 non_filterable: None,
+                description: None,
             },
         ])
     }
@@ -759,10 +787,12 @@ mod tests {
                     "no_possible_values",
                     TableSchemaFieldType::Text,
                     None,
+                    None,
                 )),
                 Some(TableSchemaColumn::new(
                     "no_possible_values",
                     TableSchemaFieldType::Text,
+                    None,
                     None,
                 )),
                 TableSchemaFieldType::Text,
@@ -896,6 +926,7 @@ mod tests {
                 "2000-01-02 00:00:00".to_string(),
             ]),
             non_filterable: None,
+            description: None,
         }]);
 
         assert_eq!(schema, expected_schema);
@@ -949,6 +980,7 @@ mod tests {
             value_type,
             possible_values: Some(possible_values),
             non_filterable: None,
+            description: None,
         }
     }
 }

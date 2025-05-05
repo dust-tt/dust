@@ -137,12 +137,18 @@ async fn connections_finalize(
         .await
     {
         Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve connection",
+            Some(e),
+        ),
+        Ok(None) => error_response(
             StatusCode::NOT_FOUND,
             "connection_not_found",
             "Requested connection was not found",
-            Some(e),
+            None,
         ),
-        Ok(mut c) => match c
+        Ok(Some(mut c)) => match c
             .finalize(
                 state.clone().store.clone(),
                 &payload.code,
@@ -218,12 +224,18 @@ async fn connections_access_token(
 ) -> (StatusCode, Json<APIResponse>) {
     match state.store.retrieve_connection(&connection_id).await {
         Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve connection",
+            Some(e),
+        ),
+        Ok(None) => error_response(
             StatusCode::NOT_FOUND,
             "connection_not_found",
             "Requested connection was not found",
-            Some(e),
+            None,
         ),
-        Ok(mut c) => match c.access_token(state.clone().store.clone()).await {
+        Ok(Some(mut c)) => match c.access_token(state.clone().store.clone()).await {
             Err(e) => error_response(
                 match e.code {
                     connection::ConnectionErrorCode::TokenRevokedError => StatusCode::UNAUTHORIZED,
@@ -304,12 +316,18 @@ async fn credentials_retrieve(
 ) -> (StatusCode, Json<APIResponse>) {
     match state.store.retrieve_credential(&credential_id).await {
         Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve credentials",
+            Some(e),
+        ),
+        Ok(None) => error_response(
             StatusCode::NOT_FOUND,
             "credential_not_found",
             "Requested credential was not found",
-            Some(e),
+            None,
         ),
-        Ok(c) => match c.unseal_encrypted_content() {
+        Ok(Some(c)) => match c.unseal_encrypted_content() {
             Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",

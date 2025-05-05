@@ -1,3 +1,4 @@
+import { escape } from "html-escaper";
 import type {
   Attributes,
   ModelStatic,
@@ -173,6 +174,10 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   async updateName(firstName: string, lastName: string | null) {
+    firstName = escape(firstName);
+    if (lastName) {
+      lastName = escape(lastName);
+    }
     return this.update({
       firstName,
       lastName,
@@ -185,6 +190,10 @@ export class UserResource extends BaseResource<UserModel> {
     lastName: string | null,
     email: string
   ) {
+    firstName = escape(firstName);
+    if (lastName) {
+      lastName = escape(lastName);
+    }
     const lowerCaseEmail = email.toLowerCase();
     return this.update({
       username,

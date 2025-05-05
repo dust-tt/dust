@@ -3,14 +3,14 @@ import { Op } from "sequelize";
 import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/actions/constants";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
-import type { ModelId } from "@app/types";
+import type { AgentFetchVariant, ModelId } from "@app/types";
 
 export async function fetchBrowseActionConfigurations({
   configurationIds,
   variant,
 }: {
   configurationIds: ModelId[];
-  variant: "light" | "full";
+  variant: AgentFetchVariant;
 }): Promise<Map<ModelId, BrowseConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();

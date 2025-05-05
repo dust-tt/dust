@@ -774,6 +774,7 @@ export async function upsertDataSourceRemoteTable({
   parentId,
   title,
   mimeType,
+  tags,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -786,6 +787,7 @@ export async function upsertDataSourceRemoteTable({
   parentId: string | null;
   title: string;
   mimeType: string;
+  tags?: string[];
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -815,6 +817,7 @@ export async function upsertDataSourceRemoteTable({
     remote_database_secret_id: remoteDatabaseSecretId,
     title: safeSubstring(title, 0, MAX_TITLE_LENGTH),
     mime_type: mimeType,
+    tags: tags,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {

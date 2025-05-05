@@ -17,7 +17,7 @@ import type { UserType, WithAPIErrorResponse } from "@app/types";
 
 // Changed schema to accept optional add/remove lists
 export const PatchAgentEditorsRequestBodySchema = t.intersection([
-  t.type({}), // Ensures it's an object
+  t.type({}),
   t.partial({
     addEditorIds: t.array(t.string),
     removeEditorIds: t.array(t.string),
@@ -36,6 +36,9 @@ export const PatchAgentEditorsRequestBodySchema = t.intersection([
     "Either addEditorIds or removeEditorIds must be provided and contain at least one ID."
   ),
 ]);
+export type PatchAgentEditorsRequestBody = t.TypeOf<
+  typeof PatchAgentEditorsRequestBodySchema
+>;
 
 export interface GetAgentEditorsResponseBody {
   editors: UserType[];

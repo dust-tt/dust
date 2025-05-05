@@ -6,6 +6,7 @@ import type { DataSourceIntegration } from "@app/components/spaces/AddConnection
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
@@ -21,6 +22,7 @@ import type {
   DataSourceViewCategoryWithoutApps,
   DataSourceWithConnectorDetailsType,
   SpaceType,
+  UserType,
 } from "@app/types";
 import {
   CONNECTOR_PROVIDERS,
@@ -38,12 +40,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     systemSpace: SpaceType;
     integrations: DataSourceIntegration[];
     registryApps: ActionApp[] | null;
+    user: UserType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const plan = auth.getNonNullablePlan();
   const isAdmin = auth.isAdmin();
+  const user = auth.getNonNullableUser();
 
   const { category, setupWithSuffixConnector, setupWithSuffixSuffix, spaceId } =
     context.query;
@@ -144,6 +148,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       isAdmin,
       isBuilder,
       owner,
+      user: user.toJSON(),
       plan,
       registryApps,
       space: space.toJSON(),
@@ -158,6 +163,7 @@ export default function Space({
   isAdmin,
   canWriteInSpace,
   owner,
+  user,
   plan,
   space,
   systemSpace,
@@ -168,6 +174,7 @@ export default function Space({
   return (
     <SpaceResourcesList
       owner={owner}
+      user={user}
       plan={plan}
       space={space}
       systemSpace={systemSpace}
@@ -186,8 +193,10 @@ export default function Space({
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
   return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch>
-      {page}
-    </SpaceLayout>
+    <AppRootLayout>
+      <SpaceLayout pageProps={pageProps} useBackendSearch>
+        {page}
+      </SpaceLayout>
+    </AppRootLayout>
   );
 };

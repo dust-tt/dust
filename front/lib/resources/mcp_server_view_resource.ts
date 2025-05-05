@@ -192,11 +192,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   private static async baseFetch(
     auth: Authenticator,
-    { where }: ResourceFindOptions<MCPServerViewModel> = {}
+    options: ResourceFindOptions<MCPServerViewModel> = {}
   ) {
     const views = await this.baseFetchWithAuthorization(auth, {
-      where,
+      ...options,
+      where: {
+        ...options.where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       includes: [
+        ...(options.includes || []),
         {
           model: UserModel,
           as: "editedByUser",
@@ -221,44 +226,32 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   static async fetchById(
     auth: Authenticator,
-    id: string
-  ): Promise<Result<MCPServerViewResource, DustError>> {
-    const viewRes = await this.fetchByIds(auth, [id]);
+    id: string,
+    options?: ResourceFindOptions<MCPServerViewModel>
+  ): Promise<MCPServerViewResource | null> {
+    const [mcpServerView] = await this.fetchByIds(auth, [id], options);
 
-    if (viewRes.isErr()) {
-      return viewRes;
-    }
-
-    return new Ok(viewRes.value[0]);
+    return mcpServerView ?? null;
   }
 
   static async fetchByIds(
     auth: Authenticator,
-    ids: string[]
-  ): Promise<Result<MCPServerViewResource[], DustError>> {
+    ids: string[],
+    options?: ResourceFindOptions<MCPServerViewModel>
+  ): Promise<MCPServerViewResource[]> {
     const viewModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
-    if (viewModelIds.length !== ids.length) {
-      return new Err(new DustError("invalid_id", "Invalid id"));
-    }
 
     const views = await this.baseFetch(auth, {
+      ...options,
       where: {
+        ...options?.where,
         id: {
           [Op.in]: viewModelIds,
         },
       },
     });
 
-    if (views.length !== ids.length) {
-      return new Err(
-        new DustError(
-          "resource_not_found",
-          ids.length === 1 ? "View not found" : "Some views were not found"
-        )
-      );
-    }
-
-    return new Ok(views);
+    return views ?? [];
   }
 
   static async fetchByModelPk(auth: Authenticator, id: ModelId) {
@@ -288,14 +281,21 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   static async listByWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    options?: ResourceFindOptions<MCPServerViewModel>
   ): Promise<MCPServerViewResource[]> {
-    return this.baseFetch(auth);
+    return this.baseFetch(auth, options);
   }
 
-  static async listBySpaces(auth: Authenticator, spaces: SpaceResource[]) {
+  static async listBySpaces(
+    auth: Authenticator,
+    spaces: SpaceResource[],
+    options?: ResourceFindOptions<MCPServerViewModel>
+  ): Promise<MCPServerViewResource[]> {
     return this.baseFetch(auth, {
+      ...options,
       where: {
+        ...options?.where,
         workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: spaces.map((s) => s.id),
       },
@@ -304,9 +304,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   static async listBySpace(
     auth: Authenticator,
-    space: SpaceResource
+    space: SpaceResource,
+    options?: ResourceFindOptions<MCPServerViewModel>
   ): Promise<MCPServerViewResource[]> {
-    return this.listBySpaces(auth, [space]);
+    return this.listBySpaces(auth, [space], options);
   }
 
   static async countBySpace(

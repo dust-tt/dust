@@ -28,7 +28,7 @@ jobs:
         run: npm install && npm run build
       - name: Typecheck and Lint
         working-directory: front
-        run: npm install && npm run tsc && npm run lint && npm run format:check && npm run docs:check
+        run: npm ci && npx tsc --version && npm run tsc && npm run lint && npm run format:check && npm run docs:check
       - name: Install Redis
         uses: chenjuneking/redis-setup-action@v1
         with:

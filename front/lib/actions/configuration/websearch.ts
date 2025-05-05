@@ -3,14 +3,14 @@ import { Op } from "sequelize";
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
-import type { ModelId } from "@app/types";
+import type { AgentFetchVariant, ModelId } from "@app/types";
 
 export async function fetchWebsearchActionConfigurations({
   configurationIds,
   variant,
 }: {
   configurationIds: ModelId[];
-  variant: "light" | "full";
+  variant: AgentFetchVariant;
 }): Promise<Map<ModelId, WebsearchConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();

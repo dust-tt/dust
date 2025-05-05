@@ -43,9 +43,12 @@ async function handler(
 
   switch (req.method) {
     case "DELETE": {
-      const r = await MCPServerViewResource.fetchById(auth, serverViewId);
+      const mcpServerView = await MCPServerViewResource.fetchById(
+        auth,
+        serverViewId
+      );
 
-      if (r.isErr()) {
+      if (!mcpServerView) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -55,7 +58,7 @@ async function handler(
         });
       }
 
-      if (r.value.space.id !== space.id) {
+      if (mcpServerView.space.id !== space.id) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -77,7 +80,7 @@ async function handler(
         });
       }
 
-      if (!space.canWrite(auth)) {
+      if (!auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -86,7 +89,7 @@ async function handler(
           },
         });
       }
-      await r.value.delete(auth, { hardDelete: true });
+      await mcpServerView.delete(auth, { hardDelete: true });
 
       return res.status(200).json({
         deleted: true,

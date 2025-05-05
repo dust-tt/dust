@@ -22,6 +22,7 @@ import type {
   APIErrorWithStatusCode,
   LightWorkspaceType,
   MembershipInvitationType,
+  ModelId,
   Result,
   SubscriptionType,
   UserType,
@@ -35,14 +36,12 @@ import { frontSequelize } from "../resources/storage";
 const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;
 
 function typeFromModel(
-  owner: WorkspaceType,
   invitation: MembershipInvitation
 ): MembershipInvitationType {
   return {
     sId: invitation.sId,
     id: invitation.id,
     inviteEmail: invitation.inviteEmail,
-    inviteLink: getMembershipInvitationUrl(owner, invitation.id),
     status: invitation.status,
     initialRole: invitation.initialRole,
     createdAt: invitation.createdAt.getTime(),
@@ -73,7 +72,7 @@ export async function getInvitation(
     return null;
   }
 
-  return typeFromModel(owner, invitation);
+  return typeFromModel(invitation);
 }
 
 export async function updateInvitationStatusAndRole(
@@ -109,7 +108,7 @@ export async function updateInvitationStatusAndRole(
     initialRole: role,
   });
 
-  return typeFromModel(owner, existingInvitation);
+  return typeFromModel(existingInvitation);
 }
 
 export async function updateOrCreateInvitation(
@@ -132,11 +131,10 @@ export async function updateOrCreateInvitation(
     await existingInvitation.update({
       initialRole,
     });
-    return typeFromModel(owner, existingInvitation);
+    return typeFromModel(existingInvitation);
   }
 
   return typeFromModel(
-    owner,
     await MembershipInvitation.create(
       {
         sId: generateRandomModelSId(),
@@ -150,7 +148,7 @@ export async function updateOrCreateInvitation(
   );
 }
 
-function getMembershipInvitationToken(invitationId: number) {
+export function getMembershipInvitationToken(invitationId: number) {
   return sign(
     {
       membershipInvitationId: invitationId,
@@ -167,17 +165,9 @@ function getMembershipInvitationUrlForToken(
   return `${config.getClientFacingUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
 }
 
-export function getTokenFromMembershipInvitationUrl(
-  url: string
-): string | null {
-  const urlObj = new URL(url);
-  const token = urlObj.searchParams.get("t");
-  return token;
-}
-
 export function getMembershipInvitationUrl(
   owner: LightWorkspaceType,
-  invitationId: number
+  invitationId: ModelId
 ) {
   const invitationToken = getMembershipInvitationToken(invitationId);
   return getMembershipInvitationUrlForToken(owner, invitationToken);
@@ -197,7 +187,7 @@ export async function sendWorkspaceInvitationEmail(
     },
     templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {
-      inviteLink: invitation.inviteLink,
+      inviteLink: getMembershipInvitationUrl(owner, invitation.id),
       inviterName: user.fullName,
       workspaceName: owner.name,
     },
@@ -238,7 +228,6 @@ export async function getPendingInvitations(
       id: i.id,
       status: i.status,
       inviteEmail: i.inviteEmail,
-      inviteLink: getMembershipInvitationUrl(owner, i.id),
       initialRole: i.initialRole,
       createdAt: i.createdAt.getTime(),
     };
@@ -299,7 +288,6 @@ export async function getRecentPendingAndRevokedInvitations(
       id: i.id,
       status,
       inviteEmail: i.inviteEmail,
-      inviteLink: getMembershipInvitationUrl(owner, i.id),
       initialRole: i.initialRole,
       createdAt: i.createdAt.getTime(),
     });
@@ -369,24 +357,27 @@ export async function handleMembershipInvitations(
     ): Promise<
       Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>
     > => {
-      await getWorkspaceAdministrationVersionLock(owner, t);
+      // Only lock and check seats available if the workspace has a limits
+      if (maxUsers !== -1) {
+        await getWorkspaceAdministrationVersionLock(owner, t);
 
-      const availableSeats =
-        maxUsers -
-        (await MembershipResource.getMembersCountForWorkspace({
-          workspace: owner,
-          activeOnly: true,
-          transaction: t,
-        }));
+        const availableSeats =
+          maxUsers -
+          (await MembershipResource.getMembersCountForWorkspace({
+            workspace: owner,
+            activeOnly: true,
+            transaction: t,
+          }));
 
-      if (maxUsers !== -1 && availableSeats < invitationRequests.length) {
-        return new Err({
-          status_code: 400,
-          api_error: {
-            type: "plan_limit_error",
-            message: `Not enough seats lefts (${availableSeats} seats remaining). Please upgrade or remove inactive members to add more.`,
-          },
-        });
+        if (availableSeats < invitationRequests.length) {
+          return new Err({
+            status_code: 400,
+            api_error: {
+              type: "plan_limit_error",
+              message: `Not enough seats lefts (${availableSeats} seats remaining). Please upgrade or remove inactive members to add more.`,
+            },
+          });
+        }
       }
 
       const invalidEmails = invitationRequests.filter(
@@ -472,11 +463,13 @@ export async function handleMembershipInvitations(
           },
         });
       }
+
       await batchUnrevokeInvitations(
         auth,
         invitationsToUnrevoke.map((i) => i.sId),
         t
       );
+
       const invitationResults = await Promise.all(
         emailsToSendInvitations.map(async ({ email, role }) => {
           if (existingMembers.find((m) => m.email === email)) {

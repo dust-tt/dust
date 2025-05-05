@@ -5,6 +5,7 @@ import type { ReactElement } from "react";
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -154,8 +155,10 @@ Space.getLayout = (
   pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
 ) => {
   return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch>
-      {page}
-    </SpaceLayout>
+    <AppRootLayout>
+      <SpaceLayout pageProps={pageProps} useBackendSearch>
+        {page}
+      </SpaceLayout>
+    </AppRootLayout>
   );
 };

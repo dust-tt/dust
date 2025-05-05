@@ -16,6 +16,7 @@ import {
   InformationCircleIcon,
   LockIcon,
   Page,
+  PlusIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -26,6 +27,7 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
+  UserGroupIcon,
   ValueCard,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -36,6 +38,7 @@ import { AssistantKnowledgeSection } from "@app/components/assistant/details/Ass
 import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
+import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {
@@ -43,12 +46,19 @@ import {
   useAgentConfiguration,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
+import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  UserType,
+  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder, removeNulls } from "@app/types";
+import { GLOBAL_AGENTS_SID, isAdmin, removeNulls } from "@app/types";
+
+import { AddEditorDropdown } from "../members/AddEditorsDropdown";
+import { MembersList } from "../members/MembersList";
 
 const PERIODS = [
   { value: 7, label: "Last 7 days" },
@@ -60,6 +70,7 @@ type AssistantDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
   assistantId: string | null;
+  user: UserType;
 };
 
 function AssistantDetailsInfo({
@@ -279,15 +290,88 @@ function AssistantDetailsPerformance({
   );
 }
 
+type AssistantDetailsEditorsProps = {
+  owner: WorkspaceType;
+  user: UserType;
+  agentConfiguration: AgentConfigurationType;
+};
+
+function AssistantDetailsEditors({
+  owner,
+  user,
+  agentConfiguration,
+}: AssistantDetailsEditorsProps) {
+  const updateEditors = useUpdateEditors({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
+  });
+  const { editors, isEditorsLoading } = useEditors({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
+  });
+
+  const isCurrentUserEditor =
+    editors.findIndex((u) => u.sId === user.sId) !== -1;
+
+  const onRemoveMember = async (user: UserTypeWithWorkspaces) => {
+    if (isCurrentUserEditor) {
+      await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
+    }
+  };
+
+  const onAddEditor = async (user: UserType) => {
+    if (isCurrentUserEditor) {
+      await updateEditors({ removeEditorIds: [], addEditorIds: [user.sId] });
+    }
+  };
+
+  return (
+    <div>
+      <MembersList
+        currentUser={user}
+        membersData={{
+          members: editors.map((user) => ({
+            ...user,
+            workspaces: [owner],
+          })),
+          isLoading: isEditorsLoading,
+          totalMembersCount: editors.length,
+          mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
+        }}
+        showColumns={isCurrentUserEditor ? ["name", "remove"] : ["name"]}
+        onRemoveMemberClick={onRemoveMember}
+        onRowClick={function noRefCheck() {}}
+      />
+
+      {isCurrentUserEditor && (
+        <div className="mt-4">
+          <AddEditorDropdown
+            owner={owner}
+            editors={editors}
+            onAddEditor={onAddEditor}
+            trigger={
+              <Button label="Add editors" icon={PlusIcon} onClick={() => {}} />
+            }
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AssistantDetails({
   assistantId,
   onClose,
   owner,
+  user,
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
-  const [selectedTab, setSelectedTab] = useState("info");
+  const [selectedTab, setSelectedTab] = useState<
+    "info" | "performance" | "editors"
+  >("info");
   const {
     agentConfiguration,
+    isAgentConfigurationLoading,
     isAgentConfigurationValidating,
     isAgentConfigurationError,
   } = useAgentConfiguration({
@@ -295,10 +379,21 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const doUpdateScope = useUpdateAgentScope({
     owner,
     agentConfigurationId: assistantId,
   });
+
+  const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
+    agentConfiguration?.sId as GLOBAL_AGENTS_SID
+  );
+
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const showEditorsTabs =
+    featureFlags.includes("agent_discovery") &&
+    assistantId != null &&
+    !isGlobalAgent;
 
   const updateScope = useCallback(
     async (scope: Exclude<AgentConfigurationScope, "global">) => {
@@ -341,13 +436,34 @@ export function AssistantDetails({
       )}
 
       {agentConfiguration?.status === "archived" && (
-        <ContentMessage
-          title="This agent has been deleted."
-          icon={InformationCircleIcon}
-          size="md"
-        >
-          It is no longer active and cannot be used.
-        </ContentMessage>
+        <>
+          <ContentMessage
+            title="This agent has been deleted."
+            icon={InformationCircleIcon}
+            size="md"
+          >
+            It is no longer active and cannot be used.
+          </ContentMessage>
+
+          <RestoreAssistantDialog
+            owner={owner}
+            isOpen={showRestoreModal}
+            agentConfiguration={agentConfiguration}
+            onClose={() => {
+              setShowRestoreModal(false);
+            }}
+          />
+
+          <div className="flex justify-center">
+            <Button
+              variant="warning"
+              label="Restore"
+              onClick={() => {
+                setShowRestoreModal(true);
+              }}
+            />
+          </div>
+        </>
       )}
     </div>
   );
@@ -355,55 +471,77 @@ export function AssistantDetails({
   return (
     <Sheet open={!!assistantId} onOpenChange={onClose}>
       <SheetContent size="lg">
-        <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
-          <VisuallyHidden>
-            <SheetTitle />
-          </VisuallyHidden>
-          <DescriptionSection />
-          {isBuilder(owner) && (
-            <Tabs value={selectedTab}>
-              <TabsList border={false}>
-                <TabsTrigger
-                  value="info"
-                  label="Info"
-                  icon={InformationCircleIcon}
-                  onClick={() => setSelectedTab("info")}
-                />
-                <TabsTrigger
-                  value="performance"
-                  label="Performance"
-                  icon={BarChartIcon}
-                  onClick={() => setSelectedTab("performance")}
-                />
-              </TabsList>
-            </Tabs>
-          )}
-        </SheetHeader>
-        <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
-          {agentConfiguration && (
-            <>
-              {selectedTab === "info" && (
-                <AssistantDetailsInfo
-                  agentConfiguration={agentConfiguration}
-                  owner={owner}
-                />
+        {isAgentConfigurationLoading ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <>
+            <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
+              <VisuallyHidden>
+                <SheetTitle />
+              </VisuallyHidden>
+              <DescriptionSection />
+              {(agentConfiguration?.canEdit || isAdmin(owner)) && (
+                <Tabs value={selectedTab}>
+                  <TabsList border={false}>
+                    <TabsTrigger
+                      value="info"
+                      label="Info"
+                      icon={InformationCircleIcon}
+                      onClick={() => setSelectedTab("info")}
+                    />
+                    <TabsTrigger
+                      value="performance"
+                      label="Performance"
+                      icon={BarChartIcon}
+                      onClick={() => setSelectedTab("performance")}
+                    />
+                    {showEditorsTabs && (
+                      <TabsTrigger
+                        value="editors"
+                        label="Editors"
+                        icon={UserGroupIcon}
+                        onClick={() => setSelectedTab("editors")}
+                      />
+                    )}
+                  </TabsList>
+                </Tabs>
               )}
-              {selectedTab === "performance" && (
-                <AssistantDetailsPerformance
-                  agentConfiguration={agentConfiguration}
-                  owner={owner}
-                />
+            </SheetHeader>
+            <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
+              {agentConfiguration && (
+                <>
+                  {selectedTab === "info" && (
+                    <AssistantDetailsInfo
+                      agentConfiguration={agentConfiguration}
+                      owner={owner}
+                    />
+                  )}
+                  {selectedTab === "performance" && (
+                    <AssistantDetailsPerformance
+                      agentConfiguration={agentConfiguration}
+                      owner={owner}
+                    />
+                  )}
+                  {showEditorsTabs && selectedTab === "editors" && (
+                    <AssistantDetailsEditors
+                      owner={owner}
+                      user={user}
+                      agentConfiguration={agentConfiguration}
+                    />
+                  )}
+                </>
               )}
-            </>
-          )}
-          {isAgentConfigurationError?.error.type ===
-            "agent_configuration_not_found" && (
-            <ContentMessage title="Not Available" icon={LockIcon} size="md">
-              This is a private agent that can't be shared with other workspace
-              members.
-            </ContentMessage>
-          )}
-        </SheetContainer>
+              {isAgentConfigurationError?.error.type ===
+                "agent_configuration_not_found" && (
+                <ContentMessage title="Not Available" icon={LockIcon} size="md">
+                  This agent is not available.
+                </ContentMessage>
+              )}
+            </SheetContainer>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );

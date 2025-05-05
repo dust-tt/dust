@@ -633,6 +633,7 @@ export const DataTableWithRowSelectionExample = () => {
           rowSelection={rowSelection}
           setRowSelection={setRowSelection}
           enableRowSelection={true}
+          getRowId={(row) => row.name}
         />
 
         <div className="s-rounded-md s-border s-bg-muted/50 s-p-2">

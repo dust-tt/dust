@@ -13,6 +13,7 @@ import {
   DocumentIcon,
   DocumentPileIcon,
   EyeIcon,
+  InteractiveImage,
   Markdown,
   Page,
   Popover,
@@ -40,7 +41,6 @@ import {
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -62,7 +62,10 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
-import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isSearchResultResourceType,
+  isWebsearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import {
@@ -156,7 +159,6 @@ export function AgentMessage({
   message,
   messageFeedback,
   owner,
-  user,
 }: AgentMessageProps) {
   const { isDark } = useTheme();
   const [streamedAgentMessage, setStreamedAgentMessage] =
@@ -173,8 +175,6 @@ export function AgentMessage({
     { index: number; document: MarkdownCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
-
-  const { setIsImageUrl } = useConversationsNavigation();
 
   const isGlobalAgent = useMemo(() => {
     return Object.values(GLOBAL_AGENTS_SID).includes(
@@ -318,6 +318,11 @@ export function AgentMessage({
             };
           });
           setLastAgentStateClassification("done");
+          break;
+        }
+
+        // TODO(MCP 2025-04-30) Ignoring this event for now. Require to refactor a bit this component.
+        case "tool_notification": {
           break;
         }
 
@@ -553,7 +558,7 @@ export function AgentMessage({
             .map((o) => o.resource)
         )
     );
-    const allMCPReferences = searchResultsWithDocs.reduce<{
+    const allMCPSearchResultsReferences = searchResultsWithDocs.reduce<{
       [key: string]: MarkdownCitation;
     }>((acc, d) => {
       acc[d.ref] = {
@@ -564,11 +569,31 @@ export function AgentMessage({
       return acc;
     }, {});
 
+    const websearchResultsWithDocs = removeNulls(
+      agentMessageToRender.actions
+        .filter(isMCPActionType)
+        .flatMap((action) =>
+          action.output?.filter(isWebsearchResultResourceType)
+        )
+    );
+
+    const allMCPWebsearchResultsReferences = websearchResultsWithDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.resource.reference] = {
+        href: d.resource.uri,
+        title: d.resource.title,
+        icon: <DocumentIcon />,
+      };
+      return acc;
+    }, {});
+
     // Merge all references
     setReferences({
       ...allDocsReferences,
       ...allWebReferences,
-      ...allMCPReferences,
+      ...allMCPSearchResultsReferences,
+      ...allMCPWebsearchResultsReferences,
     });
   }, [
     agentMessageToRender.actions,
@@ -602,9 +627,7 @@ export function AgentMessage({
     [activeReferences]
   );
 
-  const canMention =
-    agentConfiguration.scope !== "private" ||
-    agentConfiguration.versionAuthorId === user.id;
+  const canMention = agentConfiguration.canRead;
 
   return (
     <ConversationMessage
@@ -698,16 +721,14 @@ export function AgentMessage({
         {generatedImages.length > 0 && (
           <div className="mt-2 grid grid-cols-4 gap-2">
             {generatedImages.map((image) => (
-              <div key={image.fileId}>
-                <img
-                  className="cursor-zoom-in rounded-md"
-                  src={`/api/w/${owner.sId}/files/${image.fileId}`}
-                  alt={`${image.title}`}
-                  onClick={() => {
-                    setIsImageUrl(`/api/w/${owner.sId}/files/${image.fileId}`);
-                  }}
-                />
-              </div>
+              <InteractiveImage
+                key={image.fileId}
+                imageUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=view`}
+                downloadUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=download`}
+                alt={`${image.title}`}
+                title={`${image.title}`}
+                isLoading={false}
+              />
             ))}
           </div>
         )}

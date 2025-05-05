@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   DustIcon,
   MagnifyingGlassIcon,
   Page,
@@ -25,7 +26,8 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -34,9 +36,10 @@ import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 export const AGENT_MANAGER_TABS_LEGACY = [
   {
@@ -113,27 +116,36 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   hasAgentDiscovery: boolean;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !auth.isBuilder() || !subscription) {
+  if (!owner || !subscription) {
+    return {
+      notFound: true,
+    };
+  }
+
+  // TODO(agent-discovery) Remove feature-flag
+  const featureFlags = await getFeatureFlags(owner);
+  const hasAgentDiscovery = featureFlags.includes("agent_discovery");
+
+  if (!auth.isBuilder() && !hasAgentDiscovery) {
     return {
       notFound: true,
     };
   }
 
   await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
-
-  // TODO(agent-discovery) Remove feature-flag
-  const featureFlags = await getFeatureFlags(owner);
-  const hasAgentDiscovery = featureFlags.includes("agent_discovery");
+  const user = auth.getNonNullableUser();
 
   return {
     props: {
       owner,
       subscription,
       hasAgentDiscovery,
+      user: user.toJSON(),
     },
   };
 });
@@ -151,12 +163,13 @@ export default function WorkspaceAssistants({
   owner,
   subscription,
   hasAgentDiscovery,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
   const activeTab = useMemo(() => {
     if (assistantSearch.trim() !== "") {
       return "search";
@@ -185,7 +198,7 @@ export default function WorkspaceAssistants({
       workspaceId: owner.sId,
       agentsGetView: "archived",
       includes: ["usage", "feedbacks"],
-      disabled: !hasAgentDiscovery,
+      disabled: !hasAgentDiscovery || selectedTab !== "archived",
     });
 
   const agentsByTab = useMemo(() => {
@@ -194,34 +207,18 @@ export default function WorkspaceAssistants({
         if (selectedTags.length === 0) {
           return true;
         }
-        return a.tags.some((t) => selectedTags.includes(t.sId));
+        return a.tags.some((t) => selectedTags.includes(t));
       })
-      .sort((a, b) => {
-        return compareForFuzzySort(
-          "",
-          a.name.toLowerCase(),
-          b.name.toLowerCase()
-        );
-      });
+      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
     return {
       // do not show the "all" tab while still loading all agents
       all_custom: allAgents.filter((a) => a.scope !== "global"),
-      editable_by_me: allAgents.filter(
-        (a) =>
-          a.scope !== "global" &&
-          (isAdmin(owner) ||
-            (a.scope === "published" && isBuilder(owner)) ||
-            a.scope === "private") // TODO: add/replace with editors group check
-      ),
+      editable_by_me: allAgents.filter((a) => a.canEdit),
       global: allAgents.filter((a) => a.scope === "global"),
-      archived: archivedAgentConfigurations.sort((a, b) => {
-        return compareForFuzzySort(
-          "",
-          a.name.toLowerCase(),
-          b.name.toLowerCase()
-        );
-      }),
+      archived: archivedAgentConfigurations.sort((a, b) =>
+        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+      ),
       workspace: allAgents.filter((a) => a.scope === "workspace"),
       published: allAgents.filter((a) => a.scope === "published"),
       current_user: allAgents.filter((a) => a.lastAuthors?.includes("Me")),
@@ -230,7 +227,7 @@ export default function WorkspaceAssistants({
           (a) =>
             a.status === "active" &&
             // Filters on search query
-            subFilter(assistantSearch, a.name.toLowerCase())
+            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase())
         )
         .sort((a, b) => {
           return compareForFuzzySort(
@@ -244,7 +241,6 @@ export default function WorkspaceAssistants({
     agentConfigurations,
     archivedAgentConfigurations,
     selectedTags,
-    owner,
     assistantSearch,
   ]);
 
@@ -308,9 +304,6 @@ export default function WorkspaceAssistants({
         ).filter((tab) => tab.id !== "search");
   }, [assistantSearch, hasAgentDiscovery]);
 
-  const disabledTablineClass =
-    "!border-primary-500 !text-primary-500 !cursor-default";
-
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -331,13 +324,14 @@ export default function WorkspaceAssistants({
 
   return (
     <ConversationsNavigationProvider>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         <AssistantDetails
           owner={owner}
+          user={user}
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
         />
@@ -360,6 +354,7 @@ export default function WorkspaceAssistants({
                     tags={uniqueTags}
                     selectedTags={selectedTags}
                     setSelectedTags={setSelectedTags}
+                    owner={owner}
                   />
                 )}
                 <Link
@@ -375,6 +370,19 @@ export default function WorkspaceAssistants({
                 </Link>
               </div>
             </div>
+            <div className="flex flex-row gap-2">
+              {selectedTags.map((tag) => (
+                <Chip
+                  key={tag.sId}
+                  label={tag.name}
+                  size="xs"
+                  color="golden"
+                  onRemove={() =>
+                    setSelectedTags(selectedTags.filter((t) => t !== tag))
+                  }
+                />
+              ))}
+            </div>
             <div className="flex flex-col pt-3">
               <Tabs value={activeTab}>
                 <TabsList>
@@ -383,8 +391,6 @@ export default function WorkspaceAssistants({
                       key={tab.id}
                       value={tab.id}
                       label={tab.label}
-                      icon={tab.icon}
-                      className={assistantSearch ? disabledTablineClass : ""}
                       onClick={() => !assistantSearch && setSelectedTab(tab.id)}
                       tooltip={
                         AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
@@ -424,7 +430,11 @@ export default function WorkspaceAssistants({
             </div>
           </Page.Vertical>
         </Page.Vertical>
-      </AppLayout>
+      </AppContentLayout>
     </ConversationsNavigationProvider>
   );
 }
+
+WorkspaceAssistants.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

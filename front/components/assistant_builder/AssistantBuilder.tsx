@@ -14,6 +14,7 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import assert from "assert";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, {
@@ -34,10 +35,10 @@ import {
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   InstructionScreen,
 } from "@app/components/assistant_builder/InstructionScreen";
-import NamingScreen, {
-  validateHandle,
-} from "@app/components/assistant_builder/NamingScreen";
 import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
+import SettingsScreen, {
+  validateHandle,
+} from "@app/components/assistant_builder/SettingsScreen";
 import { SharingButton } from "@app/components/assistant_builder/Sharing";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
@@ -55,7 +56,9 @@ import {
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
 import { useTemplate } from "@app/components/assistant_builder/useTemplate";
-import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
+import AppContentLayout, {
+  appLayoutBack,
+} from "@app/components/sparkle/AppContentLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
@@ -63,21 +66,43 @@ import {
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
+import { useUser } from "@app/lib/swr/user";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
+  WorkspaceType,
 } from "@app/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
+  isAdmin,
   isBuilder,
+  isUser,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
+}
+
+/**
+ * TODO(agent discovery, 2025-04-30): Delete this function when removing scopes
+ * "workspace" and "published"
+ */
+function isLegacyAllowed(
+  owner: WorkspaceType,
+  agentConfigurationScope: AgentConfigurationScope
+): boolean {
+  if (agentConfigurationScope === "workspace" && isBuilder(owner)) {
+    return true;
+  }
+  if (agentConfigurationScope === "published" && isUser(owner)) {
+    return true;
+  }
+  return false;
 }
 
 export default function AssistantBuilder({
@@ -93,14 +118,26 @@ export default function AssistantBuilder({
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
+  const { user, isUserLoading, isUserError } = useUser();
 
   const { killSwitches } = useKillSwitches();
   const { models, reasoningModels } = useModels({ owner });
 
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const isAgentDiscoveryEnabled = featureFlags.includes("agent_discovery");
+
   const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
-  const defaultScope =
-    flow === "workspace_assistants" ? "workspace" : "private";
+  const defaultScope = isAgentDiscoveryEnabled
+    ? flow === "personal_assistants"
+      ? "hidden"
+      : "visible"
+    : flow === "personal_assistants"
+      ? "private"
+      : "workspace";
+
   const [currentTab, setCurrentTab] = useHashParam(
     "selectedTab",
     "instructions"
@@ -142,6 +179,7 @@ export default function AssistantBuilder({
           visualizationEnabled: initialBuilderState.visualizationEnabled,
           templateId: initialBuilderState.templateId,
           tags: initialBuilderState.tags,
+          editors: initialBuilderState.editors,
         }
       : {
           ...getDefaultAssistantState(),
@@ -179,7 +217,8 @@ export default function AssistantBuilder({
   } = useSlackChannel({
     initialChannels: [],
     workspaceId: owner.sId,
-    isPrivateAssistant: builderState.scope === "private",
+    isPrivateAssistant:
+      builderState.scope === "private" || builderState.scope === "hidden",
     isBuilder: isBuilder(owner),
     isEdited: edited,
     agentConfigurationId,
@@ -214,6 +253,35 @@ export default function AssistantBuilder({
       triggerPreviewButtonAnimation();
     }
   }, [isBuilderStateEmpty]);
+
+  // If agent is created, the user creating it should be added to the builder
+  // editors list. If not, then the user should be in this list.
+  useEffect(() => {
+    if (isUserError || isUserLoading || !user) {
+      return;
+    }
+    if (agentConfigurationId && initialBuilderState) {
+      assert(
+        isLegacyAllowed(owner, initialBuilderState.scope) ||
+          isAdmin(owner) ||
+          initialBuilderState.editors.some((m) => m.sId === user.sId),
+        "Unreachable: User is not in editors nor admin"
+      );
+    }
+    if (!agentConfigurationId) {
+      setBuilderState((state) => ({
+        ...state,
+        editors: [...state.editors, user],
+      }));
+    }
+  }, [
+    isUserLoading,
+    isUserError,
+    user,
+    owner,
+    agentConfigurationId,
+    initialBuilderState,
+  ]);
 
   const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {
     setRightPanelStatus({
@@ -342,7 +410,7 @@ export default function AssistantBuilder({
     } else if (hasAnyActionsError) {
       setScreen("actions");
     } else if (assistantHandleError || descriptionError) {
-      setScreen("naming");
+      setScreen("settings");
     } else {
       setDisableUnsavedChangesPrompt(true);
       setIsSavingOrDeleting(true);
@@ -394,7 +462,7 @@ export default function AssistantBuilder({
 
   return (
     <>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         hideSidebar
         isWideMode
@@ -447,30 +515,32 @@ export default function AssistantBuilder({
                         data-gtm-location={tab.dataGtm.location}
                       />
                     ))}
-                    <div className="flex w-full items-center justify-end">
-                      <SharingButton
-                        agentConfigurationId={agentConfigurationId}
-                        initialScope={
-                          initialBuilderState?.scope ?? defaultScope
-                        }
-                        newScope={builderState.scope}
-                        owner={owner}
-                        showSlackIntegration={showSlackIntegration}
-                        slackChannelSelected={selectedSlackChannels || []}
-                        slackDataSource={slackDataSource}
-                        setNewScope={(
-                          scope: Exclude<AgentConfigurationScope, "global">
-                        ) => {
-                          setEdited(scope !== initialBuilderState?.scope);
-                          setBuilderState((state) => ({ ...state, scope }));
-                        }}
-                        baseUrl={baseUrl}
-                        setNewLinkedSlackChannels={(channels) => {
-                          setSelectedSlackChannels(channels);
-                          setEdited(true);
-                        }}
-                      />
-                    </div>
+                    {!isAgentDiscoveryEnabled && (
+                      <div className="flex w-full items-center justify-end">
+                        <SharingButton
+                          agentConfigurationId={agentConfigurationId}
+                          initialScope={
+                            initialBuilderState?.scope ?? defaultScope
+                          }
+                          newScope={builderState.scope}
+                          owner={owner}
+                          showSlackIntegration={showSlackIntegration}
+                          slackChannelSelected={selectedSlackChannels || []}
+                          slackDataSource={slackDataSource}
+                          setNewScope={(
+                            scope: Exclude<AgentConfigurationScope, "global">
+                          ) => {
+                            setEdited(scope !== initialBuilderState?.scope);
+                            setBuilderState((state) => ({ ...state, scope }));
+                          }}
+                          baseUrl={baseUrl}
+                          setNewLinkedSlackChannels={(channels) => {
+                            setSelectedSlackChannels(channels);
+                            setEdited(true);
+                          }}
+                        />
+                      </div>
+                    )}
                   </TabsList>
                 </Tabs>
               </div>
@@ -506,9 +576,11 @@ export default function AssistantBuilder({
                       />
                     );
 
-                  case "naming":
+                  case "settings":
                     return (
-                      <NamingScreen
+                      <SettingsScreen
+                        agentConfigurationId={agentConfigurationId}
+                        baseUrl={baseUrl}
                         owner={owner}
                         builderState={builderState}
                         initialHandle={initialBuilderState?.handle}
@@ -516,6 +588,11 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         assistantHandleError={assistantHandleError}
                         descriptionError={descriptionError}
+                        isAgentDiscoveryEnabled={isAgentDiscoveryEnabled}
+                        slackChannelSelected={selectedSlackChannels || []}
+                        slackDataSource={slackDataSource}
+                        setSelectedSlackChannels={setSelectedSlackChannels}
+                        currentUser={user}
                       />
                     );
                   default:
@@ -605,7 +682,7 @@ export default function AssistantBuilder({
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}
         />
-      </AppLayout>
+      </AppContentLayout>
     </>
   );
 }

@@ -1,3 +1,4 @@
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
   Breadcrumbs,
   CloudArrowLeftRightIcon,
@@ -57,11 +58,7 @@ export function SpaceBreadCrumbs({
       ];
     }
 
-    const items: {
-      label: string;
-      icon?: React.ComponentType;
-      href?: string;
-    }[] = [
+    const items: BreadcrumbItem[] = [
       {
         icon: getSpaceIcon(space),
         label: space.kind === "global" ? "Company Data" : space.name,

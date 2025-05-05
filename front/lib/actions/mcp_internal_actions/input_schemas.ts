@@ -67,6 +67,8 @@ export const ConfigurableToolInputSchemas = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL]: z.object({
     modelId: z.string(),
     providerId: z.string(),
+    temperature: z.number().nullable(),
+    reasoningEffort: z.string().nullable(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
   }),
   // All mime types do not necessarily have a fixed schema,
@@ -154,8 +156,9 @@ export function generateConfiguredInput({
         // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the reasoning model.
         throw new Error("Unreachable: missing reasoning model configuration.");
       }
-      const { modelId, providerId } = reasoningModel;
-      return { modelId, providerId, mimeType };
+      const { modelId, providerId, temperature, reasoningEffort } =
+        reasoningModel;
+      return { modelId, providerId, temperature, reasoningEffort, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {

@@ -2,11 +2,11 @@ import { ClipboardIcon, IconButton, TrashIcon } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { MembershipInvitationType } from "@app/types";
+import type { MembershipInvitationTypeWithLink } from "@app/types";
 
 export function makeColumnsForInvitations(
   onRevokeInvitation: (email: string) => Promise<void>
-): ColumnDef<MembershipInvitationType>[] {
+): ColumnDef<MembershipInvitationTypeWithLink>[] {
   return [
     {
       accessorKey: "sId",

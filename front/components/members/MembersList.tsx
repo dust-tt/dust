@@ -8,12 +8,12 @@ import {
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import assert from "assert";
 import _ from "lodash";
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import type { KeyedMutator } from "swr";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { RoleType, UserTypeWithWorkspaces } from "@app/types";
+import type { RoleType, UserType, UserTypeWithWorkspaces } from "@app/types";
 
 type RowData = {
   icon: string;
@@ -55,7 +55,9 @@ type MembersData = {
   members: UserTypeWithWorkspaces[];
   totalMembersCount: number;
   isLoading: boolean;
-  mutateRegardlessOfQueryParams: KeyedMutator<SearchMembersResponseBody>;
+  mutateRegardlessOfQueryParams:
+    | KeyedMutator<SearchMembersResponseBody>
+    | (() => void);
 };
 
 const memberColumns = [
@@ -64,8 +66,10 @@ const memberColumns = [
     header: "Name",
     cell: (info: Info) => (
       <DataTable.CellContent avatarUrl={info.row.original.icon}>
-        {info.row.original.name}{" "}
-        {info.row.original.isCurrentUser ? " (you)" : ""}
+        {info.row.original.name}
+        {info.row.original.isCurrentUser && (
+          <span className="ml-3 text-muted-foreground">(you)</span>
+        )}
       </DataTable.CellContent>
     ),
     enableSorting: false,
@@ -103,10 +107,14 @@ const memberColumns = [
     header: "",
     cell: (info: Info) => (
       <DataTable.CellContent>
-        <IconButton
-          icon={XMarkIcon}
-          onClick={info.row.original.onRemoveMemberClick}
-        />
+        {info.row.original.isCurrentUser ? (
+          <></>
+        ) : (
+          <IconButton
+            icon={XMarkIcon}
+            onClick={info.row.original.onRemoveMemberClick}
+          />
+        )}
       </DataTable.CellContent>
     ),
     meta: {
@@ -116,29 +124,26 @@ const memberColumns = [
 ];
 
 export function MembersList({
-  currentUserId,
+  currentUser,
   membersData,
   onRowClick,
   onRemoveMemberClick,
   showColumns,
+  pagination,
+  setPagination,
 }: {
-  currentUserId: string;
+  currentUser: UserType | null;
   membersData: MembersData;
   onRowClick: (user: UserTypeWithWorkspaces) => void;
   onRemoveMemberClick?: (user: UserTypeWithWorkspaces) => void;
   showColumns: ("name" | "email" | "role" | "remove")[];
+  pagination?: PaginationState;
+  setPagination?: (pagination: PaginationState) => void;
 }) {
   assert(
     !showColumns.includes("remove") || onRemoveMemberClick,
     "onRemoveMemberClick is required if remove column is shown"
   );
-  const [pagination, setPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 25,
-  });
-  useEffect(() => {
-    setPagination({ pageIndex: 0, pageSize: 25 });
-  }, [setPagination]);
 
   const { members, totalMembersCount, isLoading } = membersData;
 
@@ -152,9 +157,9 @@ export function MembersList({
       allUsers: filteredMembers,
       onClick: onRowClick,
       onRemoveMemberClick,
-      currentUserId,
+      currentUserId: currentUser?.sId ?? "current-user-not-loaded",
     });
-  }, [members, onRowClick, onRemoveMemberClick, currentUserId]);
+  }, [members, onRowClick, onRemoveMemberClick, currentUser]);
 
   return (
     <>

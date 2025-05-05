@@ -1,3 +1,5 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -5,6 +7,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+
+const PatchBodySchema = t.type({
+  name: t.string,
+});
 
 async function handler(
   req: NextApiRequest,
@@ -65,12 +71,55 @@ async function handler(
       res.status(204).end();
       return;
     }
+    case "PUT": {
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Only workspace administrators can delete tags",
+          },
+        });
+      }
+
+      const tag = await TagResource.fetchById(auth, tId);
+
+      if (!tag) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Tag not found",
+          },
+        });
+      }
+
+      const r = PatchBodySchema.decode(req.body);
+
+      if (isLeft(r)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid request body",
+          },
+        });
+      }
+      const body = r.right;
+      const { name } = body;
+
+      await tag.updateName(name);
+
+      res.status(200).end();
+      return;
+    }
     default: {
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, DELETE is expected.",
+          message:
+            "The method passed is not supported, DELETE or PATCH is expected.",
         },
       });
     }

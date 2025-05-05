@@ -200,7 +200,6 @@ async function handleUserMessageEvents(
               }
               break;
             }
-            case "tool_approve_execution":
             case "agent_action_success":
             case "agent_error":
             case "agent_generation_cancelled":
@@ -210,7 +209,6 @@ async function handleUserMessageEvents(
             case "dust_app_run_block":
             case "dust_app_run_params":
             case "generation_tokens":
-            case "tool_params":
             case "process_params":
             case "reasoning_started":
             case "reasoning_thinking":
@@ -220,6 +218,9 @@ async function handleUserMessageEvents(
             case "tables_query_model_output":
             case "tables_query_output":
             case "tables_query_started":
+            case "tool_approve_execution":
+            case "tool_notification":
+            case "tool_params":
             case "websearch_params": {
               const pubsubChannel = getMessageChannelId(event.messageId);
 
@@ -373,7 +374,6 @@ export async function retryAgentMessageWithPubSub(
                 );
                 break;
               }
-              case "tool_approve_execution":
               case "agent_action_success":
               case "agent_error":
               case "agent_generation_cancelled":
@@ -384,7 +384,6 @@ export async function retryAgentMessageWithPubSub(
               case "dust_app_run_params":
               case "generation_tokens":
               case "process_params":
-              case "tool_params":
               case "reasoning_started":
               case "reasoning_thinking":
               case "reasoning_tokens":
@@ -393,6 +392,9 @@ export async function retryAgentMessageWithPubSub(
               case "tables_query_model_output":
               case "tables_query_output":
               case "tables_query_started":
+              case "tool_approve_execution":
+              case "tool_notification":
+              case "tool_params":
               case "websearch_params": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await publishEvent({

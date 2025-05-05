@@ -45,10 +45,13 @@ async function getDescriptionsAndHistories({
     "Retrieving Notion handles"
   );
   const incrementalSyncHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, false)
+    getNotionWorkflowId(notionConnector.id, "sync")
   );
   const garbageCollectorHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, true)
+    getNotionWorkflowId(notionConnector.id, "garbage-collector")
+  );
+  const processDatabaseUpsertQueueHandle = client.workflow.getHandle(
+    getNotionWorkflowId(notionConnector.id, "process-database-upsert-queue")
   );
 
   logger.info(
@@ -61,6 +64,7 @@ async function getDescriptionsAndHistories({
   const descriptions = await Promise.all([
     incrementalSyncHandle.describe(),
     garbageCollectorHandle.describe(),
+    processDatabaseUpsertQueueHandle.describe(),
   ]);
   logger.info(
     {
@@ -72,6 +76,7 @@ async function getDescriptionsAndHistories({
   const histories = await Promise.all([
     incrementalSyncHandle.fetchHistory(),
     garbageCollectorHandle.fetchHistory(),
+    processDatabaseUpsertQueueHandle.fetchHistory(),
   ]);
   logger.info(
     {
@@ -170,12 +175,6 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 
   for (const notionConnector of notionConnectors) {
     if (notionConnector.pausedAt) {
-      continue;
-    }
-    if (notionConnector.id === 19585) {
-      // TODO(spolu): remove once the workflow is fixed. We have a workflow on this notion connector
-      // that is in a broken state with Temporal. Can't be retrieved yet is listable causing issues
-      // with the production check.
       continue;
     }
     heartbeat();

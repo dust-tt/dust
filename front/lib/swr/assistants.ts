@@ -8,6 +8,7 @@ import type {
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
 import {
+  emptyArray,
   fetcher,
   getErrorFromResponse,
   useSWRInfiniteWithDefaults,
@@ -40,7 +41,7 @@ export function useAssistantTemplates() {
   );
 
   return {
-    assistantTemplates: useMemo(() => (data ? data.templates : []), [data]),
+    assistantTemplates: data?.templates ?? emptyArray(),
     isAssistantTemplatesLoading: !error && !data,
     isAssistantTemplatesError: error,
     mutateAssistantTemplates: mutate,
@@ -132,12 +133,48 @@ export function useAgentConfigurations({
     });
 
   return {
-    agentConfigurations: useMemo(
-      () => (data ? data.agentConfigurations : []),
-      [data]
-    ),
+    agentConfigurations: data
+      ? data.agentConfigurations
+      : emptyArray<LightAgentConfigurationType>(),
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
+    mutate,
+    mutateRegardlessOfQueryParams,
+  };
+}
+
+export function useSuggestedAgentConfigurations({
+  workspaceId,
+  conversationId,
+  messageId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+}) {
+  const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
+    fetcher;
+
+  const key = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/suggest?messageId=${messageId}`;
+  const { cache } = useSWRConfig();
+  const cachedData: GetAgentConfigurationsResponseBody | undefined =
+    cache.get(key)?.data;
+  const inCache = typeof cachedData !== "undefined";
+
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(key, agentConfigurationsFetcher, {
+      disabled: inCache,
+    });
+
+  const dataToUse = cachedData || data;
+
+  return {
+    suggestedAgentConfigurations: useMemo(
+      () => (dataToUse ? dataToUse.agentConfigurations : []),
+      [dataToUse]
+    ),
+    isSuggestedAgentConfigurationsLoading: !error && !dataToUse,
+    isSuggestedAgentConfigurationsError: error,
     mutate,
     mutateRegardlessOfQueryParams,
   };
@@ -221,7 +258,7 @@ export function useAgentConfiguration({
 
   return {
     agentConfiguration: data ? data.agentConfiguration : null,
-    isAgentConfigurationLoading: !error && !data,
+    isAgentConfigurationLoading: !error && !data && !disabled,
     isAgentConfigurationError: error,
     isAgentConfigurationValidating: isValidating,
     mutateAgentConfiguration: mutate,
@@ -426,7 +463,7 @@ export function useSlackChannelsLinkedWithAgent({
   );
 
   return {
-    slackChannels: useMemo(() => (data ? data.slackChannels : []), [data]),
+    slackChannels: data?.slackChannels ?? emptyArray(),
     slackDataSource: data?.slackDataSource,
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,
@@ -652,4 +689,60 @@ export function useUpdateUserFavorite({
     ]
   );
   return { updateUserFavorite: doUpdate, isUpdatingFavorite };
+}
+
+export function useRestoreAgentConfiguration({
+  owner,
+  agentConfiguration,
+}: {
+  owner: LightWorkspaceType;
+  agentConfiguration?: LightAgentConfigurationType;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list", // Anything would work
+      disabled: true, // We only use the hook to mutate the cache
+    });
+
+  const { mutateAgentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+    disabled: true, // We only use the hook to mutate the cache
+  });
+
+  const doRestore = async () => {
+    if (!agentConfiguration) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/restore`,
+      {
+        method: "POST",
+      }
+    );
+
+    if (res.ok) {
+      void mutateAgentConfiguration();
+      void mutateAgentConfigurations();
+
+      sendNotification({
+        type: "success",
+        title: `Successfully restored ${agentConfiguration.name}`,
+        description: `${agentConfiguration.name} was successfully restored.`,
+      });
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: `Error restoring ${agentConfiguration.name}`,
+        description: `Error: ${errorData.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doRestore;
 }
