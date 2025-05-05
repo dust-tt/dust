@@ -757,6 +757,7 @@ export async function* postUserMessage(
             "This agent is either disabled or you don't have access to it.",
         },
       };
+      return;
     }
 
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
