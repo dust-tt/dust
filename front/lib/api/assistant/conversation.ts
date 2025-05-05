@@ -746,6 +746,19 @@ export async function* postUserMessage(
   const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
+    if (!(await canAccessAgent(auth, agentConfig))) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "not_allowed",
+          message:
+            "This agent is either disabled or you don't have access to it.",
+        },
+      };
+    }
+
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
       yield {
         type: "agent_disabled_error",
@@ -1075,6 +1088,36 @@ export async function* postUserMessage(
   void logIfUserUnknown();
 }
 
+/**
+ * Can a user mention a given configuration
+ */
+async function canAccessAgent(
+  auth: Authenticator,
+  agentConfiguration: LightAgentConfigurationType
+): Promise<boolean> {
+  if (auth.isAdmin()) {
+    return true;
+  }
+
+  // Global agent
+  if (agentConfiguration.versionAuthorId === null) {
+    return agentConfiguration.status === "active";
+  }
+
+  if (agentConfiguration.scope === "private") {
+    const group = await GroupResource.fetchByAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
+    return group.isMember(auth);
+  }
+
+  return (
+    agentConfiguration.status === "active" ||
+    agentConfiguration.status === "draft"
+  );
+}
+
 /** This method creates a new user message version, and if there are new agent
  *  mentions, run them
  *  TODO: support editing with new agent mentions for any
@@ -1194,6 +1237,20 @@ export async function* editUserMessage(
   const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
+    if (!(await canAccessAgent(auth, agentConfig))) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "not_allowed",
+          message:
+            "This agent is either disabled or you don't have access to it.",
+        },
+      };
+      return;
+    }
+
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
       yield {
         type: "agent_disabled_error",
