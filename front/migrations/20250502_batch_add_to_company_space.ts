@@ -75,10 +75,6 @@ async function addParentsToDataSourceView({
 makeScript(
   {
     wId: { type: "string", description: "Workspace ID" },
-    dataSourceViewId: {
-      type: "string",
-      description: "Space ID to add data sources to",
-    },
     namePrefix: {
       type: "string",
       description: "Prefix to filter channel names",
