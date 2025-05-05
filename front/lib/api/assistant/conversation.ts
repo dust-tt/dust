@@ -1098,7 +1098,7 @@ function canAccessAgent(
   return (
     agentConfiguration.canRead &&
     (agentConfiguration.status === "active" ||
-      agentConfiguration.status !== "draft")
+      agentConfiguration.status === "draft")
   );
 }
 
