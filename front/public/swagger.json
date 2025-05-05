@@ -1124,6 +1124,9 @@
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token."
           },
+          "429": {
+            "description": "Rate limit exceeded."
+          },
           "500": {
             "description": "Internal Server Error."
           }
@@ -1213,6 +1216,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Rate limit exceeded."
           },
           "500": {
             "description": "Internal Server Error"
@@ -3780,7 +3786,7 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned agents.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace agents and their corresponding usage.\n- \"feedbacks\": The list of feedbacks given by users on the agent messages.\n- \"all\": A concatenation of all the above tables.\n",
+            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- 'inactive_users': The of users that didn't sent any messages\n- \"assistant_messages\": The list of messages sent by users including the mentioned agents.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace agents and their corresponding usage.\n- \"feedbacks\": The list of feedbacks given by users on the agent messages.\n- \"all\": A concatenation of all the above tables.\n",
             "schema": {
               "type": "string",
               "enum": [
@@ -4265,7 +4271,7 @@
         "properties": {
           "content": {
             "type": "string",
-            "description": "The content of the message",
+            "description": "The content of the message. Should not be empty.",
             "example": "This is my message"
           },
           "mentions": {

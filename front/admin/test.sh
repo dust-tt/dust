@@ -14,4 +14,4 @@ echo "Syncing test db schemas..."
 NODE_ENV=test FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI npx tsx "$SCRIPT_DIR/db.ts"
 
 # Start the tests
-NODE_ENV=test FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI npm run test
+NODE_ENV=test FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI npm run test -- $*

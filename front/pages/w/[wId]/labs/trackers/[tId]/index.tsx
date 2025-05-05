@@ -1,5 +1,6 @@
 import type { InferGetServerSidePropsType } from "next";
 
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { TrackerBuilder } from "@app/components/trackers/TrackerBuilder";
 import config from "@app/lib/api/config";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
@@ -226,4 +227,8 @@ const renderDataSourcesConfigurations = async (
     }),
     {} as DataSourceViewSelectionConfigurations
   );
+};
+
+DocumentTracker.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
 };

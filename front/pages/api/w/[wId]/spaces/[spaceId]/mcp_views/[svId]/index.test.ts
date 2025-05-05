@@ -74,7 +74,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
       serverView.sId
     );
 
-    expect(deletedServerView.isErr()).toBe(true);
+    expect(deletedServerView).toBe(null);
   });
 
   itInTransaction(

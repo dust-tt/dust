@@ -3,8 +3,9 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -103,7 +104,7 @@ export default function Specification({
   const router = useRouter();
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
@@ -151,6 +152,10 @@ export default function Specification({
           )}
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+Specification.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

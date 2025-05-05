@@ -18,7 +18,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import logger from "@app/logger/logger";
-import type { ModelId } from "@app/types";
+import type { AgentFetchVariant, ModelId } from "@app/types";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
@@ -27,7 +27,7 @@ export async function fetchMCPServerActionConfigurations(
     variant,
   }: {
     configurationIds: ModelId[];
-    variant: "light" | "full";
+    variant: AgentFetchVariant;
   }
 ): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
   if (variant !== "full") {

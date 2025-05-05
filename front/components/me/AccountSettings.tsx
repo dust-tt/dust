@@ -83,7 +83,7 @@ export function AccountSettings({
   return (
     <>
       <Page.Horizontal>
-        <Label>eMail</Label>
+        <Label>Email</Label>
         <Label className="text-muted-foreground dark:text-muted-foreground-night">
           {user?.email}
         </Label>

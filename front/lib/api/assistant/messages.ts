@@ -15,7 +15,7 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
@@ -48,21 +48,24 @@ async function batchRenderUserMessages(
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );
+
+  const userIds = [
+    ...new Set(
+      userMessages
+        .map((m) => m.userMessage?.userId)
+        .filter((id) => !!id) as number[]
+    ),
+  ];
+
   const [mentions, users] = await Promise.all([
     Mention.findAll({
       where: {
         messageId: userMessages.map((m) => m.id),
       },
     }),
-    (async () => {
-      const userIds = userMessages
-        .map((m) => m.userMessage?.userId)
-        .filter((id) => !!id) as number[];
-      if (userIds.length === 0) {
-        return [];
-      }
-      return UserResource.fetchByModelIds(userIds);
-    })(),
+    userIds.length === 0
+      ? []
+      : UserResource.fetchByModelIds([...new Set(userIds)]),
   ]);
 
   return userMessages.map((message) => {
@@ -83,14 +86,16 @@ async function batchRenderUserMessages(
       version: message.version,
       created: message.createdAt.getTime(),
       user: user ? user.toJSON() : null,
-      mentions: messageMentions.map((m) => {
-        if (m.agentConfigurationId) {
-          return {
-            configurationId: m.agentConfigurationId,
-          };
-        }
-        throw new Error("Mention Must Be An Agent: Unreachable.");
-      }),
+      mentions: messageMentions
+        ? messageMentions.map((m) => {
+            if (m.agentConfigurationId) {
+              return {
+                configurationId: m.agentConfigurationId,
+              };
+            }
+            throw new Error("Mention Must Be An Agent: Unreachable.");
+          })
+        : [],
       content: userMessage.content,
       context: {
         username: userMessage.userContextUsername,
@@ -132,21 +137,21 @@ async function batchRenderAgentMessages(
     agentMCPActions,
   ] = await Promise.all([
     (async () => {
-      const agentConfigurationIds: string[] = agentMessages.reduce(
-        (acc: string[], m) => {
+      const agentConfigurationIds: Set<string> = agentMessages.reduce(
+        (acc: Set<string>, m) => {
           const agentId = m.agentMessage?.agentConfigurationId;
-          if (agentId && !acc.includes(agentId)) {
-            acc.push(agentId);
+          if (agentId) {
+            acc.add(agentId);
           }
           return acc;
         },
-        []
+        new Set<string>()
       );
-      const agents = await Promise.all(
-        agentConfigurationIds.map((agentConfigId) => {
-          return getAgentConfiguration(auth, agentConfigId, "light");
-        })
-      );
+      const agents = await getAgentConfigurations({
+        auth,
+        agentsGetView: { agentIds: [...agentConfigurationIds] },
+        variant: "extra_light",
+      });
       if (agents.some((a) => !a)) {
         return null;
       }

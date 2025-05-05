@@ -2,12 +2,6 @@ import {
   Avatar,
   Button,
   ClipboardIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Icon,
   IconButton,
   Input,
@@ -45,7 +39,6 @@ import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
-import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useCreateTag, useTags } from "@app/lib/swr/tags";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
@@ -60,6 +53,8 @@ import type {
 import { Err, isAdmin, Ok } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
+import { AddEditorDropdown } from "../members/AddEditorsDropdown";
+
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
 }
@@ -69,11 +64,15 @@ function assistantHandleIsValid(handle: string) {
 }
 
 const VISIBILITY_DESCRIPTIONS = {
-  visible: "Visible & usable by the members of Company Space.",
-  hidden: "Limited to editors.",
-  published: "Visible to all members [legacy Shared]",
-  workspace: "Visible to all members [legacy Workspace]",
-  private: "Limited to current user[legacy Private]",
+  visible: (
+    <span>
+      Visible & usable by the members of <b>Company Space</b>.
+    </span>
+  ),
+  hidden: <span>Limited to editors.</span>,
+  published: <span>Visible to all members [legacy Shared]</span>,
+  workspace: <span>Visible to all members [legacy Workspace]</span>,
+  private: <span>Limited to current user[legacy Private]</span>,
 };
 
 async function assistantHandleIsAvailable({
@@ -158,7 +157,7 @@ export async function validateHandle({
   };
 }
 
-type NamingScreenProps = {
+type SettingsScreenProps = {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
   baseUrl: string;
@@ -177,7 +176,7 @@ type NamingScreenProps = {
   currentUser: UserType | null;
 };
 
-export default function NamingScreen({
+export default function SettingsScreen({
   owner,
   agentConfigurationId,
   baseUrl,
@@ -192,7 +191,7 @@ export default function NamingScreen({
   slackDataSource,
   setSelectedSlackChannels,
   currentUser,
-}: NamingScreenProps) {
+}: SettingsScreenProps) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -403,7 +402,7 @@ export default function NamingScreen({
       />
 
       <div className="flex w-full flex-col gap-5">
-        <Page.Header title="Naming" />
+        <Page.Header title="Settings" />
         <div className="flex gap-8">
           <div className="flex flex-grow flex-col gap-4">
             <div>
@@ -836,6 +835,15 @@ function EditorsMembersList({
         <AddEditorDropdown
           owner={owner}
           editors={builderState.editors ?? []}
+          trigger={
+            <Button
+              label="Add editor"
+              icon={PlusIcon}
+              variant="outline"
+              size="sm"
+              isSelect
+            />
+          }
           onAddEditor={(added) => {
             if (builderState.editors?.some((e) => e.sId === added.sId)) {
               return;
@@ -858,81 +866,6 @@ function EditorsMembersList({
         setPagination={setPagination}
       />
     </div>
-  );
-}
-
-function AddEditorDropdown({
-  owner,
-  editors,
-  onAddEditor,
-}: {
-  owner: WorkspaceType;
-  editors: UserType[];
-  onAddEditor: (member: UserType) => void;
-}) {
-  const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
-    useSearchMembers({
-      workspaceId: owner.sId,
-      searchTerm,
-      pageIndex: 0,
-      pageSize: 25,
-    });
-
-  return (
-    <DropdownMenu
-      open={isEditorPickerOpen}
-      onOpenChange={setIsEditorPickerOpen}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          icon={PlusIcon}
-          variant="outline"
-          size="sm"
-          isSelect
-          label="Add editor"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="h-96 w-[380px]"
-        dropdownHeaders={
-          <>
-            <DropdownMenuSearchbar
-              name="search"
-              onChange={(value) => setSearchTerm(value)}
-              placeholder="Search members"
-              value={searchTerm}
-              button={<Button icon={PlusIcon} label="Add member" />}
-            />
-            <DropdownMenuSeparator />
-          </>
-        }
-      >
-        {isWorkspaceMembersLoading ? (
-          <Spinner size="sm" />
-        ) : (
-          workspaceMembers.map((member) => {
-            return (
-              <DropdownMenuItem
-                key={member.sId}
-                label={member.fullName}
-                description={member.email}
-                icon={() => <Avatar size="sm" visual={member.image} />}
-                onClick={async () => {
-                  setSearchTerm("");
-                  setIsEditorPickerOpen(false);
-                  onAddEditor(member);
-                }}
-                truncateText
-                disabled={editors.some((e) => e.sId === member.sId)}
-              />
-            );
-          })
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 

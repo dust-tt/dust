@@ -56,9 +56,8 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
     } else {
       try {
         await sendRequestActionsAccessEmail({
-          userTo: userToId,
           emailMessage: message,
-          serverName: selectedMcpServer.server.name,
+          mcpServerViewId: selectedMcpServer.id,
           owner,
         });
         sendNotification({

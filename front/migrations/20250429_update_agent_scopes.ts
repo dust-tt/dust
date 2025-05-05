@@ -21,14 +21,23 @@ const migrateWorkspace = async (
 
   for (const agent of agents) {
     if (agent.scope === "private") {
-      logger.info({ agent: agent.sId }, "Migrating agent to scope hidden");
+      logger.info(
+        { agent: agent.sId, scope: agent.scope },
+        "Migrating agent to scope hidden"
+      );
       if (execute) {
-        await agent.update({ scope: "hidden" });
+        await agent.update({ scope: "hidden" }, { hooks: false, silent: true });
       }
     } else if (agent.scope === "workspace" || agent.scope === "published") {
-      logger.info({ agent: agent.sId }, "Migrating agent to scope visible");
+      logger.info(
+        { agent: agent.sId, scope: agent.scope },
+        "Migrating agent to scope visible"
+      );
       if (execute) {
-        await agent.update({ scope: "visible" });
+        await agent.update(
+          { scope: "visible" },
+          { hooks: false, silent: true }
+        );
       }
     }
   }

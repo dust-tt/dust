@@ -82,7 +82,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const defaultGroup = await GroupResource.makeNew(
       {
         workspaceId: workspace.id,
-        name: `Group for Agent ${agent.name}`,
+        name: `Group for Agent ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
       { transaction }
@@ -423,9 +423,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async fetchByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentConfiguration | AgentConfigurationType
-  ): Promise<Result<GroupResource, DustError>> {
+  ): Promise<GroupResource> {
     const workspace = auth.getNonNullableWorkspace();
-    const groupAgent = await GroupAgentModel.findOne({
+    const groupAgents = await GroupAgentModel.findAll({
       where: {
         agentConfigurationId: agentConfiguration.id,
         workspaceId: workspace.id,
@@ -435,19 +435,22 @@ export class GroupResource extends BaseResource<GroupModel> {
           model: GroupModel,
           where: {
             workspaceId: workspace.id,
+            kind: "agent_editors",
           },
           required: true,
         },
       ],
     });
 
-    if (!groupAgent) {
-      return new Err(new DustError("resource_not_found", "Group not found"));
+    if (groupAgents.length !== 1) {
+      throw new Error(
+        "Unexpected: agent should have exactly one editor group."
+      );
     }
 
-    const group = await groupAgent.getGroup();
+    const group = await groupAgents[0].getGroup();
 
-    return new Ok(new this(GroupModel, group.get()));
+    return new this(GroupModel, group.get());
   }
 
   static async fetchWorkspaceSystemGroup(

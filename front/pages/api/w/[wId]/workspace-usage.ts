@@ -8,11 +8,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  getActiveUserUsageData,
   getAssistantsUsageData,
   getBuildersUsageData,
   getFeedbacksUsageData,
+  getInactiveUserUsageData,
   getMessageUsageData,
-  getUserUsageData,
 } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
 import type { WorkspaceType } from "@app/types";
@@ -26,6 +27,7 @@ const MonthSchema = t.refinement(
 
 const usageTables = [
   "users",
+  "inactive_users",
   "assistant_messages",
   "builders",
   "assistants",
@@ -183,7 +185,11 @@ async function fetchUsageData({
 }): Promise<Partial<Record<usageTableType, string>>> {
   switch (table) {
     case "users":
-      return { users: await getUserUsageData(start, end, workspace) };
+      return { users: await getActiveUserUsageData(start, end, workspace) };
+    case "inactive_users":
+      return {
+        inactive_users: await getInactiveUserUsageData(start, end, workspace),
+      };
     case "assistant_messages":
       return { mentions: await getMessageUsageData(start, end, workspace) };
     case "builders":
@@ -197,15 +203,29 @@ async function fetchUsageData({
         assistants: await getAssistantsUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants, feedbacks] =
-        await Promise.all([
-          getUserUsageData(start, end, workspace),
-          getMessageUsageData(start, end, workspace),
-          getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace),
-          getFeedbacksUsageData(start, end, workspace),
-        ]);
-      return { users, assistant_messages, builders, assistants, feedbacks };
+      const [
+        users,
+        inactive_users,
+        assistant_messages,
+        builders,
+        assistants,
+        feedbacks,
+      ] = await Promise.all([
+        getActiveUserUsageData(start, end, workspace),
+        getInactiveUserUsageData(start, end, workspace),
+        getMessageUsageData(start, end, workspace),
+        getBuildersUsageData(start, end, workspace),
+        getAssistantsUsageData(start, end, workspace),
+        getFeedbacksUsageData(start, end, workspace),
+      ]);
+      return {
+        users,
+        inactive_users,
+        assistant_messages,
+        builders,
+        assistants,
+        feedbacks,
+      };
     default:
       return {};
   }

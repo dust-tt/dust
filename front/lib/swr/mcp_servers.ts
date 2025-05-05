@@ -4,8 +4,8 @@ import type { Fetcher } from "swr";
 
 import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
-import type { MCPServerType } from "@app/lib/api/mcp";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   CreateMCPServerResponseBody,
   GetMCPServersResponseBody,
@@ -23,6 +23,7 @@ import type {
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections";
 import type { LightWorkspaceType, OAuthProvider, SpaceType } from "@app/types";
+
 /**
  * Hook to fetch a specific remote MCP server by ID
  */
@@ -81,7 +82,7 @@ export function useAvailableMCPServers({
         ? data.servers.sort((a, b) =>
             mcpServersSortingFn({ mcpServer: a }, { mcpServer: b })
           )
-        : [],
+        : emptyArray<MCPServerTypeWithViews>(),
     [data]
   );
 
@@ -112,7 +113,7 @@ export function useMCPServers({
     }
   );
 
-  const mcpServers = useMemo(() => (data ? data.servers : []), [data]);
+  const mcpServers = data?.servers ?? emptyArray();
 
   return {
     mcpServers,
@@ -326,7 +327,7 @@ export function useMCPServerConnections({
   );
 
   return {
-    connections: useMemo(() => (data ? data.connections : []), [data]),
+    connections: data?.connections ?? emptyArray(),
     isConnectionsLoading: !error && !data && !disabled,
     isConnectionsError: error,
     mutateConnections: mutate,

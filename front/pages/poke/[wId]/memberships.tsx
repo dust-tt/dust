@@ -5,18 +5,21 @@ import React from "react";
 import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { getPendingInvitations } from "@app/lib/api/invitation";
+import {
+  getMembershipInvitationUrl,
+  getPendingInvitations,
+} from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type {
-  MembershipInvitationType,
+  MembershipInvitationTypeWithLink,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   members: UserTypeWithWorkspaces[];
-  pendingInvitations: MembershipInvitationType[];
+  pendingInvitations: MembershipInvitationTypeWithLink[];
   owner: WorkspaceType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -36,7 +39,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       members,
-      pendingInvitations,
+      pendingInvitations: pendingInvitations.map((invite) => ({
+        ...invite,
+        inviteLink: getMembershipInvitationUrl(owner, invite.id),
+      })),
       owner,
     },
   };

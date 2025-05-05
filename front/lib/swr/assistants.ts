@@ -8,6 +8,7 @@ import type {
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
 import {
+  emptyArray,
   fetcher,
   getErrorFromResponse,
   useSWRInfiniteWithDefaults,
@@ -40,7 +41,7 @@ export function useAssistantTemplates() {
   );
 
   return {
-    assistantTemplates: useMemo(() => (data ? data.templates : []), [data]),
+    assistantTemplates: data?.templates ?? emptyArray(),
     isAssistantTemplatesLoading: !error && !data,
     isAssistantTemplatesError: error,
     mutateAssistantTemplates: mutate,
@@ -132,12 +133,48 @@ export function useAgentConfigurations({
     });
 
   return {
-    agentConfigurations: useMemo(
-      () => (data ? data.agentConfigurations : []),
-      [data]
-    ),
+    agentConfigurations: data
+      ? data.agentConfigurations
+      : emptyArray<LightAgentConfigurationType>(),
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
+    mutate,
+    mutateRegardlessOfQueryParams,
+  };
+}
+
+export function useSuggestedAgentConfigurations({
+  workspaceId,
+  conversationId,
+  messageId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+}) {
+  const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
+    fetcher;
+
+  const key = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/suggest?messageId=${messageId}`;
+  const { cache } = useSWRConfig();
+  const cachedData: GetAgentConfigurationsResponseBody | undefined =
+    cache.get(key)?.data;
+  const inCache = typeof cachedData !== "undefined";
+
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(key, agentConfigurationsFetcher, {
+      disabled: inCache,
+    });
+
+  const dataToUse = cachedData || data;
+
+  return {
+    suggestedAgentConfigurations: useMemo(
+      () => (dataToUse ? dataToUse.agentConfigurations : []),
+      [dataToUse]
+    ),
+    isSuggestedAgentConfigurationsLoading: !error && !dataToUse,
+    isSuggestedAgentConfigurationsError: error,
     mutate,
     mutateRegardlessOfQueryParams,
   };
@@ -426,7 +463,7 @@ export function useSlackChannelsLinkedWithAgent({
   );
 
   return {
-    slackChannels: useMemo(() => (data ? data.slackChannels : []), [data]),
+    slackChannels: data?.slackChannels ?? emptyArray(),
     slackDataSource: data?.slackDataSource,
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,

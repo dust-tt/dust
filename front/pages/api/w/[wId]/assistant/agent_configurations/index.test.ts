@@ -106,10 +106,13 @@ describe("GET /api/w/[wId]/assistant/agent_configurations", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
-      const data = JSON.parse(res._getData());
+      const data: { agentConfigurations: LightAgentConfigurationType[] } =
+        JSON.parse(res._getData());
       expect(data.agentConfigurations).toBeDefined();
       expect(Array.isArray(data.agentConfigurations)).toBe(true);
-      expect(data.agentConfigurations.length).toBe(testAgents.length + 1);
+      expect(
+        data.agentConfigurations.filter((a) => a.scope !== "global").length
+      ).toBe(testAgents.length);
     }
   );
 
@@ -125,10 +128,17 @@ describe("GET /api/w/[wId]/assistant/agent_configurations", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
-      const data = JSON.parse(res._getData());
+      const data: { agentConfigurations: LightAgentConfigurationType[] } =
+        JSON.parse(res._getData());
       expect(data.agentConfigurations).toBeDefined();
       expect(Array.isArray(data.agentConfigurations)).toBe(true);
-      expect(data.agentConfigurations.length).toBe(testAgents.length + 1 - 2);
+      expect(
+        data.agentConfigurations.filter((a) => a.scope !== "global").length
+      ).toBe(
+        testAgents.filter((a) =>
+          ["workspace", "published", "visible"].includes(a.scope)
+        ).length
+      );
     }
   );
 

@@ -12,7 +12,10 @@ import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
 import { notion } from "@connectors/connectors/notion/lib/cli";
 import { slack } from "@connectors/connectors/slack/lib/cli";
 import { snowflake } from "@connectors/connectors/snowflake/lib/cli";
-import { launchCrawlWebsiteScheduler } from "@connectors/connectors/webcrawler/temporal/client";
+import {
+  launchCrawlWebsiteScheduler,
+  updateCrawlerType,
+} from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
@@ -378,10 +381,25 @@ export const batch = async ({
 
 export const webcrawler = async ({
   command,
+  args,
 }: WebcrawlerCommandType): Promise<AdminSuccessResponseType> => {
   switch (command) {
     case "start-scheduler": {
       await throwOnError(launchCrawlWebsiteScheduler());
+      return { success: true };
+    }
+    case "update-crawler": {
+      if (!args.connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+
+      if (!args.customCrawler) {
+        throw new Error("Missing --customCrawler argument");
+      }
+
+      await throwOnError(
+        updateCrawlerType(args.connectorId, args.customCrawler)
+      );
       return { success: true };
     }
   }

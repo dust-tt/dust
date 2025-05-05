@@ -25,7 +25,8 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -34,6 +35,7 @@ import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -112,6 +114,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   hasAgentDiscovery: boolean;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -133,12 +136,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
+  const user = auth.getNonNullableUser();
 
   return {
     props: {
       owner,
       subscription,
       hasAgentDiscovery,
+      user: user.toJSON(),
     },
   };
 });
@@ -156,6 +161,7 @@ export default function WorkspaceAssistants({
   owner,
   subscription,
   hasAgentDiscovery,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
@@ -316,13 +322,14 @@ export default function WorkspaceAssistants({
 
   return (
     <ConversationsNavigationProvider>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         <AssistantDetails
           owner={owner}
+          user={user}
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
         />
@@ -408,7 +415,11 @@ export default function WorkspaceAssistants({
             </div>
           </Page.Vertical>
         </Page.Vertical>
-      </AppLayout>
+      </AppContentLayout>
     </ConversationsNavigationProvider>
   );
 }
+
+WorkspaceAssistants.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

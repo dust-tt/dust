@@ -21,7 +21,8 @@ import { useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
@@ -221,7 +222,7 @@ export default function SecretsPage({
         </DialogContent>
       </Dialog>
 
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         subNavigation={subNavigationAdmin({ owner, current: "dev_secrets" })}
@@ -320,7 +321,11 @@ export default function SecretsPage({
           </Page.Vertical>
         </Page.Vertical>
         <div className="h-12" />
-      </AppLayout>
+      </AppContentLayout>
     </>
   );
 }
+
+SecretsPage.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

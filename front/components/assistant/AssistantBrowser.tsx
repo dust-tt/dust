@@ -290,7 +290,7 @@ export function AssistantBrowser({
               size="sm"
             />
 
-            {isBuilder(owner) && (
+            {(isBuilder(owner) || hasAgentDiscovery) && (
               <Button
                 tooltip="Manage agents"
                 href={`/w/${owner.sId}/builder/assistants/`}

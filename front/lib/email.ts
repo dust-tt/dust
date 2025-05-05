@@ -4,20 +4,17 @@ import type { PostRequestActionsAccessBody } from "@app/pages/api/w/[wId]/mcp/re
 import type { LightWorkspaceType } from "@app/types";
 
 export async function sendRequestDataSourceEmail({
-  userTo,
-  emailMessage,
-  dataSourceName,
   owner,
+  emailMessage,
+  dataSourceId,
 }: {
-  userTo: string;
   emailMessage: string;
-  dataSourceName: string;
+  dataSourceId: string;
   owner: LightWorkspaceType;
 }) {
   const emailBlob: PostRequestAccessBody = {
     emailMessage,
-    dataSourceName,
-    userTo,
+    dataSourceId,
   };
 
   const res = await fetch(`/api/w/${owner.sId}/data_sources/request_access`, {
@@ -67,20 +64,17 @@ export async function sendRequestFeatureAccessEmail({
 }
 
 export async function sendRequestActionsAccessEmail({
-  userTo,
-  emailMessage,
-  serverName,
   owner,
+  emailMessage,
+  mcpServerViewId,
 }: {
-  userTo: string;
-  emailMessage: string;
-  serverName: string;
   owner: LightWorkspaceType;
+  emailMessage: string;
+  mcpServerViewId: string;
 }) {
   const emailBlob: PostRequestActionsAccessBody = {
     emailMessage,
-    serverName,
-    userTo,
+    mcpServerViewId,
   };
 
   const res = await fetch(`/api/w/${owner.sId}/mcp/request_access`, {

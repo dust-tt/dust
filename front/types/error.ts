@@ -111,6 +111,7 @@ const API_ERROR_TYPES = [
   "tracker_not_found",
   // MCP Server Connections:
   "mcp_server_connection_not_found",
+  "mcp_server_view_not_found",
   // Conversation:
   ...CONVERSATION_ERROR_TYPES,
   // MCP:

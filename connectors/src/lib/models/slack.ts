@@ -14,6 +14,7 @@ export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurati
   declare updatedAt: CreationOptional<Date>;
   declare slackTeamId: string;
   declare botEnabled: boolean;
+  declare restrictedSpaceAgentsEnabled: boolean;
   // Whitelisted domains are in the format "domain:group_id".
   declare whitelistedDomains?: readonly string[];
   declare autoReadChannelPatterns: SlackAutoReadPattern[];
@@ -48,6 +49,11 @@ SlackConfigurationModel.init(
       type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: [],
+    },
+    restrictedSpaceAgentsEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
   },
   {

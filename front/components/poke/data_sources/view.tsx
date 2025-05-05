@@ -232,6 +232,18 @@ export function ViewDataSourceTable({
                         )}
                       </PokeTableCell>
                     </PokeTableRow>
+                    {connector.configuration !== null &&
+                      "customCrawler" in connector.configuration && (
+                        <PokeTableRow>
+                          <PokeTableCell>Crawler</PokeTableCell>
+                          <PokeTableCell>
+                            <span>
+                              {connector.configuration.customCrawler ??
+                                "default"}
+                            </span>
+                          </PokeTableCell>
+                        </PokeTableRow>
+                      )}
                   </>
                 )}
               </PokeTableBody>

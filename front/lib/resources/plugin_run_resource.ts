@@ -19,8 +19,8 @@ import type {
   LightWorkspaceType,
   PluginArgs,
   PluginResourceTarget,
+  Result,
 } from "@app/types";
-import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 import type { UserResource } from "./user_resource";
@@ -31,11 +31,14 @@ function redactPluginArgs(
 ) {
   const sanitizedArgs: Record<string, unknown> = {};
 
-  for (const [key, arg] of Object.entries(plugin.manifest.args)) {
-    if (arg.redact) {
+  for (const [key, argDef] of Object.entries(plugin.manifest.args)) {
+    const arg = args[key];
+    if (argDef.redact) {
       sanitizedArgs[key] = "REDACTED";
+    } else if (argDef.type === "file" && typeof arg === "object") {
+      sanitizedArgs[key] = arg.originalFilename;
     } else {
-      sanitizedArgs[key] = args[key];
+      sanitizedArgs[key] = arg;
     }
   }
 

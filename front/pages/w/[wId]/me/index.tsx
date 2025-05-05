@@ -6,7 +6,8 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import { AccountSettings } from "@app/components/me/AccountSettings";
 import { Preferences } from "@app/components/me/Preferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -44,7 +45,7 @@ export default function ProfilePage({
 
   return (
     <ConversationsNavigationProvider>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Profile"
@@ -69,16 +70,17 @@ export default function ProfilePage({
 
             {hasFeature("mcp_actions") && (
               <>
-                <Page.SectionHeader
-                  title="Tools Confirmation Preferences"
-                  description="Manage your tool approbation history per action"
-                />
+                <Page.SectionHeader title="Tools Confirmation Preferences" />
                 <UserToolsTable owner={owner} />
               </>
             )}
           </Page.Layout>
         </Page>
-      </AppLayout>
+      </AppContentLayout>
     </ConversationsNavigationProvider>
   );
 }
+
+ProfilePage.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

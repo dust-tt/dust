@@ -14,6 +14,10 @@ export type MembershipInvitationType = {
   createdAt: number;
 };
 
+export type MembershipInvitationTypeWithLink = MembershipInvitationType & {
+  inviteLink: string;
+};
+
 // Types for the invite form in Poke.
 
 export const InviteMemberFormSchema = t.type({
