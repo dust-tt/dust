@@ -1,6 +1,9 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { McpError } from "@modelcontextprotocol/sdk/types.js";
+import { ProgressNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+import EventEmitter from "events";
 import type { JSONSchema7 } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -24,9 +27,11 @@ import {
   isDefaultInternalMCPServer,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  MCPProgressNotificationType,
   MCPToolResult,
   MCPToolResultContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   MCPConnectionParams,
   PlatformMCPConnectionParams,
@@ -50,11 +55,13 @@ import type {
   MCPToolType,
   PlatformMCPToolTypeWithStakeLevel,
 } from "@app/lib/api/mcp";
+import { MCP_PROGRESS_TOKEN } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { fromEvent } from "@app/lib/utils/events";
 import { findMatchingSubSchemas } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -63,6 +70,9 @@ import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 const MAX_OUTPUT_ITEMS = 128;
 
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
+
+const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
+const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 
@@ -113,20 +123,37 @@ function makeLocalMCPToolConfigurations(
   }));
 }
 
+type MCPCallToolEvent =
+  | {
+      type: "notification";
+      notification: MCPProgressNotificationType;
+    }
+  | {
+      type: "result";
+      result: Result<MCPToolResult["content"], Error | McpError>;
+    };
+
 /**
  * Try to call an MCP tool.
  *
  * May fail when connecting to remote/client-side servers.
  */
-export async function tryCallMCPTool(
+export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
   agentLoopContext: AgentLoopContextType
-): Promise<Result<MCPToolResult["content"], Error>> {
+): AsyncGenerator<MCPCallToolEvent, void> {
   if (!isMCPActionConfiguration(agentLoopContext.actionConfiguration)) {
-    return new Err(
-      new Error("Invalid action configuration: not an MCP action configuration")
-    );
+    yield {
+      type: "result",
+      result: new Err(
+        new Error(
+          "Invalid action configuration: not an MCP action configuration"
+        )
+      ),
+    };
+
+    return;
   }
 
   const connectionParamsRes = await getMCPClientConnectionParams(
@@ -138,7 +165,11 @@ export async function tryCallMCPTool(
     }
   );
   if (connectionParamsRes.isErr()) {
-    return connectionParamsRes;
+    yield {
+      type: "result",
+      result: connectionParamsRes,
+    };
+    return;
   }
 
   let mcpClient;
@@ -149,19 +180,77 @@ export async function tryCallMCPTool(
       agentLoopContext
     );
     if (r.isErr()) {
-      return r;
+      yield {
+        type: "result",
+        result: r,
+      };
+      return;
     }
     mcpClient = r.value;
 
-    const toolCallResult = await mcpClient.callTool(
+    const emitter = new EventEmitter();
+
+    // Convert the emitter to an async generator.
+    const notificationStream = fromEvent<MCPProgressNotificationType>(
+      emitter,
+      MCP_NOTIFICATION_EVENT_NAME
+    );
+
+    // Subscribe to notifications before calling the tool.
+    // Longer term we should use the `onprogress` callback of the `callTool` method. Right now,
+    // `progressToken` is not accessible in the `ToolCallback` interface. PR has been merged, but
+    // not released yet (https://github.com/modelcontextprotocol/typescript-sdk/pull/328).
+    mcpClient.setNotificationHandler(
+      ProgressNotificationSchema,
+      async (notification) => {
+        // For now, we only handle internal notifications.
+        // TODO(MCP 2025-04-30): Add rate limiting.
+        if (isMCPProgressNotificationType(notification)) {
+          emitter.emit(MCP_NOTIFICATION_EVENT_NAME, notification);
+        }
+      }
+    );
+
+    // Start the tool call in parallel.
+    const toolPromise = mcpClient.callTool(
       {
         name: agentLoopContext.actionConfiguration.originalName,
         arguments: inputs,
+        progressToken: MCP_PROGRESS_TOKEN,
       },
       undefined,
-      { timeout: DEFAULT_MCP_REQUEST_TIMEOUT_MS }
+      {
+        timeout: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+      }
     );
 
+    // Read from notificationStream and yield events until the tool is done.
+    let toolDone = false;
+    while (!toolDone) {
+      const notificationOrDone = await Promise.race([
+        notificationStream.next(), // Next notification.
+        toolPromise.then(() => MCP_TOOL_DONE_EVENT_NAME), // Or tool fully completes.
+      ]);
+
+      // If the tool completed, break from the loop and stop reading notifications.
+      if (notificationOrDone === MCP_TOOL_DONE_EVENT_NAME) {
+        toolDone = true;
+      } else {
+        const iteratorResult = notificationOrDone;
+        if (iteratorResult.done) {
+          // The notifications ended prematurely.
+          break;
+        }
+
+        yield {
+          type: "notification",
+          notification: iteratorResult.value,
+        };
+      }
+    }
+
+    // Tool is done now, wait for the actual result.
+    const toolCallResult = await toolPromise;
     // Do not raise an error here as it will break the conversation.
     // Let the model decide what to do.
     if (toolCallResult.isError) {
@@ -180,18 +269,27 @@ export async function tryCallMCPTool(
       []) as MCPToolResultContentType[];
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
-      return new Err(
-        new Error(
-          `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`
-        )
-      );
+      yield {
+        type: "result",
+        result: new Err(
+          new Error(
+            `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`
+          )
+        ),
+      };
     }
 
     // TODO(mcp) refuse if the content is too large
 
-    return new Ok(content);
+    yield {
+      type: "result",
+      result: new Ok(content),
+    };
   } catch (error) {
-    return new Err(normalizeError(error));
+    yield {
+      type: "result",
+      result: new Err(normalizeError(error)),
+    };
   } finally {
     await mcpClient?.close();
   }

@@ -1,4 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { Notification } from "@modelcontextprotocol/sdk/types.js";
+import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import type { SupportedFileContentType } from "@app/types";
@@ -284,3 +286,45 @@ export type MCPToolResult = {
   isError: boolean;
   content: MCPToolResultContentType[];
 };
+
+/**
+ * Notification output types.
+ */
+
+const NotificationImageContentSchema = z.object({
+  type: z.literal("image"),
+  mimeType: z.string(),
+});
+
+export const ProgressNotificationContentSchema = z.object({
+  // Required for the MCP protocol.
+  progress: z.number(),
+  total: z.number(),
+  progressToken: z.union([z.string(), z.number()]),
+  // Custom data.
+  data: z.object({
+    label: z.string(),
+    output: z
+      .union([NotificationImageContentSchema, TextContentSchema])
+      .optional(),
+  }),
+});
+
+export type ProgressNotificationContentType = z.infer<
+  typeof ProgressNotificationContentSchema
+>;
+
+export const MCPProgressNotificationSchema = NotificationSchema.extend({
+  method: z.literal("notifications/progress"),
+  params: ProgressNotificationContentSchema,
+});
+
+export type MCPProgressNotificationType = z.infer<
+  typeof MCPProgressNotificationSchema
+>;
+
+export function isMCPProgressNotificationType(
+  notification: Notification
+): notification is MCPProgressNotificationType {
+  return MCPProgressNotificationSchema.safeParse(notification).success;
+}
