@@ -95,9 +95,6 @@ export const TagsSelector = ({
             label={tag.name}
           />
         ))}
-      </div>
-
-      <div className="mb-2 flex flex-row gap-2">
         <DropdownMenu
           open={isMenuOpen}
           onOpenChange={onMenuOpenChange}
