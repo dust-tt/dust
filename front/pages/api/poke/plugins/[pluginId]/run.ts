@@ -107,18 +107,51 @@ async function handler(
         ? await fetchPluginResource(auth, resourceType, resourceId)
         : null;
 
-      // Parse multipart form data
-      const form = new IncomingForm();
-      const [fields, files] = await form.parse(req);
+      let formData: Record<string, any>;
+      const contentType = req.headers["content-type"] || "";
 
-      // Convert fields to a plain object
-      const formData = Object.fromEntries([
-        ...Object.entries(fields).map(([key, value]) => [
-          key,
-          Array.isArray(value) ? value?.[0] : value,
-        ]),
-        ...Object.entries(files).map(([key, value]) => [key, value?.[0]]),
-      ]);
+      if (contentType.includes("application/json")) {
+        // Handle JSON request body
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) {
+            chunks.push(chunk);
+          }
+          const body = Buffer.concat(chunks).toString();
+          formData = JSON.parse(body);
+        } catch (e) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid JSON in request body",
+            },
+          });
+        }
+      } else if (
+        contentType.includes("multipart/form-data") ||
+        contentType.includes("application/x-www-form-urlencoded")
+      ) {
+        // Parse multipart form data using formidable
+        const form = new IncomingForm();
+        const [fields, files] = await form.parse(req);
+
+        // Convert fields to a plain object
+        formData = Object.fromEntries([
+          ...Object.entries(fields).map(([key, value]) => [key, value?.[0]]),
+          ...Object.entries(files).map(([key, value]) => [key, value?.[0]]),
+        ]);
+      } else {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Unsupported content type. Expected application/json, application/x-www-form-urlencoded or multipart/form-data",
+          },
+        });
+      }
+
       const pluginCodec = createIoTsCodecFromArgs(plugin.manifest.args);
       const pluginArgsValidation = pluginCodec.decode(formData);
       if (isLeft(pluginArgsValidation)) {
