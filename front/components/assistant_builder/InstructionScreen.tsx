@@ -16,16 +16,13 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import {
+  ParagraphExtension,
+} from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
+import { PromptDiffExtension } from "@app/components/assistant_builder/instructions/PromptDiffExtension";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import {
   plainTextFromTipTapContent,
@@ -43,7 +40,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, isSupportingResponseFormat, md5, Ok } from "@app/types";
-import { PromptDiffExtension } from "@app/components/assistant_builder/instructions/PromptDiffExtension";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -238,47 +234,30 @@ export function InstructionScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetAt]);
 
+  // InstructionScreen.tsx
   useEffect(() => {
     if (!editor) {
       return;
     }
 
     if (diffMode && compareVersion && currentConfig) {
-      const currentText =
-        overridenConfigInstructions[currentConfig.version] ||
-        currentConfig.instructions ||
-        "";
+      const currentText = currentConfig.instructions || "";
       const compareText = compareVersion.instructions || "";
 
-      // Use a microtask to ensure we're not in the middle of a React render cycle
-      queueMicrotask(() => {
-        // First make editor read-only to prevent further changes during diff
-        editor.setEditable(false);
-        // Then apply the diff in a single transaction
-        editor.commands.applyDiff(compareText, currentText);
-      });
-    } else if (!diffMode && editor && currentConfig) {
-      queueMicrotask(() => {
-        // First reset content
-        editor.commands.clearContent();
-        // Then set new content and make editable
+      // Apply diff in a single command
+      editor.commands.applyDiff(compareText, currentText);
+    } else if (!diffMode && editor) {
+      // Exit diff mode if active, otherwise just set normal content
+      if (editor.storage.promptDiff?.isDiffMode) {
+        editor.commands.exitDiff();
+      } else {
         editor.commands.setContent(
-          tipTapContentFromPlainText(
-            overridenConfigInstructions[currentConfig.version] ||
-              currentConfig.instructions ||
-              ""
-          )
+          tipTapContentFromPlainText(currentConfig?.instructions || "")
         );
         editor.setEditable(true);
-      });
+      }
     }
-  }, [
-    diffMode,
-    compareVersion,
-    currentConfig,
-    editor,
-    overridenConfigInstructions,
-  ]);
+  }, [diffMode, compareVersion, currentConfig, editor]);
 
   return (
     <div className="flex grow flex-col gap-4">
@@ -325,9 +304,9 @@ export function InstructionScreen({
                     size="sm"
                     onClick={() => {
                       setDiffMode(true);
-                      // Default to comparing with the first previous version
                       setCompareVersion(configsWithUniqueInstructions[1]);
                     }}
+                    tooltip="Compare with previous versions"
                   />
                 ) : compareVersion ? (
                   <div className="flex items-center gap-2">
@@ -339,12 +318,17 @@ export function InstructionScreen({
                       history={configsWithUniqueInstructions.slice(1)}
                       onConfigChange={setCompareVersion}
                       currentConfig={compareVersion}
+                      isDiffMode={diffMode}
                     />
                     <Button
                       icon={PencilSquareIcon}
                       variant="outline"
                       size="sm"
-                      onClick={() => setDiffMode(false)}
+                      onClick={() => {
+                        setDiffMode(false);
+                        editor?.commands.exitDiff();
+                      }}
+                      tooltip="Edit current prompt"
                     />
                   </div>
                 ) : null}
@@ -411,10 +395,12 @@ function PromptHistory({
   history,
   onConfigChange,
   currentConfig,
+  isDiffMode,
 }: {
   history: LightAgentConfigurationType[];
   onConfigChange: (config: LightAgentConfigurationType) => void;
   currentConfig: LightAgentConfigurationType;
+  isDiffMode: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const latestConfig = history[0];
@@ -428,7 +414,7 @@ function PromptHistory({
         hour: "numeric",
         minute: "numeric",
       });
-      return config.version === latestConfig?.version
+      return config.version === latestConfig?.version && !isDiffMode
         ? "Latest Version"
         : config.versionCreatedAt
           ? dateFormatter.format(new Date(config.versionCreatedAt))
