@@ -17,10 +17,28 @@ export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   return titleTag.substring(titleTagPrefix.length);
 }
 
+function getSetupSuffixForDataSource(
+  dataSource: DataSourceType
+): string | null {
+  const match = dataSource.name.match(
+    `/managed-${dataSource.connectorProvider}+-(.*)/`
+  );
+  if (!match || match.length < 2) {
+    return null;
+  }
+  return match[1];
+}
+
 export function getDisplayNameForDataSource(ds: DataSourceType) {
   if (ds.connectorProvider) {
     if (ds.connectorProvider === "webcrawler") {
       return ds.name;
+    }
+    // Not very satisfying to retro-engineer getDefaultDataSourceName but we don't store the suffix by itself.
+    // This is a technical debt to have this function.
+    const suffix = getSetupSuffixForDataSource(ds);
+    if (suffix) {
+      return `${CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name} (${suffix})`;
     }
     return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
   } else {
