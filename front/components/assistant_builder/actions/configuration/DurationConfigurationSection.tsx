@@ -11,20 +11,19 @@ import {
 import { useState } from "react";
 
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
-import type { AssistantBuilderTimeFrame } from "@app/components/assistant_builder/types";
-import type { TimeframeUnit } from "@app/types";
+import type { TimeFrame, TimeframeUnit } from "@app/types";
 
 interface DurationConfigurationSectionProps {
-  timeFrame: AssistantBuilderTimeFrame | null;
-  onConfigUpdate: (timeFrame: AssistantBuilderTimeFrame | null) => void;
+  timeFrame: TimeFrame | null;
+  onConfigUpdate: (timeFrame: TimeFrame | null) => void;
 }
 
 export function DurationConfigurationSection({
   timeFrame,
   onConfigUpdate,
 }: DurationConfigurationSectionProps) {
-  const defaultTimeFrame: AssistantBuilderTimeFrame = {
-    value: 1,
+  const defaultTimeFrame: TimeFrame = {
+    duration: 1,
     unit: "day",
   };
 
@@ -41,7 +40,7 @@ export function DurationConfigurationSection({
         conversation context. Enable manual time frame selection when you need
         to specify an exact range for data extraction.
       </div>
-      <div className={"flex flex-row items-center gap-4 pb-4"}>
+      <div className="flex flex-row items-center gap-4 pb-4">
         <Checkbox
           checked={!!timeFrame}
           onCheckedChange={(checked) => {
@@ -61,14 +60,14 @@ export function DurationConfigurationSection({
         <Input
           type="string"
           messageStatus={timeFrameError ? "error" : "default"}
-          value={timeFrame?.value.toString() ?? ""}
+          value={timeFrame?.duration.toString() ?? ""}
           onChange={(e) => {
-            const value = parseInt(e.target.value, 10);
-            if (!isNaN(value) || !e.target.value) {
+            const duration = parseInt(e.target.value, 10);
+            if (!isNaN(duration) || !e.target.value) {
               setTimeFrameError(null);
               onConfigUpdate({
                 ...(timeFrame || defaultTimeFrame),
-                value: value || 1,
+                duration: duration || 1,
               });
             }
           }}
@@ -79,13 +78,7 @@ export function DurationConfigurationSection({
           <DropdownMenuTrigger asChild>
             <Button
               isSelect
-              label={
-                TIME_FRAME_UNIT_TO_LABEL[
-                  timeFrame && typeof timeFrame === "object"
-                    ? timeFrame.unit
-                    : "day"
-                ]
-              }
+              label={TIME_FRAME_UNIT_TO_LABEL[timeFrame?.unit ?? "day"]}
               variant="outline"
               size="sm"
               disabled={timeFrameDisabled}

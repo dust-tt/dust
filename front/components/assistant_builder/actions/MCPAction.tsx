@@ -13,11 +13,10 @@ import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSe
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
-  AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";
 
 interface NoActionAvailableProps {
@@ -282,7 +281,7 @@ export function MCPAction({
       )}
       {requirements.requiresDurationConfiguration && (
         <DurationConfigurationSection
-          onConfigUpdate={(timeFrame: AssistantBuilderTimeFrame | null) => {
+          onConfigUpdate={(timeFrame: TimeFrame | null) => {
             handleConfigUpdate((old) => ({ ...old, timeFrame }));
           }}
           timeFrame={actionConfiguration.timeFrame}

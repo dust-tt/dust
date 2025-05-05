@@ -89,16 +89,6 @@ type FlexibleConfigurableToolInput = {
     value: string;
     mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM;
   };
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION]:
-    | {
-        duration: number;
-        unit: "hour" | "day" | "week" | "month" | "year";
-        mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION;
-      }
-    | {
-        value: "auto" | "none";
-        mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION;
-      };
 };
 
 export type ConfigurableToolInputType =
@@ -177,17 +167,14 @@ export function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION: {
-      const { relativeTimeFrame } = actionConfiguration;
-      if (!relativeTimeFrame) {
+      const { timeFrame } = actionConfiguration;
+      if (!timeFrame) {
         // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the time range.
         throw new Error("Unreachable: missing time range configuration.");
       }
 
-      if (typeof relativeTimeFrame === "object") {
-        return { ...relativeTimeFrame, mimeType };
-      }
-
-      return { value: relativeTimeFrame, mimeType };
+      const { duration, unit } = timeFrame;
+      return { duration, unit, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {

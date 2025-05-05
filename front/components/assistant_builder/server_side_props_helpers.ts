@@ -282,11 +282,11 @@ async function getMCPServerActionConfiguration(
     }
   }
 
-  const { relativeTimeFrame } = action;
-  if (relativeTimeFrame && typeof relativeTimeFrame === "object") {
+  const { timeFrame } = action;
+  if (timeFrame) {
     builderAction.configuration.timeFrame = {
-      value: relativeTimeFrame.duration,
-      unit: relativeTimeFrame.unit,
+      duration: timeFrame.duration,
+      unit: timeFrame.unit,
     };
   }
 

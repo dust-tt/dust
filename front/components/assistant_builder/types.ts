@@ -28,6 +28,7 @@ import type {
   PlanType,
   SubscriptionType,
   SupportedModel,
+  TimeFrame,
   TimeframeUnit,
   UserType,
   WorkspaceType,
@@ -136,7 +137,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
   reasoningModel: ReasoningModelConfiguration | null;
-  timeFrame: AssistantBuilderTimeFrame | null;
+  timeFrame: TimeFrame | null;
   additionalConfiguration: Record<string, boolean | number | string>;
 };
 

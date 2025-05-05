@@ -1388,7 +1388,7 @@ export async function createAgentActionConfiguration(
           tables: action.tables,
           childAgentId: action.childAgentId,
           reasoningModel: action.reasoningModel,
-          relativeTimeFrame: action.relativeTimeFrame,
+          timeFrame: action.timeFrame,
           additionalConfiguration: action.additionalConfiguration,
         });
       });

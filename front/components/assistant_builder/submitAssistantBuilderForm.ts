@@ -116,20 +116,20 @@ export async function submitAssistantBuilderForm({
   >;
 
   const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
-    let timeFrame: RetrievalTimeframe = "auto";
+    let retrievalTimeFrame: RetrievalTimeframe = "auto";
 
-    if (a.type === "RETRIEVAL_EXHAUSTIVE" || a.type === "MCP") {
+    if (a.type === "RETRIEVAL_EXHAUSTIVE") {
       if (a.configuration.timeFrame) {
-        timeFrame = {
+        retrievalTimeFrame = {
           duration: a.configuration.timeFrame.value,
           unit: a.configuration.timeFrame.unit,
         };
       } else {
-        timeFrame = "none";
+        retrievalTimeFrame = "none";
       }
     } else if (a.type === "PROCESS") {
       if (a.configuration.timeFrame) {
-        timeFrame = {
+        retrievalTimeFrame = {
           duration: a.configuration.timeFrame.value,
           unit: a.configuration.timeFrame.unit,
         };
@@ -145,7 +145,7 @@ export async function submitAssistantBuilderForm({
             name: a.name,
             description: a.description,
             query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
-            relativeTimeFrame: timeFrame,
+            relativeTimeFrame: retrievalTimeFrame,
             topK: "auto",
             dataSources: processDataSourcesSelection({
               owner,
@@ -206,6 +206,7 @@ export async function submitAssistantBuilderForm({
             childAgentId,
             reasoningModel: mcpReasoningModel,
             additionalConfiguration,
+            timeFrame,
           },
         } = a;
 
@@ -229,7 +230,7 @@ export async function submitAssistantBuilderForm({
                   modelId: mcpReasoningModel.modelId,
                 }
               : null,
-            relativeTimeFrame: timeFrame,
+            timeFrame,
             additionalConfiguration,
           },
         ];
@@ -265,7 +266,7 @@ export async function submitAssistantBuilderForm({
               })
             ),
             tagsFilter: a.configuration.tagsFilter,
-            relativeTimeFrame: timeFrame,
+            relativeTimeFrame: retrievalTimeFrame,
             jsonSchema: a.configuration.jsonSchema,
           },
         ];
