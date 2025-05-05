@@ -616,6 +616,7 @@ export default function SettingsScreen({
             </div>
             <EditorsMembersList
               currentUser={currentUser}
+              isVisible={isVisible}
               owner={owner}
               builderState={builderState}
               setBuilderState={setBuilderState}
@@ -751,6 +752,7 @@ function EditorsMembersList({
   builderState,
   setBuilderState,
   setEdited,
+  isVisible,
 }: {
   currentUser: UserType | null;
   owner: WorkspaceType;
@@ -759,6 +761,7 @@ function EditorsMembersList({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
+  isVisible: boolean;
 }) {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -797,7 +800,11 @@ function EditorsMembersList({
       <div className="flex flex-row items-center gap-2">
         <Page.SectionHeader
           title="Editors"
-          description="People who can use and edit the agent"
+          description={
+            isVisible
+              ? "People who can edit the agent."
+              : "People who can use and edit the agent."
+          }
         />
         <div className="flex flex-grow" />
         <AddEditorDropdown
