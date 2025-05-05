@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   DustIcon,
   MagnifyingGlassIcon,
   Page,
@@ -38,6 +39,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 export const AGENT_MANAGER_TABS_LEGACY = [
   {
@@ -167,7 +169,7 @@ export default function WorkspaceAssistants({
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
   const activeTab = useMemo(() => {
     if (assistantSearch.trim() !== "") {
       return "search";
@@ -205,7 +207,7 @@ export default function WorkspaceAssistants({
         if (selectedTags.length === 0) {
           return true;
         }
-        return a.tags.some((t) => selectedTags.includes(t.sId));
+        return a.tags.some((t) => selectedTags.includes(t));
       })
       .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
@@ -367,6 +369,19 @@ export default function WorkspaceAssistants({
                   />
                 </Link>
               </div>
+            </div>
+            <div className="flex flex-row gap-2">
+              {selectedTags.map((tag) => (
+                <Chip
+                  key={tag.sId}
+                  label={tag.name}
+                  size="xs"
+                  color="golden"
+                  onRemove={() =>
+                    setSelectedTags(selectedTags.filter((t) => t !== tag))
+                  }
+                />
+              ))}
             </div>
             <div className="flex flex-col pt-3">
               <Tabs value={activeTab}>
