@@ -140,17 +140,6 @@ async function handler(
     }
 
     case "DELETE": {
-      if (!auth.isBuilder() && file.useCase !== "conversation") {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Only users that are `builders` for the current workspace can delete files.",
-          },
-        });
-      }
-
       const deleteRes = await file.delete(auth);
       if (deleteRes.isErr()) {
         return apiError(req, res, {
@@ -167,16 +156,6 @@ async function handler(
     }
 
     case "POST": {
-      if (!auth.isBuilder() && file.useCase !== "conversation") {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Only users that are `builders` for the current workspace can modify files.",
-          },
-        });
-      }
       const r = await processAndStoreFile(auth, {
         file,
         content: {

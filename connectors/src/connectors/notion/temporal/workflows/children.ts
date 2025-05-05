@@ -11,7 +11,7 @@ import {
   MAX_CONCURRENT_CHILD_WORKFLOWS,
   MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW,
 } from "@connectors/connectors/notion/temporal/config";
-import { upsertDatabase } from "@connectors/connectors/notion/temporal/workflows/upserts";
+import { upsertDatabaseInCore } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
 
 const {
@@ -199,16 +199,12 @@ export async function syncResultPageDatabaseChildWorkflow({
   connectorId,
   databaseIds,
   runTimestamp,
-  isGarbageCollectionRun,
-  isBatchSync,
   topLevelWorkflowId,
   forceResync,
 }: {
   connectorId: ModelId;
   databaseIds: string[];
   runTimestamp: number;
-  isGarbageCollectionRun: boolean;
-  isBatchSync: boolean;
   topLevelWorkflowId: string;
   forceResync: boolean;
 }): Promise<void> {
@@ -229,13 +225,16 @@ export async function syncResultPageDatabaseChildWorkflow({
 
     promises.push(
       upsertQueue.add(() =>
-        upsertDatabaseInConnectorsDb(
+        upsertDatabaseInConnectorsDb({
           connectorId,
           databaseId,
           runTimestamp,
           topLevelWorkflowId,
-          loggerArgs
-        )
+          loggerArgs,
+          // In a force resync, we want to upsert the database immediately,
+          // we don't want to wait for the upsert queue to process it.
+          requestQueuingForUpsertToCore: !forceResync,
+        })
       )
     );
   }
@@ -245,19 +244,21 @@ export async function syncResultPageDatabaseChildWorkflow({
   await Promise.all(promises);
   promises = [];
 
-  for (const databaseId of databaseIds) {
-    promises.push(
-      upsertDatabase({
-        connectorId,
-        databaseId,
-        runTimestamp,
-        topLevelWorkflowId,
-        isGarbageCollectionRun,
-        isBatchSync,
-        queue: workflowQueue,
-        forceResync,
-      })
-    );
+  // If we're doing a force resync, then we immediately upsert the databases.
+  // Otherwise, we'll let the database upsert queue workflow handle the upserts.
+  if (forceResync) {
+    for (const databaseId of databaseIds) {
+      promises.push(
+        upsertDatabaseInCore({
+          connectorId,
+          databaseId,
+          runTimestamp,
+          topLevelWorkflowId,
+          queue: workflowQueue,
+          forceResync,
+        })
+      );
+    }
   }
 
   await Promise.all(promises);

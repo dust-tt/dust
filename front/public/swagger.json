@@ -3786,11 +3786,12 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- 'inactive_users': The of users that didn't sent any messages\n- \"assistant_messages\": The list of messages sent by users including the mentioned agents.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace agents and their corresponding usage.\n- \"feedbacks\": The list of feedbacks given by users on the agent messages.\n- \"all\": A concatenation of all the above tables.\n",
+            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"inactive_users\": The of users that didn't sent any messages\n- \"assistant_messages\": The list of messages sent by users including the mentioned agents.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace agents and their corresponding usage.\n- \"feedbacks\": The list of feedbacks given by users on the agent messages.\n- \"all\": A concatenation of all the above tables.\n",
             "schema": {
               "type": "string",
               "enum": [
                 "users",
+                "inactive_users",
                 "assistant_messages",
                 "builders",
                 "assistants",
