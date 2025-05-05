@@ -1,5 +1,5 @@
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
-  BreadcrumbItem,
   Breadcrumbs,
   CloudArrowLeftRightIcon,
   SuitcaseIcon,
