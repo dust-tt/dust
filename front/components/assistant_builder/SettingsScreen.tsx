@@ -847,10 +847,9 @@ function TagsSection({
   ) => void;
   setEdited: (edited: boolean) => void;
 }) {
-  const { tags, isTagsLoading } = useTags({ owner });
+  const { tags } = useTags({ owner });
   const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
 
-  const tagsDebounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [tagsSuggestions, setTagsSuggestions] =
     useState<BuilderSuggestionsType>({
       status: "unavailable",
