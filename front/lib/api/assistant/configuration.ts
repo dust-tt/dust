@@ -631,16 +631,14 @@ async function fetchWorkspaceAgentConfigurationsForView(
       canEdit: false,
     };
 
-    if (variant !== "extra_light") {
-      const { canRead, canEdit } = await getAgentPermissions(
-        auth,
-        agentConfigurationType,
-        agentIdsForUserAsEditor
-      );
+    const { canRead, canEdit } = await getAgentPermissions(
+      auth,
+      agentConfigurationType,
+      agentIdsForUserAsEditor
+    );
 
-      agentConfigurationType.canRead = canRead;
-      agentConfigurationType.canEdit = canEdit;
-    }
+    agentConfigurationType.canRead = canRead;
+    agentConfigurationType.canEdit = canEdit;
 
     agentConfigurationTypes.push(agentConfigurationType);
   }
