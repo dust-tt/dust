@@ -631,7 +631,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       canEdit: false,
     };
 
-    const { canRead, canEdit } = await getAgentPermissions(
+    const { canRead, canEdit } = getAgentPermissions(
       auth,
       agentConfigurationType,
       agentIdsForUserAsEditor
@@ -1761,7 +1761,7 @@ export async function updateAgentPermissions(
   }
 }
 
-export async function getAgentPermissions(
+export function getAgentPermissions(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
   memberAgents: ModelId[]
