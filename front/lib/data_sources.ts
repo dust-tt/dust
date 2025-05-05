@@ -21,7 +21,7 @@ function getSetupSuffixForDataSource(
   dataSource: DataSourceType
 ): string | null {
   const match = dataSource.name.match(
-    `/managed-${dataSource.connectorProvider}+-(.*)/`
+    new RegExp(`managed\\-${dataSource.connectorProvider}\\-(.*)`)
   );
   if (!match || match.length < 2) {
     return null;
