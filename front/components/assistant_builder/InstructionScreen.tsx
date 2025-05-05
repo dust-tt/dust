@@ -5,7 +5,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  HistoryIcon,
   Page,
+  PencilSquareIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { CharacterCount } from "@tiptap/extension-character-count";
@@ -41,6 +43,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, isSupportingResponseFormat, md5, Ok } from "@app/types";
+import { PromptDiffExtension } from "@app/components/assistant_builder/instructions/PromptDiffExtension";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -89,6 +92,7 @@ export function InstructionScreen({
       Text,
       ParagraphExtension,
       History,
+      PromptDiffExtension,
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),
@@ -110,6 +114,10 @@ export function InstructionScreen({
     },
   });
   const editorService = useInstructionEditorService(editor);
+
+  const [diffMode, setDiffMode] = useState(false);
+  const [compareVersion, setCompareVersion] =
+    useState<LightAgentConfigurationType | null>(null);
 
   const { agentConfigurationHistory } = useAgentConfigurationHistory({
     workspaceId: owner.sId,
@@ -230,6 +238,48 @@ export function InstructionScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetAt]);
 
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    if (diffMode && compareVersion && currentConfig) {
+      const currentText =
+        overridenConfigInstructions[currentConfig.version] ||
+        currentConfig.instructions ||
+        "";
+      const compareText = compareVersion.instructions || "";
+
+      // Use a microtask to ensure we're not in the middle of a React render cycle
+      queueMicrotask(() => {
+        // First make editor read-only to prevent further changes during diff
+        editor.setEditable(false);
+        // Then apply the diff in a single transaction
+        editor.commands.applyDiff(compareText, currentText);
+      });
+    } else if (!diffMode && editor && currentConfig) {
+      queueMicrotask(() => {
+        // First reset content
+        editor.commands.clearContent();
+        // Then set new content and make editable
+        editor.commands.setContent(
+          tipTapContentFromPlainText(
+            overridenConfigInstructions[currentConfig.version] ||
+              currentConfig.instructions ||
+              ""
+          )
+        );
+        editor.setEditable(true);
+      });
+    }
+  }, [
+    diffMode,
+    compareVersion,
+    currentConfig,
+    editor,
+    overridenConfigInstructions,
+  ]);
+
   return (
     <div className="flex grow flex-col gap-4">
       <div className="flex flex-col sm:flex-row">
@@ -243,64 +293,63 @@ export function InstructionScreen({
           </Page.P>
         </div>
         <div className="flex-grow" />
-        {configsWithUniqueInstructions &&
-          configsWithUniqueInstructions.length > 1 &&
-          currentConfig && (
-            <div className="mr-2 mt-2 self-end">
-              <PromptHistory
-                history={configsWithUniqueInstructions}
-                onConfigChange={(config) => {
-                  // Remember the instructions of the version we're leaving, if overriden
-                  if (
-                    currentConfig &&
-                    currentConfig.instructions !== builderState.instructions
-                  ) {
-                    setOverridenConfigInstructions((prev) => ({
-                      ...prev,
-                      [currentConfig.version]: builderState.instructions,
-                    }));
-                  }
-
-                  // Bring new version's instructions to the editor, fetch overriden instructions if any
-                  setCurrentConfig(config);
-                  editorService.resetContent(
-                    tipTapContentFromPlainText(
-                      overridenConfigInstructions[config.version] ||
-                        config.instructions ||
-                        ""
+        <div className="mt-2 flex items-center gap-2 self-end">
+          {!diffMode && (
+            <AdvancedSettings
+              generationSettings={builderState.generationSettings}
+              setGenerationSettings={(generationSettings) => {
+                setEdited(true);
+                setBuilderState((state) => ({
+                  ...state,
+                  generationSettings: {
+                    ...generationSettings,
+                    responseFormat: isSupportingResponseFormat(
+                      generationSettings.modelSettings.modelId
                     )
-                  );
-                  setBuilderState((state) => ({
-                    ...state,
-                    instructions:
-                      overridenConfigInstructions[config.version] ||
-                      config.instructions ||
-                      "",
-                  }));
-                }}
-                currentConfig={currentConfig}
-              />
-            </div>
+                      ? generationSettings.responseFormat
+                      : undefined,
+                  },
+                }));
+              }}
+              models={models}
+            />
           )}
-        <div className="mt-2 self-end">
-          <AdvancedSettings
-            generationSettings={builderState.generationSettings}
-            setGenerationSettings={(generationSettings) => {
-              setEdited(true);
-              setBuilderState((state) => ({
-                ...state,
-                generationSettings: {
-                  ...generationSettings,
-                  responseFormat: isSupportingResponseFormat(
-                    generationSettings.modelSettings.modelId
-                  )
-                    ? generationSettings.responseFormat
-                    : undefined,
-                },
-              }));
-            }}
-            models={models}
-          />
+          {configsWithUniqueInstructions &&
+            configsWithUniqueInstructions.length > 1 &&
+            currentConfig && (
+              <div>
+                {!diffMode ? (
+                  <Button
+                    variant="outline"
+                    icon={HistoryIcon}
+                    size="sm"
+                    onClick={() => {
+                      setDiffMode(true);
+                      // Default to comparing with the first previous version
+                      setCompareVersion(configsWithUniqueInstructions[1]);
+                    }}
+                  />
+                ) : compareVersion ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Comparing current with:
+                    </span>
+                    <PromptHistory
+                      // Only show previous versions (exclude current)
+                      history={configsWithUniqueInstructions.slice(1)}
+                      onConfigChange={setCompareVersion}
+                      currentConfig={compareVersion}
+                    />
+                    <Button
+                      icon={PencilSquareIcon}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDiffMode(false)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            )}
         </div>
       </div>
       <div className="flex h-full flex-col gap-1">
