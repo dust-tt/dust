@@ -185,6 +185,9 @@
     "vitest": "^3.0.8",
     "vitest-canvas-mock": "^0.3.3"
   },
+  "peerDependencies": {
+    "typescript": "5.4.5"
+  },
   "browser": {
     "net": false,
     "tls": false,
