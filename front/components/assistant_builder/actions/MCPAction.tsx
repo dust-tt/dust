@@ -13,6 +13,7 @@ import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSe
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
+  AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
@@ -282,7 +283,7 @@ export function MCPAction({
       )}
       {requirements.requiresDurationConfiguration && (
         <DurationConfigurationSection
-          onConfigUpdate={(timeFrame: RetrievalTimeframe | null) => {
+          onConfigUpdate={(timeFrame: AssistantBuilderTimeFrame | null) => {
             handleConfigUpdate((old) => ({ ...old, timeFrame }));
           }}
           timeFrame={actionConfiguration.timeFrame}

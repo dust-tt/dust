@@ -9,18 +9,12 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { TimeframeUnit } from "@app/types";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 
 export class AgentProcessConfiguration extends WorkspaceAwareModel<AgentProcessConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  // If we have an agentConfigurationId, it means that the agent has the process tool.
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]> | null;
-  // If we have a mcpServerConfigurationId, it means that the MCP server is configured with a process model.
-  declare mcpServerConfigurationId: ForeignKey<
-    AgentMCPServerConfiguration["id"]
-  > | null;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 
   declare sId: string;
 
@@ -107,20 +101,9 @@ AgentProcessConfiguration.init(
 
 AgentConfiguration.hasMany(AgentProcessConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
-  onDelete: "RESTRICT",
 });
 AgentProcessConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-
-AgentMCPServerConfiguration.hasMany(AgentProcessConfiguration, {
-  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-AgentProcessConfiguration.belongsTo(AgentMCPServerConfiguration, {
-  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
-  onDelete: "RESTRICT",
 });
 
 /**

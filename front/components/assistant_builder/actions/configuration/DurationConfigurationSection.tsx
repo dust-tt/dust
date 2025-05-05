@@ -13,18 +13,19 @@ import { useState } from "react";
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import type { TimeFrame, TimeframeUnit } from "@app/types";
+import { AssistantBuilderTimeFrame } from "@app/components/assistant_builder/types";
 
 interface DurationConfigurationSectionProps {
-  timeFrame: RetrievalTimeframe | null;
-  onConfigUpdate: (timeFrame: RetrievalTimeframe | null) => void;
+  timeFrame: AssistantBuilderTimeFrame | null;
+  onConfigUpdate: (timeFrame: AssistantBuilderTimeFrame | null) => void;
 }
 
 export function DurationConfigurationSection({
   timeFrame,
   onConfigUpdate,
 }: DurationConfigurationSectionProps) {
-  const defaultTimeFrame: TimeFrame = {
-    duration: 1,
+  const defaultTimeFrame: AssistantBuilderTimeFrame = {
+    value: 1,
     unit: "day",
   };
 
@@ -57,27 +58,14 @@ export function DurationConfigurationSection({
           Process data from the last
         </div>
         <Input
-          type="text"
+          type="number"
           messageStatus={timeFrameError ? "error" : "default"}
-          value={
-            timeFrame &&
-            typeof timeFrame === "object" &&
-            !isNaN(timeFrame.duration)
-              ? timeFrame.duration.toString()
-              : ""
-          }
+          value={timeFrame?.value.toString() ?? ""}
           onChange={(e) => {
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
               setTimeFrameError(null);
-              onConfigUpdate(
-                typeof timeFrame === "object" && timeFrame?.unit
-                  ? {
-                      ...timeFrame,
-                      duration: value,
-                    }
-                  : "auto"
-              );
+              onConfigUpdate(timeFrame);
             }
           }}
           disabled={timeFrameDisabled}

@@ -118,7 +118,7 @@ export async function submitAssistantBuilderForm({
   const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
     let timeFrame: RetrievalTimeframe = "auto";
 
-    if (a.type === "RETRIEVAL_EXHAUSTIVE") {
+    if (a.type === "RETRIEVAL_EXHAUSTIVE" || a.type === "MCP") {
       if (a.configuration.timeFrame) {
         timeFrame = {
           duration: a.configuration.timeFrame.value,
@@ -206,9 +206,9 @@ export async function submitAssistantBuilderForm({
             childAgentId,
             reasoningModel: mcpReasoningModel,
             additionalConfiguration,
-            timeFrame: timeRange,
           },
         } = a;
+
         return [
           {
             type: "mcp_server_configuration",
@@ -229,7 +229,7 @@ export async function submitAssistantBuilderForm({
                   modelId: mcpReasoningModel.modelId,
                 }
               : null,
-            timeRange: timeRange ?? "none",
+            relativeTimeFrame: timeFrame,
             additionalConfiguration,
           },
         ];

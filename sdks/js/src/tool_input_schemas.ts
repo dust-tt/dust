@@ -73,6 +73,14 @@ type FlexibleConfigurableToolInput = {
     value: string;
     mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM;
   };
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION]: {
+    duration: number;
+    unit: "hour" | "day" | "week" | "month" | "year";
+    mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION;
+  } | {
+    value: "auto" | "none";
+    mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION;
+  }
 };
 
 export type ConfigurableToolInputType =

@@ -159,7 +159,7 @@ export async function fetchMCPServerActionConfigurations(
                 reasoningEffort: reasoningConfigurations[0].reasoningEffort,
               }
             : null,
-        timeFrame: null,
+        relativeTimeFrame: null,
       });
     }
   }

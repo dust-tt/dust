@@ -137,7 +137,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
   reasoningModel: ReasoningModelConfiguration | null;
-  timeFrame: RetrievalTimeframe | null;
+  timeFrame: AssistantBuilderTimeFrame | null;
   additionalConfiguration: Record<string, boolean | number | string>;
 };
 
