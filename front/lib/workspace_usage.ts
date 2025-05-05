@@ -331,7 +331,7 @@ export const getInactiveUserUsageData = async (
 SELECT DISTINCT u.id, u.name, u.name
 FROM "users" u
 LEFT JOIN "user_messages" um ON u.id = um."userId"
-WHERE u."createdAt" <= $endDate
+WHERE u."createdAt" <= $endDate AND u."workspaceId" = $workspaceId
 AND NOT EXISTS (
   SELECT 1 
   WHERE um."userId" = u.id
