@@ -61,6 +61,8 @@ export function fromEvent<T>(
       return Promise.reject(err);
     },
 
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore Issue with Typescript in our CI.
     async [Symbol.asyncDispose](): Promise<void> {
       await this.return();
     },
