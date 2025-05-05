@@ -12,7 +12,7 @@ export type CoreDSDocument = {
   document_id: string;
 };
 
-const CORE_DOCUMENT_BATCH_SIZE = 5000;
+const CORE_DOCUMENT_BATCH_SIZE = 1000;
 
 export async function getCoreDocuments(
   frontDataSourceId: number
