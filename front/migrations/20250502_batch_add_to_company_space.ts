@@ -7,6 +7,8 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { CoreAPI } from "@app/types";
 
+const BATCH_SIZE = 1000;
+
 async function getParentsToAdd({
   slackDataSource,
   namePrefix,
@@ -20,32 +22,44 @@ async function getParentsToAdd({
 }) {
   const coreApi = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  const nodes = await coreApi.searchNodes({
-    query: namePrefix,
-    filter: {
-      data_source_views: [
-        {
-          data_source_id: slackDataSource.dustAPIDataSourceId,
-          search_scope: "nodes_titles",
-          view_filter: [],
-        },
-      ],
-      node_types: ["folder"],
-    },
-  });
-  if (nodes.isErr()) {
-    throw nodes.error;
-  }
-  if (execute) {
-    logger.info(`Found ${nodes.value.nodes.length} parents to add.`);
-  } else {
-    logger.info(
-      { titles: nodes.value.nodes.map((n) => n.title) },
-      `Found ${nodes.value.nodes.length} parents to add.`
-    );
-  }
+  let nextPageCursor;
+  const allNodes = [];
 
-  return nodes.value.nodes.map((node) => node.node_id);
+  do {
+    const searchResult = await coreApi.searchNodes({
+      query: namePrefix,
+      filter: {
+        data_source_views: [
+          {
+            data_source_id: slackDataSource.dustAPIDataSourceId,
+            search_scope: "nodes_titles",
+            view_filter: [],
+          },
+        ],
+        node_types: ["folder"],
+      },
+      options: { limit: BATCH_SIZE, cursor: nextPageCursor },
+    });
+    if (searchResult.isErr()) {
+      throw searchResult.error;
+    }
+
+    const { nodes, next_page_cursor } = searchResult.value;
+
+    if (execute) {
+      logger.info(`Found ${nodes.length} parents to add.`);
+    } else {
+      logger.info(
+        { titles: nodes.map((n) => n.title) },
+        `Found ${nodes.length} parents to add.`
+      );
+    }
+
+    allNodes.push(...nodes);
+    nextPageCursor = next_page_cursor;
+  } while (nextPageCursor && allNodes.length === BATCH_SIZE);
+
+  return allNodes.map((node) => node.node_id);
 }
 
 async function addParentsToDataSourceView({
