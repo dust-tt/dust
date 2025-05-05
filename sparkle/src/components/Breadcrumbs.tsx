@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@sparkle/components/Dropdown";
 import { Icon } from "@sparkle/components/Icon";
-import { Tooltip } from "@sparkle/components/Tooltip";
 import { ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
 
@@ -43,16 +42,6 @@ export type BreadcrumbItem =
   | ButtonBreadcrumbItem
   | LabelBreadcrumbItem;
 
-interface BreadcrumbProps {
-  items: BreadcrumbItem[];
-  className?: string;
-}
-
-interface BreadcrumbsAccumulator {
-  itemsShown: BreadcrumbItem[];
-  itemsHidden: BreadcrumbItem[];
-}
-
 const isLinkItem = (
   item: BreadcrumbItem | { label: string }
 ): item is LinkBreadcrumbItem =>
@@ -62,6 +51,86 @@ const isButtonItem = (
   item: BreadcrumbItem | { label: string }
 ): item is ButtonBreadcrumbItem =>
   "onClick" in item && typeof item.onClick === "function";
+
+interface BreadcrumbItemProps {
+  item: BreadcrumbItem;
+  isLast: boolean;
+  itemsHidden?: BreadcrumbItem[];
+}
+
+function BreadcrumbItem({ item, isLast, itemsHidden }: BreadcrumbItemProps) {
+  if (item.label === ELLIPSIS_STRING) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" label={ELLIPSIS_STRING} icon={item.icon} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuGroup>
+            {itemsHidden?.map((item, index) => (
+              <DropdownMenuItem
+                key={`breadcrumbs-hidden-${index}`}
+                href={isLinkItem(item) ? item.href : undefined}
+                onClick={isButtonItem(item) ? item.onClick : undefined}
+                icon={item.icon}
+                label={item.label}
+              />
+            ))}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  const commonClassName = isLast
+    ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
+    : "s-text-muted-foreground dark:s-text-muted-foreground-night";
+
+  const truncatedLabel = truncateTextToLength(
+    item.label,
+    isLast ? LABEL_TRUNCATE_LENGTH_END : LABEL_TRUNCATE_LENGTH_MIDDLE
+  );
+
+  if (isLinkItem(item)) {
+    return (
+      <Button
+        href={item.href}
+        icon={item.icon}
+        className={commonClassName}
+        variant="ghost"
+        label={truncatedLabel}
+        tooltip={item.label}
+      />
+    );
+  }
+
+  if (isButtonItem(item)) {
+    return (
+      <Button
+        onClick={item.onClick}
+        icon={item.icon}
+        className={commonClassName}
+        variant="ghost"
+        label={truncatedLabel}
+        tooltip={item.label}
+      />
+    );
+  }
+
+  return (
+    <div className={cn("s-px-2 s-py-1.5", commonClassName)}>{item.label}</div>
+  );
+}
+
+interface BreadcrumbProps {
+  items: BreadcrumbItem[];
+  className?: string;
+}
+
+interface BreadcrumbsAccumulator {
+  itemsShown: BreadcrumbItem[];
+  itemsHidden: BreadcrumbItem[];
+}
 
 export function Breadcrumbs({ items, className }: BreadcrumbProps) {
   const { itemsShown, itemsHidden } = items.reduce(
@@ -87,92 +156,11 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
             key={`breadcrumbs-${index}`}
             className="s-flex s-flex-row s-items-center s-gap-1"
           >
-            {item.label === ELLIPSIS_STRING ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    label={ELLIPSIS_STRING}
-                    icon={item.icon}
-                  />
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent align="start">
-                  <DropdownMenuGroup>
-                    {itemsHidden.map((item, index) => (
-                      <DropdownMenuItem
-                        key={`breadcrumbs-hidden-${index}`}
-                        href={isLinkItem(item) ? item.href : undefined}
-                        onClick={isButtonItem(item) ? item.onClick : undefined}
-                        icon={item.icon}
-                        label={item.label}
-                      />
-                    ))}
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : isLinkItem(item) ? (
-              <Button
-                href={item.href}
-                icon={item.icon}
-                className={
-                  index === itemsShown.length - 1
-                    ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
-                    : "s-text-muted-foreground dark:s-text-muted-foreground-night"
-                }
-                variant="ghost"
-                label={
-                  index === itemsShown.length - 1
-                    ? truncateTextToLength(
-                        item.label,
-                        LABEL_TRUNCATE_LENGTH_END
-                      )
-                    : truncateTextToLength(
-                        item.label,
-                        LABEL_TRUNCATE_LENGTH_MIDDLE
-                      )
-                }
-                tooltip={item.label}
-              />
-            ) : isButtonItem(item) ? (
-              <Button
-                variant="ghost"
-                onClick={item.onClick}
-                icon={item.icon}
-                className={
-                  index === itemsShown.length - 1
-                    ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
-                    : "s-text-muted-foreground dark:s-text-muted-foreground-night"
-                }
-                label={
-                  index === itemsShown.length - 1
-                    ? truncateTextToLength(
-                        item.label,
-                        LABEL_TRUNCATE_LENGTH_END
-                      )
-                    : truncateTextToLength(
-                        item.label,
-                        LABEL_TRUNCATE_LENGTH_MIDDLE
-                      )
-                }
-                tooltip={item.label}
-              />
-            ) : (
-              <div
-                className={
-                  index === itemsShown.length - 1
-                    ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
-                    : "s-text-muted-foreground dark:s-text-muted-foreground-night"
-                }
-              >
-                {index === itemsShown.length - 1
-                  ? truncateWithTooltip(item.label, LABEL_TRUNCATE_LENGTH_END)
-                  : truncateWithTooltip(
-                      item.label,
-                      LABEL_TRUNCATE_LENGTH_MIDDLE
-                    )}
-              </div>
-            )}
+            <BreadcrumbItem
+              item={item}
+              isLast={index === itemsShown.length - 1}
+              itemsHidden={itemsHidden}
+            />
             {index === itemsShown.length - 1 ? null : (
               <Icon visual={ChevronRightIcon} />
             )}
@@ -180,14 +168,6 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
         );
       })}
     </div>
-  );
-}
-
-function truncateWithTooltip(text: string, length: number) {
-  return text.length > length ? (
-    <Tooltip trigger={truncateTextToLength(text, length)} label={text} />
-  ) : (
-    text
   );
 }
 
