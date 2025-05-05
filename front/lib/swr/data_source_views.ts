@@ -17,6 +17,7 @@ import type {
   ContentNodesViewType,
   DataSourceViewType,
   LightWorkspaceType,
+  WorkspaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
@@ -111,7 +112,7 @@ export function useDataSourceViewContentNodes({
   disabled = false,
   swrOptions,
 }: {
-  owner: LightWorkspaceType;
+  owner: LightWorkspaceType | WorkspaceType;
   dataSourceView?: DataSourceViewType;
   internalIds?: string[];
   parentId?: string;

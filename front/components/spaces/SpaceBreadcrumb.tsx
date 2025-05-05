@@ -57,11 +57,7 @@ export function SpaceBreadCrumbs({
       ];
     }
 
-    const items: {
-      label: string;
-      icon?: React.ComponentType;
-      href?: string;
-    }[] = [
+    const items = [
       {
         icon: getSpaceIcon(space),
         label: space.kind === "global" ? "Company Data" : space.name,
