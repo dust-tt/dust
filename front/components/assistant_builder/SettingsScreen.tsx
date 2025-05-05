@@ -2,6 +2,8 @@ import {
   Avatar,
   Button,
   ClipboardIcon,
+  Collapsible,
+  CollapsibleContent,
   Icon,
   IconButton,
   Input,
@@ -581,55 +583,40 @@ export default function SettingsScreen({
                     )}
                   </div>
                 </div>
-                {isVisible && (
-                  <>
+
+                <Collapsible open={!!(isVisible && slackDataSource)}>
+                  <CollapsibleContent>
+                    <span className="heading-lg flex flex-row items-center gap-1 text-sm font-semibold text-foreground dark:text-foreground-night">
+                      <Icon visual={SlackLogo} size="sm" />
+                      <span className="heading-lg">
+                        Slack #channel integration
+                      </span>
+                    </span>
+
                     <div className="flex flex-row items-start gap-2">
-                      <div className="min-w-12">
-                        <SliderToggle
-                          selected={slackChannelSelected.length > 0}
-                          disabled={
-                            !slackDataSource ||
-                            (slackChannelSelected.length > 0 && !isAdmin(owner))
-                          }
-                          onClick={() => {
-                            if (slackChannelSelected.length > 0) {
-                              setSelectedSlackChannels([]);
-                              setEdited(true);
-                            } else {
-                              setSlackDrawerOpened(true);
-                            }
-                          }}
-                        />
-                      </div>
                       <div className="flex flex-col gap-1">
-                        <span className="flex flex-row items-center gap-1 text-sm font-semibold text-foreground dark:text-foreground-night">
-                          <Icon visual={SlackLogo} size="sm" />
-                          Slack integration
-                        </span>
                         <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                           {slackChannelSelected.length > 0
-                            ? `Default agent for ${slackChannelSelected.map((c) => c.slackChannelName).join(", ")}`
-                            : "Set this agent as the default agent on one or several of your Slack channels."}
+                            ? `Agent set as default for: ${slackChannelSelected.map((c) => c.slackChannelName).join(", ")}`
+                            : "Set as default agent for selected channels."}
                         </span>
 
-                        {slackChannelSelected.length > 0 && (
-                          <div className="pt-2">
-                            <Button
-                              size="xs"
-                              variant="outline"
-                              icon={PencilSquareIcon}
-                              label="Manage channels"
-                              onClick={() => {
-                                setSlackDrawerOpened(true);
-                              }}
-                            />
-                          </div>
-                        )}
+                        <div className="pt-2">
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            icon={PencilSquareIcon}
+                            label="Manage channels"
+                            onClick={() => {
+                              setSlackDrawerOpened(true);
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div></div>
-                  </>
-                )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
               <div className="flex flex-[1_0_0] flex-col gap-4">
                 <Page.SectionHeader title="Tags" />
