@@ -15,11 +15,11 @@ export const AdditionMark = Mark.create({
     return [{ tag: "span.addition" }];
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML() {
     return [
       "span",
       {
-        class: `addition text-green-700 bg-green-200`,
+        class: "addition text-green-700 bg-green-200",
       },
       0,
     ];
@@ -41,12 +41,11 @@ export const DeletionMark = Mark.create({
     return [{ tag: "span.deletion" }];
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML() {
     return [
       "span",
       {
-        class: `deletion text-warning-600 bg-warning-100`,
-        style: "text-decoration: line-through",
+        class: "deletion text-warning-600 bg-warning-100 line-through",
       },
       0,
     ];
