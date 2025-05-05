@@ -24,6 +24,7 @@ async function getParentsToAdd({
 
   let nextPageCursor;
   const allNodes = [];
+  let nodes;
 
   do {
     const searchResult = await coreApi.searchNodes({
@@ -44,7 +45,7 @@ async function getParentsToAdd({
       throw searchResult.error;
     }
 
-    const { nodes, next_page_cursor } = searchResult.value;
+    nodes = searchResult.value.nodes;
 
     if (execute) {
       logger.info(`Found ${nodes.length} parents to add.`);
@@ -56,8 +57,8 @@ async function getParentsToAdd({
     }
 
     allNodes.push(...nodes);
-    nextPageCursor = next_page_cursor;
-  } while (nextPageCursor && allNodes.length === BATCH_SIZE);
+    nextPageCursor = searchResult.value.next_page_cursor;
+  } while (nextPageCursor && nodes.length === BATCH_SIZE);
 
   return allNodes.map((node) => node.node_id);
 }
