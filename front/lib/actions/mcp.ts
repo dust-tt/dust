@@ -1,4 +1,5 @@
 import { isSupportedImageContentType } from "@dust-tt/client";
+import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -12,8 +13,12 @@ import {
   augmentInputsWithConfiguration,
   hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  MCPToolResultContentType,
+  ProgressNotificationContentType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  isMCPProgressNotificationType,
   isResourceWithName,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -65,7 +70,6 @@ import {
   assertNever,
   extensionsForContentType,
   isSupportedFileContentType,
-  normalizeError,
   Ok,
   removeNulls,
 } from "@app/types";
@@ -174,6 +178,15 @@ type MCPErrorEvent = {
   };
 };
 
+export type MCPNotificationEvent = {
+  type: "tool_notification";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: MCPActionType;
+  notification: ProgressNotificationContentType;
+};
+
 type ActionBaseParams = Omit<
   MCPActionBlob,
   "id" | "type" | "executionState" | "output" | "isError"
@@ -214,7 +227,10 @@ function hideFileContentForModel({
   };
 }
 
-export type MCPActionRunningEvents = MCPParamsEvent | MCPApproveExecutionEvent;
+export type MCPActionRunningEvents =
+  | MCPParamsEvent
+  | MCPApproveExecutionEvent
+  | MCPNotificationEvent;
 
 type MCPActionBlob = ExtractActionBlob<MCPActionType>;
 
@@ -353,7 +369,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       citationsRefsOffset: number;
     }
   ): AsyncGenerator<
-    MCPParamsEvent | MCPSuccessEvent | MCPErrorEvent | MCPApproveExecutionEvent,
+    | MCPParamsEvent
+    | MCPSuccessEvent
+    | MCPErrorEvent
+    | MCPApproveExecutionEvent
+    | MCPNotificationEvent,
     void
   > {
     const owner = auth.getNonNullableWorkspace();
@@ -543,13 +563,32 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       citationsRefsOffset,
     };
 
-    // TODO(mcp): listen to sse events to provide live feedback to the user
-    const toolCallResult = await tryCallMCPTool(auth, inputs, agentLoopContext);
+    let toolCallResult: Result<
+      MCPToolResultContentType[],
+      Error | McpError
+    > | null = null;
+    for await (const event of tryCallMCPTool(auth, inputs, agentLoopContext)) {
+      if (event.type === "result") {
+        toolCallResult = event.result;
+      } else if (event.type === "notification") {
+        const { notification } = event;
+        if (isMCPProgressNotificationType(notification)) {
+          yield {
+            type: "tool_notification",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            action: mcpAction,
+            notification: notification.params,
+          };
+        }
+      }
+    }
 
-    if (toolCallResult.isErr()) {
+    if (!toolCallResult || toolCallResult.isErr()) {
       localLogger.error(
         {
-          error: toolCallResult.error.message,
+          error: toolCallResult?.error?.message,
         },
         "Error calling MCP tool on run."
       );
@@ -557,14 +596,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         isError: true,
       });
 
-      const toolErr = normalizeError(toolCallResult.error) as Error & {
-        code?: number;
-      };
+      const { error: toolErr } = toolCallResult ?? {};
       let errorMessage: string;
 
       // We don't want to expose the MCP full error message to the user.
-      if (toolErr?.code && toolErr.code === -32001) {
-        // MCP Error -32001: Request timed out
+      if (toolErr && toolErr instanceof McpError && toolErr.code === -32001) {
+        // MCP Error -32001: Request timed out.
         errorMessage = `The tool ${actionConfiguration.originalName} timed out. `;
       } else {
         errorMessage = `The tool ${actionConfiguration.originalName} returned an error. `;

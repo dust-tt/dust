@@ -1318,6 +1318,37 @@ const MCPParamsEventSchema = z.object({
   action: MCPActionTypeSchema,
 });
 
+const NotificationImageContentSchema = z.object({
+  type: z.literal("image"),
+  mimeType: z.string(),
+});
+
+const NotificationTextContentSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
+
+const NotificationContentSchema = z.union([
+  NotificationImageContentSchema,
+  NotificationTextContentSchema,
+]);
+
+const MCPNotificationEventSchema = z.object({
+  type: z.literal("tool_notification"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: MCPActionTypeSchema,
+  notification: z.object({
+    progress: z.number(),
+    total: z.number(),
+    data: z.object({
+      label: z.string(),
+      output: NotificationContentSchema.optional(),
+    }),
+  }),
+});
+
 const MCPValidationMetadataSchema = z.object({
   mcpServerName: z.string(),
   toolName: z.string(),
@@ -1367,6 +1398,7 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryStartedEventSchema,
   WebsearchParamsEventSchema,
   MCPParamsEventSchema,
+  MCPNotificationEventSchema,
   MCPApproveExecutionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
@@ -2418,7 +2450,6 @@ export type UpsertTableResponseType = z.infer<typeof UpsertTableResponseSchema>;
 
 const SupportedUsageTablesSchema = FlexibleEnumSchema<
   | "users"
-  | "inactive_users"
   | "assistant_messages"
   | "builders"
   | "assistants"

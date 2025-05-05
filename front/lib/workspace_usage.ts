@@ -57,11 +57,6 @@ type UserUsageQueryResult = {
   activeDaysCount: number;
 };
 
-type InactiveUserUsageQueryResult = {
-  userName: string;
-  userEmail: string;
-};
-
 type BuilderUsageQueryResult = {
   userEmail: string;
   userFirstName: string;
@@ -231,7 +226,7 @@ export async function getMessageUsageData(
   return generateCsvFromQueryResult(results);
 }
 
-export async function getActiveUserUsageData(
+export async function getUserUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType
@@ -316,52 +311,6 @@ export async function getActiveUserUsageData(
   }
   return generateCsvFromQueryResult(userUsage);
 }
-
-export const getInactiveUserUsageData = async (
-  startDate: Date,
-  endDate: Date,
-  workspace: WorkspaceType
-): Promise<string> => {
-  /* Fetch users that were created after the startDate
-   * and don't have any user_messages in the given period
-   */
-  const readReplica = getFrontReplicaDbConnection();
-  const users = await readReplica.query(
-    `
-SELECT DISTINCT u.id, u.name, u.name
-FROM "users" u
-LEFT JOIN "user_messages" um ON u.id = um."userId"
-WHERE u."createdAt" <= $endDate
-AND NOT EXISTS (
-  SELECT 1 
-  WHERE um."userId" = u.id
-  AND um."workspaceId" = $workspaceId
-  AND um."createdAt" BETWEEN $startDate AND $endDate
-);
-`,
-    {
-      bind: {
-        workspaceId: workspace.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      },
-      type: QueryTypes.SELECT,
-      model: UserModel,
-      mapToModel: true,
-    }
-  );
-
-  const userUsage: InactiveUserUsageQueryResult[] = users.map((user) => ({
-    userId: user.id,
-    userName: user.name,
-    userEmail: user.email,
-  }));
-
-  if (!userUsage.length) {
-    return "No data available for the selected period";
-  }
-  return generateCsvFromQueryResult(userUsage);
-};
 
 export async function getBuildersUsageData(
   startDate: Date,
@@ -567,7 +516,6 @@ function generateCsvFromQueryResult(
   rows:
     | WorkspaceUsageQueryResult[]
     | UserUsageQueryResult[]
-    | InactiveUserUsageQueryResult[]
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
     | BuilderUsageQueryResult[]
