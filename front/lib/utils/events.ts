@@ -24,7 +24,7 @@ export function fromEvent<T>(
   // Start listening for events.
   emitter.on(eventName, onEvent);
 
-  const asyncIterator: AsyncGenerator<T, void, unknown> = {
+  const asyncIterator: AsyncGenerator<T, void, unknown> & AsyncDisposable = {
     [Symbol.asyncIterator]() {
       return this;
     },
@@ -61,8 +61,6 @@ export function fromEvent<T>(
       return Promise.reject(err);
     },
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore Issue with Typescript in our CI.
     async [Symbol.asyncDispose](): Promise<void> {
       await this.return();
     },
