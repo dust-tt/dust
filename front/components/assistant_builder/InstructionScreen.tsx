@@ -16,11 +16,15 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import {
-  ParagraphExtension,
-} from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import { PromptDiffExtension } from "@app/components/assistant_builder/instructions/PromptDiffExtension";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
@@ -121,14 +125,8 @@ export function InstructionScreen({
     disabled: !agentConfigurationId,
     limit: 30,
   });
-  // Keep a memory of overriden versions, to not lose them when switching back and forth
   const [currentConfig, setCurrentConfig] =
     useState<LightAgentConfigurationType | null>(null);
-  // versionNumber -> instructions
-  const [overridenConfigInstructions, setOverridenConfigInstructions] =
-    useState<{
-      [key: string]: string;
-    }>({});
 
   // Deduplicate configs based on instructions
   const configsWithUniqueInstructions: LightAgentConfigurationType[] =
@@ -420,7 +418,7 @@ function PromptHistory({
           ? dateFormatter.format(new Date(config.versionCreatedAt))
           : `v${config.version}`;
     },
-    [latestConfig]
+    [isDiffMode, latestConfig?.version]
   );
 
   return (
