@@ -1,8 +1,9 @@
 import {
   Button,
+  Chip,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   TagIcon,
@@ -17,8 +18,8 @@ import { TagsManager } from "./TagsManager";
 
 type TagsFilterMenuProps = {
   tags: TagType[];
-  selectedTags: string[];
-  setSelectedTags: (tags: string[]) => void;
+  selectedTags: TagType[];
+  setSelectedTags: (tags: TagType[]) => void;
   owner: WorkspaceType;
 };
 
@@ -56,9 +57,9 @@ export const TagsFilterMenu = ({
           <Button
             variant="primary"
             icon={TagIcon}
-            label={
-              selectedTags.length > 0 ? `Tags (${selectedTags.length})` : "Tags"
-            }
+            label={"Tags"}
+            counterValue={selectedTags.length.toString()}
+            isCounter={selectedTags.length > 0}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -81,21 +82,18 @@ export const TagsFilterMenu = ({
             />
           }
         >
-          {filteredTags.map((tag) => (
-            <DropdownMenuCheckboxItem
-              key={tag.sId}
-              checked={selectedTags.includes(tag.sId)}
-              onCheckedChange={(checked) => {
-                if (checked) {
-                  setSelectedTags([...selectedTags, tag.sId]);
-                } else {
-                  setSelectedTags(selectedTags.filter((t) => t !== tag.sId));
-                }
-              }}
-            >
-              {tag.name}
-            </DropdownMenuCheckboxItem>
-          ))}
+          {filteredTags
+            .filter((tag) => !selectedTags.includes(tag))
+            .map((tag) => (
+              <DropdownMenuItem
+                key={tag.sId}
+                onClick={() => {
+                  setSelectedTags([...selectedTags, tag]);
+                }}
+              >
+                <Chip label={tag.name} size="sm" color="golden" />
+              </DropdownMenuItem>
+            ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </>
