@@ -10,6 +10,19 @@ export async function softDeleteApp(
   auth: Authenticator,
   app: AppResource
 ): Promise<Result<void, Error>> {
+  const usage = await app.getUsagesByAgents(auth);
+  if (usage.isErr()) {
+    return usage;
+  } else if (usage.value.count > 0) {
+    const { agentNames } = usage.value;
+    return new Err(
+      new Error(
+        "Cannot delete app in use by " +
+          `agent${agentNames.length > 1 ? "s" : ""}: ${agentNames.join(", ")}.`
+      )
+    );
+  }
+
   const res = await app.delete(auth, { hardDelete: false });
   if (res.isErr()) {
     return res;
