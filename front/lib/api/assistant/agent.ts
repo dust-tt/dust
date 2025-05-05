@@ -1411,6 +1411,10 @@ async function* runAction(
           yield event;
           break;
 
+        case "tool_notification":
+          yield event;
+          break;
+
         default:
           assertNever(event);
       }
