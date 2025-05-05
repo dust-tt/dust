@@ -7,7 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
-  Label,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
