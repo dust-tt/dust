@@ -746,7 +746,7 @@ export async function* postUserMessage(
   const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
-    if (!(await canAccessAgent(auth, agentConfig))) {
+    if (!canAccessAgent(agentConfig)) {
       yield {
         type: "agent_disabled_error",
         created: Date.now(),
@@ -1092,31 +1092,14 @@ export async function* postUserMessage(
 /**
  * Can a user mention a given configuration
  */
-async function canAccessAgent(
-  auth: Authenticator,
+function canAccessAgent(
   agentConfiguration: LightAgentConfigurationType
-): Promise<boolean> {
-  if (auth.isAdmin() || agentConfiguration.status === "draft") {
-    return true;
-  }
-
-  // Global agent
-  if (agentConfiguration.versionAuthorId === null) {
-    return agentConfiguration.status === "active";
-  }
-
-  if (agentConfiguration.scope === "hidden") {
-    if (agentConfiguration.status === "active") {
-      const group = await GroupResource.fetchByAgentConfiguration(
-        auth,
-        agentConfiguration
-      );
-      return group.isMember(auth);
-    }
-    return false;
-  }
-
-  return agentConfiguration.status === "active";
+): boolean {
+  return (
+    agentConfiguration.canRead &&
+    (agentConfiguration.status === "active" ||
+      agentConfiguration.status !== "draft")
+  );
 }
 
 /** This method creates a new user message version, and if there are new agent
@@ -1238,7 +1221,7 @@ export async function* editUserMessage(
   const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
-    if (!(await canAccessAgent(auth, agentConfig))) {
+    if (!canAccessAgent(agentConfig)) {
       yield {
         type: "agent_disabled_error",
         created: Date.now(),
