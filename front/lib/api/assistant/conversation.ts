@@ -1095,7 +1095,7 @@ async function canAccessAgent(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<boolean> {
-  if (auth.isAdmin()) {
+  if (auth.isAdmin() || agentConfiguration.status === "draft") {
     return true;
   }
 
@@ -1105,17 +1105,17 @@ async function canAccessAgent(
   }
 
   if (agentConfiguration.scope === "private") {
-    const group = await GroupResource.fetchByAgentConfiguration(
-      auth,
-      agentConfiguration
-    );
-    return group.isMember(auth);
+    if (agentConfiguration.status === "active") {
+      const group = await GroupResource.fetchByAgentConfiguration(
+        auth,
+        agentConfiguration
+      );
+      return group.isMember(auth);
+    }
+    return false;
   }
 
-  return (
-    agentConfiguration.status === "active" ||
-    agentConfiguration.status === "draft"
-  );
+  return agentConfiguration.status === "active";
 }
 
 /** This method creates a new user message version, and if there are new agent
