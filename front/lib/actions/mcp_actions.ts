@@ -71,7 +71,7 @@ const MAX_OUTPUT_ITEMS = 128;
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
-const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE";
+const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 
@@ -231,25 +231,21 @@ export async function* tryCallMCPTool(
       if (notificationOrDone === MCP_TOOL_DONE_EVENT_NAME) {
         toolDone = true;
       } else {
-        if (typeof notificationOrDone !== "string") {
-          // Otherwise it's a notification, yield it.
-          const iteratorResult = notificationOrDone;
-          if (iteratorResult.done) {
-            // The notifications ended prematurely.
-            break;
-          }
-
-          yield {
-            type: "notification",
-            notification: iteratorResult.value,
-          };
+        const iteratorResult = notificationOrDone;
+        if (iteratorResult.done) {
+          // The notifications ended prematurely.
+          break;
         }
+
+        yield {
+          type: "notification",
+          notification: iteratorResult.value,
+        };
       }
     }
 
     // Tool is done now, wait for the actual result.
     const toolCallResult = await toolPromise;
-
     // Do not raise an error here as it will break the conversation.
     // Let the model decide what to do.
     if (toolCallResult.isError) {
