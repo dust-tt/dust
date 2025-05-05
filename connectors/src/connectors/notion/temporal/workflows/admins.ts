@@ -12,7 +12,7 @@ import { MAX_CONCURRENT_CHILD_WORKFLOWS } from "@connectors/connectors/notion/te
 import { upsertPageChildWorkflow } from "@connectors/connectors/notion/temporal/workflows/children";
 import {
   performUpserts,
-  upsertDatabase,
+  upsertDatabaseInCore,
 } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
 
@@ -102,7 +102,6 @@ export async function upsertPageWorkflow({
         connectorId,
         pageIds: discoveredResources.pageIds,
         databaseIds: discoveredResources.databaseIds,
-        isGarbageCollectionRun: false,
         runTimestamp,
         pageIndex: null,
         isBatchSync: true,
@@ -168,21 +167,22 @@ export async function upsertDatabaseWorkflow({
 
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
 
-  await upsertDatabaseInConnectorsDb(
-    connectorId,
-    databaseId,
-    Date.now(),
-    topLevelWorkflowId,
-    loggerArgs
-  );
-
-  await upsertDatabase({
+  await upsertDatabaseInConnectorsDb({
     connectorId,
     databaseId,
     runTimestamp,
     topLevelWorkflowId,
-    isGarbageCollectionRun: false,
-    isBatchSync: false,
+    loggerArgs,
+    // In this workflow, we manually trigger the database upsert,
+    // so we don't queue the database for upsert
+    requestQueuingForUpsertToCore: false,
+  });
+
+  await upsertDatabaseInCore({
+    connectorId,
+    databaseId,
+    runTimestamp,
+    topLevelWorkflowId,
     queue,
     forceResync,
   });
@@ -203,7 +203,6 @@ export async function upsertDatabaseWorkflow({
         connectorId,
         pageIds: discoveredResources.pageIds,
         databaseIds: discoveredResources.databaseIds,
-        isGarbageCollectionRun: false,
         runTimestamp,
         pageIndex: null,
         isBatchSync: true,
