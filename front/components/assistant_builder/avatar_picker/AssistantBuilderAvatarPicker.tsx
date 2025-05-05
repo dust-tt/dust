@@ -185,7 +185,7 @@ export function AvatarPicker({
               setIsStale(false);
             }}
           >
-            <TabsList className="flex h-10 flex-grow items-center gap-2">
+            <TabsList>
               {tabs.map((tab) => (
                 <TabsTrigger
                   key={tab.id}

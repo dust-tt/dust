@@ -28,6 +28,7 @@ function EmojiPicker({
       previewPosition={previewPosition}
       data={data}
       onEmojiSelect={onEmojiSelect}
+      className="s-border-0 s-p-0"
     />
   );
 }
