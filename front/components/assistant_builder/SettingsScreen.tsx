@@ -40,7 +40,7 @@ import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
-import { useCreateTag, useTags } from "@app/lib/swr/tags";
+import { useTags } from "@app/lib/swr/tags";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
   APIError,
@@ -934,7 +934,6 @@ function TagsSection({
       {tagsSuggestions.status === "ok" &&
         filteredTagsSuggestions.length > 0 && (
           <TagsSuggestions
-            owner={owner}
             builderState={builderState}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -965,14 +964,12 @@ function TagsSection({
 }
 
 function TagsSuggestions({
-  owner,
   builderState,
   setBuilderState,
   setEdited,
   tags,
   tagsSuggestions,
 }: {
-  owner: WorkspaceType;
   builderState: AssistantBuilderState;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
@@ -981,15 +978,19 @@ function TagsSuggestions({
   tags: TagType[];
   tagsSuggestions: string[];
 }) {
-  const { createTag } = useCreateTag({ owner });
-
+  const sendNotification = useSendNotification();
   const addTag = async (name: string) => {
     const isTagInAssistant =
       builderState.tags.findIndex((t) => t.name === name) !== -1;
-    let tag: TagType | null = tags.find((t) => t.name === name) ?? null;
+    const tag: TagType | null = tags.find((t) => t.name === name) ?? null;
 
-    if (tag === null && !isTagInAssistant && isAdmin(owner)) {
-      tag = await createTag(name);
+    if (tag === null && !isTagInAssistant) {
+      sendNotification({
+        type: "error",
+        title: "Can't create tag",
+        description: "You cannot create tags in the Assistant Builder",
+      });
+      return;
     }
 
     if (tag != null && !isTagInAssistant) {
