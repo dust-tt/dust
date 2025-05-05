@@ -674,6 +674,32 @@ export const notion = async ({
       return { success: true };
     }
 
+    case "update-all-orphaned-resources-parents": {
+      const connectors = await ConnectorModel.findAll({
+        where: {
+          type: "notion",
+          errorType: null,
+          pausedAt: null,
+        },
+      });
+
+      logger.info(
+        {
+          connectorsCount: connectors.length,
+        },
+        "[Admin] Starting workflows to update orphaned resources parents for all active notion connectors"
+      );
+
+      for (const connector of connectors) {
+        logger.info(
+          { connectorId: connector.id },
+          "[Admin] Starting update orphaned resources parents workflow"
+        );
+        await launchUpdateOrphanedResourcesParentsWorkflow(connector.id);
+      }
+      return { success: true };
+    }
+
     default:
       throw new Error("Unknown notion command: " + command);
   }
