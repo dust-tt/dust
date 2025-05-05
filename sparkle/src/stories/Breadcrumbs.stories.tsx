@@ -18,7 +18,7 @@ export default meta;
 export const BreadcrumbsExample = () => {
   const items1 = [
     { label: "Home", href: "#", icon: HomeIcon },
-    { label: "Spaces", href: ".." },
+    { label: "Spaces", onClick: () => alert("Spaces clicked!") },
     { label: "My Space" },
   ];
   const items2 = [
