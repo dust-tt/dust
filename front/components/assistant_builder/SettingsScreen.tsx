@@ -5,6 +5,7 @@ import {
   Icon,
   IconButton,
   Input,
+  MagicIcon,
   Page,
   PencilSquareIcon,
   PlusIcon,
@@ -39,7 +40,7 @@ import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
-import { useCreateTag, useTags } from "@app/lib/swr/tags";
+import { useTags } from "@app/lib/swr/tags";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
   APIError,
@@ -631,23 +632,12 @@ export default function SettingsScreen({
                   </>
                 )}
               </div>
-              <div className="flex flex-[1_0_0] flex-col gap-4">
-                <Page.SectionHeader title="Tags" />
-                <TagsSuggestions
-                  owner={owner}
-                  builderState={builderState}
-                  setBuilderState={setBuilderState}
-                  setEdited={setEdited}
-                />
-                <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                  <TagsSelector
-                    owner={owner}
-                    builderState={builderState}
-                    setBuilderState={setBuilderState}
-                    setEdited={setEdited}
-                  />
-                </div>
-              </div>
+              <TagsSection
+                owner={owner}
+                builderState={builderState}
+                setBuilderState={setBuilderState}
+                setEdited={setEdited}
+              />
             </div>
             <EditorsMembersList
               currentUser={currentUser}
@@ -746,7 +736,7 @@ async function getTagsSuggestions({
         instructions,
         description,
         tags,
-        isAdmin: isAdmin(owner),
+        isAdmin: false,
       },
     }),
   });
@@ -869,7 +859,7 @@ function EditorsMembersList({
   );
 }
 
-function TagsSuggestions({
+function TagsSection({
   owner,
   builderState,
   setBuilderState,
@@ -883,8 +873,7 @@ function TagsSuggestions({
   setEdited: (edited: boolean) => void;
 }) {
   const { tags, isTagsLoading } = useTags({ owner });
-
-  const { createTag } = useCreateTag({ owner });
+  const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
   const tagsDebounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [tagsSuggestions, setTagsSuggestions] =
     useState<BuilderSuggestionsType>({
@@ -897,33 +886,37 @@ function TagsSuggestions({
       return [];
     }
 
-    // As only admin can create tag, we make sure the suggestions we received exist
-    if (isAdmin(owner)) {
-      return (
-        tagsSuggestions.suggestions
-          ?.slice(0, 3)
-          .filter((tag) => tags.findIndex((t) => t.name === tag) !== -1) ?? []
-      );
-    }
-
-    return tagsSuggestions.suggestions ?? [];
-  }, [owner, tagsSuggestions, tags]);
+    // We make sure we don't suggest tags that doesn't already exists
+    return (
+      tagsSuggestions.suggestions
+        ?.slice(0, 3)
+        .filter((tag) => tags.findIndex((t) => t.name === tag) !== -1) ?? []
+    );
+  }, [tagsSuggestions, tags]);
 
   const updateTagsSuggestions = useCallback(async () => {
-    const tagsSuggestions = await getTagsSuggestions({
-      owner,
-      instructions: builderState.instructions || "",
-      description: builderState.description || "",
-      tags: tags.map((t) => t.name),
-    });
+    setTagsSuggestionsLoading(true);
+    try {
+      const tagsSuggestions = await getTagsSuggestions({
+        owner,
+        instructions: builderState.instructions || "",
+        description: builderState.description || "",
+        tags: tags.map((t) => t.name),
+      });
 
-    if (tagsSuggestions.isOk()) {
-      setTagsSuggestions(tagsSuggestions.value);
+      if (tagsSuggestions.isOk()) {
+        setTagsSuggestions(tagsSuggestions.value);
+      }
+    } catch (err) {
+      //
+    } finally {
+      setTagsSuggestionsLoading(false);
     }
   }, [owner, builderState.description, builderState.instructions, tags]);
 
   useEffect(() => {
     if (!isTagsLoading) {
+      setTagsSuggestionsLoading(true);
       debounce(tagsDebounceHandle, updateTagsSuggestions);
     }
   }, [
@@ -935,13 +928,69 @@ function TagsSuggestions({
     isTagsLoading,
   ]);
 
+  return (
+    <div className="flex flex-[1_0_0] flex-col gap-4">
+      <Page.SectionHeader title="Tags" />
+      {tagsSuggestions.status === "ok" &&
+        filteredTagsSuggestions.length > 0 && (
+          <TagsSuggestions
+            builderState={builderState}
+            setBuilderState={setBuilderState}
+            setEdited={setEdited}
+            tags={tags}
+            tagsSuggestions={filteredTagsSuggestions}
+          />
+        )}
+      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+        <TagsSelector
+          owner={owner}
+          builderState={builderState}
+          setBuilderState={setBuilderState}
+          setEdited={setEdited}
+          suggestionButton={
+            <Button
+              label="Suggest"
+              size="xs"
+              icon={MagicIcon}
+              variant="outline"
+              isLoading={isTagsLoading || isTagsSuggestionLoading}
+              onClick={updateTagsSuggestions}
+            />
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+function TagsSuggestions({
+  builderState,
+  setBuilderState,
+  setEdited,
+  tags,
+  tagsSuggestions,
+}: {
+  builderState: AssistantBuilderState;
+  setBuilderState: (
+    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
+  setEdited: (edited: boolean) => void;
+  tags: TagType[];
+  tagsSuggestions: string[];
+}) {
+  const sendNotification = useSendNotification();
   const addTag = async (name: string) => {
     const isTagInAssistant =
       builderState.tags.findIndex((t) => t.name === name) !== -1;
-    let tag: TagType | null = tags.find((t) => t.name === name) ?? null;
+    const tag: TagType | null = tags.find((t) => t.name === name) ?? null;
 
-    if (tag === null && !isTagInAssistant && isAdmin(owner)) {
-      tag = await createTag(name);
+    if (tag === null && !isTagInAssistant) {
+      sendNotification({
+        type: "error",
+        title: "Can't create tag",
+        description: "You cannot create tags in the Assistant Builder",
+      });
+      return;
     }
 
     if (tag != null && !isTagInAssistant) {
@@ -955,25 +1004,20 @@ function TagsSuggestions({
   };
 
   return (
-    <>
-      {tagsSuggestions.status === "ok" &&
-        filteredTagsSuggestions.length > 0 && (
-          <div className="flex items-center gap-2">
-            <div className="text-muted-foregroup text-xs font-semibold dark:text-muted-foreground-night">
-              Suggestions:
-            </div>
+    <div className="flex items-center gap-2">
+      <div className="text-muted-foregroup text-xs font-semibold dark:text-muted-foreground-night">
+        Suggestions:
+      </div>
 
-            {filteredTagsSuggestions.map((tag) => (
-              <Button
-                key={`tag-suggestion-${tag}`}
-                size="xs"
-                variant="outline"
-                label={tag}
-                onClick={() => addTag(tag)}
-              />
-            ))}
-          </div>
-        )}
-    </>
+      {tagsSuggestions.map((tag) => (
+        <Button
+          key={`tag-suggestion-${tag}`}
+          size="xs"
+          variant="outline"
+          label={tag}
+          onClick={() => addTag(tag)}
+        />
+      ))}
+    </div>
   );
 }
