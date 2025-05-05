@@ -18,7 +18,7 @@ import type {
   ProgressNotificationContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  isInternalMCPProgressNotificationType,
+  isMCPProgressNotificationType,
   isResourceWithName,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -572,7 +572,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         toolCallResult = event.result;
       } else if (event.type === "notification") {
         const { notification } = event;
-        if (isInternalMCPProgressNotificationType(notification)) {
+        if (isMCPProgressNotificationType(notification)) {
           yield {
             type: "tool_notification",
             created: Date.now(),

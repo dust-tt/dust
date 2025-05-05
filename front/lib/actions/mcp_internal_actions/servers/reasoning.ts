@@ -6,7 +6,7 @@ import {
   DEFAULT_REASONING_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { InternalMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runReasoning } from "@app/lib/actions/reasoning";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -87,7 +87,7 @@ function createServer(
               actionOutput.content += text;
             }
 
-            const notification: InternalMCPProgressNotificationType = {
+            const notification: MCPProgressNotificationType = {
               method: "notifications/progress",
               params: {
                 progress: 0,

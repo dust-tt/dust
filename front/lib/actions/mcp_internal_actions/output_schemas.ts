@@ -314,20 +314,17 @@ export type ProgressNotificationContentType = z.infer<
   typeof ProgressNotificationContentSchema
 >;
 
-export const InternalMCPProgressNotificationSchema = NotificationSchema.extend({
+export const MCPProgressNotificationSchema = NotificationSchema.extend({
   method: z.literal("notifications/progress"),
   params: ProgressNotificationContentSchema,
 });
 
-export type InternalMCPProgressNotificationType = z.infer<
-  typeof InternalMCPProgressNotificationSchema
+export type MCPProgressNotificationType = z.infer<
+  typeof MCPProgressNotificationSchema
 >;
 
-// We will support more types of notifications in the future.
-export type MCPProgressNotificationType = InternalMCPProgressNotificationType;
-
-export function isInternalMCPProgressNotificationType(
+export function isMCPProgressNotificationType(
   notification: Notification
-): notification is InternalMCPProgressNotificationType {
-  return InternalMCPProgressNotificationSchema.safeParse(notification).success;
+): notification is MCPProgressNotificationType {
+  return MCPProgressNotificationSchema.safeParse(notification).success;
 }

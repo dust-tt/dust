@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import OpenAI from "openai";
 import { z } from "zod";
 
-import type { InternalMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { MCP_PROGRESS_TOKEN } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -66,7 +66,7 @@ const createServer = (auth: Authenticator): McpServer => {
     async ({ prompt, name, quality, size }, { sendNotification }) => {
       const workspace = auth.getNonNullableWorkspace();
 
-      const notification: InternalMCPProgressNotificationType = {
+      const notification: MCPProgressNotificationType = {
         method: "notifications/progress",
         params: {
           progress: 0,

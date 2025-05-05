@@ -1342,12 +1342,10 @@ const MCPNotificationEventSchema = z.object({
   notification: z.object({
     progress: z.number(),
     total: z.number(),
-    data: z
-      .object({
-        label: z.string(),
-        output: NotificationContentSchema,
-      })
-      .optional(),
+    data: z.object({
+      label: z.string(),
+      output: NotificationContentSchema.optional(),
+    }),
   }),
 });
 

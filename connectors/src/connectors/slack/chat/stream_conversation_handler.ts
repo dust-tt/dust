@@ -152,6 +152,7 @@ async function streamAgentAnswerToSlack(
       case "tables_query_started":
       case "tool_approve_execution":
       case "tool_params":
+      case "tool_notification":
       case "websearch_params":
         await postSlackMessageUpdate(
           {

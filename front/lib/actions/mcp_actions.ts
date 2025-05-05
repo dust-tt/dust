@@ -31,7 +31,7 @@ import type {
   MCPToolResult,
   MCPToolResultContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isInternalMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   MCPConnectionParams,
   PlatformMCPConnectionParams,
@@ -200,7 +200,7 @@ export async function* tryCallMCPTool(
       async (notification) => {
         // For now, we only handle internal notifications.
         // TODO(MCP 2025-04-30): Add rate limiting.
-        if (isInternalMCPProgressNotificationType(notification)) {
+        if (isMCPProgressNotificationType(notification)) {
           emitter.emit(MCP_NOTIFICATION_EVENT_NAME, notification);
         }
       }
