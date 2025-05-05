@@ -54,7 +54,7 @@ export const SCOPE_INFO: Record<
     shortLabel: string;
     label: string;
     color: "green" | "golden" | "blue" | "primary";
-    icon: typeof UserGroupIcon | typeof CompanyIcon | typeof LockIcon;
+    icon?: typeof UserGroupIcon | undefined;
     text: string;
     confirmationModalData: ConfirmationModalDataType | null;
   }
@@ -108,10 +108,9 @@ export const SCOPE_INFO: Record<
     confirmationModalData: null,
   },
   hidden: {
-    shortLabel: "Hidden",
-    label: "Hidden",
+    shortLabel: "Not published",
+    label: "Not published",
     color: "primary",
-    icon: LockIcon,
     text: "Hidden agents.",
     confirmationModalData: {
       title: "Moving to Hidden Agents",
@@ -121,10 +120,9 @@ export const SCOPE_INFO: Record<
     },
   },
   visible: {
-    shortLabel: "Visible",
-    label: "Visible",
+    shortLabel: "Published",
+    label: "Published",
     color: "green",
-    icon: CompanyIcon,
     text: "Visible agents.",
     confirmationModalData: {
       title: "Moving to Visible Agents",
