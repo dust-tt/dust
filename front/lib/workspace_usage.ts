@@ -325,31 +325,27 @@ export const getInactiveUserUsageData = async (
   /* Fetch users that were created after the startDate
    * and don't have any user_messages in the given period
    */
-  const readReplica = getFrontReplicaDbConnection();
-  const users = await readReplica.query(
-    `
-SELECT DISTINCT u.id, u.name, u.name
-FROM "users" u
-LEFT JOIN "user_messages" um ON u.id = um."userId"
-WHERE u."createdAt" <= $endDate AND u."workspaceId" = $workspaceId
-AND NOT EXISTS (
-  SELECT 1 
-  WHERE um."userId" = u.id
-  AND um."workspaceId" = $workspaceId
-  AND um."createdAt" BETWEEN $startDate AND $endDate
-);
-`,
-    {
-      bind: {
-        workspaceId: workspace.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+  const users = await UserModel.findAll({
+    include: [
+      {
+        model: UserMessage,
+        as: "user_messages",
+        required: false,
+        where: {
+          workspaceId: workspace.id,
+          createdAt: {
+            [Op.between]: [startDate, endDate],
+          },
+        },
       },
-      type: QueryTypes.SELECT,
-      model: UserModel,
-      mapToModel: true,
-    }
-  );
+    ],
+    where: {
+      createdAt: {
+        [Op.lte]: endDate,
+      },
+      "$user_messages.id$": null, // NOT EXISTS clause
+    },
+  });
 
   const userUsage: InactiveUserUsageQueryResult[] = users.map((user) => ({
     userId: user.id,
