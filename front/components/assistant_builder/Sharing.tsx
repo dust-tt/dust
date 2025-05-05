@@ -108,8 +108,8 @@ export const SCOPE_INFO: Record<
     confirmationModalData: null,
   },
   hidden: {
-    shortLabel: "Hidden",
-    label: "Hidden",
+    shortLabel: "Not published",
+    label: "Not published",
     color: "primary",
     text: "Hidden agents.",
     confirmationModalData: {
@@ -120,8 +120,8 @@ export const SCOPE_INFO: Record<
     },
   },
   visible: {
-    shortLabel: "Visible",
-    label: "Visible",
+    shortLabel: "Published",
+    label: "Published",
     color: "green",
     text: "Visible agents.",
     confirmationModalData: {
@@ -298,6 +298,20 @@ export function SharingButton({
                     <div className="text-sm text-muted-foreground">
                       Shareable direct&nbsp;URL
                     </div>
+                  </div>
+                  <div className="pt-4 text-right">
+                    <Button
+                      size="sm"
+                      label={copyLinkSuccess ? "Copied!" : "Copy link"}
+                      variant="outline"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(shareLink);
+                        setCopyLinkSuccess(true);
+                        setTimeout(() => {
+                          setCopyLinkSuccess(false);
+                        }, 1000);
+                      }}
+                    />
                   </div>
                 </div>
               </>
