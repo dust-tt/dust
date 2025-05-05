@@ -60,7 +60,10 @@ export function SearchDropdownMenu({
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              const firstItem = document.querySelector('[role="menuitem"]');
+              e.preventDefault();
+              const firstItem = document.querySelector(
+                '[data-radix-menu-content][data-state=open] [role="menuitem"]'
+              );
               if (firstItem instanceof HTMLElement) {
                 firstItem.click();
               }
@@ -68,7 +71,9 @@ export function SearchDropdownMenu({
             }
             if (e.key === "Tab" || e.key === "ArrowDown") {
               e.preventDefault();
-              const firstItem = document.querySelector('[role="menuitem"]');
+              const firstItem = document.querySelector(
+                '[data-radix-menu-content][data-state=open] [role="menuitem"]'
+              );
               if (firstItem instanceof HTMLElement) {
                 firstItem.focus();
               }

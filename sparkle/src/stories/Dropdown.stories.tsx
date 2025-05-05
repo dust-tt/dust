@@ -109,8 +109,7 @@ export const SearchDropdownMenuExamples = () => {
               key={item}
               label={item}
               onClick={() => {
-                setSearchInputValue("");
-                window.alert(item);
+                console.log(item);
               }}
             />
           ))}
@@ -543,7 +542,7 @@ function AttachFileDemo() {
 
   return (
     <div className="s-flex s-gap-2">
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             label={selectedItem || "Attach"}
@@ -611,10 +610,10 @@ function AttachFileDemo() {
             <DropdownMenuSearchbar
               ref={agentsSearchInputRef}
               name="search"
-              onChange={() => {}}
+              value={searchText}
+              onChange={setSearchText}
               onKeyDown={() => {}}
               placeholder="Search Agents"
-              value=""
               button={<Button icon={PlusIcon} label="Create" />}
             />
           }
@@ -658,10 +657,10 @@ function AttachFileDemo() {
             <DropdownMenuSearchbar
               ref={toolsetsSearchInputRef}
               name="search"
-              onChange={() => {}}
+              value={searchText}
+              onChange={setSearchText}
               onKeyDown={() => {}}
               placeholder="Search Tools"
-              value=""
               button={<Button icon={PlusIcon} label="Add MCP Server" />}
             />
           }
