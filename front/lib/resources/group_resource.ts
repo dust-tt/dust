@@ -422,10 +422,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async fetchByAgentConfiguration(
     auth: Authenticator,
-    agentConfiguration:
-      | AgentConfiguration
-      | AgentConfigurationType
-      | LightAgentConfigurationType
+    agentConfiguration: AgentConfiguration | AgentConfigurationType
   ): Promise<GroupResource> {
     const workspace = auth.getNonNullableWorkspace();
     const groupAgents = await GroupAgentModel.findAll({
