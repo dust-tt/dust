@@ -24,6 +24,10 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
 
+  // Hold the SID of the MCP server if it's an internal one, as a convenience to avoid
+  // having to fetch the MCP server view when we need to identify the internal MCP server.
+  declare internalMCPServerId: string | null;
+
   declare name: string | null;
 
   // This is a temporary override for the tool description when we only have one tool
@@ -91,6 +95,10 @@ AgentMCPServerConfiguration.init(
         model: MCPServerViewModel,
         key: "id",
       },
+    },
+    internalMCPServerId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     name: {
       type: DataTypes.STRING,

@@ -1,6 +1,8 @@
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+
 import { dustManagedCredentials } from "../api/credentials";
 import type { EmbeddingProviderIdType } from "../assistant/assistant";
 import type { ProviderVisibility } from "../connectors/connectors_api";
@@ -346,6 +348,56 @@ type UpsertTableParams = {
   sourceUrl: string | null;
   checkNameUniqueness?: boolean;
 };
+
+function topKSortedDocuments(
+  query: string | null,
+  topK: number,
+  documents: CoreAPIDocument[]
+): CoreAPIDocument[] {
+  // Extract all chunks with their document metadata
+  const chunks = documents.flatMap((d) =>
+    d.chunks.map((c) => ({
+      document_id: d.document_id,
+      timestamp: d.timestamp,
+      chunk: c,
+    }))
+  );
+
+  // Sort chunks by score or timestamp and truncate
+  if (query) {
+    chunks.sort((a, b) => (b.chunk.score ?? 0) - (a.chunk.score ?? 0));
+  } else {
+    chunks.sort((a, b) => b.timestamp - a.timestamp);
+  }
+  chunks.splice(topK);
+
+  // Get documents without chunks
+  const documentsMap = new Map<string, CoreAPIDocument>(
+    documents.map((d) => [d.document_id, { ...d, chunks: [] }])
+  );
+
+  // Reinsert top_k chunks
+  for (const { document_id, chunk } of chunks) {
+    documentsMap.get(document_id)?.chunks.push(chunk);
+  }
+
+  // Filter out empty documents and convert to array
+  const result = Array.from(documentsMap.values()).filter(
+    (d) => d.chunks.length > 0
+  );
+
+  // Sort by top chunk score or timestamp
+  if (query) {
+    result.sort(
+      (a, b) => (b.chunks[0]?.score ?? 0) - (a.chunks[0]?.score ?? 0)
+    );
+  } else {
+    result.sort((a, b) => b.timestamp - a.timestamp);
+  }
+  result.splice(topK);
+
+  return result;
+}
 
 export class CoreAPI {
   _url: string;
@@ -934,6 +986,59 @@ export class CoreAPI {
     );
 
     return this._resultFromResponse(response);
+  }
+
+  async searchDataSources(
+    query: string,
+    topK: number,
+    credentials: { [key: string]: string },
+    fullText: boolean,
+    searches: {
+      projectId: string;
+      dataSourceId: string;
+      filter?: CoreAPISearchFilter | null;
+      view_filter?: CoreAPISearchFilter | null;
+    }[],
+    target_document_tokens?: number | null
+  ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
+    const searchResults = await concurrentExecutor(
+      searches,
+      async (search) => {
+        const result = await this.searchDataSource(
+          search.projectId,
+          search.dataSourceId,
+          {
+            query: query,
+            topK: topK,
+            filter: search.filter,
+            view_filter: search.view_filter,
+            fullText: fullText,
+            credentials: credentials,
+            target_document_tokens: target_document_tokens,
+          }
+        );
+
+        return result;
+      },
+      { concurrency: 10 }
+    );
+
+    // Check if all search results are successful, if not return the first error
+    const errors = searchResults.filter((result) => result.isErr());
+    if (errors.length > 0) {
+      return errors[0];
+    }
+
+    // Combine all documents from search results
+    const allDocuments = searchResults.flatMap((r) =>
+      r.isOk() ? r.value.documents : []
+    );
+
+    const sortedDocuments = topKSortedDocuments(query, topK, allDocuments);
+
+    return new Ok({
+      documents: sortedDocuments,
+    });
   }
 
   async getDataSourceDocuments(

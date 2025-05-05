@@ -14,7 +14,7 @@ import { z } from "zod";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isMCPActionConfiguration,
+  isMCPToolConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
@@ -338,7 +338,7 @@ export function augmentInputsWithConfiguration({
   actionConfiguration: ActionConfigurationType;
 }): Record<string, unknown> {
   // For non-MCP actions, we don't do inputs augmentation
-  if (!isMCPActionConfiguration(actionConfiguration)) {
+  if (!isMCPToolConfiguration(actionConfiguration)) {
     return rawInputs;
   }
 

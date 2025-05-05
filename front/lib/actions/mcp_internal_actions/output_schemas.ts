@@ -181,6 +181,65 @@ export const isSearchResultResourceType = (
   );
 };
 
+// Data source inclusion outputs, query and results
+export const IncludeQueryResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY
+  ),
+  text: z.string(),
+  warning: z
+    .object({
+      title: z.string(),
+      description: z.string(),
+    })
+    .optional(),
+  uri: z.literal(""),
+});
+
+export type IncludeQueryResourceType = z.infer<
+  typeof IncludeQueryResourceSchema
+>;
+
+export const isIncludeQueryResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: IncludeQueryResourceType } => {
+  return (
+    outputBlock.type === "resource" &&
+    IncludeQueryResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const IncludeResultResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_RESULT
+  ),
+  uri: z.string(),
+  text: z.string(),
+
+  // Document metadata
+  id: z.string(),
+  tags: z.array(z.string()),
+  ref: z.string(),
+  chunks: z.array(z.string()),
+  source: z.object({
+    name: z.string(),
+    provider: z.string().optional(),
+  }),
+});
+
+export type IncludeResultResourceType = z.infer<
+  typeof IncludeResultResourceSchema
+>;
+
+export const isIncludeResultResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: IncludeResultResourceType } => {
+  return (
+    outputBlock.type === "resource" &&
+    IncludeResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Websearch results.
 
 export const WebsearchQueryResourceSchema = z.object({

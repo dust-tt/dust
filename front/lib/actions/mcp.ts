@@ -100,6 +100,7 @@ export type PlatformMCPServerConfigurationType =
     timeFrame: TimeFrame | null;
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
+    internalMCPServerId: string | null; // As convenience, hold the sId of the internal server if it is an internal server.
   };
 
 export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType & {
@@ -110,7 +111,7 @@ export type MCPServerConfigurationType =
   | PlatformMCPServerConfigurationType
   | LocalMCPServerConfigurationType;
 
-export type PlatformMCPToolConfigurationType = Omit<
+export type PlatformMCPToolType = Omit<
   PlatformMCPServerConfigurationType,
   "type"
 > & {
@@ -121,22 +122,25 @@ export type PlatformMCPToolConfigurationType = Omit<
   toolServerId: string;
 };
 
-export type LocalMCPToolConfigurationType = Omit<
-  LocalMCPServerConfigurationType,
-  "type"
-> & {
+export type LocalMCPToolType = Omit<LocalMCPServerConfigurationType, "type"> & {
   type: "mcp_configuration";
   inputSchema: JSONSchema;
 };
 
-export type WithToolNameMetadata<T> = T & {
+type WithToolNameMetadata<T> = T & {
   originalName: string;
   mcpServerName: string;
 };
 
-export type MCPToolConfigurationType = WithToolNameMetadata<
-  PlatformMCPToolConfigurationType | LocalMCPToolConfigurationType
->;
+export type PlatformMCPToolConfigurationType =
+  WithToolNameMetadata<PlatformMCPToolType>;
+
+export type LocalMCPToolConfigurationType =
+  WithToolNameMetadata<LocalMCPToolType>;
+
+export type MCPToolConfigurationType =
+  | PlatformMCPToolConfigurationType
+  | LocalMCPToolConfigurationType;
 
 type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
