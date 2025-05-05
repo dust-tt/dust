@@ -11,9 +11,8 @@ import {
 import { useState } from "react";
 
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
-import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
-import type { TimeFrame, TimeframeUnit } from "@app/types";
-import { AssistantBuilderTimeFrame } from "@app/components/assistant_builder/types";
+import type { AssistantBuilderTimeFrame } from "@app/components/assistant_builder/types";
+import type { TimeframeUnit } from "@app/types";
 
 interface DurationConfigurationSectionProps {
   timeFrame: AssistantBuilderTimeFrame | null;
@@ -52,24 +51,30 @@ export function DurationConfigurationSection({
         <div
           className={classNames(
             "text-sm font-semibold",
-            timeFrameDisabled ? "text-slate-400" : "text-element-900"
+            timeFrameDisabled
+              ? "text-muted-foreground dark:text-muted-foreground-night"
+              : "text-foreground dark:text-foreground-night"
           )}
         >
           Process data from the last
         </div>
         <Input
-          type="number"
+          type="string"
           messageStatus={timeFrameError ? "error" : "default"}
           value={timeFrame?.value.toString() ?? ""}
           onChange={(e) => {
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
               setTimeFrameError(null);
-              onConfigUpdate(timeFrame);
+              onConfigUpdate({
+                ...(timeFrame || defaultTimeFrame),
+                value: value || 1,
+              });
             }
           }}
           disabled={timeFrameDisabled}
         />
+        <p>{timeFrameError}</p>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -93,7 +98,7 @@ export function DurationConfigurationSection({
                 label={value}
                 onClick={() => {
                   onConfigUpdate(
-                    timeFrame && typeof timeFrame === "object"
+                    timeFrame
                       ? {
                           ...timeFrame,
                           unit: key as TimeframeUnit,

@@ -72,7 +72,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import { AssistantBuilderTimeFrame } from "@app/components/assistant_builder/types";
 
 const MAX_BLOB_SIZE_BYTES = 1024 * 1024 * 10; // 10MB
 

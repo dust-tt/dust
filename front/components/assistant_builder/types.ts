@@ -16,7 +16,6 @@ import {
 } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {

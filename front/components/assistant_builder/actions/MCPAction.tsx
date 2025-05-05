@@ -16,7 +16,6 @@ import type {
   AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";

@@ -25,10 +25,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type {
-  DataSourceConfiguration,
-  RetrievalTimeframe,
-} from "@app/lib/actions/retrieval";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
@@ -101,7 +98,6 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
-import { JSONSchema7 } from "json-schema";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 interface SortStrategy {
@@ -1376,6 +1372,10 @@ export async function createAgentActionConfiguration(
             agentConfiguration,
           });
         }
+
+        // TODO(mcp): save the timeFrame config in the right table
+        // Either Retrieval or Search, alongside with the other types for
+        // those actions.
 
         return new Ok({
           id: mcpConfig.id,
