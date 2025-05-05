@@ -74,7 +74,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     const agentNames = uniq(usages.map((u) => u.agentNames).flat());
     return new Err(
       new Error(
-        `Cannot delete space with data source in use by agent(s): ${agentNames.join(", ")}.`
+        `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}.`
       )
     );
   }
