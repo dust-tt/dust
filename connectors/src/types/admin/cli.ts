@@ -102,7 +102,6 @@ export const NotionCommandSchema = t.type({
     t.literal("update-parents-fields"),
     t.literal("clear-parents-last-updated-at"),
     t.literal("update-orphaned-resources-parents"),
-    t.literal("update-all-orphaned-resources-parents"),
   ]),
   args: t.record(
     t.string,

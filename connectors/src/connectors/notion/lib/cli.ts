@@ -521,8 +521,29 @@ export const notion = async ({
 
     // Update the parents of all orphaned resources of a notion connector.
     case "update-orphaned-resources-parents": {
-      const connector = await getConnector(args);
-      await launchUpdateOrphanedResourcesParentsWorkflow(connector.id);
+      const connectors = await (async () => {
+        if (args.all) {
+          logger.info(
+            "[Admin] Updating orphaned resources parents for all active notion connectors"
+          );
+          return ConnectorModel.findAll({
+            where: {
+              type: "notion",
+              errorType: null,
+              pausedAt: null,
+            },
+          });
+        }
+        logger.info(
+          "[Admin] Updating orphaned resources parents for notion connector",
+          { connectorId: args.connectorId }
+        );
+        const connector = await getConnector(args);
+        return [connector];
+      })();
+      for (const connector of connectors) {
+        await launchUpdateOrphanedResourcesParentsWorkflow(connector.id);
+      }
       return { success: true };
     }
 
@@ -670,32 +691,6 @@ export const notion = async ({
           "[Admin] Stopping notion garbage collector"
         );
         await stopNotionGarbageCollectorWorkflow(connector.id);
-      }
-      return { success: true };
-    }
-
-    case "update-all-orphaned-resources-parents": {
-      const connectors = await ConnectorModel.findAll({
-        where: {
-          type: "notion",
-          errorType: null,
-          pausedAt: null,
-        },
-      });
-
-      logger.info(
-        {
-          connectorsCount: connectors.length,
-        },
-        "[Admin] Starting workflows to update orphaned resources parents for all active notion connectors"
-      );
-
-      for (const connector of connectors) {
-        logger.info(
-          { connectorId: connector.id },
-          "[Admin] Starting update orphaned resources parents workflow"
-        );
-        await launchUpdateOrphanedResourcesParentsWorkflow(connector.id);
       }
       return { success: true };
     }
