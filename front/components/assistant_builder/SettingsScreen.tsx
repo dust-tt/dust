@@ -483,7 +483,7 @@ export default function SettingsScreen({
             </div>
           </div>
 
-          <div className="flex items-start gap-2">
+          <div className="relative flex items-start gap-2">
             <div className="flex-grow">
               <Input
                 placeholder={
@@ -506,14 +506,16 @@ export default function SettingsScreen({
                 disabled={isDescriptionInputDisabled}
               />
             </div>
-            <div className="flex h-8 w-12 items-center justify-center pt-1">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-1">
               {generatingDescription ? (
-                <Spinner size="sm" />
+                <div className="w-8 px-2">
+                  <Spinner size="xs" />
+                </div>
               ) : (
                 <Button
                   icon={SparklesIcon}
                   variant="ghost"
-                  size="sm"
+                  size="xs"
                   disabled={generatingDescription}
                   onClick={async () => {
                     if (
