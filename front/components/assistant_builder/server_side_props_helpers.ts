@@ -282,14 +282,7 @@ async function getMCPServerActionConfiguration(
     }
   }
 
-  const { timeFrame } = action;
-  if (timeFrame) {
-    builderAction.configuration.timeFrame = {
-      duration: timeFrame.duration,
-      unit: timeFrame.unit,
-    };
-  }
-
+  builderAction.configuration.timeFrame = action.timeFrame;
   builderAction.configuration.additionalConfiguration =
     action.additionalConfiguration;
 

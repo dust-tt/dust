@@ -503,6 +503,7 @@ export async function createOrUpgradeAgentConfiguration({
           tables: action.tables,
           childAgentId: action.childAgentId,
           additionalConfiguration: action.additionalConfiguration,
+          timeFrame: action.timeFrame,
         } as PlatformMCPServerConfigurationType,
         agentConfigurationRes.value
       );

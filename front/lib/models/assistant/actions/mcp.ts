@@ -52,6 +52,9 @@ AgentMCPServerConfiguration.init(
       allowNull: true,
       validate: {
         isValidTimeFrame(value: unknown) {
+          if (value === null) {
+            return;
+          }
           if (!isTimeFrame(value)) {
             throw new Error("Invalid time frame");
           }

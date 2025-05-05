@@ -1331,6 +1331,7 @@ export async function createAgentActionConfiguration(
             workspaceId: owner.id,
             mcpServerViewId: mcpServerView.id,
             additionalConfiguration: action.additionalConfiguration,
+            timeFrame: action.timeFrame,
             name: serverName !== action.name ? action.name : null,
             singleToolDescriptionOverride:
               isSingleTool && serverDescription !== action.description
@@ -1372,10 +1373,6 @@ export async function createAgentActionConfiguration(
             agentConfiguration,
           });
         }
-
-        // TODO(mcp): save the timeFrame config in the right table
-        // Either Retrieval or Search, alongside with the other types for
-        // those actions.
 
         return new Ok({
           id: mcpConfig.id,
