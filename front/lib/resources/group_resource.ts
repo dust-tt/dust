@@ -423,7 +423,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async fetchByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentConfiguration | AgentConfigurationType
-  ): Promise<GroupResource> {
+  ): Promise<GroupResource | null> {
     const workspace = auth.getNonNullableWorkspace();
     const groupAgents = await GroupAgentModel.findAll({
       where: {
@@ -441,6 +441,15 @@ export class GroupResource extends BaseResource<GroupModel> {
         },
       ],
     });
+
+    if (agentConfiguration.status === "draft") {
+      if (groupAgents.length === 0) {
+        return null;
+      }
+      throw new Error(
+        "Unexpected: draft agent shouldn't have an editor group."
+      );
+    }
 
     if (groupAgents.length !== 1) {
       throw new Error(

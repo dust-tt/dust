@@ -963,6 +963,11 @@ export async function createAgentConfiguration(
             auth,
             existingAgent
           );
+          if (!group) {
+            throw new Error(
+              "Unexpected: agent should have exactly one editor group."
+            );
+          }
           const result = await group.addGroupToAgentConfiguration({
             auth,
             agentConfiguration: agentConfigurationInstance,
