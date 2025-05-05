@@ -1104,7 +1104,7 @@ async function canAccessAgent(
     return agentConfiguration.status === "active";
   }
 
-  if (agentConfiguration.scope === "private") {
+  if (agentConfiguration.scope === "hidden") {
     if (agentConfiguration.status === "active") {
       const group = await GroupResource.fetchByAgentConfiguration(
         auth,
