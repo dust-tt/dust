@@ -21,20 +21,28 @@ const MEDIA = "(prefers-color-scheme: dark)";
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+function isTheme(value: any): value is Theme {
+  return ["dark", "light", "system"].includes(value);
+}
+
 function getSavedTheme() {
   if (typeof window === "undefined") {
     return DEFAULT_THEME;
   }
 
-  let theme;
-
   try {
-    theme = localStorage.getItem("theme") as Theme;
+    const theme = localStorage.getItem("theme");
+
+    if (theme && isTheme(theme)) {
+      return theme;
+    }
+
+    return DEFAULT_THEME;
   } catch (e) {
     // do nothing
   }
 
-  return theme || DEFAULT_THEME;
+  return DEFAULT_THEME;
 }
 
 function getIsSystemDark() {
@@ -57,16 +65,18 @@ const disableAnimation = () => {
 
   return () => {
     // Force restyle
-    (() => window.getComputedStyle(document.body))();
+    window.getComputedStyle(document.body);
 
-    // Wait for next tick before removing the disable transition CSS
-    setTimeout(() => {
+    // Wait for next animation frame before removing the disable transition CSS
+    requestAnimationFrame(() => {
       document.head.removeChild(css);
-    }, 1);
+    });
   };
 };
 
 // This is to avoid rendering the light theme first when the user has dark theme.
+// We want to run this before React hydration in the browser's global scope,
+// so we should not rely on any external variables.
 function themeScript() {
   try {
     const theme = localStorage.getItem("theme") || "system";
@@ -148,7 +158,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (!e.newValue) {
         setTheme(DEFAULT_THEME);
       } else {
-        setTheme(e.newValue as Theme);
+        if (isTheme(e.newValue)) {
+          setTheme(e.newValue);
+        }
       }
     };
 
