@@ -22,7 +22,9 @@ const MEDIA = "(prefers-color-scheme: dark)";
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 function isTheme(value: string | null): value is Theme {
-  return typeof value === "string" && ["dark", "light", "system"].includes(value);
+  return (
+    typeof value === "string" && ["dark", "light", "system"].includes(value)
+  );
 }
 
 function getSavedTheme() {
