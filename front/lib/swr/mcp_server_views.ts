@@ -217,10 +217,13 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
                 "Your actions have been removed from the space successfully.",
             });
           } else {
+            const res = await response.json();
             sendNotification({
               type: "error",
               title: "Failed to remove action",
-              description: `Could not remove actions from the space ${space.name}. Please try again.`,
+              description:
+                res.error?.message ||
+                `Could not remove actions from the space ${space.name}. Please try again.`,
             });
           }
 

@@ -453,7 +453,7 @@ export type AssistantBuilderProps = {
   subscription: SubscriptionType;
 };
 
-export const BUILDER_SCREENS = ["instructions", "actions", "naming"] as const;
+export const BUILDER_SCREENS = ["instructions", "actions", "settings"] as const;
 
 export type BuilderScreen = (typeof BUILDER_SCREENS)[number];
 
@@ -487,9 +487,9 @@ export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
       },
       icon: SquareIcon,
     },
-    naming: {
-      id: "naming",
-      label: "Naming",
+    settings: {
+      id: "settings",
+      label: "Settings",
       dataGtm: {
         label: "assistantNamingButton",
         location: "assistantBuilder",

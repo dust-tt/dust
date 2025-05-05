@@ -54,6 +54,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { findMatchingSubSchemas } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -64,6 +65,10 @@ const MAX_OUTPUT_ITEMS = 128;
 const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
+
+const MAX_TOOL_NAME_LENGTH = 64;
+
+const TOOL_NAME_SEPARATOR = "___";
 
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
@@ -232,28 +237,25 @@ async function getMCPClientConnectionParams(
 function getPrefixedToolName(
   config: MCPServerConfigurationType,
   originalName: string
-): string {
+): Result<string, Error> {
   const slugifiedConfigName = slugify(config.name);
   const slugifiedOriginalName = slugify(originalName);
-  const separator = "___";
-  const MAX_SIZE = 64;
 
-  const prefixedName = `${slugifiedConfigName}${separator}${slugifiedOriginalName}`;
+  const prefixedName = `${slugifiedConfigName}${TOOL_NAME_SEPARATOR}${slugifiedOriginalName}`;
 
-  // If the prefixed name is too long, we try to shorten the config name
-  if (prefixedName.length > MAX_SIZE) {
-    const maxLength =
-      MAX_SIZE - separator.length - slugifiedOriginalName.length;
-    // with a minimum of 4 characters.
-    if (maxLength > 4) {
-      return `${slugifiedConfigName.slice(0, maxLength)}${separator}${slugifiedOriginalName}`;
-    } else {
-      // Otherwise, we just use the original name.
-      return slugifiedOriginalName;
+  // If the prefixed name is too long, we return the unprefixed original name directly.
+  if (prefixedName.length >= MAX_TOOL_NAME_LENGTH) {
+    if (slugifiedOriginalName.length >= MAX_TOOL_NAME_LENGTH) {
+      return new Err(
+        new Error(
+          `Tool name too long: ${originalName} (max length is ${MAX_TOOL_NAME_LENGTH})`
+        )
+      );
     }
+    return new Ok(slugifiedOriginalName);
   }
 
-  return prefixedName;
+  return new Ok(prefixedName);
 }
 
 /**
@@ -278,8 +280,9 @@ export async function tryListMCPTools(
   const mcpServerActions = agentActions.filter(isMCPServerConfiguration);
 
   // Discover all the tools exposed by all the mcp servers available.
-  const toolsResults = await Promise.all(
-    mcpServerActions.map(async (action) => {
+  const toolsResults = await concurrentExecutor(
+    mcpServerActions,
+    async (action) => {
       const toolsRes = await listMCPServerTools(auth, action, {
         conversationId,
         messageId,
@@ -342,20 +345,28 @@ export async function tryListMCPTools(
         }
       }
 
-      return new Ok(
-        toolConfigurations.map((toolConfig) => {
-          const prefixedName = getPrefixedToolName(action, toolConfig.name);
+      const tools = [];
 
-          return {
-            ...toolConfig,
-            originalName: toolConfig.name,
-            mcpServerName: action.name,
-            name: prefixedName,
-            description: toolConfig.description + extraDescription,
-          };
-        })
-      );
-    })
+      for (const toolConfig of toolConfigurations) {
+        const toolName = getPrefixedToolName(action, toolConfig.name);
+        // If we fail here we fail for the entire action because the tool potentially interact
+        // so we end up with a weird state if some of them are added and some are not.
+        // It's more principled to reject the action altogether in this case.
+        if (toolName.isErr()) {
+          return new Err(toolName.error);
+        }
+        tools.push({
+          ...toolConfig,
+          originalName: toolConfig.name,
+          mcpServerName: action.name,
+          name: toolName.value,
+          description: toolConfig.description + extraDescription,
+        });
+      }
+
+      return new Ok(tools);
+    },
+    { concurrency: 10 }
   );
 
   // Aggregate results

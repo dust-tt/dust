@@ -24,6 +24,7 @@ export const TagsSelector = ({
   builderState,
   setBuilderState,
   setEdited,
+  suggestionButton,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -31,6 +32,7 @@ export const TagsSelector = ({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
+  suggestionButton: JSX.Element;
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -166,6 +168,7 @@ export const TagsSelector = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        {suggestionButton}
       </div>
     </>
   );

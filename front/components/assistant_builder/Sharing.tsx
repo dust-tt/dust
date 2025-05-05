@@ -405,6 +405,7 @@ export function SharingDropdown({
   }
 
   const allowedToChange =
+    agentConfiguration?.scope !== "global" &&
     !featureFlags.hasFeature("agent_discovery") &&
     !disabled &&
     (agentConfiguration?.canEdit || isAdmin(owner));
