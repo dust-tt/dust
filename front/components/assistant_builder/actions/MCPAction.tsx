@@ -5,7 +5,7 @@ import { AdditionalConfigurationSection } from "@app/components/assistant_builde
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
-import { DurationConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DurationConfigurationSection";
+import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
@@ -279,8 +279,8 @@ export function MCPAction({
           owner={owner}
         />
       )}
-      {requirements.requiresDurationConfiguration && (
-        <DurationConfigurationSection
+      {requirements.requiresTimeFrameConfiguration && (
+        <TimeFrameConfigurationSection
           onConfigUpdate={(timeFrame: TimeFrame | null) => {
             handleConfigUpdate((old) => ({ ...old, timeFrame }));
           }}

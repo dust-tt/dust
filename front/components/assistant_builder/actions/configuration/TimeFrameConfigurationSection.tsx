@@ -7,21 +7,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
+  Label,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type { TimeFrame, TimeframeUnit } from "@app/types";
 
-interface DurationConfigurationSectionProps {
+interface TimeFrameConfigurationSectionProps {
   timeFrame: TimeFrame | null;
   onConfigUpdate: (timeFrame: TimeFrame | null) => void;
 }
 
-export function DurationConfigurationSection({
+export function TimeFrameConfigurationSection({
   timeFrame,
   onConfigUpdate,
-}: DurationConfigurationSectionProps) {
+}: TimeFrameConfigurationSectionProps) {
   const defaultTimeFrame: TimeFrame = {
     duration: 1,
     unit: "day",
@@ -58,6 +59,7 @@ export function DurationConfigurationSection({
           Process data from the last
         </div>
         <Input
+          name="timeFrameDuration"
           type="string"
           messageStatus={timeFrameError ? "error" : "default"}
           value={timeFrame?.duration.toString() ?? ""}
@@ -73,7 +75,6 @@ export function DurationConfigurationSection({
           }}
           disabled={timeFrameDisabled}
         />
-        <p>{timeFrameError}</p>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

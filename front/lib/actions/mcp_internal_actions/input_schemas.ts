@@ -71,10 +71,10 @@ export const ConfigurableToolInputSchemas = {
     reasoningEffort: z.string().nullable(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
   }),
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]: z.object({
     duration: z.number(),
     unit: z.enum(["hour", "day", "week", "month", "year"]),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
   }),
   // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
@@ -166,7 +166,7 @@ export function generateConfiguredInput({
       return { modelId, providerId, temperature, reasoningEffort, mimeType };
     }
 
-    case INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME: {
       const { timeFrame } = actionConfiguration;
       if (!timeFrame) {
         // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the time range.
@@ -408,7 +408,7 @@ export function getMCPServerRequirements(
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
   requiresReasoningConfiguration: boolean;
-  requiresDurationConfiguration: boolean;
+  requiresTimeFrameConfiguration: boolean;
   requiredStrings: string[];
   requiredNumbers: string[];
   requiredBooleans: string[];
@@ -421,7 +421,7 @@ export function getMCPServerRequirements(
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
       requiresReasoningConfiguration: false,
-      requiresDurationConfiguration: false,
+      requiresTimeFrameConfiguration: false,
       requiredStrings: [],
       requiredNumbers: [],
       requiredBooleans: [],
@@ -463,11 +463,11 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const requiresDurationConfiguration =
+  const requiresTimeFrameConfiguration =
     Object.keys(
       findPathsToConfiguration({
         mcpServer: server,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DURATION,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
       })
     ).length > 0;
 
@@ -516,7 +516,7 @@ export function getMCPServerRequirements(
     requiresTableConfiguration,
     requiresChildAgentConfiguration,
     requiresReasoningConfiguration,
-    requiresDurationConfiguration,
+    requiresTimeFrameConfiguration,
     requiredStrings,
     requiredNumbers,
     requiredBooleans,
@@ -527,7 +527,7 @@ export function getMCPServerRequirements(
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
       !requiresReasoningConfiguration &&
-      !requiresDurationConfiguration &&
+      !requiresTimeFrameConfiguration &&
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
       requiredBooleans.length === 0 &&

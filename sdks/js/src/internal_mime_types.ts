@@ -216,7 +216,7 @@ const TOOL_MIME_TYPES = {
       "BOOLEAN",
       "ENUM",
       "REASONING_MODEL",
-      "DURATION",
+      "TIME_FRAME",
     ],
   }),
   TOOL_OUTPUT: generateToolMimeTypes({
