@@ -80,7 +80,7 @@ async function handler(
         });
       }
 
-      if (!space.canWrite(auth)) {
+      if (!auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
