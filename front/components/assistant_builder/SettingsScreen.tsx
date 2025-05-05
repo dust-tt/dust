@@ -5,7 +5,6 @@ import {
   CollapsibleContent,
   Icon,
   Input,
-  MagicIcon,
   Page,
   PencilSquareIcon,
   PlusIcon,
