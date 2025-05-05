@@ -88,7 +88,7 @@ export const TagsSelector = ({
               }));
               setEdited(true);
             }}
-            size="sm"
+            size="xs"
             color="golden"
             label={tag.name}
           />

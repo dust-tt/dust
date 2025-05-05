@@ -299,20 +299,6 @@ export function SharingButton({
                       Shareable direct&nbsp;URL
                     </div>
                   </div>
-                  <div className="pt-4 text-right">
-                    <Button
-                      size="sm"
-                      label={copyLinkSuccess ? "Copied!" : "Copy link"}
-                      variant="outline"
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(shareLink);
-                        setCopyLinkSuccess(true);
-                        setTimeout(() => {
-                          setCopyLinkSuccess(false);
-                        }, 1000);
-                      }}
-                    />
-                  </div>
                 </div>
               </>
             )}

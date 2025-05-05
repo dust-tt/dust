@@ -1,7 +1,6 @@
 import {
   Avatar,
   Button,
-  ClipboardIcon,
   Collapsible,
   CollapsibleContent,
   Icon,
@@ -71,7 +70,7 @@ const VISIBILITY_DESCRIPTIONS = {
       Visible & usable by the members of <b>Company Space</b>.
     </span>
   ),
-  hidden: <span>Limited to editors.</span>,
+  hidden: <span>Visible & usable by editors only.</span>,
   published: <span>Visible to all members [legacy Shared]</span>,
   workspace: <span>Visible to all members [legacy Workspace]</span>,
   private: <span>Limited to current user[legacy Private]</span>,
@@ -180,8 +179,6 @@ type SettingsScreenProps = {
 
 export default function SettingsScreen({
   owner,
-  agentConfigurationId,
-  baseUrl,
   builderState,
   initialHandle,
   setBuilderState,
@@ -198,9 +195,6 @@ export default function SettingsScreen({
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [slackDrawerOpened, setSlackDrawerOpened] = useState(false);
-
-  const shareLink = `${baseUrl}/w/${owner.sId}/assistant/new?assistantDetails=${agentConfigurationId}`;
-  const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
 
   // Name suggestions handling
   const [nameSuggestions, setNameSuggestions] =
@@ -490,7 +484,7 @@ export default function SettingsScreen({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <div className="flex-grow">
               <Input
                 placeholder={
@@ -513,126 +507,122 @@ export default function SettingsScreen({
                 disabled={isDescriptionInputDisabled}
               />
             </div>
-            {generatingDescription ? (
-              <Spinner size="sm" />
-            ) : (
-              <IconButton
-                icon={SparklesIcon}
-                size="md"
-                disabled={generatingDescription}
-                onClick={async () => {
-                  if (
-                    !builderState.description?.trim() ||
-                    descriptionIsGenerated ||
-                    (await confirm({
-                      title: "Double checking",
-                      message:
-                        "Heads up! This will overwrite your current description. Are you sure you want to proceed?",
-                    }))
-                  ) {
-                    await suggestDescription(true);
-                  }
-                }}
-                tooltip="Click to generate a description"
-              />
-            )}
+            <div className="flex h-8 w-12 items-center justify-center pt-1">
+              {generatingDescription ? (
+                <Spinner size="sm" />
+              ) : (
+                <Button
+                  icon={SparklesIcon}
+                  variant="ghost"
+                  size="sm"
+                  disabled={generatingDescription}
+                  onClick={async () => {
+                    if (
+                      !builderState.description?.trim() ||
+                      descriptionIsGenerated ||
+                      (await confirm({
+                        title: "Double checking",
+                        message:
+                          "Heads up! This will overwrite your current description. Are you sure you want to proceed?",
+                      }))
+                    ) {
+                      await suggestDescription(true);
+                    }
+                  }}
+                  tooltip="Click to generate a description"
+                />
+              )}
+            </div>
           </div>
         </div>
         {isAgentDiscoveryEnabled && (
           <>
-            <div className="flex flex-row gap-4">
-              <div className="flex flex-[1_0_0] flex-col gap-4">
-                <Page.SectionHeader title="Visibility" />
-                <div className="flex flex-row items-start gap-2">
-                  <div className="min-w-12">
-                    <SliderToggle
-                      selected={isVisible}
-                      onClick={() => {
-                        setBuilderState((state) => ({
-                          ...state,
-                          scope: isVisible ? "hidden" : "visible",
-                        }));
-                        setEdited(true);
-                      }}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                      {isVisible ? "Visible" : "Hidden"}
-                    </span>
-                    <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                      {VISIBILITY_DESCRIPTIONS[builderState.scope]}
-                    </span>
-
-                    {agentConfigurationId && (
-                      <div className="pt-2">
-                        <Button
-                          size="xs"
-                          icon={ClipboardIcon}
-                          label={copyLinkSuccess ? "Copied!" : "Copy link"}
-                          variant="outline"
-                          onClick={async () => {
-                            await navigator.clipboard.writeText(shareLink);
-                            setCopyLinkSuccess(true);
-                            setTimeout(() => {
-                              setCopyLinkSuccess(false);
-                            }, 1000);
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <Collapsible open={!!(isVisible && slackDataSource)}>
-                  <CollapsibleContent>
-                    <span className="heading-lg flex flex-row items-center gap-1 text-sm font-semibold text-foreground dark:text-foreground-night">
-                      <Icon visual={SlackLogo} size="sm" />
-                      <span className="heading-lg">
-                        Slack #channel integration
-                      </span>
-                    </span>
-
-                    <div className="flex flex-row items-start gap-2">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                          {slackChannelSelected.length > 0
-                            ? `Agent set as default for: ${slackChannelSelected.map((c) => c.slackChannelName).join(", ")}`
-                            : "Set as default agent for selected channels."}
-                        </span>
-
-                        <div className="pt-2">
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            icon={PencilSquareIcon}
-                            label="Manage channels"
-                            onClick={() => {
-                              setSlackDrawerOpened(true);
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div></div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-              <div className="flex flex-[1_0_0] flex-col gap-4">
-                <Page.SectionHeader title="Tags" />
+            <div className="flex flex-col gap-4">
+              <Page.SectionHeader title="Tags" />
+              <div className="flex flex-row gap-2">
+                <TagsSelector
+                  owner={owner}
+                  builderState={builderState}
+                  setBuilderState={setBuilderState}
+                  setEdited={setEdited}
+                />
                 <TagsSuggestions
                   owner={owner}
                   builderState={builderState}
                   setBuilderState={setBuilderState}
                   setEdited={setEdited}
                 />
-                <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                  <TagsSelector
-                    owner={owner}
-                    builderState={builderState}
-                    setBuilderState={setBuilderState}
-                    setEdited={setEdited}
-                  />
+              </div>
+            </div>
+
+            <div className="flex flex-row gap-4">
+              <div className="flex flex-[1_0_0] flex-col gap-2">
+                <Page.SectionHeader title="Access" />
+                <div className="flex flex-row items-start gap-2">
+                  <div className="flex flex-1 flex-row items-start gap-2 py-2">
+                    <div className="min-w-12">
+                      <SliderToggle
+                        selected={isVisible}
+                        onClick={() => {
+                          setBuilderState((state) => ({
+                            ...state,
+                            scope: isVisible ? "hidden" : "visible",
+                          }));
+                          setEdited(true);
+                        }}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                        {isVisible ? "Published" : "Not published"}
+                      </span>
+                      <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                        {VISIBILITY_DESCRIPTIONS[builderState.scope]}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <Collapsible open={!!(isVisible && slackDataSource)}>
+                      <CollapsibleContent>
+                        <div className="flex flex-1 flex-row items-start gap-2">
+                          <div>
+                            <Icon visual={SlackLogo} size="sm" />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                              Slack preferences
+                            </span>
+                            <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                              {slackChannelSelected.length > 0 ? (
+                                <>
+                                  Default agent for:{" "}
+                                  {slackChannelSelected
+                                    .map((c) => c.slackChannelName)
+                                    .join(", ")}
+                                </>
+                              ) : (
+                                <>
+                                  Select channels in which this agent replies by
+                                  default.
+                                </>
+                              )}
+                            </span>
+                            <div className="pt-2">
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                icon={PencilSquareIcon}
+                                label="Manage channels"
+                                onClick={() => {
+                                  setSlackDrawerOpened(true);
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                 </div>
               </div>
             </div>
@@ -817,7 +807,7 @@ function EditorsMembersList({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-row items-center gap-2">
-        <Page.SectionHeader title="Editors" />
+        <Page.SectionHeader title="Editors" description="blablabl" />
         <div className="flex flex-grow" />
         <AddEditorDropdown
           owner={owner}
@@ -945,7 +935,7 @@ function TagsSuggestions({
     <>
       {tagsSuggestions.status === "ok" &&
         filteredTagsSuggestions.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <div className="text-muted-foregroup text-xs font-semibold dark:text-muted-foreground-night">
               Suggestions:
             </div>
