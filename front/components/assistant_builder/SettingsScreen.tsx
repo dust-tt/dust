@@ -795,7 +795,10 @@ function EditorsMembersList({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-row items-center gap-2">
-        <Page.SectionHeader title="Editors" description="blablabl" />
+        <Page.SectionHeader
+          title="Editors"
+          description="People who can use and edit the agent"
+        />
         <div className="flex flex-grow" />
         <AddEditorDropdown
           owner={owner}
