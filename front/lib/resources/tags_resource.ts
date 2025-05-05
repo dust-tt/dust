@@ -10,13 +10,13 @@ import sequelize from "sequelize/lib/sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { TagModel } from "@app/lib/models/tags";
+import { BaseResource } from "@app/lib/resources/base_resource";
+import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
   isResourceSId,
   makeSId,
-} from "@app/lib/resources//string_ids";
-import { BaseResource } from "@app/lib/resources/base_resource";
-import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+} from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
@@ -133,9 +133,10 @@ export class TagResource extends BaseResource<TagModel> {
         [
           sequelize.literal(`
             (
-              SELECT COUNT(*)
-              FROM tag_agents
-              WHERE "tagId" = tags.id
+              SELECT COUNT(DISTINCT ac."sId")
+              FROM tag_agents ta
+              JOIN agent_configurations ac ON ac.id = ta."agentConfigurationId" 
+              WHERE ta."tagId" = tags.id
             )
           `),
           "usage",
