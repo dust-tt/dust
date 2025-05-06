@@ -4,19 +4,33 @@ import React, { useRef, useState } from "react";
 import {
   Avatar,
   ConfettiBackground,
-  Icon,
+  Tooltip,
   TypingAnimation,
 } from "@sparkle/components";
 import { Button } from "@sparkle/components/Button";
 import {
-  BookOpenIcon,
-  BrainIcon,
-  MagnifyingGlassIcon,
+  ActionBrainIcon,
+  ActionGlobeIcon,
+  ActionImageIcon,
+  ActionMagnifyingGlassIcon,
+  ActionScanIcon,
+  ActionTableIcon,
   PlayIcon,
-  RobotIcon,
-  TableIcon,
 } from "@sparkle/icons";
-import { GithubLogo, GoogleLogo, NotionLogo, SlackLogo } from "@sparkle/logo";
+import {
+  BigQueryLogo,
+  ConfluenceLogo,
+  DriveLogo,
+  GithubLogo,
+  GongLogo,
+  IntercomLogo,
+  MicrosoftLogo,
+  NotionLogo,
+  SalesforceLogo,
+  SlackLogo,
+  SnowflakeLogo,
+  ZendeskLogo,
+} from "@sparkle/logo";
 
 import {
   TourGuide,
@@ -51,24 +65,19 @@ const Template: StoryFn = () => {
       backgroundColor: "s-bg-green-200",
     },
     {
-      name: "TrendTracker",
-      emoji: "😻",
-      backgroundColor: "s-bg-rose-50",
-    },
-    {
       name: "TrailblazerGuard",
       emoji: "👮",
       backgroundColor: "s-bg-blue-100",
     },
     {
-      name: "TriumphRobot",
-      emoji: "🍾",
-      backgroundColor: "s-bg-yellow-200",
-    },
-    {
       name: "Transport",
       emoji: "🚌",
       backgroundColor: "s-bg-blue-200",
+    },
+    {
+      name: "TrendTracker",
+      emoji: "😻",
+      backgroundColor: "s-bg-rose-50",
     },
   ] as const;
   return (
@@ -107,14 +116,14 @@ const Template: StoryFn = () => {
           </TourGuideCardVisual>
           <TourGuideCardTitle>
             Welcome to the{" "}
-            <span className="s-font-semibold s-text-brand-electric-blue">
+            <span className="s-font-semibold s-text-brand-hunter-green">
               Qonto
             </span>{" "}
             workspace.
           </TourGuideCardTitle>
           <TourGuideCardContent>
             {" "}
-            Discover Dust’s basics in 3 steps.
+            Discover the basics of Dust in 3 steps.
           </TourGuideCardContent>
         </TourGuideCard>
         <TourGuideCard anchorRef={centerRef}>
@@ -146,7 +155,7 @@ const Template: StoryFn = () => {
           <TourGuideCardTitle>
             Use{" "}
             <span className="s-font-semibold s-text-highlight">@mentions</span>{" "}
-            to call Agents and&nbsp;start a conversation
+            to call Agents and&nbsp;start a conversation.
           </TourGuideCardTitle>
           <TourGuideCardContent className="s-py-2">
             <Button
@@ -158,23 +167,198 @@ const Template: StoryFn = () => {
         </TourGuideCard>
         <TourGuideCard anchorRef={topRightRef}>
           <TourGuideCardVisual className="s-flex s-flex-col s-items-center s-justify-center s-gap-4 s-bg-brand-support-rose s-px-6 s-text-center">
-            <div className="s-grid s-grid-cols-4 s-gap-2">
-              <Icon visual={BookOpenIcon} size="lg" />
-              <Icon visual={MagnifyingGlassIcon} size="lg" />
-              <Icon visual={TableIcon} size="lg" />
-              <Icon visual={BrainIcon} size="lg" />
-              <Icon visual={NotionLogo} size="lg" />
-              <Icon visual={GoogleLogo} size="lg" />
-              <Icon visual={SlackLogo} size="lg" />
-              <Icon visual={GithubLogo} size="lg" />
+            <div className="s-grid s-grid-cols-6 s-gap-2">
+              <Tooltip
+                label="Google Drive Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={DriveLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="Notion Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={NotionLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="Slack Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={SlackLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="Snowflake Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={SnowflakeLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="BigQuery Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={BigQueryLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="Confluence Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={ConfluenceLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="Intercom Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={IntercomLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="Microsoft Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={MicrosoftLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="Salesforce Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={SalesforceLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="Zendesk Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={ZendeskLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="GitHub Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={GithubLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="Gong Connection"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={GongLogo}
+                    backgroundColor="s-bg-white"
+                  />
+                }
+              />
+              <Tooltip
+                label="Search data"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={ActionMagnifyingGlassIcon}
+                    backgroundColor="s-bg-gray-700"
+                    iconColor="s-text-gray-50"
+                  />
+                }
+              />
+              <Tooltip
+                label="Quantitative analysis"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={ActionTableIcon}
+                    backgroundColor="s-bg-gray-700"
+                    iconColor="s-text-gray-50"
+                  />
+                }
+              />
+              <Tooltip
+                label="Data extraction"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={ActionScanIcon}
+                    backgroundColor="s-bg-gray-700"
+                    iconColor="s-text-gray-50"
+                  />
+                }
+              />
+              <Tooltip
+                label="Image generation"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={ActionImageIcon}
+                    backgroundColor="s-bg-gray-700"
+                    iconColor="s-text-gray-50"
+                  />
+                }
+              />
+              <Tooltip
+                label="Web search and browsing"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={ActionGlobeIcon}
+                    backgroundColor="s-bg-gray-700"
+                    iconColor="s-text-gray-50"
+                  />
+                }
+              />
+              <Tooltip
+                label="Reasoning"
+                trigger={
+                  <Avatar
+                    size="md"
+                    icon={ActionBrainIcon}
+                    backgroundColor="s-bg-gray-700"
+                    iconColor="s-text-gray-50"
+                  />
+                }
+              />
             </div>
-            <span className="s-heading-2xl">
-              <TypingAnimation text="Knowledge & Tools" />
-            </span>
           </TourGuideCardVisual>
           <TourGuideCardTitle>
             Make your agents smarter with&nbsp;
-            <span className="s-text-brand-red-rose">knowledge and tools</span>
+            <span className="s-text-brand-red-rose">knowledge and tools</span>.
           </TourGuideCardTitle>
           <TourGuideCardContent className="s-py-2">
             <Button
@@ -185,21 +369,92 @@ const Template: StoryFn = () => {
           </TourGuideCardContent>
         </TourGuideCard>
         <TourGuideCard anchorRef={bottomLeftRef}>
-          <TourGuideCardVisual className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-px-6 s-text-center">
-            <Icon
-              className="s-text-brand-orange-golden"
-              visual={RobotIcon}
-              size="xl"
-            />
-            <span className="s-heading-mono-2xl s-text-brand-orange-golden">
-              <TypingAnimation text="Create an Agent" />
-            </span>
+          <TourGuideCardVisual className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-bg-brand-support-golden s-px-6 s-text-center">
+            <div className="s-grid s-grid-cols-4 s-gap-2">
+              <Tooltip
+                label="FeedbackHelper"
+                trigger={
+                  <Avatar
+                    size="lg"
+                    emoji="❤️"
+                    backgroundColor="s-bg-rose-100"
+                  />
+                }
+              />
+              <Tooltip
+                label="RiskAnalyzer"
+                trigger={
+                  <Avatar
+                    size="lg"
+                    emoji="💀"
+                    backgroundColor="s-bg-lime-800"
+                  />
+                }
+              />
+              <Tooltip
+                label="EngagementPro"
+                trigger={
+                  <Avatar
+                    size="lg"
+                    emoji="😂"
+                    backgroundColor="s-bg-golden-200"
+                  />
+                }
+              />
+              <Tooltip
+                label="RunbookMaster"
+                trigger={
+                  <Avatar
+                    size="lg"
+                    emoji="🧑‍🚀"
+                    backgroundColor="s-bg-violet-800"
+                  />
+                }
+              />
+              <Tooltip
+                label="BrandSpecialist"
+                trigger={
+                  <Avatar
+                    size="lg"
+                    emoji="👕"
+                    backgroundColor="s-bg-blue-200"
+                  />
+                }
+              />
+              <Tooltip
+                label="CrisisManager"
+                trigger={
+                  <Avatar size="lg" emoji="🚒" backgroundColor="s-bg-red-200" />
+                }
+              />
+              <Tooltip
+                label="PerformanceCoach"
+                trigger={
+                  <Avatar
+                    size="lg"
+                    emoji="🏆"
+                    backgroundColor="s-bg-yellow-200"
+                  />
+                }
+              />
+              <Tooltip
+                label="StrategyPlanner"
+                trigger={
+                  <Avatar
+                    size="lg"
+                    emoji="🎯"
+                    backgroundColor="s-bg-pink-100"
+                  />
+                }
+              />
+            </div>
           </TourGuideCardVisual>
           <TourGuideCardTitle>
             Create new custom agents{" "}
             <span className="s-text-brand-orange-golden">
               designed for your needs
             </span>
+            .
           </TourGuideCardTitle>
           <TourGuideCardContent className="s-py-2">
             <Button
