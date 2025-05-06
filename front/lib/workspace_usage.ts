@@ -57,6 +57,11 @@ type UserUsageQueryResult = {
   activeDaysCount: number;
 };
 
+type InactiveUserUsageQueryResult = {
+  userName: string;
+  userEmail: string;
+};
+
 type BuilderUsageQueryResult = {
   userEmail: string;
   userFirstName: string;
@@ -315,6 +320,66 @@ export async function getUserUsageData(
   return generateCsvFromQueryResult(userUsage);
 }
 
+export async function getInactiveUserUsageData(
+  startDate: Date,
+  endDate: Date,
+  workspace: WorkspaceType
+): Promise<string> {
+  const wId = workspace.sId;
+
+  const readReplica = getFrontReplicaDbConnection();
+  const users = await readReplica.query(
+    `
+      SELECT 
+          u.id,
+          u.email,
+          u.name
+      FROM 
+          users u
+      JOIN 
+          memberships m ON u.id = m."userId"
+      JOIN
+          workspaces w ON m."workspaceId" = w.id
+      WHERE
+          w."sId" = :wId
+          AND m."createdAt" <= :endDate
+          AND NOT EXISTS (
+              SELECT 1
+              FROM user_messages msg
+              WHERE 
+                  msg."userId" = u.id
+                  AND msg."workspaceId" = w.id
+                  AND msg."createdAt" BETWEEN :startDate AND :endDate
+          )
+      ORDER BY 
+          u.name;
+`,
+    {
+      mapToModel: true,
+      model: UserModel,
+      replacements: {
+        wId,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      },
+    }
+  );
+
+  const userUsage: InactiveUserUsageQueryResult[] = users.map((user) => {
+    return {
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+    };
+  });
+
+  if (!userUsage.length) {
+    return "No data available for the selected period.";
+  }
+
+  return generateCsvFromQueryResult(userUsage);
+}
+
 export async function getBuildersUsageData(
   startDate: Date,
   endDate: Date,
@@ -521,6 +586,7 @@ function generateCsvFromQueryResult(
   rows:
     | WorkspaceUsageQueryResult[]
     | UserUsageQueryResult[]
+    | InactiveUserUsageQueryResult[]
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
     | BuilderUsageQueryResult[]
