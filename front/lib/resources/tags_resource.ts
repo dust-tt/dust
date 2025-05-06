@@ -136,7 +136,7 @@ export class TagResource extends BaseResource<TagModel> {
               SELECT COUNT(DISTINCT ac."sId")
               FROM tag_agents ta
               JOIN agent_configurations ac ON ac.id = ta."agentConfigurationId" 
-              WHERE ta."tagId" = tags.id
+              WHERE ta."tagId" = tags.id AND ac.status = 'active'
             )
           `),
           "usage",
