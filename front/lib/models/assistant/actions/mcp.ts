@@ -23,6 +23,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
   declare additionalConfiguration: Record<string, boolean | number | string>;
 
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
+  declare mcpServerView: NonAttribute<MCPServerViewModel>;
 
   // Hold the SID of the MCP server if it's an internal one, as a convenience to avoid
   // having to fetch the MCP server view when we need to identify the internal MCP server.
@@ -139,6 +140,7 @@ MCPServerViewModel.hasMany(AgentMCPServerConfiguration, {
 });
 AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
+  as: "mcpServerView",
 });
 
 export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {

@@ -184,11 +184,6 @@ export class RetrievalActionType extends BaseAction {
     if (!this.documents?.length) {
       content += "(retrieval failed)\n";
     } else {
-      console.log(
-        "sum of chunks retrieval vs topK",
-        this.documents.reduce((acc, doc) => acc + doc.chunks.length, 0),
-        this.params.topK
-      );
       for (const d of this.documents) {
         let title = d.documentId;
         for (const t of d.tags) {

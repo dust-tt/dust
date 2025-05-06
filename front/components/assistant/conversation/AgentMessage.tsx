@@ -467,7 +467,7 @@ export function AgentMessage({
     [activeReferences]
   );
 
-  const canMention = true; //agentConfiguration.canRead;
+  const canMention = agentConfiguration.canRead;
 
   return (
     <ConversationMessage

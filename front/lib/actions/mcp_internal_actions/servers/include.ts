@@ -45,7 +45,7 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "search_data_sources",
+    "retrieve",
     "Retrieve the most recent content from the data sources specified by the user.",
     {
       relativeTimeFrame: z

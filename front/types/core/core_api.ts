@@ -997,7 +997,7 @@ export class CoreAPI {
       projectId: string;
       dataSourceId: string;
       filter?: CoreAPISearchFilter | null;
-      view_filter?: CoreAPISearchFilter | null;
+      view_filter: CoreAPISearchFilter;
     }[],
     target_document_tokens?: number | null
   ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
