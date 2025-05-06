@@ -23,6 +23,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "think",
   "ask_agent",
   "reasoning_v2",
+  "run_dust_app",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -87,6 +88,11 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_object: "high",
       update_object: "high",
     },
+  },
+  run_dust_app: {
+    id: 8,
+    isDefault: false,
+    flag: "mcp_actions",
   },
 
   // Dev

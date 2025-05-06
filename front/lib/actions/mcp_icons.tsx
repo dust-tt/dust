@@ -13,11 +13,11 @@ import {
   ActionRobotIcon,
   ActionTableIcon,
   Avatar,
+  CommandLineIcon,
   GithubLogo,
   HubspotLogo,
 } from "@dust-tt/sparkle";
-import type React from "react";
-import type { ComponentProps } from "react";
+import type React, { ComponentProps } from "react";
 
 import type { MCPServerType } from "@app/lib/api/mcp";
 
@@ -40,6 +40,7 @@ export const InternalActionIcons = {
   ActionTableIcon,
   GithubLogo,
   HubspotLogo,
+  CommandLineIcon,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
