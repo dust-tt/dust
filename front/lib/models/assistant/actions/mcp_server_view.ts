@@ -1,14 +1,14 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { assertNever } from "@app/types";
 
-export class MCPServerView extends SoftDeletableWorkspaceAwareModel<MCPServerView> {
+export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServerViewModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -18,14 +18,15 @@ export class MCPServerView extends SoftDeletableWorkspaceAwareModel<MCPServerVie
 
   declare serverType: "internal" | "remote";
   declare internalMCPServerId: string | null;
-  declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]> | null;
+  declare remoteMCPServerId: ForeignKey<RemoteMCPServerModel["id"]> | null;
 
   declare vaultId: ForeignKey<SpaceModel["id"]>;
 
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
+  declare remoteMCPServer: NonAttribute<RemoteMCPServerModel>;
 }
-MCPServerView.init(
+MCPServerViewModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -54,7 +55,7 @@ MCPServerView.init(
       type: DataTypes.BIGINT,
       allowNull: true,
       references: {
-        model: RemoteMCPServer,
+        model: RemoteMCPServerModel,
         key: "id",
       },
     },
@@ -71,70 +72,78 @@ MCPServerView.init(
       { fields: ["workspaceId", "id"] },
       { fields: ["workspaceId", "vaultId"] },
       {
-        fields: ["workspaceId", "remoteMCPServerId", "vaultId", "deletedAt"],
+        fields: ["workspaceId", "remoteMCPServerId", "vaultId"],
+        where: {
+          deletedAt: null,
+        },
         unique: true,
-        name: "mcp_server_view_workspace_remote_mcp_server_vault_deleted_at_un",
+        name: "mcp_server_views_workspace_remote_mcp_server_vault_active",
       },
       {
-        fields: ["workspaceId", "internalMCPServerId", "vaultId", "deletedAt"],
+        fields: ["workspaceId", "internalMCPServerId", "vaultId"],
+        where: {
+          deletedAt: null,
+        },
         unique: true,
-        name: "mcp_server_view_workspace_internal_mcp_server_vault_deleted_at_",
+        name: "mcp_server_views_workspace_internal_mcp_server_vault_active",
       },
     ],
     hooks: {
-      beforeValidate: (config: MCPServerView) => {
-        switch (config.serverType) {
-          case "internal":
-            if (!config.internalMCPServerId) {
-              throw new Error(
-                "internalMCPServerId is required for serverType internal"
-              );
-            }
-            if (config.remoteMCPServerId) {
-              throw new Error(
-                "remoteMCPServerId is not allowed for serverType internal"
-              );
-            }
-            break;
-          case "remote":
-            if (!config.remoteMCPServerId) {
-              throw new Error(
-                "remoteMCPServerId is required for serverType remote"
-              );
-            }
-            if (config.internalMCPServerId) {
-              throw new Error(
-                "internalMCPServerId is not allowed for serverType remote"
-              );
-            }
-            break;
-          default:
-            assertNever(config.serverType);
+      beforeValidate: (config: MCPServerViewModel) => {
+        if (config.serverType) {
+          switch (config.serverType) {
+            case "internal":
+              if (!config.internalMCPServerId) {
+                throw new Error(
+                  "internalMCPServerId is required for serverType internal"
+                );
+              }
+              if (config.remoteMCPServerId) {
+                throw new Error(
+                  "remoteMCPServerId is not allowed for serverType internal"
+                );
+              }
+              break;
+            case "remote":
+              if (!config.remoteMCPServerId) {
+                throw new Error(
+                  "remoteMCPServerId is required for serverType remote"
+                );
+              }
+              if (config.internalMCPServerId) {
+                throw new Error(
+                  "internalMCPServerId is not allowed for serverType remote"
+                );
+              }
+              break;
+            default:
+              assertNever(config.serverType);
+          }
         }
       },
     },
   }
 );
 
-SpaceModel.hasMany(MCPServerView, {
+SpaceModel.hasMany(MCPServerViewModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
 });
-MCPServerView.belongsTo(SpaceModel, {
+MCPServerViewModel.belongsTo(SpaceModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
 });
 
-RemoteMCPServer.hasMany(MCPServerView, {
-  as: "remoteMCPServerForView",
+RemoteMCPServerModel.hasMany(MCPServerViewModel, {
+  as: "remoteMCPServer",
   foreignKey: { name: "remoteMCPServerId", allowNull: false },
   onDelete: "RESTRICT",
 });
-MCPServerView.belongsTo(RemoteMCPServer, {
-  as: "remoteMCPServerForView",
+MCPServerViewModel.belongsTo(RemoteMCPServerModel, {
+  as: "remoteMCPServer",
   foreignKey: { name: "remoteMCPServerId", allowNull: false },
 });
 
-MCPServerView.belongsTo(UserModel, {
+MCPServerViewModel.belongsTo(UserModel, {
   as: "editedByUser",
   foreignKey: { name: "editedByUserId", allowNull: true },
 });

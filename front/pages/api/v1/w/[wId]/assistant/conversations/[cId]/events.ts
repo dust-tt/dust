@@ -2,10 +2,10 @@ import type { ConversationEventType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -63,7 +63,8 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversationWithoutContent(auth, cId);
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);

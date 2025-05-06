@@ -1,5 +1,9 @@
-import { Chip, cn, SearchInputWithPopover } from "@dust-tt/sparkle";
-import React from "react";
+import {
+  Chip,
+  DropdownMenuItem,
+  SearchDropdownMenu,
+  Spinner,
+} from "@dust-tt/sparkle";
 
 import type { DataSourceTag } from "@app/types";
 
@@ -10,7 +14,7 @@ export interface TagSearchProps {
   selectedTags: DataSourceTag[];
   onTagAdd: (tag: DataSourceTag) => void;
   onTagRemove: (tag: DataSourceTag) => void;
-  tagChipColor?: "slate" | "red";
+  tagChipColor?: "primary" | "warning";
   isLoading: boolean;
   disabled?: boolean;
 }
@@ -22,47 +26,39 @@ export const TagSearchInput = ({
   selectedTags,
   onTagAdd,
   onTagRemove,
-  tagChipColor = "slate",
+  tagChipColor = "primary",
   isLoading,
   disabled = false,
 }: TagSearchProps) => {
   return (
     <div className="flex flex-col gap-3">
-      <SearchInputWithPopover
-        name="tag-search"
-        placeholder="Search labels..."
-        value={searchInputValue}
-        onChange={(value) => setSearchInputValue(value)}
-        open={availableTags.length > 0 || searchInputValue.length > 0}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSearchInputValue("");
-          }
-        }}
-        isLoading={isLoading}
+      <SearchDropdownMenu
+        searchInputValue={searchInputValue}
+        setSearchInputValue={setSearchInputValue}
         disabled={disabled}
-        noResults="No results found"
-        items={availableTags}
-        onItemSelect={(item) => {
-          onTagAdd(item);
-          setSearchInputValue("");
-        }}
-        renderItem={(item, selected) => (
-          <div
-            className={cn(
-              "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
-              selected && "bg-structure-50 dark:bg-structure-50-night"
-            )}
-            onClick={() => {
-              onTagAdd(item);
-              setSearchInputValue("");
-            }}
-          >
-            <span className="text-sm font-semibold">{item.tag}</span>
+      >
+        {availableTags.length > 0 ? (
+          availableTags.map((tag) => (
+            <DropdownMenuItem
+              key={tag.tag}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onTagAdd(tag);
+                setSearchInputValue("");
+              }}
+            >
+              <Chip label={tag.tag} size="xs" />
+            </DropdownMenuItem>
+          ))
+        ) : isLoading ? (
+          <div className="flex justify-center py-8">
+            <Spinner variant="dark" size="md" />
           </div>
+        ) : (
+          <div className="p-2 text-sm text-gray-500">No results found</div>
         )}
-      ></SearchInputWithPopover>
-
+      </SearchDropdownMenu>
       <div className="flex flex-wrap gap-2">
         {selectedTags.map((tag, i) => (
           <Chip

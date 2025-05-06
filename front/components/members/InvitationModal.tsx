@@ -198,37 +198,31 @@ export function InviteEmailModal({
           <SheetTitle>Invite new users</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="mt-6 flex grow flex-col gap-6 px-2 text-sm">
-            <div className="flex flex-grow flex-col gap-5">
-              <div className="font-semibold">
+          <div className="flex grow flex-col gap-6 text-sm">
+            <div className="flex flex-grow flex-col gap-2">
+              <div className="heading-base">
                 Email addresses (comma or newline separated):
               </div>
-              <div className="flex items-start gap-2">
-                <div className="flex-grow">
-                  <TextArea
-                    placeholder="Email addresses, comma or newline separated"
-                    value={inviteEmails}
-                    onChange={(e) => {
-                      setInviteEmails(e.target.value);
-                      setEmailError("");
-                    }}
-                    error={emailError}
-                    showErrorLabel
-                  />
+              <TextArea
+                placeholder="Email addresses, comma or newline separated"
+                value={inviteEmails}
+                onChange={(e) => {
+                  setInviteEmails(e.target.value);
+                  setEmailError("");
+                }}
+                error={emailError}
+                showErrorLabel
+              />
+              <div className="flex items-center gap-2">
+                <div className="heading-base text-foreground dark:text-foreground-night">
+                  Role:
                 </div>
+                <RoleDropDown
+                  selectedRole={invitationRole}
+                  onChange={setInvitationRole}
+                />
               </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="font-semibold text-foreground dark:text-foreground-night">
-                    Role:
-                  </div>
-                  <RoleDropDown
-                    selectedRole={invitationRole}
-                    onChange={setInvitationRole}
-                  />
-                </div>
-              </div>
-              <div className="text-element-700 dark:text-element-700-night">
+              <div className="text-muted-foreground dark:text-muted-foreground-night">
                 {ROLES_DATA[invitationRole]["description"]}
               </div>
             </div>
@@ -268,12 +262,7 @@ function ProPlanBillingNotice({
   perSeatPricing: SubscriptionPerSeatPricing;
 }) {
   return (
-    <ContentMessage
-      size="md"
-      variant="amber"
-      title="Note"
-      icon={InformationCircleIcon}
-    >
+    <ContentMessage size="md" title="Note" icon={InformationCircleIcon}>
       <p>
         New users will be charged a{" "}
         <span className="font-semibold">
@@ -281,7 +270,8 @@ function ProPlanBillingNotice({
           {getPriceAsString({
             currency: perSeatPricing.seatCurrency,
             priceInCents: perSeatPricing.seatPrice,
-          })}
+          })}{" "}
+          at the end of the trial period
         </span>
         .{" "}
       </p>

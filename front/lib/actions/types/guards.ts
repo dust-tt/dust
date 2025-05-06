@@ -1,3 +1,5 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+
 import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import type {
   ConversationIncludeFileActionType,
@@ -8,7 +10,10 @@ import type {
   MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
+  PlatformMCPServerConfigurationType,
+  PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import type {
@@ -21,8 +26,9 @@ import type {
   WebsearchActionType,
   WebsearchConfigurationType,
 } from "@app/lib/actions/websearch";
-import type { AgentActionType } from "@app/types";
+import { findMatchingSubSchemas } from "@app/lib/utils/json_schemas";
 import type {
+  AgentActionType,
   AgentConfigurationType,
   TemplateAgentConfigurationType,
 } from "@app/types";
@@ -114,6 +120,47 @@ export function isMCPActionType(arg: AgentActionType): arg is MCPActionType {
   return arg.type === "tool_action";
 }
 
+export function isMCPServerConfiguration(
+  arg: unknown
+): arg is MCPServerConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "mcp_server_configuration"
+  );
+}
+
+export function isPlatformMCPServerConfiguration(
+  arg: unknown
+): arg is PlatformMCPServerConfigurationType {
+  return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
+}
+
+export function isMCPConfigurationWithDataSource(
+  arg: unknown
+): arg is PlatformMCPServerConfigurationType {
+  return (
+    isPlatformMCPServerConfiguration(arg) &&
+    !!arg.dataSources &&
+    arg.dataSources.length > 0
+  );
+}
+
+export function isMCPConfigurationWithWebsearch(
+  arg: unknown
+): arg is PlatformMCPServerConfigurationType {
+  const internalWebsearchV2ActionName: InternalMCPServerNameType =
+    "web_search_&_browse_v2";
+
+  return (
+    isPlatformMCPServerConfiguration(arg) &&
+    arg.name === internalWebsearchV2ActionName
+  );
+}
+
+// MCP Tools
+
 export function isMCPActionConfiguration(
   arg: unknown
 ): arg is MCPToolConfigurationType {
@@ -125,15 +172,22 @@ export function isMCPActionConfiguration(
   );
 }
 
-export function isMCPServerConfiguration(
+export function isMCPActionWithDataSource(
   arg: unknown
-): arg is MCPServerConfigurationType {
+): arg is MCPToolConfigurationType {
   return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "mcp_server_configuration"
+    isMCPActionConfiguration(arg) &&
+    !!findMatchingSubSchemas(
+      arg.inputSchema,
+      INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+    )
   );
+}
+
+export function isPlatformMCPToolConfiguration(
+  action: unknown
+): action is PlatformMCPToolConfigurationType {
+  return isMCPActionConfiguration(action) && "mcpServerViewId" in action;
 }
 
 export function isWebsearchActionType(
@@ -171,14 +225,11 @@ export function isConversationIncludeFileConfigurationActionType(
 }
 
 export function throwIfInvalidAgentConfiguration(
-  configation: AgentConfigurationType | TemplateAgentConfigurationType
+  configuration: AgentConfigurationType | TemplateAgentConfigurationType
 ) {
-  configation.actions.forEach((action) => {
+  configuration.actions.forEach((action) => {
     if (isProcessConfiguration(action)) {
-      if (
-        action.relativeTimeFrame === "auto" ||
-        action.relativeTimeFrame === "none"
-      ) {
+      if (action.relativeTimeFrame === "none") {
         /** Should never happen as not permitted for now. */
         throw new Error(
           "Invalid configuration: process must have a definite time frame"
@@ -187,8 +238,8 @@ export function throwIfInvalidAgentConfiguration(
     }
   });
 
-  const templateConfiguration = configation as TemplateAgentConfigurationType; // Creation
-  const agentConfiguration = configation as AgentConfigurationType; // Edition
+  const templateConfiguration = configuration as TemplateAgentConfigurationType; // Creation
+  const agentConfiguration = configuration as AgentConfigurationType; // Edition
 
   if (templateConfiguration) {
     if (templateConfiguration.scope === "global") {

@@ -113,7 +113,14 @@ pub async fn get_tables_schema(
                 .iter()
                 .zip(schemas.iter())
                 .map(|(table, schema)| {
-                    schema.render_dbml(table.table_id_for_dbml(), table.description())
+                    let table_id = table.table_id_for_dbml().replace("__DUST_DOT__", ".");
+                    schema.as_ref().map(|s| {
+                        s.render_dbml(
+                            &table_id,
+                            table.description(),
+                            remote_db.should_use_column_description(table),
+                        )
+                    })
                 })
                 .collect::<Vec<_>>();
 
@@ -122,10 +129,16 @@ pub async fn get_tables_schema(
                 schemas
                     .into_iter()
                     .zip(dbmls.into_iter())
-                    .map(|(schema, dbml)| GetTableSchemaResult {
-                        schema: Some(schema),
-                        dbml,
-                        head: None,
+                    .filter_map(|(schema, dbml)| {
+                        if let (Some(schema), Some(dbml)) = (schema, dbml) {
+                            Some(GetTableSchemaResult {
+                                schema: Some(schema),
+                                dbml,
+                                head: None,
+                            })
+                        } else {
+                            None
+                        }
                     })
                     .collect::<Vec<_>>(),
             ))

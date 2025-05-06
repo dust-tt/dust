@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -80,7 +81,10 @@ export class AgentTablesQueryConfigurationTable extends WorkspaceAwareModel<Agen
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare tablesQueryConfigurationId: ForeignKey<
     AgentTablesQueryConfiguration["id"]
-  >;
+  > | null;
+  declare mcpServerConfigurationId: ForeignKey<
+    AgentMCPServerConfiguration["id"]
+  > | null;
 
   declare dataSource: NonAttribute<DataSourceModel>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
@@ -118,12 +122,23 @@ AgentTablesQueryConfigurationTable.init(
   }
 );
 
+// Table query config <> Table config
 AgentTablesQueryConfiguration.hasMany(AgentTablesQueryConfigurationTable, {
-  foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
+  foreignKey: { name: "tablesQueryConfigurationId", allowNull: true },
   onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
-  foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
+  foreignKey: { name: "tablesQueryConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+
+// MCP server config <> Table config
+AgentMCPServerConfiguration.hasMany(AgentTablesQueryConfigurationTable, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentTablesQueryConfigurationTable.belongsTo(AgentMCPServerConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
   onDelete: "RESTRICT",
 });
 

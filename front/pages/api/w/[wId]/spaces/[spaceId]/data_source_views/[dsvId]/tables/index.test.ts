@@ -26,7 +26,6 @@ vi.mock(
        */
       CoreAPI: vi.fn().mockReturnValue({
         searchNodes: vi.fn().mockImplementation(() => {
-          console.log("LAAAAA");
           return {
             isErr: () => false,
             value: {
@@ -201,7 +200,6 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables", (
       };
 
       vi.spyOn(CoreAPI.prototype, "searchNodes").mockImplementation(() => {
-        console.log("searchNodes called");
         return {
           isErr: () => false,
           value: {

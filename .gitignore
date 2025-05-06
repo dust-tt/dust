@@ -2,7 +2,6 @@
 *.sqlite
 .DS_Store
 .idea
-test.sh
 test.ts
 .env.local
 qdrant_storage
@@ -11,3 +10,5 @@ qdrant_storage
 core-api-keys.json
 oauth-api-keys.json
 /extension/build/
+**/.claude/settings.local.json
+CLAUDE.md

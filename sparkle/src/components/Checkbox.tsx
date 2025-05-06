@@ -2,7 +2,7 @@ import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { cva, VariantProps } from "class-variance-authority";
 import React from "react";
 
-import { CheckIcon, DashIcon } from "@sparkle/icons/solid";
+import { CheckIcon, DashIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";

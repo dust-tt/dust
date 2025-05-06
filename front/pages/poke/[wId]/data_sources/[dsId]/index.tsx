@@ -131,7 +131,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       dataSource.connectorId
     );
     if (connectorRes.isOk()) {
-      connector = connectorRes.value;
+      connector = {
+        ...connectorRes.value,
+        connectionId: null,
+      };
       const temporalClient = await getTemporalConnectorsNamespaceConnection();
 
       const res = temporalClient.workflow.list({
@@ -397,7 +400,7 @@ const DataSourcePage = ({
     <>
       <h3 className="text-xl font-bold">
         Data Source: {dataSource.name} of workspace:{" "}
-        <a href={`/poke/${owner.sId}`} className="text-action-500">
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
       </h3>
@@ -603,7 +606,9 @@ const DataSourcePage = ({
                           <ContextItem.Visual
                             visual={({ className }) =>
                               DocumentTextIcon({
-                                className: className + " text-element-600",
+                                className:
+                                  className +
+                                  " text-muted-foreground dark:text-muted-foreground-night",
                               })
                             }
                           />
@@ -622,7 +627,7 @@ const DataSourcePage = ({
                         }
                       >
                         <ContextItem.Description>
-                          <div className="pt-2 text-sm text-element-700">
+                          <div className="pt-2 text-sm text-muted-foreground">
                             {Math.floor(d.text_size / 1024)} kb,{" "}
                             {timeAgoFrom(d.timestamp)} ago
                           </div>
@@ -690,14 +695,16 @@ const DataSourcePage = ({
                           <ContextItem.Visual
                             visual={({ className }) =>
                               TableIcon({
-                                className: className + " text-element-600",
+                                className:
+                                  className +
+                                  " text-muted-foreground dark:text-muted-foreground-night",
                               })
                             }
                           />
                         }
                       >
                         <ContextItem.Description>
-                          <div className="pt-2 text-sm text-element-700">
+                          <div className="pt-2 text-sm text-muted-foreground">
                             {timeAgoFrom(t.timestamp)} ago
                           </div>
                         </ContextItem.Description>
@@ -902,8 +909,8 @@ function NotionUrlCheckOrFind({
               className={classNames(
                 "font-bold",
                 urlDetails.page || urlDetails.db
-                  ? "text-emerald-800"
-                  : "text-red-800"
+                  ? "text-success-800"
+                  : "text-warning-800"
               )}
             >
               {(() => {
@@ -931,7 +938,7 @@ function NotionUrlCheckOrFind({
                         <div>
                           {urlDetails.page.parentType === "page" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success-800">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -943,7 +950,7 @@ function NotionUrlCheckOrFind({
                           )}
                           {urlDetails.page.parentType === "database" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success-800">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -967,7 +974,7 @@ function NotionUrlCheckOrFind({
                         <div>
                           {urlDetails.db?.parentType === "page" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success-800">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -979,7 +986,7 @@ function NotionUrlCheckOrFind({
                           )}
                           {urlDetails.db?.parentType === "database" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success-800">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -1109,7 +1116,7 @@ function ZendeskTicketCheck({
                 trigger={
                   <Chip
                     label={ticketDetails.isTicketOnDb ? "Synced" : "Not synced"}
-                    color={ticketDetails.isTicketOnDb ? "purple" : "pink"}
+                    color={ticketDetails.isTicketOnDb ? "success" : "info"}
                   />
                 }
               />
@@ -1125,13 +1132,13 @@ function ZendeskTicketCheck({
                 trigger={
                   <Chip
                     label={ticketDetails.ticket ? "Found" : "Not Found"}
-                    color={ticketDetails.ticket ? "emerald" : "warning"}
+                    color={ticketDetails.ticket ? "success" : "warning"}
                   />
                 }
               />
             </div>
             {ticketDetails.ticket && (
-              <div className="ml-4 pt-2 text-xs text-element-700">
+              <div className="ml-4 pt-2 text-xs text-muted-foreground">
                 <div className="mb-1 font-bold">Details</div>
                 <JsonViewer
                   theme={isDark ? "dark" : "light"}
@@ -1214,6 +1221,8 @@ function SlackWhitelistBot({
 }) {
   const [botName, setBotName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [whitelistType, setWhitelistType] =
+    useState<SlackbotWhitelistType>("summon_agent");
 
   const selectedGroupName = groups.find(
     (group) => group.sId === selectedGroup
@@ -1235,12 +1244,35 @@ function SlackWhitelistBot({
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
+              <Button variant="outline" label={whitelistType} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="min-w-72">
+              <DropdownMenuRadioGroup
+                value={whitelistType ?? undefined}
+                onValueChange={(value) => {
+                  setWhitelistType(value as SlackbotWhitelistType);
+                }}
+              >
+                {["summon_agent", "index_messages"].map((whitelistType) => (
+                  <DropdownMenuRadioItem
+                    value={whitelistType}
+                    key={whitelistType}
+                    label={whitelistType}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 label={selectedGroupName ?? "Select a group"}
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent className="min-w-72">
               <DropdownMenuRadioGroup
                 value={selectedGroup ?? undefined}
                 onValueChange={setSelectedGroup}
@@ -1250,7 +1282,6 @@ function SlackWhitelistBot({
                     value={group.sId}
                     key={group.sId}
                     label={group.name}
-                    className="p-1"
                   />
                 ))}
               </DropdownMenuRadioGroup>
@@ -1258,7 +1289,7 @@ function SlackWhitelistBot({
           </DropdownMenu>
         </div>
         <Button
-          variant="outline"
+          variant="primary"
           label="Whitelist"
           onClick={async () => {
             if (!botName) {
@@ -1273,7 +1304,7 @@ function SlackWhitelistBot({
               botName,
               wId: owner.sId,
               groupId: selectedGroup,
-              whitelistType: "summon_agent",
+              whitelistType,
             });
             setBotName("");
           }}
@@ -1284,7 +1315,7 @@ function SlackWhitelistBot({
         <Link
           href={`https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${connectorId}`}
           target="_blank"
-          className="text-sm text-action-400"
+          className="text-sm text-highlight-400"
         >
           list of whitelisted bots for this workspace
         </Link>

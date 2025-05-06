@@ -10,6 +10,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -276,6 +277,18 @@ async function handler(
         source_url: sourceUrl,
       } = r.data;
 
+      // Labs: Salesforce personal connections, don't upsert secretId
+      let skipSecretId = false;
+      if (
+        dataSource.connectorProvider === "salesforce" &&
+        remoteDatabaseTableId
+      ) {
+        const featureFlags = await getFeatureFlags(owner);
+        if (featureFlags.includes("labs_salesforce_personal_connections")) {
+          skipSecretId = true;
+        }
+      }
+
       let mimeType: string;
       if (auth.isSystemKey()) {
         // If the request is from a system key, the request must provide both title and mimeType.
@@ -395,7 +408,9 @@ async function handler(
         parents: parents || [tableId],
         parentId: parentId ?? null,
         remoteDatabaseTableId: remoteDatabaseTableId ?? null,
-        remoteDatabaseSecretId: remoteDatabaseSecretId ?? null,
+        remoteDatabaseSecretId: skipSecretId
+          ? null
+          : remoteDatabaseSecretId ?? null,
         title,
         mimeType,
         sourceUrl: sourceUrl ?? null,

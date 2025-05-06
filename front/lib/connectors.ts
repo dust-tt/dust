@@ -210,8 +210,8 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     extractor: (url: URL): NodeCandidate => {
       // Try each type of extraction in order
       const node =
-        extractMessageNodeId(url) ||
         extractThreadNodeId(url) ||
+        extractMessageNodeId(url) ||
         extractChannelNodeId(url);
       return node
         ? { node, provider: "slack" }

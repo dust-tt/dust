@@ -59,7 +59,7 @@ async function applyCommand(cmd: string, config: Config) {
   while (i < lines.length) {
     const line = lines[i];
     if (line.startsWith("<change_suggestion ")) {
-      // parse tag that has this format: <change_suggestion file_path="front/pages/w/[wId]/assistant/labs/trackers/index.tsx">
+      // parse tag that has this format: <change_suggestion file_path="front/pages/w/[wId]/labs/trackers/index.tsx">
       const file = line.split('file_path="')[1].split('"')[0];
       // next line should be "```"
       i += 2;

@@ -1,11 +1,13 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cva } from "class-variance-authority";
 import * as React from "react";
+import { useRef } from "react";
 
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
-import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
+import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
@@ -19,7 +21,7 @@ export const menuStyleClasses = {
     "s-border s-border-border dark:s-border-border-night",
     "s-bg-background dark:s-bg-muted-background-night",
     "s-text-foreground dark:s-text-foreground-night",
-    "s-z-50 s-min-w-[8rem] s-overflow-hidden",
+    "s-z-50 s-min-w-[8rem]",
     "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
   ),
   item: cva(
@@ -82,7 +84,7 @@ const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 interface LabelAndIconProps {
   label: string;
-  icon?: React.ComponentType;
+  icon?: React.ComponentType | React.ReactNode;
 }
 
 type Simplify<T> = { [K in keyof T]: T[K] };
@@ -97,48 +99,60 @@ type MutuallyExclusiveProps<BaseProps, ExtraProps> = Simplify<
 
 interface ItemWithLabelIconAndDescriptionProps {
   label?: string;
-  icon?: React.ComponentType;
-  extraIcon?: React.ComponentType;
+  icon?: React.ComponentType | React.ReactNode;
   description?: string;
   children?: React.ReactNode;
+  truncate?: boolean;
+  endComponent?: React.ReactNode;
 }
+
+const renderIcon = (
+  icon: React.ComponentType | React.ReactNode,
+  size: "xs" | "sm" = "xs"
+) => {
+  // If it's a React element (already rendered), return it as is
+  if (React.isValidElement(icon)) {
+    return icon;
+  }
+
+  // For any component type (including exotic components), render it with Icon
+  if (typeof icon === "function" || typeof icon === "object") {
+    return <Icon size={size} visual={icon as React.ComponentType} />;
+  }
+
+  // For primitive values, return null
+  return null;
+};
 
 const ItemWithLabelIconAndDescription = <
   T extends ItemWithLabelIconAndDescriptionProps,
 >({
   label,
   icon,
-  extraIcon,
   description,
+  truncate,
   children,
+  endComponent,
 }: T) => {
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-1.5">
-          {(icon || extraIcon) && (
-            <div
-              className={cn(
-                "s-flex",
-                description ? "s-items-start s-pt-0.5" : "s-items-center"
-              )}
-            >
-              {icon && <Icon size={description ? "sm" : "xs"} visual={icon} />}
-              {extraIcon && (
-                <div className="-s-ml-1.5 s-mt-1.5">
-                  <Icon size="xs" visual={extraIcon} />
-                </div>
-              )}
-            </div>
-          )}
-          <div className="s-flex s-flex-col">
-            <span>{label}</span>
+        <div className="s-grid s-flex-grow s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
+          {renderIcon(icon, "sm")}
+          <div className={cn("s-flex s-flex-col", truncate && "s-truncate")}>
+            <span className={cn(truncate && "s-truncate")}>{label}</span>
             {description && (
-              <span className={menuStyleClasses.description}>
+              <span
+                className={cn(
+                  menuStyleClasses.description,
+                  truncate && "s-truncate"
+                )}
+              >
                 {description}
               </span>
             )}
           </div>
+          <div>{endComponent}</div>
         </div>
       )}
       {children}
@@ -164,16 +178,13 @@ const DropdownMenuSubTrigger = React.forwardRef<
     )}
     {...props}
   >
-    {label && (
-      <>
-        {icon && <Icon size="xs" visual={icon} />}
-        {label}
-        <span className={menuStyleClasses.subTrigger.default}>
-          <Icon size="xs" visual={ChevronRightIcon} />
-        </span>
-      </>
-    )}
-    {children}
+    <ItemWithLabelIconAndDescription
+      label={label}
+      icon={icon}
+      endComponent={<Icon size="xs" visual={ChevronRightIcon} />}
+    >
+      {children}
+    </ItemWithLabelIconAndDescription>
   </DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName =
@@ -182,12 +193,28 @@ DropdownMenuSubTrigger.displayName =
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
-    className={cn(menuStyleClasses.container, "s-shadow-lg", className)}
+    className={cn(
+      menuStyleClasses.container,
+      "s-flex s-flex-col s-p-0 s-shadow-lg",
+      className
+    )}
     {...props}
-  />
+  >
+    <ScrollArea
+      className="s-w-full s-flex-1"
+      hideScrollBar={false}
+      orientation="vertical"
+      viewportClassName={cn(
+        "s-flex-1",
+        "s-max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
+      )}
+    >
+      <div className="s-p-1">{children}</div>
+    </ScrollArea>
+  </DropdownMenuPrimitive.SubContent>
 ));
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
@@ -195,26 +222,76 @@ DropdownMenuSubContent.displayName =
 interface DropdownMenuContentProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
   mountPortal?: boolean;
+  mountPortalContainer?: HTMLElement;
+  dropdownHeaders?: React.ReactNode;
+  onOpenAutoFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
 }
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   DropdownMenuContentProps
->(({ className, sideOffset = 4, mountPortal = true, ...props }, ref) => {
-  const content = (
-    <DropdownMenuPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn(menuStyleClasses.container, "s-shadow-md", className)}
-      {...props}
-    />
-  );
-  return mountPortal ? (
-    <DropdownMenuPrimitive.Portal>{content}</DropdownMenuPrimitive.Portal>
-  ) : (
-    content
-  );
-});
+>(
+  (
+    {
+      className,
+      sideOffset = 4,
+      mountPortal = true,
+      mountPortalContainer,
+      dropdownHeaders,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const content = (
+      <DropdownMenuPrimitive.Content
+        ref={ref}
+        sideOffset={sideOffset}
+        className={cn(
+          menuStyleClasses.container,
+          "s-flex s-flex-col s-p-0 s-shadow-md",
+          className
+        )}
+        {...props}
+      >
+        <div className="s-sticky s-top-0 s-bg-background dark:s-bg-background-night">
+          {dropdownHeaders && dropdownHeaders}
+        </div>
+        <ScrollArea
+          className="s-w-full s-flex-1"
+          viewportClassName={cn(
+            "s-flex-1",
+            "s-max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
+          )}
+        >
+          {children}
+        </ScrollArea>
+      </DropdownMenuPrimitive.Content>
+    );
+
+    const [container, setContainer] = React.useState<Element | undefined>(
+      mountPortalContainer
+    );
+
+    React.useEffect(() => {
+      if (mountPortal && !container) {
+        const dialogElements = document.querySelectorAll(
+          ".s-sheet[role=dialog][data-state=open]"
+        );
+        const defaultContainer = dialogElements[dialogElements.length - 1];
+        setContainer(defaultContainer);
+      }
+    }, []);
+
+    return mountPortal ? (
+      <DropdownMenuPrimitive.Portal container={container}>
+        {content}
+      </DropdownMenuPrimitive.Portal>
+    ) : (
+      content
+    );
+  }
+);
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
 export type DropdownMenuItemProps = MutuallyExclusiveProps<
@@ -224,7 +301,8 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
   } & Omit<LinkWrapperProps, "children" | "className">,
   LabelAndIconProps & {
     description?: string;
-    extraIcon?: React.ComponentType;
+    truncateText?: boolean;
+    endComponent?: React.ReactNode;
   }
 >;
 
@@ -240,7 +318,7 @@ const DropdownMenuItem = React.forwardRef<
       className,
       inset,
       icon,
-      extraIcon,
+      truncateText,
       label,
       href,
       target,
@@ -249,6 +327,7 @@ const DropdownMenuItem = React.forwardRef<
       replace,
       shallow,
       prefetch,
+      endComponent,
       ...props
     },
     ref
@@ -264,23 +343,26 @@ const DropdownMenuItem = React.forwardRef<
         {...props}
         asChild={asChild}
       >
-        <LinkWrapper
-          href={href}
-          target={target}
-          rel={rel}
-          replace={replace}
-          shallow={shallow}
-          prefetch={prefetch}
-        >
-          <ItemWithLabelIconAndDescription
-            label={label}
-            icon={icon}
-            extraIcon={extraIcon}
-            description={description}
+        <div className="s-h-full s-w-full">
+          <LinkWrapper
+            href={href}
+            target={target}
+            rel={rel}
+            replace={replace}
+            shallow={shallow}
+            prefetch={prefetch}
           >
-            {children}
-          </ItemWithLabelIconAndDescription>
-        </LinkWrapper>
+            <ItemWithLabelIconAndDescription
+              label={label}
+              icon={icon}
+              description={description}
+              truncate={truncateText}
+              endComponent={endComponent}
+            >
+              {children}
+            </ItemWithLabelIconAndDescription>
+          </LinkWrapper>
+        </div>
       </DropdownMenuPrimitive.Item>
     );
   }
@@ -390,7 +472,10 @@ const DropdownMenuShortcut = ({
 };
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
-interface DropdownMenuSearchbarProps extends SearchInputProps {}
+interface DropdownMenuSearchbarProps extends SearchInputProps {
+  button?: React.ReactNode;
+  autoFocus?: boolean;
+}
 
 const DropdownMenuSearchbar = React.forwardRef<
   HTMLInputElement,
@@ -405,18 +490,54 @@ const DropdownMenuSearchbar = React.forwardRef<
       name,
       className,
       disabled = false,
+      button,
+      autoFocus,
     },
     ref
   ) => {
+    const internalRef = useRef<HTMLInputElement>(null);
+    React.useImperativeHandle<HTMLInputElement | null, HTMLInputElement | null>(
+      ref,
+      () => internalRef.current
+    );
+
+    React.useEffect(() => {
+      if (autoFocus) {
+        setTimeout(() => {
+          internalRef.current?.focus();
+        }, 0);
+      }
+    }, [autoFocus]);
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       e.stopPropagation();
       onKeyDown?.(e);
+      if (!e.defaultPrevented) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const firstItem = document.querySelector(
+            '[data-radix-menu-content][data-state=open] [role="menuitem"]'
+          );
+          if (firstItem instanceof HTMLElement) {
+            firstItem.click();
+          }
+        }
+        if (e.key === "Tab" || e.key === "ArrowDown") {
+          e.preventDefault();
+          const firstItem = document.querySelector(
+            '[data-radix-menu-content][data-state=open] [role="menuitem"]'
+          );
+          if (firstItem instanceof HTMLElement) {
+            firstItem.focus();
+          }
+        }
+      }
     };
 
     return (
-      <div className={cn("s-px-1 s-py-1", className)}>
+      <div className={cn("s-flex s-gap-1.5 s-p-1.5", className)}>
         <SearchInput
-          ref={ref}
+          ref={internalRef}
           placeholder={placeholder}
           name={name}
           value={value}
@@ -424,6 +545,7 @@ const DropdownMenuSearchbar = React.forwardRef<
           onKeyDown={handleKeyDown}
           disabled={disabled}
         />
+        {button}
       </div>
     );
   }

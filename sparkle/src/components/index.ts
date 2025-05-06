@@ -8,6 +8,7 @@ export {
 export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
+export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type {
   ButtonProps,
@@ -32,7 +33,6 @@ export {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./Collapsible";
-export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
 export { ContentMessage } from "./ContentMessage";
@@ -85,10 +85,10 @@ export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
-export { Icon } from "./Icon";
+export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
-export { IconToggleButton } from "./IconToggleButton";
 export { Input } from "./Input";
+export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
@@ -101,6 +101,7 @@ export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
+export { ColorPicker, IconPicker } from "./Picker";
 export {
   Popover,
   PopoverContent,
@@ -108,7 +109,6 @@ export {
   PopoverRoot,
   PopoverTrigger,
 } from "./Popover";
-export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
@@ -118,6 +118,7 @@ export {
   ResizablePanelGroup,
 } from "./Resizable";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
+export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
 export { Separator } from "./Separator";
 export {
@@ -146,6 +147,7 @@ export {
   TooltipRoot,
   TooltipTrigger,
 } from "./Tooltip";
+export { TourGuide } from "./TourGuide";
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
 export { ValueCard } from "./ValueCard";

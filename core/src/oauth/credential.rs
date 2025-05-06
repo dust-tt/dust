@@ -7,6 +7,7 @@ use crate::oauth::store::OAuthStore;
 use crate::utils::{self, ParseError};
 use anyhow::Result;
 
+use super::connection::ConnectionProvider;
 use super::encryption::{seal_str, unseal_str};
 
 pub static CREDENTIAL_ID_PREFIX: &str = "cred";
@@ -15,9 +16,22 @@ pub static CREDENTIAL_ID_PREFIX: &str = "cred";
 #[serde(rename_all = "snake_case")]
 pub enum CredentialProvider {
     Snowflake,
-    Modjo,
     Bigquery,
     Salesforce,
+    Microsoft,
+    Modjo,
+    Hubspot,
+    Linear,
+}
+
+impl From<ConnectionProvider> for CredentialProvider {
+    fn from(provider: ConnectionProvider) -> Self {
+        match provider {
+            ConnectionProvider::Microsoft => CredentialProvider::Microsoft,
+            ConnectionProvider::Salesforce => CredentialProvider::Salesforce,
+            _ => panic!("Unsupported provider: {:?}", provider),
+        }
+    }
 }
 
 impl fmt::Display for CredentialProvider {
@@ -107,13 +121,45 @@ impl Credential {
         metadata: CredentialMetadata,
         content: serde_json::Map<String, serde_json::Value>,
     ) -> Result<Self> {
-        // Check format of content based on provider
+        if let Some(from_connection_id) = content.get("from_connection_id") {
+            if let Some(from_connection_id) = from_connection_id.as_str() {
+                match store.retrieve_connection(&from_connection_id).await? {
+                    None => {
+                        return Err(anyhow::anyhow!(
+                            "Connection (`from_connection_id`) not found"
+                        ));
+                    }
+                    Some(connection) => {
+                        if let Some(credential_id) = connection.related_credential_id() {
+                            match store.retrieve_credential(&credential_id).await? {
+                                None => {
+                                    return Err(anyhow::anyhow!(
+                                        "Credential (`from_connection_id.related_credential_id`) \
+                                           not found",
+                                    ));
+                                }
+                                Some(credential) => {
+                                    return Ok(credential);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let keys_to_check = match provider {
             CredentialProvider::Snowflake => {
                 vec!["account", "warehouse", "username", "password", "role"]
             }
             CredentialProvider::Modjo => {
                 vec!["api_key"]
+            }
+            CredentialProvider::Linear => {
+                vec!["api_key"]
+            }
+            CredentialProvider::Hubspot => {
+                vec!["accessToken", "portalId"]
             }
             CredentialProvider::Bigquery => {
                 vec![
@@ -132,6 +178,9 @@ impl Credential {
                 ]
             }
             CredentialProvider::Salesforce => {
+                vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::Microsoft => {
                 vec!["client_id", "client_secret"]
             }
         };

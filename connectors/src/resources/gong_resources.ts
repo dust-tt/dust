@@ -17,11 +17,17 @@ import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 
+function minutesToMs(minutes: number) {
+  return minutes * 60 * 1000;
+}
+
 function daysToMs(days: number) {
   return days * 24 * 60 * 60 * 1000;
 }
 
 const GC_FREQUENCY_MS = daysToMs(1); // Every day.
+// Upper bound on the time it takes for Gong to make transcripts available.
+const TRANSCRIPT_PROCESSING_TIME_UPPER_BOUND_MS = minutesToMs(30);
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -114,16 +120,23 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     });
   }
 
-  // Returns the timestamp to start syncing from.
+  /**
+   * Returns the timestamp to start syncing from.
+   * Offsets the last sync timestamp by an upper bound on the transcript processing time to make sure we do not miss
+   * transcripts that Gong did not process yet.
+   */
   getSyncStartTimestamp() {
     if (this.retentionPeriodDays) {
       if (!this.lastSyncTimestamp) {
         return Date.now() - daysToMs(this.retentionPeriodDays);
       }
       return Math.max(
-        this.lastSyncTimestamp,
+        this.lastSyncTimestamp - TRANSCRIPT_PROCESSING_TIME_UPPER_BOUND_MS,
         Date.now() - daysToMs(this.retentionPeriodDays)
       );
+    }
+    if (this.lastSyncTimestamp) {
+      return this.lastSyncTimestamp - TRANSCRIPT_PROCESSING_TIME_UPPER_BOUND_MS;
     }
     return this.lastSyncTimestamp;
   }
@@ -317,6 +330,20 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
       title: this.title,
       url: this.url,
     };
+  }
+
+  static async fetchByCallIds(
+    callIds: string[],
+    connector: ConnectorResource
+  ): Promise<GongTranscriptResource[]> {
+    const transcripts = await GongTranscriptModel.findAll({
+      where: {
+        callId: callIds,
+        connectorId: connector.id,
+      },
+    });
+
+    return transcripts.map((t) => new this(this.model, t.get()));
   }
 
   static async fetchByCallId(

@@ -139,7 +139,9 @@ const AssistantBuilderCustomUpload = React.forwardRef<
       <div
         className={classNames(
           "my-3 flex items-center justify-center rounded-xl",
-          !src ? "min-h-64 bg-slate-50" : ""
+          !src
+            ? "min-h-64 bg-muted-background dark:bg-muted-background-night"
+            : ""
         )}
       >
         {src ? (

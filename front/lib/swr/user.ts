@@ -6,12 +6,13 @@ import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[
 
 export function useUser() {
   const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
-  const { data, error } = useSWRWithDefaults("/api/user", userFetcher);
+  const { data, error, mutate } = useSWRWithDefaults("/api/user", userFetcher);
 
   return {
     user: data ? data.user : null,
     isUserLoading: !error && !data,
     isUserError: error,
+    mutateUser: mutate,
   };
 }
 
@@ -29,4 +30,15 @@ export function useUserMetadata(key: string) {
     isMetadataError: error,
     mutateMetadata: mutate,
   };
+}
+
+export function useDeleteMetadata(key: string) {
+  const deleteMetadata = async (spec?: string) => {
+    const fullKey = spec ? `${key}:${spec}` : key;
+    await fetch(`/api/user/metadata/${encodeURIComponent(fullKey)}`, {
+      method: "DELETE",
+    });
+  };
+
+  return { deleteMetadata };
 }

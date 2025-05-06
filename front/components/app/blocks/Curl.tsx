@@ -129,7 +129,7 @@ export default function Curl({
     >
       <div className="flex w-full flex-col gap-4 pt-2">
         <div className="flex flex-row gap-2">
-          <div className="flex flex-row items-center space-x-1 text-sm">
+          <div className="copy-sm flex flex-row items-center space-x-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -154,14 +154,13 @@ export default function Curl({
               )}
             </DropdownMenu>
           </div>
-          <div className="flex w-full flex-1 flex-row items-center gap-2 text-sm font-medium">
+          <div className="copy-sm flex w-full flex-1 flex-row items-center gap-2 font-semibold">
             <div className="flex flex-1 font-normal">
-              <div className="flex flex-1 rounded-md">
+              <div className="flex flex-1 gap-2">
                 <Button
-                  variant="ghost-secondary"
+                  variant="outline"
                   size="sm"
                   disabled={readOnly}
-                  className="rounded-l-md rounded-r-none border border-r-0"
                   onClick={() => {
                     if (!readOnly) {
                       handleSchemeChange(
@@ -181,7 +180,7 @@ export default function Curl({
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-2 text-sm">
+        <div className="copy-sm flex flex-col gap-2">
           <Label>Headers</Label>
           <div className="flex w-full font-normal">
             <div className="w-full">
@@ -193,7 +192,7 @@ export default function Curl({
                 placeholder=""
                 onChange={(e) => handleHeadersCodeChange(e.target.value)}
                 padding={15}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
                   fontSize: 12,
                   fontFamily:
@@ -203,7 +202,7 @@ export default function Curl({
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-2 text-sm">
+        <div className="copy-sm flex flex-col gap-2">
           <Label>Body</Label>
           <div className="flex w-full font-normal">
             <div className="w-full">
@@ -215,7 +214,7 @@ export default function Curl({
                 placeholder=""
                 onChange={(e) => handleBodyCodeChange(e.target.value)}
                 padding={15}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
                   fontSize: 12,
                   fontFamily:

@@ -35,12 +35,18 @@ interface BooleanArgDefinition extends BaseArgDefinition {
   values?: never;
 }
 
+interface FileArgDefinition extends BaseArgDefinition {
+  type: "file";
+  values?: never;
+}
+
 export type PluginArgDefinition =
   | EnumArgDefinition
   | StringArgDefinition
   | TextArgDefinition
   | NumberArgDefinition
-  | BooleanArgDefinition;
+  | BooleanArgDefinition
+  | FileArgDefinition;
 
 export type StrictPluginArgs = {
   [key: string]: PluginArgDefinition;
@@ -104,6 +110,9 @@ export function createIoTsCodecFromArgs(
           t.literal(arg.values[1]),
           ...arg.values.slice(2).map((v) => t.literal(v)),
         ]);
+      case "file":
+        codecProps[key] = t.any;
+        break;
     }
   }
 

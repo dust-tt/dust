@@ -16,7 +16,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DustIcon,
-  IconButton,
   LockIcon,
   Page,
   PopoverContent,
@@ -31,6 +30,7 @@ import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -53,8 +53,8 @@ export const SCOPE_INFO: Record<
   {
     shortLabel: string;
     label: string;
-    color: "pink" | "amber" | "sky" | "slate";
-    icon: typeof UserGroupIcon | typeof CompanyIcon | typeof LockIcon;
+    color: "green" | "golden" | "blue" | "primary";
+    icon?: typeof UserGroupIcon | undefined;
     text: string;
     confirmationModalData: ConfirmationModalDataType | null;
   }
@@ -62,7 +62,7 @@ export const SCOPE_INFO: Record<
   workspace: {
     shortLabel: "Company",
     label: "Company Agent",
-    color: "amber",
+    color: "golden",
     icon: CompanyIcon,
     text: "Activated by default for all members of the workspace.",
     confirmationModalData: {
@@ -75,7 +75,7 @@ export const SCOPE_INFO: Record<
   published: {
     shortLabel: "Shared",
     label: "Shared Agent",
-    color: "pink",
+    color: "green",
     icon: UserGroupIcon,
     text: "Anyone in the workspace can view and edit.",
     confirmationModalData: {
@@ -88,7 +88,7 @@ export const SCOPE_INFO: Record<
   private: {
     shortLabel: "Personal",
     label: "Personal Agent",
-    color: "sky",
+    color: "blue",
     icon: LockIcon,
     text: "Only I can view and edit.",
     confirmationModalData: {
@@ -102,10 +102,34 @@ export const SCOPE_INFO: Record<
   global: {
     shortLabel: "Default",
     label: "Default Agent",
-    color: "slate",
+    color: "primary",
     icon: DustIcon,
     text: "Default agents provided by Dust.",
     confirmationModalData: null,
+  },
+  hidden: {
+    shortLabel: "Not published",
+    label: "Not published",
+    color: "primary",
+    text: "Hidden agents.",
+    confirmationModalData: {
+      title: "Moving to Hidden Agents",
+      text: "The agent is editable and viewable by editors only.",
+      confirmText: "Move to Hidden",
+      variant: "primary",
+    },
+  },
+  visible: {
+    shortLabel: "Published",
+    label: "Published",
+    color: "green",
+    text: "Visible agents.",
+    confirmationModalData: {
+      title: "Moving to Visible Agents",
+      text: "The agent is viewable by all workspace members, and can be edited by editors only.",
+      confirmText: "Move to Visible",
+      variant: "primary",
+    },
   },
 } as const;
 
@@ -331,6 +355,18 @@ export function SharingDropdown({
   });
   const assistantName = agentConfiguration?.name;
 
+  const featureFlags = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const scopes = Object.entries(SCOPE_INFO).filter(
+    ([entryScope]) =>
+      entryScope !== "global" &&
+      entryScope !== "hidden" &&
+      entryScope !== "visible" &&
+      (isBuilder(owner) || entryScope !== "workspace")
+  );
+
   const usageText = assistantName
     ? assistantUsageMessage({
         assistantName,
@@ -367,11 +403,10 @@ export function SharingDropdown({
   }
 
   const allowedToChange =
+    agentConfiguration?.scope !== "global" &&
+    !featureFlags.hasFeature("agent_discovery") &&
     !disabled &&
-    // never change global agent
-    initialScope !== "global" &&
-    // only builders can change company agents
-    (isBuilder(owner) || initialScope !== "workspace");
+    (agentConfiguration?.canEdit || isAdmin(owner));
 
   return (
     <div>
@@ -391,50 +426,38 @@ export function SharingDropdown({
           <div className="group flex cursor-pointer items-center gap-2">
             <SharingChip scope={newScope} />
             {allowedToChange && (
-              <IconButton
-                icon={ChevronDownIcon}
-                size="sm"
-                variant="outline"
-                className="group-hover:text-action-400"
-              />
+              <Button icon={ChevronDownIcon} size="xs" variant="ghost" />
             )}
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          {Object.entries(SCOPE_INFO)
-            .filter(
-              // can't change to those scopes
-              ([entryScope]) =>
-                entryScope !== "global" &&
-                (isBuilder(owner) || entryScope !== "workspace")
-            )
-            .map(([entryScope, entryData]) => (
-              <DropdownMenuItem
-                key={entryData.label}
-                label={entryData.label}
-                icon={entryData.icon}
-                onClick={() => {
-                  /**
-                   * Skip confirmation modal in the following cases:
-                   * 1. Agent is being created (agentConfiguration is null)
-                   * 2. Selection is unchanged (newScope === value)
-                   * 3. Selection reverts to initial state (value === initialScope)
-                   */
-                  const shouldSkipModal =
-                    !agentConfiguration ||
-                    newScope === entryScope ||
-                    entryScope === initialScope;
+          {scopes.map(([entryScope, entryData]) => (
+            <DropdownMenuItem
+              key={entryData.label}
+              label={entryData.label}
+              icon={entryData.icon}
+              onClick={() => {
+                /**
+                 * Skip confirmation modal in the following cases:
+                 * 1. Agent is being created (agentConfiguration is null)
+                 * 2. Selection is unchanged (newScope === value)
+                 * 3. Selection reverts to initial state (value === initialScope)
+                 */
+                const shouldSkipModal =
+                  !agentConfiguration ||
+                  newScope === entryScope ||
+                  entryScope === initialScope;
 
-                  if (shouldSkipModal) {
-                    setNewScope(entryScope as NonGlobalScope);
-                    return;
-                  }
+                if (shouldSkipModal) {
+                  setNewScope(entryScope as NonGlobalScope);
+                  return;
+                }
 
-                  // Show confirmation modal for scope changes on existing agents
-                  setModalNewScope(entryScope as NonGlobalScope);
-                }}
-              />
-            ))}
+                // Show confirmation modal for scope changes on existing agents
+                setModalNewScope(entryScope as NonGlobalScope);
+              }}
+            />
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -443,7 +466,10 @@ export function SharingDropdown({
 
 export function SharingChip({ scope }: { scope: AgentConfigurationScope }) {
   return (
-    <Chip color={SCOPE_INFO[scope].color} icon={SCOPE_INFO[scope].icon}>
+    <Chip
+      color={SCOPE_INFO[scope].color}
+      icon={SCOPE_INFO[scope].icon || undefined}
+    >
       {SCOPE_INFO[scope].label}
     </Chip>
   );

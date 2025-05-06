@@ -35,6 +35,7 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
   declare modelId: ModelIdType;
   declare temperature: number;
   declare reasoningEffort: AgentReasoningEffort | null;
+  declare responseFormat?: string;
 
   declare pictureUrl: string;
 
@@ -46,9 +47,6 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
   declare requestedGroupIds: number[][];
-
-  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-  declare groupIds?: number[];
 
   declare author: NonAttribute<UserModel>;
 }
@@ -113,6 +111,25 @@ AgentConfiguration.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    responseFormat: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isValidJSON(value: string) {
+          if (value) {
+            try {
+              const parsed = JSON.parse(value);
+              if (parsed && typeof parsed !== "object") {
+                throw new Error("Response format is invalid JSON");
+              }
+            } catch (e) {
+              throw new Error("Response format is invalid JSON");
+            }
+          }
+        },
+      },
+    },
     maxStepsPerRun: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -128,13 +145,6 @@ AgentConfiguration.init(
     },
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
-      allowNull: false,
-      defaultValue: [],
-    },
-
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: false,
       defaultValue: [],
     },

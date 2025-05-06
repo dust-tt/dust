@@ -1,5 +1,5 @@
 use super::{
-    chat_messages::{AssistantChatMessage, ChatMessage, ContentBlock, UserChatMessage},
+    chat_messages::{AssistantChatMessage, ChatMessage, UserChatMessage},
     llm::ChatMessageRole,
 };
 
@@ -44,7 +44,7 @@ pub fn strip_tools_from_chat_history(messages: &Vec<ChatMessage>) -> Vec<ChatMes
             }
             ChatMessage::Function(message) => {
                 new_messages.push(ChatMessage::User(UserChatMessage {
-                    content: ContentBlock::Text(message.content.clone()),
+                    content: message.content.clone(),
                     role: ChatMessageRole::User,
                     name: message.name.clone(),
                 }));

@@ -29,6 +29,8 @@ import type {
 } from "@app/types";
 import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
+import { getWorkspaceAdministrationVersionLock } from "./workspace";
+
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
   space: SpaceResource
@@ -36,9 +38,9 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(space.isRegular(), "Cannot delete non regular spaces.");
 
-  const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
-
   const usages: DataSourceWithAgentsUsageType[] = [];
+
+  const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
   for (const view of dataSourceViews) {
     const usage = await view.getUsagesByAgents(auth);
     if (usage.isErr()) {
@@ -58,11 +60,21 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     }
   }
 
+  const apps = await AppResource.listBySpace(auth, space);
+  for (const app of apps) {
+    const usage = await app.getUsagesByAgents(auth);
+    if (usage.isErr()) {
+      throw usage.error;
+    } else if (usage.value.count > 0) {
+      usages.push(usage.value);
+    }
+  }
+
   if (usages.length > 0) {
     const agentNames = uniq(usages.map((u) => u.agentNames).flat());
     return new Err(
       new Error(
-        `Cannot delete space with data source in use by agent(s): ${agentNames.join(", ")}.`
+        `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}.`
       )
     );
   }
@@ -95,6 +107,14 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     // Soft delete data sources they will be hard deleted in the scrubbing job.
     for (const ds of dataSources) {
       const res = await ds.delete(auth, { hardDelete: false, transaction: t });
+      if (res.isErr()) {
+        throw res.error;
+      }
+    }
+
+    // Soft delete the apps, which will be hard deleted in the scrubbing job.
+    for (const app of apps) {
+      const res = await app.delete(auth, { hardDelete: false, transaction: t });
       if (res.isErr()) {
         throw res.error;
       }
@@ -178,72 +198,87 @@ export async function createRegularSpaceAndGroup(
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
 ): Promise<Result<SpaceResource, DustError | Error>> {
   const owner = auth.getNonNullableWorkspace();
-
   const plan = auth.getNonNullablePlan();
-  const all = await SpaceResource.listWorkspaceSpaces(auth);
-  const isLimitReached = isPrivateSpacesLimitReached(
-    all.map((v) => v.toJSON()),
-    plan
-  );
 
-  if (isLimitReached && !ignoreWorkspaceLimit) {
-    return new Err(
-      new DustError(
-        "limit_reached",
-        "The maximum number of spaces has been reached."
-      )
+  const result = await frontSequelize.transaction(async (t) => {
+    await getWorkspaceAdministrationVersionLock(owner, t);
+
+    const all = await SpaceResource.listWorkspaceSpaces(auth, undefined, t);
+    const isLimitReached = isPrivateSpacesLimitReached(
+      all.map((v) => v.toJSON()),
+      plan
     );
-  }
 
-  const nameAvailable = await SpaceResource.isNameAvailable(auth, name);
-  if (!nameAvailable) {
-    return new Err(
-      new DustError("space_already_exists", "This space name is already used.")
+    if (isLimitReached && !ignoreWorkspaceLimit) {
+      return new Err(
+        new DustError(
+          "limit_reached",
+          "The maximum number of spaces has been reached."
+        )
+      );
+    }
+
+    const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
+    if (!nameAvailable) {
+      return new Err(
+        new DustError(
+          "space_already_exists",
+          "This space name is already used."
+        )
+      );
+    }
+
+    const group = await GroupResource.makeNew(
+      {
+        name: `Group for space ${name}`,
+        workspaceId: owner.id,
+        kind: "regular",
+      },
+      { transaction: t }
     );
-  }
 
-  const group = await GroupResource.makeNew({
-    name: `Group for space ${name}`,
-    workspaceId: owner.id,
-    kind: "regular",
+    const globalGroupRes = isRestricted
+      ? null
+      : await GroupResource.fetchWorkspaceGlobalGroup(auth);
+
+    const groups = removeNulls([
+      group,
+      globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
+    ]);
+
+    const space = await SpaceResource.makeNew(
+      {
+        name,
+        kind: "regular",
+        workspaceId: owner.id,
+      },
+      groups,
+      t
+    );
+
+    if (memberIds) {
+      const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
+        user.toJSON()
+      );
+      const groupsResult = await group.addMembers(auth, users, {
+        transaction: t,
+      });
+      if (groupsResult.isErr()) {
+        logger.error(
+          {
+            error: groupsResult.error,
+          },
+          "The space cannot be created - group members could not be added"
+        );
+
+        return new Err(new Error("The space cannot be created."));
+      }
+    }
+
+    return new Ok(space);
   });
 
-  const globalGroupRes = isRestricted
-    ? null
-    : await GroupResource.fetchWorkspaceGlobalGroup(auth);
-
-  const groups = removeNulls([
-    group,
-    globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
-  ]);
-
-  const space = await SpaceResource.makeNew(
-    {
-      name,
-      kind: "regular",
-      workspaceId: owner.id,
-    },
-    groups
-  );
-
-  if (memberIds) {
-    const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
-      user.toJSON()
-    );
-    const groupsResult = await group.addMembers(auth, users);
-    if (groupsResult.isErr()) {
-      logger.error(
-        {
-          error: groupsResult.error,
-        },
-        "The space cannot be created - group members could not be added"
-      );
-
-      return new Err(new Error("The space cannot be created."));
-    }
-  }
-
-  return new Ok(space);
+  return result;
 }
 
 export async function searchContenNodesInSpace(
@@ -256,12 +291,14 @@ export async function searchContenNodesInSpace(
     options,
     query,
     viewType,
+    parentId,
   }: {
     excludedNodeMimeTypes: readonly string[];
     includeDataSources: boolean;
     options: CoreAPISearchOptions;
     query: string;
     viewType: ContentNodesViewType;
+    parentId?: string;
   }
 ): Promise<
   Result<
@@ -287,6 +324,7 @@ export async function searchContenNodesInSpace(
       excludedNodeMimeTypes,
       includeDataSources,
       viewType,
+      parentId,
     }
   );
 

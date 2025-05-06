@@ -22,7 +22,8 @@ import React, { useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { PricePlans } from "@app/components/plans/PlansTables";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -237,7 +238,7 @@ export default function Subscription({
   const isProcessing = isSubscribingPlan || isGoingToStripePortal;
 
   const plan = subscription.plan;
-  const chipColor = !isUpgraded(plan) ? "emerald" : "sky";
+  const chipColor = !isUpgraded(plan) ? "green" : "blue";
 
   const onClickProPlan = async () => handleSubscribePlan();
 
@@ -249,7 +250,7 @@ export default function Subscription({
   const displayPricingTable = subscription.stripeSubscriptionId === null;
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
@@ -389,7 +390,7 @@ export default function Subscription({
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
-    </AppLayout>
+    </AppContentLayout>
   );
 }
 
@@ -530,3 +531,7 @@ function CancelFreeTrialDialog({
     </Dialog>
   );
 }
+
+Subscription.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

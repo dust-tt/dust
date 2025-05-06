@@ -1,6 +1,6 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  DocumentDuplicateIcon,
+  DocumentPileIcon,
   ExternalLinkIcon,
   EyeIcon,
   PencilSquareIcon,
@@ -268,7 +268,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Copy DataSource ID",
-      icon: DocumentDuplicateIcon,
+      icon: DocumentPileIcon,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         void navigator.clipboard.writeText(dataSourceView.dataSource.sId);

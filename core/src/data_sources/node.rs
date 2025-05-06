@@ -219,6 +219,8 @@ pub struct CoreContentNode {
     pub parent_title: Option<String>,
 }
 
+pub const DATA_SOURCE_NODE_ID: &str = "datasource_node_id";
+
 impl CoreContentNode {
     pub fn new(base: NodeESDocument, children_count: u64, parent_title: Option<String>) -> Self {
         CoreContentNode {
@@ -233,7 +235,7 @@ impl CoreContentNode {
             base: NodeESDocument {
                 data_source_id: data_source.data_source_id.clone(),
                 data_source_internal_id: data_source.data_source_internal_id,
-                node_id: data_source.data_source_id.clone(),
+                node_id: DATA_SOURCE_NODE_ID.to_string(),
                 node_type: NodeType::Folder,
                 text_size: None,
                 timestamp: data_source.timestamp,

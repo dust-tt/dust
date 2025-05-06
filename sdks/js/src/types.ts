@@ -1,3 +1,4 @@
+import type { JSONSchema7 } from "json-schema";
 import moment from "moment-timezone";
 import { z } from "zod";
 
@@ -31,9 +32,13 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-2024-08-06"
   | "gpt-4o"
   | "gpt-4o-mini"
+  | "gpt-4.1-2025-04-14"
+  | "gpt-4.1-mini-2025-04-14"
   | "o1"
   | "o1-mini"
+  | "o3"
   | "o3-mini"
+  | "o4-mini"
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
@@ -48,11 +53,13 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "codestral-latest"
   | "gemini-1.5-pro-latest"
   | "gemini-1.5-flash-latest"
-  | "gemini-2.0-flash-exp"
-  | "gemini-2.0-flash-thinking-exp-01-21"
   | "gemini-2.0-flash"
-  | "gemini-2.0-flash-lite-preview-02-05"
-  | "gemini-2.0-pro-exp-02-05"
+  | "gemini-2.0-flash-lite"
+  | "gemini-2.5-pro-preview-03-25"
+  | "gemini-2.0-flash-exp" // DEPRECATED
+  | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
+  | "gemini-2.0-pro-exp-02-05" // DEPRECATED
+  | "gemini-2.0-flash-thinking-exp-01-21" // DEPRECATED
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
   | "Qwen/QwQ-32B-Preview" // togetherai
@@ -170,6 +177,7 @@ export const supportedOtherFileFormats = {
   "text/x-groovy": [".groovy"],
   "text/x-perl": [".pl", ".pm"],
   "text/x-perl-script": [".pl", ".pm"],
+  "application/octet-stream": [],
 } as const;
 
 // Supported content types for images.
@@ -235,18 +243,19 @@ export function isSupportedImageContentType(
 }
 
 const UserMessageOriginSchema = FlexibleEnumSchema<
+  | "api"
+  | "email"
+  | "extension"
+  | "github-copilot-chat"
+  | "gsheet"
+  | "make"
+  | "mcp"
+  | "n8n"
+  | "raycast"
   | "slack"
   | "web"
-  | "api"
-  | "gsheet"
   | "zapier"
-  | "n8n"
-  | "make"
   | "zendesk"
-  | "raycast"
-  | "github-copilot-chat"
-  | "extension"
-  | "email"
 >()
   .or(z.null())
   .or(z.undefined());
@@ -428,7 +437,7 @@ export interface LoggerInterface {
 }
 
 const DataSourceViewCategoriesSchema = FlexibleEnumSchema<
-  "managed" | "folder" | "website" | "apps"
+  "managed" | "folder" | "website" | "apps" | "actions"
 >();
 
 const BlockTypeSchema = FlexibleEnumSchema<
@@ -707,7 +716,7 @@ const RetrievalDocumentChunkTypeSchema = z.object({
   text: z.string(),
 });
 
-const RetrievalDocumentTypeSchema = z.object({
+export const RetrievalDocumentTypeSchema = z.object({
   chunks: z.array(RetrievalDocumentChunkTypeSchema),
   documentId: z.string(),
   dataSourceView: DataSourceViewSchema.nullable(),
@@ -741,13 +750,10 @@ export type RetrievalActionPublicType = z.infer<
   typeof RetrievalActionTypeSchema
 >;
 
-const ProcessSchemaAllowedTypesSchema = z.enum(["string", "number", "boolean"]);
-
-const ProcessSchemaPropertySchema = z.object({
-  name: z.string(),
-  type: ProcessSchemaAllowedTypesSchema,
-  description: z.string(),
-});
+const ProcessSchemaPropertySchema = z.union([
+  z.custom<JSONSchema7>(),
+  z.null(),
+]);
 
 const ProcessActionOutputsSchema = z.object({
   data: z.array(z.unknown()),
@@ -762,7 +768,7 @@ const ProcessActionTypeSchema = BaseActionSchema.extend({
   params: z.object({
     relativeTimeFrame: TimeFrameSchema.nullable(),
   }),
-  schema: z.array(ProcessSchemaPropertySchema),
+  jsonSchema: ProcessSchemaPropertySchema,
   outputs: ProcessActionOutputsSchema.nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
@@ -786,31 +792,37 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
-  | "usage_data_api"
-  | "okta_enterprise_connection"
-  | "labs_transcripts"
-  | "labs_trackers"
-  | "document_tracker"
-  | "openai_o1_feature"
-  | "openai_o1_mini_feature"
-  | "openai_o1_high_reasoning_feature"
-  | "openai_o1_custom_assistants_feature"
-  | "openai_o1_high_reasoning_custom_assistants_feature"
-  | "deepseek_feature"
-  | "google_ai_studio_experimental_models_feature"
-  | "snowflake_connector_feature"
-  | "index_private_slack_channel"
-  | "disable_run_logs"
-  | "show_debug_tools"
-  | "labs_github_actions"
-  | "deepseek_r1_global_agent_feature"
-  | "salesforce_feature"
   | "advanced_notion_management"
-  | "search_knowledge_builder"
-  | "attach_from_datasources"
-  | "force_gdrive_labels_scope"
+  | "agent_discovery"
   | "claude_3_7_reasoning"
+  | "co_edition"
+  | "deepseek_feature"
+  | "deepseek_r1_global_agent_feature"
+  | "dev_mcp_actions"
+  | "disable_run_logs"
+  | "document_tracker"
+  | "experimental_mcp_actions"
+  | "force_gdrive_labels_scope"
+  | "google_ai_studio_experimental_models_feature"
+  | "index_private_slack_channel"
+  | "labs_connection_hubspot"
+  | "labs_connection_linear"
+  | "labs_salesforce_personal_connections"
+  | "labs_trackers"
+  | "labs_transcripts"
   | "mcp_actions"
+  | "okta_enterprise_connection"
+  | "openai_o1_custom_assistants_feature"
+  | "openai_o1_feature"
+  | "openai_o1_high_reasoning_custom_assistants_feature"
+  | "openai_o1_high_reasoning_feature"
+  | "openai_o1_mini_feature"
+  | "salesforce_feature"
+  | "search_knowledge_builder"
+  | "show_debug_tools"
+  | "snowflake_connector_feature"
+  | "usage_data_api"
+  | "custom_webcrawler"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -896,9 +908,12 @@ export type WebsearchActionPublicType = z.infer<
 
 const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
+  functionCallName: z.string().nullable(),
   params: z.unknown(),
   type: z.literal("tool_action"),
 });
+
+export type MCPActionPublicType = z.infer<typeof MCPActionTypeSchema>;
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "active"
@@ -915,7 +930,7 @@ const AgentConfigurationStatusSchema = z.union([
 ]);
 
 const AgentConfigurationScopeSchema = FlexibleEnumSchema<
-  "global" | "workspace" | "published" | "private"
+  "global" | "workspace" | "published" | "private" | "hidden" | "visible"
 >();
 
 export const AgentConfigurationViewSchema = FlexibleEnumSchema<
@@ -975,6 +990,28 @@ const ContentFragmentContextSchema = z.object({
   profilePictureUrl: z.string().optional().nullable(),
 });
 
+export const ContentNodeTypeSchema = z.union([
+  z.literal("document"),
+  z.literal("table"),
+  z.literal("folder"),
+]);
+
+export const ContentNodesViewTypeSchema = z.union([
+  z.literal("table"),
+  z.literal("document"),
+  z.literal("all"),
+]);
+
+export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
+
+const ContentFragmentNodeData = z.object({
+  nodeId: z.string(),
+  nodeDataSourceViewId: z.string(),
+  nodeType: ContentNodeTypeSchema,
+  provider: ConnectorProvidersSchema.nullable(),
+  spaceName: z.string(),
+});
+
 const ContentFragmentSchema = z.object({
   id: ModelIdSchema,
   sId: z.string(),
@@ -994,6 +1031,7 @@ const ContentFragmentSchema = z.object({
     z.literal("latest"),
     z.literal("superseded"),
   ]),
+  contentNodeData: ContentFragmentNodeData.nullable(),
 });
 export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
@@ -1016,6 +1054,7 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
+  localMCPServerIds: z.array(z.string()).optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -1279,6 +1318,58 @@ const MCPParamsEventSchema = z.object({
   action: MCPActionTypeSchema,
 });
 
+const NotificationImageContentSchema = z.object({
+  type: z.literal("image"),
+  mimeType: z.string(),
+});
+
+const NotificationTextContentSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
+
+const NotificationContentSchema = z.union([
+  NotificationImageContentSchema,
+  NotificationTextContentSchema,
+]);
+
+const MCPNotificationEventSchema = z.object({
+  type: z.literal("tool_notification"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: MCPActionTypeSchema,
+  notification: z.object({
+    progress: z.number(),
+    total: z.number(),
+    data: z.object({
+      label: z.string(),
+      output: NotificationContentSchema.optional(),
+    }),
+  }),
+});
+
+const MCPValidationMetadataSchema = z.object({
+  mcpServerName: z.string(),
+  toolName: z.string(),
+  agentName: z.string(),
+});
+
+export type MCPValidationMetadataPublicType = z.infer<
+  typeof MCPValidationMetadataSchema
+>;
+
+const MCPApproveExecutionEventSchema = z.object({
+  type: z.literal("tool_approve_execution"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: MCPActionTypeSchema,
+  inputs: z.record(z.any()),
+  stake: z.optional(z.enum(["low", "high", "never_ask"])),
+  metadata: MCPValidationMetadataSchema,
+});
+
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
@@ -1307,6 +1398,8 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryStartedEventSchema,
   WebsearchParamsEventSchema,
   MCPParamsEventSchema,
+  MCPNotificationEventSchema,
+  MCPApproveExecutionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
@@ -1489,6 +1582,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "table_not_found"
   | "template_not_found"
   | "template_not_found"
+  | "labs_connection_configuration_already_exists"
   | "transcripts_configuration_already_exists"
   | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_not_found"
@@ -1711,6 +1805,21 @@ const AppTypeSchema = z.object({
 
 export type ApiAppType = z.infer<typeof AppTypeSchema>;
 
+const AppImportTypeSchema = z.object({
+  id: ModelIdSchema.optional(),
+  sId: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  savedSpecification: z.string().nullable(),
+  savedConfig: z.string().nullable(),
+  savedRun: z.string().nullable(),
+  dustAPIProjectId: z.string(),
+  datasets: z.array(DatasetSchema).optional(),
+  coreSpecifications: z.record(z.string()).optional(),
+});
+
+export type ApiAppImportType = z.infer<typeof AppImportTypeSchema>;
+
 export const RunAppResponseSchema = z.object({
   run: RunTypeSchema,
 });
@@ -1842,7 +1951,9 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
         configurationId: z.string(),
       })
     ),
-    context: UserMessageContextSchema,
+    context: UserMessageContextSchema.extend({
+      localMCPServerIds: z.array(z.string()).optional().nullable(),
+    }),
   }),
   z
     .object({
@@ -2040,7 +2151,7 @@ export const GetAppsResponseSchema = z.object({
 });
 
 export const PostAppsRequestSchema = z.object({
-  apps: AppTypeSchema.array(),
+  apps: AppImportTypeSchema.array(),
 });
 
 export type GetAppsResponseType = z.infer<typeof GetAppsResponseSchema>;
@@ -2447,7 +2558,13 @@ const FileTypeStatusSchema = FlexibleEnumSchema<
 >();
 
 const FileTypeUseCaseSchema = FlexibleEnumSchema<
-  "conversation" | "avatar" | "tool_output" | "upsert_document" | "upsert_table"
+  | "conversation"
+  | "avatar"
+  | "tool_output"
+  | "upsert_document"
+  | "upsert_table"
+  // See also front/types/files.ts.
+  | "folders_document"
 >();
 
 export const FileTypeSchema = z.object({
@@ -2641,20 +2758,6 @@ export const GetSpacesResponseSchema = z.object({
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
-export const ContentNodeTypeSchema = z.union([
-  z.literal("document"),
-  z.literal("table"),
-  z.literal("folder"),
-]);
-
-export const ContentNodesViewTypeSchema = z.union([
-  z.literal("table"),
-  z.literal("document"),
-  z.literal("all"),
-]);
-
-export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
-
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,
   spaceIds: z.array(z.string()),
@@ -2761,5 +2864,69 @@ export const ACTION_RUNNING_LABELS: Record<
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
-  tool_action: "Calling MCP Server",
+  tool_action: "Using a tool",
 };
+
+// MCP Related.
+
+export const ValidateActionResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type ValidateActionResponseType = z.infer<
+  typeof ValidateActionResponseSchema
+>;
+
+export const ValidateActionRequestBodySchema = z.object({
+  actionId: z.number(),
+  approved: z.enum(["approved", "rejected", "always_approved"]),
+});
+
+export type ValidateActionRequestBodyType = z.infer<
+  typeof ValidateActionRequestBodySchema
+>;
+
+export const RegisterMCPResponseSchema = z.object({
+  success: z.boolean(),
+  expiresAt: z.string(),
+});
+
+export type RegisterMCPResponseType = z.infer<typeof RegisterMCPResponseSchema>;
+
+export const HeartbeatMCPResponseSchema = z.object({
+  success: z.boolean(),
+  expiresAt: z.string(),
+});
+
+export type HeartbeatMCPResponseType = z.infer<
+  typeof HeartbeatMCPResponseSchema
+>;
+
+export const PublicPostMCPResultsRequestBodySchema = z.object({
+  requestId: z.string(),
+  result: z.unknown(),
+});
+
+export type PublicPostMCPResultsRequestBody = z.infer<
+  typeof PublicPostMCPResultsRequestBodySchema
+>;
+
+export const PostMCPResultsResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type PostMCPResultsResponseType = z.infer<
+  typeof PostMCPResultsResponseSchema
+>;
+
+const MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export type MCPToolStakeLevelPublicType =
+  (typeof MCP_TOOL_STAKE_LEVELS)[number];
+
+const MCP_VALIDATION_OUTPUTS = [
+  "approved",
+  "rejected",
+  "always_approved",
+] as const;
+export type MCPValidationOutputPublicType =
+  (typeof MCP_VALIDATION_OUTPUTS)[number];

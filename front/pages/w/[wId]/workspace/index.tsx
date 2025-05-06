@@ -3,14 +3,14 @@ import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types";
-import type { SubscriptionType } from "@app/types";
+import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -192,7 +192,7 @@ export default function WorkspaceAdmin({
 
   return (
     <>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
@@ -205,14 +205,14 @@ export default function WorkspaceAdmin({
           />
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Analytics</Page.H>
-            <Page.Horizontal gap="lg">
+            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
               <QuickInsights owner={owner} />
               <ActivityReport
                 isDownloading={isDownloadingData}
                 monthOptions={monthOptions}
                 handleDownload={handleDownload}
               />
-            </Page.Horizontal>
+            </div>
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Settings</Page.H>
@@ -255,7 +255,11 @@ export default function WorkspaceAdmin({
             </div>
           </Page.Vertical>
         </Page.Vertical>
-      </AppLayout>
+      </AppContentLayout>
     </>
   );
 }
+
+WorkspaceAdmin.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

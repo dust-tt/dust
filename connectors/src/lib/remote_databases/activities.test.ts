@@ -56,7 +56,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -80,6 +82,7 @@ describe("sync remote databases", async () => {
         remoteDBTree,
         connector: connector,
         mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
+        tags: [],
       });
 
       const remoteDB = await RemoteDatabaseModel.findOne({
@@ -119,7 +122,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -149,6 +154,7 @@ describe("sync remote databases", async () => {
         remoteDBTree,
         connector: connector,
         mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
+        tags: [],
       });
 
       const remoteDatabase = await RemoteDatabaseModel.findOne({
@@ -197,7 +203,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -251,6 +259,7 @@ describe("sync remote databases", async () => {
         connector: connector,
         mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
         internalTableIdToRemoteTableId,
+        tags: ["my-test-tag"],
       });
 
       const remoteTable = await RemoteTableModel.findOne({
@@ -265,7 +274,7 @@ describe("sync remote databases", async () => {
       expect(upsertDataSourceRemoteTable).toHaveBeenCalledWith({
         dataSourceConfig: dataSourceConfig,
         tableId: "test-db.test-schema.test-table",
-        tableName: "test-table",
+        tableName: "test-db.test-schema.test-table",
         remoteDatabaseTableId: "custom-remote-table-id",
         remoteDatabaseSecretId: connector.connectionId,
         tableDescription: "",
@@ -277,6 +286,7 @@ describe("sync remote databases", async () => {
         parentId: "test-db.test-schema",
         title: "test-table",
         mimeType: INTERNAL_MIME_TYPES.BIGQUERY.TABLE,
+        tags: ["my-test-tag"],
       });
     }
   );
@@ -298,7 +308,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -322,6 +334,7 @@ describe("sync remote databases", async () => {
         remoteDBTree,
         connector: connector,
         mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
+        tags: [],
       });
 
       expect(deleteDataSourceFolder).toHaveBeenCalledWith({
@@ -356,7 +369,9 @@ describe("sync remote databases", async () => {
         dataSourceId: dataSourceConfig.dataSourceId,
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
       },
-      {},
+      {
+        useMetadataForDBML: false,
+      },
       t
     );
 
@@ -364,6 +379,7 @@ describe("sync remote databases", async () => {
       remoteDBTree: undefined,
       connector: connector,
       mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
+      tags: [],
     });
 
     expect(await RemoteDatabaseModel.count()).toEqual(0);
@@ -391,7 +407,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -427,6 +445,7 @@ describe("sync remote databases", async () => {
         remoteDBTree,
         connector: connector,
         mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
+        tags: ["my-test-tag"],
       });
 
       // Check database model
@@ -487,7 +506,8 @@ describe("sync remote databases", async () => {
         dataSourceConfig: dataSourceConfig,
         tableId:
           "test__DUST_DOT__db.test__DUST_DOT__schema.test__DUST_DOT__table",
-        tableName: "test.table",
+        tableName:
+          "test__DUST_DOT__db.test__DUST_DOT__schema.test__DUST_DOT__table",
         remoteDatabaseTableId:
           "test__DUST_DOT__db.test__DUST_DOT__schema.test__DUST_DOT__table",
         remoteDatabaseSecretId: connector.connectionId,
@@ -500,6 +520,7 @@ describe("sync remote databases", async () => {
         parentId: "test__DUST_DOT__db.test__DUST_DOT__schema",
         title: "test.table",
         mimeType: INTERNAL_MIME_TYPES.BIGQUERY.TABLE,
+        tags: ["my-test-tag"],
       });
     }
   );
@@ -521,7 +542,9 @@ describe("sync remote databases", async () => {
           dataSourceId: dataSourceConfig.dataSourceId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         },
-        {},
+        {
+          useMetadataForDBML: false,
+        },
         t
       );
 
@@ -567,12 +590,13 @@ describe("sync remote databases", async () => {
         connector: connector,
         mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
         internalTableIdToRemoteTableId,
+        tags: ["my-test-tag"],
       });
 
       expect(upsertDataSourceRemoteTable).toHaveBeenCalledWith({
         dataSourceConfig: dataSourceConfig,
         tableId: "test-db.test-schema.test-table",
-        tableName: "test-table",
+        tableName: "test-db.test-schema.test-table",
         remoteDatabaseTableId: "custom-remote-table-id",
         remoteDatabaseSecretId: connector.connectionId,
         tableDescription: "",
@@ -584,6 +608,7 @@ describe("sync remote databases", async () => {
         parentId: "test-db.test-schema",
         title: "test-table",
         mimeType: INTERNAL_MIME_TYPES.BIGQUERY.TABLE,
+        tags: ["my-test-tag"],
       });
     }
   );

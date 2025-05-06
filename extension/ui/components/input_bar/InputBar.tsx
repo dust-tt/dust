@@ -305,7 +305,7 @@ export function AssistantInputBar({
           <div
             className={classNames(
               "fixed flex inset-0 backdrop-blur-sm transition-opacity",
-              "bg-structure-50/80 dark:bg-structure-50-night/80"
+              "bg-muted-background/80 dark:bg-muted-background-night/80"
             )}
           />
           <div className="fixed top-0 left-0 h-full w-full flex flex-col justify-center items-center gap-4">

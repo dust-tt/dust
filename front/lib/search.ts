@@ -12,7 +12,7 @@ export function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
     case "document":
       return ["folder", "document"];
     case "table":
-      return ["folder", "table"];
+      return ["table"];
     case "all":
       return ["folder", "table", "document"];
     default:
@@ -55,11 +55,13 @@ export function getSearchFilterFromDataSourceViews(
     includeDataSources,
     viewType,
     nodeIds,
+    parentId,
   }: {
     excludedNodeMimeTypes: readonly string[];
     includeDataSources: boolean;
     viewType: ContentNodesViewType;
     nodeIds?: string[];
+    parentId?: string;
   }
 ) {
   const groupedPerDataSource = dataSourceViews.reduce(
@@ -113,5 +115,6 @@ export function getSearchFilterFromDataSourceViews(
     excluded_node_mime_types: excludedNodeMimeTypes,
     node_types: getCoreViewTypeFilter(viewType),
     node_ids: nodeIds,
+    ...(parentId && { parent_id: parentId }),
   };
 }

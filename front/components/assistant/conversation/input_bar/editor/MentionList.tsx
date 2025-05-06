@@ -102,7 +102,7 @@ export const MentionList = forwardRef(function MentionList(
     <div
       className={classNames(
         "flex flex-col gap-y-1 overflow-y-auto rounded-xl border px-3 py-2 shadow-xl",
-        "border-structure-100 bg-white dark:border-structure-100-night dark:bg-slate-950"
+        "border-border bg-background dark:border-border-night dark:bg-primary-950"
       )}
     >
       {props.items.length ? (
@@ -116,7 +116,7 @@ export const MentionList = forwardRef(function MentionList(
               className={classNames(
                 "flex-initial text-sm font-semibold",
                 index === selectedIndex
-                  ? "text-action-500"
+                  ? "text-highlight-500"
                   : "text-foreground dark:text-foreground-night"
               )}
               key={index}

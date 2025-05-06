@@ -8,6 +8,8 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   PaginationState,
+  Row,
+  RowSelectionState,
   type SortingState,
   Updater,
   useReactTable,
@@ -18,6 +20,7 @@ import React, { ReactNode, useEffect, useRef, useState } from "react";
 import {
   Avatar,
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -43,7 +46,7 @@ import {
   ClipboardCheckIcon,
   ClipboardIcon,
   MoreIcon,
-} from "@sparkle/icons";
+} from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 import { breakpoints, useWindowSize } from "./WindowUtility";
@@ -95,6 +98,15 @@ interface DataTableProps<TData extends TBaseData> {
   setSorting?: (sorting: SortingState) => void;
   isServerSideSorting?: boolean;
   disablePaginationNumbers?: boolean;
+  getRowId?: (
+    originalRow: TData,
+    index: number,
+    parent?: Row<TData> | undefined
+  ) => string;
+  // row selection props
+  rowSelection?: RowSelectionState;
+  setRowSelection?: (rowSelection: RowSelectionState) => void;
+  enableRowSelection?: boolean | ((row: Row<TData>) => boolean);
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -113,6 +125,10 @@ export function DataTable<TData extends TBaseData>({
   setSorting,
   isServerSideSorting = false,
   disablePaginationNumbers = false,
+  rowSelection,
+  setRowSelection,
+  enableRowSelection = false,
+  getRowId,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -140,6 +156,15 @@ export function DataTable<TData extends TBaseData>({
         }
       : undefined;
 
+  const onRowSelectionChange =
+    rowSelection && setRowSelection
+      ? (updater: Updater<RowSelectionState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(rowSelection) : updater;
+          setRowSelection(newValue);
+        }
+      : undefined;
+
   const table = useReactTable({
     data,
     columns,
@@ -157,17 +182,23 @@ export function DataTable<TData extends TBaseData>({
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
     onColumnFiltersChange: setColumnFilters,
+    ...(enableRowSelection && {
+      onRowSelectionChange,
+    }),
     state: {
       columnFilters,
       ...(isServerSideSorting && {
         sorting,
       }),
       pagination,
+      ...(enableRowSelection && { rowSelection }),
     },
     initialState: {
       sorting,
     },
     onPaginationChange,
+    enableRowSelection,
+    getRowId,
   });
 
   useEffect(() => {
@@ -235,6 +266,9 @@ export function DataTable<TData extends TBaseData>({
               widthClassName={widthClassName}
               key={row.id}
               onClick={row.original.onClick}
+              {...(enableRowSelection && {
+                "data-selected": row.getIsSelected(),
+              })}
             >
               {row.getVisibleCells().map((cell) => {
                 const breakpoint = columnsBreakpoints[cell.column.id];
@@ -291,6 +325,10 @@ export function ScrollableDataTable<TData extends TBaseData>({
   maxHeight = "s-h-100",
   onLoadMore,
   isLoading = false,
+  rowSelection,
+  setRowSelection,
+  enableRowSelection,
+  getRowId,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -316,12 +354,30 @@ export function ScrollableDataTable<TData extends TBaseData>({
     };
   }, []);
 
+  const onRowSelectionChange =
+    rowSelection && setRowSelection
+      ? (updater: Updater<RowSelectionState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(rowSelection) : updater;
+          setRowSelection(newValue);
+        }
+      : undefined;
+
   const table = useReactTable({
     data,
     columns,
     rowCount: totalRowCount,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
+    onRowSelectionChange,
+    ...(enableRowSelection && {
+      onRowSelectionChange,
+    }),
+    state: {
+      ...(enableRowSelection && { rowSelection }),
+    },
+    enableRowSelection,
+    getRowId,
   });
 
   useEffect(() => {
@@ -466,6 +522,9 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     widthClassName={widthClassName}
                     onClick={row.original.onClick}
                     className="s-absolute s-w-full"
+                    {...(enableRowSelection && {
+                      "data-selected": row.getIsSelected(),
+                    })}
                     style={{
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
@@ -616,6 +675,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
   widthClassName: string;
+  "data-selected"?: boolean;
 }
 
 DataTable.Row = function Row({
@@ -633,6 +693,8 @@ DataTable.Row = function Row({
         onClick
           ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"
           : "",
+        props["data-selected"] &&
+          "s-bg-highlight-50 dark:s-bg-highlight-900/10",
         widthClassName,
         className
       )}
@@ -794,6 +856,7 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   roundedAvatar?: boolean;
   children?: ReactNode;
   description?: string;
+  grow?: boolean;
 }
 
 DataTable.CellContent = function CellContent({
@@ -805,10 +868,18 @@ DataTable.CellContent = function CellContent({
   icon,
   iconClassName,
   description,
+  grow = false,
   ...props
 }: CellContentProps) {
   return (
-    <div className={cn("s-flex s-items-center", className)} {...props}>
+    <div
+      className={cn(
+        "s-flex s-items-center",
+        grow ? "s-flex-grow" : "",
+        className
+      )}
+      {...props}
+    >
       {avatarUrl && avatarTooltipLabel && (
         <Tooltip
           trigger={
@@ -840,15 +911,18 @@ DataTable.CellContent = function CellContent({
           )}
         />
       )}
-      <div className="s-flex s-shrink s-truncate">
-        <span
+      <div
+        className={cn("s-flex s-shrink s-truncate", grow ? "s-flex-grow" : "")}
+      >
+        <div
           className={cn(
+            grow ? "s-flex-grow" : "",
             "s-truncate s-text-sm",
             "s-text-foreground dark:s-text-foreground-night"
           )}
         >
           {children}
-        </span>
+        </div>
         {description && (
           <span
             className={cn(
@@ -1001,3 +1075,47 @@ DataTable.Caption = function Caption({
     </caption>
   );
 };
+
+export function createSelectionColumn<TData>(): ColumnDef<TData> {
+  return {
+    id: "select",
+    enableSorting: false,
+    enableHiding: false,
+    header: ({ table }) => (
+      <Checkbox
+        size="xs"
+        checked={
+          table.getIsAllRowsSelected()
+            ? true
+            : table.getIsSomeRowsSelected()
+              ? "partial"
+              : false
+        }
+        onCheckedChange={(state) => {
+          if (state === "indeterminate") {
+            return;
+          }
+          table.toggleAllRowsSelected(state);
+        }}
+      />
+    ),
+    cell: ({ row }) => (
+      <div className="s-flex s-h-full s-w-full s-items-center">
+        <Checkbox
+          size="xs"
+          checked={row.getIsSelected()}
+          disabled={!row.getCanSelect()}
+          onCheckedChange={(state) => {
+            if (state === "indeterminate") {
+              return;
+            }
+            row.toggleSelected(state);
+          }}
+        />
+      </div>
+    ),
+    meta: {
+      className: "s-w-10",
+    },
+  };
+}

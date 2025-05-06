@@ -1,8 +1,9 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import { PluginListItem } from "@app/lib/api/poke/types";
 import {
   fetcher,
+  emptyArray,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -11,6 +12,8 @@ import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugi
 import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/run";
 import type { PluginResourceTarget, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+
+const EMPTY_ARRAY: PluginListItem[] = [];
 
 export function usePokeListPluginForResourceType({
   disabled,
@@ -40,7 +43,7 @@ export function usePokeListPluginForResourceType({
   );
 
   return {
-    plugins: useMemo(() => (data ? data.plugins : []), [data]),
+    plugins: data?.plugins ?? emptyArray(),
     isLoading: !error && !data && !disabled,
     isError: error,
   };
@@ -93,16 +96,36 @@ export function useRunPokePlugin({
   const doRunPlugin = async (
     args: object
   ): Promise<Result<PokeRunPluginResponseBody["result"], string>> => {
-    const res = await fetch(
-      `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(args),
-      }
-    );
+    // Check if any of the args are File objects
+    const hasFiles = Object.values(args).some((arg) => arg instanceof File);
+    let res;
+    if (hasFiles) {
+      // Use FormData for multipart/form-data when files are present
+      const formData = new FormData();
+      Object.entries(args).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+
+      res = await fetch(
+        `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+    } else {
+      // Use JSON when no files are present
+      res = await fetch(
+        `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(args),
+        }
+      );
+    }
 
     if (res.ok) {
       const response: PokeRunPluginResponseBody = await res.json();

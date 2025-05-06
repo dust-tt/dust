@@ -15,10 +15,13 @@ use gcp_bigquery_client::{
 };
 use serde_json::Value;
 
-use crate::databases::{
-    database::{QueryDatabaseError, QueryResult, SqlDialect},
-    table::Table,
-    table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
+use crate::{
+    databases::{
+        database::{QueryDatabaseError, QueryResult, SqlDialect},
+        table::Table,
+        table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
+    },
+    search_filter::Filterable,
 };
 
 use super::remote_database::RemoteDatabase;
@@ -68,6 +71,7 @@ impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSc
                         },
                         possible_values: None,
                         non_filterable: None,
+                        description: f.description.clone(),
                     })
                     .collect(),
             )),
@@ -78,6 +82,9 @@ impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSc
 
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 pub const PAGE_SIZE: i32 = 500;
+
+// Must be kept in sync with the tag in connectors.
+pub const USE_METADATA_FOR_DBML_TAG: &str = "bigquery:useMetadataForDBML";
 
 impl BigQueryRemoteDatabase {
     pub fn new(
@@ -328,7 +335,10 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             .map(|table| table.as_str())
             .collect();
 
-        let allowed_tables: HashSet<&str> = tables.iter().map(|table| table.name()).collect();
+        let allowed_tables: HashSet<String> = tables
+            .iter()
+            .map(|table| table.name().replace("__DUST_DOT__", "."))
+            .collect();
 
         let used_forbidden_tables = used_tables
             .into_iter()
@@ -338,8 +348,9 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         if !used_forbidden_tables.is_empty() {
             Err(QueryDatabaseError::ExecutionError(
                 format!(
-                    "Query uses tables that are not allowed: {}",
-                    used_forbidden_tables.join(", ")
+                    "Query uses tables that are not allowed: {} (allowed: {})",
+                    used_forbidden_tables.join(", "),
+                    allowed_tables.into_iter().collect::<Vec<_>>().join(", ")
                 ),
                 Some(query.to_string()),
             ))?
@@ -348,7 +359,7 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         self.execute_query(query).await
     }
 
-    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>> {
+    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>> {
         let bq_tables: Vec<gcp_bigquery_client::model::table::Table> =
             try_join_all(opaque_ids.iter().map(|opaque_id| async move {
                 let parts: Vec<&str> = opaque_id.split('.').collect();
@@ -368,12 +379,17 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             }))
             .await?;
 
-        let schemas: Vec<TableSchema> = bq_tables
+        let schemas: Vec<Option<TableSchema>> = bq_tables
             .into_iter()
-            .map(|table| TableSchema::try_from(&table.schema))
-            .collect::<Result<Vec<TableSchema>>>()?;
+            .map(|table| TableSchema::try_from(&table.schema).map(Some))
+            .collect::<Result<Vec<_>>>()?;
 
         Ok(schemas)
+    }
+    fn should_use_column_description(&self, table: &Table) -> bool {
+        table
+            .get_tags()
+            .contains(&USE_METADATA_FOR_DBML_TAG.to_string())
     }
 }
 

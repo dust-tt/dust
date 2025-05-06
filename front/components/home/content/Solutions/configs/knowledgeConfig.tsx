@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Knowledge",
   title: <>Make Company Knowledge Instantly Accessible.</>,
-  from: "from-green-200",
-  to: "to-green-200",
+  accentColor: "text-brand-hunter-green",
   description: (
     <>
       Transform organizational knowledge into structured insights and empower
@@ -115,8 +114,7 @@ export const Metrics: MetricProps = {
       description: <>of Kyriba employees save more than 3 hours weekly</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -153,21 +151,21 @@ export const UseCases: UseCaseProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
-  name: "Boris Lipiainen ",
+    "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you’re newly onboarded or a veteran team member.",
+  name: "Boris Lipiainen",
   title: "Chief Product and Technology Officer at Kyriba",
-  logo: "/static/landing/logos/kyriba.png",
+  logo: "/static/landing/logos/color/kyriba.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/qtnvwgyt0o?web_component=true&seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/qtnvwgyt0o",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
   {
-    title: "Kyriba's adoption of Dust across all functions",
+    title: "Kyriba’s adoption of Dust across all functions",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
@@ -182,7 +180,7 @@ export const Stories: CustomerStory[] = [
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_payfit.png",
   },
   {
-    title: "November Five's journey to minimizing routine tasks with Dust",
+    title: "November Five’s journey to minimizing routine tasks with Dust",
     content:
       "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
     href: "https://blog.dust.tt/november-five-ai-transformation-dust/",

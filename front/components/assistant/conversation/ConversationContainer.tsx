@@ -4,6 +4,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
+import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -31,13 +32,12 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
-  isBuilder: boolean;
   agentIdToMention: string | null;
 }
 
@@ -45,7 +45,6 @@ export function ConversationContainer({
   owner,
   subscription,
   user,
-  isBuilder,
   agentIdToMention,
 }: ConversationContainerProps) {
   const { activeConversationId } = useConversationsNavigation();
@@ -96,6 +95,8 @@ export function ConversationContainer({
     }
   });
 
+  const { serverId } = useCoEditionContext();
+
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
@@ -109,7 +110,12 @@ export function ConversationContainer({
       });
     }
 
-    const messageData = { input, mentions, contentFragments };
+    const messageData = {
+      input,
+      mentions,
+      contentFragments,
+      localMCPServerIds: removeNulls([serverId]),
+    };
 
     try {
       // Update the local state immediately and fire the request. Since the API will return the
@@ -209,6 +215,7 @@ export function ConversationContainer({
           input,
           mentions,
           contentFragments,
+          localMCPServerIds: removeNulls([serverId]),
         },
       });
 
@@ -251,6 +258,7 @@ export function ConversationContainer({
       router,
       mutateConversations,
       scrollConversationsToTop,
+      serverId,
     ]
   );
 
@@ -335,7 +343,6 @@ export function ConversationContainer({
             assistantToMention.current = assistant;
           }}
           owner={owner}
-          isBuilder={isBuilder}
         />
       )}
 

@@ -4,6 +4,7 @@ import {
   proxyActivities,
   workflowInfo,
 } from "@temporalio/workflow";
+import { chunk } from "lodash";
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
@@ -11,7 +12,7 @@ import { MAX_CONCURRENT_CHILD_WORKFLOWS } from "@connectors/connectors/notion/te
 import { upsertPageChildWorkflow } from "@connectors/connectors/notion/temporal/workflows/children";
 import {
   performUpserts,
-  upsertDatabase,
+  upsertDatabaseInCore,
 } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
 
@@ -36,6 +37,9 @@ const {
   deletePageOrDatabaseIfArchived,
   updateSingleDocumentParents,
   getParentPageOrDb,
+  maybeUpdateOrphaneResourcesParents,
+  clearParentsLastUpdatedAt,
+  getAllOrphanedResources,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -98,7 +102,6 @@ export async function upsertPageWorkflow({
         connectorId,
         pageIds: discoveredResources.pageIds,
         databaseIds: discoveredResources.databaseIds,
-        isGarbageCollectionRun: false,
         runTimestamp,
         pageIndex: null,
         isBatchSync: true,
@@ -164,21 +167,22 @@ export async function upsertDatabaseWorkflow({
 
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
 
-  await upsertDatabaseInConnectorsDb(
-    connectorId,
-    databaseId,
-    Date.now(),
-    topLevelWorkflowId,
-    loggerArgs
-  );
-
-  await upsertDatabase({
+  await upsertDatabaseInConnectorsDb({
     connectorId,
     databaseId,
     runTimestamp,
     topLevelWorkflowId,
-    isGarbageCollectionRun: false,
-    isBatchSync: false,
+    loggerArgs,
+    // In this workflow, we manually trigger the database upsert,
+    // so we don't queue the database for upsert
+    requestQueuingForUpsertToCore: false,
+  });
+
+  await upsertDatabaseInCore({
+    connectorId,
+    databaseId,
+    runTimestamp,
+    topLevelWorkflowId,
     queue,
     forceResync,
   });
@@ -199,7 +203,6 @@ export async function upsertDatabaseWorkflow({
         connectorId,
         pageIds: discoveredResources.pageIds,
         databaseIds: discoveredResources.databaseIds,
-        isGarbageCollectionRun: false,
         runTimestamp,
         pageIndex: null,
         isBatchSync: true,
@@ -225,6 +228,52 @@ export async function upsertDatabaseWorkflow({
     notionDocumentId: databaseId,
     documentType: "database",
   });
+}
+
+// Top level workflow to be used by the CLI or by Poké in order to update parents
+// for all orphaned resources of a notion connector.
+// The workflow will attempt to fetch the parent page from notion for every orphaned resource,
+// and will update the parent of the resource in our database if we have it in our database.
+export async function updateOrphanedResourcesParentsWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const BATCH_SIZE = 32;
+
+  let cursor: {
+    pageCursor: ModelId | null;
+    databaseCursor: ModelId | null;
+  } | null = null;
+
+  do {
+    const { pageIds, databaseIds, nextCursor } = await getAllOrphanedResources({
+      connectorId,
+      cursor,
+    });
+
+    const allResources: Array<{ notionId: string; type: "page" | "database" }> =
+      [
+        ...pageIds.map((p) => ({
+          notionId: p,
+          type: "page" as const,
+        })),
+        ...databaseIds.map((d) => ({ notionId: d, type: "database" as const })),
+      ];
+
+    const chunks = chunk(allResources, BATCH_SIZE);
+
+    for (const chunk of chunks) {
+      await maybeUpdateOrphaneResourcesParents({
+        connectorId,
+        resources: chunk,
+      });
+    }
+
+    cursor = nextCursor;
+  } while (cursor);
+
+  await clearParentsLastUpdatedAt({ connectorId });
 }
 
 async function upsertParent({

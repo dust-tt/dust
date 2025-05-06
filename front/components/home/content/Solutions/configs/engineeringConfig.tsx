@@ -25,8 +25,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Engineering",
   title: <>Ship Better Code, Reduce Interruptions</>,
-  from: "from-blue-200",
-  to: "to-blue-200",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>
       Streamline incident response, automate documentation, and keep your team
@@ -82,7 +81,7 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Amplify your engineering team's capabilities ",
+  sectionTitle: "Amplify your engineering team’s capabilities ",
   items: [
     {
       icon: MagicIcon,
@@ -116,8 +115,7 @@ export const Metrics: MetricProps = {
       description: <> saved per incident</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -155,33 +153,33 @@ export const UseCases: UseCaseProps = {
 export const ROI: ROIProps = {
   number: "20%",
   subtitle: "faster project completion",
-  logo: "/static/landing/logos/alan.png",
+  logo: "/static/landing/logos/gray/alan.png",
 };
 
 export const Quote: QuoteProps = {
   quote:
-    "It's really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
+    "It’s really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
   name: "Vincent Delagabbe",
   title: "Software Engineer at Alan",
-  logo: "/static/landing/logos/alan.png",
+  logo: "/static/landing/logos/color/alan.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/6z5rtwsuvo?web_component=true&seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/6z5rtwsuvo",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
   {
-    title: "Alan's engineering team speeds up projects 20% with Dust",
+    title: "Alan’s engineering team speeds up projects 20% with Dust",
     content:
       "Alan uses Dust to improve efficiency in the context of an expanding codebase and documentation.",
     href: "https://blog.dust.tt/integrating-ai-workflows-alan/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan-1.png",
   },
   // {
-  //   title: "November Five's journey to minimizing routine tasks with Dust",
+  //   title: "November Five’s journey to minimizing routine tasks with Dust",
   //   content:
   //     "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
   //   href: "https://blog.dust.tt/november-five-ai-transformation-dust/",

@@ -305,7 +305,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
               {connectorProviderConfiguration.limitations && (
                 <ContentMessage
-                  variant="slate"
+                  variant="primary"
                   title="Limitations"
                   className="border-none"
                 >
@@ -315,7 +315,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
             </div>
 
             {error && (
-              <ContentMessage variant="red" title="Connection Error">
+              <ContentMessage variant="warning" title="Connection Error">
                 {error}
               </ContentMessage>
             )}

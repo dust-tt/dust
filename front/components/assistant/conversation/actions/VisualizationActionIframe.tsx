@@ -319,9 +319,9 @@ export function VisualizationActionIframe({
               )}
               {isErrored && (
                 <div className="flex h-full w-full flex-col items-center gap-4 py-8">
-                  <div className="text-sm text-element-800">
+                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     An error occured while rendering the visualization.
-                    <div className="pt-2 text-xs text-element-600">
+                    <div className="pt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
                       {errorMessage}
                     </div>
                   </div>

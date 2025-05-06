@@ -4,7 +4,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ScrollArea,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
@@ -172,8 +171,8 @@ function AppSpecification({
   };
 
   return (
-    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-slate-100 dark:bg-slate-100-night">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4 dark:bg-slate-300-night">
+    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
+      <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
         <h2 className="text-md font-bold">Specification :</h2>
         <div className="flex flex-row gap-2">
           {specificationHashes ? (
@@ -187,27 +186,25 @@ function AppSpecification({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <ScrollArea className="h-96">
+                <DropdownMenuItem
+                  label="Current"
+                  onClick={() => {
+                    void router.push(`${pathname}?hash=`);
+                  }}
+                />
+                {specificationHashes.map((hash) => (
                   <DropdownMenuItem
-                    label="Current"
+                    label={
+                      registryApp?.app?.appHash === hash
+                        ? `${hash} [registry]`
+                        : hash
+                    }
+                    key={hash}
                     onClick={() => {
-                      void router.push(`${pathname}?hash=`);
+                      void router.push(`${pathname}?hash=${hash}`);
                     }}
                   />
-                  {specificationHashes.map((hash) => (
-                    <DropdownMenuItem
-                      label={
-                        registryApp?.app?.appHash === hash
-                          ? `${hash} [registry]`
-                          : hash
-                      }
-                      key={hash}
-                      onClick={() => {
-                        void router.push(`${pathname}?hash=${hash}`);
-                      }}
-                    />
-                  ))}
-                </ScrollArea>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

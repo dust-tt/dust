@@ -3,6 +3,7 @@ import {
   Button,
   CheckIcon,
   ClipboardCheckIcon,
+  Input,
   LinkIcon,
   PencilSquareIcon,
   Popover,
@@ -21,7 +22,6 @@ import {
   useConversation,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { classNames } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 
 export function ConversationTitle({
@@ -123,17 +123,9 @@ export function ConversationTitle({
             </div>
           ) : (
             <div className="w-[84%]">
-              <input
-                className={classNames(
-                  "border-0 bg-transparent outline-none ring-1 ring-structure-200 focus:outline-none focus:ring-2",
-                  "w-full rounded-md py-1.5 pl-4 pr-8 placeholder-element-600",
-                  "transition-all duration-300 ease-out focus:ring-action-300"
-                )}
+              <Input
                 value={editedTitle}
                 onChange={(e) => setEditedTitle(e.target.value)}
-                // We need to make sure the click on the save button below
-                // is registered before the onBlur event, so we keep track of the
-                // focus state of both the input and the save button.
                 onFocus={() => (titleInputFocused.current = true)}
                 onBlur={() => {
                   setTimeout(() => {
@@ -237,7 +229,7 @@ export function ConversationTitle({
               }
               content={
                 <div className="flex flex-col gap-y-4 py-4">
-                  <div className="text-sm font-normal text-element-700 dark:text-element-700-night">
+                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                     Share the conversation link with other members of your
                     workspace to invite them to contribute.
                   </div>

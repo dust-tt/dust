@@ -92,20 +92,22 @@ async function getConfluenceAccessTokenWithThrow(connectionId: string) {
 
 export async function getConfluenceClient(config: {
   cloudId?: string;
+  ignoreNearRateLimit?: boolean;
   connectorId: ModelId;
 }): Promise<ConfluenceClient>;
 export async function getConfluenceClient(
-  config: { cloudId?: string },
+  config: { cloudId?: string; ignoreNearRateLimit?: boolean },
   connector: ConnectorResource
 ): Promise<ConfluenceClient>;
 export async function getConfluenceClient(
   config: {
     cloudId?: string;
+    ignoreNearRateLimit?: boolean;
     connectorId?: ModelId;
   },
   connector?: ConnectorResource
 ) {
-  const { cloudId, connectorId } = config;
+  const { cloudId, connectorId, ignoreNearRateLimit } = config;
 
   // Ensure the connector is fetched if not directly provided.
   const effectiveConnector =
@@ -122,6 +124,7 @@ export async function getConfluenceClient(
 
   return new ConfluenceClient(accessToken, {
     cloudId,
+    ignoreNearRateLimit,
     useProxy: effectiveConnector.useProxy ?? false,
   });
 }

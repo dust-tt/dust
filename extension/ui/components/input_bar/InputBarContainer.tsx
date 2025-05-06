@@ -73,17 +73,11 @@ export const InputBarContainer = ({
     []
   );
 
-  const isAttachedFromDataSourceActivated: boolean = true;
-
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     disableAutoFocus,
-    ...(isAttachedFromDataSourceActivated
-      ? {
-          onUrlDetected: handleUrlDetected,
-        }
-      : {}),
+    onUrlDetected: handleUrlDetected,
   });
 
   const sendNotification = useSendNotification();
@@ -112,10 +106,7 @@ export const InputBarContainer = ({
           searchSourceUrls: true,
           includeDataSources: true,
           viewType: "all",
-          disabled:
-            isSpacesLoading ||
-            !nodeOrUrlCandidate ||
-            !isAttachedFromDataSourceActivated,
+          disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
         }
   );
@@ -132,12 +123,15 @@ export const InputBarContainer = ({
           ...rest,
           dataSourceView: view,
           spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
+          spaceName: spacesMap[view.spaceId]?.name,
         }));
       });
 
       if (nodesWithViews.length > 0) {
         const sortedNodes = nodesWithViews.sort(
-          (a, b) => b.spacePriority - a.spacePriority
+          (a, b) =>
+            b.spacePriority - a.spacePriority ||
+            a.spaceName.localeCompare(b.spaceName)
         );
         const node = sortedNodes[0];
         onNodeSelect(node);
@@ -234,9 +228,6 @@ export const InputBarContainer = ({
               onNodeSelect || ((node) => console.log(`Selected ${node.title}`))
             }
             attachedNodes={attachedNodes}
-            isAttachedFromDataSourceActivated={
-              isAttachedFromDataSourceActivated
-            }
           />
           <AssistantPicker
             owner={owner}

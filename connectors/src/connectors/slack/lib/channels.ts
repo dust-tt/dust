@@ -34,10 +34,15 @@ export async function updateSlackChannelInConnectorsDb({
   slackChannelId,
   slackChannelName,
   connectorId,
+  createIfNotExistsWithParams,
 }: {
   slackChannelId: string;
   slackChannelName: string;
   connectorId: number;
+  createIfNotExistsWithParams?: {
+    permission: ConnectorPermission;
+    private: boolean;
+  };
 }): Promise<SlackChannelType> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -52,9 +57,19 @@ export async function updateSlackChannelInConnectorsDb({
   });
 
   if (!channel) {
-    throw new Error(
-      `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
-    );
+    if (createIfNotExistsWithParams) {
+      channel = await SlackChannel.create({
+        connectorId,
+        slackChannelId,
+        slackChannelName,
+        permission: createIfNotExistsWithParams.permission,
+        private: createIfNotExistsWithParams.private,
+      });
+    } else {
+      throw new Error(
+        `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
+      );
+    }
   } else {
     if (channel.slackChannelName !== slackChannelName) {
       channel = await channel.update({
@@ -141,6 +156,9 @@ export async function joinChannel(
   const client = await getSlackClient(connector.id);
   try {
     const channelInfo = await client.conversations.info({ channel: channelId });
+    if (!channelInfo.ok || !channelInfo.channel?.name) {
+      return new Err(new Error("Could not get the Slack channel information."));
+    }
     if (!channelInfo.channel) {
       return new Err(new Error("Channel not found."));
     }
@@ -165,11 +183,26 @@ export async function joinChannel(
             connectorId,
             error: e,
           },
-          "Could not join the channel because of a missing scope. Please re-authorize your Slack connection and try again."
+          "Slack can't join the channel. Missing scope."
         );
         return new Err(
           new Error(
-            "Could not join the channel because of a missing scope. Please re-authorize your Slack connection and try again."
+            `@Dust could not join the channel ${channelId} because of a missing scope. Please re-authorize your Slack connection and try again.`
+          )
+        );
+      }
+      if (e.data.error === "ratelimited") {
+        logger.error(
+          {
+            connectorId,
+            channelId,
+            error: e,
+          },
+          "Slack can't join the channel. Rate limit exceeded."
+        );
+        return new Err(
+          new Error(
+            `@Dust could not join the channel ${channelId} because of a rate limit exceeded. Please try again in a few minutes.`
           )
         );
       }
@@ -179,7 +212,7 @@ export async function joinChannel(
           channelId,
           error: e,
         },
-        "Can't join the channel"
+        `Slack can't join the channel. Unknown Slack API Platform error.`
       );
 
       return new Err(e);
@@ -191,7 +224,7 @@ export async function joinChannel(
         channelId,
         error: e,
       },
-      "Can't join the channel. Unknown error."
+      "Slack can't join the channel. Unknown error."
     );
 
     return new Err(new Error(`Can't join the channel`));

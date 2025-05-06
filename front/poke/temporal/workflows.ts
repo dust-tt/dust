@@ -2,26 +2,31 @@ import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "@app/poke/temporal/activities";
 
-// Create a single proxy with all activities
-const activityProxies = proxyActivities<typeof activities>({
+// Create a single proxy with all normal and long activities
+const normalActivityProxies = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minute",
+});
+const longActivityProxies = proxyActivities<typeof activities>({
+  startToCloseTimeout: "180 minute",
 });
 
 const {
   deleteAgentsActivity,
   deleteAppsActivity,
-  deleteConversationsActivity,
   deleteMembersActivity,
   deletePluginRunsActivity,
   deleteRunOnDustAppsActivity,
+  deleteRemoteMCPServersActivity,
   deleteSpacesActivity,
   deleteTrackersActivity,
   deleteTranscriptsActivity,
-  deleteWorkspaceActivity,
   isWorkflowDeletableActivity,
   scrubDataSourceActivity,
   scrubSpaceActivity,
-} = activityProxies;
+} = normalActivityProxies;
+
+const { deleteConversationsActivity, deleteWorkspaceActivity } =
+  longActivityProxies;
 
 export async function scrubDataSourceWorkflow({
   dataSourceId,
@@ -59,11 +64,18 @@ export async function deleteWorkspaceWorkflow({
   }
 
   await deleteConversationsActivity({ workspaceId });
+  await deleteRemoteMCPServersActivity({ workspaceId });
   await deleteAgentsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
   await deleteAppsActivity({ workspaceId });
   await deleteTrackersActivity({ workspaceId });
-  await deleteMembersActivity({ workspaceId });
+  await deleteMembersActivity({
+    workspaceId,
+    // If the workspace was not relocated we delete users from Auth0 to prevent having these dangling.
+    // If the workspace was relocated we keep it since it is still in use in the other region
+    // (we keep the Auth0 sub when relocating).
+    deleteFromAuth0: !workspaceHasBeenRelocated,
+  });
   await deleteSpacesActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });

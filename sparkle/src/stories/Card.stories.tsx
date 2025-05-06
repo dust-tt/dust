@@ -17,7 +17,7 @@ import {
   ScanIcon,
   TableIcon,
   XMarkIcon,
-} from "@sparkle/icons";
+} from "@sparkle/icons/app";
 
 const meta = {
   title: "Primitives/Card",

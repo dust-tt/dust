@@ -1,10 +1,10 @@
-import _ from "lodash";
 import { Op } from "sequelize";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
-import { Conversation } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
 /**
@@ -61,9 +61,12 @@ export async function purgeConversationsBatchActivity({
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-    const conversations = await Conversation.findAll({
-      where: { workspaceId: workspace.id, updatedAt: { [Op.lt]: cutoffDate } },
-    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const conversations = await ConversationResource.listAllBeforeDate(
+      auth,
+      cutoffDate
+    );
 
     logger.info(
       {
@@ -75,16 +78,13 @@ export async function purgeConversationsBatchActivity({
       "Purging conversations for workspace."
     );
 
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-    const conversationChunks = _.chunk(conversations, 4);
-    for (const conversationChunk of conversationChunks) {
-      await Promise.all(
-        conversationChunk.map(async (c) => {
-          await destroyConversation(auth, { conversationId: c.sId });
-        })
-      );
-    }
+    await concurrentExecutor(
+      conversations,
+      async (c) => destroyConversation(auth, { conversationId: c.sId }),
+      {
+        concurrency: 4,
+      }
+    );
 
     res.push({
       workspaceModelId: workspace.id,

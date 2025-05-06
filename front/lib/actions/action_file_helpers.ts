@@ -41,7 +41,10 @@ export async function generatePlainTextFile(
 
   await processAndStoreFile(auth, {
     file: plainTextFile,
-    reqOrString: content,
+    content: {
+      type: "string",
+      value: content,
+    },
   });
 
   return plainTextFile;
@@ -86,7 +89,13 @@ export async function generateCSVFileAndSnippet(
     totalRecords: results.length,
   });
 
-  await processAndStoreFile(auth, { file: csvFile, reqOrString: csvOutput });
+  await processAndStoreFile(auth, {
+    file: csvFile,
+    content: {
+      type: "string",
+      value: csvOutput,
+    },
+  });
 
   return { csvFile, csvSnippet };
 }
@@ -152,7 +161,10 @@ export async function generateSectionFile(
 
   await processAndStoreFile(auth, {
     file: sectionFile,
-    reqOrString: content,
+    content: {
+      type: "string",
+      value: content,
+    },
   });
 
   return sectionFile;
@@ -195,4 +207,85 @@ export async function uploadFileToConversationDataSource({
       );
     }
   }
+}
+
+/**
+ * Generate a JSON file and a snippet of the file.
+ * Save the file to the database and return the file and the snippet.
+ */
+export async function generateJSONFileAndSnippet(
+  auth: Authenticator,
+  {
+    title,
+    conversationId,
+    data,
+  }: {
+    title: string;
+    conversationId: string;
+    data: unknown;
+  }
+): Promise<{
+  jsonFile: FileResource;
+  jsonSnippet: string;
+}> {
+  const workspace = auth.getNonNullableWorkspace();
+  const user = auth.user();
+
+  const jsonOutput = JSON.stringify(data, null, 2);
+  const jsonFile = await FileResource.makeNew({
+    workspaceId: workspace.id,
+    userId: user?.id ?? null,
+    contentType: "application/json",
+    fileName: title,
+    fileSize: Buffer.byteLength(jsonOutput),
+    useCase: "tool_output",
+    useCaseMetadata: {
+      conversationId,
+    },
+  });
+
+  // Generate a snippet of the JSON for display in the conversation
+  // The snippet will show only the first few entries if it's an array
+  // or a truncated version if it's an object
+  let jsonSnippet = "";
+  if (Array.isArray(data)) {
+    const displayItems = data.slice(0, 5);
+    const remainingCount = data.length > 5 ? data.length - 5 : 0;
+    jsonSnippet = JSON.stringify(displayItems, null, 2);
+    if (remainingCount > 0) {
+      jsonSnippet += `\n\n... ${remainingCount} more items`;
+    }
+  } else {
+    jsonSnippet = JSON.stringify(data, null, 2);
+    // Truncate if too long
+    if (jsonSnippet.length > 1000) {
+      jsonSnippet = jsonSnippet.substring(0, 1000) + "... (truncated)";
+    }
+  }
+
+  await processAndStoreFile(auth, {
+    file: jsonFile,
+    content: {
+      type: "string",
+      value: jsonOutput,
+    },
+  });
+
+  return { jsonFile, jsonSnippet };
+}
+
+export function getJSONFileAttachment({
+  jsonFileId,
+  jsonFileSnippet,
+  title,
+}: {
+  jsonFileId: string | null;
+  jsonFileSnippet: string | null;
+  title: string;
+}): string | null {
+  if (!jsonFileId || !jsonFileSnippet) {
+    return null;
+  }
+
+  return `<file id="${jsonFileId}" type="application/json" title="${title}">\n${jsonFileSnippet}\n</file>`;
 }

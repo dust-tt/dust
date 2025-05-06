@@ -1,3 +1,4 @@
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   cn,
@@ -22,7 +23,6 @@ import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationF
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import {
-  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
@@ -194,6 +194,11 @@ function BackendSearch({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
+  const handleClearSearch = React.useCallback(() => {
+    searchParam.setParam(undefined);
+    setSearchValue("");
+  }, [searchParam, setSearchValue]);
+
   const handleSearchChange = (value: string) => {
     searchParam.setParam(value);
     setSearchValue(value);
@@ -287,7 +292,7 @@ function BackendSearch({
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder="Search (Name)"
+        placeholder={`Search in ${space.name}`}
         value={searchTerm}
         onChange={handleSearchChange}
         disabled={isSearchDisabled}
@@ -341,6 +346,7 @@ function BackendSearch({
               isLoading={isSearchLoading}
               onOpenDocument={handleOpenDocument}
               setEffectiveContentNode={setEffectiveContentNode}
+              onClearSearch={handleClearSearch}
             />
           </div>
         ) : (
@@ -383,7 +389,7 @@ function FrontendSearch({
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder="Search (Name)"
+        placeholder={`Search in ${space.name}`}
         value={searchTerm}
         onChange={searchParam.setParam}
         disabled={isSearchDisabled}
@@ -428,6 +434,7 @@ interface SearchResultsTableProps {
   isLoading: boolean;
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
   setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
+  onClearSearch: () => void;
 }
 
 function SearchResultsTable({
@@ -442,6 +449,7 @@ function SearchResultsTable({
   isLoading,
   onOpenDocument,
   setEffectiveContentNode,
+  onClearSearch,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -535,8 +543,8 @@ function SearchResultsTable({
                 node.mimeType === DATA_SOURCE_MIME_TYPE
                   ? baseUrl
                   : `${baseUrl}?parentId=${parentId}`;
-
               void router.push(url);
+              onClearSearch();
             }
           },
         }),
@@ -557,6 +565,7 @@ function SearchResultsTable({
       };
     });
   }, [
+    onClearSearch,
     addToSpace,
     canReadInSpace,
     canWriteInSpace,

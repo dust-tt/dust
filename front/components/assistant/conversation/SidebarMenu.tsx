@@ -33,9 +33,9 @@ import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
+import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { isBuilder, isOnlyUser } from "@app/types";
+import { isBuilder } from "@app/types";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
@@ -191,14 +191,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
       />
-      <div
-        className={classNames(
-          "flex grow flex-col",
-          isOnlyUser(owner)
-            ? "border-t border-structure-200 dark:border-structure-200-night"
-            : ""
-        )}
-      >
+      <div className="flex grow flex-col">
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
@@ -376,13 +369,13 @@ const RenderConversation = ({
         <div className="flex items-center px-2 py-2">
           <Checkbox
             id={`conversation-${conversation.sId}`}
-            className="bg-white dark:bg-slate-950"
+            className="bg-background dark:bg-background-night"
             checked={selectedConversations.includes(conversation)}
             onCheckedChange={() => toggleConversationSelection(conversation)}
           />
           <Label
             htmlFor={`conversation-${conversation.sId}`}
-            className="ml-2 text-sm font-light text-muted-foreground dark:text-muted-foreground-night"
+            className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
           >
             {conversationLabel}
           </Label>

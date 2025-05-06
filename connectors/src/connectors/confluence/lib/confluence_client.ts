@@ -1,6 +1,7 @@
 import { isLeft } from "fp-ts/Either";
-import { HttpsProxyAgent } from "https-proxy-agent";
 import * as t from "io-ts";
+import type { Response } from "undici";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -189,6 +190,20 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
+// Headers provided by Confluence API to provide information on the rate limiting.
+// https://developer.atlassian.com/cloud/confluence/rate-limiting/
+// The exact rate limit model is not detailed, but can be assumed to be a combination of multiple different systems.
+const RATE_LIMIT_HEADERS = {
+  // As per the doc: "maximum number of requests that a user can make within a specific (unspecified) time window".
+  limit: "x-ratelimit-limit",
+  // As per the doc: "number of requests remaining in the current rate limit window before the limit is reached".
+  remaining: "x-ratelimit-remaining",
+  // As per the doc: "When true, indicates that less than 20% of any budget remains."
+  nearLimit: "x-ratelimit-nearlimit",
+} as const;
+
+// Ratio remaining / limit at which we start to slow down the requests.
+const THROTTLE_TRIGGER_RATIO = 0.3;
 // If Confluence does not provide a retry-after header, we use this constant to signal no delay.
 const NO_RETRY_AFTER_DELAY = -1;
 // Number of times we retry when rate limited and Confluence does provide a retry-after header.
@@ -225,52 +240,96 @@ function getRetryAfterDuration(response: Response): number {
   return NO_RETRY_AFTER_DELAY;
 }
 
+function checkNearRateLimit(response: Response): boolean {
+  const nearLimit = response.headers.get(RATE_LIMIT_HEADERS.nearLimit);
+  const remaining = response.headers.get(RATE_LIMIT_HEADERS.remaining);
+  const limit = response.headers.get(RATE_LIMIT_HEADERS.limit);
+
+  return (
+    nearLimit?.toLowerCase() === "true" ||
+    (!!remaining &&
+      !!limit &&
+      parseInt(remaining, 10) / parseInt(limit, 10) < THROTTLE_TRIGGER_RATIO)
+  );
+}
+
+function logRateLimitHeaders(
+  response: Response,
+  loggerArgs: Record<string, string | number | null>
+) {
+  const rateLimitHeaders: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    if (key.toLowerCase().startsWith("x-ratelimit")) {
+      rateLimitHeaders[key] = value;
+    }
+  });
+
+  if (Object.keys(rateLimitHeaders).length === 0) {
+    return;
+  }
+
+  logger.info(
+    {
+      rateLimitHeaders,
+      ...loggerArgs,
+    },
+    "[Confluence] Headers relative to the rate limit"
+  );
+}
+
 export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
   private readonly legacyRestApiBaseUrl: string;
-  private readonly proxyAgent: HttpsProxyAgent | null;
+  private readonly proxyAgent?: ProxyAgent;
+  private readonly ignoreNearRateLimit?: boolean;
 
   constructor(
     private readonly authToken: string,
     {
       cloudId,
+      ignoreNearRateLimit,
       useProxy = false,
     }: {
       cloudId?: string;
+      ignoreNearRateLimit?: boolean;
       useProxy?: boolean;
     } = {}
   ) {
     this.restApiBaseUrl = `/ex/confluence/${cloudId}/wiki/api/v2`;
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
-    this.proxyAgent = useProxy
-      ? new HttpsProxyAgent(
-          `http://${EnvironmentConfig.getEnvVariable(
-            "PROXY_USER_NAME"
-          )}:${EnvironmentConfig.getEnvVariable(
-            "PROXY_USER_PASSWORD"
-          )}@${EnvironmentConfig.getEnvVariable(
-            "PROXY_HOST"
-          )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
-        )
-      : null;
+    this.ignoreNearRateLimit = ignoreNearRateLimit;
+    if (useProxy) {
+      this.proxyAgent = new ProxyAgent(
+        `http://${EnvironmentConfig.getEnvVariable(
+          "PROXY_USER_NAME"
+        )}:${EnvironmentConfig.getEnvVariable(
+          "PROXY_USER_PASSWORD"
+        )}@${EnvironmentConfig.getEnvVariable(
+          "PROXY_HOST"
+        )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
+      );
+    }
   }
 
   private async request<T>(
     endpoint: string,
     codec: t.Type<T>,
-    retryCount: number = 0
+    {
+      retryCount = 0,
+      bypassThrottle = false,
+    }: { retryCount?: number; bypassThrottle?: boolean } = {}
   ): Promise<T> {
     const response = await (async () => {
       try {
-        return await fetch(`${this.apiUrl}${endpoint}`, {
+        return await undiciFetch(`${this.apiUrl}${endpoint}`, {
           headers: {
             Authorization: `Bearer ${this.authToken}`,
             "Content-Type": "application/json",
           },
           // Timeout after 30 seconds.
           signal: AbortSignal.timeout(30000),
-          ...(this.proxyAgent ? { agent: this.proxyAgent } : {}),
+          dispatcher: this.proxyAgent,
         });
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
@@ -306,6 +365,8 @@ export class ConfluenceClient {
         throw e;
       }
     })();
+
+    logRateLimitHeaders(response, { endpoint });
 
     if (!response.ok) {
       // If the token is invalid, the API will return a 403 Forbidden response.
@@ -349,7 +410,10 @@ export class ConfluenceClient {
             delayMs < MAX_RETRY_AFTER_DELAY
           ) {
             await setTimeoutAsync(delayMs);
-            return this.request(endpoint, codec, retryCount + 1);
+            return this.request(endpoint, codec, {
+              retryCount: retryCount + 1,
+              bypassThrottle: bypassThrottle,
+            });
           }
         }
 
@@ -371,6 +435,29 @@ export class ConfluenceClient {
         {
           type: "http_response_error",
           status: response.status,
+          data: { url: `${this.apiUrl}${endpoint}`, response },
+        }
+      );
+    }
+
+    // When approaching the rate limit, we defer the handling of the backoff to Temporal.
+    // We have no accurate estimation of the time we should wait here, the goal here is more to warm up the exponential
+    // backoff to slow down the queries as soon as they approach the rate limit.
+    if (
+      !bypassThrottle &&
+      !this.ignoreNearRateLimit &&
+      checkNearRateLimit(response)
+    ) {
+      statsDClient.increment("external.api.calls", 1, [
+        "provider:confluence",
+        "status:near_rate_limit",
+      ]);
+
+      throw new ConfluenceClientError(
+        `Near rate limit: ${this.apiUrl}${endpoint}`,
+        {
+          type: "http_response_error",
+          status: 429, // We fake a 429 here to make sure the error is caught in the cast_known_errors.
           data: { url: `${this.apiUrl}${endpoint}`, response },
         }
       );
@@ -400,7 +487,7 @@ export class ConfluenceClient {
   ): Promise<T | undefined> {
     const response = await (async () => {
       try {
-        return await fetch(`${this.apiUrl}${endpoint}`, {
+        return await undiciFetch(`${this.apiUrl}${endpoint}`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${this.authToken}`,
@@ -409,7 +496,7 @@ export class ConfluenceClient {
           body: JSON.stringify(data),
           // Timeout after 30 seconds.
           signal: AbortSignal.timeout(30000),
-          ...(this.proxyAgent ? { agent: this.proxyAgent } : {}),
+          dispatcher: this.proxyAgent,
         });
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
@@ -563,7 +650,8 @@ export class ConfluenceClient {
 
     const spaces = await this.request(
       `${this.restApiBaseUrl}/spaces?${params.toString()}`,
-      ConfluencePaginatedResults(ConfluenceSpaceCodec)
+      ConfluencePaginatedResults(ConfluenceSpaceCodec),
+      { bypassThrottle: true }
     );
 
     const nextPageCursor = extractCursorFromLinks(spaces._links);

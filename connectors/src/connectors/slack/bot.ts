@@ -27,6 +27,7 @@ import {
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import {
+  isSlackWebAPIPlatformError,
   SlackExternalUserError,
   SlackMessageError,
 } from "@connectors/connectors/slack/lib/errors";
@@ -128,6 +129,10 @@ export async function botAnswerMessage(
       },
       "Unexpected exception answering to Slack Chat Bot message"
     );
+    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
+      // This means that the message has been deleted, so we don't need to send an error message.
+      return new Ok(undefined);
+    }
     const slackClient = await getSlackClient(connector.id);
     try {
       await slackClient.chat.postMessage({
@@ -294,12 +299,34 @@ async function answerMessage(
   const slackClient = await getSlackClient(connector.id);
 
   let slackUserInfo: SlackUserInfo | null = null;
+
   // The order is important here because we want to prioritize the user id over the bot id.
   // When a bot sends a message "as a user", we want to honor the user and not the bot.
   if (slackUserId) {
     slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
   } else if (slackBotId) {
-    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+    try {
+      slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+    } catch (e) {
+      if (isSlackWebAPIPlatformError(e)) {
+        if (e.data.error === "bot_not_found") {
+          // We received a bot message from a bot that is not accessible to us. We log and ignore
+          // the message.
+          logger.warn(
+            {
+              error: e,
+              connectorId: connector.id,
+              slackUserId,
+              slackBotId,
+              slackTeamId,
+            },
+            "Received bot_not_found"
+          );
+          return new Ok(undefined);
+        }
+      }
+      throw e;
+    }
   }
 
   if (!slackUserInfo) {
@@ -568,6 +595,45 @@ async function answerMessage(
     .sort((a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0))
     .splice(0, 100)
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Check if agent is from a restricted space
+  if (!slackConfig.restrictedSpaceAgentsEnabled) {
+    const isRestrictedRes = await isAgentAccessingRestrictedSpace(
+      dustAPI,
+      activeAgentConfigurations,
+      mention.assistantId
+    );
+
+    if (isRestrictedRes.isErr()) {
+      logger.error(
+        {
+          error: isRestrictedRes.error,
+          agentId: mention.assistantId,
+          connectorId: connector.id,
+        },
+        "Error determining if agent is from restricted space"
+      );
+      return isRestrictedRes;
+    }
+
+    // If agent is from a restricted space, we send an error message to Slack
+    if (isRestrictedRes.value) {
+      const errorMsg = new RestrictedSpaceAgentError();
+      const errorBlock = makeErrorBlock(
+        null, // No conversation URL for this error
+        connector.workspaceId,
+        errorMsg.message
+      );
+
+      await slackClient.chat.postMessage({
+        ...errorBlock,
+        channel: slackChannel,
+        thread_ts: slackMessageTs,
+      });
+
+      return new Ok(undefined);
+    }
+  }
 
   const mainMessage = await slackClient.chat.postMessage({
     ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
@@ -966,4 +1032,76 @@ async function makeContentFragments(
   });
 
   return new Ok(allContentFragments);
+}
+
+class RestrictedSpaceAgentError extends Error {
+  constructor() {
+    super(
+      "This agent belongs to a restricted space and cannot be invoked on Slack for this workspace. Contact your workspace administrator if you need access."
+    );
+    this.name = "RestrictedSpaceAgentError";
+  }
+}
+
+async function isAgentAccessingRestrictedSpace(
+  dustAPI: DustAPI,
+  activeAgentConfigurations: LightAgentConfigurationType[],
+  agentId: string
+): Promise<Result<boolean, Error>> {
+  try {
+    const agent = activeAgentConfigurations.find((ac) => ac.sId === agentId);
+    if (!agent) {
+      logger.warn(
+        { agentId },
+        "Agent not found when checking for restricted space"
+      );
+      return new Err(new Error(`Agent ${agentId} not found`));
+    }
+
+    // If the agent has no requestedGroupIds, it's not from a restricted space
+    if (!agent.requestedGroupIds || agent.requestedGroupIds.length === 0) {
+      return new Ok(false);
+    }
+
+    const agentGroupIds = agent.requestedGroupIds.flat();
+
+    const spacesRes = await dustAPI.getSpaces();
+    if (spacesRes.isErr()) {
+      logger.error(
+        { error: spacesRes.error, agentId },
+        "Error fetching spaces when checking for restricted space"
+      );
+      return new Err(
+        new Error(`Error fetching spaces: ${spacesRes.error.message}`)
+      );
+    }
+
+    // Check if any of the agent's group IDs match with groups from restricted spaces
+    const restrictedSpaces = spacesRes.value.filter(
+      (space) => space.isRestricted
+    );
+    const isFromRestrictedSpace = restrictedSpaces.some((space) => {
+      return space.groupIds.some((groupId) => agentGroupIds.includes(groupId));
+    });
+
+    logger.info(
+      {
+        agentId,
+        isRestricted: isFromRestrictedSpace,
+      },
+      "Checked if agent is from restricted space"
+    );
+
+    return new Ok(isFromRestrictedSpace);
+  } catch (error) {
+    logger.error(
+      { error, agentId },
+      "Error checking if agent is from restricted space"
+    );
+    return new Err(
+      new Error(
+        `Error checking if agent ${agentId} is from restricted space: ${error}`
+      )
+    );
+  }
 }

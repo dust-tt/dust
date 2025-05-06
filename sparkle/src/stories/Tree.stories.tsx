@@ -17,6 +17,8 @@ import {
   DustIcon,
   EyeIcon,
   FolderIcon,
+  HistoryIcon,
+  Icon,
   IconButton,
   PlusCircleIcon,
   Tree,
@@ -129,6 +131,21 @@ export const TreeExample = () => {
                           variant="outline"
                         />
                       </>
+                    }
+                  />
+
+                  <Tree.Item
+                    label="t"
+                    visual={DocumentIcon}
+                    type="leaf"
+                    actions={
+                      <div className="s-flex s-grow s-flex-row s-items-center s-justify-between">
+                        <Button size="mini" variant="outline" icon={EyeIcon} />
+                        <div className="s-flex s-flex-row s-items-center s-gap-1 s-text-sm s-text-muted-foreground">
+                          <Icon visual={HistoryIcon} size="xs" />
+                          1y
+                        </div>
+                      </div>
                     }
                   />
                 </Tree>
@@ -533,21 +550,21 @@ export const TreeExample = () => {
                     }}
                   />
                   <Tree.Item
-                    label="Item 2"
-                    checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
-                      },
-                    }}
-                  />
-                  <Tree.Item
                     label="Item 3"
                     type="leaf"
                     checkbox={{
                       checked: "partial",
                       onCheckedChange: () => {
                         return;
+                      },
+                    }}
+                  />
+                  <Tree.Item
+                    label="Item 2"
+                    checkbox={{
+                      checked: checked["Item 2"],
+                      onCheckedChange: () => {
+                        check("Item 2");
                       },
                     }}
                   />
@@ -739,7 +756,7 @@ export const SelectDataSourceExample = () => {
                     <span className="s-text-sm s-text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
-                    <Chip size="sm" color="pink" label="Syncing (235)" />
+                    <Chip size="sm" color="green" label="Syncing (235)" />
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
@@ -759,7 +776,7 @@ export const SelectDataSourceExample = () => {
                     <span className="s-text-sm s-text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
-                    <Chip size="sm" color="pink" label="Syncing (235)" />
+                    <Chip size="sm" color="green" label="Syncing (235)" />
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
@@ -778,7 +795,7 @@ export const SelectDataSourceExample = () => {
                     <span className="s-text-sm s-text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
-                    <Chip size="sm" color="pink" label="Syncing (235)" />
+                    <Chip size="sm" color="green" label="Syncing (235)" />
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
@@ -806,7 +823,7 @@ export const SelectDataSourceExample = () => {
                     <span className="s-text-sm s-text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
-                    <Chip size="sm" color="pink" label="Syncing (235)" />
+                    <Chip size="sm" color="green" label="Syncing (235)" />
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}

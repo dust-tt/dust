@@ -227,7 +227,7 @@ export default function LLM({
                     (stop: string, i: number) => (
                       <div
                         key={i}
-                        className="flex rounded-md bg-slate-100 px-1"
+                        className="flex rounded-md bg-muted-background px-1"
                       >
                         {stop}
                       </div>
@@ -380,7 +380,7 @@ export default function LLM({
                     <TextareaAutosize
                       minRows={1}
                       className={classNames(
-                        "block w-full resize-none rounded-md bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
+                        "block w-full resize-none rounded-md bg-muted-background px-1 py-1 font-mono text-[13px] font-normal",
                         readOnly
                           ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
@@ -402,7 +402,7 @@ export default function LLM({
                     <TextareaAutosize
                       minRows={1}
                       className={classNames(
-                        "block w-full resize-none rounded-md bg-slate-100 px-1 py-1 font-mono text-[13px] font-normal",
+                        "block w-full resize-none rounded-md bg-muted-background px-1 py-1 font-mono text-[13px] font-normal",
                         readOnly
                           ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
@@ -446,7 +446,7 @@ export default function LLM({
                 onChange={(e) => handlePromptChange(e.target.value)}
                 padding={3}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
                   fontSize: 13,
                   fontFamily:

@@ -4,6 +4,7 @@ import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
+import type { PlatformMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
@@ -20,6 +21,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -192,6 +194,8 @@ async function handler(
           },
         });
       }
+
+      //TODO(agent-discovery): Remove this once old scopes are removed
       if (
         bodyValidation.right.assistant.scope === "workspace" &&
         !auth.isBuilder()
@@ -309,13 +313,17 @@ export async function createOrUpgradeAgentConfiguration({
     if (actionsWithoutDesc.length) {
       return new Err(
         Error(
-          `Every action must have a description. Missing names for: ${actionsWithoutDesc
+          `Every action must have a description. Missing descriptions for: ${actionsWithoutDesc
             .map((action) => action.type)
             .join(", ")}`
         )
       );
     }
   }
+
+  const editors = (
+    await UserResource.fetchByIds(assistant.editors.map((e) => e.sId))
+  ).map((e) => e.toJSON());
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
@@ -333,6 +341,8 @@ export async function createOrUpgradeAgentConfiguration({
       auth,
       actions
     ),
+    tags: assistant.tags,
+    editors,
   });
 
   if (agentConfigurationRes.isErr()) {
@@ -412,7 +422,7 @@ export async function createOrUpgradeAgentConfiguration({
           type: "process_configuration",
           dataSources: action.dataSources,
           relativeTimeFrame: action.relativeTimeFrame,
-          schema: action.schema,
+          jsonSchema: action.jsonSchema ?? null,
           name: action.name ?? null,
           description: action.description ?? null,
         },
@@ -485,11 +495,16 @@ export async function createOrUpgradeAgentConfiguration({
         auth,
         {
           type: "mcp_server_configuration",
-          mcpServerViewId: action.mcpServerViewId,
           name: action.name,
           description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
-          dataSources: action.dataSources,
-        },
+          mcpServerViewId: action.mcpServerViewId,
+          dataSources: action.dataSources || null,
+          reasoningModel: action.reasoningModel,
+          tables: action.tables,
+          childAgentId: action.childAgentId,
+          additionalConfiguration: action.additionalConfiguration,
+          timeFrame: action.timeFrame,
+        } as PlatformMCPServerConfigurationType,
         agentConfigurationRes.value
       );
       if (res.isErr()) {
@@ -498,6 +513,7 @@ export async function createOrUpgradeAgentConfiguration({
         await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
         return res;
       }
+      actionConfigs.push(res.value);
     } else {
       assertNever(action);
     }

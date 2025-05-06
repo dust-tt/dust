@@ -26,6 +26,11 @@ export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 export const REASONING_EFFORT_IDS = ["low", "medium", "high"] as const;
 export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
 
+export const isReasoningEffortId = (
+  reasoningEffortId: string
+): reasoningEffortId is ReasoningEffortIdType =>
+  REASONING_EFFORT_IDS.includes(reasoningEffortId as ReasoningEffortIdType);
+
 export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
 export const EMBEDDING_PROVIDER_IDS = [
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -60,7 +65,7 @@ export function getSmallWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4O_MINI_MODEL_CONFIG;
+    return GPT_4_1_MINI_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
     return CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG;
@@ -81,7 +86,7 @@ export function getLargeWhitelistedModel(
     return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4O_MODEL_CONFIG;
+    return GPT_4_1_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
@@ -99,11 +104,16 @@ export function getLargeWhitelistedModel(
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_4O_MODEL_ID = "gpt-4o" as const;
+export const GPT_4_1_MODEL_ID = "gpt-4.1-2025-04-14" as const;
+export const GPT_4_1_MINI_MODEL_ID = "gpt-4.1-mini-2025-04-14" as const;
 export const GPT_4O_20240806_MODEL_ID = "gpt-4o-2024-08-06" as const;
 export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
 export const O1_MODEL_ID = "o1" as const;
 export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const O3_MINI_MODEL_ID = "o3-mini" as const;
+export const O3_MODEL_ID = "o3" as const;
+
+export const O4_MINI_MODEL_ID = "o4-mini" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
@@ -121,17 +131,23 @@ export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
 export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
+
 export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
   "gemini-1.5-flash-latest" as const;
+export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
+export const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
+export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-preview-03-25";
+
+// These Gemini preview models are deprecated (either replaced by a GA model or not making it to GA)
 export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
 export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID =
   "gemini-2.0-flash-thinking-exp-01-21" as const;
-export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
 export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID =
   "gemini-2.0-flash-lite-preview-02-05" as const;
 export const GEMINI_2_PRO_PREVIEW_MODEL_ID =
   "gemini-2.0-pro-exp-02-05" as const;
+
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID =
   "meta-llama/Llama-3.3-70B-Instruct-Turbo" as const;
 export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID =
@@ -153,11 +169,15 @@ export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
+  GPT_4_1_MODEL_ID,
+  GPT_4_1_MINI_MODEL_ID,
   GPT_4O_20240806_MODEL_ID,
   GPT_4O_MINI_MODEL_ID,
   O1_MODEL_ID,
   O1_MINI_MODEL_ID,
+  O3_MODEL_ID,
   O3_MINI_MODEL_ID,
+  O4_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
   CLAUDE_3_5_SONNET_20241022_MODEL_ID,
@@ -172,11 +192,13 @@ export const MODEL_IDS = [
   MISTRAL_CODESTRAL_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
-  GEMINI_2_FLASH_PREVIEW_MODEL_ID,
-  GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+  GEMINI_2_FLASH_LITE_MODEL_ID,
   GEMINI_2_FLASH_MODEL_ID,
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
+  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
   GEMINI_2_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+  GEMINI_2_FLASH_PREVIEW_MODEL_ID,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
@@ -243,6 +265,9 @@ export type ModelConfigurationType = {
   // Only used for O-series OpenAI models.
   reasoningEffort?: AgentReasoningEffort;
 
+  // Denotes model is able to take a response format request parameter
+  supportsResponseFormat?: boolean;
+
   featureFlag?: WhitelistableFeature;
   customAssistantFeatureFlag?: WhitelistableFeature;
 };
@@ -267,6 +292,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: false,
+  supportsResponseFormat: false,
 };
 
 export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
@@ -283,6 +309,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: true,
+  supportsResponseFormat: false,
 };
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -293,10 +320,41 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description: "OpenAI's GPT 4o model (128k context).",
-  shortDescription: "OpenAI's most advanced model.",
+  shortDescription: "OpenAI's GPT4-o model.",
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  supportsResponseFormat: true,
+};
+export const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_4_1_MINI_MODEL_ID,
+  displayName: "GPT 4.1 mini",
+  contextSize: 1_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description: "OpenAI's GPT 4.1 mini model (1M context).",
+  shortDescription: "OpenAI's most advanced mini model.",
+  isLegacy: false,
+  generationTokensCount: 32_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+};
+export const GPT_4_1_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_4_1_MODEL_ID,
+  displayName: "GPT 4.1",
+  contextSize: 1_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description: "OpenAI's GPT 4.1 model (1M context).",
+  shortDescription: "OpenAI's most advanced model.",
+  isLegacy: false,
+  generationTokensCount: 32_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
 };
 export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -307,10 +365,11 @@ export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description: "OpenAI's GPT 4o model (128k context).",
-  shortDescription: "OpenAI's most advanced model.",
+  shortDescription: "OpenAI's older most advanced model.",
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  supportsResponseFormat: true,
 };
 export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -326,6 +385,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: true,
+  supportsResponseFormat: false,
 };
 export const O1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -343,6 +403,7 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   featureFlag: "openai_o1_feature",
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+  supportsResponseFormat: false,
 };
 export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -362,6 +423,7 @@ export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   featureFlag: "openai_o1_high_reasoning_feature",
   customAssistantFeatureFlag:
     "openai_o1_high_reasoning_custom_assistants_feature",
+  supportsResponseFormat: false,
 };
 export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -379,7 +441,28 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   featureFlag: "openai_o1_mini_feature",
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+  supportsResponseFormat: false,
 };
+
+export const O3_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O3_MODEL_ID,
+  displayName: "o3",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "OpenAI's most advanced reasoning model particularly good at coding, math, and science.",
+  shortDescription: "OpenAI's best reasoning model.",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: false,
+  supportsResponseFormat: true,
+  featureFlag: "openai_o1_feature",
+  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+};
+
 export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O3_MINI_MODEL_ID,
@@ -394,6 +477,7 @@ export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  supportsResponseFormat: true,
 };
 export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -409,6 +493,41 @@ export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  reasoningEffort: "high",
+  supportsResponseFormat: true,
+};
+
+export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O4_MINI_MODEL_ID,
+  displayName: "o4-mini",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "OpenAI's o4 mini model (200k context).",
+  shortDescription: "OpenAI's fast o4 model.",
+  isLegacy: false,
+  generationTokensCount: 100_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  reasoningEffort: "medium",
+};
+
+export const O4_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O4_MINI_MODEL_ID,
+  displayName: "o4-mini (High Reasoning)",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "OpenAI's o4 mini model (200k context). High reasoning effort.",
+  shortDescription: "OpenAI's fast o4 model.",
+  isLegacy: false,
+  generationTokensCount: 100_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
   reasoningEffort: "high",
 };
 
@@ -457,6 +576,7 @@ const ANTHROPIC_DELIMITERS_CONFIGURATION = {
 const ANTHROPIC_TOOL_USE_META_PROMPT =
   `Immediately before using a tool, think for one short bullet point in \`<thinking>\` tags about ` +
   `how it evaluates against the criteria for a good and bad tool use. ` +
+  `You are restricted to a maximum of MAX_STEPS_USE_PER_RUN tool uses per run. ` +
   `After using a tool, think for one short bullet point in \`<thinking>\` tags to evaluate ` +
   `whether the tools results are enough to answer the user's question. ` +
   `The response to the user must be in \`<response>\` tags. ` +
@@ -705,41 +825,6 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
 };
 
-export const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "google_ai_studio",
-  modelId: GEMINI_2_FLASH_PREVIEW_MODEL_ID,
-  displayName: "Gemini Flash 2.0",
-  contextSize: 1_000_000,
-  recommendedTopK: 64,
-  recommendedExhaustiveTopK: 128,
-  largeModel: true,
-  description:
-    "Google's lightweight, fast and cost-efficient model (1m context).",
-  shortDescription: "Google's cost-effective model (preview).",
-  isLegacy: false,
-  generationTokensCount: 2048,
-  supportsVision: true,
-  featureFlag: "google_ai_studio_experimental_models_feature",
-};
-
-export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "google_ai_studio",
-    modelId: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
-    displayName: "Gemini Flash 2.0 Thinking",
-    contextSize: 32_000,
-    recommendedTopK: 64,
-    recommendedExhaustiveTopK: 128,
-    largeModel: true,
-    description:
-      "Google's lightweight model optimized for reasoning (1m context).",
-    shortDescription: "Google's reasoning-focused model (preview).",
-    isLegacy: false,
-    generationTokensCount: 2048,
-    supportsVision: true,
-    featureFlag: "google_ai_studio_experimental_models_feature",
-  };
-
 export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_FLASH_MODEL_ID,
@@ -755,6 +840,38 @@ export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
 };
 
+export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_FLASH_LITE_MODEL_ID,
+  displayName: "Gemini Flash 2.0 Lite",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "Google's lightweight large context model (1m context).",
+  shortDescription: "Google's lightweight model.",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+};
+
+// Current Preview model
+export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
+  displayName: "Gemini 2.5 Pro Preview",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "Google's powerful large context model (1m context).",
+  shortDescription: "Google's powerful model (preview).",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+};
+
+// DEPRECATED -- Replaced by GA model
 export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "google_ai_studio",
@@ -772,6 +889,25 @@ export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
     featureFlag: "google_ai_studio_experimental_models_feature",
   };
 
+// DEPRECATED -- Replaced by GA model
+export const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_FLASH_PREVIEW_MODEL_ID,
+  displayName: "Gemini Flash 2.0",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description:
+    "Google's lightweight, fast and cost-efficient model (1m context).",
+  shortDescription: "Google's cost-effective model (preview).",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  featureFlag: "google_ai_studio_experimental_models_feature",
+};
+
+// DEPRECATED -- Not making it to GA
 export const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_PRO_PREVIEW_MODEL_ID,
@@ -787,6 +923,25 @@ export const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   featureFlag: "google_ai_studio_experimental_models_feature",
 };
+
+// DEPRECATED -- Not making it to GA
+export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "google_ai_studio",
+    modelId: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+    displayName: "Gemini Flash 2.0 Thinking",
+    contextSize: 32_000,
+    recommendedTopK: 64,
+    recommendedExhaustiveTopK: 128,
+    largeModel: true,
+    description:
+      "Google's lightweight model optimized for reasoning (1m context).",
+    shortDescription: "Google's reasoning-focused model (preview).",
+    isLegacy: false,
+    generationTokensCount: 2048,
+    supportsVision: true,
+    featureFlag: "google_ai_studio_experimental_models_feature",
+  };
 
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -947,11 +1102,16 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_4O_MODEL_CONFIG,
   GPT_4O_20240806_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,
+  GPT_4_1_MODEL_CONFIG,
+  GPT_4_1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
   O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
+  O3_MODEL_CONFIG,
   O3_MINI_MODEL_CONFIG,
   O3_MINI_HIGH_REASONING_MODEL_CONFIG,
+  O4_MINI_MODEL_CONFIG,
+  O4_MINI_HIGH_REASONING_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -971,6 +1131,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GEMINI_2_FLASH_MODEL_CONFIG,
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG,
   GEMINI_2_PRO_PREVIEW_MODEL_CONFIG,
+  GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG,
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG,
@@ -1000,6 +1161,13 @@ export function isSupportedModel(model: unknown): model is SupportedModel {
   );
 }
 
+export function isSupportingResponseFormat(modelId: ModelIdType) {
+  const model = SUPPORTED_MODEL_CONFIGS.find(
+    (config) => config.modelId === modelId
+  );
+  return model?.supportsResponseFormat;
+}
+
 /**
  * Global agent list (stored here to be imported from client-side)
  */
@@ -1018,6 +1186,7 @@ export enum GLOBAL_AGENTS_SID {
   O1_MINI = "o1-mini",
   O1_HIGH_REASONING = "o1_high",
   O3_MINI = "o3-mini",
+  O3 = "o3",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
@@ -1041,6 +1210,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
     case GLOBAL_AGENTS_SID.O1_MINI:
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
     case GLOBAL_AGENTS_SID.O3_MINI:
+    case GLOBAL_AGENTS_SID.O3:
       return "OpenAI";
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
@@ -1072,6 +1242,7 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.GITHUB,
   GLOBAL_AGENTS_SID.INTERCOM,
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+  GLOBAL_AGENTS_SID.O3,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
   GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,

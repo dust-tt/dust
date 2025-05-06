@@ -1,8 +1,7 @@
-import { Avatar, Hover3D, Icon } from "@dust-tt/sparkle";
-import type { FC } from "react";
+import { Avatar, Icon } from "@dust-tt/sparkle";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/ContentComponents";
+import { H2 } from "@app/components/home/ContentComponents";
 
 type SparkleIcon = React.ComponentType<{
   className?: string;
@@ -23,59 +22,47 @@ export interface MetricProps {
     value: string;
     description: React.ReactNode;
   }[];
-  from: string;
-  to: string;
+  color?: "blue" | "green" | "rose" | "golden";
 }
 
 interface BenefitsSectionProps {
   benefits: BenefitsProps;
-  fromColor: string;
-  toColor: string;
+  page?: string;
 }
 
-export const BenefitsSection: FC<BenefitsSectionProps> = ({
-  benefits,
-  fromColor,
-  toColor,
-}) => (
-  <section className="w-full py-12 pb-0">
-    <Grid>
-      <div className="col-span-12 mb-2">
-        <H2 from={fromColor} to={toColor}>
-          {benefits.sectionTitle}
-        </H2>
-      </div>
+export function BenefitsSection({ benefits }: BenefitsSectionProps) {
+  return (
+    <section className="mt-16 w-full">
+      {benefits.sectionTitle && (
+        <div className="mb-8">
+          <H2>{benefits.sectionTitle}</H2>
+        </div>
+      )}
 
-      <div className="col-span-12 grid grid-cols-1 gap-8 pt-8 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-8 lg:grid-cols-3 lg:gap-8">
         {benefits.items.map((benefit, index) => (
           <ImgBlock
             key={index}
-            title={
-              <div className="text-center md:text-left">{benefit.title}</div>
-            }
+            title={<div className="md:text-left">{benefit.title}</div>}
             content={<>{benefit.description}</>}
-            className="h-full flex-1 text-center md:text-left"
+            className="h-full flex-1 md:text-left"
           >
-            <Hover3D
-              depth={-20}
-              perspective={1000}
-              className="relative flex h-8 items-center justify-center sm:justify-start"
-            >
+            <div className="relative flex h-8 items-center justify-center sm:justify-start">
               <Avatar
                 size="xl"
                 visual={
                   <Icon
                     visual={benefit.icon}
-                    className="text-slate-300"
+                    className="text-primary-200"
                     size="xl"
                   />
                 }
-                backgroundColor="bg-slate-700"
+                backgroundColor="bg-primary-700"
               />
-            </Hover3D>
+            </div>
           </ImgBlock>
         ))}
       </div>
-    </Grid>
-  </section>
-);
+    </section>
+  );
+}

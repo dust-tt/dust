@@ -29,15 +29,15 @@ const meta = {
     },
     variant: {
       options: [
-        "amber",
-        "slate",
-        "emerald",
-        "pink",
-        "purple",
+        "primary",
         "warning",
-        "sky",
-        "action",
-        "red",
+        "success",
+        "highlight",
+        "info",
+        "green",
+        "blue",
+        "rose",
+        "golden",
       ],
       control: { type: "select" },
       description: "Visual style variant",
@@ -70,7 +70,7 @@ export const Basic: Story = {
 export const WithList: Story = {
   args: {
     title: "Agent Thoughts",
-    variant: "slate",
+    variant: "primary",
     size: "md",
     children: (
       <ul className="s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0">
@@ -105,4 +105,43 @@ export const MultiParagraph: Story = {
     ),
     size: "md",
   },
+};
+
+export const ColorVariants: Story = {
+  render: () => (
+    <div className="s-grid s-grid-cols-1 s-gap-4 sm:s-grid-cols-2 lg:s-grid-cols-3">
+      {[
+        "primary",
+        "warning",
+        "success",
+        "highlight",
+        "info",
+        "green",
+        "blue",
+        "rose",
+        "golden",
+      ].map((variant) => (
+        <ContentMessage
+          key={variant}
+          title={`${variant.charAt(0).toUpperCase() + variant.slice(1)} Variant`}
+          variant={
+            variant as
+              | "primary"
+              | "warning"
+              | "success"
+              | "highlight"
+              | "info"
+              | "green"
+              | "blue"
+              | "rose"
+              | "golden"
+          }
+          size="md"
+        >
+          This is a {variant} variant message. It shows how the component looks
+          with this color scheme.
+        </ContentMessage>
+      ))}
+    </div>
+  ),
 };

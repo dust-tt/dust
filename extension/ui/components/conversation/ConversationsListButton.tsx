@@ -1,3 +1,4 @@
+import { removeDiacritics, subFilter } from "@app/shared/lib/utils";
 import { useConversations } from "@app/ui/components/conversation/useConversations";
 import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import {
@@ -8,12 +9,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSearchbar,
   DropdownMenuTrigger,
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
 import React from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 type GroupLabel =
@@ -27,6 +30,7 @@ type GroupLabel =
 const Content = () => {
   const { conversations, isConversationsLoading } = useConversations();
   const { conversationId } = useParams();
+  const [titleFilter, setTitleFilter] = useState("");
 
   const navigate = useNavigate();
 
@@ -57,6 +61,16 @@ const Content = () => {
     };
 
     conversations.forEach((conversation) => {
+      if (
+        titleFilter &&
+        !subFilter(
+          removeDiacritics(titleFilter).toLowerCase(),
+          removeDiacritics(conversation.title ?? "").toLowerCase()
+        )
+      ) {
+        return;
+      }
+
       const updatedAt = moment(conversation.updated ?? conversation.created);
       if (updatedAt.isSameOrAfter(today)) {
         groups["Today"].push(conversation);
@@ -80,40 +94,52 @@ const Content = () => {
     ? groupConversationsByDate(conversations)
     : ({} as Record<GroupLabel, ConversationWithoutContentPublicType[]>);
 
-  return isConversationsLoading ? (
-    <div className="flex items-center justify-center m-4">
-      <Spinner size="xs" />
-    </div>
-  ) : (
-    <ScrollArea className="h-[80vh]">
-      {Object.keys(conversationsByDate).map((dateLabel) => (
-        <React.Fragment key={dateLabel}>
-          {conversationsByDate[dateLabel as GroupLabel].length > 0 && (
-            <DropdownMenuLabel
-              label={dateLabel}
-              className={classNames(
-                "text-foreground dark:text-foreground-night"
+  return (
+    <>
+      <DropdownMenuSearchbar
+        onChange={setTitleFilter}
+        value={titleFilter}
+        name="search"
+      />
+
+      {isConversationsLoading ? (
+        <div className="flex items-center justify-center m-4">
+          <Spinner size="xs" />
+        </div>
+      ) : (
+        <ScrollArea className="h-[80vh]">
+          {Object.keys(conversationsByDate).map((dateLabel) => (
+            <React.Fragment key={dateLabel}>
+              {conversationsByDate[dateLabel as GroupLabel].length > 0 && (
+                <DropdownMenuLabel
+                  label={dateLabel}
+                  className={classNames(
+                    "text-foreground dark:text-foreground-night"
+                  )}
+                />
               )}
-            />
-          )}
-          {conversationsByDate[dateLabel as GroupLabel].map((conversation) => (
-            <DropdownMenuItem
-              key={conversation.sId}
-              label={conversation.title || "Untitled Conversation"}
-              className={classNames(
-                "text-sm text-muted-foreground dark:text-muted-foreground-night font-normal",
-                conversationId === conversation.sId
-                  ? "bg-primary-50 dark:bg-primary-50-night"
-                  : ""
+              {conversationsByDate[dateLabel as GroupLabel].map(
+                (conversation) => (
+                  <DropdownMenuItem
+                    key={conversation.sId}
+                    label={conversation.title || "Untitled Conversation"}
+                    className={classNames(
+                      "text-sm text-muted-foreground dark:text-muted-foreground-night font-normal",
+                      conversationId === conversation.sId
+                        ? "bg-primary-50 dark:bg-primary-50-night"
+                        : ""
+                    )}
+                    onClick={() => {
+                      navigate(`/conversations/${conversation.sId}`);
+                    }}
+                  />
+                )
               )}
-              onClick={() => {
-                navigate(`/conversations/${conversation.sId}`);
-              }}
-            />
+            </React.Fragment>
           ))}
-        </React.Fragment>
-      ))}
-    </ScrollArea>
+        </ScrollArea>
+      )}
+    </>
   );
 };
 

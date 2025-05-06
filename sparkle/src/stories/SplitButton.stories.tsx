@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { BUTTON_SIZES, BUTTON_VARIANTS } from "@sparkle/components/Button";
-import { ArrowUpIcon, ChevronDownIcon } from "@sparkle/icons";
+import { ArrowUpIcon, ChevronDownIcon } from "@sparkle/icons/app";
 
 import {
   Button,

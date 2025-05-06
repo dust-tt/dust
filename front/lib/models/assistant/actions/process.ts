@@ -1,13 +1,12 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type {
-  ProcessActionOutputsType,
-  ProcessSchemaPropertyType,
-} from "@app/lib/actions/process";
+import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { TimeframeUnit } from "@app/types";
 
@@ -23,7 +22,7 @@ export class AgentProcessConfiguration extends WorkspaceAwareModel<AgentProcessC
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
-  declare schema: ProcessSchemaPropertyType[];
+  declare jsonSchema: JSONSchema | null;
 
   declare name: string | null;
   declare description: string | null;
@@ -58,9 +57,9 @@ AgentProcessConfiguration.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    schema: {
+    jsonSchema: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: true,
     },
     name: {
       type: DataTypes.STRING,
@@ -123,7 +122,7 @@ export class AgentProcessAction extends WorkspaceAwareModel<AgentProcessAction> 
   declare tagsIn: string[] | null;
   declare tagsNot: string[] | null;
 
-  declare schema: ProcessSchemaPropertyType[];
+  declare jsonSchema: JSONSchema | null;
   declare outputs: ProcessActionOutputsType | null;
   declare functionCallId: string | null;
   declare functionCallName: string | null;
@@ -131,6 +130,10 @@ export class AgentProcessAction extends WorkspaceAwareModel<AgentProcessAction> 
   declare step: number;
 
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+
+  declare jsonFileId: ForeignKey<FileModel["id"]> | null;
+  declare jsonFileSnippet: string | null;
+  declare jsonFile: NonAttribute<FileModel>;
 }
 AgentProcessAction.init(
   {
@@ -168,9 +171,9 @@ AgentProcessAction.init(
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
-    schema: {
+    jsonSchema: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: true,
     },
     outputs: {
       type: DataTypes.JSONB,
@@ -188,6 +191,10 @@ AgentProcessAction.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    jsonFileSnippet: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_process_action",
@@ -195,6 +202,10 @@ AgentProcessAction.init(
     indexes: [
       {
         fields: ["agentMessageId"],
+        concurrently: true,
+      },
+      {
+        fields: ["jsonFileId"],
         concurrently: true,
       },
     ],
@@ -219,4 +230,14 @@ AgentProcessAction.belongsTo(AgentMessage, {
 });
 AgentMessage.hasMany(AgentProcessAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+FileModel.hasMany(AgentProcessAction, {
+  foreignKey: { name: "jsonFileId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AgentProcessAction.belongsTo(FileModel, {
+  as: "jsonFile",
+  foreignKey: { name: "jsonFileId", allowNull: true },
+  onDelete: "SET NULL",
 });

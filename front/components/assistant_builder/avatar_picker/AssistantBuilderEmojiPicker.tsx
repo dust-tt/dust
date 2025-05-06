@@ -40,7 +40,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
   const [selectedEmoji, setSelectedEmoji] = useState<SelectedEmojiType | null>(
     null
   );
-  const [selectedBgColor, setSelectedBgColor] = useState(
+  const [selectedBgColor, setSelectedBgColor] = useState<`bg-${string}`>(
     DEFAULT_BACKGROUND_COLOR
   );
 
@@ -88,7 +88,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
               label="Pick an Emoji"
             />
           </PopoverTrigger>
-          <PopoverContent className="p-4" fullWidth>
+          <PopoverContent fullWidth>
             <EmojiPicker
               theme="light"
               previewPosition="none"
@@ -109,13 +109,14 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
           <PopoverTrigger asChild>
             <Button variant="outline" icon={PaintIcon} label="Pick a color" />
           </PopoverTrigger>
-          <PopoverContent mountPortal={false} className="p-4" fullWidth>
+          <PopoverContent mountPortal={false} fullWidth>
             <ColorPicker
+              selectedColor={selectedBgColor}
               colors={
                 generateTailwindBackgroundColors() as avatarUtils.AvatarBackgroundColorType[]
               }
               onColorSelect={(color) => {
-                setSelectedBgColor(color);
+                setSelectedBgColor(color as `bg-${string}`);
                 // We only mark as stale if an emoji has been selected.
                 if (selectedEmoji) {
                   onChange();

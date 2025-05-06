@@ -6,7 +6,7 @@ import {
   CheckCircleIcon,
   InformationCircleIcon,
   XCircleIcon,
-} from "@sparkle/icons";
+} from "@sparkle/icons/app";
 import { assertNever, cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -73,9 +73,7 @@ function NotificationContent({ type, title, description }: NotificationType) {
         <div
           className={cn(
             "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
-            type === "success"
-              ? "s-text-success-600 dark:s-text-success-400-night"
-              : "s-text-warning-500 dark:s-text-warning-500-night"
+            variantClassName({ type })
           )}
         >
           {title || type}

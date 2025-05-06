@@ -14,8 +14,9 @@ import { useContext } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -98,7 +99,7 @@ export default function DatasetsView({
   };
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
@@ -167,7 +168,7 @@ export default function DatasetsView({
                             {readOnly ? null : (
                               <div className="ml-2 flex flex-shrink-0">
                                 <TrashIcon
-                                  className="hidden h-4 w-4 text-gray-400 hover:text-red-600 group-hover:block dark:text-gray-400-night"
+                                  className="hidden h-4 w-4 text-gray-400 hover:text-warning group-hover:block dark:text-gray-400-night"
                                   onClick={async (e) => {
                                     e.preventDefault();
                                     await handleDelete(d.name);
@@ -200,9 +201,9 @@ export default function DatasetsView({
                 <div className="mt-2 max-w-4xl px-2">
                   <div className="py-2 text-sm text-gray-400 dark:text-gray-400-night">
                     Datasets are used as input data to apps (
-                    <Chip label="input" color="slate" /> block) or few-shot
-                    examples to prompt models (
-                    <Chip label="data" color="slate" /> block).
+                    <Chip label="input" /> block) or few-shot examples to prompt
+                    models (
+                    <Chip label="data" /> block).
                   </div>
                 </div>
               </div>
@@ -210,6 +211,10 @@ export default function DatasetsView({
           </div>
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+DatasetsView.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

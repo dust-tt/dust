@@ -1,7 +1,14 @@
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { escape } from "html-escaper";
+import type {
+  Attributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
@@ -24,6 +31,8 @@ export interface SearchMembersPaginationParams {
   offset: number;
   limit: number;
 }
+
+const USER_METADATA_COMMA_SEPARATOR = ",";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -165,6 +174,10 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   async updateName(firstName: string, lastName: string | null) {
+    firstName = escape(firstName);
+    if (lastName) {
+      lastName = escape(lastName);
+    }
     return this.update({
       firstName,
       lastName,
@@ -177,6 +190,10 @@ export class UserResource extends BaseResource<UserModel> {
     lastName: string | null,
     email: string
   ) {
+    firstName = escape(firstName);
+    if (lastName) {
+      lastName = escape(lastName);
+    }
     const lowerCaseEmail = email.toLowerCase();
     return this.update({
       username,
@@ -191,6 +208,13 @@ export class UserResource extends BaseResource<UserModel> {
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     await this.deleteAllMetadata();
+
+    await LabsPersonalSalesforceConnection.destroy({
+      where: {
+        userId: this.id,
+      },
+      transaction,
+    });
 
     try {
       await this.model.destroy({
@@ -250,6 +274,34 @@ export class UserResource extends BaseResource<UserModel> {
     }
 
     await metadata.update({ value });
+  }
+
+  async deleteMetadata(where: WhereOptions<UserMetadataModel>) {
+    return UserMetadataModel.destroy({
+      where: {
+        ...where,
+        userId: this.id,
+      },
+    });
+  }
+
+  async appendToMetadata(key: string, value: string) {
+    const metadata = await UserMetadataModel.findOne({
+      where: {
+        userId: this.id,
+        key,
+      },
+    });
+    if (!metadata) {
+      await UserMetadataModel.create({
+        userId: this.id,
+        key,
+        value,
+      });
+      return;
+    }
+    const newValue = `${metadata.value}${USER_METADATA_COMMA_SEPARATOR}${value}`;
+    await metadata.update({ value: newValue });
   }
 
   async deleteAllMetadata() {

@@ -2,7 +2,6 @@ import { Op } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
-import type { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
   Message,
@@ -59,7 +58,7 @@ async function fetchAllAgentsById(
 
 export async function fetchConversationParticipants(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType | Conversation
+  conversation: ConversationWithoutContentType
 ): Promise<Result<ConversationParticipantsType, Error>> {
   const owner = auth.workspace();
   if (!owner) {

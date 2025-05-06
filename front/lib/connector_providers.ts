@@ -18,10 +18,12 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
+import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
-import { SalesforceOauthExtraConfig } from "@app/components/data_source/SalesforceOAuthExtractConfig";
+import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
+import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
@@ -62,7 +64,7 @@ export type ConnectorProviderConfiguration = {
   getLogoComponent: (
     isDark?: boolean
   ) => (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
-  optionsComponent?: (props: ConnectorOptionsProps) => React.JSX.Element;
+  optionsComponent?: ComponentType<ConnectorOptionsProps>;
   description: string;
   mismatchError: string;
   limitations: string | null;
@@ -247,6 +249,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return MicrosoftLogo;
     },
     isNested: true,
+    oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -326,6 +329,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return BigQueryLogo;
     },
+    optionsComponent: BigQueryUseMetadataForDBMLView,
     isNested: true,
     guideLink: "https://docs.dust.tt/docs/bigquery",
     selectLabel: "Select tables",
@@ -355,8 +359,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       unselected: "none",
     },
     isDeletable: true,
-    guideLink:
-      "https://www.notion.so/dust-tt/Dust-Salesforce-Connection-Admin-Guide-for-beta-testers-1b428599d94180508c17ed762af5ef90",
+    guideLink: "https://docs.dust.tt/docs/salesforce",
   },
   gong: {
     name: "Gong",

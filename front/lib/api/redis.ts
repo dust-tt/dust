@@ -2,24 +2,28 @@ import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/withlogging";
+import { statsDClient } from "@app/logger/statsDClient";
 
 let client: RedisClientType;
 
 export type RedisUsageTagsType =
+  | "action_validation"
   | "agent_recent_authors"
   | "agent_usage"
   | "assistant_generation"
   | "cancel_message_generation"
   | "conversation_events"
+  | "lock"
+  | "mcp_local_request"
+  | "mcp_local_results"
   | "mentions_count"
   | "message_events"
+  | "notion_url_sync"
+  | "public_api_limits"
+  | "reasoning_generation"
   | "retry_agent_message"
   | "update_authors"
-  | "user_message_events"
-  | "reasoning_generation"
-  | "notion_url_sync"
-  | "lock";
+  | "user_message_events";
 
 export async function getRedisClient({
   origin,

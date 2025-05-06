@@ -134,7 +134,7 @@ export default function DataSourceView({
               autoComplete="off"
               name="search_query"
               id="search_query"
-              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-action-500 focus:ring-action-500"
+              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-highlight-500 focus:ring-highlight-500"
               onKeyDown={(e) => {
                 if (e.key == "Enter") {
                   setSearchQuery(e.currentTarget.value);
@@ -155,7 +155,7 @@ export default function DataSourceView({
                   <div className="mx-2 py-4">
                     <div className="grid grid-cols-5 items-center justify-between">
                       <div className="col-span-4">
-                        <div className="truncate text-base font-bold text-action-600">
+                        <div className="truncate text-base font-bold text-highlight-600">
                           <div className="flex">
                             <div
                               onClick={() =>
@@ -196,7 +196,7 @@ export default function DataSourceView({
                                     </span>
                                   </div>
                                   <div
-                                    className="ml-2 mr-4 flex-1 cursor-pointer border-l-4 border-slate-400"
+                                    className="ml-2 mr-4 flex-1 cursor-pointer border-l-4 border-border-dark"
                                     onClick={() => {
                                       expandedChunkId == chunkId
                                         ? setExpandedChunkId(null)
@@ -227,7 +227,7 @@ export default function DataSourceView({
               {(() => {
                 if (error) {
                   return (
-                    <p className="text-sm font-bold text-red-400">
+                    <p className="copy-sm font-semibold text-warning">
                       Something went wrong...
                     </p>
                   );

@@ -1,6 +1,7 @@
 import {
   CloudArrowLeftRightIcon,
   CommandLineIcon,
+  CompanyIcon,
   FolderIcon,
   GlobeAltIcon,
   LockIcon,
@@ -10,10 +11,12 @@ import {
 import { groupBy } from "lodash";
 import type React from "react";
 
+import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type {
   DataSourceViewCategory,
   PlanType,
   SpaceType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import { assertNever } from "@app/types";
@@ -38,11 +41,15 @@ export function getSpaceIcon(
     return LockIcon;
   }
 
+  if (space.kind === "global") {
+    return CompanyIcon;
+  }
+
   return ServerIcon;
 }
 
 export const getSpaceName = (space: SpaceType) => {
-  return space.kind === "global" ? "Company Data" : space.name;
+  return space.kind === "global" ? "Company Space" : space.name;
 };
 
 export const dustAppsListUrl = (
@@ -101,6 +108,7 @@ export const CATEGORY_DETAILS: {
     icon: React.ComponentType<{
       className?: string;
     }>;
+    flag?: WhitelistableFeature;
   };
 } = {
   managed: {
@@ -118,6 +126,11 @@ export const CATEGORY_DETAILS: {
   apps: {
     label: "Apps",
     icon: CommandLineIcon,
+  },
+  actions: {
+    label: "Tools",
+    icon: ACTION_SPECIFICATIONS["MCP"].cardIcon,
+    flag: "mcp_actions",
   },
 };
 

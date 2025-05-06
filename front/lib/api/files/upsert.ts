@@ -266,7 +266,10 @@ const upsertExcelToDatasource: ProcessingFunction = async (
 
     await processAndStoreFile(auth, {
       file: worksheetFile,
-      reqOrString: worksheetContent,
+      content: {
+        type: "string",
+        value: worksheetContent,
+      },
     });
 
     tableIds.push(tableId);
@@ -351,7 +354,10 @@ const getProcessingFunction = ({
         useCase === "upsert_table"
       ) {
         return upsertTableToDatasource;
-      } else if (useCase === "upsert_document") {
+      } else if (
+        useCase === "upsert_document" ||
+        useCase === "folders_document"
+      ) {
         return upsertDocumentToDatasource;
       } else {
         return undefined;
@@ -366,7 +372,10 @@ const getProcessingFunction = ({
     case "application/vnd.ms-excel":
       if (useCase === "conversation" || useCase === "upsert_table") {
         return upsertExcelToDatasource;
-      } else if (useCase === "upsert_document") {
+      } else if (
+        useCase === "upsert_document" ||
+        useCase === "folders_document"
+      ) {
         return upsertDocumentToDatasource;
       } else {
         return undefined;
@@ -375,7 +384,12 @@ const getProcessingFunction = ({
 
   if (
     isSupportedPlainTextContentType(contentType) &&
-    ["conversation", "tool_output", "upsert_document"].includes(useCase)
+    [
+      "conversation",
+      "tool_output",
+      "upsert_document",
+      "folders_document",
+    ].includes(useCase)
   ) {
     return upsertDocumentToDatasource;
   }
@@ -392,12 +406,13 @@ const getProcessingFunction = ({
   assertNever(contentType);
 };
 
-export const isUpsertSupported = (arg: {
+export const isFileTypeUpsertableForUseCase = (arg: {
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): boolean => {
-  const processing = getProcessingFunction(arg);
-  return !!processing;
+  const processingFunction = getProcessingFunction(arg);
+
+  return processingFunction !== undefined;
 };
 
 const maybeApplyProcessing: ProcessingFunction = async (
@@ -460,7 +475,7 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  if (!isUpsertSupported(file)) {
+  if (!isFileTypeUpsertableForUseCase(file)) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",

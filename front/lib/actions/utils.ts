@@ -1,22 +1,30 @@
 import type { Icon } from "@dust-tt/sparkle";
 import {
   ChatBubbleThoughtIcon,
-  CommandIcon,
   CommandLineIcon,
   MagnifyingGlassIcon,
   PlanetIcon,
   ScanIcon,
+  SuitcaseIcon,
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";
-import assert from "assert";
 
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import {
+  isMCPActionConfiguration,
+  isMCPActionWithDataSource,
+  isPlatformMCPToolConfiguration,
+  isRetrievalConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
+import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType, WhitelistableFeature } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -27,8 +35,8 @@ export const ACTION_SPECIFICATIONS: Record<
   {
     label: string;
     description: string;
-    dropDownIcon: React.ComponentProps<typeof Icon>["visual"];
-    cardIcon: React.ComponentProps<typeof Icon>["visual"];
+    dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+    cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
     flag: WhitelistableFeature | null;
   }
 > = {
@@ -83,17 +91,17 @@ export const ACTION_SPECIFICATIONS: Record<
     flag: null,
   },
   MCP: {
-    label: "Calling a MCP Server",
-    description: "Call a tool to answer a question.",
-    cardIcon: CommandIcon,
-    dropDownIcon: CommandIcon,
+    label: "More...",
+    description: "Add additional sets of tools",
+    cardIcon: SuitcaseIcon,
+    dropDownIcon: SuitcaseIcon,
     flag: "mcp_actions",
   },
 };
 
 /**
  * This function computes the topK for retrieval actions. This is used by both the action (to
- * compute the topK) and computing the citation counts for retrieval actions.
+ * compute the topK) and computing the citation counts for retrieval actions (mcp included)
  *
  * We share the topK across retrieval actions from the same step. If there are multiple retrieval
  * actions in the same step we get the maximum topK and divide it by the number of retrieval actions
@@ -108,28 +116,35 @@ export function getRetrievalTopK({
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
-  const retrievalActions = stepActions.filter(
-    (action) => action.type === "retrieval_configuration"
-  ) as RetrievalConfigurationType[];
+  const retrievalActions = stepActions.filter(isRetrievalConfiguration);
+  const dataSourceMMCPActions = stepActions.filter(isMCPActionWithDataSource);
+  // TODO(mcp): when we migrate "include" to mcp, this will not work anymore.
 
-  assert(
-    retrievalActions.length > 0,
-    "No retrieval actions found in `getRetrievalTopK`"
-  );
+  const actionsCount = retrievalActions.length + dataSourceMMCPActions.length;
 
-  const topKs = retrievalActions.map((action) => {
-    if (action.topK === "auto") {
-      if (action.query === "none") {
-        return model.recommendedExhaustiveTopK;
+  if (actionsCount === 0) {
+    return 0;
+  }
+
+  const topKs = retrievalActions
+    .map((action) => {
+      if (action.topK === "auto") {
+        if (action.query === "none") {
+          return model.recommendedExhaustiveTopK;
+        } else {
+          return model.recommendedTopK;
+        }
       } else {
-        return model.recommendedTopK;
+        return action.topK;
       }
-    } else {
-      return action.topK;
-    }
-  });
+    })
+    .concat(
+      dataSourceMMCPActions.map(() => {
+        return model.recommendedTopK;
+      })
+    );
 
-  return Math.ceil(Math.max(...topKs) / retrievalActions.length);
+  return Math.ceil(Math.max(...topKs) / actionsCount);
 }
 
 /**
@@ -146,39 +161,33 @@ export function getWebsearchNumResults({
 }: {
   stepActions: ActionConfigurationType[];
 }): number {
-  const websearchActions = stepActions.filter(
-    (action) => action.type === "websearch_configuration"
-  ) as WebsearchConfigurationType[];
-
-  assert(
-    websearchActions.length > 0,
-    "No websearch actions found in `getWebsearchNumResults`"
+  const websearchActions: WebsearchConfigurationType[] = stepActions.filter(
+    isWebsearchConfiguration
   );
 
-  const numResults = websearchActions.map(() => {
-    return WEBSEARCH_ACTION_NUM_RESULTS;
-  });
+  const internalWebsearchV2ActionName: InternalMCPServerNameType =
+    "web_search_&_browse_v2";
+  const websearchV2Actions: MCPToolConfigurationType[] = stepActions
+    .filter(isMCPActionConfiguration)
+    .filter((action) => action.mcpServerName === internalWebsearchV2ActionName);
 
-  return Math.ceil(Math.max(...numResults) / websearchActions.length);
-}
+  const numResults = websearchActions
+    .map(() => {
+      return WEBSEARCH_ACTION_NUM_RESULTS;
+    })
+    .concat(
+      websearchV2Actions.map(() => {
+        return WEBSEARCH_ACTION_NUM_RESULTS;
+      })
+    );
 
-export function getMCPCitationsCount({
-  stepActions,
-}: {
-  stepActions: ActionConfigurationType[];
-}): number {
-  const mcpActions = stepActions.filter(
-    (action) => action.type === "mcp_configuration"
-  ) as MCPToolConfigurationType[];
+  const totalActions = websearchActions.length + websearchV2Actions.length;
 
-  assert(
-    mcpActions.length > 0,
-    "No MCP actions found in `getMCPCitationsCount`"
-  );
+  if (totalActions === 0) {
+    return 0;
+  }
 
-  //TODO(mcp) as mcp server might want to output multiple citations, here we should inspect the arguments
-  // of the tool to determine the number of actions using citations and compute the citations count accordingly.
-  return 0;
+  return Math.ceil(Math.max(...numResults) / totalActions);
 }
 
 /**
@@ -220,7 +229,15 @@ export function getCitationsCount({
     case "reasoning_configuration":
       return 0;
     case "mcp_configuration":
-      return getMCPCitationsCount({
+      const internalWebsearchV2ActionName: InternalMCPServerNameType =
+        "web_search_&_browse_v2";
+      if (action.mcpServerName === internalWebsearchV2ActionName) {
+        return getWebsearchNumResults({
+          stepActions,
+        });
+      }
+      return getRetrievalTopK({
+        agentConfiguration,
         stepActions,
       });
     default:
@@ -259,4 +276,59 @@ export function actionRefsOffset({
   }
 
   return refsOffset;
+}
+
+export function getMCPApprovalKey({
+  conversationId,
+  messageId,
+  actionId,
+}: {
+  conversationId: string;
+  messageId: string;
+  actionId: number;
+}): string {
+  return `conversation:${conversationId}:message:${messageId}:action:${actionId}`;
+}
+
+export async function getExecutionStatusFromConfig(
+  auth: Authenticator,
+  actionConfiguration: MCPToolConfigurationType
+): Promise<{
+  stake?: MCPToolStakeLevelType;
+  status: "allowed_implicitly" | "pending";
+  serverId?: string;
+}> {
+  if (!isPlatformMCPToolConfiguration(actionConfiguration)) {
+    return { status: "pending" };
+  }
+
+  /**
+   * Permissions:
+   * - "never_ask": Automatically approved
+   * - "low": Ask user for approval and allow to automatically approve next time
+   * - "high": Ask for approval each time
+   * - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
+   */
+  switch (actionConfiguration.permission) {
+    case "never_ask":
+      return { status: "allowed_implicitly" };
+    case "low": {
+      const user = auth.getNonNullableUser();
+      const neverAskSetting = await user.getMetadata(
+        `toolsValidations:${actionConfiguration.toolServerId}`
+      );
+
+      if (
+        neverAskSetting &&
+        neverAskSetting.value.includes(`${actionConfiguration.name}`)
+      ) {
+        return { status: "allowed_implicitly" };
+      }
+      return { status: "pending" };
+    }
+    case "high":
+      return { status: "pending" };
+    default:
+      assertNever(actionConfiguration.permission);
+  }
 }

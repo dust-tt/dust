@@ -4,6 +4,7 @@ export const OAUTH_USE_CASES = [
   "connection",
   "labs_transcripts",
   "platform_actions",
+  "salesforce_personal",
 ] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
@@ -23,6 +24,7 @@ export const OAUTH_PROVIDERS = [
   "microsoft",
   "zendesk",
   "salesforce",
+  "hubspot",
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
@@ -36,6 +38,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   microsoft: "Microsoft",
   zendesk: "Zendesk",
   salesforce: "Salesforce",
+  hubspot: "Hubspot",
 };
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
@@ -98,11 +101,23 @@ export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
 export type ProvidersWithWorkspaceConfigurations =
   (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
 
+export const LABS_CONNECTION_PROVIDERS = ["hubspot", "linear"] as const;
+
+export type LabsConnectionProvider = (typeof LABS_CONNECTION_PROVIDERS)[number];
+
+export function isLabsConnectionProvider(
+  obj: unknown
+): obj is LabsConnectionProvider {
+  return LABS_CONNECTION_PROVIDERS.includes(obj as LabsConnectionProvider);
+}
+
 export const CREDENTIALS_PROVIDERS = [
   "snowflake",
-  "modjo",
   "bigquery",
   "salesforce",
+  // LABS
+  "modjo",
+  ...LABS_CONNECTION_PROVIDERS,
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
@@ -170,6 +185,13 @@ export const ApiKeyCredentialsSchema = t.type({
   api_key: t.string,
 });
 export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
+export type LinearCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
+
+export const HubspotCredentialsSchema = t.type({
+  accessToken: t.string,
+  portalId: t.string,
+});
+export type HubspotCredentials = t.TypeOf<typeof HubspotCredentialsSchema>;
 
 export const SalesforceCredentialsSchema = t.type({
   client_id: t.string,
@@ -181,9 +203,11 @@ export type SalesforceCredentials = t.TypeOf<
 
 export type ConnectionCredentials =
   | SnowflakeCredentials
-  | ModjoCredentials
   | BigQueryCredentialsWithLocation
-  | SalesforceCredentials;
+  | SalesforceCredentials
+  | ModjoCredentials
+  | HubspotCredentials
+  | LinearCredentials;
 
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
@@ -194,6 +218,18 @@ export function isSnowflakeCredentials(
 export function isModjoCredentials(
   credentials: ConnectionCredentials
 ): credentials is ModjoCredentials {
+  return "api_key" in credentials;
+}
+
+export function isHubspotCredentials(
+  credentials: ConnectionCredentials
+): credentials is HubspotCredentials {
+  return "accessToken" in credentials && "portalId" in credentials;
+}
+
+export function isLinearCredentials(
+  credentials: ConnectionCredentials
+): credentials is LinearCredentials {
   return "api_key" in credentials;
 }
 

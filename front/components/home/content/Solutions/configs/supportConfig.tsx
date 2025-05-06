@@ -20,8 +20,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Customer Support",
   title: <>Instant knowledge, exceptional support</>,
-  from: "from-blue-200",
-  to: "to-blue-200",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>
       Equip your team with AI agents to accelerate issue resolution and increase
@@ -111,8 +110,7 @@ export const Metrics: MetricProps = {
       description: <>saved weekly per agent</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -150,35 +148,35 @@ export const UseCases: UseCaseProps = {
 export const ROI: ROIProps = {
   number: "50%",
   subtitle: "reduction in ticket resolution time",
-  logo: "/static/landing/logos/malt.png",
+  logo: "/static/landing/logos/gray/malt.png",
 };
 
 export const Quote: QuoteProps = {
   quote:
-    "We're managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
+    "We’re managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
   name: "Anaïs Ghelfi",
   title: "Head of Data Platform at Malt",
-  logo: "/static/landing/logos/malt.png",
+  logo: "/static/landing/logos/color/malt.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/r0dwaexoez",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
   {
     title: "Malt cuts support ticket closing time by 50% with Dust",
     content:
-      "Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses.",
+      "Malt streamlines customer support using Dust’s AI platform for rapid, consistent multilingual responses.",
     href: "https://blog.dust.tt/malt-customer-support/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg",
   },
   {
-    title: "Pennylane's journey to deploy Dust for Customer Care teams",
+    title: "Pennylane’s journey to deploy Dust for Customer Care teams",
     content:
-      "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
+      "Dust evolved from a simple support tool into an integral part of Pennylane’s operations.",
     href: "https://blog.dust.tt/pennylane-customer-support-journey/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",
   },

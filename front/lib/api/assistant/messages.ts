@@ -15,32 +15,32 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
-  Conversation,
   Mention,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentActionType,
   AgentMessageType,
   ContentFragmentType,
+  ConversationType,
   LightAgentConfigurationType,
   MessageWithRankType,
   ModelId,
   Result,
   UserMessageType,
 } from "@app/types";
-import { ConversationError } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 
 async function batchRenderUserMessages(
   messages: Message[]
@@ -48,21 +48,24 @@ async function batchRenderUserMessages(
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );
+
+  const userIds = [
+    ...new Set(
+      userMessages
+        .map((m) => m.userMessage?.userId)
+        .filter((id) => !!id) as number[]
+    ),
+  ];
+
   const [mentions, users] = await Promise.all([
     Mention.findAll({
       where: {
         messageId: userMessages.map((m) => m.id),
       },
     }),
-    (async () => {
-      const userIds = userMessages
-        .map((m) => m.userMessage?.userId)
-        .filter((id) => !!id) as number[];
-      if (userIds.length === 0) {
-        return [];
-      }
-      return UserResource.fetchByModelIds(userIds);
-    })(),
+    userIds.length === 0
+      ? []
+      : UserResource.fetchByModelIds([...new Set(userIds)]),
   ]);
 
   return userMessages.map((message) => {
@@ -83,14 +86,16 @@ async function batchRenderUserMessages(
       version: message.version,
       created: message.createdAt.getTime(),
       user: user ? user.toJSON() : null,
-      mentions: messageMentions.map((m) => {
-        if (m.agentConfigurationId) {
-          return {
-            configurationId: m.agentConfigurationId,
-          };
-        }
-        throw new Error("Mention Must Be An Agent: Unreachable.");
-      }),
+      mentions: messageMentions
+        ? messageMentions.map((m) => {
+            if (m.agentConfigurationId) {
+              return {
+                configurationId: m.agentConfigurationId,
+              };
+            }
+            throw new Error("Mention Must Be An Agent: Unreachable.");
+          })
+        : [],
       content: userMessage.content,
       context: {
         username: userMessage.userContextUsername,
@@ -132,21 +137,21 @@ async function batchRenderAgentMessages(
     agentMCPActions,
   ] = await Promise.all([
     (async () => {
-      const agentConfigurationIds: string[] = agentMessages.reduce(
-        (acc: string[], m) => {
+      const agentConfigurationIds: Set<string> = agentMessages.reduce(
+        (acc: Set<string>, m) => {
           const agentId = m.agentMessage?.agentConfigurationId;
-          if (agentId && !acc.includes(agentId)) {
-            acc.push(agentId);
+          if (agentId) {
+            acc.add(agentId);
           }
           return acc;
         },
-        []
+        new Set<string>()
       );
-      const agents = await Promise.all(
-        agentConfigurationIds.map((agentConfigId) => {
-          return getAgentConfiguration(auth, agentConfigId, "light");
-        })
-      );
+      const agents = await getAgentConfigurations({
+        auth,
+        agentsGetView: { agentIds: [...agentConfigurationIds] },
+        variant: "extra_light",
+      });
       if (agents.some((a) => !a)) {
         return null;
       }
@@ -306,7 +311,7 @@ async function batchRenderContentFragment(
  * because there's no easy way to fetch only the latest version of a message.
  */
 async function getMaxRankMessages(
-  conversation: Conversation,
+  conversation: ConversationResource,
   paginationParams: PaginationParams
 ): Promise<ModelId[]> {
   const { limit, orderColumn, orderDirection, lastValue } = paginationParams;
@@ -340,7 +345,7 @@ async function getMaxRankMessages(
 }
 
 async function fetchMessagesForPage(
-  conversation: Conversation,
+  conversation: ConversationResource,
   paginationParams: PaginationParams
 ): Promise<{ hasMore: boolean; messages: Message[] }> {
   const { orderColumn, orderDirection, limit } = paginationParams;
@@ -387,6 +392,7 @@ async function fetchMessagesForPage(
       },
     ],
   });
+
   return {
     hasMore,
     messages,
@@ -437,13 +443,10 @@ export async function fetchConversationMessages(
     return new Err(new Error("Unexpected `auth` without `workspace`."));
   }
 
-  const conversation = await Conversation.findOne({
-    where: {
-      sId: conversationId,
-      workspaceId: owner.id,
-      visibility: { [Op.ne]: "deleted" },
-    },
-  });
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
 
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));
@@ -479,4 +482,30 @@ export function canReadMessage(auth: Authenticator, message: AgentMessageType) {
       message.configuration.requestedGroupIds
     )
   );
+}
+
+export async function fetchMessageInConversation(
+  auth: Authenticator,
+  conversation: ConversationType,
+  messageId: string
+) {
+  return Message.findOne({
+    where: {
+      conversationId: conversation.id,
+      sId: messageId,
+      workspaceId: auth.getNonNullableWorkspace()?.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: false,
+      },
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: false,
+      },
+    ],
+  });
 }

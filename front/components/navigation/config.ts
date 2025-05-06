@@ -187,16 +187,6 @@ export const subNavigationAdmin = ({
           subMenu: current === "members" ? subMenu : undefined,
         },
         {
-          id: "actions",
-          label: "Actions",
-          icon: CommandLineIcon,
-          href: `/w/${owner.sId}/actions`,
-          current: current === "actions",
-          subMenuLabel: current === "actions" ? subMenuLabel : undefined,
-          subMenu: current === "actions" ? subMenu : undefined,
-          featureFlag: "mcp_actions",
-        },
-        {
           id: "workspace",
           label: "Workspace",
           icon: CompanyIcon,

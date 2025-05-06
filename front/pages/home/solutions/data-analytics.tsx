@@ -14,10 +14,7 @@ import {
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
-import {
-  CarousselContentBlock,
-  QuoteSection,
-} from "@app/components/home/ContentBlocks";
+import { QuoteSection } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -38,7 +35,7 @@ export async function getServerSideProps() {
 }
 
 const GRID_SECTION_CLASSES = classNames(
-  "flex flex-col gap-8",
+  "flex flex-col gap-16",
   "col-span-12",
   "lg:col-span-12 lg:col-start-1",
   "xl:col-span-12 xl:col-start-1",
@@ -48,42 +45,23 @@ const GRID_SECTION_CLASSES = classNames(
 export default function Data() {
   return (
     <>
-      <div className="container flex w-full flex-col gap-0 px-2 py-2 pb-12">
-        <HeroSection
-          {...Hero}
-          fromColor={pageSettings.from}
-          toColor={pageSettings.to}
-        />
+      <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
+        <HeroSection {...Hero} accentColor={pageSettings.accentColor} />
         <Grid>
           <div className={GRID_SECTION_CLASSES}>
-            <BenefitsSection
-              benefits={Benefits}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
-            {/* <MetricSection {...Metrics} /> */}
+            <BenefitsSection benefits={Benefits} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
-            <UseCasesSection
-              useCase={UseCases}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <UseCasesSection useCase={UseCases} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
-            <DemoVideoSection
-              demoVideo={DemoVideo}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <DemoVideoSection demoVideo={DemoVideo} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
             <QuoteSection {...Quote} />
             {/* <CustomerStoriesSection
               title="Customer stories"
               stories={Stories}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
             /> */}
           </div>
           <TrustedBy />
@@ -120,18 +98,3 @@ export default function Data() {
 Data.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
-
-export function DataCaroussel() {
-  return (
-    <CarousselContentBlock
-      title={pageSettings.uptitle}
-      from={pageSettings.from}
-      to={pageSettings.to}
-      border="border-pink-100/60"
-      href="/home/solutions/data-analytics"
-      bulletPoints={pageSettings.bulletPoints}
-      image={pageSettings.image}
-      quote={Quote}
-    />
-  );
-}

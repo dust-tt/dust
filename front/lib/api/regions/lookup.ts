@@ -29,11 +29,25 @@ export async function lookupUserRegionByEmail(
     }),
   ]);
 
-  if (pendingInvite || workspaceWithVerifiedDomain) {
-    return true;
+  // Check if workspace with verified domain exists but has been relocated
+  if (
+    workspaceWithVerifiedDomain &&
+    isWorkspaceRelocationDone(
+      renderLightWorkspaceType({
+        workspace: workspaceWithVerifiedDomain.workspace,
+      })
+    )
+  ) {
+    return false;
   }
 
-  return false;
+  // Check if pending invite exists but workspace has been relocated
+  if (pendingInvite && isWorkspaceRelocationDone(pendingInvite.workspace)) {
+    return false;
+  }
+
+  // Return true if there is either a valid pending invite or workspace with verified domain
+  return Boolean(pendingInvite || workspaceWithVerifiedDomain);
 }
 
 export async function handleLookupWorkspace(workspaceLookup: {

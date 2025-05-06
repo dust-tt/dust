@@ -1,4 +1,4 @@
-import { tryGetMCPTools } from "@app/lib/actions/mcp_actions";
+import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -21,17 +21,16 @@ import {
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
+import { createLocalMCPServerConfigurations } from "@app/lib/api/actions/mcp_local";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import {
-  constructPromptMultiActions,
-  renderConversationForModel,
-} from "@app/lib/api/assistant/generation";
+import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -65,7 +64,7 @@ const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
-// nor updating it (responsability of the caller based on the emitted events).
+// nor updating it (responsibility of the caller based on the emitted events).
 export async function* runAgent(
   auth: Authenticator,
   configuration: LightAgentConfigurationType,
@@ -147,7 +146,7 @@ async function* runMultiActionsAgentLoop(
     const isLastGenerationIteration = i === maxStepsPerRun;
 
     const actions =
-      // If we already executed the maximum number of actions, we don't run any more.
+      // If we already executed the maximum number of actions, we don't run anymore.
       // This will force the agent to run the generation.
       isLastGenerationIteration
         ? []
@@ -189,7 +188,7 @@ async function* runMultiActionsAgentLoop(
 
           // We received the actions to run, but will enforce a limit on the number of actions (16)
           // which is very high. Over that the latency will just be too high. This is a guardrail
-          // against the model outputing something unreasonable.
+          // against the model outputting something unreasonable.
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
           const eventStreamGenerators = event.actions.map(
@@ -232,7 +231,7 @@ async function* runMultiActionsAgentLoop(
             }
           }
 
-          // After we are done running actions we update the inter step refsOffset.
+          // After we are done running actions, we update the inter-step refsOffset.
           for (let j = 0; j < event.actions.length; j++) {
             citationsRefsOffset += getCitationsCount({
               agentConfiguration: configuration,
@@ -373,8 +372,15 @@ async function* runMultiActionsAgent(
     conversation,
   });
 
-  const mcpActions = await tryGetMCPTools(auth, {
-    agentActions,
+  // Get local MCP server configurations from user message context.
+  const localMCPActions = createLocalMCPServerConfigurations(
+    userMessage.context.localMCPServerIds
+  );
+
+  const { tools: mcpActions, error } = await tryListMCPTools(auth, {
+    agentActions: [...agentActions, ...localMCPActions],
+    conversationId: conversation.sId,
+    messageId: agentMessage.sId,
   });
 
   if (!isLastGenerationIteration) {
@@ -399,6 +405,7 @@ async function* runMultiActionsAgent(
     fallbackPrompt,
     model,
     hasAvailableActions: !!availableActions.length,
+    errorContext: error,
   });
 
   const MIN_GENERATION_TOKENS = model.generationTokensCount;
@@ -482,7 +489,7 @@ async function* runMultiActionsAgent(
     specifications.push(specRes.value);
   }
 
-  // If we have attachments inject a fake LS action to handle them.
+  // If we have attachments, inject a fake LS action to handle them.
 
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case
@@ -522,6 +529,11 @@ async function* runMultiActionsAgent(
   runConfig.MODEL.temperature = agentConfiguration.model.temperature;
   if (agentConfiguration.model.reasoningEffort) {
     runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+  }
+  if (agentConfiguration.model.responseFormat) {
+    runConfig.MODEL.response_format = JSON.parse(
+      agentConfiguration.model.responseFormat
+    );
   }
   const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
   if (anthropicBetaFlags) {
@@ -697,36 +709,40 @@ async function* runMultiActionsAgent(
   yield* contentParser.flushTokens();
 
   if (!output.actions.length) {
-    if (typeof output.generation === "string" && contentParser.getContent()) {
-      yield {
-        type: "agent_message_content",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        content: rawContent,
-        processedContent: contentParser.getContent() ?? "",
-      } satisfies AgentContentEvent;
-      yield {
-        type: "generation_success",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        text: contentParser.getContent() ?? "",
-        runId: await dustRunId,
-        chainOfThought: contentParser.getChainOfThought() ?? "",
-      } satisfies GenerationSuccessEvent;
-    } else {
-      yield {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "no_action_or_generation_found",
-          message: "No action or generation found",
+    const processedContent = contentParser.getContent() ?? "";
+    if (!processedContent.length) {
+      logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          modelId: model.modelId,
         },
-      } satisfies AgentErrorEvent;
+        "No content generated by the agent."
+      );
     }
+
+    const chainOfThought = contentParser.getChainOfThought() ?? "";
+
+    yield {
+      type: "agent_message_content",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      content: rawContent,
+      processedContent,
+    } satisfies AgentContentEvent;
+    yield {
+      type: "generation_success",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      text: processedContent,
+      runId: await dustRunId,
+      chainOfThought,
+    } satisfies GenerationSuccessEvent;
+
     return;
   }
 
@@ -1353,6 +1369,9 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      stepActionIndex,
+      stepActions,
+      citationsRefsOffset,
     });
 
     for await (const event of eventStream) {
@@ -1386,6 +1405,14 @@ async function* runAction(
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
           agentMessage.actions.push(event.action);
+          break;
+
+        case "tool_approve_execution":
+          yield event;
+          break;
+
+        case "tool_notification":
+          yield event;
           break;
 
         default:

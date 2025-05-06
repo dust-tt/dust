@@ -37,7 +37,7 @@ export function ReachedLimitPopup({
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
-            <p className="text-sm font-normal text-element-800">
+            <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               Come back tomorrow for a fresh start or{" "}
               <span className="font-bold">
                 end your trial and start paying now (using our website).
@@ -76,7 +76,7 @@ export function ReachedLimitPopup({
           <DialogTitle>Message quota exceeded</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          <p className="text-sm font-normal text-element-800 dark:text-element-800-night">
+          <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
             We've paused messaging for your workspace due to our fair usage
             policy. Your workspace has reached its shared limit of 100 messages
             per user for the past 24 hours. This total limit is collectively

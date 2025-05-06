@@ -3,6 +3,7 @@ import { usePlatform } from "@app/shared/context/PlatformContext";
 import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import { retryMessage } from "@app/shared/lib/conversation";
 import type { StoredUser } from "@app/shared/services/auth";
+import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/ui/components/conversation/FeedbackSelector";
@@ -56,7 +57,7 @@ import {
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
-  DocumentDuplicateIcon,
+  DocumentPileIcon,
   DocumentTextIcon,
   EyeIcon,
   Markdown,
@@ -183,6 +184,8 @@ export function AgentMessage({
 
   const isGlobalAgent = message.configuration.id === -1;
 
+  const { showValidationDialog } = useContext(ActionValidationContext);
+
   const shouldStream = (() => {
     if (message.status !== "created") {
       return false;
@@ -299,6 +302,18 @@ export function AgentMessage({
         setLastAgentStateClassification("done");
         break;
       }
+      case "tool_approve_execution":
+        // Show the validation dialog when this event is received.
+        showValidationDialog({
+          action: event.action,
+          conversationId: conversationId,
+          inputs: event.inputs,
+          messageId: message.sId,
+          stake: event.stake,
+          workspaceId: owner.sId,
+          metadata: event.metadata,
+        });
+        break;
 
       case "generation_tokens": {
         switch (event.classification) {
@@ -331,7 +346,6 @@ export function AgentMessage({
         setLastAgentStateClassification("thinking");
         break;
       }
-
       default:
         // Log message and do nothing. Don't crash if a new event type is not handled here.
         assertNeverAndIgnore(event);
@@ -510,7 +524,7 @@ export function AgentMessage({
   );
 
   const buttons =
-    message.status === "failed"
+    message.status === "failed" || lastAgentStateClassification === "thinking"
       ? []
       : [
           <Button
@@ -562,11 +576,10 @@ export function AgentMessage({
       avatarBusy={agentMessageToRender.status === "created"}
       renderName={() => {
         return (
-          <div className="flex flex-row items-center gap-2">
-            <div className="heading-base">
-              {/* TODO(Ext) Any CTA here ? */}@{agentConfiguration.name}
-            </div>
-          </div>
+          <span>
+            {/* TODO(Ext) Any CTA here ? */}
+            {agentConfiguration.name}
+          </span>
         );
       }}
       type="agent"
@@ -620,7 +633,7 @@ export function AgentMessage({
           />
 
           {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Agent thoughts" variant="slate">
+            <ContentMessage title="Agent thoughts" variant="primary">
               {agentMessage.chainOfThought}
             </ContentMessage>
           ) : null}
@@ -744,7 +757,7 @@ function ErrorMessage({
                 <Button
                   variant="ghost"
                   size="xs"
-                  icon={DocumentDuplicateIcon}
+                  icon={DocumentPileIcon}
                   label={"Copy"}
                   onClick={() =>
                     void navigator.clipboard.writeText(fullMessage)

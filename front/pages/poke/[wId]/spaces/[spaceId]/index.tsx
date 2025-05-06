@@ -79,7 +79,7 @@ export default function SpacePage({
     <>
       <h3 className="text-xl font-bold">
         Space: {space.name} ({space.kind}) of workspace:{" "}
-        <a href={`/poke/${owner.sId}`} className="text-action-500">
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
       </h3>

@@ -1,3 +1,4 @@
+import { IncomingForm } from "formidable";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -13,6 +14,12 @@ import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { createIoTsCodecFromArgs, supportedResourceTypes } from "@app/types";
+
+export const config = {
+  api: {
+    bodyParser: false, // Disable Next.js body parser as formidable has its own
+  },
+};
 
 const [first, second, ...rest] = supportedResourceTypes;
 const SupportedResourceTypeCodec = t.union([
@@ -100,8 +107,53 @@ async function handler(
         ? await fetchPluginResource(auth, resourceType, resourceId)
         : null;
 
+      let formData: Record<string, any>;
+      const contentType = req.headers["content-type"] || "";
+
+      if (contentType.includes("application/json")) {
+        // Handle JSON request body
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) {
+            chunks.push(chunk);
+          }
+          const body = Buffer.concat(chunks).toString();
+          formData = JSON.parse(body);
+        } catch (e) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid JSON in request body",
+            },
+          });
+        }
+      } else if (
+        contentType.includes("multipart/form-data") ||
+        contentType.includes("application/x-www-form-urlencoded")
+      ) {
+        // Parse multipart form data using formidable
+        const form = new IncomingForm();
+        const [fields, files] = await form.parse(req);
+
+        // Convert fields to a plain object
+        formData = Object.fromEntries([
+          ...Object.entries(fields).map(([key, value]) => [key, value?.[0]]),
+          ...Object.entries(files).map(([key, value]) => [key, value?.[0]]),
+        ]);
+      } else {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Unsupported content type. Expected application/json, application/x-www-form-urlencoded or multipart/form-data",
+          },
+        });
+      }
+
       const pluginCodec = createIoTsCodecFromArgs(plugin.manifest.args);
-      const pluginArgsValidation = pluginCodec.decode(req.body);
+      const pluginArgsValidation = pluginCodec.decode(formData);
       if (isLeft(pluginArgsValidation)) {
         const pathError = reporter.formatValidationErrors(
           pluginArgsValidation.left

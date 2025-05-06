@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Recruiting & People",
   title: <>Streamline Operations, Focus on People</>,
-  from: "from-blue-200",
-  to: "to-blue-200",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
@@ -111,8 +110,7 @@ export const Metrics: MetricProps = {
       description: <>time savings on employee questions</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -150,27 +148,27 @@ export const UseCases: UseCaseProps = {
 export const Quote: QuoteProps = {
   quote:
     "We asked ourselves for years: what if your team had 20% more time? Dust has made it possible, empowering our employees to work smarter, innovate, and push boundaries.",
-  name: "Matthieu Birach ",
+  name: "Matthieu Birach",
   title: "Chief People Officer at Doctolib",
-  logo: "/static/landing/logos/doctolib.png",
+  logo: "/static/landing/logos/color/doctolib.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/eu73efeak9?seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/eu73efeak9",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
   {
-    title: "30% time savings in HR: How Alan's People team scaled with Dust",
+    title: "30% time savings in HR: How Alan’s People team scaled with Dust",
     content:
-      "Alan's HR team quadrupled AI adoption and saved 30% of time spent on employee queries by deploying custom Dust agents for people operations.",
+      "Alan’s HR team quadrupled AI adoption and saved 30% of time spent on employee queries by deploying custom Dust agents for people operations.",
     href: "https://blog.dust.tt/how-lucas-people-analyst-at-alan-introduced-dust-to-his-hr-team/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan.png",
   },
   // {
-  //   title: "Kyriba's RFP Agent for improving pre-sales efficiency",
+  //   title: "Kyriba’s RFP Agent for improving pre-sales efficiency",
   //   content:
   //     "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
   //   href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",

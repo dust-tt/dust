@@ -25,12 +25,16 @@ export const remoteDBSchemaCodec = t.type({
   database_name: t.string,
 });
 export type RemoteDBSchema = t.TypeOf<typeof remoteDBSchemaCodec>;
-
-export const remoteDBTableCodec = t.type({
-  name: t.string,
-  database_name: t.string,
-  schema_name: t.string,
-});
+export const remoteDBTableCodec = t.intersection([
+  t.type({
+    name: t.string,
+    database_name: t.string,
+    schema_name: t.string,
+  }),
+  t.partial({
+    description: t.string,
+  }),
+]);
 export type RemoteDBTable = t.TypeOf<typeof remoteDBTableCodec>;
 
 export type RemoteDBTree = {

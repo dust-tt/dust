@@ -1,6 +1,7 @@
+import { cva, VariantProps } from "class-variance-authority";
 import React, { ComponentType } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 export interface IconProps {
   visual?: ComponentType<{ className?: string }>;
@@ -23,8 +24,61 @@ export function Icon({
   className = "",
 }: IconProps) {
   return IconComponent ? (
-    <IconComponent
-      className={classNames(className, "s-shrink-0", IconSizes[size])}
-    />
+    <IconComponent className={cn(className, "s-shrink-0", IconSizes[size])} />
   ) : null;
 }
+
+const sizeVariants = cva("s-relative", {
+  variants: {
+    size: {
+      md: "s-h-6 s-w-6",
+      lg: "s-h-8 s-w-8 s-p-0.5",
+      xl: "s-h-10 s-w-10",
+    },
+  },
+  defaultVariants: {
+    size: "lg",
+  },
+});
+
+const iconSizeVariants = cva("s-absolute", {
+  variants: {
+    size: {
+      md: "s-bottom-0 s-right-0",
+      lg: "s-bottom-0 s-right-0",
+      xl: "s-bottom-0 s-right-0",
+    },
+  },
+  defaultVariants: {
+    size: "lg",
+  },
+});
+
+export interface DoubleIconProps extends VariantProps<typeof sizeVariants> {
+  mainIcon: React.ComponentType;
+  secondaryIcon: React.ComponentType;
+  size?: "md" | "lg" | "xl";
+  className?: string;
+}
+
+export const DoubleIcon = ({
+  mainIcon,
+  secondaryIcon,
+  className,
+  size = "lg",
+}: DoubleIconProps) => {
+  return (
+    <div className={cn(sizeVariants({ size }), className)}>
+      <Icon
+        className="s-text-foreground dark:s-text-foreground-night"
+        size={size === "md" ? "sm" : size === "lg" ? "md" : "lg"}
+        visual={mainIcon}
+      />
+      <Icon
+        size={size === "md" ? "xs" : size === "lg" ? "xs" : "md"}
+        visual={secondaryIcon}
+        className={cn("s-absolute", iconSizeVariants({ size }))}
+      />
+    </div>
+  );
+};

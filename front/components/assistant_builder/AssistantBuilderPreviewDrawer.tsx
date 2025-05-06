@@ -20,6 +20,8 @@ import {
 import { Separator } from "@radix-ui/react-select";
 import { useContext, useEffect } from "react";
 
+import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -104,7 +106,7 @@ export default function AssistantBuilderRightPanel({
   }, [draftAssistant?.sId, setConversation]);
 
   useEffect(() => {
-    if (rightPanelStatus.tab === "Template" && screen === "naming") {
+    if (rightPanelStatus.tab === "Template" && screen === "settings") {
       openRightPanelTab("Preview");
     }
   }, [screen, rightPanelStatus.tab, openRightPanelTab]);
@@ -153,37 +155,41 @@ export default function AssistantBuilderRightPanel({
             : ""
         )}
       >
-        {(rightPanelStatus.tab === "Preview" || screen === "naming") &&
+        {(rightPanelStatus.tab === "Preview" || screen === "settings") &&
           user && (
             <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
               {draftAssistant ? (
-                <GenerationContextProvider>
-                  <div className="flex-grow overflow-y-auto">
-                    {conversation && (
-                      <ConversationViewer
-                        owner={owner}
-                        user={user}
-                        conversationId={conversation.sId}
-                        onStickyMentionsChange={setStickyMentions}
-                        isInModal
-                        isFading={isFading}
-                        key={conversation.sId}
-                      />
-                    )}
-                  </div>
-                  <div className="shrink-0">
-                    <AssistantInputBar
-                      owner={owner}
-                      onSubmit={handleSubmit}
-                      stickyMentions={stickyMentions}
-                      conversationId={conversation?.sId || null}
-                      additionalAgentConfiguration={draftAssistant}
-                      actions={["attachment"]}
-                      disableAutoFocus
-                      isFloating={false}
-                    />
-                  </div>
-                </GenerationContextProvider>
+                <ConversationsNavigationProvider>
+                  <ActionValidationProvider>
+                    <GenerationContextProvider>
+                      <div className="flex-grow overflow-y-auto">
+                        {conversation && (
+                          <ConversationViewer
+                            owner={owner}
+                            user={user}
+                            conversationId={conversation.sId}
+                            onStickyMentionsChange={setStickyMentions}
+                            isInModal
+                            isFading={isFading}
+                            key={conversation.sId}
+                          />
+                        )}
+                      </div>
+                      <div className="shrink-0">
+                        <AssistantInputBar
+                          owner={owner}
+                          onSubmit={handleSubmit}
+                          stickyMentions={stickyMentions}
+                          conversationId={conversation?.sId || null}
+                          additionalAgentConfiguration={draftAssistant}
+                          actions={["attachment"]}
+                          disableAutoFocus
+                          isFloating={false}
+                        />
+                      </div>
+                    </GenerationContextProvider>
+                  </ActionValidationProvider>
+                </ConversationsNavigationProvider>
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
                   <Spinner />

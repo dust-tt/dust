@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Legal",
   title: <>Accelerate Legal Operations and Compliance</>,
-  from: "from-blue-200",
-  to: "to-blue-200",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>
       Assist your teams on legal or compliance reviews, and make legal support
@@ -115,8 +114,7 @@ export const Metrics: MetricProps = {
       description: <>first level legal answers deflected</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -157,21 +155,21 @@ export const Quote: QuoteProps = {
     "Dust transformed our privacy reviews. It handles compliance checks, suggests improvements, and drafts communications. It both cuts our review time and helps pressure-test our legal interpretations.",
   name: "Thomas Adhumeau",
   title: "Chief Privacy Officer at Didomi",
-  logo: "/static/landing/logos/didomi.png",
+  logo: "/static/landing/logos/color/didomi.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/zzbhe95pvz?seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/zzbhe95pvz",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
   {
     title:
-      "50% Time Savings in Legal: How Didomi's CPO Transformed Privacy Compliance",
+      "50% Time Savings in Legal: How Didomi’s CPO Transformed Privacy Compliance",
     content:
-      "Dust AI agents cut their legal team's workload in half, enabling them to scale operations across multiple countries without additional headcount.",
+      "Dust AI agents cut their legal team’s workload in half, enabling them to scale operations across multiple countries without additional headcount.",
     href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
   },
@@ -179,7 +177,7 @@ export const Stories: CustomerStory[] = [
     title:
       "50,000 Hours Saved: How Qonto Revolutionized Compliance and Risk Assessment with AI",
     content:
-      "Germi, Qonto's AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
+      "Germi, Qonto’s AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
     href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
   },

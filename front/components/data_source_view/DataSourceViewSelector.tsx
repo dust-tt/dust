@@ -1,3 +1,4 @@
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   Button,
   CloudArrowLeftRightIcon,
@@ -24,7 +25,6 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
-  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
@@ -39,6 +39,7 @@ import {
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceSearch } from "@app/lib/swr/spaces";
 import type {
+  ContentNode,
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
@@ -56,6 +57,7 @@ import {
 } from "@app/types";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
+const ITEMS_PER_PAGE = 50;
 
 const getUseResourceHook =
   (
@@ -65,24 +67,76 @@ const getUseResourceHook =
     useContentNodes: typeof useDataSourceViewContentNodes
   ) =>
   (parentId: string | null) => {
+    // State for accumulating nodes for "load more".
+    const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+    const [accumulatedNodes, setAccumulatedNodes] = useState<ContentNode[]>([]);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
     const {
-      nodes,
-      isNodesLoading,
+      nodes: fetchedNodes,
+      isNodesLoading: isInitialNodesLoading,
       isNodesError,
       totalNodesCountIsAccurate,
       totalNodesCount,
+      nextPageCursor,
     } = useContentNodes({
       owner,
       dataSourceView,
       parentId: parentId ?? undefined,
       viewType,
+      pagination: { cursor: currentCursor, limit: ITEMS_PER_PAGE },
     });
+
+    useEffect(() => {
+      // Skip if no nodes were fetched yet
+      if (!fetchedNodes || fetchedNodes.length === 0) {
+        return;
+      }
+
+      if (currentCursor === null) {
+        // Initial load - just set the nodes directly
+        setAccumulatedNodes(fetchedNodes);
+        return;
+      }
+
+      if (isLoadingMore) {
+        // Load more case - append new nodes to existing ones
+        setAccumulatedNodes((prev) => {
+          // Dedup new nodes.
+          const existingIds = new Set(prev.map((node) => node.internalId));
+          const newNodes = fetchedNodes.filter(
+            (node) => !existingIds.has(node.internalId)
+          );
+          if (newNodes.length === 0) {
+            // Avoid re-rendering if no new nodes are added.
+            return prev;
+          }
+
+          return [...prev, ...newNodes];
+        });
+
+        setIsLoadingMore(false);
+      }
+    }, [fetchedNodes, currentCursor, isLoadingMore]);
+
+    // Function to load more items
+    const loadMore = useCallback(() => {
+      if (nextPageCursor && !isLoadingMore) {
+        setIsLoadingMore(true);
+        setCurrentCursor(nextPageCursor);
+      }
+    }, [nextPageCursor, isLoadingMore]);
+
     return {
-      resources: nodes,
+      resources: accumulatedNodes,
       totalResourceCount: totalNodesCount,
-      isResourcesLoading: isNodesLoading,
+      isResourcesLoading:
+        isInitialNodesLoading || (isLoadingMore && currentCursor === null),
       isResourcesError: isNodesError,
       isResourcesTruncated: !totalNodesCountIsAccurate,
+      nextPageCursor,
+      loadMore,
+      isLoadingMore,
     };
   };
 
@@ -103,16 +157,27 @@ const getNodesFromConfig = (
     {}
   );
 
-const updateSelection = (
-  item: DataSourceViewContentNode,
-  prevState: DataSourceViewSelectionConfigurations
-): DataSourceViewSelectionConfigurations => {
+const updateSelection = ({
+  item,
+  prevState,
+  selectionMode = "checkbox",
+  onlyAdd = false,
+}: {
+  item: DataSourceViewContentNode;
+  prevState: DataSourceViewSelectionConfigurations;
+  selectionMode: "checkbox" | "radio";
+  onlyAdd?: boolean;
+}): DataSourceViewSelectionConfigurations => {
   const { dataSourceView: dsv } = item;
   const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
 
   const exists = prevConfig.selectedResources.some(
     (r) => r.internalId === item.internalId
   );
+
+  if (onlyAdd && exists) {
+    return _.cloneDeep(prevState);
+  }
 
   if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
     return {
@@ -125,8 +190,27 @@ const updateSelection = (
     };
   }
 
+  if (selectionMode === "radio" && !exists) {
+    return {
+      ...prevState,
+      [dsv.sId]: {
+        ...prevConfig,
+        selectedResources: [
+          {
+            ...item,
+            dataSourceView: dsv,
+            parentInternalIds: item.parentInternalIds || [],
+          },
+        ],
+        isSelectAll: false,
+      },
+    };
+  }
+
   const newResources = exists
-    ? prevConfig.selectedResources
+    ? prevConfig.selectedResources.filter(
+        (r) => r.internalId !== item.internalId
+      )
     : [
         ...prevConfig.selectedResources,
         {
@@ -163,6 +247,7 @@ interface DataSourceViewsSelectorProps {
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
   space: SpaceType;
+  selectionMode?: "checkbox" | "radio";
 }
 
 export function DataSourceViewsSelector({
@@ -174,6 +259,7 @@ export function DataSourceViewsSelector({
   viewType,
   isRootSelectable,
   space,
+  selectionMode = "checkbox",
 }: DataSourceViewsSelectorProps) {
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
@@ -298,7 +384,13 @@ export function DataSourceViewsSelector({
     // Update all selections in a single state update.
     setSelectionConfigurations((prevState) => {
       const newState = searchResultNodes.reduce(
-        (acc, item) => updateSelection(item, acc),
+        (acc, item) =>
+          updateSelection({
+            item,
+            prevState: acc,
+            selectionMode,
+            onlyAdd: true,
+          }),
         prevState
       );
       return newState;
@@ -308,7 +400,12 @@ export function DataSourceViewsSelector({
     if (searchResultNodes.length > 0) {
       setSearchResult(searchResultNodes[searchResultNodes.length - 1]);
     }
-  }, [setSearchSpaceText, setSelectionConfigurations, searchResultNodes]);
+  }, [
+    setSearchSpaceText,
+    setSelectionConfigurations,
+    searchResultNodes,
+    selectionMode,
+  ]);
 
   return (
     <div>
@@ -328,7 +425,11 @@ export function DataSourceViewsSelector({
           setSearchResult(item);
           setSearchSpaceText("");
           setSelectionConfigurations((prevState) =>
-            updateSelection(item, prevState)
+            updateSelection({
+              item,
+              prevState,
+              selectionMode,
+            })
           );
         }}
         displayItemCount={useCase === "assistantBuilder"}
@@ -338,23 +439,27 @@ export function DataSourceViewsSelector({
           return (
             <div
               className={cn(
-                "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
-                selected && "bg-structure-50 dark:bg-structure-50-night"
+                "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-background dark:hover:bg-background-night",
+                selected && "bg-background dark:bg-background-night"
               )}
               onClick={() => {
                 setSearchResult(item);
                 setSearchSpaceText("");
                 setSelectionConfigurations((prevState) =>
-                  updateSelection(item, prevState)
+                  updateSelection({
+                    item,
+                    prevState,
+                    selectionMode,
+                  })
                 );
               }}
             >
               {getVisualForDataSourceViewContentNode(item)({
                 className: "min-w-4",
               })}
-              <span className="flex-shrink truncate text-sm">{item.title}</span>
+              <span className="copy-sm flex-shrink truncate">{item.title}</span>
               {item.parentTitle && (
-                <div className="ml-auto flex-none text-sm text-slate-500">
+                <div className="copy-sm ml-auto flex-none text-primary-500">
                   {getLocationForDataSourceViewContentNode(item)}
                 </div>
               )}
@@ -392,6 +497,7 @@ export function DataSourceViewsSelector({
                 defaultCollapsed={filteredGroups.managedDsv.length > 1}
                 useCase={useCase}
                 searchResult={searchResult}
+                selectionMode={selectionMode}
               />
             ))}
           </Tree.Item>
@@ -412,6 +518,7 @@ export function DataSourceViewsSelector({
               defaultCollapsed={filteredGroups.managedDsv.length > 1}
               useCase={useCase}
               searchResult={searchResult}
+              selectionMode={selectionMode}
             />
           ))}
         {filteredGroups.folders.length > 0 && (
@@ -438,6 +545,7 @@ export function DataSourceViewsSelector({
                 defaultCollapsed={filteredGroups.folders.length > 1}
                 useCase={useCase}
                 searchResult={searchResult}
+                selectionMode={selectionMode}
               />
             ))}
           </Tree.Item>
@@ -468,6 +576,7 @@ export function DataSourceViewsSelector({
                   defaultCollapsed={filteredGroups.websites.length > 1}
                   useCase={useCase}
                   searchResult={searchResult}
+                  selectionMode={selectionMode}
                 />
               ))}
             </Tree.Item>
@@ -486,7 +595,7 @@ function LimitedSearchContentMessage({
     case "truncated-query-clauses":
       return {
         title: "Search results are partial due to the large amount of data.",
-        variant: "amber",
+        variant: "golden",
         icon: InformationCircleIcon,
         className: "w-full",
         size: "lg",
@@ -510,6 +619,7 @@ interface DataSourceViewSelectorProps {
   defaultCollapsed?: boolean;
   useCase?: DataSourceViewsSelectorProps["useCase"];
   searchResult?: DataSourceViewContentNode;
+  selectionMode?: "checkbox" | "radio";
 }
 
 export function DataSourceViewSelector({
@@ -523,6 +633,7 @@ export function DataSourceViewSelector({
   defaultCollapsed = true,
   useCase,
   searchResult,
+  selectionMode = "checkbox",
 }: DataSourceViewSelectorProps) {
   const { isDark } = useTheme();
   const dataSourceView = selectionConfiguration.dataSourceView;
@@ -589,7 +700,12 @@ export function DataSourceViewSelector({
               isSelectAll: false,
             };
 
-        // Return a new object to trigger a re-render
+        if (selectionMode === "radio") {
+          return {
+            [dataSourceView.sId]: updatedConfig,
+          };
+        }
+
         return keepOnlyOneSpaceIfApplicable({
           ...prevState,
           [dataSourceView.sId]: updatedConfig,
@@ -620,12 +736,32 @@ export function DataSourceViewSelector({
         const prevSelectionConfiguration =
           prevState[dataSourceView.sId] ??
           defaultSelectionConfiguration(dataSourceView);
+
         const selectedNodes = updater(
           getNodesFromConfig(prevSelectionConfiguration)
         );
+
+        let updatedSelectedNodes = selectedNodes;
+        if (selectionMode === "radio") {
+          // Only keep the most recently selected node
+          const selectedNodeEntries = Object.entries(selectedNodes).filter(
+            ([, v]) => v.isSelected
+          );
+
+          if (selectedNodeEntries.length > 1) {
+            const [latestNodeId, latestNode] = selectedNodeEntries[0];
+
+            updatedSelectedNodes = {
+              [latestNodeId]: latestNode,
+            };
+          }
+        } else {
+          updatedSelectedNodes = selectedNodes;
+        }
+
         const updatedConfig = {
           ...prevSelectionConfiguration,
-          selectedResources: Object.values(selectedNodes)
+          selectedResources: Object.values(updatedSelectedNodes)
             .filter((v) => v.isSelected)
             .map((v) => ({
               ...v.node,
@@ -634,6 +770,7 @@ export function DataSourceViewSelector({
             })),
           isSelectAll: false,
         };
+
         if (updatedConfig.selectedResources.length === 0) {
           // Nothing is selected at all, remove from the list
           return _.omit(prevState, dataSourceView.sId);
@@ -646,7 +783,12 @@ export function DataSourceViewSelector({
         });
       });
     },
-    [dataSourceView, keepOnlyOneSpaceIfApplicable, setSelectionConfigurations]
+    [
+      dataSourceView,
+      keepOnlyOneSpaceIfApplicable,
+      setSelectionConfigurations,
+      selectionMode,
+    ]
   );
 
   const useResourcesHook = useCallback(
@@ -690,11 +832,18 @@ export function DataSourceViewSelector({
         checkbox={
           hideCheckbox || (!isRootSelectable && !hasActiveSelection)
             ? undefined
-            : {
-                checked: isChecked,
-                disabled: !isRootSelectable,
-                onCheckedChange: handleSelectAll,
-              }
+            : selectionMode === "radio"
+              ? {
+                  checked: isChecked === true,
+                  disabled: !isRootSelectable,
+                  onCheckedChange: handleSelectAll,
+                  className: "s-rounded-full",
+                }
+              : {
+                  checked: isChecked,
+                  disabled: !isRootSelectable,
+                  onCheckedChange: handleSelectAll,
+                }
         }
         actions={
           !isRootSelectable && (
@@ -724,6 +873,9 @@ export function DataSourceViewSelector({
               )
             }
             defaultExpandedIds={defaultExpandedIds}
+            {...(selectionMode === "radio"
+              ? { "data-selection-mode": "radio" }
+              : {})}
           />
         )}
       </Tree.Item>

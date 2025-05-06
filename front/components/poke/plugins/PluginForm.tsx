@@ -15,6 +15,7 @@ import {
   PokeFormLabel,
   PokeFormMessage,
   PokeFormTextArea,
+  PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
 import {
   PokeSelect,
@@ -136,7 +137,7 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                             </PokeSelectTrigger>
                           </PokeFormControl>
                           <PokeSelectContent>
-                            <div className="bg-slate-100 dark:bg-slate-100-night">
+                            <div className="bg-muted-background dark:bg-muted-background-night">
                               {arg.values.map((option) => (
                                 <PokeSelectItem key={option} value={option}>
                                   {option}
@@ -145,6 +146,9 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                             </div>
                           </PokeSelectContent>
                         </PokeSelect>
+                      )}
+                      {arg.type === "file" && (
+                        <PokeFormUpload type="file" {...field} />
                       )}
                     </>
                   </PokeFormControl>

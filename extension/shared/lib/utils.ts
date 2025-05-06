@@ -82,6 +82,10 @@ export function subFilter(a: string, b: string) {
   return subFilterLastIndex(a, b) > -1;
 }
 
+export function removeDiacritics(input: string): string {
+  return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 /**
  * Compares two strings for fuzzy sorting against a query First sort by spread
  * of subfilter, then by first index of subfilter, then length, then by
@@ -112,6 +116,18 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
     return a.length - b.length;
   }
   return a.localeCompare(b);
+}
+
+/**
+ * Converts a string to a display name by replacing underscores with spaces
+ * and capitalizing the first letter of each word.
+ */
+export function asDisplayName(name?: string | null) {
+  if (!name) {
+    return "";
+  }
+
+  return name.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 /* Measures how much string a is 'spread out' in string b, assuming a is a
@@ -218,4 +234,24 @@ export function getWeekBoundaries(date: Date): {
   endDate.setDate(startDate.getDate() + 7);
 
   return { startDate, endDate };
+}
+
+// Error handling utilities.
+
+function errorToString(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  } else if (typeof error === "string") {
+    return error;
+  }
+
+  return JSON.stringify(error);
+}
+
+export function normalizeError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error(errorToString(error));
 }

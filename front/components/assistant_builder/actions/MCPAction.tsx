@@ -1,167 +1,362 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
+import { useCallback, useContext, useMemo, useState } from "react";
 
-import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
-import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
+import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
+import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
+import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
+import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
+import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
+import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
-import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
-import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import type {
-  DataSourceViewSelectionConfigurations,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
+import { asDisplayName, assertNever, slugify } from "@app/types";
 
-interface ActionMCPProps {
+interface NoActionAvailableProps {
+  owner: LightWorkspaceType;
+}
+
+function NoActionAvailable({ owner }: NoActionAvailableProps) {
+  return (
+    <ContentMessage
+      title="You don't have any Tools available"
+      icon={InformationCircleIcon}
+      variant="warning"
+    >
+      <div className="flex flex-col gap-y-3">
+        {(() => {
+          switch (owner.role) {
+            case "admin":
+              return (
+                <div>
+                  <strong>
+                    Visit the "Tools" section in the Knowledge panel to add
+                    Tools.
+                  </strong>
+                </div>
+              );
+            case "builder":
+            case "user":
+              return (
+                <div>
+                  <strong>Ask your Admins to add Tools.</strong>
+                </div>
+              );
+            case "none":
+              return <></>;
+            default:
+              assertNever(owner.role);
+          }
+        })()}
+      </div>
+    </ContentMessage>
+  );
+}
+
+interface MCPActionProps {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
-  actionConfiguration: AssistantBuilderMCPServerConfiguration;
-  updateAction: (
-    setNewAction: (
-      previousAction: AssistantBuilderMCPServerConfiguration
-    ) => AssistantBuilderMCPServerConfiguration
-  ) => void;
+  action: AssistantBuilderActionConfiguration;
+  isEditing: boolean;
+  updateAction: (args: {
+    actionName: string;
+    actionDescription: string;
+    getNewActionConfig: (
+      old: AssistantBuilderActionConfiguration["configuration"]
+    ) => AssistantBuilderActionConfiguration["configuration"];
+  }) => void;
   setEdited: (edited: boolean) => void;
 }
 
-export function ActionMCP({
+export function MCPAction({
   owner,
   allowedSpaces,
-  actionConfiguration,
+  action,
+  isEditing,
   updateAction,
   setEdited,
-}: ActionMCPProps) {
-  // Hack for now, we'll use the space based on the allowedSpaces once we have the object representing the join
-  const { spaces } = useSpacesAsAdmin({
-    workspaceId: owner.sId,
-    disabled: false,
-  });
-  const { mcpServers } = useMCPServerViews({
-    owner,
-    space: (spaces ?? []).find((space) => space.kind === "system"),
-    filter: "all",
-  });
-  // TODO(mcp) must work with MCPServerViews
-  const defaultMCPServer = useMemo(
-    () =>
-      mcpServers.find(
-        (mcpServer) => mcpServer.id === actionConfiguration.mcpServerViewId
-      ),
-    [mcpServers, actionConfiguration.mcpServerViewId]
+}: MCPActionProps) {
+  const actionConfiguration =
+    action.configuration as AssistantBuilderMCPServerConfiguration;
+
+  const { mcpServerViews } = useContext(AssistantBuilderContext);
+
+  const noMCPServerView = mcpServerViews.length === 0;
+
+  const [selectedMCPServerView, setSelectedMCPServerView] =
+    useState<MCPServerViewType | null>(
+      mcpServerViews.find(
+        (mcpServerView) =>
+          mcpServerView.id === actionConfiguration.mcpServerViewId
+      ) ?? null
+    );
+
+  // MCPServerView on default MCP server will not allow switching to another one.
+  const isDefaultMCPServer = useMemo(
+    () => !!selectedMCPServerView?.server.isDefault,
+    [selectedMCPServerView]
   );
 
-  const [selectedMCPServer, setSelectedMCPServer] =
-    useState<MCPServerMetadata | null>(defaultMCPServer ?? null);
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
-
-  useEffect(() => {
-    updateAction((previousAction) => ({
-      ...previousAction,
-      dataSourceConfigurations:
-        selectedMCPServer &&
-        serverRequiresInternalConfiguration({
-          serverMetadata: selectedMCPServer,
-          mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
-        })
-          ? previousAction.dataSourceConfigurations || {}
-          : null,
-    }));
-  }, [selectedMCPServer, updateAction]);
+  const [showTablesModal, setShowTablesModal] = useState(false);
 
   const handleServerSelection = useCallback(
-    (mcpServer: MCPServerMetadata) => {
+    (serverView: MCPServerViewType) => {
       setEdited(true);
-      setSelectedMCPServer(mcpServer);
-      updateAction((previousAction) => ({
-        ...previousAction,
-        mcpServerId: mcpServer.id,
-      }));
+      setSelectedMCPServerView(serverView);
+
+      const requirements = getMCPServerRequirements(serverView);
+      updateAction({
+        actionName: slugify(serverView.server.name),
+        actionDescription:
+          requirements.requiresDataSourceConfiguration ||
+          requirements.requiresTableConfiguration
+            ? ""
+            : serverView.server.description,
+        getNewActionConfig: () => ({
+          mcpServerViewId: serverView.id,
+          dataSourceConfigurations: null,
+          tablesConfigurations: null,
+          childAgentId: null,
+          reasoningModel: null,
+          timeFrame: null,
+          // We initialize boolean with false because leaving them unset means false (toggle on the left).
+          additionalConfiguration: Object.fromEntries(
+            requirements.requiredBooleans.map((key) => [key, false])
+          ),
+        }),
+      });
     },
     [setEdited, updateAction]
   );
 
-  const handleDataSourceConfigUpdate = useCallback(
-    (dsConfigs: DataSourceViewSelectionConfigurations) => {
+  const handleConfigUpdate = useCallback(
+    (
+      getNewConfig: (
+        old: AssistantBuilderMCPServerConfiguration
+      ) => AssistantBuilderMCPServerConfiguration
+    ) => {
       setEdited(true);
-      updateAction((previousAction) => ({
-        ...previousAction,
-        dataSourceConfigurations: dsConfigs,
-      }));
+      updateAction({
+        actionName: action.name,
+        actionDescription: action.description,
+        getNewActionConfig: (old) =>
+          getNewConfig(old as AssistantBuilderMCPServerConfiguration),
+      });
     },
-    [setEdited, updateAction]
+    [action.description, action.name, setEdited, updateAction]
   );
+
+  if (action.type !== "MCP") {
+    return null;
+  }
+
+  const requirements = getMCPServerRequirements(selectedMCPServerView);
+
+  if (noMCPServerView) {
+    return <NoActionAvailable owner={owner} />;
+  }
 
   return (
     <>
-      {actionConfiguration.dataSourceConfigurations && (
+      {/* Additional modals for selecting data sources */}
+      {requirements.requiresDataSourceConfiguration && (
         <AssistantBuilderDataSourceModal
           isOpen={showDataSourcesModal}
           setOpen={setShowDataSourcesModal}
           owner={owner}
-          onSave={handleDataSourceConfigUpdate}
+          onSave={(dataSourceConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
+          }}
           initialDataSourceConfigurations={
-            actionConfiguration.dataSourceConfigurations
+            actionConfiguration.dataSourceConfigurations ?? {}
           }
           allowedSpaces={allowedSpaces}
           viewType="document"
         />
       )}
+      {requirements.requiresTableConfiguration && (
+        <AssistantBuilderDataSourceModal
+          isOpen={showTablesModal}
+          setOpen={(isOpen) => {
+            setShowTablesModal(isOpen);
+          }}
+          owner={owner}
+          onSave={(tablesConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
+          }}
+          initialDataSourceConfigurations={
+            actionConfiguration.tablesConfigurations ?? {}
+          }
+          allowedSpaces={allowedSpaces}
+          viewType="table"
+        />
+      )}
+      {/* Server selection */}
+      {!selectedMCPServerView?.server.isDefault &&
+        (isEditing ? (
+          <div className="text-sm text-foreground dark:text-foreground-night">
+            <div>{selectedMCPServerView?.server.description}</div>
+            <br />
+            {!isDefaultMCPServer && (
+              <div>
+                Available to you via{" "}
+                <b>
+                  {
+                    allowedSpaces.find(
+                      (space) => space.sId === selectedMCPServerView?.spaceId
+                    )?.name
+                  }
+                </b>{" "}
+                space.
+              </div>
+            )}
 
-      <div>Will expose all the tools available via an MCP Server.</div>
-      <div>For testing purposes, pick an internal server</div>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            isSelect
-            label={
-              selectedMCPServer
-                ? selectedMCPServer.name
-                : "Select an MCP server"
-            }
-            className="w-48"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="mt-1" align="start">
-          {mcpServers.map((mcpServer) => (
-            <DropdownMenuItem
-              key={mcpServer.id}
-              label={mcpServer.name}
-              onClick={() => handleServerSelection(mcpServer)}
+            {selectedMCPServerView && (
+              <MCPToolsList tools={selectedMCPServerView.server.tools} />
+            )}
+          </div>
+        ) : (
+          <>
+            <MCPServerSelector
+              owner={owner}
+              allowedSpaces={allowedSpaces}
+              mcpServerViews={mcpServerViews}
+              selectedMCPServerView={selectedMCPServerView}
+              handleServerSelection={handleServerSelection}
             />
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {actionConfiguration.dataSourceConfigurations && (
+          </>
+        ))}
+      {/* Configurable blocks */}
+      {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
           owner={owner}
           dataSourceConfigurations={
-            actionConfiguration.dataSourceConfigurations
+            actionConfiguration.dataSourceConfigurations ?? {}
           }
           openDataSourceModal={() => setShowDataSourcesModal(true)}
-          onSave={handleDataSourceConfigUpdate}
+          onSave={(dataSourceConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
+          }}
           viewType="document"
         />
       )}
+      {requirements.requiresTableConfiguration && (
+        <DataSourceSelectionSection
+          owner={owner}
+          dataSourceConfigurations={
+            actionConfiguration.tablesConfigurations ?? {}
+          }
+          openDataSourceModal={() => setShowTablesModal(true)}
+          onSave={(tablesConfigurations) => {
+            handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
+          }}
+          viewType="table"
+        />
+      )}
+      {requirements.requiresChildAgentConfiguration && (
+        <ChildAgentConfigurationSection
+          onAgentSelect={(childAgentId) => {
+            handleConfigUpdate((old) => ({ ...old, childAgentId }));
+          }}
+          selectedAgentId={actionConfiguration.childAgentId}
+          owner={owner}
+        />
+      )}
+      {requirements.requiresReasoningConfiguration && (
+        <ReasoningModelConfigurationSection
+          onModelSelect={(reasoningModel) => {
+            handleConfigUpdate((old) => ({ ...old, reasoningModel }));
+          }}
+          selectedReasoningModel={actionConfiguration.reasoningModel}
+          owner={owner}
+        />
+      )}
+      {requirements.requiresTimeFrameConfiguration && (
+        <TimeFrameConfigurationSection
+          onConfigUpdate={(timeFrame: TimeFrame | null) => {
+            handleConfigUpdate((old) => ({ ...old, timeFrame }));
+          }}
+          timeFrame={actionConfiguration.timeFrame}
+        />
+      )}
+      <AdditionalConfigurationSection
+        {...requirements}
+        additionalConfiguration={actionConfiguration.additionalConfiguration}
+        onConfigUpdate={(key, value) => {
+          handleConfigUpdate((old) => ({
+            ...old,
+            additionalConfiguration: {
+              ...old.additionalConfiguration,
+              [key]: value,
+            },
+          }));
+        }}
+      />
     </>
   );
 }
 
 export function hasErrorActionMCP(
-  action: AssistantBuilderActionConfiguration
+  action: AssistantBuilderActionConfiguration,
+  mcpServerViews: MCPServerViewType[]
 ): string | null {
-  return action.type === "MCP" ? null : "Please select a MCP configuration.";
+  if (action.type === "MCP") {
+    const mcpServerView = mcpServerViews.find(
+      (mcpServerView) =>
+        mcpServerView.id === action.configuration.mcpServerViewId
+    );
+    if (!mcpServerView) {
+      return "Please select a tool.";
+    }
+
+    const requirements = getMCPServerRequirements(mcpServerView);
+    if (
+      requirements.requiresDataSourceConfiguration &&
+      !action.configuration.dataSourceConfigurations
+    ) {
+      return "Please select one or multiple data sources.";
+    }
+    if (
+      requirements.requiresTableConfiguration &&
+      !action.configuration.tablesConfigurations
+    ) {
+      return "Please select one or multiple tables.";
+    }
+    if (
+      requirements.requiresChildAgentConfiguration &&
+      !action.configuration.childAgentId
+    ) {
+      return "Please select a child agent.";
+    }
+    const missingFields = [];
+    for (const key of requirements.requiredStrings) {
+      if (!(key in action.configuration.additionalConfiguration)) {
+        missingFields.push(key);
+      }
+    }
+    for (const key of requirements.requiredNumbers) {
+      if (!(key in action.configuration.additionalConfiguration)) {
+        missingFields.push(key);
+      }
+    }
+    for (const key in requirements.requiredEnums) {
+      if (!(key in action.configuration.additionalConfiguration)) {
+        missingFields.push(key);
+      }
+    }
+    if (missingFields.length > 0) {
+      return `Some fields are missing: ${missingFields.map(asDisplayName).join(", ")}.`;
+    }
+
+    return null;
+  }
+  return "Please select a tool.";
 }

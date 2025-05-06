@@ -70,6 +70,7 @@ impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
             value_type: col_type,
             possible_values: None,
             non_filterable: None,
+            description: None,
         })
     }
 }
@@ -308,7 +309,11 @@ impl SnowflakeRemoteDatabase {
                 None => None,
             })
             .collect();
-        let allowed_tables: HashSet<&str> = tables.iter().map(|table| table.name()).collect();
+        let allowed_tables: HashSet<&str> = tables
+            .iter()
+            .filter_map(|table| table.remote_database_table_id())
+            .collect();
+
         let used_forbidden_tables = used_tables
             .into_iter()
             .filter(|table| !allowed_tables.contains(*table))
@@ -377,7 +382,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         self.execute_query(&session, query).await
     }
 
-    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>> {
+    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>> {
         // Construct a "DESCRIBE TABLE" query for each opaque table ID.
         let queries: Vec<String> = opaque_ids
             .iter()
@@ -421,7 +426,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                         )
                     })?;
 
-                Ok(TableSchema::from_columns(columns))
+                Ok(Some(TableSchema::from_columns(columns)))
             })
             .collect()
     }

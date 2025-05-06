@@ -1,4 +1,5 @@
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
+import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
@@ -68,7 +69,8 @@ export async function postUserMessageWithPubSub(
     mentions,
     context,
   });
-  return handleUserMessageEvents({
+
+  return handleUserMessageEvents(auth, {
     conversation,
     generator: postMessageEvents,
     resolveAfterFullGeneration,
@@ -103,14 +105,31 @@ export async function editUserMessageWithPubSub(
     content,
     mentions,
   });
-  return handleUserMessageEvents({
+  return handleUserMessageEvents(auth, {
     conversation,
     generator: editMessageEvents,
     resolveAfterFullGeneration: false,
   });
 }
 
-const END_OF_STREAM_EVENTS = ["agent_message_success", "agent_error"];
+type ConversationAsyncEvents =
+  | UserMessageErrorEvent
+  | UserMessageNewEvent
+  | AgentMessageNewEvent
+  | AgentErrorEvent
+  | AgentDisabledErrorEvent
+  | AgentActionSpecificEvent
+  | AgentActionSuccessEvent
+  | GenerationTokensEvent
+  | AgentGenerationCancelledEvent
+  | AgentMessageSuccessEvent
+  | ConversationTitleEvent;
+
+function isEndOfStreamEvent(
+  event: ConversationAsyncEvents
+): event is AgentMessageSuccessEvent | AgentErrorEvent {
+  return ["agent_message_success", "agent_error"].includes(event.type);
+}
 
 function addEndOfStreamToMessageChannel({ channel }: { channel: string }) {
   return publishEvent({
@@ -120,28 +139,18 @@ function addEndOfStreamToMessageChannel({ channel }: { channel: string }) {
   });
 }
 
-async function handleUserMessageEvents({
-  conversation,
-  generator,
-  resolveAfterFullGeneration = false,
-}: {
-  conversation: ConversationType;
-  generator: AsyncGenerator<
-    | UserMessageErrorEvent
-    | UserMessageNewEvent
-    | AgentMessageNewEvent
-    | AgentErrorEvent
-    | AgentDisabledErrorEvent
-    | AgentActionSpecificEvent
-    | AgentActionSuccessEvent
-    | GenerationTokensEvent
-    | AgentGenerationCancelledEvent
-    | AgentMessageSuccessEvent
-    | ConversationTitleEvent,
-    void
-  >;
-  resolveAfterFullGeneration?: boolean;
-}): Promise<
+async function handleUserMessageEvents(
+  auth: Authenticator,
+  {
+    conversation,
+    generator,
+    resolveAfterFullGeneration = false,
+  }: {
+    conversation: ConversationType;
+    generator: AsyncGenerator<ConversationAsyncEvents, void>;
+    resolveAfterFullGeneration?: boolean;
+  }
+): Promise<
   Result<
     {
       userMessage: UserMessageType;
@@ -200,7 +209,6 @@ async function handleUserMessageEvents({
             case "dust_app_run_block":
             case "dust_app_run_params":
             case "generation_tokens":
-            case "tool_params":
             case "process_params":
             case "reasoning_started":
             case "reasoning_thinking":
@@ -210,6 +218,9 @@ async function handleUserMessageEvents({
             case "tables_query_model_output":
             case "tables_query_output":
             case "tables_query_started":
+            case "tool_approve_execution":
+            case "tool_notification":
+            case "tool_params":
             case "websearch_params": {
               const pubsubChannel = getMessageChannelId(event.messageId);
 
@@ -226,7 +237,14 @@ async function handleUserMessageEvents({
                 agentMessages.push(event.message);
               }
 
-              if (END_OF_STREAM_EVENTS.includes(event.type)) {
+              if (isEndOfStreamEvent(event)) {
+                // Maybe compute tokens consumed by the runs.
+                if (event.type === "agent_message_success") {
+                  const { runIds } = event;
+
+                  await maybeTrackTokenUsageCost(auth, { dustRunIds: runIds });
+                }
+
                 await addEndOfStreamToMessageChannel({
                   channel: pubsubChannel,
                 });
@@ -366,7 +384,6 @@ export async function retryAgentMessageWithPubSub(
               case "dust_app_run_params":
               case "generation_tokens":
               case "process_params":
-              case "tool_params":
               case "reasoning_started":
               case "reasoning_thinking":
               case "reasoning_tokens":
@@ -375,6 +392,9 @@ export async function retryAgentMessageWithPubSub(
               case "tables_query_model_output":
               case "tables_query_output":
               case "tables_query_started":
+              case "tool_approve_execution":
+              case "tool_notification":
+              case "tool_params":
               case "websearch_params": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await publishEvent({
@@ -383,7 +403,16 @@ export async function retryAgentMessageWithPubSub(
                   event: JSON.stringify(event),
                 });
 
-                if (END_OF_STREAM_EVENTS.includes(event.type)) {
+                if (isEndOfStreamEvent(event)) {
+                  // Maybe compute tokens consumed by the runs.
+                  if (event.type === "agent_message_success") {
+                    const { runIds } = event;
+
+                    await maybeTrackTokenUsageCost(auth, {
+                      dustRunIds: runIds,
+                    });
+                  }
+
                   await addEndOfStreamToMessageChannel({
                     channel: pubsubChannel,
                   });
@@ -627,11 +656,11 @@ function getConversationChannelId(channelId: string) {
   return `conversation-${channelId}`;
 }
 
-function getMessageChannelId(messageId: string) {
+export function getMessageChannelId(messageId: string) {
   return `message-${messageId}`;
 }
 
-async function publishEvent({
+export async function publishEvent({
   origin,
   channel,
   event,

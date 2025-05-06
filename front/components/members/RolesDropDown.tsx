@@ -1,11 +1,11 @@
 import {
+  Button,
   ChevronDownIcon,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
 } from "@dust-tt/sparkle";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
@@ -24,16 +24,12 @@ export function RoleDropDown({ onChange, selectedRole }: RoleDropDownProps) {
         <div className="group flex cursor-pointer items-center gap-2">
           <Chip
             color={ROLES_DATA[selectedRole]["color"]}
+            size="sm"
             className="capitalize"
           >
             {displayRole(selectedRole)}
           </Chip>
-          <IconButton
-            icon={ChevronDownIcon}
-            size="sm"
-            variant="outline"
-            className="group-hover:text-action-400"
-          />
+          <Button icon={ChevronDownIcon} size="sm" variant="ghost" />
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent>

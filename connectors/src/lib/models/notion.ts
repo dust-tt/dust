@@ -126,6 +126,7 @@ NotionPage.init(
   {
     sequelize: sequelizeConnection,
     indexes: [
+      { fields: ["connectorId"], concurrently: true },
       { fields: ["notionPageId", "connectorId"], unique: true },
       { fields: ["connectorId", "lastSeenTs"], concurrently: true },
       { fields: ["parentId"] },
@@ -148,6 +149,13 @@ export class NotionDatabase extends ConnectorBaseModel<NotionDatabase> {
   declare lastSeenTs: Date;
   declare firstSeenTs?: Date;
   declare lastCreatedOrMovedRunTs: CreationOptional<Date | null>;
+
+  // These fields are used for the notion databaseUpsertQueueWorkflow.
+  // They allow:
+  // - debouncing multiple requests to upsert the same database
+  // - prioritizing databases to upsert based on lastUpsertRequestedTs
+  declare lastUpsertedRunTs: CreationOptional<Date | null>;
+  declare upsertRequestedRunTs: Date | null;
 
   declare skipReason?: string | null;
 
@@ -189,6 +197,14 @@ NotionDatabase.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    lastUpsertedRunTs: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    upsertRequestedRunTs: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     skipReason: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -227,6 +243,7 @@ NotionDatabase.init(
   {
     sequelize: sequelizeConnection,
     indexes: [
+      { fields: ["connectorId"], concurrently: true },
       { fields: ["notionDatabaseId", "connectorId"], unique: true },
       { fields: ["connectorId", "skipReason"] },
       { fields: ["lastSeenTs"] },

@@ -91,6 +91,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         botEnabled: configuration.botEnabled,
         slackTeamId: teamInfo.team.id,
         whitelistedDomains: configuration.whitelistedDomains,
+        restrictedSpaceAgentsEnabled:
+          configuration.restrictedSpaceAgentsEnabled ?? true,
       }
     );
 
@@ -490,50 +492,29 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     const promises: Promise<void>[] = [];
 
     const slackChannelsToSync: string[] = [];
+
     try {
       for (const [internalId, permission] of Object.entries(permissions)) {
         const slackChannelId = slackChannelIdFromInternalId(internalId);
         let channel = channels[slackChannelId];
-        const slackClient = await getSlackClient(connector.id);
         if (!channel) {
-          const remoteChannel = await slackClient.conversations.info({
-            channel: slackChannelId,
-          });
-          if (!remoteChannel.ok || !remoteChannel.channel?.name) {
-            logger.error(
-              {
-                connectorId: this.connectorId,
-                channelId: slackChannelId,
-                error: remoteChannel.error,
-              },
-              "Could not get the Slack channel information"
-            );
-            return new Err(
-              new Error("Could not get the Slack channel information.")
-            );
-          }
           const joinRes = await joinChannel(this.connectorId, slackChannelId);
           if (joinRes.isErr()) {
-            logger.error(
-              {
-                connectorId: this.connectorId,
-                channelId: slackChannelId,
-                error: joinRes.error,
-              },
-              "Could not join the Slack channel"
-            );
-            return new Err(
-              new Error(
-                `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannel.channel.name}. Please re-authorize Slack or invite @Dust from #${remoteChannel.channel.name} on Slack.`
-              )
+            return new Err(joinRes.error);
+          }
+          const channelInfo = joinRes.value.channel;
+          if (!channelInfo.name) {
+            // Checked in the joinChannel function.
+            throw new Error(
+              `Could not get the Slack channel name for #${slackChannelId}.`
             );
           }
           const slackChannel = await SlackChannel.create({
             connectorId: this.connectorId,
             slackChannelId: slackChannelId,
-            slackChannelName: remoteChannel.channel.name,
+            slackChannelName: channelInfo.name,
             permission: "none",
-            private: !!remoteChannel.channel.is_private,
+            private: !!channelInfo.is_private,
           });
           channels[slackChannelId] = slackChannel;
           channel = slackChannel;
@@ -655,6 +636,15 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return slackConfig.setAutoReadChannelPatterns(autoReadChannelPatterns);
       }
 
+      case "restrictedSpaceAgentsEnabled": {
+        const enabled = configValue === "true";
+        await slackConfig.model.update(
+          { restrictedSpaceAgentsEnabled: enabled },
+          { where: { id: slackConfig.id } }
+        );
+        return new Ok(undefined);
+      }
+
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
@@ -688,6 +678,12 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         );
 
         return autoReadChannelPatterns;
+      }
+
+      case "restrictedSpaceAgentsEnabled": {
+        const restrictedSpaceAgentsEnabled =
+          await getRestrictedSpaceAgentsEnabled(this.connectorId);
+        return restrictedSpaceAgentsEnabled;
       }
 
       default:
@@ -806,4 +802,20 @@ export async function getAutoReadChannelPatterns(
   }
 
   return new Ok(JSON.stringify(slackConfiguration.autoReadChannelPatterns));
+}
+
+export async function getRestrictedSpaceAgentsEnabled(
+  connectorId: ModelId
+): Promise<Result<string | null, Error>> {
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfiguration) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+
+  return new Ok(slackConfiguration.restrictedSpaceAgentsEnabled.toString());
 }

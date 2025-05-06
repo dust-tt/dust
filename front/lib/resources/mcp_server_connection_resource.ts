@@ -8,12 +8,14 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  remoteMCPServerNameToSId,
+} from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -204,13 +206,13 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       workspaceId,
     });
   }
+
   // Serialization.
   toJSON(): MCPServerConnectionType {
     return {
       sId: this.sId,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      connectionId: this.connectionId,
       connectionType: this.connectionType,
       serverType: this.serverType,
       internalMCPServerId: this.internalMCPServerId,
@@ -222,8 +224,8 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       },
       remoteMCPServerId:
         this.remoteMCPServerId &&
-        RemoteMCPServerResource.modelIdToSId({
-          id: this.remoteMCPServerId,
+        remoteMCPServerNameToSId({
+          remoteMCPServerId: this.remoteMCPServerId,
           workspaceId: this.workspaceId,
         }),
     };
@@ -240,7 +242,6 @@ export interface MCPServerConnectionType {
     email: string | null;
     userId: string | null;
   };
-  connectionId: string;
   connectionType: string;
   serverType: string;
   remoteMCPServerId: string | null;

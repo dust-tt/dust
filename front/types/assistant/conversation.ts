@@ -66,19 +66,19 @@ export type MessageWithRankType = WithRank<MessageType>;
  */
 
 export type UserMessageOrigin =
-  | "slack"
-  | "web"
   | "api"
   | "email"
-  | "gsheet"
-  | "zapier"
-  | "n8n"
-  | "make"
-  | "zendesk"
-  | "raycast"
-  | "github-copilot-chat"
   | "extension"
-  | "email";
+  | "github-copilot-chat"
+  | "gsheet"
+  | "make"
+  | "mcp"
+  | "n8n"
+  | "raycast"
+  | "slack"
+  | "web"
+  | "zapier"
+  | "zendesk";
 
 export type UserMessageContext = {
   username: string;
@@ -87,6 +87,7 @@ export type UserMessageContext = {
   email: string | null;
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
+  localMCPServerIds?: string[];
 };
 
 export type UserMessageType = {
@@ -146,7 +147,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
-  tool_action: "Calling an external tool",
+  tool_action: "Using a tool",
 };
 
 /**
@@ -213,9 +214,6 @@ export type ConversationWithoutContentType = {
   title: string | null;
   visibility: ConversationVisibility;
   requestedGroupIds: string[][];
-
-  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-  groupIds?: string[];
 };
 
 /**

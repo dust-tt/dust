@@ -5,7 +5,7 @@ import { Op, QueryTypes, Sequelize } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
-  Conversation,
+  ConversationModel,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
@@ -275,7 +275,7 @@ export async function getUserUsageData(
         },
       },
       {
-        model: Conversation,
+        model: ConversationModel,
         as: "conversation",
         attributes: [],
         required: true,
@@ -294,6 +294,7 @@ export async function getUserUsageData(
   });
   const userUsage: UserUsageQueryResult[] = userMessages.map((result) => {
     return {
+      userId: (result as unknown as { userId: string }).userId,
       userName: (result as unknown as { userContextFullName: string })
         .userContextFullName,
       userEmail: (result as unknown as { userContextEmail: string })
@@ -551,9 +552,11 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
     where: { workspaceId: auth.getNonNullableWorkspace().id },
   });
 
-  const hasRecentConversation = await Conversation.findOne({
+  // INFO: keep accessing the model for now to avoid circular deps warning
+  const owner = auth.getNonNullableWorkspace();
+  const hasRecentConversation = await ConversationModel.findAll({
     where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId: owner.id,
       updatedAt: { [Op.gte]: sevenDaysAgo },
     },
   });

@@ -82,9 +82,10 @@ export async function submitMessage({
     input: string;
     mentions: MentionType[];
     contentFragments: ContentFragmentsType;
+    localMCPServerIds?: string[];
   };
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
-  const { input, mentions, contentFragments } = messageData;
+  const { input, mentions, contentFragments, localMCPServerIds } = messageData;
 
   // Create a new content fragment.
   if (
@@ -161,6 +162,7 @@ export async function submitMessage({
         context: {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
           profilePictureUrl: user.image,
+          localMCPServerIds,
         },
         mentions,
       }),
@@ -231,11 +233,12 @@ export async function createConversationWithMessage({
     input: string;
     mentions: MentionType[];
     contentFragments: ContentFragmentsType;
+    localMCPServerIds?: string[];
   };
   visibility?: ConversationVisibility;
   title?: string;
 }): Promise<Result<ConversationType, SubmitMessageError>> {
-  const { input, mentions, contentFragments } = messageData;
+  const { input, mentions, contentFragments, localMCPServerIds } = messageData;
 
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
     title: title ?? null,
@@ -245,6 +248,7 @@ export async function createConversationWithMessage({
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         profilePictureUrl: user.image,
+        localMCPServerIds,
       },
       mentions,
     },

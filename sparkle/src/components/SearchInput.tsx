@@ -13,7 +13,11 @@ import {
   Spinner,
 } from "@sparkle/components";
 import { ContentMessageProps } from "@sparkle/components/ContentMessage";
-import { ListCheckIcon, MagnifyingGlassIcon, XMarkIcon } from "@sparkle/icons";
+import {
+  ListCheckIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+} from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 export interface SearchInputProps {
@@ -218,7 +222,7 @@ function BaseSearchInputWithPopover<T>(
         mountPortalContainer={mountPortalContainer}
       >
         <div className="s-flex s-flex-col">
-          {items.length > 0 && (
+          {items.length > 0 && (displayItemCount || onSelectAll) && (
             <div className="s-flex s-items-center s-justify-between s-p-2 s-text-sm s-text-gray-500">
               <div>
                 {displayItemCount && (

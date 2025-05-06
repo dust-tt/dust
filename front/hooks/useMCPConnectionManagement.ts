@@ -1,7 +1,7 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_actions";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import {
   useCreateMCPServerConnection,
   useDeleteMCPServerConnection,
@@ -45,6 +45,7 @@ export const useMCPConnectionManagement = ({
       return createMCPServerConnection({
         connectionId: cRes.value.connection_id,
         mcpServerId,
+        provider: authorizationInfo.provider,
       });
     },
     [owner, sendNotification, createMCPServerConnection]

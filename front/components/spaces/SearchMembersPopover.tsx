@@ -108,7 +108,7 @@ export function SearchMembersPopover({
                   <Avatar size="sm" visual={member.image || ""} />
                   <div>
                     <div className="text-sm">{member.fullName}</div>
-                    <div className="text-xs text-element-700">
+                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                       {member.email}
                     </div>
                   </div>
@@ -122,7 +122,7 @@ export function SearchMembersPopover({
             hasMore={hasMore}
             showLoader={isLoading}
             loader={
-              <div className="py-2 text-center text-sm text-element-700">
+              <div className="py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Loading more members...
               </div>
             }

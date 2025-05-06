@@ -1,4 +1,5 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
+import { useMcpServer } from "@app/shared/hooks/useMcpServer";
 import {
   createPlaceholderUserMessage,
   postConversation,
@@ -79,6 +80,8 @@ export function ConversationContainer({
     }
   });
 
+  const { serverId } = useMcpServer();
+
   const handlePostMessage = async (
     input: string,
     mentions: AgentMentionType[],
@@ -87,7 +90,12 @@ export function ConversationContainer({
     if (!conversationId) {
       return null;
     }
-    const messageData = { input, mentions, contentFragments };
+    const messageData = {
+      input,
+      mentions,
+      contentFragments,
+      mcpServerIds: serverId ? [serverId] : [],
+    };
     try {
       await mutateConversation(
         async (currentConversation) => {
@@ -164,6 +172,7 @@ export function ConversationContainer({
             input,
             mentions,
             contentFragments,
+            mcpServerIds: serverId ? [serverId] : [],
           },
         });
         if (conversationRes.isErr()) {
@@ -204,7 +213,7 @@ export function ConversationContainer({
           });
         }
       },
-      [owner, sendNotification, includeContent]
+      [owner, sendNotification, includeContent, serverId]
     )
   );
 

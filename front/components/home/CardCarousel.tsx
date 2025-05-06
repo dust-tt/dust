@@ -15,21 +15,21 @@ interface CardCarouselProps {
 
 function CardCarousel({ title, children }: CardCarouselProps) {
   return (
-    <div className="w-full">
-      <Carousel className="w-full">
-        <div className="mb-6 flex items-end justify-between">
-          <div className="w-full max-w-5xl">{title}</div>
-          <div className="flex gap-4">
-            <CarouselPrevious />
-            <CarouselNext />
+    <div className="w-full rounded-xl">
+      <Carousel className="w-full rounded-xl" opts={{ align: "start" }}>
+        <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex-1 text-lg font-semibold sm:text-xl">{title}</div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <CarouselPrevious className="h-8 w-8 sm:h-10 sm:w-10" />
+            <CarouselNext className="h-8 w-8 sm:h-10 sm:w-10" />
           </div>
         </div>
 
-        <CarouselContent className="-ml-2 -mr-2">
+        <CarouselContent className="-ml-4 rounded-xl">
           {React.Children.map(children, (child, index) => (
             <CarouselItem
               key={index}
-              className="basis-full pl-2 pr-2 sm:basis-1/2 lg:basis-1/3"
+              className="rounded-xl pl-4 pr-4 sm:basis-1/2 lg:basis-1/3"
             >
               {child}
             </CarouselItem>

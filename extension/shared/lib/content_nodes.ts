@@ -3,7 +3,7 @@ import type {
   ContentNodeType,
   DataSourceViewContentNodeType,
 } from "@dust-tt/client";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { DATA_SOURCE_MIME_TYPE, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   assertNever,
   ChatBubbleLeftRightIcon,
@@ -41,9 +41,6 @@ export const SPREADSHEET_INTERNAL_MIME_TYPES = [
   INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
   INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET,
 ] as readonly string[];
-
-// Mime type that represents a datasource.
-export const DATA_SOURCE_MIME_TYPE = "application/vnd.dust.datasource";
 
 function getVisualForFileContentNode(
   node: ContentNodeType & { type: "document" }

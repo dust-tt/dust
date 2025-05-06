@@ -4,6 +4,7 @@ import {
   Button,
   ClipboardIcon,
   CubeIcon,
+  Hoverable,
   Page,
   Sheet,
   SheetContainer,
@@ -13,7 +14,6 @@ import {
   SheetTrigger,
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useState } from "react";
 
 import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
@@ -167,12 +167,12 @@ export function ViewAppAPIModal({
               <Page.P>
                 <div className="pb-2">
                   {owner.role === "admin" ? (
-                    <Link
+                    <Hoverable
                       href={`/w/${owner.sId}/developers/api-keys`}
-                      className="py-1 font-bold text-action-600"
+                      variant="highlight"
                     >
                       Manage workspace API keys
-                    </Link>
+                    </Hoverable>
                   ) : (
                     <span>API keys are managed by workspace admins.</span>
                   )}
@@ -189,14 +189,14 @@ export function ViewAppAPIModal({
               <Page.P>
                 For a detailed documentation of the Data source API, please
                 refer to the{" "}
-                <Link
+                <Hoverable
                   href={
                     "https://docs.dust.tt/reference/post_api-v1-w-wid-vaults-vid-apps-aid-runs"
                   }
-                  className="py-1 font-bold text-action-600"
+                  variant="highlight"
                 >
                   API Reference
-                </Link>
+                </Hoverable>
               </Page.P>
             </Page.Vertical>
           </div>

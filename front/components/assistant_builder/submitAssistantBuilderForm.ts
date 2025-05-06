@@ -1,5 +1,5 @@
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
-import { removeLeadingAt } from "@app/components/assistant_builder/NamingScreen";
+import { removeLeadingAt } from "@app/components/assistant_builder/SettingsScreen";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import type {
@@ -14,7 +14,11 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
+import type {
+  DataSourceConfiguration,
+  RetrievalTimeframe,
+} from "@app/lib/actions/retrieval";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentConfigurationType,
   DataSourceViewSelectionConfigurations,
@@ -30,13 +34,13 @@ type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
 };
 
-function processDataSourceViewSelectionConfigurations({
+function processDataSourcesSelection({
   owner,
   dataSourceConfigurations,
 }: {
   owner: WorkspaceType;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-}) {
+}): DataSourceConfiguration[] {
   return Object.values(dataSourceConfigurations).map(
     ({ dataSourceView, selectedResources, isSelectAll, tagsFilter }) => ({
       dataSourceViewId: dataSourceView.sId,
@@ -51,6 +55,24 @@ function processDataSourceViewSelectionConfigurations({
         tags: tagsFilter,
       },
     })
+  );
+}
+
+function processTableSelection({
+  owner,
+  tablesConfigurations,
+}: {
+  owner: WorkspaceType;
+  tablesConfigurations: DataSourceViewSelectionConfigurations;
+}): TableDataSourceConfiguration[] {
+  return Object.values(tablesConfigurations).flatMap(
+    ({ dataSourceView, selectedResources }) => {
+      return selectedResources.map((resource) => ({
+        dataSourceViewId: dataSourceView.sId,
+        workspaceId: owner.sId,
+        tableId: getTableIdForContentNode(dataSourceView.dataSource, resource),
+      }));
+    }
   );
 }
 
@@ -75,16 +97,17 @@ export async function submitAssistantBuilderForm({
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
   const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
-  let { handle, description, instructions, avatarUrl } = builderState;
-  if (!handle || !description || !instructions || !avatarUrl) {
+  let { handle, description, instructions, avatarUrl, editors } = builderState;
+  if (!handle || !description || !instructions || !avatarUrl || !editors) {
     if (!isDraft) {
-      // Should be unreachable we keep this for TS
+      // Should be unreachable, we keep this for TS
       throw new Error("Form not valid (unreachable)");
     } else {
       handle = handle?.trim() || "Preview";
       description = description?.trim() || "Preview";
       instructions = instructions?.trim() || "Preview";
       avatarUrl = avatarUrl ?? "";
+      editors = [];
     }
   }
 
@@ -93,22 +116,24 @@ export async function submitAssistantBuilderForm({
   >;
 
   const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
-    let timeFrame: RetrievalTimeframe = "auto";
+    let retrievalTimeFrame: RetrievalTimeframe = "auto";
 
     if (a.type === "RETRIEVAL_EXHAUSTIVE") {
       if (a.configuration.timeFrame) {
-        timeFrame = {
+        retrievalTimeFrame = {
           duration: a.configuration.timeFrame.value,
           unit: a.configuration.timeFrame.unit,
         };
       } else {
-        timeFrame = "none";
+        retrievalTimeFrame = "none";
       }
     } else if (a.type === "PROCESS") {
-      timeFrame = {
-        duration: a.configuration.timeFrame.value,
-        unit: a.configuration.timeFrame.unit,
-      };
+      if (a.configuration.timeFrame) {
+        retrievalTimeFrame = {
+          duration: a.configuration.timeFrame.value,
+          unit: a.configuration.timeFrame.unit,
+        };
+      }
     }
 
     switch (a.type) {
@@ -120,9 +145,9 @@ export async function submitAssistantBuilderForm({
             name: a.name,
             description: a.description,
             query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
-            relativeTimeFrame: timeFrame,
+            relativeTimeFrame: retrievalTimeFrame,
             topK: "auto",
-            dataSources: processDataSourceViewSelectionConfigurations({
+            dataSources: processDataSourcesSelection({
               owner,
               dataSourceConfigurations:
                 a.configuration.dataSourceConfigurations,
@@ -139,8 +164,8 @@ export async function submitAssistantBuilderForm({
             type: "dust_app_run_configuration",
             appWorkspaceId: owner.sId,
             appId: a.configuration.app.sId,
-            // These field are required by the API (`name` and `description`) but will be overriden
-            // with the app name and description.
+            // These fields are required by the API (`name` and `description`)
+            // but will be overridden with the app name and description.
             name: a.configuration.app.name,
             description: a.configuration.app.description,
           },
@@ -152,18 +177,10 @@ export async function submitAssistantBuilderForm({
             type: "tables_query_configuration",
             name: a.name,
             description: a.description,
-            tables: Object.values(a.configuration).flatMap(
-              ({ dataSourceView, selectedResources }) => {
-                return selectedResources.map((resource) => ({
-                  dataSourceViewId: dataSourceView.sId,
-                  workspaceId: owner.sId,
-                  tableId: getTableIdForContentNode(
-                    dataSourceView.dataSource,
-                    resource
-                  ),
-                }));
-              }
-            ),
+            tables: processTableSelection({
+              owner,
+              tablesConfigurations: a.configuration,
+            }),
           },
         ];
 
@@ -182,19 +199,39 @@ export async function submitAssistantBuilderForm({
         ];
 
       case "MCP":
+        const {
+          configuration: {
+            tablesConfigurations,
+            dataSourceConfigurations,
+            childAgentId,
+            reasoningModel: mcpReasoningModel,
+            additionalConfiguration,
+            timeFrame,
+          },
+        } = a;
+
         return [
           {
             type: "mcp_server_configuration",
             name: a.name,
             description: a.description,
             mcpServerViewId: a.configuration.mcpServerViewId,
-            dataSources: a.configuration.dataSourceConfigurations
-              ? processDataSourceViewSelectionConfigurations({
-                  owner,
-                  dataSourceConfigurations:
-                    a.configuration.dataSourceConfigurations,
-                })
+            dataSources: dataSourceConfigurations
+              ? processDataSourcesSelection({ owner, dataSourceConfigurations })
               : null,
+            tables: tablesConfigurations
+              ? processTableSelection({ owner, tablesConfigurations })
+              : null,
+            childAgentId,
+            reasoningModel: mcpReasoningModel
+              ? {
+                  providerId: mcpReasoningModel.providerId,
+                  reasoningEffort: mcpReasoningModel.reasoningEffort ?? null,
+                  modelId: mcpReasoningModel.modelId,
+                }
+              : null,
+            timeFrame,
+            additionalConfiguration,
           },
         ];
 
@@ -229,8 +266,8 @@ export async function submitAssistantBuilderForm({
               })
             ),
             tagsFilter: a.configuration.tagsFilter,
-            relativeTimeFrame: timeFrame,
-            schema: a.configuration.schema,
+            relativeTimeFrame: retrievalTimeFrame,
+            jsonSchema: a.configuration.jsonSchema,
           },
         ];
 
@@ -291,10 +328,13 @@ export async function submitAssistantBuilderForm({
         temperature: builderState.generationSettings.temperature,
         reasoningEffort:
           builderState.generationSettings.modelSettings.reasoningEffort,
+        responseFormat: builderState.generationSettings.responseFormat,
       },
       maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,
       templateId: builderState.templateId,
+      tags: builderState.tags,
+      editors: editors.map((e) => ({ sId: e.sId })),
     },
   };
 
@@ -327,11 +367,11 @@ export async function submitAssistantBuilderForm({
   } = await res.json();
   const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
 
-  // PATCH the linked slack channels if either:
+  // PATCH the linked Slack channels if either:
   // - there were already linked channels
   // - there are newly selected channels
   // If the user selected channels that were already routed to a different agent, the current behavior is to
-  // unlink them from the previous agent and link them to the this one.
+  // unlink them from the previous agent and link them to this one.
   if (
     selectedSlackChannels.length ||
     slackChannelsLinkedWithAgent.filter(

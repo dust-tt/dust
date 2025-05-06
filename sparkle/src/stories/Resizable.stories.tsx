@@ -14,7 +14,7 @@ const meta = {
 export default meta;
 
 export const TooltipLongLabel = () => (
-  <div className="s-flex s-flex-col s-bg-slate-50 s-p-12">
+  <div className="s-flex s-flex-col s-bg-muted-background s-p-12">
     <div className="s-flex s-h-[600px] s-w-[800px] s-flex-col s-gap-16 s-p-12">
       <ResizableDemo />
     </div>
@@ -85,7 +85,7 @@ export function ResizableGrabDemo() {
       className="s-min-h-[200px] s-max-w-md s-rounded-lg s-border s-bg-white md:s-min-w-[450px]"
     >
       <ResizablePanel defaultSize={25}>
-        <div className="s-flex s-h-full s-items-center s-justify-center s-bg-slate-900 s-p-6 s-text-white">
+        <div className="s-flex s-h-full s-items-center s-justify-center s-bg-primary-900 s-p-6 s-text-white">
           <span className="s-font-semibold">Sidebar</span>
         </div>
       </ResizablePanel>

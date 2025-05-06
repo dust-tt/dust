@@ -1,7 +1,6 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { getMimeTypeFromFile } from "@app/lib/file";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
@@ -141,21 +140,20 @@ export function useFileUploaderService({
           file = new File([file], name, { type: file.type });
         }
 
-        const contentType = getMimeTypeFromFile(file);
-        if (!isSupportedFileContentType(contentType)) {
+        if (!isSupportedFileContentType(file.type)) {
           acc.push(
             new Err(
               new FileBlobUploadError(
                 "file_type_not_supported",
                 file,
-                `File "${file.name}" is not supported (${contentType}).`
+                `File "${file.name}" is not supported (${file.type}).`
               )
             )
           );
           return acc;
         }
 
-        acc.push(new Ok(createFileBlob(file, contentType)));
+        acc.push(new Ok(createFileBlob(file, file.type)));
         return acc;
       },
       [] as (Ok<FileBlob> | Err<FileBlobUploadError>)[]

@@ -1,6 +1,7 @@
 import React from "react";
 
-import * as SolidIcons from "@sparkle/icons";
+import * as ActionIcons from "@sparkle/icons/actions";
+import * as SolidIcons from "@sparkle/icons/app";
 
 import { Icon } from "../index_with_tw_base";
 
@@ -31,6 +32,33 @@ const itemStyle = {
 export const IconSet = () => (
   <div style={gridStyle}>
     {Object.entries(SolidIcons as IconModule).map(
+      ([iconName, IconComponent]) => {
+        const CurrentIcon = (
+          "default" in IconComponent ? IconComponent.default : IconComponent
+        ) as React.ComponentType<{ className?: string }>;
+        return (
+          <div key={iconName}>
+            <Icon
+              visual={CurrentIcon}
+              size="md"
+              className="s-text-foreground dark:s-text-foreground-night"
+            />
+            <div
+              style={itemStyle as React.CSSProperties}
+              className="s-text-sm s-text-foreground dark:s-text-foreground-night"
+            >
+              {iconName}
+            </div>
+          </div>
+        );
+      }
+    )}
+  </div>
+);
+
+export const ActionIconSet = () => (
+  <div style={gridStyle}>
+    {Object.entries(ActionIcons as IconModule).map(
       ([iconName, IconComponent]) => {
         const CurrentIcon = (
           "default" in IconComponent ? IconComponent.default : IconComponent

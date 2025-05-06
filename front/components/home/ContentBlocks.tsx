@@ -5,13 +5,19 @@ import type { ReactNode } from "react";
 import React from "react";
 
 import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@app/components/home/Carousel";
+import {
   Grid,
   H1,
   H2,
   H3,
   H5,
   P,
-  Strong,
 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
@@ -33,22 +39,33 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
   const renderContent = () => {
     if (Array.isArray(content)) {
       return content.map((item, index) => (
-        <P key={index} size="md">
+        <P key={index} size="md" className="text-muted-foreground">
           {item}
         </P>
       ));
     } else {
-      return <P size="md">{content}</P>;
+      return (
+        <P size="md" className="text-muted-foreground">
+          {content}
+        </P>
+      );
     }
   };
 
   return (
-    <div className={classNames("flex flex-col gap-2", className)}>
-      <div className="ml-[10%] pr-[20%] lg:m-0 lg:pr-[28%]">
-        {children ? children : null}
+    <div
+      className={classNames(
+        "flex flex-col gap-2 overflow-hidden rounded-2xl bg-muted-background",
+        className
+      )}
+    >
+      <div className="flex aspect-video w-full items-center justify-center bg-primary-800 p-4">
+        <div className="max-w-lg">{children ? children : null}</div>
       </div>
-      <div className="flex flex-col px-0 py-6">
-        <H3 className="text-white">{title}</H3>
+      <div className="flex flex-col gap-3 px-6 pb-6 pt-4">
+        <H3 className="text-foreground" mono>
+          {title}
+        </H3>
         {renderContent()}
       </div>
     </div>
@@ -61,6 +78,7 @@ interface BlogBlockProps {
   content: React.ReactNode;
   href: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export const BlogBlock: React.FC<BlogBlockProps> = ({
@@ -69,6 +87,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
   content,
   href,
   className = "",
+  style,
 }) => {
   return (
     <a
@@ -76,13 +95,14 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
+        "flex h-full w-full flex-col overflow-hidden rounded-xl bg-muted-background",
         "group transition duration-300 ease-out",
-        "hover:bg-white"
+        "hover:bg-primary-100"
       )}
+      style={style}
     >
       {children ? (
-        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
+        <div className="relative aspect-[16/9] w-full overflow-hidden">
           {React.Children.map(children, (child) => {
             if (
               React.isValidElement<React.ImgHTMLAttributes<HTMLImageElement>>(
@@ -94,24 +114,21 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
                 className: classNames(
                   "absolute h-full w-full object-cover",
                   "brightness-100 transition duration-300 ease-out",
-                  "group-hover:brightness-110",
-                  "border border-slate-900/10 rounded-t-2xl"
+                  "group-hover:brightness-110"
                 ),
+                style: { borderRadius: 0 },
               });
             }
             return child;
           })}
         </div>
       ) : null}
-      <div className="flex flex-col p-6">
+      <div className="flex flex-col p-8">
         <div className="flex flex-col gap-2">
-          <H5 className="line-clamp-2 text-foreground dark:text-foreground-night">
+          <H5 className="line-clamp-2 text-foreground" mono>
             {title}
           </H5>
-          <P
-            size="xs"
-            className="line-clamp-3 text-foreground dark:text-foreground-night"
-          >
+          <P size="sm" className="line-clamp-3 text-muted-foreground">
             {content}
           </P>
         </div>
@@ -124,8 +141,6 @@ interface HeaderContentBlockProps {
   title: ReactNode;
   subtitle?: ReactNode;
   uptitle?: string;
-  from: string;
-  to: string;
   hasCTA?: boolean;
 }
 
@@ -133,14 +148,12 @@ export const HeaderContentBlock = ({
   title,
   subtitle,
   uptitle,
-  from,
-  to,
   hasCTA = true,
 }: HeaderContentBlockProps) => (
   <Grid>
     <div
       className={classNames(
-        "sm:pt-18 flex flex-col justify-end gap-12 pt-12 lg:pt-36",
+        "flex flex-col justify-end gap-6 pt-24",
         "col-span-12",
         "sm:col-span-12 md:col-span-12",
         "lg:col-span-8 lg:col-start-2",
@@ -156,11 +169,14 @@ export const HeaderContentBlock = ({
           {uptitle}
         </P>
       )}
-      <H1 from={from} to={to}>
+      <H1
+        mono
+        className="text-5xl font-medium leading-tight md:text-6xl lg:text-7xl"
+      >
         {title}
       </H1>
       {subtitle && (
-        <P size="lg" className="text-white dark:text-black">
+        <P size="lg" className="text-muted-foreground">
           {subtitle}
         </P>
       )}
@@ -193,39 +209,77 @@ interface MetricComponentProps {
     description: ReactNode;
     logo?: string;
   }[];
-  from: string;
-  to: string;
+  color?: "blue" | "green" | "rose" | "golden";
 }
 
-export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
-  <div
-    className={classNames(
-      "grid w-full grid-cols-1 gap-8 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2",
-      metrics.length === 2
-        ? "lg:grid-cols-2"
-        : metrics.length === 3
-          ? "lg:grid-cols-3"
-          : "lg:grid-cols-4"
-    )}
-  >
-    {metrics.map((metric, index) => (
-      <div key={index} className="flex flex-col items-center text-center">
-        {metric.logo && (
-          <Image alt="alan" src={metric.logo} width={200} height={100} />
-        )}
-        <H1 from={from} to={to} className="mt-0">
-          {metric.value}
-        </H1>
+const getColorClasses = (color: MetricComponentProps["color"] = "golden") => {
+  switch (color) {
+    case "blue":
+      return {
+        bg: "bg-brand-electric-blue/10",
+        text: "text-brand-electric-blue",
+      };
+    case "green":
+      return {
+        bg: "bg-green-100",
+        text: "text-green-600",
+      };
+    case "rose":
+      return {
+        bg: "bg-brand-red-rose/10",
+        text: "text-brand-red-rose",
+      };
+    case "golden":
+      return {
+        bg: "bg-golden-100",
+        text: "text-golden-600",
+      };
+  }
+};
 
-        <div className="flex flex-col items-center">
-          <P size="lg" className="max-w-[400px] text-black dark:text-slate-50">
-            {metric.description}
-          </P>
+export const MetricSection = ({
+  metrics,
+  color = "golden",
+}: MetricComponentProps) => {
+  const colors = getColorClasses(color);
+
+  return (
+    <div className="flex flex-col gap-y-8 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 lg:flex lg:flex-row lg:justify-center lg:gap-8">
+      {metrics.map((metric, index) => (
+        <div key={index} className="h-full flex-1 lg:flex-1">
+          <div
+            className={classNames(
+              "flex h-56 w-56 flex-col items-center justify-center rounded-full",
+              "mx-auto",
+              colors.bg
+            )}
+          >
+            {metric.logo && (
+              <Image
+                alt="alan"
+                src={metric.logo}
+                width={100}
+                height={50}
+                className="mb-3"
+              />
+            )}
+            <H2
+              className={classNames(
+                "text-center text-5xl font-medium",
+                colors.text
+              )}
+            >
+              <span>{metric.value}</span>
+            </H2>
+            <P size="sm" className="mt-3 px-6 text-center text-foreground">
+              {metric.description}
+            </P>
+          </div>
         </div>
-      </div>
-    ))}
-  </div>
-);
+      ))}
+    </div>
+  );
+};
 
 interface QuoteProps {
   quote: string;
@@ -234,33 +288,128 @@ interface QuoteProps {
   logo: string;
 }
 
-export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-4 lg:col-span-10 lg:col-start-2">
-    <div className="flex justify-center">
-      <div className="flex items-center justify-center">
-        <Image
-          src={logo}
-          width={200}
-          height={48}
-          alt="Company Logo"
-          className="h-auto w-[140px] xs:w-[160px] sm:w-[200px]"
-        />
-        <P
-          size="sm"
-          className="text-sm text-primary-400 xs:text-left xs:text-base sm:text-lg md:text-lg"
-        >
-          <Strong>
-            <span className="text-pink-300">{name}</span>
-          </Strong>
-          <br /> {title}
+// Collection of all quotes from across the site
+export const AllQuotes: QuoteProps[] = [
+  {
+    quote:
+      "Thanks to what we’ve implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
+    name: "Vincent Delagabbe",
+    title: "Software Engineer at Alan",
+    logo: "/static/landing/logos/color/alan.png",
+  },
+  {
+    quote:
+      "Dust transformed our privacy reviews. It handles compliance checks, suggests improvements, and drafts communications. It both cuts our review time and helps pressure-test our legal interpretations.",
+    name: "Thomas Adhumeau",
+    title: "Chief Privacy Officer at Didomi",
+    logo: "/static/landing/logos/color/didomi.png",
+  },
+  {
+    quote:
+      "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you’re newly onboarded or a veteran team member.",
+    name: "Boris Lipiainen",
+    title: "Chief Product and Technology Officer at Kyriba",
+    logo: "/static/landing/logos/color/kyriba.png",
+  },
+  {
+    quote:
+      "Dust is not just a tool - it’s like having an extra team member who knows your brand voice, can handle recurring tasks, and helps you tackle new challenges. I couldn’t do half of my job without it, especially with tight deadlines and a small team.",
+    name: "Valentine Chelius",
+    title: "Head of Marketing at Fleet",
+    logo: "/static/landing/logos/color/fleet.png",
+  },
+  {
+    quote:
+      "The Dust platform is more than just a tool for post-ideation; it’s a catalyst for innovation, stimulating idea generation as employees engage with it.",
+    name: "Boris Lipiainen",
+    title: "Chief Product and Technology Officer at Kyriba",
+    logo: "/static/landing/logos/color/kyriba.png",
+  },
+  {
+    quote:
+      "It’s really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
+    name: "Vincent Delagabbe",
+    title: "Software Engineer at Alan",
+    logo: "/static/landing/logos/color/alan.png",
+  },
+  {
+    quote:
+      "We’re managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
+    name: "Anaïs Ghelfi",
+    title: "Head of Data Platform at Malt",
+    logo: "/static/landing/logos/color/malt.png",
+  },
+  {
+    quote:
+      "We asked ourselves for years: what if your team had 20% more time? Dust has made it possible, empowering our employees to work smarter, innovate, and push boundaries.",
+    name: "Matthieu Birach",
+    title: "Chief People Officer at Doctolib",
+    logo: "/static/landing/logos/color/doctolib.png",
+  },
+];
+
+// Single quote card component
+const QuoteCard = ({ quote, logo, name, title }: QuoteProps) => (
+  <div className="flex h-full w-full flex-col rounded-lg bg-gray-50 p-4 sm:rounded-xl sm:p-5 md:p-6">
+    <div className="sm:line-clamp-7 mb-4 line-clamp-5 flex flex-col items-start text-left text-base font-normal text-gray-900 sm:text-base md:text-lg">
+      "{quote}"
+    </div>
+    <div className="mt-auto flex items-center justify-between">
+      <div className="mr-2 flex flex-col">
+        <P size="sm" className="line-clamp-1 font-semibold text-gray-900">
+          {name}
+        </P>
+        <P size="xs" className="line-clamp-1 text-gray-600">
+          {title}
         </P>
       </div>
-    </div>
-    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-base italic text-white xs:text-lg sm:text-xl md:text-xl lg:text-2xl">
-      &ldquo; {quote} &rdquo;
+      <Image
+        src={logo}
+        width={120}
+        height={48}
+        alt="Company Logo"
+        className="ml-2 h-12 w-auto sm:ml-3 sm:h-12"
+      />
     </div>
   </div>
 );
+
+export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => {
+  // Create array of quotes with the provided quote first
+  const currentQuote = { quote, logo, name, title };
+  const otherQuotes = AllQuotes.filter(
+    (q) => q.quote !== quote || q.name !== name || q.title !== title
+  );
+  const quotes = [currentQuote, ...otherQuotes];
+
+  return (
+    <div className="w-full">
+      <Carousel className="w-full" opts={{ align: "start" }} isLooping={true}>
+        <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex-1">
+            <H2>Driving AI ROI together</H2>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <CarouselPrevious className="h-8 w-8 sm:h-10 sm:w-10" />
+            <CarouselNext className="h-8 w-8 sm:h-10 sm:w-10" />
+          </div>
+        </div>
+        <CarouselContent className="h-72 sm:h-80">
+          {quotes.map((q, index) => (
+            <CarouselItem
+              key={index}
+              className="h-full basis-full pl-2 pr-2 sm:basis-1/2 sm:pl-4 sm:pr-4 lg:basis-1/3"
+            >
+              <div className="h-full w-full">
+                <QuoteCard {...q} />
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+    </div>
+  );
+};
 
 interface CarousselContentBlockProps {
   title: ReactNode;
@@ -297,19 +446,16 @@ export const CarousselContentBlock = ({
       <div className="flex flex-col gap-8 px-4 sm:px-6 md:px-8 lg:h-full lg:flex-row lg:gap-12">
         <div className="flex flex-col lg:h-full lg:w-1/2">
           <div className="mb-2 lg:mb-4">
-            <H2 className="mb-4 text-slate-900">{title}</H2>
+            <H2 className="mb-4 text-gray-900">{title}</H2>
 
             {bulletPoints && (
               <ul className="flex list-none flex-col gap-3">
                 {bulletPoints.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <div className="flex-shrink-0 pt-1">
-                      <ArrowRightSIcon className="h-4 w-4 flex-shrink-0 text-slate-900" />
+                      <ArrowRightSIcon className="h-4 w-4 flex-shrink-0 text-gray-900" />
                     </div>
-                    <P
-                      size="md"
-                      className="text-sm text-slate-800 md:text-base"
-                    >
+                    <P size="md" className="text-sm text-gray-800 md:text-base">
                       {feature}
                     </P>
                   </li>
@@ -340,13 +486,13 @@ export const CarousselContentBlock = ({
                 <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
                   <P
                     size="sm"
-                    className="w-full text-xs italic text-slate-800 md:text-sm"
+                    className="w-full text-xs italic text-gray-800 md:text-sm"
                   >
                     "{quote?.quote}"
                   </P>
                   <div className="flex items-center gap-3">
                     {quote.logo ? (
-                      <div className="flex h-10 w-20 overflow-hidden rounded-full bg-slate-950 shadow-md">
+                      <div className="flex h-10 w-20 overflow-hidden rounded-full bg-gray-950 shadow-md">
                         <Image
                           src={quote.logo}
                           height={40}
@@ -365,11 +511,11 @@ export const CarousselContentBlock = ({
                     <div>
                       <P
                         size="sm"
-                        className="text-xs font-bold text-slate-800 md:text-sm"
+                        className="text-xs font-bold text-gray-800 md:text-sm"
                       >
                         {quote.name}
                       </P>
-                      <P size="xs" className="text-xs text-slate-700">
+                      <P size="xs" className="text-xs text-gray-700">
                         {quote.title}
                       </P>
                     </div>
@@ -380,7 +526,7 @@ export const CarousselContentBlock = ({
             {roi && (
               <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-24 overflow-hidden rounded-full bg-slate-950 shadow-md">
+                  <div className="flex h-12 w-24 overflow-hidden rounded-full bg-gray-950 shadow-md">
                     <Image
                       src={roi.logo}
                       height={48}
@@ -390,12 +536,12 @@ export const CarousselContentBlock = ({
                     />
                   </div>
                   <div className="flex flex-col">
-                    <H2 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-4xl font-bold text-slate-900 text-transparent">
+                    <H2 className="bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-4xl font-bold text-gray-900 text-transparent">
                       {roi.number}
                     </H2>
                     <P
                       size="md"
-                      className="text-sm font-medium text-slate-800 md:text-base"
+                      className="text-sm font-medium text-gray-800 md:text-base"
                     >
                       {roi.subtitle}
                     </P>
@@ -430,6 +576,38 @@ export const CarousselContentBlock = ({
             />
           </div>
         </div>
+      </div>
+    </div>
+  );
+};
+
+interface ImgContentProps {
+  images: {
+    src: string;
+    alt?: string;
+  }[];
+}
+
+export const ImgContent: React.FC<ImgContentProps> = ({ images }) => {
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <div className="relative flex h-full w-full max-w-md items-center justify-center">
+        {images.map((image, index) => (
+          <img
+            key={index}
+            src={image.src}
+            alt={image.alt || `Image ${index + 1}`}
+            className={classNames(
+              "max-w-40 max-h-32 object-contain",
+              index === 0
+                ? ""
+                : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform"
+            )}
+            style={{
+              zIndex: images.length - index,
+            }}
+          />
+        ))}
       </div>
     </div>
   );

@@ -4,10 +4,15 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import {
+  isFileTypeUpsertableForUseCase,
+  processAndUpsertToDataSource,
+} from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -34,14 +39,41 @@ function isValidViewVersion(
   );
 }
 
-// Declared here because endpoint-specific.
 const VALID_ACTIONS = ["view", "download"] as const;
 type Action = (typeof VALID_ACTIONS)[number];
+
 function isValidAction(
-  // Because coming from the URL, it can be a string or an array of strings.
   action: string | string[] | undefined
 ): action is Action {
   return typeof action === "string" && VALID_ACTIONS.includes(action as Action);
+}
+
+/**
+ * Determines the appropriate action for a file based on security rules.
+ *
+ * Security considerations:
+ * - Only safe file types can be viewed
+ * - All unsafe file types must be downloaded
+ * - Unknown content types are treated as unsafe
+ */
+export function getSecureFileAction(
+  // Because coming from the URL, it can be a string or an array of strings.
+  action: string | string[] | undefined,
+  file: FileResource
+): Action {
+  // If action is not a valid action type, default to download.
+  if (!isValidAction(action)) {
+    return "download";
+  }
+
+  // For view action, check if the file type is safe to display.
+  if (action === "view") {
+    if (!file.isSafeToDisplay()) {
+      return "download";
+    }
+  }
+
+  return action;
 }
 
 async function handler(
@@ -71,12 +103,46 @@ async function handler(
     });
   }
 
+  // Check permissions based on useCase and useCaseMetadata
+  if (file.useCase === "conversation" && file.useCaseMetadata?.conversationId) {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      file.useCaseMetadata.conversationId
+    );
+    if (
+      !conversation ||
+      !ConversationResource.canAccessConversation(auth, conversation)
+    ) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+  } else if (
+    file.useCase === "folders_document" &&
+    file.useCaseMetadata?.spaceId
+  ) {
+    const space = await SpaceResource.fetchById(
+      auth,
+      file.useCaseMetadata.spaceId
+    );
+    if (!space || !space.canRead(auth)) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+  }
+
   switch (req.method) {
     case "GET": {
-      const action = isValidAction(req.query.action)
-        ? req.query.action
-        : "download";
-
+      const action = getSecureFileAction(req.query.action, file);
       if (action === "view") {
         // Get the version of the file.
         const version = isValidViewVersion(req.query.version)
@@ -103,12 +169,23 @@ async function handler(
 
       // Redirect to a signed URL.
       const url = await file.getSignedUrlForDownload(auth, "original");
-
       res.redirect(url);
       return;
     }
 
     case "DELETE": {
+      // Check if the user is a builder for the workspace or it's a conversation file
+      if (!auth.isBuilder() && file.useCase !== "conversation") {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `builders` for the current workspace can delete files.",
+          },
+        });
+      }
+
       const deleteRes = await file.delete(auth);
       if (deleteRes.isErr()) {
         return apiError(req, res, {
@@ -125,7 +202,21 @@ async function handler(
     }
 
     case "POST": {
-      const r = await processAndStoreFile(auth, { file, reqOrString: req });
+      // Check if the user is a builder for the workspace or it's a conversation file
+      if (!auth.isBuilder() && file.useCase !== "conversation") {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `builders` for the current workspace can modify files.",
+          },
+        });
+      }
+      const r = await processAndStoreFile(auth, {
+        file,
+        content: { type: "incoming_message", value: req },
+      });
 
       if (r.isErr()) {
         return apiError(req, res, {
@@ -137,8 +228,11 @@ async function handler(
         });
       }
 
-      // Only upsert immediately in case of conversation
-      if (file.useCase === "conversation") {
+      // For files with useCase "conversation" that support upsert, directly add them to the data source.
+      if (
+        file.useCase === "conversation" &&
+        isFileTypeUpsertableForUseCase(file)
+      ) {
         const jitDataSource = await getOrCreateConversationDataSourceFromFile(
           auth,
           file
@@ -160,19 +254,23 @@ async function handler(
             { file }
           );
 
-          // For now, silently log the error
           if (rUpsert.isErr()) {
-            {
-              logger.warn({
-                fileModelId: file.id,
-                workspaceId: auth.workspace()?.sId,
-                contentType: file.contentType,
-                useCase: file.useCase,
-                useCaseMetadata: file.useCaseMetadata,
+            logger.error({
+              fileModelId: file.id,
+              workspaceId: auth.workspace()?.sId,
+              contentType: file.contentType,
+              useCase: file.useCase,
+              useCaseMetadata: file.useCaseMetadata,
+              message: "Failed to upsert the file.",
+              error: rUpsert.error,
+            });
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
                 message: "Failed to upsert the file.",
-                error: rUpsert.error,
-              });
-            }
+              },
+            });
           }
         }
       }

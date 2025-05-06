@@ -48,11 +48,12 @@ import {
 } from "@app/lib/swr/spaces";
 import type {
   ConnectorProvider,
-  DataSourceViewCategory,
+  DataSourceViewCategoryWithoutApps,
   DataSourceViewsWithDetails,
   DataSourceViewType,
   PlanType,
   SpaceType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { isWebsiteOrFolderCategory } from "@app/types";
@@ -144,7 +145,7 @@ function getTableColumns(
       return (
         <DataTable.CellContent className="pr-2">
           {!ds.connector && !ds.fetchConnectorError && (
-            <Chip color="amber">Never</Chip>
+            <Chip color="info">Never</Chip>
           )}
           {ds.fetchConnectorError && (
             <Chip color="warning">Retry in a few minutes</Chip>
@@ -237,9 +238,10 @@ interface SpaceResourcesListProps {
   canWriteInSpace: boolean;
   space: SpaceType;
   systemSpace: SpaceType;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
   onSelect: (sId: string) => void;
   integrations: DataSourceIntegration[];
+  user: UserType;
 }
 
 export const SpaceResourcesList = ({
@@ -252,6 +254,7 @@ export const SpaceResourcesList = ({
   category,
   onSelect,
   integrations,
+  user,
 }: SpaceResourcesListProps) => {
   const { isDark } = useTheme();
   const [assistantName, setAssistantName] = useState<string | null>(null);
@@ -506,6 +509,7 @@ export const SpaceResourcesList = ({
     <>
       <AssistantDetails
         owner={owner}
+        user={user}
         assistantId={assistantSId}
         onClose={() => setAssistantName(null)}
       />

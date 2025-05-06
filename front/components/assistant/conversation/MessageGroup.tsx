@@ -59,7 +59,6 @@ export default function MessageGroup({
       id={isLastMessageGroup ? LAST_MESSAGE_GROUP_ID : ""}
       ref={isLastMessageGroup ? lastMessageGroupRef : undefined}
       style={{ minHeight }}
-      className="flex flex-col items-end gap-6"
     >
       {messages.map((message) => (
         <MessageItem

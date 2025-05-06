@@ -3,6 +3,10 @@ name: Deploy OpenAPI Docs
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   rdme-openapi:
     runs-on: ubuntu-latest

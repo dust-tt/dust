@@ -1,6 +1,7 @@
 import _ from "lodash";
 
 import {
+  DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
@@ -10,12 +11,15 @@ import type { ExtractActionBlob } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import type {
   AgentMessageType,
+  ContentFragmentInputWithContentNode,
   ContentFragmentVersion,
+  ContentNodeType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
   SupportedContentFragmentType,
 } from "@app/types";
+import { DATA_SOURCE_NODE_ID } from "@app/types";
 
 export type BaseConversationAttachmentType = {
   title: string;
@@ -26,6 +30,7 @@ export type BaseConversationAttachmentType = {
   isIncludable: boolean;
   isSearchable: boolean;
   isQueryable: boolean;
+  isExtractable: boolean;
 };
 
 export type ConversationFileType = BaseConversationAttachmentType & {
@@ -34,8 +39,9 @@ export type ConversationFileType = BaseConversationAttachmentType & {
 
 export type ConversationContentNodeType = BaseConversationAttachmentType & {
   contentFragmentId: string;
-  contentNodeId: string;
+  nodeId: string;
   nodeDataSourceViewId: string;
+  nodeType: ContentNodeType;
 };
 
 export type ConversationAttachmentType =
@@ -52,6 +58,14 @@ export function isConversationContentNodeType(
   attachment: ConversationAttachmentType
 ): attachment is ConversationContentNodeType {
   return "contentFragmentId" in attachment;
+}
+
+export function isContentFragmentDataSourceNode(
+  attachment: ConversationContentNodeType | ContentFragmentInputWithContentNode
+): attachment is ConversationContentNodeType & {
+  nodeId: typeof DATA_SOURCE_NODE_ID;
+} {
+  return attachment.nodeId === DATA_SOURCE_NODE_ID;
 }
 
 // If updating this function, make sure to update `contentFragmentId` when we render the conversation
@@ -103,7 +117,8 @@ export class ConversationListFilesActionType extends BaseAction {
       `// includable: full content can be retrieved using \`${DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME}\`\n` +
       `// queryable: represents tabular data that can be queried alongside other queryable files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
       `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
-      `\n`;
+      `// extractable: files can also be processed to extract structured data using \`${DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME}\`\n` +
+      `Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files mime types to decide which tool to use on which file.`;
     for (const f of this.files) {
       content += `<file id="${conversationAttachmentId(f)}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
 

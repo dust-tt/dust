@@ -1,9 +1,9 @@
-import { Checkbox } from "@dust-tt/sparkle";
+import { Checkbox, Input } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
+import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
-import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
-import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderRetrievalConfiguration,
@@ -29,7 +29,7 @@ type ActionRetrievalSearchProps = {
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
   allowedSpaces: SpaceType[];
   updateAction: (
-    setNewAction: (
+    setNewActionConfig: (
       previousAction: AssistantBuilderRetrievalConfiguration
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;
@@ -106,7 +106,7 @@ type ActionRetrievalExhaustiveProps = {
   actionConfiguration: AssistantBuilderRetrievalExhaustiveConfiguration | null;
   allowedSpaces: SpaceType[];
   updateAction: (
-    setNewAction: (
+    setNewActionConfig: (
       previousAction: AssistantBuilderRetrievalExhaustiveConfiguration
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;
@@ -205,23 +205,16 @@ export function ActionRetrievalExhaustive({
           className={classNames(
             "text-sm font-semibold",
             timeFrameDisabled
-              ? "text-slate-400 dark:text-slate-400-night"
+              ? "text-muted-foreground dark:text-muted-foreground-night"
               : "text-foreground dark:text-foreground-night"
           )}
         >
           Only include data from the last
         </div>
-        <input
+        <Input
           type="text"
-          className={classNames(
-            "h-8 w-16 rounded-md border-gray-300 text-center text-sm dark:border-gray-300-night",
-            !timeFrameError
-              ? "focus:border-action-500 focus:ring-action-500"
-              : "border-red-500 focus:border-red-500 focus:ring-red-500",
-            "bg-structure-50 stroke-structure-50 dark:bg-structure-50-night dark:stroke-structure-50-night",
-            timeFrameDisabled ? "text-slate-400 dark:text-slate-400-night" : ""
-          )}
-          value={timeFrame.value || ""}
+          messageStatus={timeFrameError ? "error" : "default"}
+          value={timeFrame.value?.toString() || ""}
           onChange={(e) => {
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
@@ -229,7 +222,7 @@ export function ActionRetrievalExhaustive({
               updateAction((previousAction) => ({
                 ...previousAction,
                 timeFrame: {
-                  value,
+                  value: e.target.value,
                   unit: timeFrame.unit,
                 },
               }));

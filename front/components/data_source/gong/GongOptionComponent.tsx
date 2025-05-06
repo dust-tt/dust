@@ -122,7 +122,7 @@ export function GongOptionComponent({
           }
         >
           <ContextItem.Description>
-            <div className="text-element-700">
+            <div className="text-muted-foreground dark:text-muted-foreground-night">
               Set the number of days to retain Gong transcripts.
               <br />
               Leave empty to disable retention (no limit).

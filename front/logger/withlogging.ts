@@ -1,5 +1,4 @@
 import tracer from "dd-trace";
-import StatsD from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getSession } from "@app/lib/auth";
@@ -10,8 +9,7 @@ import type {
 import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
 
 import logger from "./logger";
-
-export const statsDClient = new StatsD();
+import { statsDClient } from "./statsDClient";
 
 export function withLogging<T>(
   handler: (
@@ -53,6 +51,8 @@ export function withLogging<T>(
     const commitHash = req.headers["x-commit-hash"] ?? req.query.commitHash;
     const extensionVersion =
       req.headers["x-dust-extension-version"] ?? req.query.extensionVersion;
+    const cliVersion =
+      req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
     try {
       await handler(req, res);
@@ -62,6 +62,7 @@ export function withLogging<T>(
         {
           commitHash,
           extensionVersion,
+          cliVersion,
           durationMs: elapsed,
           error: err,
           method: req.method,

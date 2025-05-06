@@ -18,6 +18,16 @@ const semanticColorFamilies = [
   "warning",
   "info",
 ] as const;
+const extendedColorFamilies = [
+  "blue",
+  "violet",
+  "pink",
+  "red",
+  "orange",
+  "golden",
+  "lime",
+  "emerald",
+] as const;
 
 // Shades to display for each color
 const shades = [
@@ -32,6 +42,21 @@ const shades = [
   "800",
   "900",
   "950",
+] as const;
+
+const semanticShades = [
+  "50",
+  "100",
+  "200",
+  "300",
+  "400",
+  "500",
+  "600",
+  "700",
+  "800",
+  "900",
+  "950",
+  "muted",
 ] as const;
 
 const ColorSwatch = ({
@@ -63,9 +88,15 @@ const ColorSwatch = ({
   </div>
 );
 
-export const ColorPalette = () => {
+export const UIColorPalette = () => {
   return (
     <div className="s-flex s-flex-col s-gap-8">
+      <div className="s-flex s-flex-col s-gap-2">
+        <h2 className="s-text-xl s-font-semibold">UI Color Palette</h2>
+        <p className="s-text-sm s-text-primary-600 dark:s-text-primary-400">
+          Colors to use in the UI for all direct color references.
+        </p>
+      </div>
       {colorFamilies.map((family) => (
         <div key={family} className="s-flex s-flex-col s-gap-4">
           <h3 className="s-text-lg s-font-semibold s-capitalize">{family}</h3>
@@ -88,11 +119,17 @@ export const ColorPalette = () => {
 export const SemanticColorPalette = () => {
   return (
     <div className="s-flex s-flex-col s-gap-8">
+      <div className="s-flex s-flex-col s-gap-2">
+        <h2 className="s-text-xl s-font-semibold">Semantic Color Palette</h2>
+        <p className="s-text-sm s-text-primary-600 dark:s-text-primary-400">
+          Colors to use in the UI for all functional elements.
+        </p>
+      </div>
       {semanticColorFamilies.map((family) => (
         <div key={family} className="s-flex s-flex-col s-gap-4">
           <h3 className="s-text-lg s-font-semibold s-capitalize">{family}</h3>
           <div className="s-flex s-flex-wrap s-gap-4">
-            {shades.map((shade) => (
+            {semanticShades.map((shade) => (
               <div key={shade}>
                 <ColorSwatch
                   colorClass={`s-bg-${family}-${shade} dark:s-bg-${family}-${shade}-night`}
@@ -153,6 +190,16 @@ const brandColorFamilies = [
 export const BrandColorPalette = () => {
   return (
     <div className="s-flex s-flex-col s-gap-8">
+      <div className="s-flex s-flex-col s-gap-2">
+        <h2 className="s-text-xl s-font-semibold">Brand Color Palette</h2>
+        <p className="s-text-sm s-text-primary-600 dark:s-text-primary-400">
+          Colors to use in Marketing / Brand situations:
+        </p>
+        <ul className="s-ml-4 s-list-disc s-text-sm s-text-primary-600 dark:s-text-primary-400">
+          <li>Block colors on the website</li>
+          <li>Communication in the product</li>
+        </ul>
+      </div>
       {brandColorFamilies.map((family) => (
         <div key={family.name} className="s-flex s-flex-col s-gap-4">
           <h3 className="s-text-lg s-font-semibold s-capitalize">
@@ -164,6 +211,40 @@ export const BrandColorPalette = () => {
                 <ColorSwatch
                   colorClass={`s-bg-${family.name}-${shade.shade} dark:s-bg-${family.name}-${shade.shade}-night`}
                   label={shade.name}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export const ExtendedColorPalette = () => {
+  return (
+    <div className="s-flex s-flex-col s-gap-8">
+      <div className="s-flex s-flex-col s-gap-2">
+        <h2 className="s-text-xl s-font-semibold">Extended Color Palette</h2>
+        <p className="s-text-sm s-text-primary-600 dark:s-text-primary-400">
+          These colors are available for product-specific use cases where
+          semantic colors might not be appropriate. Use them when you need to
+          create visual distinctions, such as:
+        </p>
+        <ul className="s-ml-4 s-list-disc s-text-sm s-text-primary-600 dark:s-text-primary-400">
+          <li>Avatar background colors</li>
+          <li>Data visualization</li>
+        </ul>
+      </div>
+      {extendedColorFamilies.map((family) => (
+        <div key={family} className="s-flex s-flex-col s-gap-4">
+          <h3 className="s-text-lg s-font-semibold s-capitalize">{family}</h3>
+          <div className="s-flex s-flex-wrap s-gap-4">
+            {shades.map((shade) => (
+              <div key={shade}>
+                <ColorSwatch
+                  colorClass={`s-bg-${family}-${shade} dark:s-bg-${family}-${shade}-night`}
+                  label={`${family}-${shade}`}
                 />
               </div>
             ))}

@@ -78,7 +78,7 @@ export function EditInvitationModal({
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
                 <Page.H variant="h6">{invitation.inviteEmail}</Page.H>
-                <div className="text-element-700">
+                <div className="text-muted-foreground dark:text-muted-foreground-night">
                   Invitation sent on{" "}
                   {new Date(invitation.createdAt).toLocaleDateString()}
                 </div>
@@ -86,7 +86,7 @@ export function EditInvitationModal({
 
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="font-semibold text-foreground dark:text-foreground-night">
+                  <div className="heading-base text-foreground dark:text-foreground-night">
                     Role:
                   </div>
                   <RoleDropDown
@@ -94,7 +94,7 @@ export function EditInvitationModal({
                     onChange={setSelectedRole}
                   />
                 </div>
-                <div className="text-element-700 dark:text-element-700-night">
+                <div className="text-muted-foreground dark:text-muted-foreground-night">
                   The role defines the rights of a member fo the workspace.{" "}
                   {ROLES_DATA[invitation.initialRole].description}
                 </div>

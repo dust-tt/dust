@@ -1,13 +1,15 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
-import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { TimeFrame } from "@app/types";
+import { isTimeFrame } from "@app/types";
 
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
   declare createdAt: CreationOptional<Date>;
@@ -17,7 +19,16 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare sId: string;
 
-  declare mcpServerViewId: ForeignKey<MCPServerView["id"]>;
+  declare timeFrame: TimeFrame | null;
+  declare additionalConfiguration: Record<string, boolean | number | string>;
+
+  declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
+
+  declare name: string | null;
+
+  // This is a temporary override for the tool description when we only have one tool
+  // to keep backward compatibility with the previous action behavior (like retrieval).
+  declare singleToolDescriptionOverride: string | null;
 }
 
 AgentMCPServerConfiguration.init(
@@ -36,13 +47,58 @@ AgentMCPServerConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    timeFrame: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      validate: {
+        isValidTimeFrame(value: unknown) {
+          if (value === null) {
+            return;
+          }
+          if (!isTimeFrame(value)) {
+            throw new Error("Invalid time frame");
+          }
+        },
+      },
+    },
+    additionalConfiguration: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      validate: {
+        isValidJSON(value: any) {
+          if (typeof value === "string") {
+            let parsed;
+            try {
+              parsed = JSON.parse(value);
+            } catch (e) {
+              throw new Error("additionalConfiguration is invalid JSON");
+            }
+            if (parsed && typeof parsed !== "object") {
+              throw new Error(
+                "additionalConfiguration couldn't be parsed to an object"
+              );
+            }
+          } else if (typeof value !== "object") {
+            throw new Error("additionalConfiguration is not an object");
+          }
+        },
+      },
+    },
     mcpServerViewId: {
       type: DataTypes.BIGINT,
       allowNull: false,
       references: {
-        model: MCPServerView,
+        model: MCPServerViewModel,
         key: "id",
       },
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    singleToolDescriptionOverride: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
@@ -69,11 +125,11 @@ AgentMCPServerConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-MCPServerView.hasMany(AgentMCPServerConfiguration, {
+MCPServerViewModel.hasMany(AgentMCPServerConfiguration, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentMCPServerConfiguration.belongsTo(MCPServerView, {
+AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
 });
 
@@ -94,8 +150,9 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare isError: boolean;
   declare executionState:
     | "pending"
-    | "allowed_explicitely"
-    | "allowed_implicitely"
+    | "timeout"
+    | "allowed_explicitly"
+    | "allowed_implicitly"
     | "denied";
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
@@ -138,7 +195,13 @@ AgentMCPAction.init(
       allowNull: false,
       validate: {
         isIn: [
-          ["pending", "allowed_explicitely", "allowed_implicitely", "denied"],
+          [
+            "pending",
+            "timeout",
+            "allowed_explicitly",
+            "allowed_implicitly",
+            "denied",
+          ],
         ],
       },
     },
@@ -173,8 +236,10 @@ export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPAction
   declare updatedAt: CreationOptional<Date>;
 
   declare agentMCPActionId: ForeignKey<AgentMCPAction["id"]>;
-  declare content: MCPToolResultContent;
+  declare content: MCPToolResultContentType;
   declare fileId: ForeignKey<FileModel["id"]> | null;
+
+  declare file: NonAttribute<FileModel>;
 }
 
 AgentMCPActionOutputItem.init(
@@ -198,7 +263,7 @@ AgentMCPActionOutputItem.init(
             throw new Error("Content must be an object");
           }
           const content = value as { type: string };
-          if (!["text", "image", "embedded_resource"].includes(content.type)) {
+          if (!["text", "image", "resource"].includes(content.type)) {
             throw new Error("Invalid content type");
           }
         },
@@ -234,4 +299,51 @@ AgentMCPActionOutputItem.belongsTo(AgentMCPAction, {
 AgentMCPActionOutputItem.belongsTo(FileModel, {
   foreignKey: { name: "fileId", allowNull: true },
   onDelete: "SET NULL",
+});
+
+/**
+ * Configuration of a child agent used by an MCP server.
+ * TODO(mcp): move this model in a file dedicated to the configuration blocks, add Resources for all of them.
+ */
+export class AgentChildAgentConfiguration extends WorkspaceAwareModel<AgentChildAgentConfiguration> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare agentConfigurationId: string;
+
+  declare mcpServerConfigurationId: ForeignKey<
+    AgentMCPServerConfiguration["id"]
+  >;
+}
+AgentChildAgentConfiguration.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "agent_child_agent_configuration",
+    indexes: [{ fields: ["mcpServerConfigurationId"] }],
+    sequelize: frontSequelize,
+  }
+);
+
+// MCP server configuration <> Child agent configuration
+AgentMCPServerConfiguration.hasMany(AgentChildAgentConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+AgentChildAgentConfiguration.belongsTo(AgentMCPServerConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
 });

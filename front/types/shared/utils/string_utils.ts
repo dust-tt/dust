@@ -1,3 +1,5 @@
+import { validate as validateUuid, version as uuidVersion } from "uuid";
+
 import type { Result } from "../result";
 import { Err, Ok } from "../result";
 
@@ -79,6 +81,10 @@ export function redactString(str: string, n: number) {
   return redacted;
 }
 
+export function isRedacted(str: string) {
+  return str.includes("•");
+}
+
 export function truncate(text: string, length: number, omission = "...") {
   return text.length > length
     ? `${text.substring(0, length - omission.length)}${omission}`
@@ -101,4 +107,26 @@ export function safeParseJSON(str: string): Result<object | null, Error> {
 
 export function stripNullBytes(text: string): string {
   return text.replace(/\0/g, "");
+}
+
+// Checks for an escped null Unicode character.
+export function hasNullUnicodeCharacter(text: string): boolean {
+  return text.includes("\u0000");
+}
+
+export function asDisplayName(name?: string | null) {
+  if (!name) {
+    return "";
+  }
+
+  return name
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+// UUID utils.
+
+export function isValidUUIDv4(uuid: string): boolean {
+  return validateUuid(uuid) && uuidVersion(uuid) === 4;
 }

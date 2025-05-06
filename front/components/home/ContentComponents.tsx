@@ -1,8 +1,14 @@
 import {
+  CheckCircleIcon,
   CircleIcon,
+  EyeIcon,
   HexagonIcon,
   Icon,
+  LinkIcon,
+  LockIcon,
+  PlanetIcon,
   RectangleIcon,
+  RobotIcon,
   SquareIcon,
   TriangleIcon,
 } from "@dust-tt/sparkle";
@@ -36,11 +42,11 @@ export const Grid = ({
 );
 
 const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-5xl py-2 text-left",
-  h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl py-2 text-left",
-  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl py-1 text-left",
-  h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl text-left",
-  h5: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-xl text-left",
+  h1: "heading-5xl md:heading-6xl lg:heading-8xl py-2 text-left",
+  h2: "heading-3xl lg:heading-4xl xl:heading-5xl py-2 text-left",
+  h3: "heading-xl lg:heading-2xl xl:heading-3xl py-1 text-left",
+  h4: "heading-lg lg:heading-xl xl:heading-2xl text-left",
+  h5: "heading-lg lg:heading-xl xl:heading-xl text-left",
 };
 
 interface ContentProps {
@@ -51,10 +57,10 @@ interface ContentProps {
 }
 
 interface HContentProps {
-  children: ReactNode;
+  children: React.ReactNode;
   className?: string;
-  from?: string;
-  to?: string;
+  mono?: boolean;
+  style?: React.CSSProperties;
 }
 
 type TagName = "h1" | "h2" | "h3" | "h4" | "h5";
@@ -62,20 +68,18 @@ type TagName = "h1" | "h2" | "h3" | "h4" | "h5";
 const createHeadingComponent = (Tag: TagName) => {
   const Component: React.FC<HContentProps> = ({
     children,
-    from = "",
-    to = "",
     className = "",
+    mono = false,
+    style,
   }) => {
+    const baseClasses = mono
+      ? classNames(
+          hClasses[Tag].replace(/heading-/g, "heading-mono-"),
+          "font-mono"
+        )
+      : classNames(hClasses[Tag], "font-sans");
     return (
-      <Tag
-        className={classNames(
-          className,
-          hClasses[Tag],
-          from ? "bg-gradient-to-br bg-clip-text text-transparent" : "",
-          from,
-          to
-        )}
-      >
+      <Tag className={classNames(className, baseClasses)} style={style}>
         {children}
       </Tag>
     );
@@ -91,15 +95,15 @@ export const H4 = createHeadingComponent("h4");
 export const H5 = createHeadingComponent("h5");
 
 export const Span = ({ children, className = "" }: ContentProps) => (
-  <span className={classNames(className)}>{children}</span>
+  <span className={classNames(className, "font-sans")}>{children}</span>
 );
 
 const pClasses = {
-  xxs: "font-objektiv text-xs text-muted-foreground md:text-sm leading-relaxed",
-  xs: "font-objektiv text-sm text-slate-400 md:text-base leading-relaxed",
-  sm: "font-objektiv text-base text-slate-400 md:text-lg leading-relaxed",
-  md: "font-objektiv text-lg md:text-lg text-primary-400 lg:text-xl leading-relaxed",
-  lg: "font-objektiv text-lg md:text-xl text-primary-400 lg:text-2xl drop-shadow leading-relaxed",
+  xxs: "copy-xs",
+  xs: "copy-sm",
+  sm: "copy-base",
+  md: "copy-lg",
+  lg: "copy-xl",
 };
 
 interface PProps {
@@ -127,24 +131,32 @@ export const P = ({
 }: PProps) => {
   if (dotCSS) {
     return (
-      <div className={classNames("flex gap-2 lg:gap-3", className)}>
+      <div
+        className={classNames("flex gap-2 lg:gap-3", className, "font-sans")}
+      >
         <Icon
           visual={shapeClasses[shape]}
           className={classNames("mt-0.5 shrink-0", dotCSS)}
           size="md"
         />
-        <p className={classNames(pClasses[size])}>{children}</p>
+        <p className={classNames(pClasses[size], "font-sans")}>{children}</p>
       </div>
     );
   } else {
-    return <p className={classNames(pClasses[size], className)}>{children}</p>;
+    return (
+      <p className={classNames(pClasses[size], className, "font-sans")}>
+        {children}
+      </p>
+    );
   }
 };
 
 const aClasses = {
-  primary: "text-action-400 hover:text-action-400 active:text-action-600",
-  secondary: "text-slate-200 hover:text-slate-100 active:text-muted-foreground",
-  tertiary: "text-slate-400 hover:text-slate-100 active:text-muted-foreground",
+  primary: "text-highlight hover:text-highlight active:text-highlight-400",
+  secondary:
+    "text-foreground hover:text-primary-800 active:text-muted-foreground",
+  tertiary:
+    "text-muted-foreground hover:text-primary-500 active:text-muted-foreground",
 };
 
 interface AProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
@@ -167,7 +179,8 @@ export const A = ({
         className={classNames(
           className,
           "cursor-pointer font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
-          aClasses[variant]
+          aClasses[variant],
+          "font-sans"
         )}
         href={href}
       >
@@ -180,7 +193,8 @@ export const A = ({
         className={classNames(
           className,
           "cursor-pointer font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
-          aClasses[variant]
+          aClasses[variant],
+          "font-sans"
         )}
       >
         {children}
@@ -190,5 +204,97 @@ export const A = ({
 };
 
 export const Strong = ({ children, className = "" }: ContentProps) => (
-  <strong className={classNames(className, "font-semibold")}>{children}</strong>
+  <strong className={classNames(className, "font-sans font-semibold")}>
+    {children}
+  </strong>
 );
+
+export function CloudConnectorsSection() {
+  return (
+    <div className="rounded-2xl bg-gray-50 px-6 py-8 sm:px-8 sm:py-10 md:px-10 md:py-12 lg:px-12 lg:py-16">
+      <div className="flex flex-col items-center gap-6 sm:gap-8 md:gap-10 lg:flex-row lg:gap-16">
+        <div className="mb-2 w-full text-left sm:mb-4 md:mb-0 lg:w-1/2">
+          <H3 className="mb-4 sm:mb-6">It's not ChatGPT. It's Dust</H3>
+          <P size="md" className="text-muted-foreground">
+            Dust is your future-proof AI platform: we are model-agnostic and let
+            you connect all your existing systems
+          </P>
+        </div>
+        <div className="flex w-full justify-center lg:w-1/2 lg:justify-end">
+          <img
+            src="/static/landing/connectors/cloud_Connectors.png"
+            alt="Cloud Connectors"
+            className="h-auto w-full max-w-md object-contain sm:max-w-lg md:max-w-xl lg:h-96 lg:max-w-none"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SecurityComplianceSection() {
+  return (
+    <div>
+      <H2 className="mb-6 text-left">Security & compliance</H2>
+      <div className="flex w-full flex-col justify-between gap-6 md:flex-row">
+        <div className="flex flex-1 flex-col rounded-2xl bg-blue-50 p-6">
+          <Icon visual={LockIcon} className="mb-4 h-8 w-8 text-blue-400" />
+          <h4 className="text-lg font-semibold">Data-privacy</h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
+            Your data is your data. Never used for model training.
+          </P>
+        </div>
+        <div className="flex flex-1 flex-col rounded-2xl bg-golden-50 p-6">
+          <Icon visual={EyeIcon} className="mb-4 h-8 w-8 text-golden-400" />
+          <h4 className="text-lg font-semibold">Access-control</h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
+            Fine-grained permissions with Spaces for sensitive information.
+          </P>
+        </div>
+        <div className="flex flex-1 flex-col rounded-2xl bg-rose-50 p-6">
+          <Icon
+            visual={CheckCircleIcon}
+            className="mb-4 h-8 w-8 text-rose-400"
+          />
+          <h4 className="text-lg font-semibold">Compliance</h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
+            SOC2 Type II certified, HIPAA and GDPR compliant.
+          </P>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function TeamFeatureSection() {
+  return (
+    <div>
+      <div className="flex w-full flex-col justify-between gap-6 md:flex-row">
+        <div className="flex flex-1 flex-col rounded-2xl bg-blue-50 p-6">
+          <Icon visual={RobotIcon} className="mb-4 h-8 w-8 text-blue-400" />
+          <h4 className="text-lg font-semibold">Team orchestration</h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
+            Build and manage teams of specialized agents that collaborate with
+            humans
+          </P>
+        </div>
+        <div className="flex flex-1 flex-col rounded-2xl bg-golden-50 p-6">
+          <Icon visual={LinkIcon} className="mb-4 h-8 w-8 text-golden-400" />
+          <h4 className="text-lg font-semibold">
+            Context-aware infrastructure
+          </h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
+            Connect agents to your company data and break down silos
+          </P>
+        </div>
+        <div className="flex flex-1 flex-col rounded-2xl bg-rose-50 p-6">
+          <Icon visual={PlanetIcon} className="mb-4 h-8 w-8 text-rose-400" />
+          <h4 className="text-lg font-semibold">Universal access layer</h4>
+          <P size="sm" className="mt-1 text-muted-foreground">
+            Seamlessly integrate with your existing tools and systems
+          </P>
+        </div>
+      </div>
+    </div>
+  );
+}

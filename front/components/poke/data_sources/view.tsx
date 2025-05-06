@@ -7,6 +7,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  ScrollArea,
+  ScrollBar,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
@@ -116,7 +118,7 @@ export function ViewDataSourceTable({
                     <Link
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
                       target="_blank"
-                      className="text-sm text-action-400"
+                      className="text-sm text-highlight-400"
                     >
                       Temporal
                     </Link>{" "}
@@ -124,7 +126,7 @@ export function ViewDataSourceTable({
                     <Link
                       href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%40data_source_internal_id%3A${coreDataSource.data_source_internal_id}%20&agg_m=count&agg_m_source=base&agg_t=count&cols=host%2Cservice&fromUser=true&messageDisplay=inline&refresh_mode=sliding&storage=hot&stream_sort=desc&view=spans&viz=stream`}
                       target="_blank"
-                      className="text-sm text-action-400"
+                      className="text-sm text-highlight-400"
                     >
                       Datadog(Qdrant)
                     </Link>
@@ -147,6 +149,18 @@ export function ViewDataSourceTable({
                           </span>
                         ) : (
                           "N/A"
+                        )}
+                      </PokeTableCell>
+                    </PokeTableRow>
+                    <PokeTableRow>
+                      <PokeTableCell>Error type</PokeTableCell>
+                      <PokeTableCell>
+                        {connector?.errorType ? (
+                          <span className="font-bold text-warning-500">
+                            {connector.errorType}
+                          </span>
+                        ) : (
+                          <span className="font-bold text-green-600">none</span>
                         )}
                       </PokeTableCell>
                     </PokeTableRow>
@@ -218,6 +232,18 @@ export function ViewDataSourceTable({
                         )}
                       </PokeTableCell>
                     </PokeTableRow>
+                    {connector.configuration !== null &&
+                      "customCrawler" in connector.configuration && (
+                        <PokeTableRow>
+                          <PokeTableCell>Crawler</PokeTableCell>
+                          <PokeTableCell>
+                            <span>
+                              {connector.configuration.customCrawler ??
+                                "default"}
+                            </span>
+                          </PokeTableCell>
+                        </PokeTableRow>
+                      )}
                   </>
                 )}
               </PokeTableBody>
@@ -256,29 +282,32 @@ function RawObjectsModal({
         <DialogHeader>
           <DialogTitle>Data source raw objects</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
-          <span className="text-sm font-bold">dataSource</span>
-          <JsonViewer
-            theme={isDark ? "dark" : "light"}
-            value={dataSource}
-            rootName={false}
-            defaultInspectDepth={1}
-          />
-          <span className="text-sm font-bold">coreDataSource</span>
-          <JsonViewer
-            theme={isDark ? "dark" : "light"}
-            value={coreDataSource}
-            rootName={false}
-            defaultInspectDepth={1}
-          />
-          <span className="text-sm font-bold">connector</span>
-          <JsonViewer
-            theme={isDark ? "dark" : "light"}
-            value={connector}
-            rootName={false}
-            defaultInspectDepth={1}
-          />
-        </DialogContainer>
+        <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
+          <DialogContainer>
+            <span className="text-sm font-bold">dataSource</span>
+            <JsonViewer
+              theme={isDark ? "dark" : "light"}
+              value={dataSource}
+              rootName={false}
+              defaultInspectDepth={1}
+            />
+            <span className="text-sm font-bold">coreDataSource</span>
+            <JsonViewer
+              theme={isDark ? "dark" : "light"}
+              value={coreDataSource}
+              rootName={false}
+              defaultInspectDepth={1}
+            />
+            <span className="text-sm font-bold">connector</span>
+            <JsonViewer
+              theme={isDark ? "dark" : "light"}
+              value={connector}
+              rootName={false}
+              defaultInspectDepth={1}
+            />
+          </DialogContainer>
+          <ScrollBar className="py-0" />
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

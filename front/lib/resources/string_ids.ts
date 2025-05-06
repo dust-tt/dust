@@ -30,9 +30,17 @@ const RESOURCES_PREFIX = {
   template: "tpl",
   extension: "ext",
   mcp_server_connection: "msc",
-  remote_mcp_server: "rms",
-  internal_mcp_server: "ims",
   mcp_server_view: "msv",
+  remote_mcp_server: "rms",
+  tag: "tag",
+
+  // Resources relative to the configuration of an MCP server.
+  data_source_configuration: "dsc",
+  table_configuration: "tbc",
+  child_agent_configuration: "cac",
+
+  // Virtual resources (no database modelsassociated).
+  internal_mcp_server: "ims",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
@@ -58,8 +66,8 @@ export function makeSId(
 
 function getIdsFromSId(sId: string): Result<
   {
-    workspaceId: ModelId;
-    resourceId: ModelId;
+    workspaceModelId: ModelId;
+    resourceModelId: ModelId;
   },
   Error
 > {
@@ -82,7 +90,10 @@ function getIdsFromSId(sId: string): Result<
 
     const [, , workspaceId, resourceId] = ids;
 
-    return new Ok({ workspaceId, resourceId });
+    return new Ok({
+      workspaceModelId: workspaceId,
+      resourceModelId: resourceId,
+    });
   } catch (error) {
     return new Err(
       error instanceof Error ? error : new Error("Failed to decode string Id")
@@ -101,7 +112,7 @@ export function getResourceIdFromSId(sId: string): ModelId | null {
     return null;
   }
 
-  return sIdsRes.value.resourceId;
+  return sIdsRes.value.resourceModelId;
 }
 
 export function isResourceSId(
@@ -114,8 +125,8 @@ export function isResourceSId(
 export function getResourceNameAndIdFromSId(sId: string): {
   resourceName: ResourceNameType;
   sId: string;
-  workspaceId: ModelId;
-  resourceId: ModelId;
+  workspaceModelId: ModelId;
+  resourceModelId: ModelId;
 } | null {
   const resourceName = (
     Object.keys(RESOURCES_PREFIX) as ResourceNameType[]

@@ -240,6 +240,7 @@ const createTableAndHierarchy = async ({
   connector,
   mimeTypes,
   internalTableIdToRemoteTableId,
+  tags,
 }: {
   tableInternalId: string;
   table: RemoteDBTable;
@@ -252,6 +253,7 @@ const createTableAndHierarchy = async ({
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
     | typeof INTERNAL_MIME_TYPES.SALESFORCE;
   internalTableIdToRemoteTableId: (internalTableId: string) => string;
+  tags: string[];
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   newSchema: RemoteSchemaModel | null;
@@ -328,14 +330,15 @@ const createTableAndHierarchy = async ({
     await upsertDataSourceRemoteTable({
       dataSourceConfig,
       tableId: tableInternalId,
-      tableName: table.name,
+      tableName: tableInternalId,
       remoteDatabaseTableId: internalTableIdToRemoteTableId(tableInternalId),
       remoteDatabaseSecretId: connector.connectionId,
-      tableDescription: "",
+      tableDescription: table.description ?? "",
       parents: [tableInternalId, schemaInternalId, databaseInternalId],
       parentId: schemaInternalId,
       title: tableName,
       mimeType: mimeTypes.TABLE,
+      tags,
     });
   }
 
@@ -347,6 +350,7 @@ export async function sync({
   connector,
   mimeTypes,
   internalTableIdToRemoteTableId = (internalTableId: string) => internalTableId,
+  tags,
 }: {
   remoteDBTree?: RemoteDBTree;
   connector: ConnectorResource;
@@ -355,6 +359,7 @@ export async function sync({
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
     | typeof INTERNAL_MIME_TYPES.SALESFORCE;
   internalTableIdToRemoteTableId?: (internalTableId: string) => string;
+  tags: string[];
 }) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -515,6 +520,7 @@ export async function sync({
             connector,
             mimeTypes,
             internalTableIdToRemoteTableId,
+            tags,
           });
           for (const usedInternalId of newTableUsedInternalIds) {
             usedInternalIds.add(usedInternalId);

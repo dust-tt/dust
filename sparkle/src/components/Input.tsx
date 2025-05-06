@@ -2,7 +2,7 @@ import { cva } from "class-variance-authority";
 import React, { forwardRef } from "react";
 
 import { Icon } from "@sparkle/components/Icon";
-import { InformationCircleIcon } from "@sparkle/icons";
+import { InformationCircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 import { Label } from "./Label";
@@ -45,7 +45,7 @@ const stateVariantStyles: Record<InputStateType, string> = {
     "disabled:s-border-border dark:disabled:s-border-border-night"
   ),
   error: cn(
-    "s-border-border-warning/30 dark:s-border-border-warning-night/60",
+    "s-border-border-warning/40 dark:s-border-border-warning-night/60",
     "s-ring-warning/0 dark:s-ring-warning-night/0",
     "focus-visible:s-border-border-warning dark:focus-visible:s-border-border-warning-night",
     "focus-visible:s-outline-none focus-visible:s-ring-2",
@@ -64,12 +64,12 @@ const messageVariant = cva("", {
 
 const inputStyleClasses = cva(
   cn(
-    "dark:s-text-slate-50",
+    "dark:s-text-primary-50",
     "s-text-sm s-rounded-xl s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
     "s-bg-muted-background dark:s-bg-muted-background-night",
     "s-border focus-visible:s-ring",
     "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
-    "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
+    "placeholder:s-text-muted-foreground placeholder:s-italic dark:placeholder:s-text-muted-foreground-night"
   ),
   {
     variants: {
@@ -110,7 +110,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <input
           ref={ref}
-          className={cn(inputStyleClasses({ state }), className)}
+          className={cn(
+            "s-ring-inset",
+            inputStyleClasses({ state }),
+            className
+          )}
           data-1p-ignore={props.type !== "password"}
           value={value ?? undefined}
           disabled={disabled}

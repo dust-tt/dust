@@ -1,8 +1,10 @@
-import type { ConnectorType } from "./connectors/connectors_api";
+import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
+
 import type { DataSourceViewType } from "./data_source_view";
 import type { ModelId } from "./shared/model_id";
 import type { Result } from "./shared/result";
 import { Err, Ok } from "./shared/result";
+import type { EditedByUser } from "./user";
 
 export const CONNECTOR_PROVIDERS = [
   "bigquery",
@@ -26,14 +28,6 @@ export function isConnectorProvider(val: string): val is ConnectorProvider {
   return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
 }
 
-export type EditedByUser = {
-  editedAt: number | null;
-  fullName: string | null;
-  imageUrl: string | null;
-  email: string | null;
-  userId: string | null;
-};
-
 export type DataSourceType = {
   id: ModelId;
   sId: string;
@@ -51,6 +45,10 @@ export type DataSourceType = {
 export type WithConnector = {
   connectorProvider: ConnectorProvider;
   connectorId: string;
+};
+
+export type ConnectorType = Omit<InternalConnectorType, "connectionId"> & {
+  connectionId?: null;
 };
 
 export type ConnectorStatusDetails = {

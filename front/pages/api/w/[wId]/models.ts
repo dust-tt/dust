@@ -5,18 +5,11 @@ import {
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { canUseModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ModelConfigurationType,
-  PlanType,
-  WhitelistableFeature,
-  WithAPIErrorResponse,
-  WorkspaceType,
-} from "@app/types";
-import { isProviderWhitelisted } from "@app/types";
+import type { ModelConfigurationType, WithAPIErrorResponse } from "@app/types";
 
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];
@@ -53,30 +46,6 @@ async function handler(
         },
       });
   }
-}
-
-function canUseModel(
-  m: ModelConfigurationType,
-  featureFlags: WhitelistableFeature[],
-  plan: PlanType | null,
-  owner: WorkspaceType
-) {
-  if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
-    return false;
-  }
-
-  if (
-    m.customAssistantFeatureFlag &&
-    !featureFlags.includes(m.customAssistantFeatureFlag)
-  ) {
-    return false;
-  }
-
-  if (m.largeModel && !isUpgraded(plan)) {
-    return false;
-  }
-
-  return isProviderWhitelisted(owner, m.providerId);
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

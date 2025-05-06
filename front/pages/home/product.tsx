@@ -10,6 +10,7 @@ import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySe
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { QuoteSection } from "@app/components/home/ContentBlocks";
+import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { classNames } from "@app/lib/utils";
@@ -33,11 +34,7 @@ export function Landing() {
     <>
       <ProductIntroSection />
       <CapabilitySection />
-      <DemoVideoSection
-        demoVideo={DemoVideo}
-        fromColor="from-sky-200"
-        toColor="to-sky-500"
-      />
+      <DemoVideoSection demoVideo={DemoVideo} />
       <UbiquitySection />
       <ExtensibilitySection page="default" />
       <SecuritySection />
@@ -45,8 +42,9 @@ export function Landing() {
         quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
         name="Everett Berry"
         title="Head of GTM Engineering at Clay"
-        logo="/static/landing/logos/clay.png"
+        logo="/static/landing/logos/color/clay.png"
       />
+      <FunctionsSection />
       <div
         className={classNames(
           "col-span-12 flex flex-col items-center",
@@ -69,7 +67,6 @@ export function Landing() {
           </Link>
         </div>
       </div>
-      {/* <VerticalSection /> */}
     </>
   );
 }

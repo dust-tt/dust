@@ -1,9 +1,9 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
+  emptyArray,
   fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
@@ -95,7 +95,7 @@ export function useDataSourceViewTables({
   );
 
   return {
-    tables: useMemo(() => (data ? data.tables : []), [data]),
+    tables: data?.tables ?? emptyArray(),
     nextPageCursor: data?.nextPageCursor || null,
     isTablesLoading: !isDisabled && !error && !data,
     isTablesError: error,

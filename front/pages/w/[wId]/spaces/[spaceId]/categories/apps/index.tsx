@@ -5,6 +5,7 @@ import type { ReactElement } from "react";
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { ActionApp } from "@app/lib/registry";
@@ -14,8 +15,8 @@ import type { DataSourceViewCategory, SpaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
+    isBuilder: boolean;
     category: DataSourceViewCategory;
-    isAdmin: boolean;
     registryApps: ActionApp[] | null;
     space: SpaceType;
   }
@@ -69,7 +70,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 });
 
 export default function Space({
-  canWriteInSpace,
+  isBuilder,
   owner,
   space,
   registryApps,
@@ -80,7 +81,7 @@ export default function Space({
     <SpaceAppsList
       owner={owner}
       space={space}
-      canWriteInSpace={canWriteInSpace}
+      isBuilder={isBuilder}
       onSelect={(sId) => {
         void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
       }}
@@ -90,5 +91,9 @@ export default function Space({
 }
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
-  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
+  return (
+    <AppRootLayout>
+      <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>
+    </AppRootLayout>
+  );
 };

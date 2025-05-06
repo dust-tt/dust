@@ -1,5 +1,7 @@
 import type { ProviderVisibility } from "../connectors/connectors_api";
 
+export const DATA_SOURCE_NODE_ID = "datasource_node_id";
+
 export type ContentNodeType = "document" | "table" | "folder";
 
 export type CoreAPIContentNode = {

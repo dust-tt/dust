@@ -211,6 +211,7 @@ impl Table {
             self.remote_database_secret_id(),
         ) {
             (Some(_), Some(secret_id)) => Ok(TableType::Remote(secret_id.to_string())),
+            (Some(_), None) => Err(anyhow!("require_authentication")),
             (None, None) => Ok(TableType::Local),
             _ => Err(anyhow!(
                 "Inconsistent state: table is neither local nor remote"
@@ -220,6 +221,9 @@ impl Table {
     pub fn set_schema(&mut self, schema: TableSchema) {
         self.schema = Some(schema);
     }
+    pub fn set_remote_database_secret_id(&mut self, remote_database_secret_id: String) {
+        self.remote_database_secret_id = Some(remote_database_secret_id);
+    }
 
     // if search_store is provided, delete the table node from the search index
     pub async fn delete(
@@ -228,7 +232,7 @@ impl Table {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         search_store: Option<Box<dyn SearchStore + Sync + Send>>,
     ) -> Result<()> {
-        if self.table_type()? == TableType::Local {
+        if self.remote_database_table_id().is_none() {
             // Invalidate the databases that use the table.
             try_join_all(
                 (store
@@ -346,7 +350,7 @@ impl LocalTable {
 
         match self.table.schema {
             None => format!("Table {} {{\n}}", name),
-            Some(ref schema) => schema.render_dbml(name, self.table.description()),
+            Some(ref schema) => schema.render_dbml(name, self.table.description(), false),
         }
     }
 

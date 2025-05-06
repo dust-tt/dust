@@ -74,6 +74,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
     const confluenceConfigurationBlob = {
       cloudId,
+      ignoreNearRateLimit: false,
       url: cloudUrl,
       userAccountId,
     };

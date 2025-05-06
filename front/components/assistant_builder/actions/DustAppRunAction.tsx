@@ -114,7 +114,7 @@ export function ActionDustAppRun({
         </ContentMessage>
       ) : (
         <>
-          <div className="text-sm text-element-700">
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             The agent will execute a{" "}
             <a
               className="font-bold"
@@ -131,7 +131,7 @@ export function ActionDustAppRun({
           </div>
 
           {hasSomeUnselectableApps && (
-            <div className="mb-4 text-sm text-element-700">
+            <div className="mb-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
               Dust apps without a description are not selectable. To make a Dust
               App selectable, edit it and add a description.
             </div>
@@ -163,7 +163,7 @@ export function ActionDustAppRun({
                       appsInSpace,
                       (a) => !a.description || a.description.length === 0,
                       "name"
-                    ).map((app) => {
+                    ).map((app, idx, arr) => {
                       const disabled =
                         !app.description || app.description.length === 0;
                       return (
@@ -181,7 +181,7 @@ export function ActionDustAppRun({
                                   className={classNames(
                                     "inline-block flex-shrink-0 align-middle",
                                     disabled
-                                      ? "text-element-700 dark:text-element-700-night"
+                                      ? "text-muted-foreground dark:text-muted-foreground-night"
                                       : ""
                                   )}
                                 />
@@ -190,7 +190,7 @@ export function ActionDustAppRun({
                                     "font-bold",
                                     "align-middle",
                                     disabled
-                                      ? "text-element-700 dark:text-element-700-night"
+                                      ? "text-muted-foreground dark:text-muted-foreground-night"
                                       : "text-foreground dark:text-foreground-night"
                                   )}
                                   htmlFor={app.sId}
@@ -215,12 +215,12 @@ export function ActionDustAppRun({
                             }}
                           >
                             {app.description && (
-                              <div className="ml-10 mt-1 text-sm text-element-700 dark:text-element-700-night">
+                              <div className="ml-10 mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
                                 {app.description}
                               </div>
                             )}
                           </RadioGroupCustomItem>
-                          <Separator />
+                          {idx !== arr.length - 1 && <Separator />}
                         </React.Fragment>
                       );
                     })}

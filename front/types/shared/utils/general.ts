@@ -15,3 +15,17 @@ export function isEmptyString(str: string | null | undefined): boolean {
   }
   return str.trim() === "";
 }
+
+const POSTGRES_DEFAULT_STRING_MAX_LENGTH = 255;
+
+// Util function used to check that a string is not overflowing the default STRING reprensentation
+// in DB (VARCHAR(255).
+export function isOverflowingDBString(
+  str: string | null | undefined,
+  maxLength?: number
+): boolean {
+  if (str === null || str === undefined) {
+    return false;
+  }
+  return str.length > (maxLength ?? POSTGRES_DEFAULT_STRING_MAX_LENGTH);
+}

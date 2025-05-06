@@ -276,7 +276,7 @@ export default function Chat({
                     (stop: string, i: number) => (
                       <div
                         key={i}
-                        className="flex rounded-md bg-slate-100 px-1"
+                        className="flex rounded-md bg-muted-background px-1"
                       >
                         {stop}
                         <span
@@ -394,22 +394,40 @@ export default function Chat({
                           readOnly={readOnly}
                           value={responseFormatText}
                           language="json"
-                          placeholder="Define a structured format for chat responses"
+                          placeholder={
+                            "{\n" +
+                            '  "type": "json_schema",\n' +
+                            '  "json_schema": {\n' +
+                            '    "name": "YourSchemaName",\n' +
+                            '    "strict": true,\n' +
+                            '    "schema": {\n' +
+                            '      "type": "object",\n' +
+                            '      "properties": {\n' +
+                            '        "property1":\n' +
+                            '          { "type":"string" }\n' +
+                            "      },\n" +
+                            '      "required": ["property1"],\n' +
+                            '      "additionalProperties": false\n' +
+                            "    }\n" +
+                            "  }\n" +
+                            "}"
+                          }
                           onChange={(e) =>
                             handleResponseFormatChange(e.target.value)
                           }
                           padding={3}
-                          minHeight={80}
                           className={classNames(
                             "rounded-lg",
                             isResponseFormatJsonValid
-                              ? "bg-slate-100 dark:bg-slate-100-night"
-                              : "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
+                              ? "bg-muted-background dark:bg-muted-background-night"
+                              : "border-2 border-red-500 bg-muted-background dark:bg-muted-background-night"
                           )}
                           style={{
                             fontSize: 13,
                             fontFamily:
                               "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                            overflowY: "auto",
+                            height: "400px",
                           }}
                         />
                       </div>
@@ -434,7 +452,7 @@ export default function Chat({
                 onChange={(e) => handleInstructionsChange(e.target.value)}
                 padding={3}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
                   fontSize: 13,
                   fontFamily:
@@ -458,7 +476,7 @@ export default function Chat({
                 onChange={(e) => handleMessagesCodeChange(e.target.value)}
                 padding={15}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
                   fontSize: 12,
                   fontFamily:
@@ -487,7 +505,7 @@ export default function Chat({
                       }
                       padding={15}
                       minHeight={80}
-                      className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                      className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                       style={{
                         fontSize: 12,
                         fontFamily:

@@ -103,7 +103,7 @@ export function BatchAddMembersPopover({
         <Button label="Batch add" icon={UserGroupIcon} size="sm" />
       </PopoverTrigger>
       <PopoverContent className="mr-2 p-4">
-        <div className="text-sm font-normal text-element-700">
+        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
           Enter the list of emails, one per line, max {MAX_SEARCH_EMAILS} per
           batch.
         </div>

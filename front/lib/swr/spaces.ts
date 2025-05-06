@@ -6,6 +6,7 @@ import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
 import {
+  emptyArray,
   fetcher,
   fetcherWithBody,
   getErrorFromResponse,
@@ -33,7 +34,7 @@ import type {
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
 import type {
   ContentNodesViewType,
-  DataSourceViewCategory,
+  DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
@@ -58,7 +59,7 @@ export function useSpaces({
   );
 
   return {
-    spaces: useMemo(() => (data ? data.spaces : []), [data]),
+    spaces: data?.spaces ?? emptyArray(),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
@@ -81,7 +82,7 @@ export function useSpacesAsAdmin({
   );
 
   return {
-    spaces: useMemo(() => (data ? data.spaces : []), [data]),
+    spaces: data?.spaces ?? emptyArray(),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
@@ -151,7 +152,7 @@ export function useSpaceDataSourceViews({
   spaceId,
   workspaceId,
 }: {
-  category?: Exclude<DataSourceViewCategory, "apps">;
+  category?: DataSourceViewCategoryWithoutApps;
   disabled?: boolean;
   spaceId: string;
   workspaceId: string;
@@ -172,13 +173,8 @@ export function useSpaceDataSourceViews({
       { disabled }
     );
 
-  const spaceDataSourceViews = useMemo(() => {
-    return (data?.dataSourceViews ??
-      []) as GetSpaceDataSourceViewsResponseBody<false>["dataSourceViews"];
-  }, [data]);
-
   return {
-    spaceDataSourceViews,
+    spaceDataSourceViews: data?.dataSourceViews ?? emptyArray(),
     mutate,
     mutateRegardlessOfQueryParams,
     isSpaceDataSourceViewsLoading: !disabled && !error && !data,
@@ -192,7 +188,7 @@ export function useSpaceDataSourceViewsWithDetails({
   spaceId,
   workspaceId,
 }: {
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
   disabled?: boolean;
   spaceId: string;
   workspaceId: string;
@@ -214,13 +210,8 @@ export function useSpaceDataSourceViewsWithDetails({
       { disabled }
     );
 
-  const spaceDataSourceViews = useMemo(() => {
-    return (data?.dataSourceViews ??
-      []) as GetSpaceDataSourceViewsResponseBody<true>["dataSourceViews"];
-  }, [data]);
-
   return {
-    spaceDataSourceViews,
+    spaceDataSourceViews: data?.dataSourceViews ?? emptyArray(),
     mutate,
     mutateRegardlessOfQueryParams,
     isSpaceDataSourceViewsLoading: !error && !data && !disabled,
@@ -343,7 +334,7 @@ export function useDeleteFolderOrWebsite({
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
 }) {
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
@@ -615,6 +606,7 @@ export function useSpaceSearch({
   space,
   viewType,
   pagination,
+  parentId,
 }: {
   dataSourceViews: DataSourceViewType[];
   disabled?: boolean;
@@ -625,6 +617,7 @@ export function useSpaceSearch({
   viewType: ContentNodesViewType;
   warningCode?: SearchWarningCode;
   pagination?: CursorPaginationParams;
+  parentId?: string;
 }): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -649,11 +642,12 @@ export function useSpaceSearch({
     limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
     query: search,
     viewType,
+    parentId,
   };
 
   // Only perform a query if we have a valid search.
   const url =
-    search.length >= MIN_SEARCH_QUERY_SIZE
+    search.length >= MIN_SEARCH_QUERY_SIZE || parentId
       ? `/api/w/${owner.sId}/spaces/${space.sId}/search?${params}`
       : null;
 
@@ -676,7 +670,7 @@ export function useSpaceSearch({
   );
 
   return {
-    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
+    searchResultNodes: data?.nodes ?? emptyArray(),
     total: data?.total ?? 0,
     isSearchLoading: isLoading,
     isSearchError: error,
@@ -774,7 +768,7 @@ export function useSpacesSearch({
   );
 
   return {
-    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
+    searchResultNodes: data?.nodes ?? emptyArray(),
     isSearchLoading: isLoading,
     isSearchError: error,
     mutate,

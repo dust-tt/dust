@@ -18,8 +18,6 @@ import {
   Input,
   Page,
   PlusIcon,
-  ScrollArea,
-  ScrollBar,
   ShapesIcon,
   Sheet,
   SheetContainer,
@@ -35,7 +33,8 @@ import React, { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -154,7 +153,7 @@ export function APIKeys({
           </SheetHeader>
           <SheetContainer>
             <div className="mt-4">
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-muted-foreground">
                 Your API key will remain visible for 10 minutes only. You can
                 use it to authenticate with the Dust API.
               </p>
@@ -162,7 +161,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">Domain</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="flex-grow overflow-x-auto rounded bg-slate-50 p-2 font-mono dark:bg-slate-950">
+                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
                     {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
                   </pre>
                   <IconButton
@@ -179,7 +178,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">Workspace ID</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="flex-grow overflow-x-auto rounded bg-slate-50 p-2 font-mono dark:bg-slate-950">
+                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
                     {owner.sId}
                   </pre>
                   <IconButton
@@ -196,7 +195,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">API Key</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="flex-grow overflow-x-auto rounded bg-slate-50 p-2 font-mono dark:bg-slate-950">
+                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
                     {keys[0]?.secret}
                   </pre>
                   <IconButton
@@ -245,7 +244,7 @@ export function APIKeys({
                 onChange={(e) => setNewApiKeyName(e.target.value)}
               />
               <div className="align-center flex flex-row items-center gap-2 p-2">
-                <span className="mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-gray-700 dark:text-gray-700-night">
+                <span className="mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-muted-foreground dark:text-muted-foreground-night">
                   Assign permissions to space:{" "}
                 </span>
                 <DropdownMenu>
@@ -257,34 +256,28 @@ export function APIKeys({
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <ScrollArea
-                      className="flex max-h-[300px] flex-col"
-                      hideScrollBar
-                    >
-                      {groups
-                        .sort((a, b) => {
-                          // Put global groups first
-                          if (a.kind === "global" && b.kind !== "global") {
-                            return -1;
-                          }
-                          if (a.kind !== "global" && b.kind === "global") {
-                            return 1;
-                          }
+                    {groups
+                      .sort((a, b) => {
+                        // Put global groups first
+                        if (a.kind === "global" && b.kind !== "global") {
+                          return -1;
+                        }
+                        if (a.kind !== "global" && b.kind === "global") {
+                          return 1;
+                        }
 
-                          // Then sort alphabetically case insensitive
-                          return prettifyGroupName(a)
-                            .toLowerCase()
-                            .localeCompare(prettifyGroupName(b).toLowerCase());
-                        })
-                        .map((group: GroupType) => (
-                          <DropdownMenuItem
-                            key={group.id}
-                            label={prettifyGroupName(group)}
-                            onClick={() => setNewApiKeyGroup(group)}
-                          />
-                        ))}
-                      <ScrollBar className="py-0" />
-                    </ScrollArea>
+                        // Then sort alphabetically case insensitive
+                        return prettifyGroupName(a)
+                          .toLowerCase()
+                          .localeCompare(prettifyGroupName(b).toLowerCase());
+                      })
+                      .map((group: GroupType) => (
+                        <DropdownMenuItem
+                          key={group.id}
+                          label={prettifyGroupName(group)}
+                          onClick={() => setNewApiKeyGroup(group)}
+                        />
+                      ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -368,7 +361,7 @@ export function APIKeys({
                           <p
                             className={classNames(
                               "front-normal text-xs",
-                              "text-element-700 dark:text-element-700-night"
+                              "text-muted-foreground dark:text-muted-foreground-night"
                             )}
                           >
                             Created {key.creator ? `by ${key.creator} ` : ""}
@@ -380,7 +373,7 @@ export function APIKeys({
                           <p
                             className={classNames(
                               "front-normal text-xs",
-                              "text-element-700 dark:text-element-700-night"
+                              "text-muted-foreground dark:text-muted-foreground-night"
                             )}
                           >
                             {key.lastUsedAt ? (
@@ -428,7 +421,7 @@ export default function APIKeysPage({
   groups,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "api_keys" })}
@@ -444,6 +437,10 @@ export default function APIKeysPage({
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+APIKeysPage.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
-import type { AgentStateClassification } from "@app/components/assistant/conversation/AgentMessage";
+import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
 import type {
   AgentActionType,
   AgentMessageType,
@@ -90,7 +90,6 @@ function ActionDetails({
     >
       <Chip
         size="sm"
-        color="slate"
         isBusy
         label={label === "Thinking" ? label : `Thinking, ${label}`}
       />

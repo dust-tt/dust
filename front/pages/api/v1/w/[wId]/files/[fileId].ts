@@ -4,11 +4,17 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import {
+  isFileTypeUpsertableForUseCase,
+  processAndUpsertToDataSource,
+} from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import { getSecureFileAction } from "@app/pages/api/w/[wId]/files/[fileId]";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isPublicySupportedUseCase } from "@app/types";
 
@@ -17,9 +23,6 @@ export const config = {
     bodyParser: false, // Disabling Next.js's body parser as formidable has its own.
   },
 };
-
-const validActions = ["view", "download"] as const;
-type Action = (typeof validActions)[number];
 
 /**
  * @ignoreswagger
@@ -30,23 +33,25 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { fileId } = req.query;
-  if (typeof fileId !== "string") {
+
+  if (!fileId || typeof fileId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Missing fileId query parameter.",
+        message: "The `fileId` query parameter is required.",
       },
     });
   }
 
   const file = await FileResource.fetchById(auth, fileId);
+
   if (!file) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
-        message: "File not found.",
+        message: "The file was not found.",
       },
     });
   }
@@ -64,11 +69,48 @@ async function handler(
     }
   }
 
+  // Check if the user has access to the file based on its useCase and useCaseMetadata
+  if (file.useCase === "conversation" && file.useCaseMetadata?.conversationId) {
+    // For conversation files, check if the user has access to the conversation
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      file.useCaseMetadata.conversationId
+    );
+    if (
+      !conversation ||
+      !ConversationResource.canAccessConversation(auth, conversation)
+    ) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+  } else if (
+    file.useCase === "folders_document" &&
+    file.useCaseMetadata?.spaceId
+  ) {
+    // For folder documents, check if the user has access to the space
+    const space = await SpaceResource.fetchById(
+      auth,
+      file.useCaseMetadata.spaceId
+    );
+    if (!space || !space.canRead(auth)) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+  }
+
   switch (req.method) {
     case "GET": {
-      const action: Action = validActions.includes(req.query.action as Action)
-        ? (req.query.action as Action)
-        : "download";
+      const action = getSecureFileAction(req.query.action, file);
 
       // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
@@ -98,6 +140,17 @@ async function handler(
     }
 
     case "DELETE": {
+      if (!auth.isBuilder() && file.useCase !== "conversation") {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `builders` for the current workspace can delete files.",
+          },
+        });
+      }
+
       const deleteRes = await file.delete(auth);
       if (deleteRes.isErr()) {
         return apiError(req, res, {
@@ -114,7 +167,23 @@ async function handler(
     }
 
     case "POST": {
-      const r = await processAndStoreFile(auth, { file, reqOrString: req });
+      if (!auth.isBuilder() && file.useCase !== "conversation") {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `builders` for the current workspace can modify files.",
+          },
+        });
+      }
+      const r = await processAndStoreFile(auth, {
+        file,
+        content: {
+          type: "incoming_message",
+          value: req,
+        },
+      });
 
       if (r.isErr()) {
         return apiError(req, res, {
@@ -126,8 +195,11 @@ async function handler(
         });
       }
 
-      // Only upsert immediately in case of conversation
-      if (file.useCase === "conversation") {
+      // For files with useCase "conversation" that support upsert, directly add them to the data source.
+      if (
+        file.useCase === "conversation" &&
+        isFileTypeUpsertableForUseCase(file)
+      ) {
         const jitDataSource = await getOrCreateConversationDataSourceFromFile(
           auth,
           file
@@ -148,19 +220,23 @@ async function handler(
             jitDataSource.value,
             { file }
           );
-          // For now, silently log the error
           if (rUpsert.isErr()) {
-            {
-              logger.warn({
-                fileModelId: file.id,
-                workspaceId: auth.workspace()?.sId,
-                contentType: file.contentType,
-                useCase: file.useCase,
-                useCaseMetadata: file.useCaseMetadata,
+            logger.error({
+              fileModelId: file.id,
+              workspaceId: auth.workspace()?.sId,
+              contentType: file.contentType,
+              useCase: file.useCase,
+              useCaseMetadata: file.useCaseMetadata,
+              message: "Failed to upsert the file.",
+              error: rUpsert.error,
+            });
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
                 message: "Failed to upsert the file.",
-                error: rUpsert.error,
-              });
-            }
+              },
+            });
           }
         }
       }
