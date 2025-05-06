@@ -11,6 +11,7 @@ import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
+import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as tableDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
@@ -62,6 +63,8 @@ export function getInternalMCPServer(
       return askAgentServer(auth);
     case "reasoning_v2":
       return reasoningServer(auth, agentLoopContext);
+    case "run_dust_app":
+      return dustAppServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
