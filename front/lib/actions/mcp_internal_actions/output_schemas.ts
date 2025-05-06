@@ -296,6 +296,22 @@ const NotificationImageContentSchema = z.object({
   mimeType: z.string(),
 });
 
+type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
+
+export const ProgressNotificationOutputSchema = z
+  .union([NotificationImageContentSchema, TextContentSchema])
+  .optional();
+
+type ProgressNotificationOutput = z.infer<
+  typeof ProgressNotificationOutputSchema
+>;
+
+export function isImageProgressOutput(
+  output: ProgressNotificationOutput
+): output is ImageProgressOutput {
+  return output !== undefined && output.type === "image";
+}
+
 export const ProgressNotificationContentSchema = z.object({
   // Required for the MCP protocol.
   progress: z.number(),
@@ -304,9 +320,7 @@ export const ProgressNotificationContentSchema = z.object({
   // Custom data.
   data: z.object({
     label: z.string(),
-    output: z
-      .union([NotificationImageContentSchema, TextContentSchema])
-      .optional(),
+    output: ProgressNotificationOutputSchema,
   }),
 });
 
