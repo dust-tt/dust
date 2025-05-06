@@ -141,6 +141,8 @@ export async function fetchMCPServerActionConfigurations(
         name: config.name ?? serverName,
         description: config.singleToolDescriptionOverride ?? serverDescription,
         mcpServerViewId: mcpServerView?.sId ?? "",
+        appId: config.appId,
+        appWorkspaceId: config.appWorkspaceId,
         dataSources: dataSourceConfigurations.map(
           renderDataSourceConfiguration
         ),
