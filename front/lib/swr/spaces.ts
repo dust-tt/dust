@@ -1,5 +1,5 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
@@ -843,9 +843,10 @@ export function useSpacesSearchWithInfiniteScroll({
     );
 
   return {
-    searchResultNodes: data
-      ? data.flatMap((d) => (d ? d.nodes : []))
-      : emptyArray(),
+    searchResultNodes: useMemo(
+      () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
+      [data]
+    ),
     isSearchLoading: isLoading,
     isSearchError: error,
     isSearchValidating: isValidating,
