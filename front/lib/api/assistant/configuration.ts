@@ -1809,5 +1809,8 @@ function isLegacyAllowed(
   if (agentConfigurationScope === "published" && isUser(owner)) {
     return true;
   }
+  if (agentConfigurationScope === "private" && isUser(owner)) {
+    return true;
+  }
   return false;
 }
