@@ -1,7 +1,12 @@
 import { Meta, StoryFn } from "@storybook/react";
 import React, { useRef, useState } from "react";
 
-import { ConfettiBackground, Icon, TypingAnimation } from "@sparkle/components";
+import {
+  Avatar,
+  ConfettiBackground,
+  Icon,
+  TypingAnimation,
+} from "@sparkle/components";
 import { Button } from "@sparkle/components/Button";
 import {
   BookOpenIcon,
@@ -22,7 +27,7 @@ import {
 } from "../components/TourGuide";
 
 export default {
-  title: "Components/TourGuide",
+  title: "Modules/TourGuide",
   component: TourGuide,
   parameters: {
     layout: "fullscreen",
@@ -39,6 +44,33 @@ const Template: StoryFn = () => {
     setKey((k) => k + 1);
   };
   const referentRef = useRef<HTMLDivElement>(null);
+  const filteredAgents = [
+    {
+      name: "Translator",
+      emoji: "💬",
+      backgroundColor: "s-bg-green-200",
+    },
+    {
+      name: "TrendTracker",
+      emoji: "😻",
+      backgroundColor: "s-bg-rose-50",
+    },
+    {
+      name: "TrailblazerGuard",
+      emoji: "👮",
+      backgroundColor: "s-bg-blue-100",
+    },
+    {
+      name: "TriumphRobot",
+      emoji: "🍾",
+      backgroundColor: "s-bg-yellow-200",
+    },
+    {
+      name: "Transport",
+      emoji: "🚌",
+      backgroundColor: "s-bg-blue-200",
+    },
+  ] as const;
   return (
     <div className="s-relative s-min-h-screen s-w-full">
       <div className="s-absolute s-left-3 s-top-3">
@@ -86,16 +118,34 @@ const Template: StoryFn = () => {
           </TourGuideCardContent>
         </TourGuideCard>
         <TourGuideCard anchorRef={centerRef}>
-          <TourGuideCardVisual className="s-flex s-items-center s-justify-center s-bg-brand-support-green s-px-6 s-text-center">
-            <span className="s-heading-5xl s-text-brand-hunter-green">
-              <TypingAnimation text="@mentions" />
-            </span>
+          <TourGuideCardVisual className="s-relative s-flex s-overflow-hidden s-bg-brand-support-green s-p-4 s-text-center">
+            <div className="s-flex s-gap-1">
+              <div className="s-flex s-gap-1">
+                <div className="s-heading-2xl s-text-highlight">@tra</div>
+                <div className="s-h-[32px] s-w-[3px] s-animate-cursor-blink s-bg-foreground" />
+              </div>
+              <div className="s-flex s-h-[240px] s-flex-col s-gap-3 s-rounded-xl s-border s-border-border s-bg-background s-p-3 s-pr-5 s-shadow-xl">
+                {filteredAgents.map((agent) => {
+                  return (
+                    <div
+                      key={agent.name}
+                      className="s-heading-base s-flex s-items-center s-gap-2 s-text-foreground"
+                    >
+                      <Avatar
+                        size="sm"
+                        emoji={agent.emoji}
+                        backgroundColor={agent.backgroundColor}
+                      />
+                      {agent.name}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </TourGuideCardVisual>
           <TourGuideCardTitle>
             Use{" "}
-            <span className="s-font-semibold s-text-brand-hunter-green">
-              @mentions
-            </span>{" "}
+            <span className="s-font-semibold s-text-highlight">@mentions</span>{" "}
             to call Agents and&nbsp;start a conversation
           </TourGuideCardTitle>
           <TourGuideCardContent className="s-py-2">
