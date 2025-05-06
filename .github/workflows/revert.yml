@@ -39,6 +39,10 @@ on:
       INFRA_DISPATCH_APP_PRIVATE_KEY:
         required: true
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   check-branch:
     runs-on: ubuntu-latest

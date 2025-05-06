@@ -8,6 +8,10 @@ on:
         required: false
         default: "rc"
 
+permissions:
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: publish_sparkle_suffix
   cancel-in-progress: false
