@@ -36,8 +36,11 @@ makeScript({}, async ({ execute }, logger) => {
         return;
       }
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-      if (group && execute) {
-        await group.delete(auth);
+      if (group) {
+        logger.info({ groupName: group.name, id: group.id }, "Deleting");
+        if (execute) {
+          await group.delete(auth);
+        }
       }
     },
     {
