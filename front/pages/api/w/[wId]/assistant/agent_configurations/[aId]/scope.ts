@@ -67,9 +67,9 @@ async function handler(
 
       if (!agent.canEdit && !auth.isAdmin()) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 403,
           api_error: {
-            type: "agent_configuration_not_found",
+            type: "invalid_request_error",
             message: "Only editors can modify agents.",
           },
         });
@@ -91,6 +91,16 @@ async function handler(
             },
           });
         }
+      }
+
+      if (bodyValidation.right.scope === "workspace" && !auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Only builders can upgrade agents to workspace scope.",
+          },
+        });
       }
 
       // This won't stay long since Agent Discovery initiative removes the scope
