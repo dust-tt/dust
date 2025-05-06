@@ -14,6 +14,7 @@ import {
   Avatar,
   GithubLogo,
   HubspotLogo,
+  NotionLogo,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
@@ -38,6 +39,7 @@ export const InternalActionIcons = {
   ActionMagnifyingGlassIcon,
   GithubLogo,
   HubspotLogo,
+  NotionLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

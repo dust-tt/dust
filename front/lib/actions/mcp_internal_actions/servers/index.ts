@@ -8,6 +8,7 @@ import { default as generateFileServer } from "@app/lib/actions/mcp_internal_act
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
+import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as tableDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_debugger";
@@ -56,6 +57,8 @@ export function getInternalMCPServer(
       return webtoolsServer();
     case "search":
       return searchServer(auth, agentLoopContext);
+    case "notion":
+      return notionServer(auth, mcpServerId);
     default:
       assertNever(internalMCPServerName);
   }

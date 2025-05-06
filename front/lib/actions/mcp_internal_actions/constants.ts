@@ -21,6 +21,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse_v2",
   "tables_query",
   "think",
+  "notion",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -74,6 +75,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   hubspot: {
     id: 7,
+    isDefault: false,
+    flag: "experimental_mcp_actions",
+  },
+  notion: {
+    id: 8,
     isDefault: false,
     flag: "experimental_mcp_actions",
   },

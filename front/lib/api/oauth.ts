@@ -149,11 +149,15 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   notion: {
-    setupUri: ({ connection }) => {
+    setupUri: ({ connection, useCase }) => {
+      const clientId =
+        useCase === "platform_actions"
+          ? config.getOAuthNotionPlatformActionsClientId()
+          : config.getOAuthNotionClientId();
       return (
         `https://api.notion.com/v1/oauth/authorize?owner=user` +
         `&response_type=code` +
-        `&client_id=${config.getOAuthNotionClientId()}` +
+        `&client_id=${clientId}` +
         `&state=${connection.connection_id}` +
         `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("notion"))}`
       );
