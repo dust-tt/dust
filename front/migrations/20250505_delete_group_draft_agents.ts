@@ -8,31 +8,33 @@ import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   // get all ids of groups associated with draft agents
-  const groups = await GroupAgentModel.findAll({
+  const groupAgentRels = await GroupAgentModel.findAll({
     attributes: ["groupId"],
     include: [
       {
         model: AgentConfiguration,
         where: {
-          scope: "draft",
+          status: "draft",
         },
         required: true,
       },
     ],
   });
 
-  logger.info(`Found ${groups.length} groups associated with draft agents`);
+  logger.info(
+    `Found ${groupAgentRels.length} groups associated with draft agents`
+  );
   await concurrentExecutor(
-    groups,
-    async (groupModel) => {
-      const group = await GroupResource.fetchByModelId(groupModel.id);
+    groupAgentRels,
+    async (groupAgentRel) => {
+      const group = await GroupResource.fetchByModelId(groupAgentRel.groupId);
       const workspace = await Workspace.findOne({
         where: {
           id: group?.workspaceId,
         },
       });
       if (!workspace) {
-        logger.error(`Workspace not found for group ${groupModel.id}`);
+        logger.error(`Workspace not found for group ${groupAgentRel.groupId}`);
         return;
       }
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
