@@ -53,6 +53,7 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
+  isImageProgressOutput,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -139,11 +140,9 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
 
-  const isGlobalAgent = React.useMemo(() => {
-    return Object.values(GLOBAL_AGENTS_SID).includes(
-      message.configuration.sId as GLOBAL_AGENTS_SID
-    );
-  }, [message.configuration.sId]);
+  const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
+    message.configuration.sId as GLOBAL_AGENTS_SID
+  );
 
   const buildEventSourceURL = React.useCallback(
     (lastEvent: string | null) => {
@@ -519,8 +518,8 @@ export function AgentMessage({
 
     // Get in-progress images.
     const inProgressImages = Array.from(state.actionProgress.entries())
-      .filter(
-        ([, progress]) => progress.progress?.data.output?.type === "image"
+      .filter(([, progress]) =>
+        isImageProgressOutput(progress.progress?.data.output)
       )
       .map(([actionId, progress]) => ({
         id: actionId,

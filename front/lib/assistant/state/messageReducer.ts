@@ -1,5 +1,6 @@
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { BaseAction } from "@app/lib/actions/types";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import type {
   AgentActionSuccessEvent,
@@ -14,13 +15,13 @@ import type { AgentMessageType } from "@app/types/assistant/conversation";
 
 export type AgentStateClassification = "thinking" | "acting" | "done";
 
-interface MessageTemporalState {
+interface MessageTemporaryState {
   message: AgentMessageType;
   agentState: AgentStateClassification;
   isRetrying: boolean;
   lastUpdated: Date;
   actionProgress: Map<
-    number,
+    BaseAction["id"],
     {
       action: AgentActionType;
       progress?: ProgressNotificationContentType;
@@ -43,16 +44,39 @@ function updateMessageWithAction(
 ): AgentMessageType {
   return {
     ...m,
-    actions: m.actions
-      ? [...m.actions.filter((a) => a.id !== action.id), action]
-      : [action],
+    actions: [...m.actions.filter((a) => a.id !== action.id), action],
   };
 }
 
+function updateProgress(
+  state: MessageTemporaryState,
+  event: ToolNotificationEvent
+): MessageTemporaryState {
+  const actionId = event.action.id;
+  const currentProgress = state.actionProgress.get(actionId);
+
+  const newState = {
+    ...state,
+    actionProgress: new Map(state.actionProgress).set(actionId, {
+      action: event.action,
+      progress: {
+        ...currentProgress?.progress,
+        ...event.notification,
+        data: {
+          ...currentProgress?.progress?.data,
+          ...event.notification.data,
+        },
+      },
+    }),
+  };
+
+  return newState;
+}
+
 export function messageReducer(
-  state: MessageTemporalState,
+  state: MessageTemporaryState,
   event: AgentMessageStateEvent
-): MessageTemporalState {
+): MessageTemporaryState {
   switch (event.type) {
     case "agent_action_success":
       return {
@@ -68,26 +92,7 @@ export function messageReducer(
       };
 
     case "tool_notification": {
-      const actionId = event.action.id;
-      const currentProgress = state.actionProgress.get(actionId);
-
-      // Update action progress
-      const newState = {
-        ...state,
-        actionProgress: new Map(state.actionProgress).set(actionId, {
-          action: event.action,
-          progress: {
-            ...currentProgress?.progress,
-            ...event.notification,
-            data: {
-              ...currentProgress?.progress?.data,
-              ...event.notification.data,
-            },
-          },
-        }),
-      };
-
-      return newState;
+      return updateProgress(state, event);
     }
 
     case "agent_error":
