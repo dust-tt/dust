@@ -109,6 +109,11 @@ export function stripNullBytes(text: string): string {
   return text.replace(/\0/g, "");
 }
 
+// Checks for an escped null Unicode character.
+export function hasNullUnicodeCharacter(text: string): boolean {
+  return text.includes("\u0000");
+}
+
 export function asDisplayName(name?: string | null) {
   if (!name) {
     return "";
