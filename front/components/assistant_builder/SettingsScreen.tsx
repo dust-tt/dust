@@ -602,7 +602,7 @@ export default function SettingsScreen({
                                 size="xs"
                                 variant="outline"
                                 icon={PencilSquareIcon}
-                                label="Manage channels"
+                                label="Select channels"
                                 onClick={() => {
                                   setSlackDrawerOpened(true);
                                 }}
