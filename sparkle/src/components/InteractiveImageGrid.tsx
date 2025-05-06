@@ -9,6 +9,74 @@ import {
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
+interface ImagePreviewProps {
+  image: {
+    alt: string;
+    downloadUrl?: string;
+    imageUrl?: string;
+    isLoading?: boolean;
+    title: string;
+  };
+  onClick: () => void;
+  onDownload: (e: React.MouseEvent) => Promise<void>;
+}
+
+const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
+  ({ image, onClick, onDownload }, ref) => {
+    return (
+      <div
+        ref={ref}
+        onClick={onClick}
+        className={cn(
+          "s-group/preview s-relative",
+          "s-cursor-pointer s-overflow-hidden s-rounded-2xl",
+          "s-bg-muted-background dark:s-bg-muted-background-night"
+        )}
+      >
+        {image.isLoading ? (
+          <div className="s-flex s-h-full s-w-full s-items-center s-justify-center">
+            <Spinner variant="dark" size="md" />
+          </div>
+        ) : (
+          <>
+            <img
+              src={image.imageUrl}
+              alt={image.alt}
+              className="s-h-full s-w-full s-rounded-2xl s-object-cover"
+            />
+            <div
+              className={cn(
+                "s-absolute s-inset-0 s-bg-gradient-to-b",
+                "s-from-black/40 s-via-transparent s-to-black/40",
+                "s-opacity-0 s-transition-opacity s-duration-200",
+                "group-hover/preview:s-opacity-100"
+              )}
+            />
+            <div
+              className={cn(
+                "s-absolute s-right-3 s-top-3 s-z-10 s-flex",
+                "s-opacity-0 s-transition-opacity s-duration-200",
+                "group-hover/preview:s-opacity-100"
+              )}
+            >
+              <Button
+                variant="ghost"
+                size="xs"
+                icon={ArrowDownOnSquareIcon}
+                className="s-text-white dark:s-text-white"
+                tooltip="Download"
+                onClick={onDownload}
+              />
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+);
+
+ImagePreview.displayName = "ImagePreview";
+
 interface InteractiveImageGridProps {
   className?: string;
   images: {
@@ -86,69 +154,38 @@ const InteractiveImageGrid = React.forwardRef<
 
   return (
     <div ref={ref} className={cn("s-@container", className)}>
-      <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4">
-        {images.map((image, idx) => (
-          <div
-            key={idx}
+      {images.length === 1 ? (
+        <div className="s-h-80 s-w-80">
+          <ImagePreview
+            image={images[0]}
             onClick={() => {
-              setCurrentImageIndex(idx);
+              setCurrentImageIndex(0);
               setIsZoomed(true);
             }}
-            className={cn(
-              "s-group/preview s-relative s-aspect-square s-h-full s-w-full",
-              "s-cursor-pointer s-overflow-hidden s-rounded-2xl",
-              "s-bg-muted-background dark:s-bg-muted-background-night"
-            )}
-          >
-            {image.isLoading ? (
-              <div
-                className={cn(
-                  "s-flex s-h-full s-w-full s-items-center s-justify-center"
-                )}
-              >
-                <Spinner variant="dark" size="md" />
-              </div>
-            ) : (
-              <>
-                <img
-                  src={image.imageUrl}
-                  alt={image.alt}
-                  className="s-h-full s-w-full s-rounded-2xl s-object-cover"
-                />
-                {/* Dark overlay on hover */}
-                <div
-                  className={cn(
-                    "s-absolute s-inset-0 s-bg-gradient-to-b",
-                    "s-from-black/40 s-via-transparent s-to-black/40",
-                    "s-opacity-0 s-transition-opacity s-duration-200",
-                    "group-hover/preview:s-opacity-100"
-                  )}
-                />
-                {/* Icon container - only visible on hover */}
-                <div
-                  className={cn(
-                    "s-absolute s-right-3 s-top-3 s-z-10 s-flex",
-                    "s-opacity-0 s-transition-opacity s-duration-200",
-                    "group-hover/preview:s-opacity-100"
-                  )}
-                >
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    icon={ArrowDownOnSquareIcon}
-                    className="s-text-white dark:s-text-white"
-                    tooltip="Download"
-                    onClick={async (e) => {
-                      e.stopPropagation(); // Prevent image zoom.
-                      await handleDownload(image.downloadUrl, image.title);
-                    }}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
+            onDownload={async (e) => {
+              e.stopPropagation();
+              await handleDownload(images[0].downloadUrl, images[0].title);
+            }}
+          />
+        </div>
+      ) : (
+        <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4">
+          {images.map((image, idx) => (
+            <ImagePreview
+              key={idx}
+              image={image}
+              onClick={() => {
+                setCurrentImageIndex(idx);
+                setIsZoomed(true);
+              }}
+              onDownload={async (e) => {
+                e.stopPropagation();
+                await handleDownload(image.downloadUrl, image.title);
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {isZoomed && currentImageIndex !== null && (
         <div
