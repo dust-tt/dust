@@ -9,6 +9,31 @@ import {
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
+interface ImageLoadingStateProps {
+  className?: string;
+  size?: "sm" | "md" | "lg";
+}
+
+const ImageLoadingState = React.forwardRef<
+  HTMLDivElement,
+  ImageLoadingStateProps
+>(({ className, size = "lg" }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "s-mx-auto s-flex s-aspect-square s-w-full s-min-w-[1024px]",
+        "s-max-w-[80vh] s-items-center s-justify-center",
+        "s-bg-muted-background dark:s-bg-muted-background-night",
+        className
+      )}
+    >
+      <Spinner variant="dark" size={size} />
+    </div>
+  );
+});
+
+ImageLoadingState.displayName = "ImageLoadingState";
 interface ImagePreviewProps {
   image: {
     alt: string;
@@ -224,15 +249,7 @@ const InteractiveImageGrid = React.forwardRef<
                   />
                 )}
                 {images[currentImageIndex].isLoading ? (
-                  <div
-                    className={cn(
-                      "s-mx-auto s-flex s-aspect-square s-w-full s-min-w-[1024px]",
-                      "s-max-w-[80vh] s-items-center s-justify-center",
-                      "s-bg-muted-background dark:s-bg-muted-background-night"
-                    )}
-                  >
-                    <Spinner variant="dark" size="lg" />
-                  </div>
+                  <ImageLoadingState size="lg" />
                 ) : (
                   <img
                     src={images[currentImageIndex].imageUrl}
@@ -261,7 +278,7 @@ const InteractiveImageGrid = React.forwardRef<
             {/* Bottom controls */}
             {!images[currentImageIndex].isLoading && (
               <>
-                {imageLoaded && (
+                {imageLoaded ? (
                   <div className="s-absolute s-bottom-4 s-right-4 s-z-10">
                     <Button
                       variant="outline"
@@ -276,6 +293,8 @@ const InteractiveImageGrid = React.forwardRef<
                       }}
                     />
                   </div>
+                ) : (
+                  <ImageLoadingState size="lg" />
                 )}
               </>
             )}
