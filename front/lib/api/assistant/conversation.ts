@@ -1095,11 +1095,18 @@ export async function* postUserMessage(
 function canAccessAgent(
   agentConfiguration: LightAgentConfigurationType
 ): boolean {
-  return (
-    agentConfiguration.canRead &&
-    (agentConfiguration.status === "active" ||
-      agentConfiguration.status === "draft")
-  );
+  switch (agentConfiguration.status) {
+    case "active":
+    case "draft":
+      return agentConfiguration.canRead;
+    case "disabled_free_workspace":
+    case "disabled_missing_datasource":
+    case "disabled_by_admin":
+    case "archived":
+      return false;
+    default:
+      assertNever(agentConfiguration.status);
+  }
 }
 
 /** This method creates a new user message version, and if there are new agent
