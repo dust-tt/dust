@@ -406,7 +406,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           messageId: agentMessage.sId,
           error: {
             code: "tool_error",
-            message: `Invalid Unicode character in inputs, please retry.`,
+            message: "Invalid Unicode character in inputs, please retry.",
           },
         };
         return;
