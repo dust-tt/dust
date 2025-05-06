@@ -23,6 +23,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "search",
   "think",
   "web_search_&_browse_v2",
+  "notion",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -111,6 +112,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 10,
     availability: "auto",
     flag: "dev_mcp_actions",
+  },
+  notion: {
+    id: 11,
+    availability: "manual",
+    flag: "experimental_mcp_actions",
   },
 
   // Dev
