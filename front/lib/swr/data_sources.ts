@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -23,7 +22,7 @@ export function useDataSourceUsage({
   );
 
   return {
-    usage: useMemo(() => (data ? data.usage : null), [data]),
+    usage: data?.usage ?? null,
     isUsageLoading: !error && !data,
     isUsageError: error,
     mutate,
