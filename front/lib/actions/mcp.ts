@@ -69,6 +69,7 @@ import type {
 import {
   assertNever,
   extensionsForContentType,
+  hasNullUnicodeCharacter,
   isSupportedFileContentType,
   Ok,
   removeNulls,
@@ -395,6 +396,22 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       params: rawInputs,
       step,
     };
+
+    for (const value of Object.values(rawInputs)) {
+      if (typeof value === "string" && hasNullUnicodeCharacter(value)) {
+        yield {
+          type: "tool_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "tool_error",
+            message: "Invalid Unicode character in inputs, please retry.",
+          },
+        };
+        return;
+      }
+    }
 
     // Create the action object in the database and yield an event for
     // the generation of the params. We store the action here as the params have been generated, if
