@@ -5,7 +5,7 @@ module.exports = {
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
   ],
-  plugins: ["import", "simple-import-sort", "filenames"],
+  plugins: ["import", "simple-import-sort"],
   rules: {
     "import/no-cycle": "error",
     curly: ["error", "all"],
@@ -80,20 +80,6 @@ module.exports = {
               },
             ],
           },
-        ],
-      },
-    },
-    {
-      files: ["pages/**/*.test.ts"], // Apply to *.test.ts files under pages/ and its subdirectories
-      rules: {
-        "filenames/match-regex": [
-          2, // Error level
-          {
-            // No brackets in test file names, since it breaks the endpoints
-            // See https://dust4ai.slack.com/archives/C050SM8NSPK/p1746457322664439
-            ".test.ts$": "^[^[]]+.test.ts$",
-          },
-          false, // Match just the filename, not the entire path
         ],
       },
     },
