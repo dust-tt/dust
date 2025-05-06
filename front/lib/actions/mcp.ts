@@ -168,6 +168,7 @@ type MCPSuccessEvent = {
   action: MCPActionType;
 };
 
+// TODO(MCP 2025-05-06): Add action to the error event.
 type MCPErrorEvent = {
   type: "tool_error";
   created: number;
@@ -179,7 +180,7 @@ type MCPErrorEvent = {
   };
 };
 
-export type MCPNotificationEvent = {
+export type ToolNotificationEvent = {
   type: "tool_notification";
   created: number;
   configurationId: string;
@@ -231,7 +232,7 @@ function hideFileContentForModel({
 export type MCPActionRunningEvents =
   | MCPParamsEvent
   | MCPApproveExecutionEvent
-  | MCPNotificationEvent;
+  | ToolNotificationEvent;
 
 type MCPActionBlob = ExtractActionBlob<MCPActionType>;
 
@@ -374,7 +375,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     | MCPSuccessEvent
     | MCPErrorEvent
     | MCPApproveExecutionEvent
-    | MCPNotificationEvent,
+    | ToolNotificationEvent,
     void
   > {
     const owner = auth.getNonNullableWorkspace();
