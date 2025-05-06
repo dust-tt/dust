@@ -17,8 +17,6 @@ import {
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
-import Link from "next/link";
-import { useRouter } from "next/router";
 import React from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -30,6 +28,7 @@ import {
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -66,12 +65,7 @@ import {
 import type { WebsearchActionType } from "@app/lib/actions/websearch";
 import type { AgentMessageStateEvent } from "@app/lib/assistant/state/messageReducer";
 import { messageReducer } from "@app/lib/assistant/state/messageReducer";
-import type {
-  AgentMessageType,
-  LightAgentConfigurationType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+import type { AgentMessageType, UserType, WorkspaceType } from "@app/types";
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
@@ -467,7 +461,12 @@ export function AgentMessage({
       name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      renderName={() => AssistantName(agentConfiguration, canMention)}
+      renderName={() => (
+        <AssistantHandle
+          assistant={agentConfiguration}
+          canMention={canMention}
+        />
+      )}
       type="agent"
       citations={citations}
     >
@@ -655,31 +654,6 @@ export function AgentMessage({
     );
     setIsRetryHandlerProcessing(false);
   }
-}
-
-function AssistantName(
-  assistant: LightAgentConfigurationType,
-  canMention: boolean = true
-) {
-  const router = useRouter();
-  const href = {
-    pathname: router.pathname,
-    query: { ...router.query, assistantDetails: assistant.sId },
-  };
-
-  if (!canMention) {
-    return <span>@{assistant.name}</span>;
-  }
-
-  return (
-    <Link
-      href={href}
-      shallow
-      className="cursor-pointer transition duration-200 hover:text-highlight active:text-highlight-600"
-    >
-      @{assistant.name}
-    </Link>
-  );
 }
 
 function getCitations({
