@@ -28,6 +28,17 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can access an agent.",
+      },
+    });
+  }
+
   const slackDataSources = await DataSourceResource.listByConnectorProvider(
     auth,
     "slack",
@@ -84,11 +95,11 @@ async function handler(
         });
       }
 
-      if (!agentConfiguration.canEdit || !auth.isBuilder()) {
+      if (!agentConfiguration.canEdit) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
-            type: "invalid_request_error",
+            type: "app_auth_error",
             message: "Only editors can modify agents.",
           },
         });
