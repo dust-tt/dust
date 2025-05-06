@@ -27,6 +27,10 @@ WORKDIR /app
 COPY /connectors/package*.json ./
 RUN npm ci
 COPY /connectors/ .
+
+# Remove test files
+RUN find . -name "*.test.ts" -delete
+
 RUN npm run build
 
 
