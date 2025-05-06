@@ -22,7 +22,7 @@ const ImageLoadingState = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-mx-auto s-flex s-aspect-square s-w-full s-min-w-[1024px]",
+        "s-mx-auto s-flex s-aspect-square s-w-full s-min-w-[50vh]",
         "s-max-w-[80vh] s-items-center s-justify-center",
         "s-bg-muted-background dark:s-bg-muted-background-night",
         className
