@@ -61,7 +61,7 @@ async function handler(
         id: a.sId,
         displayName: `@${a.name}`,
         description: a.description,
-        instructions: a.instructions,
+        instructions: a.instructions?.substring(0, 200),
       }));
 
       const model = getSmallWhitelistedModel(owner);
@@ -77,16 +77,14 @@ async function handler(
       }
 
       const config = cloneBaseConfig(
-        getDustProdActionRegistry()[
-          "assistant-builder-initial-tags-suggestions"
-        ].config
+        getDustProdActionRegistry()["tag-manager-initial-suggestions"].config
       );
       config.CREATE_SUGGESTIONS.provider_id = model.providerId;
       config.CREATE_SUGGESTIONS.model_id = model.modelId;
 
       const suggestionsResponse = await runAction(
         auth,
-        `assistant-builder-initial-tags-suggestions`,
+        "tag-manager-initial-suggestions",
         config,
         [
           {
@@ -123,17 +121,8 @@ async function handler(
           },
         });
       }
-      const suggestions = responseValidation.right as {
-        status: "ok";
-        suggestions: { name: string; agentIds: string[] }[] | null | undefined;
-      };
 
-      return res.status(200).json(suggestions);
-
-      console.log("suggest", suggestions);
-      SuggestionsResponseBodySchema;
-      return res.status(200).json(suggestions);
-
+      return res.status(200).json(responseValidation.right);
     default:
       return apiError(req, res, {
         status_code: 405,

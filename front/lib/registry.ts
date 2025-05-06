@@ -304,7 +304,7 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-builder-initial-tags-suggestions": {
+  "tag-manager-initial-suggestions": {
     app: {
       appId: "Huz76iC3FJ",
       appHash:
