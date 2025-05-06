@@ -230,6 +230,7 @@ Subscription.init(
     indexes: [
       { unique: true, fields: ["sId"] },
       { fields: ["workspaceId", "status"] },
+      { fields: ["workspaceId", "status", "planId"] },
     ],
   }
 );
