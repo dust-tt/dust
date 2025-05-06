@@ -48,6 +48,12 @@ const images = [
     imageUrl: "https://dust.tt/static/droidavatar/Droid_Lime_6.jpg",
     title: "Example of an interactive image",
   },
+  {
+    alt: "Example of an interactive PNG image",
+    downloadUrl: "https://dust.tt/static/DustHorizontalIcon.png",
+    imageUrl: "https://dust.tt/static/DustHorizontalIcon.png",
+    title: "Example of an interactive image",
+  },
 ];
 
 export const InteractiveImageExample = () => (

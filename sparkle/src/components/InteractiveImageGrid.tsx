@@ -202,7 +202,7 @@ const InteractiveImageGrid = React.forwardRef<
                     alt={images[currentImageIndex].alt}
                     className={cn(
                       "s-max-h-[90vh] s-min-h-[50vh] s-w-auto s-min-w-[1024px]",
-                      "s-object-contain"
+                      "s-checkerboard s-object-contain"
                     )}
                     onLoad={() => setImageLoaded(true)}
                   />
