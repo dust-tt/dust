@@ -1,12 +1,9 @@
 name: Deploy Front QA
 
 on:
-  pull_request:
-    types: [closed]
-    branches:
-      - main
-    paths-ignore:
-      - "**.md"
+  schedule:
+    # Runs at 07:00 PT (14:00 UTC) and 14:00 PT (21:00 UTC) during PDT.
+    - cron: "0 14,21 * * *"
   workflow_dispatch:
 
 permissions:
