@@ -95,7 +95,7 @@ async function handler(
         });
       }
 
-      if (!agentConfiguration.canEdit) {
+      if (!agentConfiguration.canEdit && !auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
