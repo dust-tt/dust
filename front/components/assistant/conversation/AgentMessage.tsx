@@ -352,6 +352,13 @@ export function AgentMessage({
             default:
               assertNever(event);
           }
+
+          if (isAtBottom.current && isLastMessage) {
+            bottomRef.current?.scrollIntoView({
+              behavior: "auto",
+              block: "center",
+            });
+          }
           setLastAgentStateClassification("thinking");
           break;
         }
@@ -360,7 +367,13 @@ export function AgentMessage({
           assertNever(event);
       }
     },
-    [conversationId, message.sId, owner.sId, showValidationDialog]
+    [
+      conversationId,
+      message.sId,
+      owner.sId,
+      showValidationDialog,
+      isLastMessage,
+    ]
   );
 
   useEventSource(
@@ -403,7 +416,7 @@ export function AgentMessage({
       ([entry]) => {
         isAtBottom.current = entry.isIntersecting;
       },
-      { threshold: 1 }
+      { rootMargin: "20px", threshold: 0.5 }
     );
 
     const currentBottomRef = bottomRef.current;
