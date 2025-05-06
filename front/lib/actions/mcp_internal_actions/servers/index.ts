@@ -14,7 +14,7 @@ import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_in
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
-import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
+import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type {

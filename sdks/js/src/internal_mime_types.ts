@@ -236,6 +236,9 @@ const TOOL_MIME_TYPES = {
       "SQL_QUERY",
       // Generic thinking tokens.
       "THINKING",
+      "TABLES_QUERY_DATABASE_SCHEMA",
+      "TABLES_QUERY_QUERY_WRITING_INSTRUCTIONS",
+      "TABLES_QUERY_EXAMPLE_ROWS",
       "WEBSEARCH_QUERY",
       "WEBSEARCH_RESULT",
     ],

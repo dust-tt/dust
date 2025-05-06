@@ -131,6 +131,74 @@ export const isResourceWithName = (
   return "name" in resource && typeof resource.name === "string";
 };
 
+export const DatabaseSchemaResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.TABLES_QUERY_DATABASE_SCHEMA
+  ),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type DatabaseSchemaResourceType = z.infer<
+  typeof DatabaseSchemaResourceSchema
+>;
+
+export const isDatabaseSchemaResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is {
+  type: "resource";
+  resource: DatabaseSchemaResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    DatabaseSchemaResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const QueryWritingInstructionsResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.TABLES_QUERY_QUERY_WRITING_INSTRUCTIONS
+  ),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type QueryWritingInstructionsResourceType = z.infer<
+  typeof QueryWritingInstructionsResourceSchema
+>;
+
+export const isQueryWritingInstructionsResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is {
+  type: "resource";
+  resource: QueryWritingInstructionsResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    QueryWritingInstructionsResourceSchema.safeParse(outputBlock.resource)
+      .success
+  );
+};
+
+export const ExampleRowsResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.TABLES_QUERY_EXAMPLE_ROWS
+  ),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type ExampleRowsResourceType = z.infer<typeof ExampleRowsResourceSchema>;
+
+export const isExampleRowsResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: ExampleRowsResourceType } => {
+  return (
+    outputBlock.type === "resource" &&
+    ExampleRowsResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Data source search outputs: query and results.
 
 export const SearchQueryResourceSchema = z.object({
@@ -323,6 +391,9 @@ const EmbeddedResourceSchema = z.object({
   type: z.literal("resource"),
   resource: z.union([
     BlobResourceContentsSchema,
+    DatabaseSchemaResourceSchema,
+    QueryWritingInstructionsResourceSchema,
+    ExampleRowsResourceSchema,
     SearchQueryResourceSchema,
     SearchResultResourceSchema,
     TextResourceContentsSchema,
