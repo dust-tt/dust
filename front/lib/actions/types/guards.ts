@@ -184,6 +184,19 @@ export function isMCPActionWithDataSource(
   );
 }
 
+export function isMCPDustAppRunConfiguration(
+  arg: unknown
+): arg is MCPToolConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "dust_app_run_configuration" &&
+    "appWorkspaceId" in arg &&
+    "appId" in arg
+  );
+}
+
 export function isPlatformMCPToolConfiguration(
   action: unknown
 ): action is PlatformMCPToolConfigurationType {
