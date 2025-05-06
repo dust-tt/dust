@@ -173,13 +173,8 @@ export function useSpaceDataSourceViews({
       { disabled }
     );
 
-  const spaceDataSourceViews = useMemo(() => {
-    return (data?.dataSourceViews ??
-      []) as GetSpaceDataSourceViewsResponseBody<false>["dataSourceViews"];
-  }, [data]);
-
   return {
-    spaceDataSourceViews,
+    spaceDataSourceViews: data?.dataSourceViews ?? emptyArray(),
     mutate,
     mutateRegardlessOfQueryParams,
     isSpaceDataSourceViewsLoading: !disabled && !error && !data,
@@ -215,13 +210,8 @@ export function useSpaceDataSourceViewsWithDetails({
       { disabled }
     );
 
-  const spaceDataSourceViews = useMemo(() => {
-    return (data?.dataSourceViews ??
-      []) as GetSpaceDataSourceViewsResponseBody<true>["dataSourceViews"];
-  }, [data]);
-
   return {
-    spaceDataSourceViews,
+    spaceDataSourceViews: data?.dataSourceViews ?? emptyArray(),
     mutate,
     mutateRegardlessOfQueryParams,
     isSpaceDataSourceViewsLoading: !error && !data && !disabled,
@@ -680,7 +670,7 @@ export function useSpaceSearch({
   );
 
   return {
-    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
+    searchResultNodes: data?.nodes ?? emptyArray(),
     total: data?.total ?? 0,
     isSearchLoading: isLoading,
     isSearchError: error,
@@ -778,7 +768,7 @@ export function useSpacesSearch({
   );
 
   return {
-    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
+    searchResultNodes: data?.nodes ?? emptyArray(),
     isSearchLoading: isLoading,
     isSearchError: error,
     mutate,

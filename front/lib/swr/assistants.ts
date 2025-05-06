@@ -62,7 +62,7 @@ export function useAssistantTemplate({
   );
 
   return {
-    assistantTemplate: useMemo(() => (data ? data : null), [data]),
+    assistantTemplate: data ? data : null,
     isAssistantTemplateLoading: !error && !data,
     isAssistantTemplateError: error,
     mutateAssistantTemplate: mutate,
@@ -169,10 +169,8 @@ export function useSuggestedAgentConfigurations({
   const dataToUse = cachedData || data;
 
   return {
-    suggestedAgentConfigurations: useMemo(
-      () => (dataToUse ? dataToUse.agentConfigurations : []),
-      [dataToUse]
-    ),
+    suggestedAgentConfigurations:
+      dataToUse?.agentConfigurations ?? emptyArray(),
     isSuggestedAgentConfigurationsLoading: !error && !dataToUse,
     isSuggestedAgentConfigurationsError: error,
     mutate,

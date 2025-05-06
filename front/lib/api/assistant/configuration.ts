@@ -631,16 +631,14 @@ async function fetchWorkspaceAgentConfigurationsForView(
       canEdit: false,
     };
 
-    if (variant !== "extra_light") {
-      const { canRead, canEdit } = await getAgentPermissions(
-        auth,
-        agentConfigurationType,
-        agentIdsForUserAsEditor
-      );
+    const { canRead, canEdit } = getAgentPermissions(
+      auth,
+      agentConfigurationType,
+      agentIdsForUserAsEditor
+    );
 
-      agentConfigurationType.canRead = canRead;
-      agentConfigurationType.canEdit = canEdit;
-    }
+    agentConfigurationType.canRead = canRead;
+    agentConfigurationType.canEdit = canEdit;
 
     agentConfigurationTypes.push(agentConfigurationType);
   }
@@ -963,6 +961,11 @@ export async function createAgentConfiguration(
             auth,
             existingAgent
           );
+          if (!group) {
+            throw new Error(
+              "Unexpected: agent should have exactly one editor group."
+            );
+          }
           const result = await group.addGroupToAgentConfiguration({
             auth,
             agentConfiguration: agentConfigurationInstance,
@@ -1331,6 +1334,7 @@ export async function createAgentActionConfiguration(
             workspaceId: owner.id,
             mcpServerViewId: mcpServerView.id,
             additionalConfiguration: action.additionalConfiguration,
+            timeFrame: action.timeFrame,
             name: serverName !== action.name ? action.name : null,
             singleToolDescriptionOverride:
               isSingleTool && serverDescription !== action.description
@@ -1384,6 +1388,7 @@ export async function createAgentActionConfiguration(
           tables: action.tables,
           childAgentId: action.childAgentId,
           reasoningModel: action.reasoningModel,
+          timeFrame: action.timeFrame,
           additionalConfiguration: action.additionalConfiguration,
         });
       });
@@ -1763,7 +1768,7 @@ export async function updateAgentPermissions(
   }
 }
 
-export async function getAgentPermissions(
+export function getAgentPermissions(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
   memberAgents: ModelId[]

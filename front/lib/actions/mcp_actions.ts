@@ -97,6 +97,7 @@ function makePlatformMCPToolConfigurations(
     isDefault: tool.isDefault,
     childAgentId: config.childAgentId,
     reasoningModel: config.reasoningModel,
+    timeFrame: config.timeFrame,
     additionalConfiguration: config.additionalConfiguration,
     permission: tool.stakeLevel,
     toolServerId: tool.toolServerId,

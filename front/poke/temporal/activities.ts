@@ -409,7 +409,9 @@ export async function deleteAgentsActivity({
     });
 
     const group = await GroupResource.fetchByAgentConfiguration(auth, agent);
-    await group.delete(auth);
+    if (group) {
+      await group.delete(auth);
+    }
 
     hardDeleteLogger.info({ agentId: agent.sId }, "Deleting agent");
     await agent.destroy();
