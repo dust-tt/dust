@@ -28,6 +28,7 @@ import type {
   PlanType,
   SubscriptionType,
   SupportedModel,
+  TimeFrame,
   TimeframeUnit,
   UserType,
   WorkspaceType,
@@ -136,6 +137,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
   reasoningModel: ReasoningModelConfiguration | null;
+  timeFrame: TimeFrame | null;
   additionalConfiguration: Record<string, boolean | number | string>;
 };
 
@@ -386,6 +388,7 @@ export function getDefaultMCPServerActionConfiguration(
       tablesConfigurations: null,
       childAgentId: null,
       reasoningModel: null,
+      timeFrame: null,
       additionalConfiguration: {},
     },
     name: mcpServerView?.server.name ?? "",

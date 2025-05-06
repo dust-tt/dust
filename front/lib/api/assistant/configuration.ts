@@ -1329,6 +1329,7 @@ export async function createAgentActionConfiguration(
             workspaceId: owner.id,
             mcpServerViewId: mcpServerView.id,
             additionalConfiguration: action.additionalConfiguration,
+            timeFrame: action.timeFrame,
             name: serverName !== action.name ? action.name : null,
             singleToolDescriptionOverride:
               isSingleTool && serverDescription !== action.description
@@ -1382,6 +1383,7 @@ export async function createAgentActionConfiguration(
           tables: action.tables,
           childAgentId: action.childAgentId,
           reasoningModel: action.reasoningModel,
+          timeFrame: action.timeFrame,
           additionalConfiguration: action.additionalConfiguration,
         });
       });

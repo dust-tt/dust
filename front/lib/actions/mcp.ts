@@ -65,6 +65,7 @@ import type {
   ModelConfigurationType,
   ModelId,
   Result,
+  TimeFrame,
 } from "@app/types";
 import {
   assertNever,
@@ -95,6 +96,7 @@ export type PlatformMCPServerConfigurationType =
     tables: TableDataSourceConfiguration[] | null;
     childAgentId: string | null;
     reasoningModel: ReasoningModelConfiguration | null;
+    timeFrame: TimeFrame | null;
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
   };
