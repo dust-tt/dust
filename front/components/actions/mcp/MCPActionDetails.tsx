@@ -332,6 +332,10 @@ export function GenericActionDetails({
   action,
   defaultOpen,
 }: ActionDetailsComponentBaseProps<MCPActionType>) {
+  const displayableGeneratedFiles = action.generatedFiles.filter(
+    (f) => !isSupportedImageContentType(f.contentType)
+  );
+
   return (
     <ActionDetailsWrapper
       actionName={action.functionCallName ?? "Calling MCP Server"}
@@ -340,7 +344,7 @@ export function GenericActionDetails({
     >
       <div className="flex flex-col gap-4 py-4 pl-6">
         <CollapsibleComponent
-          rootProps={{ defaultOpen: !action.generatedFiles.length }}
+          rootProps={{ defaultOpen: !displayableGeneratedFiles.length }}
           triggerChildren={
             <div
               className={cn(
@@ -360,7 +364,7 @@ export function GenericActionDetails({
 
         {action.output && (
           <CollapsibleComponent
-            rootProps={{ defaultOpen: !action.generatedFiles.length }}
+            rootProps={{ defaultOpen: !displayableGeneratedFiles.length }}
             triggerChildren={
               <div
                 className={cn(
@@ -384,34 +388,21 @@ export function GenericActionDetails({
           />
         )}
 
-        {action.generatedFiles.length > 0 && (
+        {displayableGeneratedFiles.length > 0 && (
           <>
             <span className="heading-base">Generated Files</span>
             <div className="flex flex-col gap-1">
-              {action.generatedFiles.map((file) => {
-                if (isSupportedImageContentType(file.contentType)) {
-                  return (
-                    <div key={file.fileId} className="mr-5">
-                      <img
-                        className="rounded-xl"
-                        src={`/api/w/${owner.sId}/files/${file.fileId}`}
-                        alt={`${file.title}`}
-                      />
-                    </div>
-                  );
-                }
-                return (
-                  <div key={file.fileId}>
-                    <a
-                      href={`/api/w/${owner.sId}/files/${file.fileId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {file.title}
-                    </a>
-                  </div>
-                );
-              })}
+              {displayableGeneratedFiles.map((file) => (
+                <div key={file.fileId}>
+                  <a
+                    href={`/api/w/${owner.sId}/files/${file.fileId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {file.title}
+                  </a>
+                </div>
+              ))}
             </div>
           </>
         )}
