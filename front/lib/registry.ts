@@ -304,6 +304,20 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
+  "assistant-builder-initial-tags-suggestions": {
+    app: {
+      appId: "Huz76iC3FJ",
+      appHash:
+        "bca374dd4e75c3cbfb56cecfe3a70d395e3ff1ca141a2d966a69fe11871717f6",
+    },
+    config: {
+      CREATE_SUGGESTIONS: {
+        function_call: "send_tags",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
 };
 
 export type DustRegistryActionName = keyof typeof BaseDustProdActionRegistry;
