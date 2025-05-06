@@ -1,5 +1,5 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
@@ -173,13 +173,8 @@ export function useSpaceDataSourceViews({
       { disabled }
     );
 
-  const spaceDataSourceViews = useMemo(() => {
-    return (data?.dataSourceViews ??
-      []) as GetSpaceDataSourceViewsResponseBody<false>["dataSourceViews"];
-  }, [data]);
-
   return {
-    spaceDataSourceViews,
+    spaceDataSourceViews: data?.dataSourceViews ?? emptyArray(),
     mutate,
     mutateRegardlessOfQueryParams,
     isSpaceDataSourceViewsLoading: !disabled && !error && !data,
@@ -215,13 +210,8 @@ export function useSpaceDataSourceViewsWithDetails({
       { disabled }
     );
 
-  const spaceDataSourceViews = useMemo(() => {
-    return (data?.dataSourceViews ??
-      []) as GetSpaceDataSourceViewsResponseBody<true>["dataSourceViews"];
-  }, [data]);
-
   return {
-    spaceDataSourceViews,
+    spaceDataSourceViews: data?.dataSourceViews ?? emptyArray(),
     mutate,
     mutateRegardlessOfQueryParams,
     isSpaceDataSourceViewsLoading: !error && !data && !disabled,
@@ -680,7 +670,7 @@ export function useSpaceSearch({
   );
 
   return {
-    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
+    searchResultNodes: data?.nodes ?? emptyArray(),
     total: data?.total ?? 0,
     isSearchLoading: isLoading,
     isSearchError: error,
@@ -778,7 +768,7 @@ export function useSpacesSearch({
   );
 
   return {
-    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
+    searchResultNodes: data?.nodes ?? emptyArray(),
     isSearchLoading: isLoading,
     isSearchError: error,
     mutate,
@@ -853,10 +843,9 @@ export function useSpacesSearchWithInfiniteScroll({
     );
 
   return {
-    searchResultNodes: useMemo(
-      () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
-      [data]
-    ),
+    searchResultNodes: data
+      ? data.flatMap((d) => (d ? d.nodes : []))
+      : emptyArray(),
     isSearchLoading: isLoading,
     isSearchError: error,
     isSearchValidating: isValidating,
