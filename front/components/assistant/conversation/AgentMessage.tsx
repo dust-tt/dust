@@ -11,7 +11,9 @@ import {
   ContentMessage,
   ConversationMessage,
   DocumentIcon,
-  InteractiveImage,
+  DocumentPileIcon,
+  EyeIcon,
+  InteractiveImageGrid,
   Markdown,
   Separator,
   useCopyToClipboard,
@@ -562,28 +564,24 @@ export function AgentMessage({
           ) : null}
         </div>
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {inProgressImages.map((image) => (
-              <InteractiveImage
-                key={image.id}
-                imageUrl=""
-                downloadUrl=""
-                alt={""}
-                title={""}
-                isLoading={true}
-              />
-            ))}
-            {completedImages.map((image) => (
-              <InteractiveImage
-                key={image.fileId}
-                imageUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=view`}
-                downloadUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=download`}
-                alt={`${image.title}`}
-                title={`${image.title}`}
-                isLoading={false}
-              />
-            ))}
-          </div>
+          <InteractiveImageGrid
+            images={[
+              ...completedImages.map((image) => ({
+                imageUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=view`,
+                downloadUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+                alt: `${image.title}`,
+                title: `${image.title}`,
+                isLoading: false,
+              })),
+              ...inProgressImages.map(() => ({
+                imageUrl: "",
+                downloadUrl: "",
+                alt: "",
+                title: "",
+                isLoading: true,
+              })),
+            ]}
+          />
         )}
 
         {agentMessage.content !== null && (
