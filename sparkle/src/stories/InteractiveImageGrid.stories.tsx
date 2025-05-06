@@ -66,5 +66,9 @@ export const InteractiveImageExample = () => (
       <h2>Interactive Image Grid with 1 image</h2>
       <InteractiveImageGrid images={images.slice(1, 2)} />
     </div>
+    <div className="s-w-[700px]">
+      <h2>Interactive Image Grid with 1 image (loading)</h2>
+      <InteractiveImageGrid images={images.slice(0, 1)} />
+    </div>
   </div>
 );

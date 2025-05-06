@@ -59,7 +59,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
         )}
       >
         {image.isLoading ? (
-          <div className="s-flex s-h-full s-w-full s-items-center s-justify-center">
+          <div className="s-flex s-aspect-square s-h-full s-w-full s-items-center s-justify-center">
             <Spinner variant="dark" size="md" />
           </div>
         ) : (
