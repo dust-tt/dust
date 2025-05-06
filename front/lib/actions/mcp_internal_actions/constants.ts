@@ -91,7 +91,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   run_dust_app: {
     id: 8,
-    isDefault: false,
+    isDefault: true,
     flag: "mcp_actions",
   },
 

@@ -415,6 +415,7 @@ export function getMCPServerRequirements(
   requiredNumbers: string[];
   requiredBooleans: string[];
   requiredEnums: Record<string, string[]>;
+  requiredDustAppConfiguration: boolean;
   noRequirement: boolean;
 } {
   if (!mcpServerView) {
@@ -427,6 +428,7 @@ export function getMCPServerRequirements(
       requiredNumbers: [],
       requiredBooleans: [],
       requiredEnums: {},
+      requiredDustAppConfiguration: false,
       noRequirement: false,
     };
   }
@@ -503,6 +505,13 @@ export function getMCPServerRequirements(
       ];
     })
   );
+  const requiredDustAppConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+      })
+    ).length > 0;
 
   return {
     requiresDataSourceConfiguration,
@@ -513,6 +522,7 @@ export function getMCPServerRequirements(
     requiredNumbers,
     requiredBooleans,
     requiredEnums,
+    requiredDustAppConfiguration,
 
     noRequirement:
       !requiresDataSourceConfiguration &&
@@ -522,6 +532,7 @@ export function getMCPServerRequirements(
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
       requiredBooleans.length === 0 &&
-      Object.keys(requiredEnums).length === 0,
+      Object.keys(requiredEnums).length === 0 &&
+      !requiredDustAppConfiguration,
   };
 }

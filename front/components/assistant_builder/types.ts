@@ -1,8 +1,7 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { uniqueId } from "lodash";
-import type React from "react";
-import type { SVGProps } from "react";
+import type React, { SVGProps } from "react";
 
 import {
   DEFAULT_MCP_ACTION_NAME,
