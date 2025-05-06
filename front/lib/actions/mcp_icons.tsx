@@ -11,6 +11,7 @@ import {
   ActionLockIcon,
   ActionMagnifyingGlassIcon,
   ActionRobotIcon,
+  ActionScanIcon,
   ActionTableIcon,
   Avatar,
   GithubLogo,
@@ -38,6 +39,7 @@ export const InternalActionIcons = {
   ActionMagnifyingGlassIcon,
   ActionRobotIcon,
   ActionTableIcon,
+  ActionScanIcon,
   GithubLogo,
   HubspotLogo,
 };

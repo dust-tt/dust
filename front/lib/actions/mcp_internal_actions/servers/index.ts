@@ -5,6 +5,7 @@ import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions
 import { default as authDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/authentication_debugger";
 import { default as childAgentDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/child_agent_debugger";
 import { default as dataSourceDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_debugger";
+import { default as extractServer } from "@app/lib/actions/mcp_internal_actions/servers/extract";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
@@ -62,6 +63,8 @@ export function getInternalMCPServer(
       return askAgentServer(auth);
     case "reasoning_v2":
       return reasoningServer(auth, agentLoopContext);
+    case "extract":
+      return extractServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
