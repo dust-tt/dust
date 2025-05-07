@@ -153,7 +153,7 @@ export const INTERNAL_MCP_SERVERS: Record<
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
 
-export const getAvailabilyOfInternalMCPServerByName = (
+export const getAvailabilityOfInternalMCPServerByName = (
   name: InternalMCPServerNameType
 ): MCPServerAvailability => {
   return INTERNAL_MCP_SERVERS[name].availability;
@@ -166,7 +166,7 @@ export const getInternalMCPServerAvailability = (
   if (r.isErr()) {
     return "manual";
   }
-  return getAvailabilyOfInternalMCPServerByName(r.value.name);
+  return getAvailabilityOfInternalMCPServerByName(r.value.name);
 };
 
 export const getInternalMCPServerNameAndWorkspaceId = (

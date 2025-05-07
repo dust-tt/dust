@@ -7,7 +7,7 @@ import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
-  getAvailabilyOfInternalMCPServerByName,
+  getAvailabilityOfInternalMCPServerByName,
   getInternalMCPServerAvailability,
   getInternalMCPServerNameAndWorkspaceId,
   isInternalMCPServerName,
@@ -82,7 +82,7 @@ export class InternalMCPServerInMemoryResource {
             (await mcpClient.listTools()).tools
           ) as any,
           availability: isInternalMCPServerName(md.name)
-            ? getAvailabilyOfInternalMCPServerByName(md.name)
+            ? getAvailabilityOfInternalMCPServerByName(md.name)
             : "manual",
         };
 

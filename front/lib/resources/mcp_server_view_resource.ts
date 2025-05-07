@@ -16,7 +16,7 @@ import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
-  getAvailabilyOfInternalMCPServerByName,
+  getAvailabilityOfInternalMCPServerByName,
   getInternalMCPServerAvailability,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -469,7 +469,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     const autoInternalMCPServerIds: string[] = [];
     for (const name of names) {
       const isEnabled = await isEnabledForWorkspace(auth, name);
-      const availability = getAvailabilyOfInternalMCPServerByName(name);
+      const availability = getAvailabilityOfInternalMCPServerByName(name);
 
       if (isEnabled && availability !== "manual") {
         autoInternalMCPServerIds.push(
