@@ -6,6 +6,7 @@ import type {
   FindOptions,
   ForeignKey,
   GroupedCountResultItem,
+  InferAttributes,
   InitOptions,
   Model,
   ModelAttributes,
@@ -18,6 +19,28 @@ import { DataTypes, Op } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import logger from "@app/logger/logger";
+
+// Helper type and type guard for workspaceId check.
+type WhereClauseWithNumericWorkspaceId<TAttributes> =
+  WhereOptions<TAttributes> & {
+    workspaceId: number;
+  };
+
+function isWhereClauseWithNumericWorkspaceId<TAttributes>(
+  where: WhereOptions<TAttributes> | undefined
+): where is WhereClauseWithNumericWorkspaceId<TAttributes> {
+  if (!where) {
+    return false;
+  }
+
+  return (
+    typeof where === "object" &&
+    !Array.isArray(where) &&
+    "workspaceId" in where &&
+    typeof where.workspaceId === "number"
+  );
+}
 
 export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -44,7 +67,44 @@ export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
     };
 
     const { relationship = "hasMany", ...restOptions } = options;
-    const model = super.init(attrs, restOptions);
+
+    // Define a hook to ensure all find queries are properly scoped to a workspace.
+    const hooks = {
+      beforeFind: (options: FindOptions<InferAttributes<InstanceType<MS>>>) => {
+        const whereClause = options.where;
+
+        if (
+          !isWhereClauseWithNumericWorkspaceId<
+            InferAttributes<InstanceType<MS>>
+          >(whereClause)
+        ) {
+          const stack = new Error().stack;
+
+          logger.warn(
+            {
+              model: this.name,
+              query_type: "find",
+              stack_trace: stack,
+              where: whereClause,
+            },
+            "workspace_isolation_violation"
+          );
+
+          // TODO: Uncomment this once we've updated all queries to include `workspaceId`.
+          // if (process.env.NODE_ENV === "development") {
+          //   throw new Error(
+          //     `Query attempted without workspaceId on ${this.name}`
+          //   );
+          // }
+        }
+      },
+      ...(restOptions.hooks || {}),
+    };
+
+    const model = super.init(attrs, {
+      ...restOptions,
+      hooks,
+    });
 
     if (relationship === "hasOne") {
       Workspace.hasOne(model, {
