@@ -60,7 +60,7 @@ async function handler(
       const formattedAgents = agents
         .map(
           (a) =>
-            `Identifier: ${a.sId}\nName: ${a.name}\nDescription: ${a.description}\nInstructions: ${a.instructions?.substring(0, 200).replaceAll("\n", " ")}...`
+            `Identifier: ${a.sId}\nName: ${a.name}\nDescription: ${a.description?.substring(0, 200).replaceAll("\n", " ")}\nInstructions: ${a.instructions?.substring(0, 200).replaceAll("\n", " ")}`
         )
         .join("\n\n");
 
