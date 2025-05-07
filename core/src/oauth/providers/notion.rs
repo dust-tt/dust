@@ -15,8 +15,10 @@ use std::env;
 lazy_static! {
     static ref OAUTH_NOTION_CLIENT_ID: String = env::var("OAUTH_NOTION_CLIENT_ID").unwrap();
     static ref OAUTH_NOTION_CLIENT_SECRET: String = env::var("OAUTH_NOTION_CLIENT_SECRET").unwrap();
-    static ref OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID: String = env::var("OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID").unwrap();
-    static ref OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_SECRET: String = env::var("OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_SECRET").unwrap();
+    static ref OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID: String =
+        env::var("OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID").unwrap();
+    static ref OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_SECRET: String =
+        env::var("OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_SECRET").unwrap();
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -30,7 +32,10 @@ impl NotionUseCase {
         match s {
             Some("connection") | None => Ok(NotionUseCase::Connection),
             Some("platform_actions") => Ok(NotionUseCase::PlatformActions),
-            Some(other) => Err(anyhow!(format!("Notion use_case format invalid: {}", other))),
+            Some(other) => Err(anyhow!(format!(
+                "Notion use_case format invalid: {}",
+                other
+            ))),
         }
     }
 }
@@ -79,7 +84,10 @@ impl Provider for NotionConnectionProvider {
             .post("https://api.notion.com/v1/oauth/token")
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
-            .header("Authorization", format!("Basic {}", self.basic_auth(&use_case)))
+            .header(
+                "Authorization",
+                format!("Basic {}", self.basic_auth(&use_case)),
+            )
             .json(&body);
 
         let raw_json = execute_request(ConnectionProvider::Notion, req)
