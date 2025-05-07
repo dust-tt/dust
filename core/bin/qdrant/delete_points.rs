@@ -3,7 +3,7 @@ use dust::data_sources::qdrant::QdrantClients;
 use dust::project;
 use dust::stores::postgres;
 use dust::stores::store::Store;
-use qdrant_client::qdrant::{self};
+use qdrant_client::qdrant::{self, CountPointsBuilder};
 use std::env;
 use tracing::info;
 
@@ -52,18 +52,17 @@ async fn main() -> Result<()> {
                 );
 
                 match qdrant_client
-                    .count_points(
-                        ds.embedder_config(),
-                        &ds.internal_id().to_string(),
-                        Some(filter),
-                        true,
+                    .raw_client()
+                    .count(
+                        CountPointsBuilder::new(
+                            qdrant_client.collection_name(ds.embedder_config()),
+                        )
+                        .filter(filter)
+                        .exact(true),
                     )
                     .await
                 {
-                    Ok(count) => {
-                        info!("Count: {}", count.result.unwrap().count);
-                        Ok(())
-                    }
+                    Ok(count) => Err(anyhow!("Count: {}", count.result.unwrap().count)),
                     Err(e) => Err(anyhow!("Error counting points: {}", e)),
                 }
             }
