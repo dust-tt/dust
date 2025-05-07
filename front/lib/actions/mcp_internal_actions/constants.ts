@@ -117,6 +117,13 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 11,
     availability: "manual",
     flag: "experimental_mcp_actions",
+    tools_stakes: {
+      retrieve_database_content: "never_ask",
+      query_database: "never_ask",
+      retrieve_page: "never_ask",
+      retrieve_database_schema: "never_ask",
+      search: "never_ask",
+    },
   },
 
   // Dev

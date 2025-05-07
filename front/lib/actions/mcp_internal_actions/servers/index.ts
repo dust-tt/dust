@@ -8,7 +8,7 @@ import { default as generateFileServer } from "@app/lib/actions/mcp_internal_act
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
-import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include_data";
+import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
