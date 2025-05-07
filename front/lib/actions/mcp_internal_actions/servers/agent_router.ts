@@ -21,7 +21,7 @@ const createServer = (auth: Authenticator): McpServer => {
 
   server.tool(
     "list_agents",
-    "List all active published agents in the workspace, to know which ones are the best suited for the current conversation.",
+    "List all active published agents in the workspace, to know which ones are the best suited for the current conversation. the mention directive allows the user to click on the agent name to select it.",
     {},
     async () => {
       const owner = auth.getNonNullableWorkspace();
@@ -55,8 +55,8 @@ const createServer = (auth: Authenticator): McpServer => {
       const agents = res.value;
       const formattedAgents = agents.map((agent) => {
         return {
-          sId: agent.sId,
           name: agent.name,
+          mention: `:mention[${agent.name}]{sId: ${agent.sId}}`,
           description: agent.description,
         };
       });
