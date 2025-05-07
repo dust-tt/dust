@@ -130,7 +130,10 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
               (v) => v.id === action.configuration.mcpServerViewId
             );
             // Default MCP server themselves are not accounted for in the space restriction.
-            if (mcpServerView && !mcpServerView.server.isDefault) {
+            if (
+              mcpServerView &&
+              mcpServerView.server.availability === "manual"
+            ) {
               addActionToSpace(mcpServerView.spaceId);
             }
           }
