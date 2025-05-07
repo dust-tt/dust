@@ -1,11 +1,17 @@
 import React from "react";
 
-import { Button, Spinner } from "@sparkle/components/";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTrigger,
+  Spinner,
+} from "@sparkle/components/";
 import {
   ArrowDownOnSquareIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  XMarkIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -53,7 +59,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
         ref={ref}
         onClick={onClick}
         className={cn(
-          "s-group/preview s-relative",
+          "s-group/preview s-relative s-aspect-square",
           "s-cursor-pointer s-overflow-hidden s-rounded-2xl",
           "s-bg-muted-background dark:s-bg-muted-background-night"
         )}
@@ -113,14 +119,13 @@ interface InteractiveImageGridProps {
   }[];
 }
 
-const InteractiveImageGrid = React.forwardRef<
-  HTMLDivElement,
-  InteractiveImageGridProps
->(({ className, images }, ref) => {
+function InteractiveImageGrid({
+  className,
+  images,
+}: InteractiveImageGridProps) {
   const [currentImageIndex, setCurrentImageIndex] = React.useState<
     number | null
   >(null);
-  const [isZoomed, setIsZoomed] = React.useState(false);
   const [imageLoaded, setImageLoaded] = React.useState(false);
 
   const handleNext = React.useCallback(() => {
@@ -157,7 +162,7 @@ const InteractiveImageGrid = React.forwardRef<
   );
 
   React.useEffect(() => {
-    if (!isZoomed) {
+    if (currentImageIndex === null) {
       return;
     }
 
@@ -167,72 +172,64 @@ const InteractiveImageGrid = React.forwardRef<
         handleNext();
       } else if (e.key === "ArrowLeft") {
         handlePrevious();
-      } else if (e.key === "Escape") {
-        setIsZoomed(false);
-        setCurrentImageIndex(null);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isZoomed, handleNext, handlePrevious]);
+  }, [currentImageIndex, handleNext, handlePrevious]);
 
   return (
-    <div ref={ref} className={cn("s-@container", className)}>
-      {images.length === 1 ? (
-        <div className="s-h-80 s-w-80">
-          <ImagePreview
-            image={images[0]}
-            onClick={() => {
-              setCurrentImageIndex(0);
-              setIsZoomed(true);
-            }}
-            onDownload={async (e) => {
-              e.stopPropagation();
-              await handleDownload(images[0].downloadUrl, images[0].title);
-            }}
-          />
-        </div>
-      ) : (
-        <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4">
-          {images.map((image, idx) => (
-            <ImagePreview
-              key={idx}
-              image={image}
-              onClick={() => {
-                setCurrentImageIndex(idx);
-                setIsZoomed(true);
-              }}
-              onDownload={async (e) => {
-                e.stopPropagation();
-                await handleDownload(image.downloadUrl, image.title);
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {isZoomed && currentImageIndex !== null && (
-        <div
-          className={cn(
-            "s-fixed s-inset-0 s-z-50 s-flex s-items-center s-justify-center",
-            "s-bg-white/95 dark:s-bg-gray-900/95"
-          )}
-        >
-          <div className="s-relative s-flex s-h-full s-w-full s-flex-col">
-            {/* Top bar */}
-            <div className="s-absolute s-right-4 s-top-4 s-z-10 s-flex s-gap-2">
-              <Button
-                variant="outline"
-                size="md"
-                icon={XMarkIcon}
-                tooltip="Close"
+    <Dialog
+      open={currentImageIndex !== null}
+      onOpenChange={(open) => !open && setCurrentImageIndex(null)}
+    >
+      <DialogTrigger asChild>
+        <div className={cn("s-@container", className)}>
+          {images.length === 1 ? (
+            <div className="s-h-80 s-w-80">
+              <ImagePreview
+                image={images[0]}
                 onClick={() => {
-                  setIsZoomed(false);
-                  setCurrentImageIndex(null);
+                  setCurrentImageIndex(0);
+                }}
+                onDownload={async (e) => {
+                  e.stopPropagation();
+                  await handleDownload(images[0].downloadUrl, images[0].title);
                 }}
               />
             </div>
+          ) : (
+            <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4">
+              {images.map((image, idx) => (
+                <ImagePreview
+                  key={idx}
+                  image={image}
+                  onClick={() => {
+                    setCurrentImageIndex(idx);
+                  }}
+                  onDownload={async (e) => {
+                    e.stopPropagation();
+                    await handleDownload(image.downloadUrl, image.title);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogTrigger>
+      <DialogContent
+        size="full"
+        className="s-rounded-none s-border-0 s-bg-white/95 s-p-0 s-shadow-none s-outline-none s-ring-0 dark:s-bg-gray-900/95"
+      >
+        {currentImageIndex !== null && (
+          <div className="s-relative s-flex s-h-full s-w-full s-flex-col">
+            {/* Top bar */}
+            <DialogHeader
+              buttonVariant="outline"
+              buttonSize="md"
+              className="s-h-6"
+            />
 
             {/* Main content */}
             <div className="s-flex s-flex-1 s-items-center s-justify-center">
@@ -255,7 +252,7 @@ const InteractiveImageGrid = React.forwardRef<
                     src={images[currentImageIndex].imageUrl}
                     alt={images[currentImageIndex].alt}
                     className={cn(
-                      "s-max-h-[90vh] s-min-h-[50vh] s-w-auto s-min-w-[1024px]",
+                      "s-max-h-[90vh] s-min-h-[50vh] s-w-auto s-min-w-[50vh]",
                       "s-checkerboard s-object-contain"
                     )}
                     onLoad={() => setImageLoaded(true)}
@@ -279,7 +276,7 @@ const InteractiveImageGrid = React.forwardRef<
             {!images[currentImageIndex].isLoading && (
               <>
                 {imageLoaded ? (
-                  <div className="s-absolute s-bottom-4 s-right-4 s-z-10">
+                  <div className="s-absolute s-bottom-3 s-right-3 s-z-10">
                     <Button
                       variant="outline"
                       size="md"
@@ -299,11 +296,11 @@ const InteractiveImageGrid = React.forwardRef<
               </>
             )}
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
-});
+}
 
 InteractiveImageGrid.displayName = "InteractiveImageGrid";
 
