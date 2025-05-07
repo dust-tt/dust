@@ -33,11 +33,16 @@ export class LabsSalesforcePersonalConnectionResource extends BaseResource<LabsS
     auth: Authenticator,
     { dataSource }: { dataSource: DataSourceType }
   ) {
+    const user = auth.user();
+    if (!user) {
+      return null;
+    }
+
     const conn = await LabsSalesforcePersonalConnection.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: dataSource.id,
-        userId: auth.getNonNullableUser().id,
+        userId: user.id,
       },
     });
 
