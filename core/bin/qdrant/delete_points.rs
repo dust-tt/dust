@@ -116,9 +116,15 @@ async fn main() -> Result<()> {
 
     let mut filter = qdrant::Filter::default();
     match store.load_data_source(&project, &data_source_id).await {
-        Err(e) => Ok(()),
+        Err(e) => {
+            info!("Error getting the data source");
+            Ok(())
+        }
         Ok(ds) => match ds {
-            None => Ok(()),
+            None => {
+                info!("Error getting the data source");
+                Ok(())
+            }
             Some(ds) => {
                 let qdrant_client = ds.main_qdrant_client(&qdrant_clients);
                 filter.must.push(
