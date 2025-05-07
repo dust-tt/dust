@@ -15,7 +15,7 @@ import type { AgentMessageType } from "@app/types/assistant/conversation";
 
 export type AgentStateClassification = "thinking" | "acting" | "done";
 
-interface MessageTemporaryState {
+export interface MessageTemporaryState {
   message: AgentMessageType;
   agentState: AgentStateClassification;
   isRetrying: boolean;
@@ -37,6 +37,11 @@ export type AgentMessageStateEvent =
   | AgentMessageSuccessEvent
   | GenerationTokensEvent
   | ToolNotificationEvent;
+
+type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
+  AgentMessageStateEvent,
+  { type: "tool_approve_execution" }
+>;
 
 function updateMessageWithAction(
   m: AgentMessageType,
@@ -75,7 +80,7 @@ function updateProgress(
 
 export function messageReducer(
   state: MessageTemporaryState,
-  event: AgentMessageStateEvent
+  event: AgentMessageStateEventWithoutToolApproveExecution
 ): MessageTemporaryState {
   switch (event.type) {
     case "agent_action_success":
@@ -119,10 +124,7 @@ export function messageReducer(
     case "agent_message_success":
       return {
         ...state,
-        message: {
-          ...state.message,
-          ...event.message,
-        },
+        message: event.message,
         agentState: "done",
       };
 
@@ -167,9 +169,6 @@ export function messageReducer(
         message: updateMessageWithAction(state.message, event.action),
         agentState: "acting",
       };
-
-    case "tool_approve_execution":
-      return state;
 
     default:
       assertNever(event);
