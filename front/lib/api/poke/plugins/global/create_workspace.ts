@@ -36,14 +36,16 @@ export const createWorkspacePlugin = createPlugin({
       },
       planCode: {
         type: "string",
-        label: "Plan Code",
-        description: "The code of the plan to subscribe the workspace to",
+        label: "Plan Code (optional)",
+        description:
+          "Code of the plan to subscribe the workspace to. Leave empty to redirect to the paywall for the Pro plan.",
         required: false,
       },
       endDate: {
         type: "string",
-        label: "End Date (YYYY-MM-DD)",
-        description: "The end date of the subscription",
+        label: "End Date (optional)",
+        description:
+          "End date of the subscription, format: YYYY-MM-DD. Leave empty for no end date. If an end date is set, the workspace will automatically downgraded the day after the end date.",
         required: false,
       },
     },
