@@ -1322,10 +1322,8 @@ export async function createAgentActionConfiguration(
         }
 
         const {
-          server: { name: serverName, description: serverDescription, tools },
+          server: { name: serverName, description: serverDescription },
         } = mcpServerView.toJSON();
-
-        const isSingleTool = tools.length === 1;
 
         const mcpConfig = await AgentMCPServerConfiguration.create(
           {
@@ -1338,7 +1336,7 @@ export async function createAgentActionConfiguration(
             timeFrame: action.timeFrame,
             name: serverName !== action.name ? action.name : null,
             singleToolDescriptionOverride:
-              isSingleTool && serverDescription !== action.description
+              serverDescription !== action.description
                 ? action.description
                 : null,
           },

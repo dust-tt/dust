@@ -10,10 +10,6 @@ import type {
 import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  augmentInputsWithConfiguration,
-  hideInternalConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   MCPToolResultContentType,
   ProgressNotificationContentType,
@@ -23,6 +19,10 @@ import {
   isResourceWithName,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  augmentInputsWithConfiguration,
+  hideInternalConfiguration,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";

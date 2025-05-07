@@ -1,12 +1,13 @@
-import {
-  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
-  TABLE_CONFIGURATION_URI_PATTERN,
-} from "@dust-tt/client";
+import {} from "@dust-tt/client";
 import { Op } from "sequelize";
 
 import type {
   DataSourcesToolConfigurationType,
   TablesConfigurationToolType,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
+  TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";

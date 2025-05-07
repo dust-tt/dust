@@ -1,7 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
-import { z } from "zod";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -25,7 +24,6 @@ import type { CoreAPIDocument, TimeFrame } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
-  parseTimeFrame,
   removeNulls,
   timeFrameFromNow,
 } from "@app/types";
@@ -45,27 +43,21 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "retrieve",
-    "Retrieve the most recent content from the data sources specified by the user.",
+    "retrieve_recent_documents",
+    "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
     {
-      relativeTimeFrame: z
-        .string()
-        .regex(/^(all|\d+[hdwmy])$/)
-        .describe(
-          "The time frame (relative to LOCAL_TIME) to restrict the inclusion based" +
-            " on the user request and past conversation context." +
-            " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
-            " where {k} is a number. Be strict, do not invent invalid values."
-        ),
+      timeFrame:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+        ],
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
     },
-    async ({ relativeTimeFrame, dataSources }) => {
+    async ({ timeFrame, dataSources }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const credentials = dustManagedCredentials();
-      const timeFrame = parseTimeFrame(relativeTimeFrame);
 
       if (!agentLoopContext) {
         throw new Error(
@@ -199,7 +191,7 @@ function createServer(
             resource: makeQueryResource(
               searchResults.value.documents,
               topK,
-              timeFrame
+              timeFrame ?? null
             ),
           },
         ],

@@ -409,42 +409,6 @@ export async function tryListMCPTools(
 
       const toolConfigurations = toolsRes.value;
 
-      // This handles the case where the MCP server configuration is using pre-configured data sources
-      // or tables.
-      // We add the description of the data sources or tables to the tool description so that the model
-      // has more information to make the right choice.
-      // This replicates the current behavior of the Retrieval action for example.
-      let extraDescription: string = "";
-
-      // Only do it when there is a single tool configuration as we only have one description to add.
-      if (toolConfigurations.length === 1 && action.description) {
-        const hasDataSourceConfiguration =
-          Object.keys(
-            findMatchingSubSchemas(
-              toolConfigurations[0].inputSchema,
-              INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-            )
-          ).length > 0;
-
-        const hasTableConfiguration =
-          Object.keys(
-            findMatchingSubSchemas(
-              toolConfigurations[0].inputSchema,
-              INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
-            )
-          ).length > 0;
-
-        if (hasDataSourceConfiguration && hasTableConfiguration) {
-          // Might be confusing for the model if we end up in this situation,
-          // which is not a use case we have now.
-          extraDescription += `\nDescription of the data sources and tables:\n${action.description}`;
-        } else if (hasDataSourceConfiguration) {
-          extraDescription += `\nDescription of the data sources:\n${action.description}`;
-        } else if (hasTableConfiguration) {
-          extraDescription += `\nDescription of the tables:\n${action.description}`;
-        }
-      }
-
       const tools = [];
 
       for (const toolConfig of toolConfigurations) {
@@ -455,6 +419,42 @@ export async function tryListMCPTools(
         if (toolName.isErr()) {
           return new Err(toolName.error);
         }
+
+        // This handles the case where the MCP server configuration is using pre-configured data sources
+        // or tables.
+        // We add the description of the data sources or tables to the tool description so that the model
+        // has more information to make the right choice.
+        // This replicates the current behavior of the Retrieval action for example.
+        let extraDescription: string = "";
+
+        if (action.description) {
+          const hasDataSourceConfiguration =
+            Object.keys(
+              findMatchingSubSchemas(
+                toolConfigurations[0].inputSchema,
+                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+              )
+            ).length > 0;
+
+          const hasTableConfiguration =
+            Object.keys(
+              findMatchingSubSchemas(
+                toolConfigurations[0].inputSchema,
+                INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
+              )
+            ).length > 0;
+
+          if (hasDataSourceConfiguration && hasTableConfiguration) {
+            // Might be confusing for the model if we end up in this situation,
+            // which is not a use case we have now.
+            extraDescription += `\nDescription of the data sources and tables:\n${action.description}`;
+          } else if (hasDataSourceConfiguration) {
+            extraDescription += `\nDescription of the data sources:\n${action.description}`;
+          } else if (hasTableConfiguration) {
+            extraDescription += `\nDescription of the tables:\n${action.description}`;
+          }
+        }
+
         tools.push({
           ...toolConfig,
           originalName: toolConfig.name,

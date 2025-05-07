@@ -31,8 +31,10 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare name: string | null;
 
-  // This is a temporary override for the tool description when we only have one tool
+  // This is a temporary override for the tool description when we have tools using datasources or tables
   // to keep backward compatibility with the previous action behavior (like retrieval).
+  // It allows us to show the datasource description to the model.
+  // Note: singleToolDescriptionOverride is wrong, it should be toolsExtraDescription or something like that.
   declare singleToolDescriptionOverride: string | null;
 }
 
