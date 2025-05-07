@@ -46,7 +46,6 @@ const columns = [
 ];
 
 const SuggestTagsButton = ({ owner }: { owner: WorkspaceType }) => {
-  const sendNotification = useSendNotification();
   const [open, setOpen] = useState(false);
 
   return (
@@ -57,19 +56,7 @@ const SuggestTagsButton = ({ owner }: { owner: WorkspaceType }) => {
         onClick={() => setOpen(true)}
         variant="primary"
       />
-      <TagsSuggestDialog
-        owner={owner}
-        isOpen={open}
-        onTagsCreated={() => {
-          sendNotification({
-            type: "success",
-            title: "Tagging plan applied",
-            description:
-              "All tags have been successfully created for your agents.",
-          });
-        }}
-        setIsOpen={setOpen}
-      />
+      <TagsSuggestDialog owner={owner} isOpen={open} setIsOpen={setOpen} />
     </>
   );
 };
@@ -153,19 +140,18 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
           </SheetHeader>
 
           <SheetContainer>
-            <div className="flex w-full flex-row justify-end">
-              {rows.length > 0 && !isTagsLoading && (
-                <NewTagButton owner={owner} />
-              )}
-            </div>
-
             {isTagsLoading && (
               <div className="flex flex-row items-center">
                 <Spinner />
               </div>
             )}
             {rows.length > 0 && !isTagsLoading && (
-              <DataTable data={rows} columns={columns} />
+              <>
+                <div className="flex w-full flex-row justify-end">
+                  <NewTagButton owner={owner} />
+                </div>
+                <DataTable data={rows} columns={columns} />
+              </>
             )}
             {rows.length === 0 && !isTagsLoading && (
               <EmptyCTA
@@ -175,7 +161,7 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
                     <NewTagButton owner={owner} empty />
                   </div>
                 }
-                message="No tags have been created yet.  Let AI suggest tags for your agents, or add manually."
+                message="No tags have been created yet. Let AI suggest tags for your agents, or add manually."
               />
             )}
           </SheetContainer>
