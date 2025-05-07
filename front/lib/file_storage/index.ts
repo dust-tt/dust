@@ -107,8 +107,14 @@ export class FileStorage {
     return this.bucket.file(filename);
   }
 
-  async getFiles({ prefix }: { prefix?: string } = {}) {
-    const [files] = await this.bucket.getFiles({ prefix });
+  async getFiles({
+    maxResults,
+    prefix,
+  }: {
+    prefix?: string;
+    maxResults: number;
+  }) {
+    const [files] = await this.bucket.getFiles({ prefix, maxResults });
 
     return files;
   }
