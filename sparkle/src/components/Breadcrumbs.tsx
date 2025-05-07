@@ -56,14 +56,25 @@ interface BreadcrumbItemProps {
   item: BreadcrumbItem;
   isLast: boolean;
   itemsHidden?: BreadcrumbItem[];
+  size?: "xs" | "sm";
 }
 
-function BreadcrumbItem({ item, isLast, itemsHidden }: BreadcrumbItemProps) {
+function BreadcrumbItem({
+  item,
+  isLast,
+  itemsHidden,
+  size = "sm",
+}: BreadcrumbItemProps) {
   if (item.label === ELLIPSIS_STRING) {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" label={ELLIPSIS_STRING} icon={item.icon} />
+          <Button
+            variant="ghost"
+            label={ELLIPSIS_STRING}
+            icon={item.icon}
+            size={size}
+          />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuGroup>
@@ -82,9 +93,12 @@ function BreadcrumbItem({ item, isLast, itemsHidden }: BreadcrumbItemProps) {
     );
   }
 
-  const commonClassName = isLast
-    ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
-    : "s-text-muted-foreground dark:s-text-muted-foreground-night";
+  const commonClassName = cn(
+    isLast
+      ? "s-text-foreground dark:s-text-foreground-night"
+      : "s-text-muted-foreground dark:s-text-muted-foreground-night",
+    isLast && (size === "xs" ? "s-label-xs" : "s-label-sm")
+  );
 
   const truncatedLabel = truncateTextToLength(
     item.label,
@@ -100,6 +114,7 @@ function BreadcrumbItem({ item, isLast, itemsHidden }: BreadcrumbItemProps) {
         variant="ghost"
         label={truncatedLabel}
         tooltip={item.label}
+        size={size}
       />
     );
   }
@@ -113,6 +128,7 @@ function BreadcrumbItem({ item, isLast, itemsHidden }: BreadcrumbItemProps) {
         variant="ghost"
         label={truncatedLabel}
         tooltip={item.label}
+        size={size}
       />
     );
   }
@@ -125,6 +141,7 @@ function BreadcrumbItem({ item, isLast, itemsHidden }: BreadcrumbItemProps) {
 interface BreadcrumbProps {
   items: BreadcrumbItem[];
   className?: string;
+  size?: "xs" | "sm";
 }
 
 interface BreadcrumbsAccumulator {
@@ -132,7 +149,11 @@ interface BreadcrumbsAccumulator {
   itemsHidden: BreadcrumbItem[];
 }
 
-export function Breadcrumbs({ items, className }: BreadcrumbProps) {
+export function Breadcrumbs({
+  items,
+  className,
+  size = "sm",
+}: BreadcrumbProps) {
   const { itemsShown, itemsHidden } = items.reduce(
     (acc: BreadcrumbsAccumulator, item, index) => {
       if (items.length <= 5 || index < 2 || index >= items.length - 2) {
@@ -149,20 +170,25 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
   );
 
   return (
-    <div className={cn("s-flex s-flex-row s-items-center s-gap-1", className)}>
+    <div className={cn("s-flex s-flex-row s-items-center s-gap-0", className)}>
       {itemsShown.map((item, index) => {
         return (
           <div
             key={`breadcrumbs-${index}`}
-            className="s-flex s-flex-row s-items-center s-gap-1"
+            className="s-flex s-flex-row s-items-center s-gap-0"
           >
             <BreadcrumbItem
               item={item}
               isLast={index === itemsShown.length - 1}
               itemsHidden={itemsHidden}
+              size={size}
             />
             {index === itemsShown.length - 1 ? null : (
-              <Icon visual={ChevronRightIcon} />
+              <Icon
+                visual={ChevronRightIcon}
+                className="s-text-faint"
+                size={size === "xs" ? "xs" : "sm"}
+              />
             )}
           </div>
         );

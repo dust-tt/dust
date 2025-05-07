@@ -48,8 +48,8 @@ export function UserMessage({
   );
 
   return (
-    <div className="flex w-full flex-col">
-      <div className="flex flex-col items-end gap-6">
+    <div className="flex flex-grow flex-col">
+      <div className="max-w-full self-end">
         <ConversationMessage
           pictureUrl={message.user?.image || message.context.profilePictureUrl}
           name={message.context.fullName ?? undefined}

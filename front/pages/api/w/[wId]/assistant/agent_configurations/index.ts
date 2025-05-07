@@ -504,6 +504,7 @@ export async function createOrUpgradeAgentConfiguration({
           childAgentId: action.childAgentId,
           additionalConfiguration: action.additionalConfiguration,
           dustAppConfiguration: action.dustAppConfiguration,
+          timeFrame: action.timeFrame,
         } as PlatformMCPServerConfigurationType,
         agentConfigurationRes.value
       );

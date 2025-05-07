@@ -3,6 +3,10 @@ name: Publish Sparkle
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: publish_sparkle
   cancel-in-progress: false

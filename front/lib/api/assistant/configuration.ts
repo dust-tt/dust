@@ -957,10 +957,15 @@ export async function createAgentConfiguration(
           );
           await group.setMembers(auth, editors, { transaction: t });
         } else {
-          const group = await GroupResource.fetchByAgentConfiguration(
+          const group = await GroupResource.fetchByAgentConfiguration({
             auth,
-            existingAgent
-          );
+            agentConfiguration: existingAgent,
+          });
+          if (!group) {
+            throw new Error(
+              "Unexpected: agent should have exactly one editor group."
+            );
+          }
           const result = await group.addGroupToAgentConfiguration({
             auth,
             agentConfiguration: agentConfigurationInstance,
@@ -1329,6 +1334,7 @@ export async function createAgentActionConfiguration(
             workspaceId: owner.id,
             mcpServerViewId: mcpServerView.id,
             additionalConfiguration: action.additionalConfiguration,
+            timeFrame: action.timeFrame,
             name: serverName !== action.name ? action.name : null,
             singleToolDescriptionOverride:
               isSingleTool && serverDescription !== action.description
@@ -1384,6 +1390,7 @@ export async function createAgentActionConfiguration(
           tables: action.tables,
           childAgentId: action.childAgentId,
           reasoningModel: action.reasoningModel,
+          timeFrame: action.timeFrame,
           additionalConfiguration: action.additionalConfiguration,
         });
       });
@@ -1802,6 +1809,9 @@ function isLegacyAllowed(
     return true;
   }
   if (agentConfigurationScope === "published" && isUser(owner)) {
+    return true;
+  }
+  if (agentConfigurationScope === "private" && isUser(owner)) {
     return true;
   }
   return false;

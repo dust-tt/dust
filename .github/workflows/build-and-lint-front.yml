@@ -6,10 +6,12 @@ on:
       - sdks/js/**
       - front/**
       - .github/workflows/build-and-lint-front.yml
+
 permissions:
   contents: read
   actions: read
   checks: write
+
 jobs:
   all-checks:
     runs-on: ubuntu-latest

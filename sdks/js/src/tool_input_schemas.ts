@@ -60,6 +60,11 @@ export const ConfigurableToolInputSchemas = {
     appId: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP),
   }),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]: z.object({
+    duration: z.number(),
+    unit: z.enum(["hour", "day", "week", "month", "year"]),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
+  }),
   // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Omit<

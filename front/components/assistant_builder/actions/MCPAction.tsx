@@ -7,6 +7,7 @@ import { ChildAgentConfigurationSection } from "@app/components/assistant_builde
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { DustAppConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DustAppConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
+import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
@@ -17,7 +18,7 @@ import type {
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isMCPDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";
 
 interface NoActionAvailableProps {
@@ -127,6 +128,7 @@ export function MCPAction({
           tablesConfigurations: null,
           childAgentId: null,
           reasoningModel: null,
+          timeFrame: null,
           // We initialize boolean with false because leaving them unset means false (toggle on the left).
           additionalConfiguration: Object.fromEntries(
             requirements.requiredBooleans.map((key) => [key, false])
@@ -295,6 +297,14 @@ export function MCPAction({
               dustAppConfiguration: dustAppConfig,
             }));
           }}
+        />
+      )}
+      {requirements.requiresTimeFrameConfiguration && (
+        <TimeFrameConfigurationSection
+          onConfigUpdate={(timeFrame: TimeFrame | null) => {
+            handleConfigUpdate((old) => ({ ...old, timeFrame }));
+          }}
+          timeFrame={actionConfiguration.timeFrame}
         />
       )}
       <AdditionalConfigurationSection

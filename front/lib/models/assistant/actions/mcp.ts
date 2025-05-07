@@ -8,6 +8,8 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { TimeFrame } from "@app/types";
+import { isTimeFrame } from "@app/types";
 
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
   declare createdAt: CreationOptional<Date>;
@@ -17,6 +19,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare sId: string;
 
+  declare timeFrame: TimeFrame | null;
   declare additionalConfiguration: Record<string, boolean | number | string>;
 
   declare appWorkspaceId: string | null;
@@ -46,6 +49,20 @@ AgentMCPServerConfiguration.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    timeFrame: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      validate: {
+        isValidTimeFrame(value: unknown) {
+          if (value === null) {
+            return;
+          }
+          if (!isTimeFrame(value)) {
+            throw new Error("Invalid time frame");
+          }
+        },
+      },
     },
     additionalConfiguration: {
       type: DataTypes.JSONB,

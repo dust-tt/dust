@@ -217,6 +217,7 @@ const TOOL_MIME_TYPES = {
       "ENUM",
       "REASONING_MODEL",
       "DUST_APP",
+      "TIME_FRAME",
     ],
   }),
   TOOL_OUTPUT: generateToolMimeTypes({

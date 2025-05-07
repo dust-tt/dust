@@ -76,6 +76,11 @@ export const ConfigurableToolInputSchemas = {
     appId: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP),
   }),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]: z.object({
+    duration: z.number(),
+    unit: z.enum(["hour", "day", "week", "month", "year"]),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
+  }),
   // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Omit<
@@ -164,6 +169,17 @@ export function generateConfiguredInput({
       const { modelId, providerId, temperature, reasoningEffort } =
         reasoningModel;
       return { modelId, providerId, temperature, reasoningEffort, mimeType };
+    }
+
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME: {
+      const { timeFrame } = actionConfiguration;
+      if (!timeFrame) {
+        // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the time range.
+        throw new Error("Unreachable: missing time range configuration.");
+      }
+
+      const { duration, unit } = timeFrame;
+      return { duration, unit, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
@@ -411,6 +427,7 @@ export function getMCPServerRequirements(
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
   requiresReasoningConfiguration: boolean;
+  requiresTimeFrameConfiguration: boolean;
   requiredStrings: string[];
   requiredNumbers: string[];
   requiredBooleans: string[];
@@ -424,6 +441,7 @@ export function getMCPServerRequirements(
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
       requiresReasoningConfiguration: false,
+      requiresTimeFrameConfiguration: false,
       requiredStrings: [],
       requiredNumbers: [],
       requiredBooleans: [],
@@ -463,6 +481,14 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+      })
+    ).length > 0;
+
+  const requiresTimeFrameConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
       })
     ).length > 0;
 
@@ -518,6 +544,7 @@ export function getMCPServerRequirements(
     requiresTableConfiguration,
     requiresChildAgentConfiguration,
     requiresReasoningConfiguration,
+    requiresTimeFrameConfiguration,
     requiredStrings,
     requiredNumbers,
     requiredBooleans,
@@ -530,6 +557,7 @@ export function getMCPServerRequirements(
       !requiresChildAgentConfiguration &&
       !requiresReasoningConfiguration &&
       !requiredDustAppConfiguration &&
+      !requiresTimeFrameConfiguration &&
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
       requiredBooleans.length === 0 &&

@@ -66,10 +66,12 @@ import type {
   ModelConfigurationType,
   ModelId,
   Result,
+  TimeFrame,
 } from "@app/types";
 import {
   assertNever,
   extensionsForContentType,
+  hasNullUnicodeCharacter,
   isSupportedFileContentType,
   Ok,
   removeNulls,
@@ -95,6 +97,7 @@ export type PlatformMCPServerConfigurationType =
     tables: TableDataSourceConfiguration[] | null;
     childAgentId: string | null;
     reasoningModel: ReasoningModelConfiguration | null;
+    timeFrame: TimeFrame | null;
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
     dustAppConfiguration: DustAppRunConfigurationType | null;
@@ -169,6 +172,7 @@ type MCPSuccessEvent = {
   action: MCPActionType;
 };
 
+// TODO(MCP 2025-05-06): Add action to the error event.
 type MCPErrorEvent = {
   type: "tool_error";
   created: number;
@@ -180,7 +184,7 @@ type MCPErrorEvent = {
   };
 };
 
-export type MCPNotificationEvent = {
+export type ToolNotificationEvent = {
   type: "tool_notification";
   created: number;
   configurationId: string;
@@ -232,7 +236,7 @@ function hideFileContentForModel({
 export type MCPActionRunningEvents =
   | MCPParamsEvent
   | MCPApproveExecutionEvent
-  | MCPNotificationEvent;
+  | ToolNotificationEvent;
 
 type MCPActionBlob = ExtractActionBlob<MCPActionType>;
 
@@ -375,7 +379,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     | MCPSuccessEvent
     | MCPErrorEvent
     | MCPApproveExecutionEvent
-    | MCPNotificationEvent,
+    | ToolNotificationEvent,
     void
   > {
     const owner = auth.getNonNullableWorkspace();
@@ -397,6 +401,22 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       params: rawInputs,
       step,
     };
+
+    for (const value of Object.values(rawInputs)) {
+      if (typeof value === "string" && hasNullUnicodeCharacter(value)) {
+        yield {
+          type: "tool_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "tool_error",
+            message: "Invalid Unicode character in inputs, please retry.",
+          },
+        };
+        return;
+      }
+    }
 
     // Create the action object in the database and yield an event for
     // the generation of the params. We store the action here as the params have been generated, if

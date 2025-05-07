@@ -3,6 +3,10 @@ name: Publish CLI
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: publish_cli
   cancel-in-progress: false

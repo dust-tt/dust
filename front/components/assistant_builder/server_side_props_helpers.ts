@@ -282,6 +282,7 @@ async function getMCPServerActionConfiguration(
     }
   }
 
+  builderAction.configuration.timeFrame = action.timeFrame;
   builderAction.configuration.additionalConfiguration =
     action.additionalConfiguration;
 

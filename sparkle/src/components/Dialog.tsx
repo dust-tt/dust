@@ -4,7 +4,13 @@ import { FocusScope } from "@radix-ui/react-focus-scope";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Button, Checkbox, Label, ScrollArea } from "@sparkle/components";
+import {
+  Button,
+  ButtonProps,
+  Checkbox,
+  Label,
+  ScrollArea,
+} from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -29,13 +35,14 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-const DIALOG_SIZES = ["md", "lg", "xl"] as const;
+const DIALOG_SIZES = ["md", "lg", "xl", "full"] as const;
 type DialogSizeType = (typeof DIALOG_SIZES)[number];
 
 const sizeClasses: Record<DialogSizeType, string> = {
   md: "sm:s-max-w-md",
   lg: "sm:s-max-w-xl",
   xl: "sm:s-max-w-3xl",
+  full: "sm:s-max-w-full sm:s-h-full",
 };
 
 const dialogVariants = cva(
@@ -90,12 +97,16 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 interface NewDialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  buttonSize?: ButtonProps["size"];
+  buttonVariant?: ButtonProps["variant"];
   hideButton?: boolean;
 }
 
 const DialogHeader = ({
   className,
   children,
+  buttonSize = "mini",
+  buttonVariant = "ghost",
   hideButton = false,
   ...props
 }: NewDialogHeaderProps) => (
@@ -108,7 +119,9 @@ const DialogHeader = ({
   >
     {children}
     <DialogClose asChild className="s-absolute s-right-3 s-top-3">
-      {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="mini" />}
+      {!hideButton && (
+        <Button icon={XMarkIcon} variant={buttonVariant} size={buttonSize} />
+      )}
     </DialogClose>
   </div>
 );

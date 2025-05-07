@@ -181,6 +181,7 @@ export async function fetchMCPServerActionConfigurations(
                 reasoningEffort: reasoningConfigurations[0].reasoningEffort,
               }
             : null,
+        timeFrame: config.timeFrame,
       });
     }
   }
