@@ -15,7 +15,7 @@ import {
 import { useEffect } from "react";
 
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useCreateTag, useTags, useTagsSuggestions } from "@app/lib/swr/tags";
+import { useCreateTag, useTagsSuggestions } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
 
 export const MAX_TAG_LENGTH = 100;
@@ -34,10 +34,6 @@ export const TagsSuggestDialog = ({
 
   const { suggestions, isSuggestionsLoading, isSuggestionsError } =
     useTagsSuggestions({ owner, disabled: !isOpen });
-  const { mutateTags } = useTags({
-    owner,
-    disabled: true,
-  });
 
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
@@ -59,12 +55,11 @@ export const TagsSuggestDialog = ({
       }
     }
 
-    await mutateTags();
     await mutateAgentConfigurations();
 
     sendNotification({
       type: "success",
-      title: "Tagging plan applied",
+      title: "Tags suggestions applied",
       description: "All tags have been successfully created for your agents.",
     });
   };
@@ -135,7 +130,7 @@ export const TagsSuggestDialog = ({
             variant: "ghost",
           }}
           rightButtonProps={{
-            label: "Apply tagging plan",
+            label: "Apply tags suggestions",
             variant: "primary",
             onClick: handleCreateTag,
             disabled: suggestions.length === 0,
