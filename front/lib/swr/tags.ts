@@ -3,6 +3,7 @@ import type { Fetcher } from "swr";
 
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
+import type { GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/tags/suggest_from_agents";
 import type { GetTagsUsageResponseBody } from "@app/pages/api/w/[wId]/tags/usage";
 import type { LightWorkspaceType } from "@app/types";
 import type { TagType } from "@app/types/tag";
@@ -57,18 +58,45 @@ export function useTagsUsage({
   };
 }
 
+export function useTagsSuggestions({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const tagsFetcher: Fetcher<GetSuggestionsResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/tags/suggest_from_agents`,
+    tagsFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    suggestions: data?.suggestions ?? emptyArray(),
+    isSuggestionsLoading: !error && !data && !disabled,
+    isSuggestionsError: !!error,
+  };
+}
+
 export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const { mutateTags } = useTags({ owner, disabled: true });
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
 
-  const createTag = async (name: string): Promise<TagType | null> => {
+  const createTag = async (
+    name: string,
+    agentIds?: string[]
+  ): Promise<TagType | null> => {
     const res = await fetch(`/api/w/${owner.sId}/tags`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, agentIds }),
     });
 
     if (!res.ok) {

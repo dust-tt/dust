@@ -1,6 +1,9 @@
 import {
   Button,
+  CloudArrowDownIcon,
   DataTable,
+  EmptyCTA,
+  EmptyCTAButton,
   PencilSquareIcon,
   PlusIcon,
   Sheet,
@@ -8,6 +11,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SparklesIcon,
   Spinner,
   useSendNotification,
   XMarkIcon,
@@ -15,6 +19,7 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 import { useState } from "react";
 
+import { TagsSuggestDialog } from "@app/components/assistant_builder/TagsSuggestDialog";
 import { useTagsUsage } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
 import type { TagTypeWithUsage } from "@app/types/tag";
@@ -42,13 +47,58 @@ const columns = [
   },
 ];
 
-const NewTagButton = ({ owner }: { owner: WorkspaceType }) => {
+const SuggestTagsButton = ({
+  owner,
+  variant = "primary",
+}: {
+  owner: WorkspaceType;
+  variant?: "primary" | "outline";
+}) => {
   const sendNotification = useSendNotification();
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button label="New tag" icon={PlusIcon} onClick={() => setOpen(true)} />
+      <Button
+        label="Suggest tags"
+        icon={SparklesIcon}
+        onClick={() => setOpen(true)}
+        variant={variant}
+      />
+      <TagsSuggestDialog
+        owner={owner}
+        isOpen={open}
+        onTagsCreated={() => {
+          sendNotification({
+            type: "success",
+            title: "Tagging plan applied",
+            description:
+              "All tags have been successfully created for your agents.",
+          });
+        }}
+        setIsOpen={setOpen}
+      />
+    </>
+  );
+};
+const NewTagButton = ({
+  owner,
+  variant = "primary",
+}: {
+  owner: WorkspaceType;
+  variant?: "primary" | "outline";
+}) => {
+  const sendNotification = useSendNotification();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button
+        label="New tag"
+        icon={PlusIcon}
+        onClick={() => setOpen(true)}
+        variant={variant}
+      />
       <TagCreationDialog
         owner={owner}
         isOpen={open}
@@ -112,7 +162,9 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
 
           <SheetContainer>
             <div className="flex w-full flex-row justify-end">
-              <NewTagButton owner={owner} />
+              {rows.length > 0 && !isTagsLoading && (
+                <NewTagButton owner={owner} variant="primary" />
+              )}
             </div>
 
             {isTagsLoading && (
@@ -120,7 +172,20 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
                 <Spinner />
               </div>
             )}
-            <DataTable data={rows} columns={columns} />
+            {rows.length > 0 && !isTagsLoading && (
+              <DataTable data={rows} columns={columns} />
+            )}
+            {rows.length === 0 && !isTagsLoading && (
+              <EmptyCTA
+                action={
+                  <div className="flex flex-row gap-2">
+                    <SuggestTagsButton owner={owner} variant="primary" />
+                    <NewTagButton owner={owner} variant="outline" />
+                  </div>
+                }
+                message="No tags have been created yet.  Let AI suggest tags for your agents, or add manually."
+              />
+            )}
           </SheetContainer>
         </SheetContent>
       </Sheet>

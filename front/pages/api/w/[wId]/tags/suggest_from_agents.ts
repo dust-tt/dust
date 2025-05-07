@@ -10,31 +10,64 @@ import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { getLargeWhitelistedModel, isAdmin } from "@app/types";
+import { getLargeWhitelistedModel, isAdmin, removeNulls } from "@app/types";
 
-const SuggestionsResponseBodySchema = t.union([
-  t.type({
-    status: t.literal("ok"),
-    suggestions: t.union([
-      t.array(t.type({ name: t.string, agentIds: t.array(t.string) })),
-      t.null,
-      t.undefined,
-    ]),
-  }),
-  t.type({
-    status: t.literal("unavailable"),
-    reason: t.union([
-      t.literal("user_not_finished"), // The user has not finished inputing data for suggestions to make sense
-      t.literal("irrelevant"),
-    ]),
-  }),
-]);
+const DEFAULT_SUGGESTIONS = [
+  "Writing",
+  "Planning",
+  "Sales",
+  "Support",
+  "Marketing",
+  "Research",
+  "Analysis",
+  "Development",
+  "Finance",
+  "HR",
+  "Operations",
+  "Design",
+  "Strategy",
+  "Training",
+  "Compliance",
+  "Procurement",
+  "Security",
+  "Legal",
+  "Quality",
+  "Product",
+];
 
-export type SuggestionsType = t.TypeOf<typeof SuggestionsResponseBodySchema>;
+const AppResponseSchema = t.type({
+  suggestions: t.union([
+    t.array(
+      t.type({
+        name: t.string,
+        agentIds: t.array(t.string),
+      })
+    ),
+    t.null,
+    t.undefined,
+  ]),
+});
+
+const GetSuggestionsResponseBodySchema = t.type({
+  suggestions: t.union([
+    t.array(
+      t.type({
+        name: t.string,
+        agents: t.array(t.type({ sId: t.string, name: t.string })),
+      })
+    ),
+    t.null,
+    t.undefined,
+  ]),
+});
+
+export type GetSuggestionsResponseBody = t.TypeOf<
+  typeof GetSuggestionsResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<SuggestionsType>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetSuggestionsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
@@ -50,7 +83,7 @@ async function handler(
   }
 
   switch (req.method) {
-    case "POST":
+    case "GET":
       const agents = await getAgentConfigurations({
         auth,
         agentsGetView: "list",
@@ -64,6 +97,15 @@ async function handler(
             `Identifier: ${a.sId}\nName: ${a.name}\nDescription: ${a.description?.substring(0, 200).replaceAll("\n", " ")}\nInstructions: ${a.instructions?.substring(0, 200).replaceAll("\n", " ")}`
         )
         .join("\n\n");
+
+      if (formattedAgents.length === 0) {
+        return res.status(200).json({
+          suggestions: DEFAULT_SUGGESTIONS.map((s) => ({
+            name: s,
+            agents: [],
+          })),
+        });
+      }
 
       const model = getLargeWhitelistedModel(owner);
 
@@ -107,7 +149,7 @@ async function handler(
         });
       }
 
-      const responseValidation = SuggestionsResponseBodySchema.decode(
+      const responseValidation = AppResponseSchema.decode(
         suggestionsResponse.value.results[0][0].value
       );
       if (isLeft(responseValidation)) {
@@ -123,13 +165,20 @@ async function handler(
         });
       }
 
-      return res.status(200).json(responseValidation.right);
+      const suggestions = responseValidation.right.suggestions?.map((s) => ({
+        name: s.name,
+        agents: removeNulls(
+          s.agentIds.map((id) => agents.find((agent) => agent.sId === id))
+        ),
+      }));
+
+      return res.status(200).json({ suggestions });
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message: "The method passed is not supported, GET is expected.",
         },
       });
   }
