@@ -91,6 +91,18 @@ interface AgentMessageProps {
   user: UserType;
 }
 
+function makeInitialMessageStreamState(
+  message: AgentMessageType
+): MessageTemporaryState {
+  return {
+    actionProgress: new Map(),
+    agentState: message.status === "created" ? "thinking" : "done",
+    isRetrying: false,
+    lastUpdated: new Date(),
+    message,
+  };
+}
+
 /**
  *
  * @param isInModal is the conversation happening in a side modal, i.e. when
@@ -106,20 +118,10 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const { isDark } = useTheme();
 
-  const initialMessageStreamState = React.useMemo<MessageTemporaryState>(
-    () => ({
-      message,
-      agentState: message.status === "created" ? "thinking" : "done",
-      isRetrying: false,
-      lastUpdated: new Date(),
-      actionProgress: new Map(),
-    }),
-    [message]
-  );
-
   const [messageStreamState, dispatch] = React.useReducer(
     messageReducer,
-    initialMessageStreamState
+    message,
+    makeInitialMessageStreamState
   );
 
   const shouldStream = React.useMemo(() => {
