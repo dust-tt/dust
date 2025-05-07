@@ -135,15 +135,18 @@ async fn main() -> Result<()> {
                 );
 
                 let count = qdrant_client
-                    .count_points(
-                        ds.embedder_config(),
-                        &ds.internal_id().to_string(),
-                        Some(filter.clone()),
-                        true,
+                    .raw_client()
+                    .count(
+                        CountPointsBuilder::new(
+                            qdrant_client.collection_name(ds.embedder_config()),
+                        )
+                        .filter(filter)
+                        .exact(true),
                     )
-                    .await?;
+                    .await
+                    .map_err(|e| anyhow!("Error counting points: {}", e));
 
-                info!("Count: {}", count.result.unwrap().count);
+                info!("Count: {}", count?.result.unwrap().count);
                 Ok(())
             }
         },
