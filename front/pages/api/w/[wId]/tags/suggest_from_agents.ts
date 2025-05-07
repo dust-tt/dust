@@ -10,7 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { getSmallWhitelistedModel, isAdmin } from "@app/types";
+import { getLargeWhitelistedModel, isAdmin } from "@app/types";
 
 const SuggestionsResponseBodySchema = t.union([
   t.type({
@@ -57,14 +57,14 @@ async function handler(
         variant: "extra_light",
       });
 
-      const formattedAgents = agents.map((a) => ({
-        id: a.sId,
-        displayName: `@${a.name}`,
-        description: a.description,
-        instructions: a.instructions?.substring(0, 200),
-      }));
+      const formattedAgents = agents
+        .map(
+          (a) =>
+            `Identifier: ${a.sId}\nName: ${a.name}\nDescription: ${a.description}\nInstructions: ${a.instructions?.substring(0, 200).replaceAll("\n", " ")}...`
+        )
+        .join("\n\n");
 
-      const model = getSmallWhitelistedModel(owner);
+      const model = getLargeWhitelistedModel(owner);
 
       if (!model) {
         return apiError(req, res, {
