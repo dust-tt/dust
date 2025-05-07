@@ -34,7 +34,7 @@ function isWhereClauseWithNumericWorkspaceId<TAttributes>(
     return false;
   }
 
-  if (!(typeof where === "object" && "workspaceId" in where)) {
+  if (!("workspaceId" in where)) {
     return false;
   }
 
