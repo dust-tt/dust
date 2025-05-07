@@ -56,7 +56,7 @@ const createServer = (auth: Authenticator): McpServer => {
       const formattedAgents = agents.map((agent) => {
         return {
           name: agent.name,
-          mention: `:mention[${agent.name}]{sId: ${agent.sId}}`,
+          mention: `:mention[${agent.name}]{sId=${agent.sId}}`,
           description: agent.description,
         };
       });
