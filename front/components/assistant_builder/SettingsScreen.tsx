@@ -586,7 +586,7 @@ export default function SettingsScreen({
                           <>Visible & usable by editors only.</>
                         )}
                         {builderState.scope === "private" && (
-                          <>Visible and usable by the current user only</>
+                          <>Visible and usable by the current user only.</>
                         )}
                       </span>
                     </div>
