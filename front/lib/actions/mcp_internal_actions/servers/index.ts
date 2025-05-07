@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/ask_agent";
 import { default as authDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/authentication_debugger";
 import { default as childAgentDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/child_agent_debugger";
@@ -62,6 +63,8 @@ export function getInternalMCPServer(
       return askAgentServer(auth);
     case "reasoning_v2":
       return reasoningServer(auth, agentLoopContext);
+    case "agent_router":
+      return agentRouterServer(auth);
     default:
       assertNever(internalMCPServerName);
   }
