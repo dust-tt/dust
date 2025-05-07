@@ -13,10 +13,11 @@ import {
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
-  isDefaultInternalMCPServer,
-  isDefaultInternalMCPServerByName,
+  getAvailabilyOfInternalMCPServerByName,
+  getInternalMCPServerAvailability,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -454,24 +455,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   }
 
-  get isDefault(): boolean {
+  get availability(): MCPServerAvailability {
     if (this.serverType !== "internal" || !this.internalMCPServerId) {
-      return false;
+      return "manual";
     }
 
-    return isDefaultInternalMCPServer(this.internalMCPServerId);
+    return getInternalMCPServerAvailability(this.internalMCPServerId);
   }
 
-  static async ensureAllDefaultActionsAreCreated(auth: Authenticator) {
+  static async ensureAllAutoActionsAreCreated(auth: Authenticator) {
     const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
 
-    const defaultInternalMCPServerIds: string[] = [];
+    const autoInternalMCPServerIds: string[] = [];
     for (const name of names) {
       const isEnabled = await isEnabledForWorkspace(auth, name);
-      const isDefault = isDefaultInternalMCPServerByName(name);
+      const availability = getAvailabilyOfInternalMCPServerByName(name);
 
-      if (isEnabled && isDefault) {
-        defaultInternalMCPServerIds.push(
+      if (isEnabled && availability !== "manual") {
+        autoInternalMCPServerIds.push(
           internalMCPServerNameToSId({
             name,
             workspaceId: auth.getNonNullableWorkspace().id,
@@ -480,7 +481,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
     }
 
-    if (defaultInternalMCPServerIds.length === 0) {
+    if (autoInternalMCPServerIds.length === 0) {
       return;
     }
 
@@ -499,7 +500,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         workspaceId: auth.getNonNullableWorkspace().id,
         serverType: "internal",
         internalMCPServerId: {
-          [Op.in]: defaultInternalMCPServerIds,
+          [Op.in]: autoInternalMCPServerIds,
         },
         vaultId: { [Op.in]: spaces.map((s) => s.id) },
       },
@@ -507,7 +508,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     // Quick check : there should be 2 views for each default internal mcp server (ensured by unique constraint), if so
     // no need to check further
-    if (views.length !== defaultInternalMCPServerIds.length * 2) {
+    if (views.length !== autoInternalMCPServerIds.length * 2) {
       const systemSpace = spaces.find((s) => s.isSystem());
       const globalSpace = spaces.find((s) => s.isGlobal());
 
@@ -518,7 +519,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
 
       // Create the missing views
-      for (const id of defaultInternalMCPServerIds) {
+      for (const id of autoInternalMCPServerIds) {
         // Check if exists in system space.
         const isInSystemSpace = views.some(
           (v) => v.internalMCPServerId === id && v.vaultId === systemSpace.id

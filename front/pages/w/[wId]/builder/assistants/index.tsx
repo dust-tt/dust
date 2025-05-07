@@ -137,7 +137,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
+  await MCPServerViewResource.ensureAllAutoActionsAreCreated(auth);
   const user = auth.getNonNullableUser();
 
   return {

@@ -14,6 +14,7 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
@@ -99,8 +100,8 @@ export function MCPAction({
     );
 
   // MCPServerView on default MCP server will not allow switching to another one.
-  const isDefaultMCPServer = useMemo(
-    () => !!selectedMCPServerView?.server.isDefault,
+  const selectedServerAvailability: MCPServerAvailability | null = useMemo(
+    () => selectedMCPServerView?.server.availability ?? null,
     [selectedMCPServerView]
   );
 
@@ -200,12 +201,13 @@ export function MCPAction({
         />
       )}
       {/* Server selection */}
-      {!selectedMCPServerView?.server.isDefault &&
+      {(selectedServerAvailability === null ||
+        selectedServerAvailability === "manual") &&
         (isEditing ? (
           <div className="text-sm text-foreground dark:text-foreground-night">
             <div>{selectedMCPServerView?.server.description}</div>
             <br />
-            {!isDefaultMCPServer && (
+            {selectedServerAvailability === "manual" && (
               <div>
                 Available to you via{" "}
                 <b>

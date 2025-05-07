@@ -63,7 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     await Promise.all([
       getAccessibleSourcesAndApps(auth),
       getAgentConfiguration(auth, context.params?.aId as string, "full"),
-      MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth),
+      MCPServerViewResource.ensureAllAutoActionsAreCreated(auth),
     ]);
 
   if (!configuration) {

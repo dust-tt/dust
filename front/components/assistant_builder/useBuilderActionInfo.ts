@@ -34,7 +34,10 @@ export const isUsableAsCapability = (
   if (!view) {
     return false;
   }
-  return view.server.isDefault && getMCPServerRequirements(view).noRequirement;
+  return (
+    view.server.availability === "auto" &&
+    getMCPServerRequirements(view).noRequirement
+  );
 };
 
 export const isUsableInKnowledge = (
@@ -45,7 +48,10 @@ export const isUsableInKnowledge = (
   if (!view) {
     return false;
   }
-  return view.server.isDefault && !isUsableAsCapability(id, mcpServerViews);
+  return (
+    view.server.availability === "auto" &&
+    !isUsableAsCapability(id, mcpServerViews)
+  );
 };
 
 export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
