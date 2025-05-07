@@ -130,7 +130,7 @@ export const TagsSuggestDialog = ({
             variant: "ghost",
           }}
           rightButtonProps={{
-            label: "Apply tags suggestions",
+            label: "Apply tag suggestions",
             variant: "primary",
             onClick: handleCreateTag,
             disabled: suggestions.length === 0,
