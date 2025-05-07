@@ -69,7 +69,9 @@ export async function fetchMCPServerActionConfigurations(
 
   const allDustApps = await AppModel.findAll({
     where: {
-      id: { [Op.in]: removeNulls(mcpServerConfigurations.map((r) => r.appId)) },
+      sId: {
+        [Op.in]: removeNulls(mcpServerConfigurations.map((r) => r.appId)),
+      },
     },
   });
 
@@ -161,7 +163,7 @@ export async function fetchMCPServerActionConfigurations(
               description: dustApp.description,
               appId: dustApp.sId,
               sId: dustApp.sId,
-              appWorkspaceId: dustApp.workspace.sId,
+              appWorkspaceId: auth.getNonNullableWorkspace().sId,
               type: "dust_app_run_configuration",
             }
           : null,
