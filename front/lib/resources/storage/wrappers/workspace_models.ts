@@ -57,7 +57,32 @@ function isWhereClauseWithNumericWorkspaceId<TAttributes>(
   return false;
 }
 
-export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
+// Define a custom FindOptions extension with the skipWorkspaceCheck flag.
+interface WorkspaceTenantIsolationSecurityBypassOptions<T>
+  extends FindOptions<T> {
+  /**
+   * When true, BYPASSES CRITICAL TENANT ISOLATION SECURITY for this query.
+   *
+   * SECURITY REQUIREMENT: You MUST include a comment explaining why this security bypass
+   * is necessary using the format:
+   * // WORKSPACE_ISOLATION_BYPASS: [explanation]
+   *
+   * This should only be used in critical scenarios where a query legitimately needs
+   * to operate across workspaces or without workspace context.
+   */
+  dangerouslyBypassWorkspaceIsolationSecurity?: boolean;
+}
+
+function isWorkspaceIsolationBypassEnabled<T>(
+  options: FindOptions<T>
+): options is WorkspaceTenantIsolationSecurityBypassOptions<T> {
+  return (
+    "dangerouslyBypassWorkspaceIsolationSecurity" in options &&
+    options.dangerouslyBypassWorkspaceIsolationSecurity === true
+  );
+}
+
+export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare workspace: NonAttribute<Workspace>;
 
@@ -86,6 +111,11 @@ export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
     // Define a hook to ensure all find queries are properly scoped to a workspace.
     const hooks = {
       beforeFind: (options: FindOptions<InferAttributes<InstanceType<MS>>>) => {
+        // Skip validation if specifically requested for this query.
+        if (isWorkspaceIsolationBypassEnabled(options)) {
+          return;
+        }
+
         const whereClause = options.where;
 
         if (
@@ -141,6 +171,19 @@ export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
   }
 }
 
+export type ModelStaticWorkspaceAware<M extends WorkspaceAwareModel> =
+  ModelStatic<M> & {
+    findAll(
+      options: WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
+    ): Promise<M[]>;
+    findOne(
+      options: WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
+    ): Promise<M | null>;
+    findByPk(
+      identifier: any,
+      options: WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
+    ): Promise<M | null>;
+  };
 export type ModelStaticSoftDeletable<
   M extends SoftDeletableWorkspaceAwareModel,
 > = ModelStatic<M> & {
