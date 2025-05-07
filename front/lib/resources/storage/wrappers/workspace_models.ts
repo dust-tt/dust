@@ -24,7 +24,7 @@ import logger from "@app/logger/logger";
 // Helper type and type guard for workspaceId check.
 type WhereClauseWithNumericWorkspaceId<TAttributes> =
   WhereOptions<TAttributes> & {
-    workspaceId: number;
+    workspaceId: number | [number];
   };
 
 function isWhereClauseWithNumericWorkspaceId<TAttributes>(
@@ -34,12 +34,27 @@ function isWhereClauseWithNumericWorkspaceId<TAttributes>(
     return false;
   }
 
-  return (
-    typeof where === "object" &&
-    !Array.isArray(where) &&
-    "workspaceId" in where &&
-    typeof where.workspaceId === "number"
-  );
+  if (!(typeof where === "object" && "workspaceId" in where)) {
+    return false;
+  }
+
+  const { workspaceId } = where;
+
+  // Accept a direct numeric workspaceId.
+  if (typeof workspaceId === "number") {
+    return true;
+  }
+
+  // Accept an array with exactly one numeric element.
+  if (
+    Array.isArray(workspaceId) &&
+    workspaceId.length === 1 &&
+    typeof workspaceId[0] === "number"
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
