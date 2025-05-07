@@ -58,6 +58,7 @@ async function handler(
       });
 
       const formattedAgents = agents
+        .filter((a) => a.scope !== "global")
         .map(
           (a) =>
             `Identifier: ${a.sId}\nName: ${a.name}\nDescription: ${a.description?.substring(0, 200).replaceAll("\n", " ")}\nInstructions: ${a.instructions?.substring(0, 200).replaceAll("\n", " ")}`
