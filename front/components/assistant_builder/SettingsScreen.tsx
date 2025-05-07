@@ -37,6 +37,7 @@ import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegr
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import { useBuilderActionInfo } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
 import { useTags } from "@app/lib/swr/tags";
@@ -62,18 +63,6 @@ export function removeLeadingAt(handle: string) {
 function assistantHandleIsValid(handle: string) {
   return /^[a-zA-Z0-9_-]{1,30}$/.test(removeLeadingAt(handle));
 }
-
-const VISIBILITY_DESCRIPTIONS = {
-  visible: (
-    <span>
-      Visible & usable by the members of <b>Company Space</b>.
-    </span>
-  ),
-  hidden: <span>Visible & usable by editors only.</span>,
-  published: <span>Visible to all members [legacy Shared]</span>,
-  workspace: <span>Visible to all members [legacy Workspace]</span>,
-  private: <span>Limited to current user[legacy Private]</span>,
-};
 
 async function assistantHandleIsAvailable({
   owner,
@@ -214,6 +203,8 @@ export default function SettingsScreen({
       setNameSuggestions(nameSuggestions.value);
     }
   }, [owner, builderState.instructions, builderState.description]);
+
+  const { nonGlobalSpacessUsedInActions } = useBuilderActionInfo(builderState);
 
   const updateEmojiFromSuggestions = useCallback(async () => {
     let avatarUrl: string | null = null;
@@ -567,7 +558,36 @@ export default function SettingsScreen({
                         {isVisible ? "Published" : "Not published"}
                       </span>
                       <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                        {VISIBILITY_DESCRIPTIONS[builderState.scope]}
+                        {(builderState.scope === "visible" ||
+                          builderState.scope === "published" ||
+                          builderState.scope === "workspace") && (
+                          <>
+                            {nonGlobalSpacessUsedInActions.length === 0 && (
+                              <>
+                                Visible & usable by all members of the
+                                workspace.
+                              </>
+                            )}
+                            {nonGlobalSpacessUsedInActions.length > 0 && (
+                              <div>
+                                Visible & usable by the members of the{" "}
+                                {`space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""}`}{" "}
+                                :{" "}
+                                <b>
+                                  {nonGlobalSpacessUsedInActions
+                                    .map((v) => v.name)
+                                    .join(", ")}
+                                </b>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {builderState.scope === "hidden" && (
+                          <>Visible & usable by editors only.</>
+                        )}
+                        {builderState.scope === "private" && (
+                          <>Visible and usable by the current user only</>
+                        )}
                       </span>
                     </div>
                   </div>
