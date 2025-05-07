@@ -58,7 +58,7 @@ async function handler(
       const apps = await AppResource.listBySpace(auth, space);
       const actions = await MCPServerViewResource.listBySpace(auth, space);
       const actionsCount = actions.filter(
-        (a) => !a.toJSON().server.isDefault
+        (a) => a.toJSON().server.availability === "manual"
       ).length;
 
       const categories: { [key: string]: SpaceCategoryInfo } = {};

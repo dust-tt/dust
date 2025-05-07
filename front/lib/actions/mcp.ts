@@ -9,6 +9,7 @@ import type {
 } from "@app/lib/actions/constants";
 import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   augmentInputsWithConfiguration,
   hideInternalConfiguration,
@@ -115,7 +116,7 @@ export type PlatformMCPToolConfigurationType = Omit<
 > & {
   type: "mcp_configuration";
   inputSchema: JSONSchema;
-  isDefault: boolean;
+  availability: MCPServerAvailability;
   permission: MCPToolStakeLevelType;
   toolServerId: string;
 };

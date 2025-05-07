@@ -8,7 +8,7 @@ import type { JSONSchema7 } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
-  FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL,
+  FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
 } from "@app/lib/actions/constants";
 import type {
@@ -22,9 +22,9 @@ import type {
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
+  getInternalMCPServerAvailability,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
-  isDefaultInternalMCPServer,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPProgressNotificationType,
@@ -94,7 +94,7 @@ function makePlatformMCPToolConfigurations(
     mcpServerViewId: config.mcpServerViewId,
     dataSources: config.dataSources || [], // Ensure dataSources is always an array
     tables: config.tables,
-    isDefault: tool.isDefault,
+    availability: tool.availability,
     childAgentId: config.childAgentId,
     reasoningModel: config.reasoningModel,
     timeFrame: config.timeFrame,
@@ -118,7 +118,7 @@ function makeLocalMCPToolConfigurations(
     inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
     id: config.id,
     localMcpServerId: config.localMcpServerId,
-    isDefault: false, // can't be default for local MCP servers.
+    availability: "manual", // can't be auto for local MCP servers.
     originalName: tool.name,
     mcpServerName: config.name,
   }));
@@ -510,7 +510,7 @@ async function listToolsForLocalMCPServer(
       ...allTools,
       ...extractMetadataFromTools(tools).map((tool) => ({
         ...tool,
-        isDefault: false,
+        availability: "manual" as const,
         stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
       })),
     ];
@@ -546,7 +546,7 @@ async function listToolsForPlatformMCPServer(
     const rawTools = allToolsRaw.map((tool) => ({
       ...tool,
       stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
-      isDefault: false,
+      availability: "manual" as const,
       toolServerId: "",
     }));
 
@@ -558,7 +558,9 @@ async function listToolsForPlatformMCPServer(
     return new Ok(platformToolConfigs);
   }
 
-  const isDefault = isDefaultInternalMCPServer(connectionParams.mcpServerId);
+  const availability = getInternalMCPServerAvailability(
+    connectionParams.mcpServerId
+  );
   const { serverType, id } = getServerTypeAndIdFromSId(
     connectionParams.mcpServerId
   );
@@ -598,10 +600,10 @@ async function listToolsForPlatformMCPServer(
     ...tool,
     stakeLevel:
       toolsStakes[tool.name] ||
-      (isDefault
-        ? FALLBACK_INTERNAL_DEFAULT_SERVERS_TOOL_STAKE_LEVEL
-        : FALLBACK_MCP_TOOL_STAKE_LEVEL),
-    isDefault,
+      (availability === "manual"
+        ? FALLBACK_MCP_TOOL_STAKE_LEVEL
+        : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
+    availability,
     toolServerId: connectionParams.mcpServerId,
   }));
 
