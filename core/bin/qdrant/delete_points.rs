@@ -135,6 +135,7 @@ async fn main() -> Result<()> {
                 );
 
                 let count = qdrant_client
+                    .raw_client()
                     .count(
                         CountPointsBuilder::new(
                             qdrant_client.collection_name(ds.embedder_config()),
@@ -143,6 +144,7 @@ async fn main() -> Result<()> {
                         .exact(true),
                     )
                     .await?;
+
                 info!("count: {}", count.result.unwrap().count);
             }
         },
