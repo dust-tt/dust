@@ -14,6 +14,7 @@ ENV NEXT_PUBLIC_COMMIT_HASH=${COMMIT_HASH}
 
 # Remove test files
 RUN find . -name "*.test.ts" -delete
+RUN find . -name "*.test.tsx" -delete
 
 RUN npm run build
 

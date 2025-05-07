@@ -27,6 +27,7 @@ COPY /front .
 
 # Remove test files
 RUN find . -name "*.test.ts" -delete
+RUN find . -name "*.test.tsx" -delete
 
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
