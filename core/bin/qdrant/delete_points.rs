@@ -3,7 +3,7 @@ use dust::data_sources::qdrant::QdrantClients;
 use dust::project;
 use dust::stores::postgres;
 use dust::stores::store::Store;
-use qdrant_client::qdrant::{self, CountPointsBuilder};
+use qdrant_client::qdrant::{self};
 use std::env;
 use tracing::info;
 
