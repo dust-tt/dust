@@ -264,9 +264,9 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
     [stdout?.columns]
   );
 
-  // Handle 'q' key press to quit
+  // Handle Ctrl+C key press to quit
   useInput((input, key) => {
-    if (input === "q" && !isAskingQuestion) {
+    if (key.ctrl && input === "c" && !isAskingQuestion) {
       process.exit(0);
     }
   });
@@ -331,7 +331,7 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
           </Box>
         </Box>
         <Box marginTop={2}>
-          <Text dimColor>Press 'q' to exit.</Text>
+          <Text dimColor>Press Ctrl+C to exit.</Text>
         </Box>
       </Box>
     );
