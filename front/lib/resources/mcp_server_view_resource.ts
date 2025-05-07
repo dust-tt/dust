@@ -463,7 +463,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return getInternalMCPServerAvailability(this.internalMCPServerId);
   }
 
-  static async ensureAllAutoActionsAreCreated(auth: Authenticator) {
+  static async ensureAllAutoToolsAreCreated(auth: Authenticator) {
     const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
 
     const autoInternalMCPServerIds: string[] = [];
