@@ -76,8 +76,9 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   const propertiesSchema = z
     .record(z.string(), z.any())
+    .default({})
     .describe(
-      "Properties for the new page or database. Keys are property names, values are property value objects as per Notion API. See https://developers.notion.com/reference/page#property-value-types for details. Value should be an empty object if there are no properties to update."
+      "Properties for the new page or database. Keys are property names, values are property value objects as per Notion API. See https://developers.notion.com/reference/page#property-value-types for details."
     );
 
   const searchFilterSchema = z
@@ -258,7 +259,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "query_database",
-    "Query a Notion database (alias for retrieve_database_content).",
+    "Query a Notion database.",
     {
       databaseId: z.string().describe("The Notion database ID."),
       filter: dbFilterSchema.optional(),
@@ -300,7 +301,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     "Create a new Notion page.",
     {
       parent: parentPageSchema.describe(
-        "REQUIRED. Parent object (see Notion API). Must include type: 'page_id' and a valid page_id."
+        "Parent object (see Notion API). Must include type: 'page_id' and a valid page_id."
       ),
       properties: propertiesSchema,
       icon: z.any().optional().describe("Icon (optional)."),
@@ -333,7 +334,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "create_page_from_database",
-    "Create a new Notion page in a database (alias for create_page with parent as database).",
+    "Create a new Notion page in a database.",
     {
       databaseId: z.string().describe("The Notion database ID."),
       properties: propertiesSchema,
@@ -370,12 +371,12 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     "Create a new Notion database (table).",
     {
       parent: parentPageSchema.describe(
-        "REQUIRED. Parent object (see Notion API). Must include type: 'page_id' and a valid page_id."
+        "Parent object (see Notion API). Must include type: 'page_id' and a valid page_id."
       ),
       title: z
         .array(titleRichTextSchema)
         .describe(
-          "REQUIRED. Title for the database as an array of rich text objects (see Notion API). Each item must have type: 'text' and a text object with content."
+          "Title for the database as an array of rich text objects (see Notion API). Each item must have type: 'text' and a text object with content."
         ),
       properties: propertiesSchema,
       icon: z.any().optional().describe("Icon (optional)."),
