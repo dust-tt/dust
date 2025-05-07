@@ -17,7 +17,8 @@ import {
   GithubLogo,
   HubspotLogo,
 } from "@dust-tt/sparkle";
-import type React, { ComponentProps } from "react";
+import type React from "react";
+import type { ComponentProps } from "react";
 
 import type { MCPServerType } from "@app/lib/api/mcp";
 

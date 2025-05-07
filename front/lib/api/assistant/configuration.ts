@@ -1392,6 +1392,7 @@ export async function createAgentActionConfiguration(
           reasoningModel: action.reasoningModel,
           timeFrame: action.timeFrame,
           additionalConfiguration: action.additionalConfiguration,
+          dustAppConfiguration: action.dustAppConfiguration,
         });
       });
     }
