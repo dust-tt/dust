@@ -457,7 +457,7 @@ export const O3_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's best reasoning model.",
   isLegacy: false,
   generationTokensCount: 2048,
-  supportsVision: false,
+  supportsVision: true,
   supportsResponseFormat: true,
   featureFlag: "openai_o1_feature",
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
