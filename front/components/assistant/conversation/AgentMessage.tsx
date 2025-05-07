@@ -11,7 +11,7 @@ import {
   ContentMessage,
   ConversationMessage,
   DocumentIcon,
-  InteractiveImage,
+  InteractiveImageGrid,
   Markdown,
   Separator,
   useCopyToClipboard,
@@ -64,7 +64,10 @@ import {
   isWebsearchActionType,
 } from "@app/lib/actions/types/guards";
 import type { WebsearchActionType } from "@app/lib/actions/websearch";
-import type { AgentMessageStateEvent } from "@app/lib/assistant/state/messageReducer";
+import type {
+  AgentMessageStateEvent,
+  MessageTemporaryState,
+} from "@app/lib/assistant/state/messageReducer";
 import { messageReducer } from "@app/lib/assistant/state/messageReducer";
 import type { AgentMessageType, UserType, WorkspaceType } from "@app/types";
 import {
@@ -103,20 +106,28 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const { isDark } = useTheme();
 
-  const [state, dispatch] = React.useReducer(messageReducer, {
-    message,
-    agentState: message.status === "created" ? "thinking" : "done",
-    isRetrying: false,
-    lastUpdated: new Date(),
-    actionProgress: new Map(),
-  });
+  const initialMessageStreamState = React.useMemo<MessageTemporaryState>(
+    () => ({
+      message,
+      agentState: message.status === "created" ? "thinking" : "done",
+      isRetrying: false,
+      lastUpdated: new Date(),
+      actionProgress: new Map(),
+    }),
+    [message]
+  );
+
+  const [messageStreamState, dispatch] = React.useReducer(
+    messageReducer,
+    initialMessageStreamState
+  );
 
   const shouldStream = React.useMemo(() => {
     if (message.status !== "created") {
       return false;
     }
 
-    switch (state.message.status) {
+    switch (messageStreamState.message.status) {
       case "succeeded":
       case "failed":
       case "cancelled":
@@ -124,9 +135,9 @@ export function AgentMessage({
       case "created":
         return true;
       default:
-        assertNever(state.message.status);
+        assertNever(messageStreamState.message.status);
     }
-  }, [message.status, state.message.status]);
+  }, [message.status, messageStreamState.message.status]);
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
@@ -181,6 +192,8 @@ export function AgentMessage({
           stake: eventPayload.data.stake,
           metadata: eventPayload.data.metadata,
         });
+
+        return;
       }
 
       dispatch(eventPayload.data);
@@ -201,12 +214,12 @@ export function AgentMessage({
       case "failed":
         return message;
       case "cancelled":
-        if (state.message.status === "created") {
-          return { ...state.message, status: "cancelled" };
+        if (messageStreamState.message.status === "created") {
+          return { ...messageStreamState.message, status: "cancelled" };
         }
-        return state.message;
+        return messageStreamState.message;
       case "created":
-        return state.message;
+        return messageStreamState.message;
       default:
         assertNever(message.status);
     }
@@ -283,7 +296,7 @@ export function AgentMessage({
   );
 
   const buttons =
-    message.status === "failed" || state.agentState === "thinking"
+    message.status === "failed" || messageStreamState.agentState === "thinking"
       ? []
       : [
           <Button
@@ -475,7 +488,7 @@ export function AgentMessage({
           references: references,
           streaming: shouldStream,
           lastTokenClassification:
-            state.agentState === "thinking" ? "tokens" : null,
+            messageStreamState.agentState === "thinking" ? "tokens" : null,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
@@ -517,7 +530,9 @@ export function AgentMessage({
     }
 
     // Get in-progress images.
-    const inProgressImages = Array.from(state.actionProgress.entries())
+    const inProgressImages = Array.from(
+      messageStreamState.actionProgress.entries()
+    )
       .filter(([, progress]) =>
         isImageProgressOutput(progress.progress?.data.output)
       )
@@ -528,10 +543,11 @@ export function AgentMessage({
       }));
 
     // Get completed images.
-    const completedImages = state.message.actions.flatMap((action) =>
-      action.generatedFiles.filter((file) =>
-        isSupportedImageContentType(file.contentType)
-      )
+    const completedImages = messageStreamState.message.actions.flatMap(
+      (action) =>
+        action.generatedFiles.filter((file) =>
+          isSupportedImageContentType(file.contentType)
+        )
     );
 
     const generatedFiles = agentMessage.actions.flatMap((action) =>
@@ -545,7 +561,7 @@ export function AgentMessage({
         <div className="flex flex-col gap-2">
           <AgentMessageActions
             agentMessage={agentMessage}
-            lastAgentStateClassification={state.agentState}
+            lastAgentStateClassification={messageStreamState.agentState}
             owner={owner}
           />
 
@@ -562,28 +578,22 @@ export function AgentMessage({
           ) : null}
         </div>
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {inProgressImages.map((image) => (
-              <InteractiveImage
-                key={image.id}
-                imageUrl=""
-                downloadUrl=""
-                alt={""}
-                title={""}
-                isLoading={true}
-              />
-            ))}
-            {completedImages.map((image) => (
-              <InteractiveImage
-                key={image.fileId}
-                imageUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=view`}
-                downloadUrl={`/api/w/${owner.sId}/files/${image.fileId}?action=download`}
-                alt={`${image.title}`}
-                title={`${image.title}`}
-                isLoading={false}
-              />
-            ))}
-          </div>
+          <InteractiveImageGrid
+            images={[
+              ...completedImages.map((image) => ({
+                imageUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=view`,
+                downloadUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+                alt: `${image.title}`,
+                title: `${image.title}`,
+                isLoading: false,
+              })),
+              ...inProgressImages.map(() => ({
+                alt: "",
+                title: "",
+                isLoading: true,
+              })),
+            ]}
+          />
         )}
 
         {agentMessage.content !== null && (
