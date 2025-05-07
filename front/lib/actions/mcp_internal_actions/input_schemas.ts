@@ -529,10 +529,10 @@ export function getMCPServerRequirements(
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
       !requiresReasoningConfiguration &&
+      !requiredDustAppConfiguration &&
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
       requiredBooleans.length === 0 &&
-      Object.keys(requiredEnums).length === 0 &&
-      !requiredDustAppConfiguration,
+      Object.keys(requiredEnums).length === 0,
   };
 }

@@ -5,6 +5,7 @@ import { AdditionalConfigurationSection } from "@app/components/assistant_builde
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
+import { DustAppConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DustAppConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
@@ -14,6 +15,7 @@ import type {
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { isMCPDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";
@@ -129,6 +131,7 @@ export function MCPAction({
           additionalConfiguration: Object.fromEntries(
             requirements.requiredBooleans.map((key) => [key, false])
           ),
+          dustAppConfiguration: null,
         }),
       });
     },
@@ -275,6 +278,27 @@ export function MCPAction({
           }}
           selectedReasoningModel={actionConfiguration.reasoningModel}
           owner={owner}
+        />
+      )}
+      {requirements.requiredDustAppConfiguration && (
+        <DustAppConfigurationSection
+          owner={owner}
+          allowedSpaces={allowedSpaces}
+          selectedConfig={
+            isMCPDustAppRunConfiguration(actionConfiguration)
+              ? actionConfiguration.dustAppConfiguration
+              : null
+          }
+          onConfigSelect={(config) => {
+            handleConfigUpdate((old) => ({
+              ...old,
+              type: "dust_app_run_configuration",
+              appWorkspaceId: config.appWorkspaceId,
+              appId: config.appId,
+              name: config.name,
+              description: config.description,
+            }));
+          }}
         />
       )}
       <AdditionalConfigurationSection

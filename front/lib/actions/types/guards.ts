@@ -191,7 +191,6 @@ export function isMCPDustAppRunConfiguration(
     !!arg &&
     typeof arg === "object" &&
     "type" in arg &&
-    arg.type === "dust_app_run_configuration" &&
     "appWorkspaceId" in arg &&
     "appId" in arg
   );
