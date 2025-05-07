@@ -408,7 +408,11 @@ export async function deleteAgentsActivity({
       },
     });
 
-    const group = await GroupResource.fetchByAgentConfiguration(auth, agent);
+    const group = await GroupResource.fetchByAgentConfiguration({
+      auth,
+      agentConfiguration: agent,
+      isDeletionFlow: true,
+    });
     if (group) {
       await group.delete(auth);
     }

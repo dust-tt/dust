@@ -105,7 +105,10 @@ async function handler(
 
       // This won't stay long since Agent Discovery initiative removes the scope
       // endpoint.
-      const group = await GroupResource.fetchByAgentConfiguration(auth, agent);
+      const group = await GroupResource.fetchByAgentConfiguration({
+        auth,
+        agentConfiguration: agent,
+      });
       if (!group) {
         throw new Error(
           "Unexpected: agent should have exactly one editor group."
