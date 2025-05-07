@@ -207,7 +207,7 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
         rl.close();
       };
     }
-  }, [isAskingQuestion, selectedAgent, initialQuestion]);
+  }, [isAskingQuestion, selectedAgent, initialQuestion, askQuestion]);
 
   const renderAgentItem = useCallback(
     (item: AgentItem, isSelected: boolean, isFocused: boolean): ReactNode => {
