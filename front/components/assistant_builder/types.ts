@@ -13,6 +13,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -37,7 +38,6 @@ import {
   DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 
 export const ACTION_MODES = [
   "GENERIC",
