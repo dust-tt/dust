@@ -116,9 +116,9 @@ async fn main() -> Result<()> {
 
     let mut filter = qdrant::Filter::default();
     match store.load_data_source(&project, &data_source_id).await {
-        Err(e) => anyhow!("Could not load data source"),
+        Err(e) => Ok(()),
         Ok(ds) => match ds {
-            None => anyhow!("No data source found"),
+            None => Ok(()),
             Some(ds) => {
                 let qdrant_client = ds.main_qdrant_client(&qdrant_clients);
                 filter.must.push(
@@ -135,20 +135,17 @@ async fn main() -> Result<()> {
                 );
 
                 let count = qdrant_client
-                    .raw_client()
-                    .count(
-                        CountPointsBuilder::new(
-                            qdrant_client.collection_name(ds.embedder_config()),
-                        )
-                        .filter(filter)
-                        .exact(true),
+                    .count_points(
+                        ds.embedder_config(),
+                        &ds.internal_id().to_string(),
+                        Some(filter.clone()),
+                        true,
                     )
                     .await?;
 
-                info!("count: {}", count.result.unwrap().count);
+                info!("Count: {}", count.result.unwrap().count);
+                Ok(())
             }
         },
     }
-
-    Ok(())
 }
