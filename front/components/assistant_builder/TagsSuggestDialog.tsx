@@ -1,4 +1,5 @@
 import {
+  Checkbox,
   Chip,
   ContextItem,
   Dialog,
@@ -12,7 +13,7 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCreateTag, useTagsSuggestions } from "@app/lib/swr/tags";
@@ -31,7 +32,9 @@ export const TagsSuggestDialog = ({
 }) => {
   const { createTag } = useCreateTag({ owner });
   const sendNotification = useSendNotification();
-
+  const [appliedSuggestion, setAppliedSuggestion] = useState<
+    Record<string, boolean>
+  >({});
   const { suggestions, isSuggestionsLoading, isSuggestionsError } =
     useTagsSuggestions({ owner, disabled: !isOpen });
 
@@ -46,12 +49,14 @@ export const TagsSuggestDialog = ({
   const handleCreateTag = async () => {
     const tags = [];
     for (const s of suggestions) {
-      const tag = await createTag(
-        s.name,
-        s.agents.map((a) => a.sId)
-      );
-      if (tag) {
-        tags.push(tag);
+      if (appliedSuggestion[s.name]) {
+        const tag = await createTag(
+          s.name,
+          s.agents.map((a) => a.sId)
+        );
+        if (tag) {
+          tags.push(tag);
+        }
       }
     }
 
@@ -76,6 +81,18 @@ export const TagsSuggestDialog = ({
       setIsOpen(false);
     }
   }, [isSuggestionsError, sendNotification, setIsOpen]);
+
+  useEffect(() => {
+    setAppliedSuggestion(
+      suggestions.reduce(
+        (acc, suggestion) => {
+          acc[suggestion.name] = true;
+          return acc;
+        },
+        {} as Record<string, boolean>
+      )
+    );
+  }, [suggestions]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -105,6 +122,17 @@ export const TagsSuggestDialog = ({
                       key={suggestion.name}
                       title=""
                       visual={undefined}
+                      action={
+                        <Checkbox
+                          checked={appliedSuggestion[suggestion.name]}
+                          onClick={() => {
+                            setAppliedSuggestion((prev) => ({
+                              ...prev,
+                              [suggestion.name]: !prev[suggestion.name],
+                            }));
+                          }}
+                        />
+                      }
                     >
                       <Chip
                         size="xs"
