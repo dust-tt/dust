@@ -1341,7 +1341,6 @@ export async function createAgentActionConfiguration(
                 ? action.description
                 : null,
             appId: action.dustAppConfiguration?.appId ?? null,
-            appWorkspaceId: action.dustAppConfiguration?.appWorkspaceId ?? null,
           },
           { transaction: t }
         );

@@ -187,13 +187,7 @@ export function isMCPActionWithDataSource(
 export function isMCPDustAppRunConfiguration(
   arg: unknown
 ): arg is MCPToolConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    "appWorkspaceId" in arg &&
-    "appId" in arg
-  );
+  return !!arg && typeof arg === "object" && "type" in arg && "appId" in arg;
 }
 
 export function isPlatformMCPToolConfiguration(

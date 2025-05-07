@@ -72,7 +72,6 @@ export const ConfigurableToolInputSchemas = {
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
   }),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP]: z.object({
-    appWorkspaceId: z.string(),
     appId: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP),
   }),
@@ -231,7 +230,6 @@ export function generateConfiguredInput({
       }
 
       return {
-        appWorkspaceId,
         appId,
         mimeType,
       };
