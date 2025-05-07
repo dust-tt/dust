@@ -23,6 +23,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "think",
   "ask_agent",
   "reasoning_v2",
+  "extract",
 ] as const;
 
 export const INTERNAL_MCP_SERVERS: Record<
@@ -87,6 +88,11 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_object: "high",
       update_object: "high",
     },
+  },
+  extract: {
+    id: 8,
+    isDefault: true,
+    flag: "experimental_mcp_actions",
   },
 
   // Dev
