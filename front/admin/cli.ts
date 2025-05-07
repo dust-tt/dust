@@ -39,7 +39,6 @@ import {
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -309,7 +308,9 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
 
-      const dataSource = await DataSourceResource.fetchById(auth, args.dsId);
+      const dataSource = await DataSourceResource.fetchById(auth, args.dsId, {
+        includeDeleted: true,
+      });
       if (!dataSource) {
         throw new Error(
           `DataSource not found: wId='${args.wId}' dsId='${args.dsId}'`
