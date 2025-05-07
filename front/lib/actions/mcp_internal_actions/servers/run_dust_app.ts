@@ -20,9 +20,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { DatasetSchema } from "@app/types";
@@ -385,20 +383,7 @@ export default function createServer(
         dustApp:
           ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP],
       },
-      async ({ dustApp }) => {
-        const { appId, appWorkspaceId } = dustApp;
-
-        await AgentMCPServerConfiguration.create({
-          workspaceId: auth.getNonNullableWorkspace().id,
-          agentConfigurationId: -1,
-          sId: generateRandomModelSId(),
-          additionalConfiguration: {},
-          name: null,
-          singleToolDescriptionOverride: null,
-          appId,
-          appWorkspaceId,
-        });
-
+      async () => {
         return {
           isError: false,
           content: [

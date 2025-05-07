@@ -73,6 +73,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 
 const MAX_BLOB_SIZE_BYTES = 1024 * 1024 * 10; // 10MB
 
@@ -96,8 +97,7 @@ export type PlatformMCPServerConfigurationType =
     reasoningModel: ReasoningModelConfiguration | null;
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
-    appWorkspaceId: string | null;
-    appId: string | null;
+    dustAppConfiguration: DustAppRunConfigurationType | null;
   };
 
 export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType & {

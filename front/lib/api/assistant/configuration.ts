@@ -1334,6 +1334,8 @@ export async function createAgentActionConfiguration(
               isSingleTool && serverDescription !== action.description
                 ? action.description
                 : null,
+            appId: action.dustAppConfiguration?.appId ?? null,
+            appWorkspaceId: action.dustAppConfiguration?.appWorkspaceId ?? null,
           },
           { transaction: t }
         );

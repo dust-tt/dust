@@ -150,8 +150,7 @@ const MCPServerActionConfigurationSchema = t.type({
     t.string,
     t.union([t.boolean, t.number, t.string, t.null])
   ),
-  appWorkspaceId: t.union([t.null, t.string]),
-  appId: t.union([t.null, t.string]),
+  dustAppConfiguration: t.union([DustAppRunActionConfigurationSchema, t.null]),
 });
 
 const ProcessActionConfigurationSchema = t.type({

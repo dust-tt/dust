@@ -289,14 +289,10 @@ export function MCPAction({
               ? actionConfiguration.dustAppConfiguration
               : null
           }
-          onConfigSelect={(config) => {
+          onConfigSelect={(dustAppConfig) => {
             handleConfigUpdate((old) => ({
               ...old,
-              type: "dust_app_run_configuration",
-              appWorkspaceId: config.appWorkspaceId,
-              appId: config.appId,
-              name: config.name,
-              description: config.description,
+              dustAppConfiguration: dustAppConfig,
             }));
           }}
         />
