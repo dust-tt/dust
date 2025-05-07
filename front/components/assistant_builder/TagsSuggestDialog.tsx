@@ -59,7 +59,7 @@ export const TagsSuggestDialog = ({
 
     sendNotification({
       type: "success",
-      title: "Tags suggestions applied",
+      title: "Tag suggestions applied",
       description: "All tags have been successfully created for your agents.",
     });
   };
