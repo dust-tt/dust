@@ -31,6 +31,8 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationHistory, setConversationHistory] = useState<Array<{question: string, answer: string}>>([]);
 
   const { stdout } = useStdout();
 
@@ -94,7 +96,7 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
 
   const askQuestion = async (agent: AgentConfiguration, questionText: string) => {
     setIsProcessingQuestion(true);
-    setAnswer(null);
+    // setAnswer(null);
 
     const dustClient = await getDustClient();
     if (!dustClient) {
@@ -103,37 +105,86 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
       return;
     }
 
-    // Create a conversation with the agent
-    const convRes = await dustClient.createConversation({
-      title: `CLI Question: ${questionText.substring(0, 30)}${questionText.length > 30 ? '...' : ''}`,
-      visibility: "unlisted",
-      message: {
-        content: questionText,
-        mentions: [{ configurationId: agent.sId }],
-        context: {
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          username: "cli-user",
-          fullName: "CLI User",
-          email: null,
-          origin: "api",
+    let userMessageId: string;
+    let conversation: any;
+
+    // Either create a new conversation or add to an existing one
+    if (!conversationId) {
+      // Create a new conversation with the agent
+      const convRes = await dustClient.createConversation({
+        title: `CLI Question: ${questionText.substring(0, 30)}${questionText.length > 30 ? '...' : ''}`,
+        visibility: "unlisted",
+        message: {
+          content: questionText,
+          mentions: [{ configurationId: agent.sId }],
+          context: {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            username: "cli-user",
+            fullName: "CLI User",
+            email: null,
+            origin: "api",
+          },
         },
-      },
-      contentFragment: undefined,
-    });
+        contentFragment: undefined,
+      });
 
-    if (convRes.isErr()) {
-      setError(`Failed to create conversation: ${convRes.error.message}`);
-      setIsProcessingQuestion(false);
-      return;
+      if (convRes.isErr()) {
+        setError(`Failed to create conversation: ${convRes.error.message}`);
+        setIsProcessingQuestion(false);
+        return;
+      }
+
+      // Store the conversation ID for future messages
+      conversation = convRes.value.conversation;
+      setConversationId(conversation.sId);
+      userMessageId = convRes.value.message.sId;
+    } else {
+      // Add a message to the existing conversation using the client library
+      try {
+        const workspaceId = await AuthService.getSelectedWorkspaceId();
+        if (!workspaceId) {
+          throw new Error("No workspace selected");
+        }
+
+        // Create a message in the existing conversation
+        const messageRes = await dustClient.postUserMessage({
+          conversationId: conversationId,
+          message: {
+            content: questionText,
+            mentions: [{ configurationId: agent.sId }],
+            context: {
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              username: "cli-user",
+              fullName: "CLI User",
+              email: null,
+              origin: "api",
+            },
+          },
+        });
+
+        if (messageRes.isErr()) {
+          throw new Error(`Error creating message: ${messageRes.error.message}`);
+        }
+
+        userMessageId = messageRes.value.sId;
+        // Get the conversation for streaming
+        const convRes = await dustClient.getConversation({ conversationId });
+        if (convRes.isErr()) {
+          throw new Error(`Error retrieving conversation: ${convRes.error.message}`);
+        }
+        conversation = convRes.value;
+      } catch (error) {
+        setError(`Failed to create message: ${error}`);
+        setIsProcessingQuestion(false);
+        return;
+      }
     }
-
-    const { conversation, message: createdUserMessage } = convRes.value;
     
     try {
       // Stream the agent's response
       const streamRes = await dustClient.streamAgentAnswerEvents({
         conversation: conversation,
-        userMessageId: createdUserMessage.sId,
+        userMessageId: userMessageId,
       });
 
       if (streamRes.isErr()) {
@@ -156,6 +207,20 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
         } else if (event.type === "agent_message_success" || event.type === "agent_generation_success") {
           // Complete
           setIsComplete(true);
+          
+          // Add to conversation history (only if this is a new message)
+          setConversationHistory(prev => {
+            // Check if this exact question-answer pair already exists
+            const exists = prev.some(item => 
+              item.question === questionText && item.answer === responseText
+            );
+            
+            if (!exists) {
+              return [...prev, { question: questionText, answer: responseText }];
+            }
+            return prev;
+          });
+          
           break;
         }
       }
@@ -190,7 +255,11 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
 
       process.stdout.write("\x1bc"); // Clear screen
       
-      rl.question(`What would you like to ask ${selectedAgent?.name}? `, (input) => {
+      const promptText = conversationId 
+        ? `What would you like to ask ${selectedAgent?.name} next? (continuing conversation) ` 
+        : `What would you like to ask ${selectedAgent?.name}? `;
+      
+      rl.question(promptText, (input) => {
         if (input.trim()) {
           setQuestion(input);
           rl.close();
@@ -320,6 +389,26 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
           <Text bold>Agent: </Text>
           <Text>{selectedAgent?.name}</Text>
         </Box>
+        
+        {/* Show conversation history if available */}
+        {conversationHistory.length > 0 && (
+          <Box flexDirection="column" marginBottom={1}>
+            <Text bold>Conversation History:</Text>
+            {conversationHistory.map((item, index) => (
+              <Box key={index} flexDirection="column" marginLeft={1} marginBottom={1}>
+                <Box>
+                  <Text bold color="green">You: </Text>
+                  <Text dimColor>{item.question.length > 60 ? `${item.question.substring(0, 60)}...` : item.question}</Text>
+                </Box>
+                <Box marginLeft={1}>
+                  <Text bold color="blue">{selectedAgent?.name}: </Text>
+                  <Text dimColor>{item.answer.length > 60 ? `${item.answer.substring(0, 60)}...` : item.answer}</Text>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        )}
+        
         <Box marginBottom={1}>
           <Text bold>Question: </Text>
           <Text>{question}</Text>
@@ -330,7 +419,8 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
             <Text>{answer}</Text>
           </Box>
         </Box>
-        <Box marginTop={2}>
+        <Box marginTop={2} flexDirection="column">
+          <Text>To ask a follow-up question, press Enter.</Text>
           <Text dimColor>Press Ctrl+C to exit.</Text>
         </Box>
       </Box>
