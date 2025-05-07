@@ -67,7 +67,7 @@ import { ConversationResource } from "../resources/conversation_resource";
 import { frontSequelize } from "../resources/storage";
 
 // Number of files we pull from GCS at once for deletion.
-// We take 10_000 to make sure we don't crash the pod, if we have 10k documents of 100kB (which is a lot) we're at 1GB.
+// If we have 10k documents of 100kB each (which is a lot) we are at 1GB here.
 const FILE_BATCH_SIZE = 10_000;
 
 export async function getDataSources(
