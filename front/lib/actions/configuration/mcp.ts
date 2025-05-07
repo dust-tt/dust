@@ -16,9 +16,11 @@ import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/r
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import logger from "@app/logger/logger";
 import type { AgentFetchVariant, ModelId } from "@app/types";
+import { removeNulls } from "@app/types";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
@@ -65,6 +67,12 @@ export async function fetchMCPServerActionConfigurations(
     },
   ];
 
+  const allDustApps = await AppModel.findAll({
+    where: {
+      id: { [Op.in]: removeNulls(mcpServerConfigurations.map((r) => r.appId)) },
+    },
+  });
+
   // Find the associated data sources configurations.
   const allDataSourceConfigurations =
     await AgentDataSourceConfiguration.findAll({
@@ -92,7 +100,6 @@ export async function fetchMCPServerActionConfigurations(
     ModelId,
     MCPServerConfigurationType[]
   >();
-
   for (const config of mcpServerConfigurations) {
     const { agentConfigurationId, mcpServerViewId } = config;
 
@@ -108,6 +115,8 @@ export async function fetchMCPServerActionConfigurations(
     const reasoningConfigurations = allReasoningConfigurations.filter(
       (rc) => rc.mcpServerConfigurationId === config.id
     );
+
+    const dustApp = allDustApps.filter((app) => app.sId === config.appId)[0];
 
     const mcpServerView = await MCPServerViewResource.fetchByModelPk(
       auth,
@@ -141,12 +150,21 @@ export async function fetchMCPServerActionConfigurations(
         name: config.name ?? serverName,
         description: config.singleToolDescriptionOverride ?? serverDescription,
         mcpServerViewId: mcpServerView?.sId ?? "",
-        appId: config.appId,
-        appWorkspaceId: config.appWorkspaceId,
         dataSources: dataSourceConfigurations.map(
           renderDataSourceConfiguration
         ),
         tables: tablesConfigurations.map(renderTableConfiguration),
+        dustAppConfiguration: dustApp
+          ? {
+              id: dustApp.id,
+              name: dustApp.name,
+              description: dustApp.description,
+              appId: dustApp.sId,
+              sId: dustApp.sId,
+              appWorkspaceId: dustApp.workspace.sId,
+              type: "dust_app_run_configuration",
+            }
+          : null,
         childAgentId:
           childAgentConfigurations.length > 0
             ? childAgentConfigurations[0].agentConfigurationId

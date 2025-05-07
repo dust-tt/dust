@@ -102,12 +102,12 @@ export default function createServer(
     if (isPlatformMCPServerConfiguration(agentConfiguration)) {
       void (async () => {
         try {
-          if (!agentConfiguration.appId) {
-            return;
+          if (!agentConfiguration.dustAppConfiguration?.appId) {
+            return new Error("Could not find Dust app configuration");
           }
           const app = await AppResource.fetchById(
             auth,
-            agentConfiguration.appId
+            agentConfiguration.dustAppConfiguration.appId
           );
 
           if (
@@ -371,7 +371,7 @@ export default function createServer(
             }
           );
         } catch (error) {
-          logger.error({ error }, "Failed to fetch AppResource");
+          logger.error({ error }, "Failed to create server");
         }
       })();
     }

@@ -8,6 +8,7 @@ import type {
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
 import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
   augmentInputsWithConfiguration,
@@ -73,7 +74,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 
 const MAX_BLOB_SIZE_BYTES = 1024 * 1024 * 10; // 10MB
 

@@ -102,6 +102,7 @@ function makePlatformMCPToolConfigurations(
     toolServerId: tool.toolServerId,
     originalName: tool.name,
     mcpServerName: config.name,
+    dustAppConfiguration: config.dustAppConfiguration,
   }));
 }
 

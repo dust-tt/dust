@@ -388,6 +388,7 @@ export function getDefaultMCPServerActionConfiguration(
       childAgentId: null,
       reasoningModel: null,
       additionalConfiguration: {},
+      dustAppConfiguration: null,
     },
     name: mcpServerView?.server.name ?? "",
     description:

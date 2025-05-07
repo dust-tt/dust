@@ -15,9 +15,9 @@ import { useContext, useMemo } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 
 interface DustAppConfigurationSectionProps {
   owner: LightWorkspaceType;
