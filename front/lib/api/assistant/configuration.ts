@@ -452,10 +452,10 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         return AgentConfiguration.findAll({
           where: {
             workspaceId: owner.id,
-            sId: latestVersions.map((v) => v.sId),
-            version: {
-              [Op.in]: latestVersions.map((v) => v.max_version),
-            },
+            [Op.or]: latestVersions.map((v) => ({
+              sId: v.sId,
+              version: v.max_version,
+            })),
           },
           order: [["version", "DESC"]],
         });
