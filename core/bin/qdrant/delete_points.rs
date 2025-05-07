@@ -22,12 +22,12 @@ async fn main() -> Result<()> {
         Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
     };
 
-    let mut filter = qdrant::Filter::default();
     match store.load_data_source(&project, &data_source_id).await {
         Err(e) => Err(anyhow!("Error getting the data source: {}", e)),
         Ok(ds) => match ds {
             None => Err(anyhow!("No data source retrieved.")),
             Some(ds) => {
+                let mut filter = qdrant::Filter::default();
                 let qdrant_client = ds.main_qdrant_client(&qdrant_clients);
                 filter.must.push(
                     qdrant::FieldCondition {
@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
                     .into(),
                 );
 
-                let count = qdrant_client
+                match qdrant_client
                     .raw_client()
                     .count(
                         CountPointsBuilder::new(
@@ -52,10 +52,14 @@ async fn main() -> Result<()> {
                         .exact(true),
                     )
                     .await
-                    .map_err(|e| anyhow!("Error counting points: {}", e));
-
-                info!("Count: {}", count?.result.unwrap().count);
-                Ok(())
+                    .map_err(|e| anyhow!("Error counting points: {}", e))
+                {
+                    Ok(count) => {
+                        info!("Count: {}", count.result.unwrap().count);
+                        Ok(())
+                    }
+                    Err(e) => Err(e),
+                }
             }
         },
     }
