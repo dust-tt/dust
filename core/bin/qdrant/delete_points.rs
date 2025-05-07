@@ -52,13 +52,11 @@ async fn main() -> Result<()> {
                 );
 
                 match qdrant_client
-                    .raw_client()
-                    .count(
-                        CountPointsBuilder::new(
-                            qdrant_client.collection_name(ds.embedder_config()),
-                        )
-                        .filter(filter)
-                        .exact(true),
+                    .count_points(
+                        ds.embedder_config(),
+                        &ds.internal_id().to_string(),
+                        Some(filter),
+                        true,
                     )
                     .await
                 {
