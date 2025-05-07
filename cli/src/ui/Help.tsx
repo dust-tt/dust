@@ -26,6 +26,11 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
+          <Text bold>ask</Text> Ask a question to a Dust agent
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
           <Text bold>agents-mcp</Text> Select agents and start a stdio MCP
           server
         </Text>
@@ -58,6 +63,11 @@ const Help: FC = () => {
         <Text>
           <Text bold>--sId</Text> Specify agent sId(s) to use directly (can be
           repeated)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>-q, --question</Text> Specify a question to ask an agent
         </Text>
       </Box>
     </Box>

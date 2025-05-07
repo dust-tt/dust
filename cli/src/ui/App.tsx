@@ -5,6 +5,7 @@ import Auth from "./commands/Auth.js";
 import Status from "./commands/Status.js";
 import Logout from "./commands/Logout.js";
 import AgentsMCP from "./commands/AgentsMCP.js";
+import AskAgent from "./commands/AskAgent.js";
 import Help from "./Help.js";
 
 interface AppProps {
@@ -28,6 +29,10 @@ interface AppProps {
     sId: {
       type: "string";
       isMultiple: true;
+    };
+    question: {
+      type: "string";
+      shortFlag: "q";
     };
   }>;
 }
@@ -54,6 +59,12 @@ const App: FC<AppProps> = ({ cli }) => {
       return <Logout />;
     case "agents-mcp":
       return <AgentsMCP port={flags.port} sId={flags.sId} />;
+    case "ask":
+      // For ask command, use the first sId if provided as an array
+      const agentSId = Array.isArray(flags.sId) && flags.sId.length > 0 
+        ? flags.sId[0] 
+        : undefined;
+      return <AskAgent sId={agentSId} question={flags.question} />;
     case "help":
       return <Help />;
     default:
