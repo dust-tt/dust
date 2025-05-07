@@ -59,13 +59,13 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
         ref={ref}
         onClick={onClick}
         className={cn(
-          "s-group/preview s-relative",
+          "s-group/preview s-relative s-aspect-square",
           "s-cursor-pointer s-overflow-hidden s-rounded-2xl",
           "s-bg-muted-background dark:s-bg-muted-background-night"
         )}
       >
         {image.isLoading ? (
-          <div className="s-flex s-aspect-square s-h-full s-w-full s-items-center s-justify-center">
+          <div className="s-flex s-h-full s-w-full s-items-center s-justify-center">
             <Spinner variant="dark" size="md" />
           </div>
         ) : (
