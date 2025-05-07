@@ -45,13 +45,7 @@ const columns = [
   },
 ];
 
-const SuggestTagsButton = ({
-  owner,
-  variant = "primary",
-}: {
-  owner: WorkspaceType;
-  variant?: "primary" | "outline";
-}) => {
+const SuggestTagsButton = ({ owner }: { owner: WorkspaceType }) => {
   const sendNotification = useSendNotification();
   const [open, setOpen] = useState(false);
 
@@ -61,7 +55,7 @@ const SuggestTagsButton = ({
         label="Suggest tags"
         icon={SparklesIcon}
         onClick={() => setOpen(true)}
-        variant={variant}
+        variant="primary"
       />
       <TagsSuggestDialog
         owner={owner}
@@ -81,10 +75,10 @@ const SuggestTagsButton = ({
 };
 const NewTagButton = ({
   owner,
-  variant = "primary",
+  empty = false,
 }: {
   owner: WorkspaceType;
-  variant?: "primary" | "outline";
+  empty?: boolean;
 }) => {
   const sendNotification = useSendNotification();
   const [open, setOpen] = useState(false);
@@ -92,10 +86,10 @@ const NewTagButton = ({
   return (
     <>
       <Button
-        label="New tag"
+        label={empty ? "Add tag manually" : "New tag"}
         icon={PlusIcon}
         onClick={() => setOpen(true)}
-        variant={variant}
+        variant={empty ? "outline" : "primary"}
       />
       <TagCreationDialog
         owner={owner}
@@ -161,7 +155,7 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
           <SheetContainer>
             <div className="flex w-full flex-row justify-end">
               {rows.length > 0 && !isTagsLoading && (
-                <NewTagButton owner={owner} variant="primary" />
+                <NewTagButton owner={owner} />
               )}
             </div>
 
@@ -177,8 +171,8 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
               <EmptyCTA
                 action={
                   <div className="flex flex-row gap-2">
-                    <SuggestTagsButton owner={owner} variant="primary" />
-                    <NewTagButton owner={owner} variant="outline" />
+                    <SuggestTagsButton owner={owner} />
+                    <NewTagButton owner={owner} empty />
                   </div>
                 }
                 message="No tags have been created yet.  Let AI suggest tags for your agents, or add manually."
