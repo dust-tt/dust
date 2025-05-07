@@ -957,10 +957,10 @@ export async function createAgentConfiguration(
           );
           await group.setMembers(auth, editors, { transaction: t });
         } else {
-          const group = await GroupResource.fetchByAgentConfiguration(
+          const group = await GroupResource.fetchByAgentConfiguration({
             auth,
-            existingAgent
-          );
+            agentConfiguration: existingAgent,
+          });
           if (!group) {
             throw new Error(
               "Unexpected: agent should have exactly one editor group."
