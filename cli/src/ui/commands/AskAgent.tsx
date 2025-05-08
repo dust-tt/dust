@@ -256,9 +256,10 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
       // TODO::MM maybe here causes the screen to be cleared
       process.stdout.write("\x1bc"); // Clear screen
       
+      // Use ANSI color codes to make the prompt text blue
       const promptText = conversationId 
-        ? `What would you like to ask ${selectedAgent?.name} next? (continuing conversation) ` 
-        : `What would you like to ask ${selectedAgent?.name}? `;
+        ? `\x1b[34mWhat would you like to ask ${selectedAgent?.name} next? (continuing conversation) \x1b[0m\n` 
+        : `\x1b[34mWhat would you like to ask ${selectedAgent?.name}? \x1b[0m\n`;
       
       rl.question(promptText, (input) => {
         if (input.trim()) {
@@ -359,11 +360,12 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
     return (
       <Box flexDirection="column">
         <Box marginBottom={1}>
-          <Text bold>Agent: </Text>
+          <Text bold color="blue">Agent: </Text>
           <Text>{selectedAgent?.name}</Text>
         </Box>
-        <Box marginBottom={1}>
-          <Text bold>Question: </Text>
+        <Box marginBottom={1} flexDirection="column">
+          <Text bold color="blue">Question:</Text>
+          <Box marginY={1}></Box>
           <Text>{question}</Text>
         </Box>
         <Box marginBottom={1}>
@@ -411,18 +413,18 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
         )}
         
         <Box marginBottom={1}>
-          <Text bold>Question: </Text>
+          <Text bold color="blue">Question: </Text>
           <Text>{question}</Text>
         </Box>
         <Box flexDirection="column" marginTop={1}>
-          <Text bold>Response:</Text>
+          <Text bold color="blue">Response:</Text>
           <Box marginTop={1} flexDirection="column">
             <Text>{answer}</Text>
           </Box>
         </Box>
         <Box marginTop={2} flexDirection="column">
-          <Text>Type and Enter to ask a follow-up question.</Text>
-          <Text dimColor>Press Ctrl+C to exit.</Text>
+          <Text bold color="blue" >Type and Enter to ask a follow-up question. {"\n"}</Text>
+          <Text dimColor>Press Ctrl+C to exit. {"\n"}</Text>
         </Box>
       </Box>
     );
@@ -437,7 +439,7 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
 
     return (
       <Box flexDirection="column">
-        <Text bold>Select an agent to ask a question:</Text>
+        <Text bold color="blue">Select an agent to ask a question:</Text>
         <Box marginTop={1}>
           <MultiSelectWithSearch<AgentItem>
             items={agentItems}
