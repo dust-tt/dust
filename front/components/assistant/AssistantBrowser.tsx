@@ -6,8 +6,11 @@ import {
   CardGrid,
   Chip,
   CompanyIcon,
+  DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuTrigger,
   LockIcon,
   MoreIcon,
   PencilSquareIcon,
@@ -26,7 +29,7 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
@@ -116,10 +119,27 @@ export function AssistantBrowser({
   const router = useRouter();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
+  const [sortType, setSortType] = useState<"popularity" | "alphabetical">(
+    "popularity"
+  );
+
+  const sortAgents = useCallback(
+    (a: LightAgentConfigurationType, b: LightAgentConfigurationType) => {
+      if (sortType === "popularity") {
+        return (
+          (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0) ||
+          a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+        );
+      }
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    },
+    [sortType]
+  );
+
   const agentsByTab = useMemo(() => {
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter((a) => a.status === "active")
-      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+      .sort(sortAgents);
 
     return {
       // do not show the "all" tab while still loading all agents
@@ -131,7 +151,8 @@ export function AssistantBrowser({
         .sort(
           (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
         )
-        .slice(0, 6),
+        .slice(0, 6)
+        .sort(sortAgents),
       untagged: allAgents.filter((a) => a.tags.length === 0),
       // TODO(agent-discovery): Remove this once old scopes are removed
       personal: allAgents.filter((a) => a.scope === "private"),
@@ -139,7 +160,7 @@ export function AssistantBrowser({
       workspace: allAgents.filter((a) => a.scope === "workspace"),
       // END-TODO(agent-discovery)
     };
-  }, [agentConfigurations]);
+  }, [agentConfigurations, sortAgents]);
 
   const { filteredAgents, filteredTags, uniqueTags } = useMemo(() => {
     const tags = agentConfigurations.flatMap((a) => a.tags);
@@ -161,10 +182,12 @@ export function AssistantBrowser({
       )
 
       .sort((a, b) => {
-        return compareForFuzzySort(
-          assistantSearch,
-          a.name.toLowerCase(),
-          b.name.toLowerCase()
+        return (
+          compareForFuzzySort(
+            assistantSearch,
+            a.name.toLowerCase(),
+            b.name.toLowerCase()
+          ) || (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
         );
       });
 
@@ -313,6 +336,32 @@ export function AssistantBrowser({
                   icon={tab.icon}
                 />
               ))}
+              <div className="ml-auto"></div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    isSelect
+                    variant="outline"
+                    label={
+                      sortType === "popularity"
+                        ? "By popularity"
+                        : "Alphabetical"
+                    }
+                    size="sm"
+                  />
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    label="By popularity"
+                    onClick={() => setSortType("popularity")}
+                  />
+                  <DropdownMenuItem
+                    label="Alphabetical"
+                    onClick={() => setSortType("alphabetical")}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
             </TabsList>
           </Tabs>
           <ScrollBar orientation="horizontal" className="hidden" />
