@@ -116,6 +116,11 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
           return;
         }
 
+        // log only 1 time on 100 approximately
+        if (Math.random() < 0.99) {
+          return;
+        }
+
         const whereClause = options.where;
 
         if (
