@@ -19,7 +19,7 @@ export const AdditionMark = Mark.create({
     return [
       "span",
       {
-        class: "addition text-green-700 bg-green-200",
+        class: "addition text-success-700 bg-success-100",
       },
       0,
     ];
