@@ -58,6 +58,7 @@ export function InstructionScreen({
   setDoTypewriterEffect,
   agentConfigurationId,
   models,
+  setIsInstructionDiffMode,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -72,6 +73,7 @@ export function InstructionScreen({
   setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
   agentConfigurationId: string | null;
   models: ModelConfigurationType[];
+  setIsInstructionDiffMode: (isDiffMode: boolean) => void;
 }) {
   const editor = useEditor({
     extensions: [
@@ -296,6 +298,7 @@ export function InstructionScreen({
                   onConfigChange={(config) => {
                     setCompareVersion(config);
                     setDiffMode(true);
+                    setIsInstructionDiffMode(true);
                   }}
                   currentConfig={compareVersion}
                 />
@@ -322,6 +325,8 @@ export function InstructionScreen({
               onClick={() => {
                 setDiffMode(false);
                 editor?.commands.exitDiff();
+                setIsInstructionDiffMode(false);
+                setCompareVersion(null);
               }}
               tooltip="Exit diff mode"
             />
