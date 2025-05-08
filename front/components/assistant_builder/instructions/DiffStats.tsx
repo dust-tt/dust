@@ -16,23 +16,23 @@ export const DiffStats = ({ editor }: { editor: Editor | null }) => {
 
   return (
     <div className="my-2 inline-flex items-center space-x-3 text-sm">
-        <Tooltip
-          label={`${addedWordCount} word${addedWordCount > 1 ? "s" : ""} added to the prompt`}
-          trigger={
-            <div className="text-success-foreground inline-flex items-center rounded bg-success-100 px-2 py-0.5">
-              +{addedWordCount}
-            </div>
-          }
-        />
+      <Tooltip
+        label={`${addedWordCount} word${addedWordCount > 1 ? "s" : ""} added to the prompt`}
+        trigger={
+          <div className="text-success-foreground inline-flex items-center rounded bg-success-100 px-2 py-0.5">
+            +{addedWordCount}
+          </div>
+        }
+      />
 
-        <Tooltip
-          label={`${removedWordCount} word${removedWordCount > 1 ? "s" : ""} removed from the prompt`}
-          trigger={
-            <div className="inline-flex items-center rounded bg-warning-100 px-2 py-0.5 text-warning">
-              -{removedWordCount}
-            </div>
-          }
-        />
+      <Tooltip
+        label={`${removedWordCount} word${removedWordCount > 1 ? "s" : ""} removed from the prompt`}
+        trigger={
+          <div className="inline-flex items-center rounded bg-warning-100 px-2 py-0.5 text-warning">
+            -{removedWordCount}
+          </div>
+        }
+      />
 
       <div className="inline-flex items-center space-x-1">
         {addedWordCount > 0 && (
