@@ -10,9 +10,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_router",
   "ask_agent",
-  "authentication_debugger",
   "child_agent_debugger",
-  "data_sources_debugger",
   "file_generation",
   "github",
   "hubspot",
@@ -22,7 +20,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "query_tables",
   "reasoning_v2",
   "search",
-  "tables_debugger",
   "think",
   "web_search_&_browse_v2",
 ] as const;
@@ -111,26 +108,8 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
 
   // Dev
-  data_sources_debugger: {
-    id: 1000,
-    availability: "manual",
-    flag: "dev_mcp_actions",
-  },
   child_agent_debugger: {
     id: 1001,
-    availability: "manual",
-    flag: "dev_mcp_actions",
-  },
-  authentication_debugger: {
-    id: 1002,
-    availability: "manual",
-    flag: "dev_mcp_actions",
-    tools_stakes: {
-      hello_world: "never_ask",
-    },
-  },
-  tables_debugger: {
-    id: 1003,
     availability: "manual",
     flag: "dev_mcp_actions",
   },

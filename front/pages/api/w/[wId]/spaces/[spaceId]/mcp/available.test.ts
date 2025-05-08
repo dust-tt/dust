@@ -33,7 +33,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
 
     // Create some servers
     await FeatureFlagFactory.basic(
-      INTERNAL_MCP_SERVERS["authentication_debugger"]
+      INTERNAL_MCP_SERVERS["primitive_types_debugger"]
         .flag as WhitelistableFeature,
       workspace
     );
@@ -41,7 +41,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     // Internal server in the right workspace
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
-      "authentication_debugger",
+      "primitive_types_debugger",
       t
     );
 

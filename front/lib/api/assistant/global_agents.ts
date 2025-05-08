@@ -141,7 +141,8 @@ function _getDefaultWebActionsForGlobalAgent({
 
 function _getAgentRouterToolsConfiguration(
   agentId: GLOBAL_AGENTS_SID,
-  mcpServerView: MCPServerViewResource | null
+  mcpServerView: MCPServerViewResource | null,
+  internalMCPServerId: string
 ): PlatformMCPServerConfigurationType[] {
   if (!mcpServerView) {
     return [];
@@ -155,6 +156,7 @@ function _getAgentRouterToolsConfiguration(
       description:
         "List the published agents of the workspace. Useful to route to the best matching agent.",
       mcpServerViewId: mcpServerView.sId,
+      internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -246,7 +248,11 @@ function _getHelperGlobalAgent({
       }),
       ..._getAgentRouterToolsConfiguration(
         GLOBAL_AGENTS_SID.HELPER,
-        agentRouterMCPServerView
+        agentRouterMCPServerView,
+        internalMCPServerNameToSId({
+          name: "agent_router",
+          workspaceId: owner.id,
+        })
       ),
     ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
@@ -1422,7 +1428,11 @@ function _getDustGlobalAgent(
   actions.push(
     ..._getAgentRouterToolsConfiguration(
       GLOBAL_AGENTS_SID.DUST,
-      agentRouterMCPServerView
+      agentRouterMCPServerView,
+      internalMCPServerNameToSId({
+        name: "agent_router",
+        workspaceId: owner.id,
+      })
     )
   );
 
