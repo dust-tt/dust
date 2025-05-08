@@ -453,13 +453,6 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
     );
   }
 
-  return (
-    <Box>
-      <Text color="green">
-        <Spinner type="dots" /> Loading...
-      </Text>
-    </Box>
-  );
 };
 
 export default AskAgent;
