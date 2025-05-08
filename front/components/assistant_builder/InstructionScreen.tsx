@@ -337,11 +337,17 @@ export function InstructionScreen({
               icon={ArrowPathIcon}
               onClick={() => {
                 if (compareVersion?.instructions) {
-                  editor?.commands.exitDiff();
-                  editor?.commands.setContent(
-                    tipTapContentFromPlainText(compareVersion.instructions)
-                  );
+                  setEdited(true);
+                  setBuilderState((state) => ({
+                    ...state,
+                    instructions: compareVersion.instructions || "",
+                  }));
+
+                  setCurrentConfig(compareVersion);
+                  setCompareVersion(null);
+
                   setDiffMode(false);
+                  editor?.commands.exitDiff();
                 }
               }}
               tooltip="Restore this version"
