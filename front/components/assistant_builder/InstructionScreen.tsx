@@ -1,10 +1,6 @@
 import {
+  ArrowPathIcon,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  HistoryIcon,
   Page,
   PencilSquareIcon,
 } from "@dust-tt/sparkle";
@@ -14,12 +10,14 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
+import { DiffStats } from "@app/components/assistant_builder/instructions/DiffStats";
 import { InstructionSuggestions } from "@app/components/assistant_builder/instructions/InstructionSuggestions";
 import { PromptDiffExtension } from "@app/components/assistant_builder/instructions/PromptDiffExtension";
+import { PromptHistory } from "@app/components/assistant_builder/instructions/PromptHistory";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import {
   plainTextFromTipTapContent,
@@ -246,6 +244,14 @@ export function InstructionScreen({
     }
   }, [diffMode, compareVersion, currentConfig, editor]);
 
+  const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+  });
+
   return (
     <div className="flex grow flex-col gap-4">
       <div className="flex flex-col sm:flex-row">
@@ -259,70 +265,88 @@ export function InstructionScreen({
           </Page.P>
         </div>
         <div className="flex-grow" />
-        <div className="mt-2 flex items-center gap-2 self-end">
-          {!diffMode && (
-            <AdvancedSettings
-              generationSettings={builderState.generationSettings}
-              setGenerationSettings={(generationSettings) => {
-                setEdited(true);
-                setBuilderState((state) => ({
-                  ...state,
-                  generationSettings: {
-                    ...generationSettings,
-                    responseFormat: isSupportingResponseFormat(
-                      generationSettings.modelSettings.modelId
-                    )
-                      ? generationSettings.responseFormat
-                      : undefined,
-                  },
-                }));
-              }}
-              models={models}
-            />
-          )}
-          {configsWithUniqueInstructions &&
-            configsWithUniqueInstructions.length > 1 &&
-            currentConfig && (
-              <div>
-                {!diffMode ? (
-                  <Button
-                    variant="outline"
-                    icon={HistoryIcon}
-                    size="sm"
-                    onClick={() => {
-                      setDiffMode(true);
-                      setCompareVersion(configsWithUniqueInstructions[1]);
-                    }}
-                    tooltip="Compare with previous versions"
-                  />
-                ) : compareVersion ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      Comparing current with:
-                    </span>
-                    <PromptHistory
-                      // Only show previous versions (exclude current)
-                      history={configsWithUniqueInstructions.slice(1)}
-                      onConfigChange={setCompareVersion}
-                      currentConfig={compareVersion}
-                      isDiffMode={diffMode}
-                    />
-                    <Button
-                      icon={PencilSquareIcon}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setDiffMode(false);
-                        editor?.commands.exitDiff();
-                      }}
-                      tooltip="Edit current prompt"
-                    />
-                  </div>
-                ) : null}
-              </div>
+
+        <div className="mt-2 flex w-full flex-col gap-2 sm:w-auto">
+          <div className="flex items-center gap-2 self-end">
+            {!diffMode && (
+              <AdvancedSettings
+                generationSettings={builderState.generationSettings}
+                setGenerationSettings={(generationSettings) => {
+                  setEdited(true);
+                  setBuilderState((state) => ({
+                    ...state,
+                    generationSettings: {
+                      ...generationSettings,
+                      responseFormat: isSupportingResponseFormat(
+                        generationSettings.modelSettings.modelId
+                      )
+                        ? generationSettings.responseFormat
+                        : undefined,
+                    },
+                  }));
+                }}
+                models={models}
+              />
             )}
+
+            {configsWithUniqueInstructions &&
+              configsWithUniqueInstructions.length > 1 && (
+                <PromptHistory
+                  history={configsWithUniqueInstructions.slice(1)}
+                  onConfigChange={(config) => {
+                    setCompareVersion(config);
+                    setDiffMode(true);
+                  }}
+                  currentConfig={compareVersion}
+                />
+              )}
+          </div>
         </div>
       </div>
+
+      {diffMode && compareVersion && (
+        <div className="mb-2 flex w-full items-center justify-between">
+          <div className="flex items-center gap-2">
+            {compareVersion?.versionCreatedAt && (
+              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Comparing with version from:{" "}
+                {dateFormatter.format(
+                  new Date(compareVersion.versionCreatedAt)
+                )}
+              </span>
+            )}
+            <Button
+              icon={PencilSquareIcon}
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setDiffMode(false);
+                editor?.commands.exitDiff();
+              }}
+              tooltip="Exit diff mode"
+            />
+
+            <Button
+              variant="outline"
+              size="sm"
+              icon={ArrowPathIcon}
+              onClick={() => {
+                if (compareVersion?.instructions) {
+                  editor?.commands.exitDiff();
+                  editor?.commands.setContent(
+                    tipTapContentFromPlainText(compareVersion.instructions)
+                  );
+                  setDiffMode(false);
+                }
+              }}
+              tooltip="Restore this version"
+            />
+          </div>
+
+          <DiffStats editor={editor} />
+        </div>
+      )}
+
       <div className="flex h-full flex-col gap-1">
         <div className="relative h-full min-h-60 grow gap-1 p-px">
           <EditorContent
@@ -377,61 +401,3 @@ const InstructionsCharacterCount = ({
     </span>
   );
 };
-
-function PromptHistory({
-  history,
-  onConfigChange,
-  currentConfig,
-  isDiffMode,
-}: {
-  history: LightAgentConfigurationType[];
-  onConfigChange: (config: LightAgentConfigurationType) => void;
-  currentConfig: LightAgentConfigurationType;
-  isDiffMode: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const latestConfig = history[0];
-
-  const getStringRepresentation = useCallback(
-    (config: LightAgentConfigurationType) => {
-      const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-      });
-      return config.version === latestConfig?.version && !isDiffMode
-        ? "Latest Version"
-        : config.versionCreatedAt
-          ? dateFormatter.format(new Date(config.versionCreatedAt))
-          : `v${config.version}`;
-    },
-    [isDiffMode, latestConfig?.version]
-  );
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          label={getStringRepresentation(currentConfig)}
-          variant="outline"
-          size="sm"
-          isSelect
-          onClick={() => setIsOpen(!isOpen)}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {history.map((config) => (
-          <DropdownMenuItem
-            key={config.version}
-            label={getStringRepresentation(config)}
-            onClick={() => {
-              onConfigChange(config);
-            }}
-          />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
