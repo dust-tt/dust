@@ -96,7 +96,7 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
 
   const askQuestion = async (agent: AgentConfiguration, questionText: string) => {
     setIsProcessingQuestion(true);
-    // setAnswer(null);
+    setAnswer(null);
 
     const dustClient = await getDustClient();
     if (!dustClient) {
@@ -197,7 +197,6 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
       for await (const event of streamRes.value.eventStream) {
         if (event.type === "generation_tokens") {
           responseText += event.text;
-          setAnswer(responseText);
         } else if (event.type === "agent_error") {
           setError(`Agent error: ${event.error.message}`);
           break;
@@ -207,7 +206,8 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
         } else if (event.type === "agent_message_success" || event.type === "agent_generation_success") {
           // Complete
           setIsComplete(true);
-          
+          setAnswer(responseText);
+
           // Add to conversation history (only if this is a new message)
           setConversationHistory(prev => {
             // Check if this exact question-answer pair already exists
@@ -253,6 +253,7 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
         output: process.stdout,
       });
 
+      // TODO::MM maybe here causes the screen to be cleared
       process.stdout.write("\x1bc"); // Clear screen
       
       const promptText = conversationId 
@@ -420,7 +421,7 @@ const AskAgent: FC<AskAgentProps> = ({ sId: requestedSId, question: initialQuest
           </Box>
         </Box>
         <Box marginTop={2} flexDirection="column">
-          <Text>To ask a follow-up question, press Enter.</Text>
+          <Text>Type and Enter to ask a follow-up question.</Text>
           <Text dimColor>Press Ctrl+C to exit.</Text>
         </Box>
       </Box>
