@@ -2,6 +2,8 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
 
+import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+
 import { findMatchingSubSchemas } from "./json_schemas";
 
 describe("JSON Schema Utilities", () => {
@@ -220,6 +222,40 @@ describe("JSON Schema Utilities", () => {
       expect(Object.keys(result)).toContain(
         "workflow.steps.items.action.executor"
       );
+    });
+
+    it("should not match other things when schema is nullable", () => {
+      const mainSchema: JSONSchema = {
+        type: "object",
+        properties: {
+          requiredString: {
+            type: "object",
+            properties: {
+              value: {
+                type: "string",
+              },
+              mimeType: {
+                type: "string",
+                const: "application/vnd.dust.tool-input.string",
+              },
+            },
+            required: ["value", "mimeType"],
+            additionalProperties: false,
+            $schema: "http://json-schema.org/draft-07/schema#",
+          },
+          optionalTimeFrame:
+            ConfigurableToolInputJSONSchemas[
+              INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+            ],
+        },
+        required: ["optionalString"],
+      };
+
+      const r = findMatchingSubSchemas(
+        mainSchema,
+        INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+      );
+      expect(Object.keys(r)).toStrictEqual(["optionalTimeFrame"]);
     });
   });
 });

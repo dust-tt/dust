@@ -18,7 +18,6 @@ import type {
   MCPToolConfigurationType,
   PlatformMCPServerConfigurationType,
   PlatformMCPToolConfigurationType,
-  WithToolNameMetadata,
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -45,8 +44,8 @@ import {
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isMCPActionConfiguration,
   isMCPServerConfiguration,
+  isMCPToolConfiguration,
   isPlatformMCPServerConfiguration,
   isPlatformMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -83,7 +82,7 @@ const TOOL_NAME_SEPARATOR = "___";
 function makePlatformMCPToolConfigurations(
   config: PlatformMCPServerConfigurationType,
   tools: PlatformMCPToolTypeWithStakeLevel[]
-): WithToolNameMetadata<PlatformMCPToolConfigurationType>[] {
+): PlatformMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -92,6 +91,7 @@ function makePlatformMCPToolConfigurations(
     inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
     id: config.id,
     mcpServerViewId: config.mcpServerViewId,
+    internalMCPServerId: config.internalMCPServerId,
     dataSources: config.dataSources || [], // Ensure dataSources is always an array
     tables: config.tables,
     availability: tool.availability,
@@ -109,7 +109,7 @@ function makePlatformMCPToolConfigurations(
 function makeLocalMCPToolConfigurations(
   config: LocalMCPServerConfigurationType,
   tools: LocalMCPToolTypeWithStakeLevel[]
-): WithToolNameMetadata<LocalMCPToolConfigurationType>[] {
+): LocalMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -144,7 +144,7 @@ export async function* tryCallMCPTool(
   inputs: Record<string, unknown> | undefined,
   agentLoopContext: AgentLoopContextType
 ): AsyncGenerator<MCPCallToolEvent, void> {
-  if (!isMCPActionConfiguration(agentLoopContext.actionConfiguration)) {
+  if (!isMCPToolConfiguration(agentLoopContext.actionConfiguration)) {
     yield {
       type: "result",
       result: new Err(
@@ -308,8 +308,9 @@ async function getMCPClientConnectionParams(
   }
 ): Promise<Result<MCPConnectionParams, Error>> {
   if (
-    isPlatformMCPServerConfiguration(config) ||
-    isPlatformMCPToolConfiguration(config)
+    (isMCPServerConfiguration(config) &&
+      isPlatformMCPServerConfiguration(config)) ||
+    (isMCPToolConfiguration(config) && isPlatformMCPToolConfiguration(config))
   ) {
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
@@ -408,42 +409,6 @@ export async function tryListMCPTools(
 
       const toolConfigurations = toolsRes.value;
 
-      // This handles the case where the MCP server configuration is using pre-configured data sources
-      // or tables.
-      // We add the description of the data sources or tables to the tool description so that the model
-      // has more information to make the right choice.
-      // This replicates the current behavior of the Retrieval action for example.
-      let extraDescription: string = "";
-
-      // Only do it when there is a single tool configuration as we only have one description to add.
-      if (toolConfigurations.length === 1 && action.description) {
-        const hasDataSourceConfiguration =
-          Object.keys(
-            findMatchingSubSchemas(
-              toolConfigurations[0].inputSchema,
-              INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-            )
-          ).length > 0;
-
-        const hasTableConfiguration =
-          Object.keys(
-            findMatchingSubSchemas(
-              toolConfigurations[0].inputSchema,
-              INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
-            )
-          ).length > 0;
-
-        if (hasDataSourceConfiguration && hasTableConfiguration) {
-          // Might be confusing for the model if we end up in this situation,
-          // which is not a use case we have now.
-          extraDescription += `\nDescription of the data sources and tables:\n${action.description}`;
-        } else if (hasDataSourceConfiguration) {
-          extraDescription += `\nDescription of the data sources:\n${action.description}`;
-        } else if (hasTableConfiguration) {
-          extraDescription += `\nDescription of the tables:\n${action.description}`;
-        }
-      }
-
       const tools = [];
 
       for (const toolConfig of toolConfigurations) {
@@ -454,6 +419,42 @@ export async function tryListMCPTools(
         if (toolName.isErr()) {
           return new Err(toolName.error);
         }
+
+        // This handles the case where the MCP server configuration is using pre-configured data sources
+        // or tables.
+        // We add the description of the data sources or tables to the tool description so that the model
+        // has more information to make the right choice.
+        // This replicates the current behavior of the Retrieval action for example.
+        let extraDescription: string = "";
+
+        if (action.description) {
+          const hasDataSourceConfiguration =
+            Object.keys(
+              findMatchingSubSchemas(
+                toolConfigurations[0].inputSchema,
+                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+              )
+            ).length > 0;
+
+          const hasTableConfiguration =
+            Object.keys(
+              findMatchingSubSchemas(
+                toolConfigurations[0].inputSchema,
+                INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
+              )
+            ).length > 0;
+
+          if (hasDataSourceConfiguration && hasTableConfiguration) {
+            // Might be confusing for the model if we end up in this situation,
+            // which is not a use case we have now.
+            extraDescription += `\nDescription of the data sources and tables:\n${action.description}`;
+          } else if (hasDataSourceConfiguration) {
+            extraDescription += `\nDescription of the data sources:\n${action.description}`;
+          } else if (hasTableConfiguration) {
+            extraDescription += `\nDescription of the tables:\n${action.description}`;
+          }
+        }
+
         tools.push({
           ...toolConfig,
           originalName: toolConfig.name,

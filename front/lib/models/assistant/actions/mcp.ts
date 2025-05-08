@@ -23,11 +23,18 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
   declare additionalConfiguration: Record<string, boolean | number | string>;
 
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
+  declare mcpServerView: NonAttribute<MCPServerViewModel>;
+
+  // Hold the SID of the MCP server if it's an internal one, as a convenience to avoid
+  // having to fetch the MCP server view when we need to identify the internal MCP server.
+  declare internalMCPServerId: string | null;
 
   declare name: string | null;
 
-  // This is a temporary override for the tool description when we only have one tool
+  // This is a temporary override for the tool description when we have tools using datasources or tables
   // to keep backward compatibility with the previous action behavior (like retrieval).
+  // It allows us to show the datasource description to the model.
+  // Note: singleToolDescriptionOverride is wrong, it should be toolsExtraDescription or something like that.
   declare singleToolDescriptionOverride: string | null;
 }
 
@@ -92,6 +99,10 @@ AgentMCPServerConfiguration.init(
         key: "id",
       },
     },
+    internalMCPServerId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -131,6 +142,7 @@ MCPServerViewModel.hasMany(AgentMCPServerConfiguration, {
 });
 AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
+  as: "mcpServerView",
 });
 
 export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {

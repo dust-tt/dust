@@ -15,7 +15,7 @@ import type {
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";
@@ -281,7 +281,7 @@ export function MCPAction({
           owner={owner}
         />
       )}
-      {requirements.requiresTimeFrameConfiguration && (
+      {requirements.mayRequiresTimeFrameConfiguration && (
         <TimeFrameConfigurationSection
           onConfigUpdate={(timeFrame: TimeFrame | null) => {
             handleConfigUpdate((old) => ({ ...old, timeFrame }));
@@ -338,6 +338,13 @@ export function hasErrorActionMCP(
     ) {
       return "Please select a child agent.";
     }
+    if (
+      requirements.requiresReasoningConfiguration &&
+      !action.configuration.reasoningModel
+    ) {
+      return "Please select a reasoning model.";
+    }
+
     const missingFields = [];
     for (const key of requirements.requiredStrings) {
       if (!(key in action.configuration.additionalConfiguration)) {

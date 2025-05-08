@@ -1,17 +1,14 @@
-import type {
-  ConfigurableToolInputType,
-  InternalToolInputMimeType,
-} from "@dust-tt/client";
-import {
-  ConfigurableToolInputJSONSchemas,
-  INTERNAL_MIME_TYPES,
-} from "@dust-tt/client";
+import type { InternalToolInputMimeType } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import Ajv from "ajv";
 import type {
   JSONSchema7 as JSONSchema,
   JSONSchema7Definition as JSONSchemaDefinition,
 } from "json-schema";
 import { isEqual } from "lodash";
+
+import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 /**
  * Type guard to check if a value is a JSONSchema object
@@ -62,6 +59,7 @@ function schemasAreEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
   if (!isEqual(schemaA.items, schemaB.items)) {
     return false;
   }
+
   return isEqual(schemaA.properties, schemaB.properties);
 }
 
@@ -148,6 +146,10 @@ export function findMatchingSubSchemas(
     // Skip properties and items as they are handled separately above
     if (
       key === "properties" ||
+      key === "required" ||
+      key === "anyOf" ||
+      key === "enum" ||
+      key === "type" ||
       (key === "items" && inputSchema.type === "array")
     ) {
       continue;

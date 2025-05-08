@@ -1,12 +1,12 @@
-import {
-  CHILD_AGENT_CONFIGURATION_URI_PATTERN,
-  INTERNAL_MIME_TYPES,
-} from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  CHILD_AGENT_CONFIGURATION_URI_PATTERN,
+  ConfigurableToolInputSchemas,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import apiConfig from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
