@@ -126,9 +126,9 @@ const CliChat: FC<CliChatProps> = ({
               mentions: [{ configurationId: selectedAgent.sId }],
               context: {
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                username: "cli-user",
-                fullName: "CLI User",
-                email: null,
+                username: me.username,
+                fullName: me.fullName,
+                email: me.email,
                 origin: "api",
               },
             },
