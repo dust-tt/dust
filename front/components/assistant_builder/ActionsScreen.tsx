@@ -175,12 +175,12 @@ function actionIcon(
 
   if (action.type === "DATA_VISUALIZATION") {
     return (
-      <Avatar icon={DATA_VISUALIZATION_SPECIFICATION.cardIcon} size="sm" />
+      <Avatar icon={DATA_VISUALIZATION_SPECIFICATION.cardIcon} size="xs" />
     );
   }
 
   return (
-    <Avatar icon={ACTION_SPECIFICATIONS[action.type].cardIcon} size="sm" />
+    <Avatar icon={ACTION_SPECIFICATIONS[action.type].cardIcon} size="xs" />
   );
 }
 
