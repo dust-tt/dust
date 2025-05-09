@@ -12,16 +12,19 @@ import {
 import { useCallback } from "react";
 import React from "react";
 
+import { GaugeDiff } from "@app/components/assistant_builder/instructions/ChangeIndicator";
 import type { LightAgentConfigurationType } from "@app/types";
 
 export function PromptHistory({
   history,
-  onConfigChange,
-  currentConfig,
+  onSelect,
+  latestConfig,
+  selectedConfig,
 }: {
   history: LightAgentConfigurationType[];
-  onConfigChange: (config: LightAgentConfigurationType) => void;
-  currentConfig: LightAgentConfigurationType | null;
+  onSelect: (config: LightAgentConfigurationType) => void;
+  latestConfig: LightAgentConfigurationType;
+  selectedConfig: LightAgentConfigurationType | null;
 }) {
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
@@ -58,13 +61,13 @@ export function PromptHistory({
         <DropdownMenuSeparator />
 
         <DropdownMenuRadioGroup
-          value={currentConfig?.version.toString()}
+          value={selectedConfig?.version.toString() ?? ""}
           onValueChange={(selectedValue) => {
-            const selectedConfig = history.find(
-              (config) => config.version.toString() === selectedValue
+            const config = history.find(
+              (c) => c.version.toString() === selectedValue
             );
-            if (selectedConfig) {
-              onConfigChange(selectedConfig);
+            if (config) {
+              onSelect(config);
             }
           }}
         >
@@ -72,8 +75,15 @@ export function PromptHistory({
             <DropdownMenuRadioItem
               key={config.version}
               value={config.version.toString()}
-              label={formatVersionLabel(config)}
-            />
+            >
+              <div className="flex w-full items-center justify-between">
+                <span>{formatVersionLabel(config)}</span>
+                <GaugeDiff
+                  original={config.instructions || ""}
+                  updated={latestConfig.instructions || ""}
+                />
+              </div>
+            </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
