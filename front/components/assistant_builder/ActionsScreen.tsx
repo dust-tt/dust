@@ -389,7 +389,7 @@ export default function ActionsScreen({
               >
                 <p>
                   We're enhancing agents to make them smarter and more
-                  versatile. You can now addmultiple tools to an agent, rather
+                  versatile. You can now add multiple tools to an agent, rather
                   than being limited to a single action.
                 </p>
                 <br />
