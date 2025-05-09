@@ -12,8 +12,8 @@ import {
 import { useCallback } from "react";
 import React from "react";
 
-import type { LightAgentConfigurationType } from "@app/types";
 import { GaugeDiff } from "@app/components/assistant_builder/instructions/GaugeDiff";
+import type { LightAgentConfigurationType } from "@app/types";
 
 interface InstructionHistoryProps {
   history: LightAgentConfigurationType[];
@@ -28,22 +28,21 @@ export function InstructionHistory({
   currentInstructions,
   selectedConfig,
 }: InstructionHistoryProps) {
-  const dateFormatter = new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    hour12: true,
-  });
-
   const formatVersionLabel = useCallback(
     (config: LightAgentConfigurationType) => {
+      const dateFormatter = new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      });
       return config.versionCreatedAt
         ? dateFormatter.format(new Date(config.versionCreatedAt))
         : `v${config.version}`;
     },
-    [dateFormatter]
+    []
   );
 
   return (
