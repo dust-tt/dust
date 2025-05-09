@@ -1,8 +1,10 @@
 import {
   ArrowPathIcon,
   Button,
+  Label,
   Page,
-  PencilSquareIcon,
+  Separator,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
@@ -14,7 +16,6 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
-import { DiffStats } from "@app/components/assistant_builder/instructions/DiffStats";
 import { InstructionSuggestions } from "@app/components/assistant_builder/instructions/InstructionSuggestions";
 import { PromptDiffExtension } from "@app/components/assistant_builder/instructions/PromptDiffExtension";
 import { PromptHistory } from "@app/components/assistant_builder/instructions/PromptHistory";
@@ -246,12 +247,13 @@ export function InstructionScreen({
     }
   }, [diffMode, compareVersion, currentConfig, editor]);
 
-  const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
+  const dateFormatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
-    month: "short",
+    month: "long",
     day: "numeric",
     hour: "numeric",
     minute: "numeric",
+    hour12: true,
   });
 
   return (
@@ -306,20 +308,19 @@ export function InstructionScreen({
           </div>
         </div>
       </div>
+      <Separator />
 
       {diffMode && compareVersion && (
-        <div className="mb-2 flex w-full items-center justify-between">
-          <div className="flex items-center gap-2">
-            {compareVersion?.versionCreatedAt && (
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Comparing with version from:{" "}
-                {dateFormatter.format(
-                  new Date(compareVersion.versionCreatedAt)
-                )}
-              </span>
-            )}
+        <>
+          {compareVersion?.versionCreatedAt && (
+            <Label>
+              Comparing with{" "}
+              {dateFormatter.format(new Date(compareVersion.versionCreatedAt))}
+            </Label>
+          )}
+          <div className="flex gap-2">
             <Button
-              icon={PencilSquareIcon}
+              icon={XMarkIcon}
               variant="outline"
               size="sm"
               onClick={() => {
@@ -328,11 +329,11 @@ export function InstructionScreen({
                 setIsInstructionDiffMode(false);
                 setCompareVersion(null);
               }}
-              tooltip="Exit diff mode"
+              label="Leave comparison mode"
             />
 
             <Button
-              variant="outline"
+              variant="warning"
               size="sm"
               icon={ArrowPathIcon}
               onClick={() => {
@@ -350,12 +351,11 @@ export function InstructionScreen({
                   editor?.commands.exitDiff();
                 }
               }}
-              tooltip="Restore this version"
+              label="Restore this version"
             />
           </div>
-
-          <DiffStats editor={editor} />
-        </div>
+        </>
+        // <DiffStats editor={editor} />
       )}
 
       <div className="flex h-full flex-col gap-1">
