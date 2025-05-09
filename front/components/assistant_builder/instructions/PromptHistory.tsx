@@ -13,7 +13,7 @@ import { useCallback } from "react";
 import React from "react";
 
 import type { LightAgentConfigurationType } from "@app/types";
-import { GaugeDiff } from "@app/components/assistant_builder/instructions/ChangeIndicator";
+import { GaugeDiff } from "@app/components/assistant_builder/instructions/GaugeDiff";
 
 interface PromptHistoryProps {
   history: LightAgentConfigurationType[];
