@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -23,7 +24,7 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 export const PatchLabsTranscriptsConfigurationBodySchema = t.partial({
   agentConfigurationId: t.string,
   isActive: t.boolean,
-  dataSourceViewId: t.union([t.number, t.null]),
+  dataSourceViewId: t.union([t.string, t.null]),
 });
 export type PatchTranscriptsConfiguration = t.TypeOf<
   typeof PatchLabsTranscriptsConfigurationBodySchema
@@ -129,7 +130,11 @@ async function handler(
       }
 
       if (dataSourceViewId !== undefined) {
-        await transcriptsConfiguration.setDataSourceViewId(dataSourceViewId);
+        const dataSourceView = dataSourceViewId
+          ? await DataSourceViewResource.fetchById(auth, dataSourceViewId)
+          : null;
+
+        await transcriptsConfiguration.setDataSourceView(dataSourceView);
 
         if (
           isProviderWithDefaultWorkspaceConfiguration(

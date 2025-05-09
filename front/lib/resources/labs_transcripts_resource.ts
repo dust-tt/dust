@@ -1,6 +1,6 @@
-import type { CreationAttributes } from "sequelize";
 import type {
   Attributes,
+  CreationAttributes,
   InferAttributes,
   ModelStatic,
   Transaction,
@@ -8,8 +8,11 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
-import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import {
+  LabsTranscriptsConfigurationModel,
+  LabsTranscriptsHistoryModel,
+} from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -186,12 +189,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isDefaultWorkspaceConfiguration: isDefault });
   }
 
-  async setDataSourceViewId(dataSourceViewId: number | null) {
-    if (dataSourceViewId === undefined) {
-      return;
-    }
-
-    return this.update({ dataSourceViewId });
+  async setDataSourceView(dataSourceView: DataSourceViewResource | null) {
+    return this.update({ dataSourceViewId: dataSourceView?.id ?? null });
   }
 
   static async fetchDefaultConfigurationForWorkspace(
