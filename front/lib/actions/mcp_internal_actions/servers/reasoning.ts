@@ -11,7 +11,6 @@ import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/util
 import { runReasoning } from "@app/lib/actions/reasoning";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import { MCP_PROGRESS_TOKEN } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { isModelId, isModelProviderId, isReasoningEffortId } from "@app/types";
 
@@ -41,7 +40,7 @@ function createServer(
     },
     async (
       { model: { modelId, providerId, temperature, reasoningEffort } },
-      { sendNotification }
+      { sendNotification, _meta }
     ) => {
       if (!agentLoopContext) {
         throw new Error("Unreachable: missing agentLoopContext.");
@@ -87,23 +86,25 @@ function createServer(
               actionOutput.content += text;
             }
 
-            const notification: MCPProgressNotificationType = {
-              method: "notifications/progress",
-              params: {
-                progress: 0,
-                total: 1,
-                progressToken: MCP_PROGRESS_TOKEN,
-                data: {
-                  label: "Thinking...",
-                  output: {
-                    type: "text",
-                    text,
+            if (_meta?.progressToken) {
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: _meta?.progressToken,
+                  data: {
+                    label: "Thinking...",
+                    output: {
+                      type: "text",
+                      text,
+                    },
                   },
                 },
-              },
-            };
+              };
 
-            await sendNotification(notification);
+              await sendNotification(notification);
+            }
 
             break;
           }

@@ -54,7 +54,6 @@ import type {
   MCPToolType,
   PlatformMCPToolTypeWithStakeLevel,
 } from "@app/lib/api/mcp";
-import { MCP_PROGRESS_TOKEN } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -63,7 +62,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import { findMatchingSubSchemas } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
@@ -142,7 +141,12 @@ type MCPCallToolEvent =
 export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
-  agentLoopContext: AgentLoopContextType
+  agentLoopContext: AgentLoopContextType,
+  {
+    progressToken,
+  }: {
+    progressToken: ModelId;
+  }
 ): AsyncGenerator<MCPCallToolEvent, void> {
   if (!isMCPToolConfiguration(agentLoopContext.actionConfiguration)) {
     yield {
@@ -217,7 +221,9 @@ export async function* tryCallMCPTool(
       {
         name: agentLoopContext.actionConfiguration.originalName,
         arguments: inputs,
-        progressToken: MCP_PROGRESS_TOKEN,
+        _meta: {
+          progressToken,
+        },
       },
       undefined,
       {

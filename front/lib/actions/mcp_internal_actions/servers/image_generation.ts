@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import { MCP_PROGRESS_TOKEN } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -63,27 +62,29 @@ const createServer = (auth: Authenticator): McpServer => {
           "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
         ),
     },
-    async ({ prompt, name, quality, size }, { sendNotification }) => {
+    async ({ prompt, name, quality, size }, { sendNotification, _meta }) => {
       const workspace = auth.getNonNullableWorkspace();
 
-      const notification: MCPProgressNotificationType = {
-        method: "notifications/progress",
-        params: {
-          progress: 0,
-          total: 1,
-          progressToken: MCP_PROGRESS_TOKEN,
-          data: {
-            label: "Generating image...",
-            output: {
-              type: "image",
-              mimeType: DEFAULT_IMAGE_MIME_TYPE,
+      if (_meta?.progressToken) {
+        const notification: MCPProgressNotificationType = {
+          method: "notifications/progress",
+          params: {
+            progress: 0,
+            total: 1,
+            progressToken: _meta?.progressToken,
+            data: {
+              label: "Generating image...",
+              output: {
+                type: "image",
+                mimeType: DEFAULT_IMAGE_MIME_TYPE,
+              },
             },
           },
-        },
-      };
+        };
 
-      // Send a notification to the MCP Client, to display a placeholder for the image.
-      await sendNotification(notification);
+        // Send a notification to the MCP Client, to display a placeholder for the image.
+        await sendNotification(notification);
+      }
 
       const { limits } = auth.getNonNullablePlan();
       const { maxImagesPerWeek } = limits.capabilities.images;
