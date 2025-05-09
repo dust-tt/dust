@@ -19,19 +19,15 @@ export const useAuthHook = () => {
   const [forcedConnection, setForcedConnection] = useState<
     string | undefined
   >();
-
-  const isAuthenticated = useMemo(
-    () =>
-      !!(
-        tokens?.accessToken &&
-        tokens.expiresAt > Date.now() &&
-        user?.dustDomain
-      ),
-    [tokens, user]
+  const isAuthenticated = !!(
+    tokens?.accessToken &&
+    tokens.expiresAt > Date.now() &&
+    user?.dustDomain
   );
 
   const isUserSetup = !!(user && user.sId && user.selectedWorkspace);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleLogout = useCallback(async () => {
@@ -62,6 +58,7 @@ export const useAuthHook = () => {
       return;
     }
 
+    const storedTokens = await platform.auth.getStoredTokens();
     setTokens((prev) => {
       if (!prev) {
         return null;
@@ -69,7 +66,7 @@ export const useAuthHook = () => {
 
       return {
         ...prev,
-        accessToken: newAccessToken,
+        ...storedTokens,
       };
     });
     setAuthError(null);
