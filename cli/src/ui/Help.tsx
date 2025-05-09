@@ -31,12 +31,6 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>assistants</Text> Browse and view details of your Dust
-          assistants
-        </Text>
-      </Box>
-      <Box marginLeft={2}>
-        <Text>
           <Text bold>agents-mcp</Text> Select agents and start a stdio MCP
           server
         </Text>
