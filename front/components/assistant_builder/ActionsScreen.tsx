@@ -94,6 +94,7 @@ import {
   isReservedName,
   useBuilderActionInfo,
 } from "@app/components/assistant_builder/useBuilderActionInfo";
+import { useTools } from "@app/components/assistant_builder/useTools";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
@@ -113,7 +114,6 @@ import {
   assertNever,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
-import { useTools } from "@app/components/assistant_builder/useTools";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -221,7 +221,6 @@ export default function ActionsScreen({
   enableReasoningTool,
   reasoningModels,
 }: ActionScreenProps) {
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });

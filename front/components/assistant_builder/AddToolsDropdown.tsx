@@ -14,7 +14,7 @@ import { uniqueId } from "lodash";
 import { useMemo, useState } from "react";
 
 import type {
-  AssistantBuilderActionState,
+  ActionSpecificationWithType,
   AssistantBuilderActionType,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
@@ -24,15 +24,11 @@ import {
   getDefaultActionConfiguration,
   getDefaultMCPServerActionConfiguration,
 } from "@app/components/assistant_builder/types";
-
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { WhitelistableFeature } from "@app/types";
 import { asDisplayName } from "@app/types";
 
 interface AddToolsDropdownProps {
-  mcpServerViews: MCPServerViewType[];
-  enableReasoningTool: boolean;
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   setBuilderState: (
