@@ -9,7 +9,6 @@ import { ReasoningModelConfigurationSection } from "@app/components/assistant_bu
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
@@ -225,17 +224,7 @@ export function MCPAction({
               <MCPToolsList tools={selectedMCPServerView.server.tools} />
             )}
           </div>
-        ) : (
-          <>
-            <MCPServerSelector
-              owner={owner}
-              allowedSpaces={allowedSpaces}
-              mcpServerViews={mcpServerViews}
-              selectedMCPServerView={selectedMCPServerView}
-              handleServerSelection={handleServerSelection}
-            />
-          </>
-        ))}
+        ) : null)}
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
