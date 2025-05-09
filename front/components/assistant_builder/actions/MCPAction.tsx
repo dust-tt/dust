@@ -17,7 +17,7 @@ import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_action
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
-import { asDisplayName, assertNever, slugify } from "@app/types";
+import { asDisplayName, assertNever } from "@app/types";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -90,13 +90,14 @@ export function MCPAction({
 
   const noMCPServerView = mcpServerViews.length === 0;
 
-  const [selectedMCPServerView, setSelectedMCPServerView] =
-    useState<MCPServerViewType | null>(
+  const selectedMCPServerView = useMemo(
+    () =>
       mcpServerViews.find(
         (mcpServerView) =>
           mcpServerView.id === actionConfiguration.mcpServerViewId
-      ) ?? null
-    );
+      ),
+    [mcpServerViews, actionConfiguration.mcpServerViewId]
+  );
 
   // MCPServerView on default MCP server will not allow switching to another one.
   const selectedServerAvailability: MCPServerAvailability | null = useMemo(
@@ -106,36 +107,6 @@ export function MCPAction({
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showTablesModal, setShowTablesModal] = useState(false);
-
-  const handleServerSelection = useCallback(
-    (serverView: MCPServerViewType) => {
-      setEdited(true);
-      setSelectedMCPServerView(serverView);
-
-      const requirements = getMCPServerRequirements(serverView);
-      updateAction({
-        actionName: slugify(serverView.server.name),
-        actionDescription:
-          requirements.requiresDataSourceConfiguration ||
-          requirements.requiresTableConfiguration
-            ? ""
-            : serverView.server.description,
-        getNewActionConfig: () => ({
-          mcpServerViewId: serverView.id,
-          dataSourceConfigurations: null,
-          tablesConfigurations: null,
-          childAgentId: null,
-          reasoningModel: null,
-          timeFrame: null,
-          // We initialize boolean with false because leaving them unset means false (toggle on the left).
-          additionalConfiguration: Object.fromEntries(
-            requirements.requiredBooleans.map((key) => [key, false])
-          ),
-        }),
-      });
-    },
-    [setEdited, updateAction]
-  );
 
   const handleConfigUpdate = useCallback(
     (
