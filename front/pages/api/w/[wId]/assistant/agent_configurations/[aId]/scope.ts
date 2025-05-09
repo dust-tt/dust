@@ -93,12 +93,17 @@ async function handler(
         }
       }
 
-      if (bodyValidation.right.scope === "workspace" && !auth.isBuilder()) {
+      if (
+        (bodyValidation.right.scope === "workspace" ||
+          bodyValidation.right.scope === "visible") &&
+        !auth.isBuilder()
+      ) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "invalid_request_error",
-            message: "Only builders can upgrade agents to workspace scope.",
+            message:
+              "Only builders can upgrade agents to workspace or visible scope.",
           },
         });
       }

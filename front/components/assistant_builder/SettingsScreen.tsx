@@ -51,7 +51,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isBuilder, Ok } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { AddEditorDropdown } from "../members/AddEditorsDropdown";
@@ -536,106 +536,108 @@ export default function SettingsScreen({
               setEdited={setEdited}
             />
 
-            <div className="flex flex-row gap-4">
-              <div className="flex flex-[1_0_0] flex-col gap-2">
-                <Page.SectionHeader title="Access" />
-                <div className="flex flex-row items-start gap-2">
-                  <div className="flex flex-1 flex-row items-start gap-2 py-2">
-                    <div className="min-w-12">
-                      <SliderToggle
-                        selected={isVisible}
-                        onClick={() => {
-                          setBuilderState((state) => ({
-                            ...state,
-                            scope: isVisible ? "hidden" : "visible",
-                          }));
-                          setEdited(true);
-                        }}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                        {isVisible ? "Published" : "Not published"}
-                      </span>
-                      <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                        {(builderState.scope === "visible" ||
-                          builderState.scope === "published" ||
-                          builderState.scope === "workspace") && (
-                          <>
-                            {nonGlobalSpacessUsedInActions.length === 0 && (
-                              <>
-                                Visible & usable by all members of the
-                                workspace.
-                              </>
-                            )}
-                            {nonGlobalSpacessUsedInActions.length > 0 && (
-                              <div>
-                                Visible & usable by the members of the{" "}
-                                {`space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""}`}{" "}
-                                :{" "}
-                                <b>
-                                  {nonGlobalSpacessUsedInActions
-                                    .map((v) => v.name)
-                                    .join(", ")}
-                                </b>
-                              </div>
-                            )}
-                          </>
-                        )}
-                        {builderState.scope === "hidden" && (
-                          <>Visible & usable by editors only.</>
-                        )}
-                        {builderState.scope === "private" && (
-                          <>Visible and usable by the current user only.</>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <Collapsible open={!!(isVisible && slackDataSource)}>
-                      <CollapsibleContent>
-                        <div className="flex flex-1 flex-row items-start gap-2">
-                          <div>
-                            <Icon visual={SlackLogo} size="sm" />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                              Slack preferences
-                            </span>
-                            <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                              {slackChannelSelected.length > 0 ? (
+            {isBuilder(owner) && (
+              <div className="flex flex-row gap-4">
+                <div className="flex flex-[1_0_0] flex-col gap-2">
+                  <Page.SectionHeader title="Access" />
+                  <div className="flex flex-row items-start gap-2">
+                    <div className="flex flex-1 flex-row items-start gap-2 py-2">
+                      <div className="min-w-12">
+                        <SliderToggle
+                          selected={isVisible}
+                          onClick={() => {
+                            setBuilderState((state) => ({
+                              ...state,
+                              scope: isVisible ? "hidden" : "visible",
+                            }));
+                            setEdited(true);
+                          }}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                          {isVisible ? "Published" : "Not published"}
+                        </span>
+                        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                          {(builderState.scope === "visible" ||
+                            builderState.scope === "published" ||
+                            builderState.scope === "workspace") && (
+                            <>
+                              {nonGlobalSpacessUsedInActions.length === 0 && (
                                 <>
-                                  Default agent for:{" "}
-                                  {slackChannelSelected
-                                    .map((c) => c.slackChannelName)
-                                    .join(", ")}
-                                </>
-                              ) : (
-                                <>
-                                  Select channels in which this agent replies by
-                                  default.
+                                  Visible & usable by all members of the
+                                  workspace.
                                 </>
                               )}
-                            </span>
-                            <div className="pt-2">
-                              <Button
-                                size="xs"
-                                variant="outline"
-                                icon={PencilSquareIcon}
-                                label="Select channels"
-                                onClick={() => {
-                                  setSlackDrawerOpened(true);
-                                }}
-                              />
+                              {nonGlobalSpacessUsedInActions.length > 0 && (
+                                <div>
+                                  Visible & usable by the members of the{" "}
+                                  {`space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""}`}{" "}
+                                  :{" "}
+                                  <b>
+                                    {nonGlobalSpacessUsedInActions
+                                      .map((v) => v.name)
+                                      .join(", ")}
+                                  </b>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {builderState.scope === "hidden" && (
+                            <>Visible & usable by editors only.</>
+                          )}
+                          {builderState.scope === "private" && (
+                            <>Visible and usable by the current user only.</>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <Collapsible open={!!(isVisible && slackDataSource)}>
+                        <CollapsibleContent>
+                          <div className="flex flex-1 flex-row items-start gap-2">
+                            <div>
+                              <Icon visual={SlackLogo} size="sm" />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                                Slack preferences
+                              </span>
+                              <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                                {slackChannelSelected.length > 0 ? (
+                                  <>
+                                    Default agent for:{" "}
+                                    {slackChannelSelected
+                                      .map((c) => c.slackChannelName)
+                                      .join(", ")}
+                                  </>
+                                ) : (
+                                  <>
+                                    Select channels in which this agent replies
+                                    by default.
+                                  </>
+                                )}
+                              </span>
+                              <div className="pt-2">
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  icon={PencilSquareIcon}
+                                  label="Select channels"
+                                  onClick={() => {
+                                    setSlackDrawerOpened(true);
+                                  }}
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
             <EditorsMembersList
               currentUser={currentUser}
               isVisible={isVisible}

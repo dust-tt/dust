@@ -125,6 +125,23 @@ async function handler(
           },
         });
       }
+
+      if (
+        !auth.isBuilder() &&
+        agent.scope !== bodyValidation.right.assistant.scope &&
+        (bodyValidation.right.assistant.scope === "workspace" ||
+          bodyValidation.right.assistant.scope === "visible")
+      ) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Only builders can upgrade agents to workspace or visible scope.",
+          },
+        });
+      }
+
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
         assistant: { ...bodyValidation.right.assistant, maxStepsPerRun },
