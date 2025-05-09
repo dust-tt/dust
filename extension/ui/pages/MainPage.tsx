@@ -46,7 +46,7 @@ export const MainPage = ({
                       isSelect
                     />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent className="h-96">
                     {user.workspaces.map((w) => {
                       return (
                         <DropdownMenuItem
