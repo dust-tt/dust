@@ -5,7 +5,7 @@ module.exports = {
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
   ],
-  plugins: ["import", "simple-import-sort"],
+  plugins: ["import", "simple-import-sort", "dust"],
   rules: {
     "import/no-cycle": "error",
     curly: ["error", "all"],
@@ -56,6 +56,7 @@ module.exports = {
     ],
     "simple-import-sort/exports": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
+    "dust/no-raw-sql": "warn",
   },
   overrides: [
     {
