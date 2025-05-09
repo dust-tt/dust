@@ -22,6 +22,8 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
   declare timeFrame: TimeFrame | null;
   declare additionalConfiguration: Record<string, boolean | number | string>;
 
+  declare appId: string | null;
+
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
   declare mcpServerView: NonAttribute<MCPServerViewModel>;
 
@@ -90,6 +92,10 @@ AgentMCPServerConfiguration.init(
           }
         },
       },
+    },
+    appId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     mcpServerViewId: {
       type: DataTypes.BIGINT,

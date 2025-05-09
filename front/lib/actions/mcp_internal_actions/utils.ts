@@ -181,6 +181,21 @@ export function generateConfiguredInput({
       return { value, mimeType };
     }
 
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP: {
+      const appId = actionConfiguration.dustAppConfiguration
+        ? actionConfiguration.dustAppConfiguration.appId
+        : null;
+
+      if (!appId) {
+        throw new Error("Invalid Dust App configuration");
+      }
+
+      return {
+        appId,
+        mimeType,
+      };
+    }
+
     default:
       assertNever(mimeType);
   }
@@ -374,6 +389,7 @@ export function getMCPServerRequirements(
   requiredNumbers: string[];
   requiredBooleans: string[];
   requiredEnums: Record<string, string[]>;
+  requiredDustAppConfiguration: boolean;
   noRequirement: boolean;
 } {
   if (!mcpServerView) {
@@ -387,6 +403,7 @@ export function getMCPServerRequirements(
       requiredNumbers: [],
       requiredBooleans: [],
       requiredEnums: {},
+      requiredDustAppConfiguration: false,
       noRequirement: false,
     };
   }
@@ -472,6 +489,14 @@ export function getMCPServerRequirements(
     })
   );
 
+  const requiredDustAppConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+      })
+    ).length > 0;
+
   return {
     requiresDataSourceConfiguration,
     requiresTableConfiguration,
@@ -482,12 +507,13 @@ export function getMCPServerRequirements(
     requiredNumbers,
     requiredBooleans,
     requiredEnums,
-
+    requiredDustAppConfiguration,
     noRequirement:
       !requiresDataSourceConfiguration &&
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
       !requiresReasoningConfiguration &&
+      !requiredDustAppConfiguration &&
       !mayRequiresTimeFrameConfiguration &&
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&

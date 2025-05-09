@@ -5,6 +5,7 @@ import { AdditionalConfigurationSection } from "@app/components/assistant_builde
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
+import { DustAppConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DustAppConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
@@ -16,6 +17,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
+import { isMCPDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
 import { asDisplayName, assertNever, slugify } from "@app/types";
@@ -132,6 +134,7 @@ export function MCPAction({
           additionalConfiguration: Object.fromEntries(
             requirements.requiredBooleans.map((key) => [key, false])
           ),
+          dustAppConfiguration: null,
         }),
       });
     },
@@ -279,6 +282,23 @@ export function MCPAction({
           }}
           selectedReasoningModel={actionConfiguration.reasoningModel}
           owner={owner}
+        />
+      )}
+      {requirements.requiredDustAppConfiguration && (
+        <DustAppConfigurationSection
+          owner={owner}
+          allowedSpaces={allowedSpaces}
+          selectedConfig={
+            isMCPDustAppRunConfiguration(actionConfiguration)
+              ? actionConfiguration.dustAppConfiguration
+              : null
+          }
+          onConfigSelect={(dustAppConfig) => {
+            handleConfigUpdate((old) => ({
+              ...old,
+              dustAppConfiguration: dustAppConfig,
+            }));
+          }}
         />
       )}
       {requirements.mayRequiresTimeFrameConfiguration && (

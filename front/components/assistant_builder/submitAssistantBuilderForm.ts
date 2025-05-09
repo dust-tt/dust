@@ -206,6 +206,7 @@ export async function submitAssistantBuilderForm({
             childAgentId,
             reasoningModel: mcpReasoningModel,
             additionalConfiguration,
+            dustAppConfiguration,
             timeFrame,
           },
         } = a;
@@ -232,6 +233,7 @@ export async function submitAssistantBuilderForm({
               : null,
             timeFrame,
             additionalConfiguration,
+            dustAppConfiguration,
           },
         ];
 

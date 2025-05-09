@@ -38,7 +38,7 @@ export const connectToInternalMCPServer = async (
       `Internal MCPServer not found for id ${mcpServerId}`
     );
   }
-  const server = getInternalMCPServer(
+  const server = await getInternalMCPServer(
     auth,
     {
       internalMCPServerName: res.value.name,

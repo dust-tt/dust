@@ -14,6 +14,7 @@ import {
   ActionTableIcon,
   ActionTimeIcon,
   Avatar,
+  CommandLineIcon,
   GithubLogo,
   HubspotLogo,
 } from "@dust-tt/sparkle";
@@ -42,6 +43,7 @@ export const InternalActionIcons = {
   ActionTimeIcon,
   GithubLogo,
   HubspotLogo,
+  CommandLineIcon,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

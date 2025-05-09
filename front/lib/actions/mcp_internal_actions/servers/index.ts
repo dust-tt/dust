@@ -11,6 +11,7 @@ import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_inte
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
+import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
@@ -19,7 +20,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
-export function getInternalMCPServer(
+export async function getInternalMCPServer(
   auth: Authenticator,
   {
     internalMCPServerName,
@@ -29,7 +30,7 @@ export function getInternalMCPServer(
     mcpServerId: string;
   },
   agentLoopContext?: AgentLoopContextType
-): McpServer {
+): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
       return githubServer(auth, mcpServerId);
@@ -57,6 +58,8 @@ export function getInternalMCPServer(
       return askAgentServer(auth);
     case "reasoning_v2":
       return reasoningServer(auth, agentLoopContext);
+    case "run_dust_app":
+      return dustAppServer(auth, agentLoopContext);
     case "agent_router":
       return agentRouterServer(auth);
     default:

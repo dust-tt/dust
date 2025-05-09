@@ -8,6 +8,7 @@ import type {
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
 import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
@@ -100,6 +101,7 @@ export type PlatformMCPServerConfigurationType =
     timeFrame: TimeFrame | null;
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
+    dustAppConfiguration: DustAppRunConfigurationType | null;
     internalMCPServerId: string | null; // As convenience, hold the sId of the internal server if it is an internal server.
   };
 

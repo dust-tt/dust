@@ -19,6 +19,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "primitive_types_debugger",
   "query_tables",
   "reasoning_v2",
+  "run_dust_app",
   "search",
   "think",
   "web_search_&_browse_v2",
@@ -95,6 +96,11 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_object: "high",
       update_object: "high",
     },
+  },
+  run_dust_app: {
+    id: 8,
+    availability: "auto",
+    flag: "mcp_actions",
   },
   agent_router: {
     id: 8,

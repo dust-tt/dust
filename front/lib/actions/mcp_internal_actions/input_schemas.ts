@@ -54,6 +54,10 @@ export const ConfigurableToolInputSchemas = {
     reasoningEffort: z.string().nullable(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
   }),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP]: z.object({
+    appId: z.string(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP),
+  }),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME]: z
     .object({
       duration: z.number(),

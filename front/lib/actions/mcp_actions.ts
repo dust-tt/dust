@@ -42,7 +42,6 @@ import {
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isMCPServerConfiguration,
   isMCPToolConfiguration,
@@ -102,6 +101,7 @@ function makePlatformMCPToolConfigurations(
     toolServerId: tool.toolServerId,
     originalName: tool.name,
     mcpServerName: config.name,
+    dustAppConfiguration: config.dustAppConfiguration,
   }));
 }
 
@@ -370,36 +370,28 @@ function getPrefixedToolName(
  */
 export async function tryListMCPTools(
   auth: Authenticator,
-  {
-    agentActions,
-    conversationId,
-    messageId,
-  }: {
-    agentActions: AgentActionConfigurationType[];
-    conversationId: string;
-    messageId: string;
-  }
+  agentLoopContext: AgentLoopContextType
 ): Promise<{ tools: MCPToolConfigurationType[]; error?: string }> {
   const owner = auth.getNonNullableWorkspace();
 
   // Filter for MCP server configurations.
-  const mcpServerActions = agentActions.filter(isMCPServerConfiguration);
+  const mcpServerActions = [
+    ...agentLoopContext.agentConfiguration.actions,
+    ...(agentLoopContext.localActionConfigurations ?? []),
+  ].filter(isMCPServerConfiguration);
 
   // Discover all the tools exposed by all the mcp servers available.
   const toolsResults = await concurrentExecutor(
     mcpServerActions,
     async (action) => {
-      const toolsRes = await listMCPServerTools(auth, action, {
-        conversationId,
-        messageId,
-      });
+      const toolsRes = await listMCPServerTools(auth, action, agentLoopContext);
 
       if (toolsRes.isErr()) {
         logger.error(
           {
             workspaceId: owner.id,
-            conversationId,
-            messageId,
+            conversationId: agentLoopContext.conversation.sId,
+            messageId: agentLoopContext.agentMessage.sId,
             error: toolsRes.error,
           },
           `Error listing tools from MCP server: ${normalizeError(toolsRes.error)}`
@@ -624,20 +616,14 @@ async function listToolsForPlatformMCPServer(
 async function listMCPServerTools(
   auth: Authenticator,
   config: MCPServerConfigurationType,
-  {
-    conversationId,
-    messageId,
-  }: {
-    conversationId: string;
-    messageId: string;
-  }
+  agentLoopContext: AgentLoopContextType
 ): Promise<Result<MCPToolConfigurationType[], Error>> {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
   const connectionParamsRes = await getMCPClientConnectionParams(auth, config, {
-    conversationId,
-    messageId,
+    conversationId: agentLoopContext.conversation.sId,
+    messageId: agentLoopContext.agentMessage.sId,
   });
 
   if (connectionParamsRes.isErr()) {
@@ -647,7 +633,11 @@ async function listMCPServerTools(
   try {
     // Connect to the MCP server.
     const connectionParams = connectionParamsRes.value;
-    const r = await connectToMCPServer(auth, connectionParams);
+    const r = await connectToMCPServer(
+      auth,
+      connectionParams,
+      agentLoopContext
+    );
     if (r.isErr()) {
       return r;
     }
@@ -682,8 +672,8 @@ async function listMCPServerTools(
     logger.debug(
       {
         workspaceId: owner.id,
-        conversationId,
-        messageId,
+        conversationId: agentLoopContext.conversation.sId,
+        messageId: agentLoopContext.agentMessage.sId,
         toolCount: tools.length,
       },
       `Retrieved ${tools.length} tools from MCP server`
@@ -694,8 +684,8 @@ async function listMCPServerTools(
     logger.error(
       {
         workspaceId: owner.id,
-        conversationId,
-        messageId,
+        conversationId: agentLoopContext.conversation.sId,
+        messageId: agentLoopContext.agentMessage.sId,
         error,
       },
       `Error listing tools from MCP server: ${normalizeError(error)}`
@@ -710,8 +700,8 @@ async function listMCPServerTools(
         logger.warn(
           {
             workspaceId: owner.id,
-            conversationId,
-            messageId,
+            conversationId: agentLoopContext.conversation.sId,
+            messageId: agentLoopContext.agentMessage.sId,
             error: closeError,
           },
           "Error closing MCP client connection"
