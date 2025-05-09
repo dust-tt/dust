@@ -72,7 +72,10 @@ export abstract class ResourceWithSpace<
   ): Promise<T[]> {
     const blobs = await this.model.findAll({
       attributes,
-      where: where as WhereOptions<M>,
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      } as WhereOptions<M>,
       include: includes,
       limit,
       order,
