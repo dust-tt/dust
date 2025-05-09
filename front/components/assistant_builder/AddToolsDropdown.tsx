@@ -154,13 +154,14 @@ function getSelectableMCPServerViews({
     return true;
   });
 
-  const grouped = groupBy(filteredMCPServerViews, (view) =>
-    view.server.isDefault ? "default" : "nonDefault"
+  const grouped = groupBy(
+    filteredMCPServerViews,
+    (view) => view.server.availability
   );
 
   return {
-    selectableDefaultMCPServerViews: grouped.default || [],
-    selectableNonDefaultMCPServerViews: grouped.nonDefault || [],
+    selectableDefaultMCPServerViews: grouped.auto || [],
+    selectableNonDefaultMCPServerViews: grouped.manual || [],
   };
 }
 

@@ -78,8 +78,6 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionConfigurationWithId,
   AssistantBuilderActionState,
-  AssistantBuilderActionType,
-  AssistantBuilderDataVisualizationType,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderReasoningConfiguration,
@@ -98,7 +96,6 @@ import {
 } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { ActionSpecification } from "@app/lib/actions/utils";
 import {
   ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,
