@@ -1,4 +1,4 @@
-import React, { FC, useCallback, useEffect, useState } from "react";
+import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import open from "open";
@@ -17,6 +17,7 @@ type AgentConfiguration =
 interface Message {
   type: "user" | "assistant";
   content: string;
+  chainOfThought: string;
   isStreaming?: boolean;
 }
 
@@ -41,6 +42,10 @@ const CliChat: FC<CliChatProps> = ({
   const [userInput, setUserInput] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
   const { stdout } = useStdout();
+  // Debounce state and refs for token streaming
+  const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const responseTextRef = useRef<string>("");
+  const responseCotRef = useRef<string>("");
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
 
@@ -55,11 +60,19 @@ const CliChat: FC<CliChatProps> = ({
     async (questionText: string) => {
       if (!selectedAgent || !me || meError || isMeLoading) return;
 
-      setMessages((prev) => [...prev, { type: "user", content: questionText }]);
+      setMessages((prev) => [
+        ...prev,
+        { type: "user", content: questionText, chainOfThought: "" },
+      ]);
 
       setMessages((prev) => [
         ...prev,
-        { type: "assistant", content: "", isStreaming: true },
+        {
+          type: "assistant",
+          content: "",
+          chainOfThought: "",
+          isStreaming: true,
+        },
       ]);
 
       setIsProcessingQuestion(true);
@@ -165,36 +178,89 @@ const CliChat: FC<CliChatProps> = ({
           );
         }
 
-        let responseText = "";
-        for await (const event of streamRes.value.eventStream) {
-          if (event.type === "generation_tokens") {
-            responseText += event.text;
+        // Initialize response tracking with refs to avoid closure issues
+        responseTextRef.current = "";
+        responseCotRef.current = "";
 
-            // Update the streaming message with new content
+        // Define a debounced update function
+        const updateMessagesDebounced = () => {
+          // Clear any existing timeout
+          if (updateTimeoutRef.current) {
+            clearTimeout(updateTimeoutRef.current);
+          }
+
+          // Set a new timeout for the update
+          updateTimeoutRef.current = setTimeout(() => {
+            const responseText = responseTextRef.current;
+            const responseCot = responseCotRef.current;
+
             setMessages((prev) => {
               const newMessages = [...prev];
               const lastMessage = newMessages[newMessages.length - 1];
               if (lastMessage.type === "assistant" && lastMessage.isStreaming) {
+                // Format the chain of thought during streaming too
+                // This will make it consistent as it's being updated
+                const formattedCot = responseCot
+                  .replace(/^\n+/, "") // Remove leading newlines
+                  .replace(/\n{3,}/g, "\n\n") // Replace 3+ consecutive newlines with just 2
+                  .replace(/\n+$/, ""); // Remove trailing newlines
+
+                // Format the response text - remove leading newlines
+                const formattedText = responseText.replace(/^\n+/, ""); // Remove leading newlines
+
                 newMessages[newMessages.length - 1] = {
                   ...lastMessage,
-                  content: responseText,
+                  content: formattedText,
+                  chainOfThought: formattedCot,
                 };
               }
               return newMessages;
             });
+          }, 10); // Very small debounce of 10ms to batch rapid updates
+        };
+
+        for await (const event of streamRes.value.eventStream) {
+          if (event.type === "generation_tokens") {
+            if (event.classification === "tokens") {
+              responseTextRef.current += event.text;
+            } else if (event.classification === "chain_of_thought") {
+              responseCotRef.current += event.text;
+            }
+
+            // Update the streaming message with debouncing
+            updateMessagesDebounced();
           } else if (event.type === "agent_error") {
             throw new Error(`Agent error: ${event.error.message}`);
           } else if (event.type === "user_message_error") {
             throw new Error(`User message error: ${event.error.message}`);
           } else if (event.type === "agent_message_success") {
-            // Complete the message
+            // Clear any existing timeout to ensure we're using the final values
+            if (updateTimeoutRef.current) {
+              clearTimeout(updateTimeoutRef.current);
+              updateTimeoutRef.current = null;
+            }
+
+            // Complete the message using the current values from refs
             setMessages((prev) => {
               const newMessages = [...prev];
               const lastMessage = newMessages[newMessages.length - 1];
               if (lastMessage.type === "assistant" && lastMessage.isStreaming) {
+                // Format the chain of thought for the final message
+                const formattedCot = responseCotRef.current
+                  .replace(/^\n+/, "") // Remove leading newlines
+                  .replace(/\n{3,}/g, "\n\n") // Replace 3+ consecutive newlines with just 2
+                  .replace(/\n+$/, ""); // Remove trailing newlines
+
+                // Format the response text - remove leading newlines
+                const formattedText = responseTextRef.current.replace(
+                  /^\n+/,
+                  ""
+                ); // Remove leading newlines
+
                 newMessages[newMessages.length - 1] = {
                   ...lastMessage,
-                  content: responseText,
+                  content: formattedText,
+                  chainOfThought: formattedCot,
                   isStreaming: false,
                 };
               }
@@ -231,6 +297,7 @@ const CliChat: FC<CliChatProps> = ({
                 content: `Error: ${
                   error instanceof Error ? error.message : String(error)
                 }`,
+                chainOfThought: "",
                 isStreaming: false,
               };
             }
@@ -262,6 +329,16 @@ const CliChat: FC<CliChatProps> = ({
     messages.length,
     canSubmit,
   ]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Handle keyboard events
   useInput((input, key) => {
@@ -394,18 +471,43 @@ const CliChat: FC<CliChatProps> = ({
   });
 
   const renderMessages = () => {
+    // Get terminal width for calculating right padding
+    const terminalWidth = stdout?.columns || 80;
+    const rightPadding = 4; // Number of characters to reserve for right padding
+
     return messages.map((message, index) => (
       <Box key={index} flexDirection="column" marginBottom={1}>
         <Box>
           <Text bold color={message.type === "user" ? "green" : "blue"}>
             {message.type === "user"
-              ? "You: "
-              : selectedAgent
-              ? `${selectedAgent.name}: `
-              : "Assistant: "}
+              ? `${me?.firstName ?? "You"}: `
+              : `${selectedAgent?.name ?? "Assistant"}: `}
           </Text>
         </Box>
-        <Box marginLeft={2} flexDirection="column">
+        <Box
+          marginLeft={2}
+          marginRight={rightPadding}
+          flexDirection="column"
+          width={terminalWidth - rightPadding - 2}
+        >
+          {message.type === "assistant" && message.chainOfThought && (
+            <>
+              {/* Chain of thought in gray italic */}
+              <Text dimColor italic wrap="wrap">
+                {
+                  // Process chain of thought to prevent more than 2 consecutive empty lines
+                  // and ensure the last line is not empty
+                  message.chainOfThought
+                    // Replace 3+ consecutive newlines with just 2 newlines
+                    .replace(/\n{3,}/g, "\n\n")
+                    // Remove trailing newlines
+                    .replace(/\n+$/, "")
+                }
+              </Text>
+              <Box marginBottom={1}></Box>
+            </>
+          )}
+
           {message.isStreaming ? (
             <Box flexDirection="column">
               <Text wrap="wrap">{message.content}</Text>
