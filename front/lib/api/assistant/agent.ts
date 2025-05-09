@@ -378,9 +378,13 @@ async function* runMultiActionsAgent(
   );
 
   const { tools: mcpActions, error } = await tryListMCPTools(auth, {
-    agentActions: [...agentActions, ...localMCPActions],
-    conversationId: conversation.sId,
-    messageId: agentMessage.sId,
+    agentConfiguration,
+    conversation,
+    agentMessage,
+    stepActionIndex: -1,
+    stepActions: [],
+    localActionConfigurations: localMCPActions,
+    citationsRefsOffset: 0,
   });
 
   if (!isLastGenerationIteration) {

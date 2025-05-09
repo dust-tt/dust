@@ -14,6 +14,7 @@ import type {
   Result,
   SupportedFileContentType,
 } from "@app/types";
+import { LocalMCPServerConfigurationType } from "@app/lib/actions/mcp";
 
 export type ActionGeneratedFileType = {
   fileId: string;
@@ -135,7 +136,8 @@ export abstract class BaseActionConfigurationServerRunner<
 
 export type AgentLoopContextType = {
   agentConfiguration: AgentConfigurationType;
-  actionConfiguration: ActionConfigurationType;
+  actionConfiguration?: ActionConfigurationType;
+  localActionConfigurations?: LocalMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
   stepActionIndex: number;

@@ -222,10 +222,11 @@ export function generateConfiguredInput({
       return { value, mimeType };
     }
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP: {
-      const { appWorkspaceId, appId } =
-        actionConfiguration.additionalConfiguration;
+      const appId = actionConfiguration.dustAppConfiguration
+        ? actionConfiguration.dustAppConfiguration.appId
+        : null;
 
-      if (typeof appWorkspaceId !== "string" || typeof appId !== "string") {
+      if (!appId) {
         throw new Error("Invalid Dust App configuration");
       }
 
