@@ -71,6 +71,9 @@ export function useTagsSuggestions({
     `/api/w/${owner.sId}/tags/suggest_from_agents`,
     tagsFetcher,
     {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,
       disabled,
     }
   );
@@ -146,7 +149,7 @@ export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
 
     sendNotification({
       type: "success",
-      title: "tag deleted",
+      title: "Tag deleted",
     });
 
     void mutateTags();
