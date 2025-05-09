@@ -37,6 +37,7 @@ import {
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -76,18 +77,24 @@ export async function buildInitialActions({
   dataSourceViews,
   dustApps,
   configuration,
+  mcpServerViews = [],
 }: {
   dataSourceViews: DataSourceViewResource[];
   dustApps: AppResource[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
+  mcpServerViews?: MCPServerViewType[];
 }): Promise<AssistantBuilderActionConfiguration[]> {
   const builderActions: AssistantBuilderActionConfiguration[] = [];
 
   for (const action of configuration.actions) {
+    const mcpServerView = mcpServerViews.find(
+      (mcpServerView) => mcpServerView.server.name === action.name
+    );
     const builderAction = await initializeBuilderAction(
       action,
       dataSourceViews,
-      dustApps
+      dustApps,
+      mcpServerView
     );
 
     if (builderAction) {
@@ -108,7 +115,8 @@ export async function buildInitialActions({
 async function initializeBuilderAction(
   action: AgentActionConfigurationType,
   dataSourceViews: DataSourceViewResource[],
-  dustApps: AppResource[]
+  dustApps: AppResource[],
+  mcpServerView?: MCPServerViewType
 ): Promise<AssistantBuilderActionConfiguration | null> {
   if (isRetrievalConfiguration(action)) {
     return getRetrievalActionConfiguration(action, dataSourceViews);
@@ -125,7 +133,11 @@ async function initializeBuilderAction(
   } else if (isReasoningConfiguration(action)) {
     return getReasoningActionConfiguration(action);
   } else if (isMCPServerConfiguration(action)) {
-    return getMCPServerActionConfiguration(action, dataSourceViews);
+    return getMCPServerActionConfiguration(
+      action,
+      dataSourceViews,
+      mcpServerView
+    );
   } else {
     assertNever(action);
   }
@@ -233,11 +245,12 @@ function getReasoningActionConfiguration(
 
 async function getMCPServerActionConfiguration(
   action: MCPServerConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
+  dataSourceViews: DataSourceViewResource[],
+  mcpServerView?: MCPServerViewType
 ): Promise<AssistantBuilderActionConfiguration> {
   assert(isPlatformMCPServerConfiguration(action));
 
-  const builderAction = getDefaultMCPServerActionConfiguration();
+  const builderAction = getDefaultMCPServerActionConfiguration(mcpServerView);
   if (builderAction.type !== "MCP") {
     throw new Error("MCP action configuration is not valid");
   }

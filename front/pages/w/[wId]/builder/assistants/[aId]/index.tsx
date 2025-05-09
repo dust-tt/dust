@@ -87,13 +87,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     ? (context.query.flow as BuilderFlow)
     : "personal_assistants";
 
+  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
+
   const actions = await buildInitialActions({
     dataSourceViews,
     dustApps,
     configuration,
+    mcpServerViews: mcpServerViewsJSON,
   });
-
-  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
   const editorGroupRes = await GroupResource.findEditorGroupForAgent(
     auth,
