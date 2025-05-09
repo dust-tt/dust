@@ -100,8 +100,8 @@ export async function computeWorkspaceStatistics(
   );
 
   return new Ok({
-    document_count: stats.document_count,
     text_size: maxFileSizeToHumanReadable(stats.text_size, 2),
+    document_count: stats.document_count,
     dataSources: stats.dataSources.map((dataSource) => ({
       ...dataSource,
       text_size: maxFileSizeToHumanReadable(dataSource.text_size, 2),
