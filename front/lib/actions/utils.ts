@@ -1,5 +1,5 @@
-import type { Icon } from "@dust-tt/sparkle";
 import {
+  BarChartIcon,
   ChatBubbleThoughtIcon,
   CommandLineIcon,
   MagnifyingGlassIcon,
@@ -10,7 +10,10 @@ import {
   TimeIcon,
 } from "@dust-tt/sparkle";
 
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type {
+  ActionSpecification,
+  AssistantBuilderActionConfiguration,
+} from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -26,20 +29,14 @@ import {
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationType, WhitelistableFeature } from "@app/types";
+import type { AgentConfigurationType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 
 export const ACTION_SPECIFICATIONS: Record<
   AssistantBuilderActionConfiguration["type"],
-  {
-    label: string;
-    description: string;
-    dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-    cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-    flag: WhitelistableFeature | null;
-  }
+  ActionSpecification
 > = {
   RETRIEVAL_EXHAUSTIVE: {
     label: "Include data",
@@ -98,6 +95,14 @@ export const ACTION_SPECIFICATIONS: Record<
     dropDownIcon: SuitcaseIcon,
     flag: "mcp_actions",
   },
+};
+
+export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
+  label: "Data Visualization",
+  description: "Generate a data visualization",
+  cardIcon: BarChartIcon,
+  dropDownIcon: BarChartIcon,
+  flag: null,
 };
 
 /**

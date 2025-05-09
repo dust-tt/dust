@@ -1,3 +1,4 @@
+import type { Icon } from "@dust-tt/sparkle";
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { uniqueId } from "lodash";
@@ -5,6 +6,8 @@ import type React from "react";
 import type { SVGProps } from "react";
 
 import {
+  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+  DEFAULT_DATA_VISUALIZATION_NAME,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
@@ -31,6 +34,7 @@ import type {
   TimeFrame,
   TimeframeUnit,
   UserType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -187,6 +191,24 @@ export type AssistantBuilderActionConfigurationWithId =
     id: string;
   };
 
+export interface AssistantBuilderDataVisualizationConfiguration {
+  type: "DATA_VISUALIZATION";
+  configuration: Record<string, never>;
+  name: string;
+  description: string;
+  noConfigurationRequired: true;
+}
+
+// DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
+export type AssistantBuilderDataVisualizationConfigurationWithId =
+  AssistantBuilderDataVisualizationConfiguration & {
+    id: string;
+  };
+
+export type AssistantBuilderActionAndDataVisualizationConfiguration =
+  | AssistantBuilderActionConfiguration
+  | AssistantBuilderDataVisualizationConfiguration;
+
 export type TemplateActionType = Omit<
   AssistantBuilderActionConfiguration,
   "configuration"
@@ -197,9 +219,16 @@ export type TemplateActionType = Omit<
 export type AssistantBuilderActionType =
   AssistantBuilderActionConfiguration["type"];
 
+export type AssistantBuilderDataVisualizationType =
+  AssistantBuilderDataVisualizationConfiguration["type"];
+
+export type AssistantBuilderActionState =
+  | AssistantBuilderActionConfigurationWithId
+  | AssistantBuilderDataVisualizationConfigurationWithId;
+
 export type AssistantBuilderSetActionType =
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderActionState;
       type: "insert" | "edit" | "pending";
     }
   | {
@@ -212,7 +241,7 @@ export type AssistantBuilderSetActionType =
 
 export type AssistantBuilderPendingAction =
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderActionState;
       previousActionName: string | null;
     }
   | {
@@ -231,7 +260,7 @@ export type AssistantBuilderState = {
     temperature: number;
     responseFormat?: string;
   };
-  actions: Array<AssistantBuilderActionConfigurationWithId>;
+  actions: AssistantBuilderActionState[];
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
@@ -250,12 +279,24 @@ export type AssistantBuilderInitialState = {
     temperature: number;
     responseFormat?: string;
   } | null;
-  actions: Array<AssistantBuilderActionConfiguration>;
+  actions: AssistantBuilderActionAndDataVisualizationConfiguration[];
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
   editors: UserType[];
+};
+
+export interface ActionSpecification {
+  label: string;
+  description: string;
+  dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  flag: WhitelistableFeature | null;
+}
+
+export type ActionSpecificationWithType = ActionSpecification & {
+  type: AssistantBuilderActionType | "DATA_VISUALIZATION";
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
@@ -371,8 +412,18 @@ export function getDefaultReasoningActionConfiguration(): AssistantBuilderAction
     },
     name: DEFAULT_REASONING_ACTION_NAME,
     description: DEFAULT_REASONING_ACTION_DESCRIPTION,
-    noConfigurationRequired: false,
+    noConfigurationRequired: true,
   } satisfies AssistantBuilderActionConfiguration;
+}
+
+export function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {
+  return {
+    type: "DATA_VISUALIZATION",
+    configuration: {},
+    name: DEFAULT_DATA_VISUALIZATION_NAME,
+    description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+    noConfigurationRequired: true,
+  } satisfies AssistantBuilderDataVisualizationConfiguration;
 }
 
 export function getDefaultMCPServerActionConfiguration(
@@ -400,6 +451,7 @@ export function getDefaultMCPServerActionConfiguration(
     noConfigurationRequired: requirements.noRequirement,
   };
 }
+
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfigurationWithId | null {
@@ -436,6 +488,13 @@ export function getDefaultActionConfiguration(
   }
 
   return null;
+}
+
+export function getDataVisualizationAction() {
+  return {
+    id: uniqueId(),
+    ...getDataVisualizationConfiguration(),
+  };
 }
 
 export const BUILDER_FLOWS = [
