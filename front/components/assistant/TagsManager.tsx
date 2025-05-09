@@ -32,9 +32,7 @@ const columns = [
     accessorKey: "name",
     header: "Tag label",
     cell: (info: CellContext<any, string>) => (
-      <div className="flex flex-row items-center gap-2">
-        <Chip label={info.row.original.name} color="golden" />
-      </div>
+      <Chip label={info.row.original.name} color="golden" />
     ),
   },
   {

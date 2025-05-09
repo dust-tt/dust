@@ -161,7 +161,7 @@ export const TagsSuggestDialog = ({
             label: "Apply tag suggestions",
             variant: "primary",
             onClick: handleCreateTag,
-            disabled: suggestions.length === 0,
+            disabled: !Object.values(appliedSuggestion).some((value) => value),
           }}
         />
       </DialogContent>
