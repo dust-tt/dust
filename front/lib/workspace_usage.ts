@@ -94,6 +94,7 @@ export async function unsafeGetUsageData(
 ): Promise<string> {
   const wId = workspace.sId;
   const readReplica = getFrontReplicaDbConnection();
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const results = await readReplica.query<WorkspaceUsageQueryResult>(
     `
       SELECT
@@ -172,6 +173,7 @@ export async function getMessageUsageData(
 ): Promise<string> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const results = await readReplica.query<MessageUsageQueryResult>(
     `
       SELECT
@@ -395,6 +397,7 @@ export async function getAssistantUsageData(
 ): Promise<number> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const mentions = await readReplica.query<{ messages: number }>(
     `
     SELECT COUNT(a."id") AS "messages"
@@ -430,6 +433,7 @@ export async function getAssistantsUsageData(
 ): Promise<string> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const mentions = await readReplica.query<AgentUsageQueryResult>(
     `
     SELECT

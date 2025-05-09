@@ -41,7 +41,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const analytics = await getAnalytics(req.query.wId as string);
+      const analytics = await getAnalytics(auth);
       res.status(200).json(analytics);
       return;
 
@@ -59,10 +59,11 @@ async function handler(
 export default withSessionAuthenticationForWorkspace(handler);
 
 async function getAnalytics(
-  wId: string
+  auth: Authenticator
 ): Promise<GetWorkspaceAnalyticsResponse> {
   const replicaDb = getFrontReplicaDbConnection();
 
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const results = await replicaDb.query<{
     member_count: number;
     weekly_active: number;
@@ -73,13 +74,10 @@ async function getAnalytics(
     prev_avg_daily_active: number;
   }>(
     `
-    WITH workspace_id AS (
-      SELECT id FROM workspaces WHERE "sId" = :wId
-    ),
-    member_counts AS (
+    WITH member_counts AS (
       SELECT COUNT(DISTINCT "userId") AS member_count
       FROM memberships
-      WHERE "workspaceId" = (SELECT id FROM workspace_id)
+      WHERE "workspaceId" = :workspace_id
         AND "startAt" <= NOW() 
         AND ("endAt" IS NULL OR "endAt" >= NOW())
     ),
@@ -88,7 +86,7 @@ async function getAnalytics(
         "userId",
         "createdAt"
       FROM user_messages
-      WHERE "workspaceId" = (SELECT id FROM workspace_id)
+      WHERE "workspaceId" = :workspace_id
         AND "createdAt" >= CURRENT_DATE - INTERVAL '60 days'
     ),
     daily_activity AS (
@@ -126,7 +124,7 @@ async function getAnalytics(
     FROM member_counts m, activity_metrics a, daily_averages d
     `,
     {
-      replacements: { wId },
+      replacements: { workspace_id: auth.getNonNullableWorkspace().id },
       type: QueryTypes.SELECT,
     }
   );
