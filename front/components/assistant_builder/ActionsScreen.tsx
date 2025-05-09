@@ -465,24 +465,32 @@ export default function ActionsScreen({
           </div>
         )}
         <div className="flex h-full min-h-40 flex-col gap-4">
-          <CardGrid>
-            {builderState.actions.map((action) => (
-              <ActionCard
-                action={action}
-                key={action.name}
-                editAction={() => {
-                  setAction({
-                    type: "edit",
-                    action,
-                  });
-                }}
-                removeTool={() => {
-                  removeTool(action);
-                }}
-                isLegacyConfig={isLegacyConfig}
-              />
-            ))}
-          </CardGrid>
+          {builderState.actions.length === 0 ? (
+            <div className="flex h-36 w-full items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Add knowledge and tools to enhance your agent's capabilities.
+              </p>
+            </div>
+          ) : (
+            <CardGrid>
+              {builderState.actions.map((action) => (
+                <ActionCard
+                  action={action}
+                  key={action.name}
+                  editAction={() => {
+                    setAction({
+                      type: "edit",
+                      action,
+                    });
+                  }}
+                  removeTool={() => {
+                    removeTool(action);
+                  }}
+                  isLegacyConfig={isLegacyConfig}
+                />
+              ))}
+            </CardGrid>
+          )}
         </div>
       </div>
     </>
