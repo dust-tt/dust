@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import type {
   ActionSpecificationWithType,
@@ -49,40 +49,43 @@ export function AddToolsDropdown({
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
 
-  const filteredDefaultTools = useMemo(
-    () =>
-      searchText.length > 0
-        ? defaultTools.filter((tool) =>
-            tool.label.toLowerCase().includes(searchText.toLowerCase())
-          )
-        : defaultTools,
-    [defaultTools, searchText]
-  );
-
-  const filteredDefaultMCPServerViews = useMemo(
-    () =>
-      searchText.length > 0
-        ? defaultMCPServerViews.filter((view) =>
-            view.server.name.toLowerCase().includes(searchText.toLowerCase())
-          )
-        : defaultMCPServerViews,
-    [defaultMCPServerViews, searchText]
-  );
-
-  const filteredNonDefaultMCPServerViews = useMemo(
-    () =>
-      searchText.length > 0
-        ? nonDefaultMCPServerViews.filter((view) =>
-            view.server.name.toLowerCase().includes(searchText.toLowerCase())
-          )
-        : nonDefaultMCPServerViews,
-    [nonDefaultMCPServerViews, searchText]
-  );
+  const [filteredDefaultTools, setFilteredDefaultTools] =
+    useState(defaultTools);
+  const [filteredDefaultMCPServerViews, setFilteredDefaultMCPServerViews] =
+    useState(defaultMCPServerViews);
+  const [
+    filteredNonDefaultMCPServerViews,
+    setFilteredNonDefaultMCPServerViews,
+  ] = useState(nonDefaultMCPServerViews);
 
   function onOpenChange(open: boolean) {
-    if (!open) {
+    if (open) {
+      // Update filtered list with the latest values when the dropdown is opened
+      setFilteredDefaultTools(defaultTools);
+      setFilteredDefaultMCPServerViews(defaultMCPServerViews);
+      setFilteredNonDefaultMCPServerViews(nonDefaultMCPServerViews);
+    } else {
       setSearchText("");
     }
+  }
+
+  function onChangeSearchText(text: string) {
+    setSearchText(text);
+    setFilteredDefaultTools(
+      defaultTools.filter((tool) =>
+        tool.label.toLowerCase().includes(text.toLowerCase())
+      )
+    );
+    setFilteredDefaultMCPServerViews(
+      defaultMCPServerViews.filter((view) =>
+        view.server.name.toLowerCase().includes(text.toLowerCase())
+      )
+    );
+    setFilteredNonDefaultMCPServerViews(
+      nonDefaultMCPServerViews.filter((view) =>
+        view.server.name.toLowerCase().includes(text.toLowerCase())
+      )
+    );
   }
 
   function onClickDefaultTool(toolType: AssistantBuilderActionType) {
@@ -150,7 +153,7 @@ export function AddToolsDropdown({
               name="search-tools"
               placeholder="Search Tools"
               value={searchText}
-              onChange={(text) => setSearchText(text)}
+              onChange={onChangeSearchText}
             />
           </>
         }
