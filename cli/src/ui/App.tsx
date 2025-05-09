@@ -60,11 +60,7 @@ const App: FC<AppProps> = ({ cli }) => {
     case "agents-mcp":
       return <AgentsMCP port={flags.port} sId={flags.sId} />;
     case "ask":
-      // For ask command, use the first sId if provided as an array
-      const agentSId = Array.isArray(flags.sId) && flags.sId.length > 0 
-        ? flags.sId[0] 
-        : undefined;
-      return <AskAgent sId={agentSId} question={flags.question} />;
+      return <AskAgent sId={flags.sId?.[0]} question={flags.question} />;
     case "help":
       return <Help />;
     default:

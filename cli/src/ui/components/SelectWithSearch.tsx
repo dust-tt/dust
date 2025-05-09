@@ -6,7 +6,7 @@ export interface BaseItem {
   label: string; // Used for searching
 }
 
-interface MultiSelectWithSearchProps<T extends BaseItem> {
+interface SelectWithSearchProps<T extends BaseItem> {
   items: T[];
   onConfirm: (selectedIds: string[]) => void;
   renderItem: (item: T, isSelected: boolean, isFocused: boolean) => ReactNode;
@@ -22,7 +22,7 @@ const DEFAULT_LEG_ROOM = 7;
 const DEFAULT_SEARCH_PROMPT = "Search Items:";
 const DEFAULT_SELECT_PROMPT = "Select Items";
 
-export const MultiSelectWithSearch = <T extends BaseItem>({
+export const SelectWithSearch = <T extends BaseItem>({
   items,
   onConfirm,
   renderItem,
@@ -35,7 +35,7 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
   legRoom = DEFAULT_LEG_ROOM,
   searchPrompt = DEFAULT_SEARCH_PROMPT,
   selectPrompt = DEFAULT_SELECT_PROMPT,
-}: MultiSelectWithSearchProps<T>) => {
+}: SelectWithSearchProps<T>) => {
   const { stdout } = useStdout();
   const terminalHeight = stdout?.rows || 24;
 
