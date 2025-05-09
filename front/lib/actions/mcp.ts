@@ -592,7 +592,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       MCPToolResultContentType[],
       Error | McpError
     > | null = null;
-    for await (const event of tryCallMCPTool(auth, inputs, agentLoopContext)) {
+    for await (const event of tryCallMCPTool(auth, inputs, agentLoopContext, {
+      progressToken: action.id,
+    })) {
       if (event.type === "result") {
         toolCallResult = event.result;
       } else if (event.type === "notification") {
