@@ -12,6 +12,7 @@ import { useState } from "react";
 
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { TagsManager } from "./TagsManager";
@@ -70,14 +71,16 @@ export const TagsFilterMenu = ({
               value={tagSearch}
               onChange={setTagSearch}
               button={
-                <Button
-                  variant="primary"
-                  label="Manage tags"
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    setTagManagerOpen(true);
-                  }}
-                />
+                isAdmin(owner) ? (
+                  <Button
+                    variant="primary"
+                    label="Manage tags"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      setTagManagerOpen(true);
+                    }}
+                  />
+                ) : undefined
               }
             />
           }
@@ -91,7 +94,7 @@ export const TagsFilterMenu = ({
                   setSelectedTags([...selectedTags, tag]);
                 }}
               >
-                <Chip label={tag.name} size="sm" color="golden" />
+                <Chip label={tag.name} size="xs" color="golden" />
               </DropdownMenuItem>
             ))}
         </DropdownMenuContent>

@@ -92,8 +92,12 @@ import {
   getDefaultActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
+import {
+  isReservedName,
+  useBuilderActionInfo,
+} from "@app/components/assistant_builder/useBuilderActionInfo";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { ActionSpecification } from "@app/lib/actions/utils";
 import {
   ACTION_SPECIFICATIONS,
@@ -119,32 +123,6 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "PROCESS",
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
-
-// Actions in this list are not configurable via the "add tool" menu.
-// Instead, they should be handled in the `Capabilities` component.
-// Note: not all capabilities are actions (eg: visualization)
-const CAPABILITIES_ACTION_CATEGORIES = [
-  "WEB_NAVIGATION",
-  "REASONING",
-] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
-
-const isUsableAsCapability = (
-  id: string,
-  mcpServerViews: MCPServerViewType[]
-) => {
-  const view = mcpServerViews.find((v) => v.id === id);
-  if (!view) {
-    return false;
-  }
-  return view.server.isDefault && getMCPServerRequirements(view).noRequirement;
-};
-
-// We reserve the name we use for capability actions, as these aren't
-// configurable via the "add tool" menu.
-const isReservedName = (name: string) =>
-  CAPABILITIES_ACTION_CATEGORIES.some(
-    (c) => getDefaultActionConfiguration(c)?.name === name
-  );
 
 function ActionModeSection({
   children,
@@ -235,10 +213,6 @@ interface ActionScreenProps {
   reasoningModels: ModelConfigurationType[];
 }
 
-type ActionSpecificationWithType = ActionSpecification & {
-  type: AssistantBuilderActionType | AssistantBuilderDataVisualizationType;
-};
-
 export default function ActionsScreen({
   owner,
   builderState,
@@ -249,113 +223,15 @@ export default function ActionsScreen({
   enableReasoningTool,
   reasoningModels,
 }: ActionScreenProps) {
-  const { spaces, mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useContext(AssistantBuilderContext);
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
-  const [
-    filteredDefaultToolsWithoutConfiguration,
-    setFilteredDefaultToolsWithoutConfiguration,
-  ] = useState<ActionSpecificationWithType[]>([]);
-
-  const isCapabilityAction = useCallback(
-    (action: AssistantBuilderActionAndDataVisualizationConfiguration) => {
-      if (action.type === "MCP") {
-        return isUsableAsCapability(
-          action.configuration.mcpServerViewId,
-          mcpServerViews
-        );
-      }
-
-      return (CAPABILITIES_ACTION_CATEGORIES as string[]).includes(action.type);
-    },
-    [mcpServerViews]
-  );
-
-  const configurableActions = builderState.actions.filter(
-    (a) => !isCapabilityAction(a)
-  );
-
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
 
-  const spaceIdToActions = useMemo(() => {
-    return configurableActions.reduce<
-      Record<string, AssistantBuilderActionState[]>
-    >((acc, action) => {
-      const addActionToSpace = (spaceId?: string) => {
-        if (spaceId) {
-          acc[spaceId] = (acc[spaceId] || []).concat(action);
-        }
-      };
-
-      const actionType = action.type;
-
-      switch (actionType) {
-        case "TABLES_QUERY":
-          Object.values(action.configuration).forEach((config) => {
-            addActionToSpace(config.dataSourceView.spaceId);
-          });
-          break;
-
-        case "RETRIEVAL_SEARCH":
-        case "RETRIEVAL_EXHAUSTIVE":
-        case "PROCESS":
-          Object.values(action.configuration.dataSourceConfigurations).forEach(
-            (config) => {
-              addActionToSpace(config.dataSourceView.spaceId);
-            }
-          );
-          break;
-
-        case "DUST_APP_RUN":
-          addActionToSpace(action.configuration.app?.space.sId);
-          break;
-
-        case "MCP":
-          if (action.configuration.dataSourceConfigurations) {
-            Object.values(
-              action.configuration.dataSourceConfigurations
-            ).forEach((config) => {
-              addActionToSpace(config.dataSourceView.spaceId);
-            });
-          }
-
-          if (action.configuration.tablesConfigurations) {
-            Object.values(action.configuration.tablesConfigurations).forEach(
-              (config) => {
-                addActionToSpace(config.dataSourceView.spaceId);
-              }
-            );
-          }
-
-          if (action.configuration.mcpServerViewId) {
-            const mcpServerView = mcpServerViews.find(
-              (v) => v.id === action.configuration.mcpServerViewId
-            );
-            // Default MCP server themselves are not accounted for in the space restriction.
-            if (mcpServerView && !mcpServerView.server.isDefault) {
-              addActionToSpace(mcpServerView.spaceId);
-            }
-          }
-          break;
-
-        case "WEB_NAVIGATION":
-        case "REASONING":
-        case "DATA_VISUALIZATION":
-          break;
-
-        default:
-          assertNever(actionType);
-      }
-      return acc;
-    }, {});
-  }, [configurableActions, mcpServerViews]);
-
-  const nonGlobalSpacessUsedInActions = useMemo(() => {
-    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
-    return nonGlobalSpaces.filter((v) => spaceIdToActions[v.sId]?.length > 0);
-  }, [spaceIdToActions, spaces]);
+  const { nonGlobalSpacessUsedInActions, spaceIdToActions } =
+    useBuilderActionInfo(builderState);
 
   const updateAction = useCallback(
     function _updateAction({
@@ -531,12 +407,6 @@ export default function ActionsScreen({
               setEdited={setEdited}
               setAction={setAction}
               enableReasoningTool={enableReasoningTool}
-              setFilteredDefaultToolsWithoutConfiguration={
-                setFilteredDefaultToolsWithoutConfiguration
-              }
-              filteredDefaultToolsWithoutConfiguration={
-                filteredDefaultToolsWithoutConfiguration
-              }
             />
 
             {!isLegacyConfig && (

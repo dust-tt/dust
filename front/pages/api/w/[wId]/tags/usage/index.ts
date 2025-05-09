@@ -20,6 +20,16 @@ async function handler(
 
   switch (method) {
     case "GET": {
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Only workspace administrators can see tags usage",
+          },
+        });
+      }
+
       const tagsWithUsage = await TagResource.findAllWithUsage(auth);
 
       return res.status(200).json({

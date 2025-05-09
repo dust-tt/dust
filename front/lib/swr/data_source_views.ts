@@ -250,7 +250,7 @@ export function useDataSourceViewSearchTags({
   );
 
   return {
-    tags: useMemo(() => data?.tags || [], [data]),
+    tags: data?.tags ?? emptyArray(),
     isLoading,
     isError: !!error,
     mutate,

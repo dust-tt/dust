@@ -6,6 +6,10 @@ on:
       - viz/**
       - .github/workflows/build-and-lint-viz.yml
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   check-eslint:
     runs-on: ubuntu-latest

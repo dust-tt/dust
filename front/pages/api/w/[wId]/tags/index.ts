@@ -4,6 +4,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -19,6 +21,7 @@ export type CreateTagResponseBody = {
 
 const PostBodySchema = t.type({
   name: t.string,
+  agentIds: t.union([t.undefined, t.array(t.string)]),
 });
 
 async function handler(
@@ -62,7 +65,7 @@ async function handler(
       }
 
       const body = r.right;
-      const { name } = body;
+      const { name, agentIds } = body;
 
       const existingTag = await TagResource.findByName(auth, name);
 
@@ -79,6 +82,24 @@ async function handler(
       const newTag = await TagResource.makeNew(auth, {
         name,
       });
+
+      if (agentIds) {
+        const agentsToTag = await AgentConfiguration.findAll({
+          where: {
+            sId: agentIds,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            status: "active",
+          },
+        });
+
+        for (const agent of agentsToTag) {
+          await TagAgentModel.create({
+            workspaceId: auth.getNonNullableWorkspace().id,
+            tagId: newTag.id,
+            agentConfigurationId: agent.id,
+          });
+        }
+      }
 
       return res.status(201).json({
         tag: newTag.toJSON(),

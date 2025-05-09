@@ -85,7 +85,7 @@ function AssistantDetailsInfo({
       {agentConfiguration.tags.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {agentConfiguration.tags.map((tag) => (
-            <Chip key={tag.sId} color="golden" label={tag.name} />
+            <Chip key={tag.sId} color="golden" label={tag.name} size="xs" />
           ))}
         </div>
       )}

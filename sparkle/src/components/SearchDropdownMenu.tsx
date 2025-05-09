@@ -54,9 +54,6 @@ export function SearchDropdownMenu({
           onChange={(value) => {
             setSearchInputValue(value);
             setIsOpen(value.length >= minLengthToOpen);
-            setTimeout(() => {
-              searchInputRef.current?.focus();
-            }, 0);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -82,6 +79,9 @@ export function SearchDropdownMenu({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+        }}
         side="bottom"
         align="start"
         className="s-w-[--radix-popper-anchor-width]"

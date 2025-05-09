@@ -8,15 +8,6 @@ module.exports = {
   plugins: ["import", "simple-import-sort"],
   rules: {
     "import/no-cycle": "error",
-    /**
-    "@typescript-eslint/naming-convention": [
-      "error",
-      {
-        "selector": "variableLike",
-        "format": ["camelCase"]
-      }
-    ],
-    */
     curly: ["error", "all"],
     "react/no-unescaped-entities": 0,
     "@typescript-eslint/consistent-type-imports": "error",

@@ -160,7 +160,7 @@ export const TagsSelector = ({
                   setEdited(true);
                 }}
               >
-                <Chip size="sm" color="golden" label={c.name} />
+                <Chip size="xs" color="golden" label={c.name} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
