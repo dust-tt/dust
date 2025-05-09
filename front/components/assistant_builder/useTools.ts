@@ -15,6 +15,7 @@ import {
   DATA_VISUALIZATION_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { WhitelistableFeature } from "@app/types";
 import { asDisplayName } from "@app/types";
 
 const DEFAULT_TOOLS_WITH_CONFIGURATION = [
@@ -113,29 +114,42 @@ function getMCPServerViews({
 interface UseToolsProps {
   enableReasoningTool: boolean;
   actions: AssistantBuilderActionState[];
+  hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean;
 }
 
-export const useTools = ({ enableReasoningTool, actions }: UseToolsProps) => {
+export const useTools = ({
+  enableReasoningTool,
+  actions,
+  hasFeature,
+}: UseToolsProps) => {
   const { mcpServerViews, initialActions } = useContext(
     AssistantBuilderContext
   );
 
-  const isWebNavigationEnabled = useMemo(() => {
-    return !!initialActions.find((a) => a.type === "WEB_NAVIGATION");
-  }, [initialActions]);
-
   const defaultTools = useMemo(() => {
+    const isWebNavigationEnabled = !!initialActions.find(
+      (action) => action.type === "WEB_NAVIGATION"
+    );
+
     return getDefaultTools({
       enableReasoningTool,
       isWebNavigationEnabled,
       mcpServerViews,
     });
-  }, [enableReasoningTool, isWebNavigationEnabled, mcpServerViews]);
+  }, [enableReasoningTool, initialActions, mcpServerViews]);
 
-  const { defaultMCPServerViews, nonDefaultMCPServerViews } = useMemo(
-    () => getMCPServerViews({ mcpServerViews }),
-    [mcpServerViews]
-  );
+  const { defaultMCPServerViews, nonDefaultMCPServerViews } = useMemo(() => {
+    const isMCPEnabled = hasFeature(ACTION_SPECIFICATIONS["MCP"].flag);
+
+    if (!isMCPEnabled) {
+      return {
+        defaultMCPServerViews: [],
+        nonDefaultMCPServerViews: [],
+      };
+    }
+
+    return getMCPServerViews({ mcpServerViews });
+  }, [mcpServerViews, hasFeature]);
 
   const selectableDefaultTools = useMemo(
     () =>

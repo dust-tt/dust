@@ -234,7 +234,11 @@ export default function ActionsScreen({
     selectableDefaultTools,
     selectableDefaultMCPServerViews,
     selectableNonDefaultMCPServerViews,
-  } = useTools({ enableReasoningTool, actions: builderState.actions });
+  } = useTools({
+    enableReasoningTool,
+    actions: builderState.actions,
+    hasFeature,
+  });
 
   const updateAction = useCallback(
     function _updateAction({
