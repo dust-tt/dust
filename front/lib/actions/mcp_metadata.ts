@@ -19,7 +19,7 @@ import {
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_local";
+import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import apiConfig from "@app/lib/api/config";
 import type {
   MCPServerDefinitionType,
@@ -81,28 +81,28 @@ interface ConnectViaRemoteMCPServerUrl {
   remoteMCPServerUrl: string;
 }
 
-interface ConnectViaLocalMCPServer {
-  type: "localMCPServerId";
+interface ConnectViaClientSideMCPServer {
+  type: "clientSideMCPServerId";
   conversationId: string;
   messageId: string;
   mcpServerId: string;
 }
 
-export const isConnectViaLocalMCPServer = (
+export const isConnectViaClientSideMCPServer = (
   params: MCPConnectionParams
-): params is ConnectViaLocalMCPServer => {
-  return params.type === "localMCPServerId";
+): params is ConnectViaClientSideMCPServer => {
+  return params.type === "clientSideMCPServerId";
 };
 
-export type PlatformMCPConnectionParams =
+export type ServerSideMCPConnectionParams =
   | ConnectViaMCPServerId
   | ConnectViaRemoteMCPServerUrl;
 
-export type LocalMCPConnectionParams = ConnectViaLocalMCPServer;
+export type ClientSideMCPConnectionParams = ConnectViaClientSideMCPServer;
 
 export type MCPConnectionParams =
-  | PlatformMCPConnectionParams
-  | LocalMCPConnectionParams;
+  | ServerSideMCPConnectionParams
+  | ClientSideMCPConnectionParams;
 
 export const connectToMCPServer = async (
   auth: Authenticator,
@@ -194,7 +194,7 @@ export const connectToMCPServer = async (
       break;
     }
 
-    case "localMCPServerId": {
+    case "clientSideMCPServerId": {
       const transport = new ClientSideRedisMCPTransport(auth, {
         conversationId: params.conversationId,
         mcpServerId: params.mcpServerId,
@@ -204,7 +204,7 @@ export const connectToMCPServer = async (
         await mcpClient.connect(transport);
       } catch (e: unknown) {
         return new Err(
-          new Error("Error establishing connection to local MCP server.")
+          new Error("Error establishing connection to client side MCP server.")
         );
       }
       break;

@@ -2,7 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
@@ -94,9 +94,9 @@ async function handler(
 
       const { content, context, mentions } = bodyValidation.right;
 
-      if (context.localMCPServerIds) {
+      if (context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
-          context.localMCPServerIds,
+          context.clientSideMCPServerIds,
           async (serverId) =>
             validateMCPServerAccess(auth, {
               workspaceId: auth.getNonNullableWorkspace().sId,
@@ -139,7 +139,7 @@ async function handler(
             email: user.email,
             profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
             origin: "web",
-            localMCPServerIds: context.localMCPServerIds ?? [],
+            clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
           },
         },
         { resolveAfterFullGeneration: false }

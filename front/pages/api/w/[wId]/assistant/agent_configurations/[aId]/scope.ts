@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   isMCPServerConfiguration,
-  isPlatformMCPServerConfiguration,
+  isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -127,7 +127,7 @@ async function handler(
           // If MCP actions are present, they must be platform MCP actions.
           if (isMCPServerConfiguration(action)) {
             assert(
-              isPlatformMCPServerConfiguration(action),
+              isServerSideMCPServerConfiguration(action),
               "MCP actions must be platform MCP actions."
             );
           }

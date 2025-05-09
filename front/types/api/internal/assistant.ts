@@ -16,7 +16,7 @@ export const InternalPostMessagesRequestBodySchema = t.type({
       profilePictureUrl: t.union([t.string, t.null]),
     }),
     t.partial({
-      localMCPServerIds: t.array(t.string),
+      clientSideMCPServerIds: t.array(t.string),
     }),
   ]),
 });

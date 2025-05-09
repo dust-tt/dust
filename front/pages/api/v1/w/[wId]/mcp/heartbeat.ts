@@ -1,7 +1,7 @@
 import type { HeartbeatMCPResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/local_registry";
+import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/client_side_registry";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";

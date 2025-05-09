@@ -822,7 +822,8 @@ export async function* postUserMessage(
               await UserMessage.create(
                 {
                   content,
-                  localMCPServerIds: context.localMCPServerIds ?? [],
+                  // TODO(MCP Clean-up): Rename field in DB.
+                  clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
                   userContextUsername: context.username,
                   userContextTimezone: context.timezone,
                   userContextFullName: context.fullName,
@@ -1318,8 +1319,8 @@ export async function* editUserMessage(
               await UserMessage.create(
                 {
                   content,
-                  // No support for local MCP servers when editing/retrying a user message.
-                  localMCPServerIds: [],
+                  // No support for client-side MCP servers when editing/retrying a user message.
+                  clientSideMCPServerIds: [],
                   userContextUsername: userMessageRow.userContextUsername,
                   userContextTimezone: userMessageRow.userContextTimezone,
                   userContextFullName: userMessageRow.userContextFullName,

@@ -1,7 +1,7 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 
-import type { LocalMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { ClientSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -12,7 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 /**
  * Generate a unique MCP request ID for a conversation and message
  */
-export function makeLocalMCPRequestIdForMessageAndConversation({
+export function makeClientSideMCPRequestIdForMessageAndConversation({
   conversationId,
   messageId,
 }: {
@@ -25,11 +25,11 @@ export function makeLocalMCPRequestIdForMessageAndConversation({
 }
 
 /**
- * Parse a local MCP request ID to extract the conversation ID and message ID
+ * Parse a client-side MCP request ID to extract the conversation ID and message ID
  * @param requestId The request ID to parse
  * @returns An object containing the conversation ID and message ID, or null if the format is invalid
  */
-export function parseLocalMCPRequestId(
+export function parseClientSideMCPRequestId(
   requestId: string
 ): { conversationId: string; messageId: string } | null {
   // Check if the request ID follows our format.
@@ -76,25 +76,25 @@ export function getMCPServerResultsChannelId(
 // ------------------------------
 
 /**
- * Creates MCP server configurations from local MCP server IDs.
+ * Creates MCP server configurations from client-side MCP server IDs.
  *
- * This function takes an array of local MCP server IDs and converts them
+ * This function takes an array of client-side MCP server IDs and converts them
  * into MCP server configuration objects that can be used by the agent.
  *
- * @param localMCPServerIds - Array of local MCP server IDs from user message context
- * @returns Array of LocalMCPServerConfigurationType objects
+ * @param clientSideMCPServerIds - Array of client-side MCP server IDs from user message context
+ * @returns Array of ClientSideMCPServerConfigurationType objects
  */
-export function createLocalMCPServerConfigurations(
-  localMCPServerIds?: string[]
-): LocalMCPServerConfigurationType[] {
-  if (!localMCPServerIds || localMCPServerIds.length === 0) {
+export function createClientSideMCPServerConfigurations(
+  clientSideMCPServerIds?: string[]
+): ClientSideMCPServerConfigurationType[] {
+  if (!clientSideMCPServerIds || clientSideMCPServerIds.length === 0) {
     return [];
   }
 
-  return localMCPServerIds.map((serverId) => ({
-    description: `Use the MCP Server ${serverId} to interact with the local MCP server.`,
-    id: -1, // Default ID for local MCP servers.
-    localMcpServerId: serverId,
+  return clientSideMCPServerIds.map((serverId) => ({
+    description: `Use the MCP Server ${serverId} to interact with the client-side MCP server.`,
+    id: -1, // Default ID for client-side MCP servers.
+    clientSideMcpServerId: serverId,
     name: `MCP Server ${serverId}`,
     sId: serverId,
     type: "mcp_server_configuration",
@@ -107,7 +107,7 @@ export function createLocalMCPServerConfigurations(
 
 /**
  * Custom Transport implementation for MCP using Redis Pub/Sub
- * This allows communication between the client and local MCP servers
+ * This allows communication between the client and client-side MCP servers
  */
 export class ClientSideRedisMCPTransport implements Transport {
   private unsubscribe?: () => void;
@@ -153,7 +153,7 @@ export class ClientSideRedisMCPTransport implements Transport {
       resultsChannelId,
       this.handleRedisEvent.bind(this),
       this.lastEventId,
-      "mcp_local_transport"
+      "mcp_client_side_transport"
     );
 
     this.unsubscribe = subscription.unsubscribe;
@@ -183,7 +183,7 @@ export class ClientSideRedisMCPTransport implements Transport {
       mcpServerId: this.mcpServerId,
     });
 
-    const requestId = makeLocalMCPRequestIdForMessageAndConversation({
+    const requestId = makeClientSideMCPRequestIdForMessageAndConversation({
       conversationId: this.conversationId,
       messageId: this.messageId,
     });
@@ -195,7 +195,7 @@ export class ClientSideRedisMCPTransport implements Transport {
         requestId,
         request: message,
       }),
-      "mcp_local_request"
+      "mcp_client_side_request"
     );
   }
 
@@ -218,7 +218,7 @@ export class ClientSideRedisMCPTransport implements Transport {
 
       // Only handle messages for this specific messageId.
       if (payload.messageId === this.messageId) {
-        if (payload.type === "mcp_local_results" && this.onmessage) {
+        if (payload.type === "mcp_client_side_results" && this.onmessage) {
           this.handleMCPResponse(payload);
         }
       }

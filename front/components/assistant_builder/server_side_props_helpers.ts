@@ -29,10 +29,10 @@ import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
-  isPlatformMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
+  isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -235,7 +235,7 @@ async function getMCPServerActionConfiguration(
   action: MCPServerConfigurationType,
   dataSourceViews: DataSourceViewResource[]
 ): Promise<AssistantBuilderActionConfiguration> {
-  assert(isPlatformMCPServerConfiguration(action));
+  assert(isServerSideMCPServerConfiguration(action));
 
   const builderAction = getDefaultMCPServerActionConfiguration();
   if (builderAction.type !== "MCP") {

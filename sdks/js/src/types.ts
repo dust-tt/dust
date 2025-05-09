@@ -1054,7 +1054,7 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
-  localMCPServerIds: z.array(z.string()).optional().nullable(),
+  clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -1952,7 +1952,7 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       })
     ),
     context: UserMessageContextSchema.extend({
-      localMCPServerIds: z.array(z.string()).optional().nullable(),
+      clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
   }),
   z

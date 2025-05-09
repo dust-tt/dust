@@ -59,7 +59,7 @@ export async function registerMCPServer({
     lastHeartbeat: now,
   };
 
-  await runOnRedis({ origin: "mcp_local_request" }, async (redis) => {
+  await runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
     await redis.set(key, JSON.stringify(metadata), {
       EX: MCP_SERVER_REGISTRATION_TTL,
     });
@@ -98,7 +98,7 @@ export async function updateMCPServerHeartbeat({
 
   // Get existing registration and update it.
   const result = await runOnRedis(
-    { origin: "mcp_local_request" },
+    { origin: "mcp_client_side_request" },
     async (redis) => {
       // Get existing registration.
       const existing = await redis.get(key);
@@ -157,7 +157,7 @@ export async function validateMCPServerAccess(
     serverId,
   });
 
-  return runOnRedis({ origin: "mcp_local_request" }, async (redis) => {
+  return runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
     const exists = await redis.exists(key);
 
     if (exists) {
