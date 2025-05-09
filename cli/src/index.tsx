@@ -41,11 +41,6 @@ const cli = meow({
       isMultiple: true,
       description: "Specify agent sId(s) to use directly (can be repeated)",
     },
-    question: {
-      type: "string",
-      shortFlag: "q",
-      description: "Specify a question to ask an agent",
-    },
   },
 });
 

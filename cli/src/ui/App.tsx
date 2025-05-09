@@ -5,7 +5,7 @@ import Auth from "./commands/Auth.js";
 import Status from "./commands/Status.js";
 import Logout from "./commands/Logout.js";
 import AgentsMCP from "./commands/AgentsMCP.js";
-import AskAgent from "./commands/AskAgent.js";
+import Chat from "./commands/Chat.js";
 import Help from "./Help.js";
 
 interface AppProps {
@@ -29,10 +29,6 @@ interface AppProps {
     sId: {
       type: "string";
       isMultiple: true;
-    };
-    question: {
-      type: "string";
-      shortFlag: "q";
     };
   }>;
 }
@@ -59,8 +55,8 @@ const App: FC<AppProps> = ({ cli }) => {
       return <Logout />;
     case "agents-mcp":
       return <AgentsMCP port={flags.port} sId={flags.sId} />;
-    case "ask":
-      return <AskAgent sId={flags.sId?.[0]} question={flags.question} />;
+    case "chat":
+      return <Chat sId={flags.sId?.[0]} />;
     case "help":
       return <Help />;
     default:

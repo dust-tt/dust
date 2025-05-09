@@ -23,13 +23,9 @@ interface Message {
 
 interface CliChatProps {
   sId?: string;
-  question?: string;
 }
 
-const CliChat: FC<CliChatProps> = ({
-  sId: requestedSId,
-  question: initialQuestion,
-}) => {
+const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
@@ -311,24 +307,6 @@ const CliChat: FC<CliChatProps> = ({
     },
     [selectedAgent, conversationId, me, meError, isMeLoading]
   );
-
-  // Handle initial question if provided
-  useEffect(() => {
-    if (
-      selectedAgent &&
-      initialQuestion &&
-      messages.length === 0 &&
-      canSubmit
-    ) {
-      handleSubmitQuestion(initialQuestion);
-    }
-  }, [
-    selectedAgent,
-    initialQuestion,
-    handleSubmitQuestion,
-    messages.length,
-    canSubmit,
-  ]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
