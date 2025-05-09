@@ -447,12 +447,15 @@ export class GroupResource extends BaseResource<GroupModel> {
       ],
     });
 
-    if (agentConfiguration.status === "draft") {
+    if (
+      agentConfiguration.status === "draft" ||
+      agentConfiguration.scope === "global"
+    ) {
       if (groupAgents.length === 0) {
         return null;
       }
       throw new Error(
-        "Unexpected: draft agent shouldn't have an editor group."
+        "Unexpected: draft or global agent shouldn't have an editor group."
       );
     }
 
