@@ -294,11 +294,10 @@ export function InstructionScreen({
             )}
 
             {configsWithUniqueInstructions &&
-              configsWithUniqueInstructions.length > 1 &&
-              currentConfig && (
+              configsWithUniqueInstructions.length > 1 && (
                 <PromptHistory
                   history={configsWithUniqueInstructions.slice(1)}
-                  latestConfig={currentConfig}
+                  currentInstructions={builderState.instructions || ""}
                   selectedConfig={compareVersion}
                   onSelect={(config) => {
                     setCompareVersion(config);

@@ -12,20 +12,22 @@ import {
 import { useCallback } from "react";
 import React from "react";
 
-import { GaugeDiff } from "@app/components/assistant_builder/instructions/ChangeIndicator";
 import type { LightAgentConfigurationType } from "@app/types";
+import { GaugeDiff } from "@app/components/assistant_builder/instructions/ChangeIndicator";
+
+interface PromptHistoryProps {
+  history: LightAgentConfigurationType[];
+  currentInstructions: string;
+  selectedConfig: LightAgentConfigurationType | null;
+  onSelect: (config: LightAgentConfigurationType) => void;
+}
 
 export function PromptHistory({
   history,
   onSelect,
-  latestConfig,
+  currentInstructions,
   selectedConfig,
-}: {
-  history: LightAgentConfigurationType[];
-  onSelect: (config: LightAgentConfigurationType) => void;
-  latestConfig: LightAgentConfigurationType;
-  selectedConfig: LightAgentConfigurationType | null;
-}) {
+}: PromptHistoryProps) {
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "long",
@@ -80,7 +82,7 @@ export function PromptHistory({
                 <span>{formatVersionLabel(config)}</span>
                 <GaugeDiff
                   original={config.instructions || ""}
-                  updated={latestConfig.instructions || ""}
+                  updated={currentInstructions}
                 />
               </div>
             </DropdownMenuRadioItem>
