@@ -11,7 +11,10 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
+import {
+  frontSequelize,
+  getFrontReplicaDbConnection,
+} from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
   LightAgentConfigurationType,
@@ -566,4 +569,12 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
   });
 
   return hasDataSource || hasCreatedAssistant || hasRecentConversation;
+}
+
+export async function __tempNotToBeUsedDangerTestFunction() {
+  // eslint-disable-next-line dust/no-raw-sql
+  await frontSequelize.query("SELECT * FROM users", {
+    mapToModel: true,
+    model: UserModel,
+  });
 }
