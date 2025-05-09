@@ -2,7 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/local_registry";
+import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/client_side_registry";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";

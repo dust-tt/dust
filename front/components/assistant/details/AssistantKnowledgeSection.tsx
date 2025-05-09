@@ -25,7 +25,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import {
-  isPlatformMCPServerConfiguration,
+  isServerSideMCPServerConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -88,7 +88,7 @@ export function AssistantKnowledgeSection({
         acc.retrieval.push(action);
       } else if (isTablesQueryConfiguration(action)) {
         acc.queryTables.push(action);
-      } else if (isPlatformMCPServerConfiguration(action)) {
+      } else if (isServerSideMCPServerConfiguration(action)) {
         const { tables, dataSources } = action;
         if (dataSources) {
           acc.retrieval.push({ dataSources });

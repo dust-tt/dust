@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { getMCPEventsForServer } from "@app/lib/api/assistant/mcp_events";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

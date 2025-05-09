@@ -1,4 +1,4 @@
-import { getMCPServerChannelId } from "@app/lib/api/actions/mcp_local";
+import { getMCPServerChannelId } from "@app/lib/api/actions/mcp_client_side";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";

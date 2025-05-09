@@ -26,17 +26,17 @@ export type WithStakeLevelType<T> = T & {
   stakeLevel: MCPToolStakeLevelType;
 };
 
-export type PlatformMCPToolTypeWithStakeLevel =
+export type ServerSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType> & {
     toolServerId: string;
   };
 
-export type LocalMCPToolTypeWithStakeLevel =
+export type ClientSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType>;
 
 export type MCPToolWithStakeLevelType =
-  | PlatformMCPToolTypeWithStakeLevel
-  | LocalMCPToolTypeWithStakeLevel;
+  | ServerSideMCPToolTypeWithStakeLevel
+  | ClientSideMCPToolTypeWithStakeLevel;
 
 export type MCPServerType = {
   id: string;
