@@ -1,0 +1,27 @@
+name: Lint & Build & Test (CLI)
+
+on:
+  push:
+    paths:
+      - cli/**
+      - .github/workflows/build-and-lint-cli.yml
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  all-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.17.0
+          cache: "npm"
+          cache-dependency-path: |
+            ./cli/package-lock.json
+      - name: Typecheck and Lint
+        working-directory: cli
+        run: npm ci && npx tsc --version && npm run tsc && npm run lint

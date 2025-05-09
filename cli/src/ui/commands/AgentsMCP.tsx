@@ -2,7 +2,6 @@ import React, { FC, useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { GetAgentConfigurationsResponseType } from "@dust-tt/client";
-import { BaseItem } from "../components/SelectWithSearch.js";
 import { startMcpServer } from "../../utils/mcpServer.js";
 import clipboardy from "clipboardy";
 import AgentSelector from "../components/AgentSelector.js";
@@ -10,12 +9,6 @@ import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
-
-interface AgentItem extends BaseItem {
-  description: string;
-  scope?: string;
-  userFavorite?: boolean;
-}
 
 interface AgentsMCPProps {
   port?: number;
@@ -48,7 +41,7 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
   }, [confirmedSelection, isServerStarted, port]);
 
   // Handle 'c' key press to copy URL
-  useInput((input, key) => {
+  useInput((input) => {
     if (isServerStarted && serverUrl && input === "c") {
       const port = new URL(serverUrl).port;
       const url = `http://localhost:${port}/sse`;
@@ -91,7 +84,7 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
         <Box marginTop={1} flexDirection="row">
           <Text color="gray">Use MCP client to interact (Ctrl+C to stop).</Text>
           <Box marginLeft={1}>
-            <Text color="gray">(Press 'c' to copy URL)</Text>
+            <Text color="gray">(Press &apos;c&apos; to copy URL)</Text>
           </Box>
         </Box>
 

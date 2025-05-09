@@ -23,7 +23,6 @@ interface AgentSelectorProps {
 
 const AgentSelector: FC<AgentSelectorProps> = ({
   requestedSIds = [],
-  selectMultiple = true,
   onError,
   onConfirm,
 }) => {
@@ -33,14 +32,13 @@ const AgentSelector: FC<AgentSelectorProps> = ({
     allAgents,
     error: agentsError,
     isLoading: agentsIsLoading,
-    currentWorkspaceId,
   } = useAgents();
 
   useEffect(() => {
     if (agentsError) {
       onError?.(agentsError);
     }
-  }, [agentsError]);
+  }, [agentsError, onError]);
 
   useEffect(() => {
     if (!allAgents?.length || requestedSIds.length === 0) {
@@ -59,7 +57,7 @@ const AgentSelector: FC<AgentSelectorProps> = ({
     }
 
     onConfirm(requestedAgents);
-  }, [allAgents?.length, requestedSIds]);
+  }, [allAgents, requestedSIds, onError, onConfirm]);
 
   const renderAgentItem = useCallback(
     (item: AgentItem, isSelected: boolean, isFocused: boolean): ReactNode => {

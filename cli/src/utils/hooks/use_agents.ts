@@ -15,7 +15,7 @@ export function useAgents() {
 
   useEffect(() => {
     async function fetchAgents() {
-      if (isLoading) {
+      if (isLoading || error || allAgents.length > 0) {
         return;
       }
 
@@ -54,7 +54,7 @@ export function useAgents() {
     }
 
     fetchAgents();
-  }, []);
+  }, [isLoading, error, allAgents.length]);
 
   return { allAgents, error, isLoading, currentWorkspaceId };
 }

@@ -1,5 +1,5 @@
 import React, { FC, useEffect, useState } from "react";
-import { Box, Text, Newline } from "ink";
+import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { MeResponseType, WorkspaceType } from "@dust-tt/client";
 import AuthService from "../../utils/authService.js";

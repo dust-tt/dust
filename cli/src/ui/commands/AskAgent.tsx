@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useCallback, useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { getDustClient } from "../../utils/dustClient.js";
@@ -31,7 +31,6 @@ const AskAgent: FC<AskAgentProps> = ({
   const [isAskingQuestion, setIsAskingQuestion] = useState(false);
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
-  const [isComplete, setIsComplete] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversationHistory, setConversationHistory] = useState<
     Array<{ question: string; answer: string }>
@@ -39,66 +38,29 @@ const AskAgent: FC<AskAgentProps> = ({
 
   useClearTerminalOnMount();
 
-  const askQuestion = async (
-    agent: AgentConfiguration,
-    questionText: string
-  ) => {
-    setIsProcessingQuestion(true);
-    setAnswer(null);
+  const askQuestion = useCallback(
+    async (agent: AgentConfiguration, questionText: string) => {
+      setIsProcessingQuestion(true);
+      setAnswer(null);
 
-    const dustClient = await getDustClient();
-    if (!dustClient) {
-      setError("Authentication required. Run `dust login` first.");
-      setIsProcessingQuestion(false);
-      return;
-    }
-
-    let userMessageId: string;
-    let conversation: any;
-
-    // Either create a new conversation or add to an existing one
-    if (!conversationId) {
-      // Create a new conversation with the agent
-      const convRes = await dustClient.createConversation({
-        title: `CLI Question: ${questionText.substring(0, 30)}${
-          questionText.length > 30 ? "..." : ""
-        }`,
-        visibility: "unlisted",
-        message: {
-          content: questionText,
-          mentions: [{ configurationId: agent.sId }],
-          context: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            username: "cli-user",
-            fullName: "CLI User",
-            email: null,
-            origin: "api",
-          },
-        },
-        contentFragment: undefined,
-      });
-
-      if (convRes.isErr()) {
-        setError(`Failed to create conversation: ${convRes.error.message}`);
+      const dustClient = await getDustClient();
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
         setIsProcessingQuestion(false);
         return;
       }
 
-      // Store the conversation ID for future messages
-      conversation = convRes.value.conversation;
-      setConversationId(conversation.sId);
-      userMessageId = convRes.value.message.sId;
-    } else {
-      // Add a message to the existing conversation using the client library
-      try {
-        const workspaceId = await AuthService.getSelectedWorkspaceId();
-        if (!workspaceId) {
-          throw new Error("No workspace selected");
-        }
+      let userMessageId: string;
+      let conversation: any;
 
-        // Create a message in the existing conversation
-        const messageRes = await dustClient.postUserMessage({
-          conversationId: conversationId,
+      // Either create a new conversation or add to an existing one
+      if (!conversationId) {
+        // Create a new conversation with the agent
+        const convRes = await dustClient.createConversation({
+          title: `CLI Question: ${questionText.substring(0, 30)}${
+            questionText.length > 30 ? "..." : ""
+          }`,
+          visibility: "unlisted",
           message: {
             content: questionText,
             mentions: [{ configurationId: agent.sId }],
@@ -110,84 +72,120 @@ const AskAgent: FC<AskAgentProps> = ({
               origin: "api",
             },
           },
+          contentFragment: undefined,
         });
 
-        if (messageRes.isErr()) {
-          throw new Error(
-            `Error creating message: ${messageRes.error.message}`
-          );
-        }
-
-        userMessageId = messageRes.value.sId;
-        // Get the conversation for streaming
-        const convRes = await dustClient.getConversation({ conversationId });
         if (convRes.isErr()) {
-          throw new Error(
-            `Error retrieving conversation: ${convRes.error.message}`
-          );
+          setError(`Failed to create conversation: ${convRes.error.message}`);
+          setIsProcessingQuestion(false);
+          return;
         }
-        conversation = convRes.value;
-      } catch (error) {
-        setError(`Failed to create message: ${error}`);
-        setIsProcessingQuestion(false);
-        return;
-      }
-    }
 
-    try {
-      // Stream the agent's response
-      const streamRes = await dustClient.streamAgentAnswerEvents({
-        conversation: conversation,
-        userMessageId: userMessageId,
-      });
+        // Store the conversation ID for future messages
+        conversation = convRes.value.conversation;
+        setConversationId(conversation.sId);
+        userMessageId = convRes.value.message.sId;
+      } else {
+        // Add a message to the existing conversation using the client library
+        try {
+          const workspaceId = await AuthService.getSelectedWorkspaceId();
+          if (!workspaceId) {
+            throw new Error("No workspace selected");
+          }
 
-      if (streamRes.isErr()) {
-        setError(`Failed to stream agent answer: ${streamRes.error.message}`);
-        setIsProcessingQuestion(false);
-        return;
-      }
-
-      let responseText = "";
-      for await (const event of streamRes.value.eventStream) {
-        if (event.type === "generation_tokens") {
-          responseText += event.text;
-        } else if (event.type === "agent_error") {
-          setError(`Agent error: ${event.error.message}`);
-          break;
-        } else if (event.type === "user_message_error") {
-          setError(`User message error: ${event.error.message}`);
-          break;
-        } else if (event.type === "agent_message_success") {
-          // Complete
-          setIsComplete(true);
-          setAnswer(responseText);
-
-          // Add to conversation history (only if this is a new message)
-          setConversationHistory((prev) => {
-            // Check if this exact question-answer pair already exists
-            const exists = prev.some(
-              (item) =>
-                item.question === questionText && item.answer === responseText
-            );
-
-            if (!exists) {
-              return [
-                ...prev,
-                { question: questionText, answer: responseText },
-              ];
-            }
-            return prev;
+          // Create a message in the existing conversation
+          const messageRes = await dustClient.postUserMessage({
+            conversationId: conversationId,
+            message: {
+              content: questionText,
+              mentions: [{ configurationId: agent.sId }],
+              context: {
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                username: "cli-user",
+                fullName: "CLI User",
+                email: null,
+                origin: "api",
+              },
+            },
           });
 
-          break;
+          if (messageRes.isErr()) {
+            throw new Error(
+              `Error creating message: ${messageRes.error.message}`
+            );
+          }
+
+          userMessageId = messageRes.value.sId;
+          // Get the conversation for streaming
+          const convRes = await dustClient.getConversation({ conversationId });
+          if (convRes.isErr()) {
+            throw new Error(
+              `Error retrieving conversation: ${convRes.error.message}`
+            );
+          }
+          conversation = convRes.value;
+        } catch (error) {
+          setError(`Failed to create message: ${error}`);
+          setIsProcessingQuestion(false);
+          return;
         }
       }
-    } catch (error) {
-      setError(`Error processing response: ${error}`);
-    } finally {
-      setIsProcessingQuestion(false);
-    }
-  };
+
+      try {
+        // Stream the agent's response
+        const streamRes = await dustClient.streamAgentAnswerEvents({
+          conversation: conversation,
+          userMessageId: userMessageId,
+        });
+
+        if (streamRes.isErr()) {
+          setError(`Failed to stream agent answer: ${streamRes.error.message}`);
+          setIsProcessingQuestion(false);
+          return;
+        }
+
+        let responseText = "";
+        for await (const event of streamRes.value.eventStream) {
+          if (event.type === "generation_tokens") {
+            responseText += event.text;
+          } else if (event.type === "agent_error") {
+            setError(`Agent error: ${event.error.message}`);
+            break;
+          } else if (event.type === "user_message_error") {
+            setError(`User message error: ${event.error.message}`);
+            break;
+          } else if (event.type === "agent_message_success") {
+            // Complete
+            setAnswer(responseText);
+
+            // Add to conversation history (only if this is a new message)
+            setConversationHistory((prev) => {
+              // Check if this exact question-answer pair already exists
+              const exists = prev.some(
+                (item) =>
+                  item.question === questionText && item.answer === responseText
+              );
+
+              if (!exists) {
+                return [
+                  ...prev,
+                  { question: questionText, answer: responseText },
+                ];
+              }
+              return prev;
+            });
+
+            break;
+          }
+        }
+      } catch (error) {
+        setError(`Error processing response: ${error}`);
+      } finally {
+        setIsProcessingQuestion(false);
+      }
+    },
+    [conversationId]
+  );
 
   useEffect(() => {
     if (isAskingQuestion && !initialQuestion) {
@@ -221,7 +219,13 @@ const AskAgent: FC<AskAgentProps> = ({
         rl.close();
       };
     }
-  }, [isAskingQuestion, selectedAgent, initialQuestion, askQuestion]);
+  }, [
+    isAskingQuestion,
+    selectedAgent,
+    initialQuestion,
+    askQuestion,
+    conversationId,
+  ]);
 
   // Handle Ctrl+C key press to quit
   useInput((input, key) => {

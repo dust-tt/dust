@@ -1,4 +1,4 @@
-import React, { FC, ReactNode, useEffect, useState } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 
 export interface BaseItem {
@@ -45,6 +45,7 @@ export const SelectWithSearch = <T extends BaseItem>({
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   // Used to trigger re-render on "enter" press when the terminal size is too small.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_forceRerenderKey, setForceRerenderKey] = useState(0);
 
   const selectedBlockHeight =
