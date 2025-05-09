@@ -145,8 +145,7 @@ export async function agentMentionsCount(
     throw new Error("Invalid ranking usage days");
   }
 
-  // TODO(workspace_filtering): Review needed
-  // eslint-disable-next-line dust/no-raw-sql
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const mentions = await readReplica.query(
     `
     WITH message_counts AS (

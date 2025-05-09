@@ -17,8 +17,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   const connectorsReplica = getConnectorsReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
   const GdriveDataSources: { id: number; connectorId: string }[] =
-    // TODO(workspace_filtering): Review needed
-    // eslint-disable-next-line dust/no-raw-sql
+    // eslint-disable-next-line dust/no-raw-sql -- Leggit
     await frontReplica.query(
       `SELECT id, "connectorId" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
       { type: QueryTypes.SELECT }
