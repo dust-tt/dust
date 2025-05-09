@@ -10,7 +10,7 @@ type AssistantBuilderContextType = {
   dataSourceViews: DataSourceViewType[];
   spaces: SpaceType[];
   mcpServerViews: MCPServerViewType[];
-  initialActions?: AssistantBuilderActionAndDataVisualizationConfiguration[];
+  initialActions: AssistantBuilderActionAndDataVisualizationConfiguration[];
 };
 
 export const AssistantBuilderContext =
@@ -27,7 +27,7 @@ export function AssistantBuilderProvider({
   dataSourceViews,
   spaces,
   mcpServerViews,
-  initialActions = [],
+  initialActions,
   children,
 }: AssistantBuilderContextType & {
   children: React.ReactNode;
