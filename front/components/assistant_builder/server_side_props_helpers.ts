@@ -37,6 +37,7 @@ import {
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -50,7 +51,6 @@ import type {
   TemplateAgentConfigurationType,
 } from "@app/types";
 import { assertNever, slugify } from "@app/types";
-import { MCPServerViewType } from "@app/lib/api/mcp";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   const accessibleSpaces = (
