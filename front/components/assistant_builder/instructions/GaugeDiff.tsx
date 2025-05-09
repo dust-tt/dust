@@ -58,6 +58,7 @@ export const GaugeDiff = React.forwardRef<HTMLDivElement, GaugeDiffProps>(
             ? "bg-golden-300"
             : "bg-warning";
 
+      console.log(original, updated, rawPercentage)
       return { widthPercent: displayWidth, colorClass: color };
     }, [original, updated]);
 
