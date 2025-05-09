@@ -56,7 +56,7 @@ module.exports = {
     ],
     "simple-import-sort/exports": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
-    "dust/no-raw-sql": "warn",
+    "dust/no-raw-sql": "error",
   },
   overrides: [
     {

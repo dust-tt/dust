@@ -20,6 +20,8 @@ export async function getCoreDocuments(
   const coreReplica = getCoreReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
 
+  // TODO(workspace_filtering): Review needed
+  // eslint-disable-next-line dust/no-raw-sql
   const managedDsData = await frontReplica.query(
     'SELECT id, "connectorId", "connectorProvider", "dustAPIProjectId" \
          FROM data_sources WHERE id = :frontDataSourceId',

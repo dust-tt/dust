@@ -63,6 +63,8 @@ async function getAnalytics(
 ): Promise<GetWorkspaceAnalyticsResponse> {
   const replicaDb = getFrontReplicaDbConnection();
 
+  // TODO(workspace_filtering):  Review needed
+  // eslint-disable-next-line dust/no-raw-sql
   const results = await replicaDb.query<{
     member_count: number;
     weekly_active: number;
