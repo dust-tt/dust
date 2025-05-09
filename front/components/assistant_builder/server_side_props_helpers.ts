@@ -77,12 +77,12 @@ export async function buildInitialActions({
   dataSourceViews,
   dustApps,
   configuration,
-  mcpServerViews,
+  mcpServerViews = [],
 }: {
   dataSourceViews: DataSourceViewResource[];
   dustApps: AppResource[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
-  mcpServerViews: MCPServerViewType[];
+  mcpServerViews?: MCPServerViewType[];
 }): Promise<AssistantBuilderActionConfiguration[]> {
   const builderActions: AssistantBuilderActionConfiguration[] = [];
 
