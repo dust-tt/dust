@@ -35,8 +35,8 @@ interface AddToolsDropdownProps {
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   defaultTools: ActionSpecificationWithType[];
-  defaultMCPServerViews: MCPServerViewType[];
-  nonDefaultMCPServerViews: MCPServerViewType[];
+  defaultMCPServerViews: (MCPServerViewType & { label: string })[];
+  nonDefaultMCPServerViews: (MCPServerViewType & { label: string })[];
 }
 
 export function AddToolsDropdown({
@@ -78,12 +78,12 @@ export function AddToolsDropdown({
     );
     setFilteredDefaultMCPServerViews(
       defaultMCPServerViews.filter((view) =>
-        view.server.name.toLowerCase().includes(text.toLowerCase())
+        view.label.toLowerCase().includes(text.toLowerCase())
       )
     );
     setFilteredNonDefaultMCPServerViews(
       nonDefaultMCPServerViews.filter((view) =>
-        view.server.name.toLowerCase().includes(text.toLowerCase())
+        view.label.toLowerCase().includes(text.toLowerCase())
       )
     );
   }
@@ -191,7 +191,7 @@ export function AddToolsDropdown({
               truncateText
               key={view.id}
               icon={() => getAvatar(view.server)}
-              label={asDisplayName(view.server.name)}
+              label={view.label}
               description={view.server.description}
               onClick={() => onClickMCPServer(view)}
             />

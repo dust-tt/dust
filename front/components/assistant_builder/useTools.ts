@@ -15,6 +15,7 @@ import {
   DATA_VISUALIZATION_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { asDisplayName } from "@app/types";
 
 const DEFAULT_TOOLS_WITH_CONFIGURATION = [
   "DUST_APP_RUN",
@@ -93,7 +94,15 @@ function getMCPServerViews({
 }: {
   mcpServerViews: MCPServerViewType[];
 }) {
-  const grouped = groupBy(mcpServerViews, (view) => view.server.availability);
+  const mcpServerViewsWithLabel = mcpServerViews.map((view) => ({
+    ...view,
+    label: asDisplayName(view.server.name),
+  }));
+
+  const grouped = groupBy(
+    mcpServerViewsWithLabel,
+    (view) => view.server.availability
+  );
 
   return {
     defaultMCPServerViews: grouped.auto || [],
