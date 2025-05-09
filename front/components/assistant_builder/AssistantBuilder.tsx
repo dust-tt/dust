@@ -17,13 +17,7 @@ import {
 import assert from "assert";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 
 import ActionsScreen, {
   hasActionError,
@@ -367,12 +361,10 @@ export default function AssistantBuilder({
     }
   }, [edited, formValidation]);
 
-  const viewTab = useMemo(() => {
+  useEffect(() => {
     if (currentTab && isValidTab(currentTab)) {
       setScreen(currentTab);
-      return currentTab;
     }
-    return "instructions";
   }, [currentTab]);
 
   const setAction = useCallback(
@@ -406,11 +398,11 @@ export default function AssistantBuilder({
   const onAssistantSave = async () => {
     // Redirect to the right screen if there are errors.
     if (instructionsError) {
-      setScreen("instructions");
+      setCurrentTab("instructions");
     } else if (hasAnyActionsError) {
-      setScreen("actions");
+      setCurrentTab("actions");
     } else if (assistantHandleError || descriptionError) {
-      setScreen("settings");
+      setCurrentTab("settings");
     } else {
       setDisableUnsavedChangesPrompt(true);
       setIsSavingOrDeleting(true);
@@ -500,9 +492,8 @@ export default function AssistantBuilder({
                   className="w-full"
                   onValueChange={(t) => {
                     setCurrentTab(t);
-                    setScreen(t as BuilderScreen);
                   }}
-                  value={viewTab}
+                  value={screen}
                 >
                   <TabsList>
                     {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
@@ -599,11 +590,7 @@ export default function AssistantBuilder({
                     assertNever(screen);
                 }
               })()}
-              <PrevNextButtons
-                screen={screen}
-                setScreen={setScreen}
-                setCurrentTab={setCurrentTab}
-              />
+              <PrevNextButtons screen={screen} setCurrentTab={setCurrentTab} />
             </div>
           }
           buttonsRightPanel={

@@ -10,10 +10,7 @@ import type {
 import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
-import {
-  augmentInputsWithConfiguration,
-  hideInternalConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPToolResultContentType,
   ProgressNotificationContentType,
@@ -23,6 +20,10 @@ import {
   isResourceWithName,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  augmentInputsWithConfiguration,
+  hideInternalConfiguration,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
@@ -101,6 +102,7 @@ export type PlatformMCPServerConfigurationType =
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
     dustAppConfiguration: DustAppRunConfigurationType | null;
+    internalMCPServerId: string | null; // As convenience, hold the sId of the internal server if it is an internal server.
   };
 
 export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType & {
@@ -111,33 +113,36 @@ export type MCPServerConfigurationType =
   | PlatformMCPServerConfigurationType
   | LocalMCPServerConfigurationType;
 
-export type PlatformMCPToolConfigurationType = Omit<
+export type PlatformMCPToolType = Omit<
   PlatformMCPServerConfigurationType,
   "type"
 > & {
   type: "mcp_configuration";
   inputSchema: JSONSchema;
-  isDefault: boolean;
+  availability: MCPServerAvailability;
   permission: MCPToolStakeLevelType;
   toolServerId: string;
 };
 
-export type LocalMCPToolConfigurationType = Omit<
-  LocalMCPServerConfigurationType,
-  "type"
-> & {
+export type LocalMCPToolType = Omit<LocalMCPServerConfigurationType, "type"> & {
   type: "mcp_configuration";
   inputSchema: JSONSchema;
 };
 
-export type WithToolNameMetadata<T> = T & {
+type WithToolNameMetadata<T> = T & {
   originalName: string;
   mcpServerName: string;
 };
 
-export type MCPToolConfigurationType = WithToolNameMetadata<
-  PlatformMCPToolConfigurationType | LocalMCPToolConfigurationType
->;
+export type PlatformMCPToolConfigurationType =
+  WithToolNameMetadata<PlatformMCPToolType>;
+
+export type LocalMCPToolConfigurationType =
+  WithToolNameMetadata<LocalMCPToolType>;
+
+export type MCPToolConfigurationType =
+  | PlatformMCPToolConfigurationType
+  | LocalMCPToolConfigurationType;
 
 type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
@@ -589,7 +594,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       MCPToolResultContentType[],
       Error | McpError
     > | null = null;
-    for await (const event of tryCallMCPTool(auth, inputs, agentLoopContext)) {
+    for await (const event of tryCallMCPTool(auth, inputs, agentLoopContext, {
+      progressToken: action.id,
+    })) {
       if (event.type === "result") {
         toolCallResult = event.result;
       } else if (event.type === "notification") {

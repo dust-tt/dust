@@ -1,5 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-
 import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import type {
   ConversationIncludeFileActionType,
@@ -7,13 +5,14 @@ import type {
 } from "@app/lib/actions/conversation/include_file";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type {
+  LocalMCPToolConfigurationType,
   MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
   PlatformMCPServerConfigurationType,
   PlatformMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import type {
@@ -23,10 +22,14 @@ import type {
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
+  ActionConfigurationType,
+  AgentActionConfigurationType,
+  UnsavedAgentActionConfigurationType,
+} from "@app/lib/actions/types/agent";
+import type {
   WebsearchActionType,
   WebsearchConfigurationType,
 } from "@app/lib/actions/websearch";
-import { findMatchingSubSchemas } from "@app/lib/utils/json_schemas";
 import type {
   AgentActionType,
   AgentConfigurationType,
@@ -132,13 +135,13 @@ export function isMCPServerConfiguration(
 }
 
 export function isPlatformMCPServerConfiguration(
-  arg: unknown
+  arg: AgentActionConfigurationType | UnsavedAgentActionConfigurationType
 ): arg is PlatformMCPServerConfigurationType {
   return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
 }
 
 export function isMCPConfigurationWithDataSource(
-  arg: unknown
+  arg: AgentActionConfigurationType
 ): arg is PlatformMCPServerConfigurationType {
   return (
     isPlatformMCPServerConfiguration(arg) &&
@@ -147,21 +150,18 @@ export function isMCPConfigurationWithDataSource(
   );
 }
 
-export function isMCPConfigurationWithWebsearch(
-  arg: unknown
+export function isMCPConfigurationForInternalWebsearch(
+  arg: AgentActionConfigurationType
 ): arg is PlatformMCPServerConfigurationType {
-  const internalWebsearchV2ActionName: InternalMCPServerNameType =
-    "web_search_&_browse_v2";
-
   return (
     isPlatformMCPServerConfiguration(arg) &&
-    arg.name === internalWebsearchV2ActionName
+    isInternalMCPServerOfName(arg.internalMCPServerId, "web_search_&_browse_v2")
   );
 }
 
 // MCP Tools
 
-export function isMCPActionConfiguration(
+export function isMCPToolConfiguration(
   arg: unknown
 ): arg is MCPToolConfigurationType {
   return (
@@ -172,15 +172,30 @@ export function isMCPActionConfiguration(
   );
 }
 
-export function isMCPActionWithDataSource(
-  arg: unknown
+export function isMCPInternalSearch(
+  arg: ActionConfigurationType
 ): arg is MCPToolConfigurationType {
   return (
-    isMCPActionConfiguration(arg) &&
-    !!findMatchingSubSchemas(
-      arg.inputSchema,
-      INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-    )
+    isPlatformMCPToolConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "search")
+  );
+}
+
+export function isMCPInternalInclude(
+  arg: ActionConfigurationType
+): arg is MCPToolConfigurationType {
+  return (
+    isPlatformMCPToolConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "include_data")
+  );
+}
+
+export function isMCPInternalWebsearch(
+  arg: ActionConfigurationType
+): arg is MCPToolConfigurationType {
+  return (
+    isPlatformMCPToolConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "web_search_&_browse_v2")
   );
 }
 
@@ -191,9 +206,15 @@ export function isMCPDustAppRunConfiguration(
 }
 
 export function isPlatformMCPToolConfiguration(
-  action: unknown
-): action is PlatformMCPToolConfigurationType {
-  return isMCPActionConfiguration(action) && "mcpServerViewId" in action;
+  arg: ActionConfigurationType
+): arg is PlatformMCPToolConfigurationType {
+  return isMCPToolConfiguration(arg) && "mcpServerViewId" in arg;
+}
+
+export function isLocalMCPToolConfiguration(
+  arg: ActionConfigurationType
+): arg is LocalMCPToolConfigurationType {
+  return isMCPToolConfiguration(arg) && "localMcpServerId" in arg;
 }
 
 export function isWebsearchActionType(

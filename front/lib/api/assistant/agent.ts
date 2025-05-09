@@ -12,7 +12,7 @@ import {
   isBrowseConfiguration,
   isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
-  isMCPActionConfiguration,
+  isMCPToolConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -1363,7 +1363,7 @@ async function* runAction(
           assertNever(event);
       }
     }
-  } else if (isMCPActionConfiguration(actionConfiguration)) {
+  } else if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {

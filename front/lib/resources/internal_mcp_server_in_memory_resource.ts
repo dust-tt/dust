@@ -7,9 +7,9 @@ import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
+  getAvailabilityOfInternalMCPServerByName,
+  getInternalMCPServerAvailability,
   getInternalMCPServerNameAndWorkspaceId,
-  isDefaultInternalMCPServer,
-  isDefaultInternalMCPServerByName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -37,7 +37,7 @@ export class InternalMCPServerInMemoryResource {
   private metadata: Omit<MCPServerType, "id"> = {
     ...extractMetadataFromServerVersion(undefined),
     tools: [],
-    isDefault: false,
+    availability: "manual",
   };
 
   constructor(id: string) {
@@ -81,9 +81,9 @@ export class InternalMCPServerInMemoryResource {
           tools: extractMetadataFromTools(
             (await mcpClient.listTools()).tools
           ) as any,
-          isDefault: isInternalMCPServerName(md.name)
-            ? isDefaultInternalMCPServerByName(md.name)
-            : false,
+          availability: isInternalMCPServerName(md.name)
+            ? getAvailabilityOfInternalMCPServerByName(md.name)
+            : "manual",
         };
 
         await mcpClient.close();
@@ -182,7 +182,8 @@ export class InternalMCPServerInMemoryResource {
 
   static async fetchById(auth: Authenticator, id: string) {
     // Fast path : Do not check for default internal MCP servers as they are always available.
-    if (!isDefaultInternalMCPServer(id)) {
+    const availability = getInternalMCPServerAvailability(id);
+    if (availability === "manual") {
       const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
       const server = await MCPServerViewModel.findOne({

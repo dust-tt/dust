@@ -66,6 +66,10 @@ import {
 import { ConversationResource } from "../resources/conversation_resource";
 import { frontSequelize } from "../resources/storage";
 
+// Number of files we pull from GCS at once for deletion.
+// If we have 10k documents of 100kB each (which is a lot) we are at 1GB here.
+const FILE_BATCH_SIZE = 10_000;
+
 export async function getDataSources(
   auth: Authenticator,
   { includeEditedBy }: { includeEditedBy: boolean } = {
@@ -148,44 +152,49 @@ export async function hardDeleteDataSource(
   // Delete all files in the data source's bucket.
   const { dustAPIProjectId } = dataSource;
 
-  const files = await getDustDataSourcesBucket().getFiles({
-    prefix: dustAPIProjectId,
-  });
+  let files;
 
-  const chunkSize = 32;
-  const chunks = [];
-  for (let i = 0; i < files.length; i += chunkSize) {
-    chunks.push(files.slice(i, i + chunkSize));
-  }
+  do {
+    files = await getDustDataSourcesBucket().getFiles({
+      prefix: dustAPIProjectId,
+      maxResults: FILE_BATCH_SIZE,
+    });
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (!chunk) {
-      continue;
+    const chunkSize = 32;
+    const chunks = [];
+    for (let i = 0; i < files.length; i += chunkSize) {
+      chunks.push(files.slice(i, i + chunkSize));
     }
-    await Promise.all(
-      chunk.map((f) => {
-        return (async () => {
-          try {
-            await f.delete();
-          } catch (error) {
-            if (isGCSNotFoundError(error)) {
-              logger.warn(
-                {
-                  path: f.name,
-                  dataSourceId: dataSource.sId,
-                  dustAPIProjectId,
-                },
-                "File not found during deletion, skipping"
-              );
-            } else {
-              throw error;
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      if (!chunk) {
+        continue;
+      }
+      await Promise.all(
+        chunk.map((f) => {
+          return (async () => {
+            try {
+              await f.delete();
+            } catch (error) {
+              if (isGCSNotFoundError(error)) {
+                logger.warn(
+                  {
+                    path: f.name,
+                    dataSourceId: dataSource.sId,
+                    dustAPIProjectId,
+                  },
+                  "File not found during deletion, skipping"
+                );
+              } else {
+                throw error;
+              }
             }
-          }
-        })();
-      })
-    );
-  }
+          })();
+        })
+      );
+    }
+  } while (files.length === FILE_BATCH_SIZE);
 
   // Ensure all content fragments from dsviews are expired.
   // Only used temporarily to unstuck queues -- TODO(fontanierh)

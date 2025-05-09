@@ -185,7 +185,7 @@ export const AdminActionsList = ({
   };
 
   const rows: RowData[] = mcpServers
-    .filter((mcpServer) => !mcpServer.isDefault)
+    .filter((mcpServer) => mcpServer.availability === "manual")
     .map((mcpServer) => {
       const mcpServerWithViews = mcpServers.find((s) => s.id === mcpServer.id);
       const mcpServerView = mcpServerWithViews?.views.find(

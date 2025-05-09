@@ -24,7 +24,7 @@ import logger from "@app/logger/logger";
 // Helper type and type guard for workspaceId check.
 type WhereClauseWithNumericWorkspaceId<TAttributes> =
   WhereOptions<TAttributes> & {
-    workspaceId: number;
+    workspaceId: number | [number];
   };
 
 function isWhereClauseWithNumericWorkspaceId<TAttributes>(
@@ -34,15 +34,55 @@ function isWhereClauseWithNumericWorkspaceId<TAttributes>(
     return false;
   }
 
+  if (!("workspaceId" in where)) {
+    return false;
+  }
+
+  const { workspaceId } = where;
+
+  // Accept a direct numeric workspaceId.
+  if (typeof workspaceId === "number") {
+    return true;
+  }
+
+  // Accept an array with exactly one numeric element.
+  if (
+    Array.isArray(workspaceId) &&
+    workspaceId.length === 1 &&
+    typeof workspaceId[0] === "number"
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+// Define a custom FindOptions extension with the skipWorkspaceCheck flag.
+interface WorkspaceTenantIsolationSecurityBypassOptions<T>
+  extends FindOptions<T> {
+  /**
+   * When true, BYPASSES CRITICAL TENANT ISOLATION SECURITY for this query.
+   *
+   * SECURITY REQUIREMENT: You MUST include a comment explaining why this security bypass
+   * is necessary using the format:
+   * // WORKSPACE_ISOLATION_BYPASS: [explanation]
+   *
+   * This should only be used in critical scenarios where a query legitimately needs
+   * to operate across workspaces or without workspace context.
+   */
+  dangerouslyBypassWorkspaceIsolationSecurity?: boolean;
+}
+
+function isWorkspaceIsolationBypassEnabled<T>(
+  options: FindOptions<T>
+): options is WorkspaceTenantIsolationSecurityBypassOptions<T> {
   return (
-    typeof where === "object" &&
-    !Array.isArray(where) &&
-    "workspaceId" in where &&
-    typeof where.workspaceId === "number"
+    "dangerouslyBypassWorkspaceIsolationSecurity" in options &&
+    options.dangerouslyBypassWorkspaceIsolationSecurity === true
   );
 }
 
-export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
+export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare workspace: NonAttribute<Workspace>;
 
@@ -71,6 +111,16 @@ export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
     // Define a hook to ensure all find queries are properly scoped to a workspace.
     const hooks = {
       beforeFind: (options: FindOptions<InferAttributes<InstanceType<MS>>>) => {
+        // Skip validation if specifically requested for this query.
+        if (isWorkspaceIsolationBypassEnabled(options)) {
+          return;
+        }
+
+        // log only 1 time on 100 approximately
+        if (Math.random() < 0.99) {
+          return;
+        }
+
         const whereClause = options.where;
 
         if (
@@ -126,6 +176,19 @@ export class WorkspaceAwareModel<M extends Model> extends BaseModel<M> {
   }
 }
 
+export type ModelStaticWorkspaceAware<M extends WorkspaceAwareModel> =
+  ModelStatic<M> & {
+    findAll(
+      options: WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
+    ): Promise<M[]>;
+    findOne(
+      options: WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
+    ): Promise<M | null>;
+    findByPk(
+      identifier: any,
+      options: WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
+    ): Promise<M | null>;
+  };
 export type ModelStaticSoftDeletable<
   M extends SoftDeletableWorkspaceAwareModel,
 > = ModelStatic<M> & {

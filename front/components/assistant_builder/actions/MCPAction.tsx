@@ -15,7 +15,8 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import { isMCPDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
@@ -101,8 +102,8 @@ export function MCPAction({
     );
 
   // MCPServerView on default MCP server will not allow switching to another one.
-  const isDefaultMCPServer = useMemo(
-    () => !!selectedMCPServerView?.server.isDefault,
+  const selectedServerAvailability: MCPServerAvailability | null = useMemo(
+    () => selectedMCPServerView?.server.availability ?? null,
     [selectedMCPServerView]
   );
 
@@ -203,12 +204,13 @@ export function MCPAction({
         />
       )}
       {/* Server selection */}
-      {!selectedMCPServerView?.server.isDefault &&
+      {(selectedServerAvailability === null ||
+        selectedServerAvailability === "manual") &&
         (isEditing ? (
           <div className="text-sm text-foreground dark:text-foreground-night">
             <div>{selectedMCPServerView?.server.description}</div>
             <br />
-            {!isDefaultMCPServer && (
+            {selectedServerAvailability === "manual" && (
               <div>
                 Available to you via{" "}
                 <b>
@@ -299,7 +301,7 @@ export function MCPAction({
           }}
         />
       )}
-      {requirements.requiresTimeFrameConfiguration && (
+      {requirements.mayRequiresTimeFrameConfiguration && (
         <TimeFrameConfigurationSection
           onConfigUpdate={(timeFrame: TimeFrame | null) => {
             handleConfigUpdate((old) => ({ ...old, timeFrame }));
@@ -356,6 +358,13 @@ export function hasErrorActionMCP(
     ) {
       return "Please select a child agent.";
     }
+    if (
+      requirements.requiresReasoningConfiguration &&
+      !action.configuration.reasoningModel
+    ) {
+      return "Please select a reasoning model.";
+    }
+
     const missingFields = [];
     for (const key of requirements.requiredStrings) {
       if (!(key in action.configuration.additionalConfiguration)) {

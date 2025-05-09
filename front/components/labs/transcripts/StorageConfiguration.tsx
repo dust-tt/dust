@@ -79,7 +79,7 @@ export function StorageConfiguration({
     }
 
     const success = await updateTranscriptsConfiguration({
-      dataSourceViewId: dataSourceView ? dataSourceView.id : null,
+      dataSourceViewId: dataSourceView ? dataSourceView.sId : null,
     });
 
     if (success) {

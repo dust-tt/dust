@@ -13,11 +13,12 @@ import {
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isMCPActionConfiguration,
-  isMCPActionWithDataSource,
+  isMCPInternalInclude,
+  isMCPInternalSearch,
+  isMCPInternalWebsearch,
   isPlatformMCPToolConfiguration,
   isRetrievalConfiguration,
   isWebsearchConfiguration,
@@ -117,10 +118,11 @@ export function getRetrievalTopK({
   const model = getSupportedModelConfig(agentConfiguration.model);
 
   const retrievalActions = stepActions.filter(isRetrievalConfiguration);
-  const dataSourceMMCPActions = stepActions.filter(isMCPActionWithDataSource);
-  // TODO(mcp): when we migrate "include" to mcp, this will not work anymore.
+  const searchActions = stepActions.filter(isMCPInternalSearch);
+  const includeActions = stepActions.filter(isMCPInternalInclude);
 
-  const actionsCount = retrievalActions.length + dataSourceMMCPActions.length;
+  const actionsCount =
+    retrievalActions.length + searchActions.length + includeActions.length;
 
   if (actionsCount === 0) {
     return 0;
@@ -139,8 +141,13 @@ export function getRetrievalTopK({
       }
     })
     .concat(
-      dataSourceMMCPActions.map(() => {
+      searchActions.map(() => {
         return model.recommendedTopK;
+      })
+    )
+    .concat(
+      includeActions.map(() => {
+        return model.recommendedExhaustiveTopK;
       })
     );
 
@@ -165,11 +172,7 @@ export function getWebsearchNumResults({
     isWebsearchConfiguration
   );
 
-  const internalWebsearchV2ActionName: InternalMCPServerNameType =
-    "web_search_&_browse_v2";
-  const websearchV2Actions: MCPToolConfigurationType[] = stepActions
-    .filter(isMCPActionConfiguration)
-    .filter((action) => action.mcpServerName === internalWebsearchV2ActionName);
+  const websearchV2Actions = stepActions.filter(isMCPInternalWebsearch);
 
   const numResults = websearchActions
     .map(() => {
@@ -229,9 +232,13 @@ export function getCitationsCount({
     case "reasoning_configuration":
       return 0;
     case "mcp_configuration":
-      const internalWebsearchV2ActionName: InternalMCPServerNameType =
-        "web_search_&_browse_v2";
-      if (action.mcpServerName === internalWebsearchV2ActionName) {
+      if (
+        isPlatformMCPToolConfiguration(action) &&
+        isInternalMCPServerOfName(
+          action.internalMCPServerId,
+          "web_search_&_browse_v2"
+        )
+      ) {
         return getWebsearchNumResults({
           stepActions,
         });

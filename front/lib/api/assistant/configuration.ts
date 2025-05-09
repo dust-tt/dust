@@ -452,10 +452,10 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         return AgentConfiguration.findAll({
           where: {
             workspaceId: owner.id,
-            sId: latestVersions.map((v) => v.sId),
-            version: {
-              [Op.in]: latestVersions.map((v) => v.max_version),
-            },
+            [Op.or]: latestVersions.map((v) => ({
+              sId: v.sId,
+              version: v.max_version,
+            })),
           },
           order: [["version", "DESC"]],
         });
@@ -1322,10 +1322,8 @@ export async function createAgentActionConfiguration(
         }
 
         const {
-          server: { name: serverName, description: serverDescription, tools },
+          server: { name: serverName, description: serverDescription },
         } = mcpServerView.toJSON();
-
-        const isSingleTool = tools.length === 1;
 
         const mcpConfig = await AgentMCPServerConfiguration.create(
           {
@@ -1333,11 +1331,12 @@ export async function createAgentActionConfiguration(
             agentConfigurationId: agentConfiguration.id,
             workspaceId: owner.id,
             mcpServerViewId: mcpServerView.id,
+            internalMCPServerId: mcpServerView.internalMCPServerId,
             additionalConfiguration: action.additionalConfiguration,
             timeFrame: action.timeFrame,
             name: serverName !== action.name ? action.name : null,
             singleToolDescriptionOverride:
-              isSingleTool && serverDescription !== action.description
+              serverDescription !== action.description
                 ? action.description
                 : null,
             appId: action.dustAppConfiguration?.appId ?? null,
@@ -1385,6 +1384,7 @@ export async function createAgentActionConfiguration(
           name: action.name,
           description: action.description,
           mcpServerViewId: action.mcpServerViewId,
+          internalMCPServerId: action.internalMCPServerId,
           dataSources: action.dataSources,
           tables: action.tables,
           childAgentId: action.childAgentId,

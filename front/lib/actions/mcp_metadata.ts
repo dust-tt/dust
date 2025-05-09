@@ -294,7 +294,7 @@ export async function fetchRemoteServerMetaDataByURL(
     return new Ok({
       ...metadata,
       tools: serverTools,
-      isDefault: false,
+      availability: "manual",
     });
   } catch (e: unknown) {
     return new Err(
