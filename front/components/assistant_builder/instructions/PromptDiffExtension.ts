@@ -96,10 +96,11 @@ export const PromptDiffExtension = Extension.create<PromptDiffOptions>({
             return false;
           }
 
-          // Restore original content
-          const result = this.storage.originalContent
-            ? commands.setContent(this.storage.originalContent)
-            : commands.clearContent();
+          // Restore original content from saved JSON
+          let result = false;
+          if (this.storage.originalContent) {
+            result = commands.setContent(this.storage.originalContent);
+          }
 
           if (result) {
             editor.setEditable(true);

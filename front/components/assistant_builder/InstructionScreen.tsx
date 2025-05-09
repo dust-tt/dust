@@ -115,8 +115,8 @@ export function InstructionScreen({
     disabled: !agentConfigurationId,
     limit: 30,
   });
-  const [currentConfig, setCurrentConfig] =
-    useState<LightAgentConfigurationType | null>(null);
+  // const [currentConfig, setCurrentConfig] =
+  // useState<LightAgentConfigurationType | null>(null);
 
   // Deduplicate configs based on instructions
   const configsWithUniqueInstructions: LightAgentConfigurationType[] =
@@ -136,10 +136,6 @@ export function InstructionScreen({
       });
       return configs;
     }, [agentConfigurationHistory]);
-
-  useEffect(() => {
-    setCurrentConfig(agentConfigurationHistory?.[0] || null);
-  }, [agentConfigurationHistory]);
 
   const [letterIndex, setLetterIndex] = useState(0);
 
@@ -228,24 +224,17 @@ export function InstructionScreen({
       return;
     }
 
-    if (diffMode && compareVersion && currentConfig) {
-      const currentText = currentConfig.instructions || "";
+    if (diffMode && compareVersion) {
+      const currentText = editor.getText() || "";
       const compareText = compareVersion.instructions || "";
 
-      // Apply diff in a single command
       editor.commands.applyDiff(compareText, currentText);
     } else if (!diffMode && editor) {
-      // Exit diff mode if active, otherwise just set normal content
       if (editor.storage.promptDiff?.isDiffMode) {
         editor.commands.exitDiff();
-      } else {
-        editor.commands.setContent(
-          tipTapContentFromPlainText(currentConfig?.instructions || "")
-        );
-        editor.setEditable(true);
       }
     }
-  }, [diffMode, compareVersion, currentConfig, editor]);
+  }, [diffMode, compareVersion, editor]);
 
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
@@ -326,7 +315,7 @@ export function InstructionScreen({
               size="sm"
               onClick={() => {
                 setDiffMode(false);
-                editor?.commands.exitDiff();
+                // editor?.commands.exitDiff();
                 setIsInstructionDiffMode(false);
                 setCompareVersion(null);
               }}
@@ -345,11 +334,9 @@ export function InstructionScreen({
                     instructions: compareVersion.instructions || "",
                   }));
 
-                  setCurrentConfig(compareVersion);
                   setCompareVersion(null);
 
                   setDiffMode(false);
-                  editor?.commands.exitDiff();
                 }
               }}
               label="Restore this version"
