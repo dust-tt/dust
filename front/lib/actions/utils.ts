@@ -1,5 +1,6 @@
 import type { Icon } from "@dust-tt/sparkle";
 import {
+  BarChartIcon,
   ChatBubbleThoughtIcon,
   CommandLineIcon,
   MagnifyingGlassIcon,
@@ -30,15 +31,17 @@ import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 
+export interface ActionSpecification {
+  label: string;
+  description: string;
+  dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  flag: WhitelistableFeature | null;
+}
+
 export const ACTION_SPECIFICATIONS: Record<
   AssistantBuilderActionConfiguration["type"],
-  {
-    label: string;
-    description: string;
-    dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-    cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-    flag: WhitelistableFeature | null;
-  }
+  ActionSpecification
 > = {
   RETRIEVAL_EXHAUSTIVE: {
     label: "Include data",
@@ -97,6 +100,14 @@ export const ACTION_SPECIFICATIONS: Record<
     dropDownIcon: SuitcaseIcon,
     flag: "mcp_actions",
   },
+};
+
+export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
+  label: "Data Visualization",
+  description: "Generate a data visualization",
+  cardIcon: BarChartIcon,
+  dropDownIcon: BarChartIcon,
+  flag: null,
 };
 
 /**

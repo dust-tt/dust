@@ -303,7 +303,13 @@ export async function submitAssistantBuilderForm({
     }
   };
 
-  const actionParams: ActionsType = builderState.actions.flatMap(map);
+  // Data visaulization is boolean value (visualizationEnabled), but in UI we display it
+  // like an action. We need to remove it before sending the request to the API.
+  const actions = builderState.actions.filter(
+    (a) => a.type !== "DATA_VISUALIZATION"
+  );
+
+  const actionParams: ActionsType = actions.flatMap(map);
 
   const isLegacyAgent = isLegacyAssistantBuilderConfiguration(builderState);
   const maxStepsPerRun = isLegacyAgent

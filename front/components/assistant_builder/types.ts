@@ -5,6 +5,8 @@ import type React from "react";
 import type { SVGProps } from "react";
 
 import {
+  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+  DEFAULT_DATA_VISUALIZATION_NAME,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
@@ -185,6 +187,24 @@ export type AssistantBuilderActionConfigurationWithId =
     id: string;
   };
 
+export interface AssistantBuilderDataVisualizationConfiguration {
+  type: "DATA_VISUALIZATION";
+  configuration: Record<string, never>;
+  name: string;
+  description: string;
+  noConfigurationRequired: true;
+}
+
+// DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
+export type AssistantBuilderDataVisualizationAction =
+  AssistantBuilderDataVisualizationConfiguration & {
+    id: string;
+  };
+
+export type AssistantBuilderActionAndDataVisualizationConfiguration =
+  | AssistantBuilderActionConfiguration
+  | AssistantBuilderDataVisualizationConfiguration;
+
 export type TemplateActionType = Omit<
   AssistantBuilderActionConfiguration,
   "configuration"
@@ -195,9 +215,16 @@ export type TemplateActionType = Omit<
 export type AssistantBuilderActionType =
   AssistantBuilderActionConfiguration["type"];
 
+export type AssistantBuilderDataVisualizationType =
+  AssistantBuilderDataVisualizationConfiguration["type"];
+
+export type AssistantBuilderActionState =
+  | AssistantBuilderActionConfigurationWithId
+  | AssistantBuilderDataVisualizationAction;
+
 export type AssistantBuilderSetActionType =
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderActionState;
       type: "insert" | "edit" | "pending";
     }
   | {
@@ -229,7 +256,7 @@ export type AssistantBuilderState = {
     temperature: number;
     responseFormat?: string;
   };
-  actions: Array<AssistantBuilderActionConfigurationWithId>;
+  actions: AssistantBuilderActionState[];
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
@@ -248,7 +275,7 @@ export type AssistantBuilderInitialState = {
     temperature: number;
     responseFormat?: string;
   } | null;
-  actions: Array<AssistantBuilderActionConfiguration>;
+  actions: AssistantBuilderActionState[];
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
@@ -369,8 +396,18 @@ export function getDefaultReasoningActionConfiguration(): AssistantBuilderAction
     },
     name: DEFAULT_REASONING_ACTION_NAME,
     description: DEFAULT_REASONING_ACTION_DESCRIPTION,
-    noConfigurationRequired: false,
+    noConfigurationRequired: true,
   } satisfies AssistantBuilderActionConfiguration;
+}
+
+export function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {
+  return {
+    type: "DATA_VISUALIZATION",
+    configuration: {},
+    name: DEFAULT_DATA_VISUALIZATION_NAME,
+    description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+    noConfigurationRequired: true,
+  } satisfies AssistantBuilderDataVisualizationConfiguration;
 }
 
 export function getDefaultMCPServerActionConfiguration(
@@ -397,6 +434,7 @@ export function getDefaultMCPServerActionConfiguration(
     noConfigurationRequired: requirements.noRequirement,
   };
 }
+
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfigurationWithId | null {
@@ -433,6 +471,13 @@ export function getDefaultActionConfiguration(
   }
 
   return null;
+}
+
+export function getDataVisualizationAction(): AssistantBuilderDataVisualizationAction {
+  return {
+    id: uniqueId(),
+    ...getDataVisualizationConfiguration(),
+  };
 }
 
 export const BUILDER_FLOWS = [
