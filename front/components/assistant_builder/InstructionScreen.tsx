@@ -218,20 +218,25 @@ export function InstructionScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetAt]);
 
-  // InstructionScreen.tsx
   useEffect(() => {
     if (!editor) {
       return;
     }
 
     if (diffMode && compareVersion) {
-      const currentText = editor.getText() || "";
+      if (editor.storage.promptDiff?.isDiffMode) {
+        editor.commands.exitDiff();
+      }
+
+      const currentText = plainTextFromTipTapContent(editor.getJSON());
       const compareText = compareVersion.instructions || "";
 
       editor.commands.applyDiff(compareText, currentText);
+      editor.setEditable(false);
     } else if (!diffMode && editor) {
       if (editor.storage.promptDiff?.isDiffMode) {
         editor.commands.exitDiff();
+        editor.setEditable(true);
       }
     }
   }, [diffMode, compareVersion, editor]);

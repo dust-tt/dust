@@ -47,8 +47,9 @@ export const PromptDiffExtension = Extension.create<PromptDiffOptions>({
       applyDiff:
         (oldContent: string, newContent: string) =>
         ({ editor, commands }) => {
-          // Save the original content for restoring later
-          this.storage.originalContent = editor.getJSON();
+          if (!this.storage.isDiffMode) {
+            this.storage.originalContent = editor.getJSON();
+          }
           this.storage.isDiffMode = true;
 
           const diffParts = diffWords(oldContent, newContent);
