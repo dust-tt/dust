@@ -7,6 +7,7 @@ export interface BaseItem {
 }
 
 interface SelectWithSearchProps<T extends BaseItem> {
+  selectMultiple?: boolean;
   items: T[];
   onConfirm: (selectedIds: string[]) => void;
   renderItem: (item: T, isSelected: boolean, isFocused: boolean) => ReactNode;
@@ -23,6 +24,7 @@ const DEFAULT_SEARCH_PROMPT = "Search Items:";
 const DEFAULT_SELECT_PROMPT = "Select Items";
 
 export const SelectWithSearch = <T extends BaseItem>({
+  selectMultiple = true,
   items,
   onConfirm,
   renderItem,
@@ -121,7 +123,7 @@ export const SelectWithSearch = <T extends BaseItem>({
           setCursor(0);
         }
       } else if (input === " ") {
-        if (currentItemId) {
+        if (currentItemId && selectMultiple) {
           setSelected((prevSelected) => {
             const newSelected = new Set(prevSelected);
             if (newSelected.has(currentItemId)) {
@@ -150,7 +152,7 @@ export const SelectWithSearch = <T extends BaseItem>({
             onConfirm(finalSelectionOrder);
           }
         }
-      } else if (key.escape) {
+      } else if (key.escape && selectMultiple) {
         if (selectionOrder.length > 0) {
           const lastSelectedId = selectionOrder[selectionOrder.length - 1];
           setSelectionOrder((prevOrder) => prevOrder.slice(0, -1));
@@ -169,7 +171,7 @@ export const SelectWithSearch = <T extends BaseItem>({
     { isActive: true }
   );
 
-  if (terminalHeight < 30) {
+  if (terminalHeight < 25) {
     return (
       <Box>
         <Text color="red">
@@ -194,8 +196,10 @@ export const SelectWithSearch = <T extends BaseItem>({
       )}
       <Box marginTop={1}>
         <Text bold>
-          {selectPrompt} (Space to toggle, Enter to confirm, Esc to undo last
-          selection)
+          {selectPrompt}
+          {selectMultiple
+            ? " (Space to toggle, Enter to confirm, Esc to undo last selection)"
+            : " (Enter to confirm)"}
         </Text>
       </Box>
       <Box flexDirection="column" marginTop={1} minHeight={5}>
@@ -214,7 +218,7 @@ export const SelectWithSearch = <T extends BaseItem>({
         )}
       </Box>
 
-      {selectionOrder.length > 0 && (
+      {selectMultiple && selectionOrder.length > 0 && (
         <Box
           flexDirection="column"
           marginTop={1}

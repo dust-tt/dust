@@ -23,6 +23,7 @@ interface AgentSelectorProps {
 
 const AgentSelector: FC<AgentSelectorProps> = ({
   requestedSIds = [],
+  selectMultiple = true,
   onError,
   onConfirm,
 }) => {
@@ -98,11 +99,17 @@ const AgentSelector: FC<AgentSelectorProps> = ({
 
       return (
         <Box key={item.id} flexDirection="column">
-          <Text color={isFocused ? "blue" : undefined}>
-            {`${indicator}[`}
-            <Text bold={isSelected}>{selectionMark}</Text>
-            {`] ${item.label} (${item.id})`}
-          </Text>
+          {selectMultiple ? (
+            <Text color={isFocused ? "blue" : undefined}>
+              {`${indicator}[`}
+              <Text bold={isSelected}>{selectionMark}</Text>
+              {`] ${item.label} (${item.id})`}
+            </Text>
+          ) : (
+            <Text color={isFocused ? "blue" : undefined}>
+              {`${indicator} ${item.label} (${item.id})`}
+            </Text>
+          )}
           {truncatedDescription && (
             <Box marginLeft={descriptionIndent}>
               <Text dimColor>{truncatedDescription}</Text>
@@ -111,7 +118,7 @@ const AgentSelector: FC<AgentSelectorProps> = ({
         </Box>
       );
     },
-    [stdout?.columns]
+    [stdout?.columns, selectMultiple]
   );
 
   const renderSelectedAgentItem = useCallback((item: AgentItem): ReactNode => {
@@ -158,6 +165,7 @@ const AgentSelector: FC<AgentSelectorProps> = ({
 
   return (
     <SelectWithSearch<AgentItem>
+      selectMultiple={selectMultiple}
       items={agentItems}
       onConfirm={handleConfirm}
       renderItem={renderAgentItem}

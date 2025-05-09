@@ -241,6 +241,7 @@ const AskAgent: FC<AskAgentProps> = ({
   if (!selectedAgent) {
     return (
       <AgentSelector
+        selectMultiple={false}
         requestedSIds={requestedSId ? [requestedSId] : []}
         onError={setError}
         onConfirm={(agents) => {
@@ -269,7 +270,7 @@ const AskAgent: FC<AskAgentProps> = ({
         </Box>
         <Box marginBottom={1}>
           <Text color="green">
-            <Spinner type="dots" /> Getting answer...
+            <Spinner type="dots" /> Thinking...
           </Text>
         </Box>
         {answer && (
