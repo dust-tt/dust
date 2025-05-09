@@ -294,15 +294,17 @@ export function InstructionScreen({
             )}
 
             {configsWithUniqueInstructions &&
-              configsWithUniqueInstructions.length > 1 && (
+              configsWithUniqueInstructions.length > 1 &&
+              currentConfig && (
                 <PromptHistory
                   history={configsWithUniqueInstructions.slice(1)}
-                  onConfigChange={(config) => {
+                  latestConfig={currentConfig}
+                  selectedConfig={compareVersion}
+                  onSelect={(config) => {
                     setCompareVersion(config);
                     setDiffMode(true);
                     setIsInstructionDiffMode(true);
                   }}
-                  currentConfig={compareVersion}
                 />
               )}
           </div>
@@ -355,7 +357,6 @@ export function InstructionScreen({
             />
           </div>
         </>
-        // <DiffStats editor={editor} />
       )}
 
       <div className="flex h-full flex-col gap-1">
