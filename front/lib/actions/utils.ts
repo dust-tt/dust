@@ -1,4 +1,3 @@
-import type { Icon } from "@dust-tt/sparkle";
 import {
   BarChartIcon,
   ChatBubbleThoughtIcon,
@@ -11,7 +10,10 @@ import {
   TimeIcon,
 } from "@dust-tt/sparkle";
 
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type {
+  ActionSpecification,
+  AssistantBuilderActionConfiguration,
+} from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -27,18 +29,10 @@ import {
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationType, WhitelistableFeature } from "@app/types";
+import type { AgentConfigurationType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
-
-export interface ActionSpecification {
-  label: string;
-  description: string;
-  dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-  cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-  flag: WhitelistableFeature | null;
-}
 
 export const ACTION_SPECIFICATIONS: Record<
   AssistantBuilderActionConfiguration["type"],

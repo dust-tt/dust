@@ -113,6 +113,7 @@ import {
   assertNever,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
+import { useTools } from "@app/components/assistant_builder/useTools";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -229,6 +230,12 @@ export default function ActionsScreen({
 
   const { nonGlobalSpacessUsedInActions, spaceIdToActions } =
     useBuilderActionInfo(builderState);
+
+  const {
+    selectableDefaultTools,
+    selectableDefaultMCPServerViews,
+    selectableNonDefaultMCPServerViews,
+  } = useTools({ enableReasoningTool, actions: builderState.actions });
 
   const updateAction = useCallback(
     function _updateAction({
@@ -397,19 +404,17 @@ export default function ActionsScreen({
               setAction={setAction}
             />
             <AddToolsDropdown
-              actions={builderState.actions}
-              mcpServerViews={mcpServerViews}
-              hasFeature={hasFeature}
               setBuilderState={setBuilderState}
               setEdited={setEdited}
               setAction={setAction}
-              enableReasoningTool={enableReasoningTool}
+              defaultTools={selectableDefaultTools}
+              defaultMCPServerViews={selectableDefaultMCPServerViews}
+              nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
             />
 
             {!isLegacyConfig && (
               <>
                 <div className="flex-grow" />
-
                 <AdvancedSettings
                   maxStepsPerRun={builderState.maxStepsPerRun}
                   setMaxStepsPerRun={(maxStepsPerRun) => {
@@ -488,10 +493,10 @@ export default function ActionsScreen({
 type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
-  initialAction: AssistantBuilderActionConfigurationWithId | null;
+  initialAction: AssistantBuilderActionState | null;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
-  onSave: (newAction: AssistantBuilderActionConfigurationWithId) => void;
+  onSave: (newAction: AssistantBuilderActionState) => void;
   onClose: () => void;
   updateAction: (args: {
     actionName: string;
@@ -514,9 +519,8 @@ function NewActionModal({
   setEdited,
   builderState,
 }: NewActionModalProps) {
-  const [newActionConfig, setNewActionConfig] = useState<
-    (AssistantBuilderActionConfiguration & { id: string }) | null
-  >(null);
+  const [newActionConfig, setNewActionConfig] =
+    useState<AssistantBuilderActionState | null>(null);
 
   const [showInvalidActionError, setShowInvalidActionError] = useState<
     string | null

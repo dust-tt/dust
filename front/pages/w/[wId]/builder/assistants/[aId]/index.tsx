@@ -155,6 +155,7 @@ export default function EditAssistant({
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
       mcpServerViews={mcpServerViews}
+      initialActions={actions}
     >
       <AssistantBuilder
         owner={owner}

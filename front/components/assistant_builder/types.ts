@@ -1,4 +1,4 @@
-import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
+import { CircleIcon, Icon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { uniqueId } from "lodash";
 import type React from "react";
@@ -33,6 +33,7 @@ import type {
   TimeFrame,
   TimeframeUnit,
   UserType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -198,7 +199,7 @@ export interface AssistantBuilderDataVisualizationConfiguration {
 }
 
 // DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
-export type AssistantBuilderDataVisualizationAction =
+export type AssistantBuilderDataVisualizationConfigurationWithId =
   AssistantBuilderDataVisualizationConfiguration & {
     id: string;
   };
@@ -222,7 +223,7 @@ export type AssistantBuilderDataVisualizationType =
 
 export type AssistantBuilderActionState =
   | AssistantBuilderActionConfigurationWithId
-  | AssistantBuilderDataVisualizationAction;
+  | AssistantBuilderDataVisualizationConfigurationWithId;
 
 export type AssistantBuilderSetActionType =
   | {
@@ -239,7 +240,7 @@ export type AssistantBuilderSetActionType =
 
 export type AssistantBuilderPendingAction =
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderActionState;
       previousActionName: string | null;
     }
   | {
@@ -277,12 +278,24 @@ export type AssistantBuilderInitialState = {
     temperature: number;
     responseFormat?: string;
   } | null;
-  actions: AssistantBuilderActionState[];
+  actions: AssistantBuilderActionAndDataVisualizationConfiguration[];
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
   editors: UserType[];
+};
+
+export interface ActionSpecification {
+  label: string;
+  description: string;
+  dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  flag: WhitelistableFeature | null;
+}
+
+export type ActionSpecificationWithType = ActionSpecification & {
+  type: AssistantBuilderActionType | "DATA_VISUALIZATION";
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
@@ -476,7 +489,7 @@ export function getDefaultActionConfiguration(
   return null;
 }
 
-export function getDataVisualizationAction(): AssistantBuilderDataVisualizationAction {
+export function getDataVisualizationAction() {
   return {
     id: uniqueId(),
     ...getDataVisualizationConfiguration(),

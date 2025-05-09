@@ -9,6 +9,7 @@ type AssistantBuilderContextType = {
   dataSourceViews: DataSourceViewType[];
   spaces: SpaceType[];
   mcpServerViews: MCPServerViewType[];
+  initialActions: AssistantBuilderActionAndDataVisualizationConfiguration[];
 };
 
 export const AssistantBuilderContext =
@@ -17,6 +18,7 @@ export const AssistantBuilderContext =
     dataSourceViews: [],
     spaces: [],
     mcpServerViews: [],
+    initialActions: [],
   });
 
 export function AssistantBuilderProvider({
@@ -24,6 +26,7 @@ export function AssistantBuilderProvider({
   dataSourceViews,
   spaces,
   mcpServerViews,
+  initialActions,
   children,
 }: AssistantBuilderContextType & {
   children: React.ReactNode;
@@ -35,6 +38,7 @@ export function AssistantBuilderProvider({
         dataSourceViews,
         spaces,
         mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
+        initialActions,
       }}
     >
       {children}
