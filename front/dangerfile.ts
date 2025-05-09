@@ -141,7 +141,6 @@ async function checkRawSqlRegistry(filePaths: string[]) {
   await Promise.all(
     filePaths.map(async (file) => {
       try {
-        // Get the file content using the GitHub API
         const content = await danger.git.diffForFile(file);
 
         if (content !== null) {
