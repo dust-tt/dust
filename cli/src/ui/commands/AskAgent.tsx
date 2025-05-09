@@ -1,23 +1,31 @@
 import React, { FC, useCallback, useEffect, useState } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput, useStdout } from "ink";
 import Spinner from "ink-spinner";
+import open from "open";
 import { getDustClient } from "../../utils/dustClient.js";
 import AuthService from "../../utils/authService.js";
-import { GetAgentConfigurationsResponseType } from "@dust-tt/client";
-import process from "process";
-import { createInterface } from "readline";
-import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
+import {
+  CreateConversationResponseType,
+  GetAgentConfigurationsResponseType,
+} from "@dust-tt/client";
 import AgentSelector from "../components/AgentSelector.js";
+import { useMe } from "../../utils/hooks/use_me.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
 
-interface AskAgentProps {
+interface Message {
+  type: "user" | "assistant";
+  content: string;
+  isStreaming?: boolean;
+}
+
+interface CliChatProps {
   sId?: string;
   question?: string;
 }
 
-const AskAgent: FC<AskAgentProps> = ({
+const CliChat: FC<CliChatProps> = ({
   sId: requestedSId,
   question: initialQuestion,
 }) => {
@@ -25,69 +33,86 @@ const AskAgent: FC<AskAgentProps> = ({
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
   );
-  const [question, setQuestion] = useState<string | null>(
-    initialQuestion || null
-  );
-  const [isAskingQuestion, setIsAskingQuestion] = useState(false);
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
-  const [answer, setAnswer] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [conversationHistory, setConversationHistory] = useState<
-    Array<{ question: string; answer: string }>
-  >([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [abortController, setAbortController] =
+    useState<AbortController | null>(null);
+  const [userInput, setUserInput] = useState("");
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const { stdout } = useStdout();
 
-  useClearTerminalOnMount();
+  const { me, isLoading: isMeLoading, error: meError } = useMe();
 
-  const askQuestion = useCallback(
-    async (agent: AgentConfiguration, questionText: string) => {
+  const canSubmit =
+    me &&
+    !meError &&
+    !isMeLoading &&
+    !isProcessingQuestion &&
+    !!userInput.trim();
+
+  const handleSubmitQuestion = useCallback(
+    async (questionText: string) => {
+      if (!selectedAgent || !me || meError || isMeLoading) return;
+
+      setMessages((prev) => [...prev, { type: "user", content: questionText }]);
+
+      setMessages((prev) => [
+        ...prev,
+        { type: "assistant", content: "", isStreaming: true },
+      ]);
+
       setIsProcessingQuestion(true);
-      setAnswer(null);
+
+      const controller = new AbortController();
+      setAbortController(controller);
 
       const dustClient = await getDustClient();
       if (!dustClient) {
         setError("Authentication required. Run `dust login` first.");
         setIsProcessingQuestion(false);
+        setMessages((prev) => prev.slice(0, -1)); // Remove the streaming message
         return;
       }
 
       let userMessageId: string;
-      let conversation: any;
+      let conversation: CreateConversationResponseType["conversation"];
 
-      // Either create a new conversation or add to an existing one
-      if (!conversationId) {
-        // Create a new conversation with the agent
-        const convRes = await dustClient.createConversation({
-          title: `CLI Question: ${questionText.substring(0, 30)}${
-            questionText.length > 30 ? "..." : ""
-          }`,
-          visibility: "unlisted",
-          message: {
-            content: questionText,
-            mentions: [{ configurationId: agent.sId }],
-            context: {
-              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-              username: "cli-user",
-              fullName: "CLI User",
-              email: null,
-              origin: "api",
+      try {
+        // Either create a new conversation or add to an existing one
+        if (!conversationId) {
+          // Create a new conversation with the agent
+          const convRes = await dustClient.createConversation({
+            title: `CLI Question: ${questionText.substring(0, 30)}${
+              questionText.length > 30 ? "..." : ""
+            }`,
+            visibility: "workspace",
+            message: {
+              content: questionText,
+              mentions: [{ configurationId: selectedAgent.sId }],
+              context: {
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                username: me.username,
+                fullName: me.fullName,
+                email: me.email,
+                origin: "api",
+              },
             },
-          },
-          contentFragment: undefined,
-        });
+            contentFragment: undefined,
+          });
 
-        if (convRes.isErr()) {
-          setError(`Failed to create conversation: ${convRes.error.message}`);
-          setIsProcessingQuestion(false);
-          return;
-        }
+          if (convRes.isErr()) {
+            throw new Error(
+              `Failed to create conversation: ${convRes.error.message}`
+            );
+          }
 
-        // Store the conversation ID for future messages
-        conversation = convRes.value.conversation;
-        setConversationId(conversation.sId);
-        userMessageId = convRes.value.message.sId;
-      } else {
-        // Add a message to the existing conversation using the client library
-        try {
+          // Store the conversation ID for future messages
+          conversation = convRes.value.conversation;
+          setConversationId(conversation.sId);
+          userMessageId = convRes.value.message.sId;
+        } else {
+          // Add a message to the existing conversation
           const workspaceId = await AuthService.getSelectedWorkspaceId();
           if (!workspaceId) {
             throw new Error("No workspace selected");
@@ -98,7 +123,7 @@ const AskAgent: FC<AskAgentProps> = ({
             conversationId: conversationId,
             message: {
               content: questionText,
-              mentions: [{ configurationId: agent.sId }],
+              mentions: [{ configurationId: selectedAgent.sId }],
               context: {
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 username: "cli-user",
@@ -116,6 +141,7 @@ const AskAgent: FC<AskAgentProps> = ({
           }
 
           userMessageId = messageRes.value.sId;
+
           // Get the conversation for streaming
           const convRes = await dustClient.getConversation({ conversationId });
           if (convRes.isErr()) {
@@ -124,120 +150,303 @@ const AskAgent: FC<AskAgentProps> = ({
             );
           }
           conversation = convRes.value;
-        } catch (error) {
-          setError(`Failed to create message: ${error}`);
-          setIsProcessingQuestion(false);
-          return;
         }
-      }
 
-      try {
         // Stream the agent's response
         const streamRes = await dustClient.streamAgentAnswerEvents({
           conversation: conversation,
           userMessageId: userMessageId,
+          signal: controller.signal, // Add the abort signal
         });
 
         if (streamRes.isErr()) {
-          setError(`Failed to stream agent answer: ${streamRes.error.message}`);
-          setIsProcessingQuestion(false);
-          return;
+          throw new Error(
+            `Failed to stream agent answer: ${streamRes.error.message}`
+          );
         }
 
         let responseText = "";
         for await (const event of streamRes.value.eventStream) {
           if (event.type === "generation_tokens") {
             responseText += event.text;
-          } else if (event.type === "agent_error") {
-            setError(`Agent error: ${event.error.message}`);
-            break;
-          } else if (event.type === "user_message_error") {
-            setError(`User message error: ${event.error.message}`);
-            break;
-          } else if (event.type === "agent_message_success") {
-            // Complete
-            setAnswer(responseText);
 
-            // Add to conversation history (only if this is a new message)
-            setConversationHistory((prev) => {
-              // Check if this exact question-answer pair already exists
-              const exists = prev.some(
-                (item) =>
-                  item.question === questionText && item.answer === responseText
-              );
-
-              if (!exists) {
-                return [
-                  ...prev,
-                  { question: questionText, answer: responseText },
-                ];
+            // Update the streaming message with new content
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              const lastMessage = newMessages[newMessages.length - 1];
+              if (lastMessage.type === "assistant" && lastMessage.isStreaming) {
+                newMessages[newMessages.length - 1] = {
+                  ...lastMessage,
+                  content: responseText,
+                };
               }
-              return prev;
+              return newMessages;
             });
-
+          } else if (event.type === "agent_error") {
+            throw new Error(`Agent error: ${event.error.message}`);
+          } else if (event.type === "user_message_error") {
+            throw new Error(`User message error: ${event.error.message}`);
+          } else if (event.type === "agent_message_success") {
+            // Complete the message
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              const lastMessage = newMessages[newMessages.length - 1];
+              if (lastMessage.type === "assistant" && lastMessage.isStreaming) {
+                newMessages[newMessages.length - 1] = {
+                  ...lastMessage,
+                  content: responseText,
+                  isStreaming: false,
+                };
+              }
+              return newMessages;
+            });
             break;
           }
         }
       } catch (error) {
-        setError(`Error processing response: ${error}`);
+        if (controller.signal.aborted) {
+          // The request was aborted, handled above
+          return;
+        }
+
+        setError(
+          `Error: ${error instanceof Error ? error.message : String(error)}`
+        );
+
+        // Update or remove the streaming message
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          const lastMessage = newMessages[newMessages.length - 1];
+          if (lastMessage.type === "assistant" && lastMessage.isStreaming) {
+            if (lastMessage.content) {
+              // Keep what was streamed so far but mark as not streaming
+              newMessages[newMessages.length - 1] = {
+                ...lastMessage,
+                isStreaming: false,
+              };
+            } else {
+              // No content was streamed, add an error message
+              newMessages[newMessages.length - 1] = {
+                type: "assistant",
+                content: `Error: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
+                isStreaming: false,
+              };
+            }
+          }
+          return newMessages;
+        });
       } finally {
         setIsProcessingQuestion(false);
+        setAbortController(null);
       }
     },
-    [conversationId]
+    [selectedAgent, conversationId, me, meError, isMeLoading]
   );
 
+  // Handle initial question if provided
   useEffect(() => {
-    if (isAskingQuestion && !initialQuestion) {
-      // Set up readline interface for question input
-      const rl = createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      });
-
-      process.stdout.write("\x1bc"); // Clear screen
-
-      // Use ANSI color codes to make the prompt text blue
-      const promptText = conversationId
-        ? `\x1b[34mWhat would you like to ask ${selectedAgent?.name} next? (continuing conversation) \x1b[0m\n`
-        : `\x1b[34mWhat would you like to ask ${selectedAgent?.name}? \x1b[0m\n`;
-
-      rl.question(promptText, (input) => {
-        if (input.trim()) {
-          setQuestion(input);
-          rl.close();
-          if (selectedAgent) {
-            askQuestion(selectedAgent, input);
-          }
-        } else {
-          rl.close();
-          process.exit(0);
-        }
-      });
-
-      return () => {
-        rl.close();
-      };
+    if (
+      selectedAgent &&
+      initialQuestion &&
+      messages.length === 0 &&
+      canSubmit
+    ) {
+      handleSubmitQuestion(initialQuestion);
     }
   }, [
-    isAskingQuestion,
     selectedAgent,
     initialQuestion,
-    askQuestion,
-    conversationId,
+    handleSubmitQuestion,
+    messages.length,
+    canSubmit,
   ]);
 
-  // Handle Ctrl+C key press to quit
+  // Handle keyboard events
   useInput((input, key) => {
-    if (key.ctrl && input === "c" && !isAskingQuestion) {
-      process.exit(0);
+    // Ctrl+G to open conversation in browser
+    if (key.ctrl && input === "g") {
+      if (conversationId) {
+        (async () => {
+          const workspaceId = await AuthService.getSelectedWorkspaceId();
+          if (workspaceId) {
+            const url = `https://dust.tt/w/${workspaceId}/assistant/${conversationId}`;
+            console.log(`\nOpening conversation in browser: ${url}`);
+            await open(url);
+          } else {
+            console.error("\nCould not determine workspace ID");
+          }
+        })();
+      } else {
+        console.log("\nNo active conversation to open");
+      }
+      return;
+    }
+
+    // ESC key to either cancel ongoing request or clear input
+    if (key.escape) {
+      if (isProcessingQuestion && abortController) {
+        // Cancel ongoing request
+        abortController.abort();
+        setIsProcessingQuestion(false);
+
+        // Update the streaming message to indicate cancellation
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          const lastMessage = newMessages[newMessages.length - 1];
+          if (lastMessage?.type === "assistant" && lastMessage.isStreaming) {
+            newMessages[newMessages.length - 1] = {
+              ...lastMessage,
+              content: lastMessage.content + " [Cancelled]",
+              isStreaming: false,
+            };
+          }
+          return newMessages;
+        });
+      } else if (userInput) {
+        // Clear input when not processing a request
+        setUserInput("");
+        setCursorPosition(0);
+      }
+      return;
+    }
+
+    // Check for backslash + Enter to add new line, or regular Enter to submit
+    if (key.return) {
+      // Check if the previous character is a backslash for multi-line input
+      if (cursorPosition > 0 && userInput[cursorPosition - 1] === "\\") {
+        // Remove the backslash and add a newline
+        const newInput =
+          userInput.slice(0, cursorPosition - 1) +
+          "\n" +
+          userInput.slice(cursorPosition);
+        setUserInput(newInput);
+        // Position cursor right after the newline character
+        setCursorPosition(cursorPosition); // Same position (we replaced \ with \n, both length 1)
+        return;
+      }
+
+      // Only allow submission if not processing, "me" is loaded and user input is not empty
+      if (!canSubmit) return;
+
+      handleSubmitQuestion(userInput);
+      setUserInput("");
+      setCursorPosition(0);
+
+      return;
+    }
+
+    if (key.backspace || key.delete) {
+      if (cursorPosition > 0) {
+        setUserInput(
+          userInput.slice(0, cursorPosition - 1) +
+            userInput.slice(cursorPosition)
+        );
+        setCursorPosition(Math.max(0, cursorPosition - 1));
+      }
+      return;
+    }
+
+    if (key.leftArrow && cursorPosition > 0) {
+      setCursorPosition(cursorPosition - 1);
+      return;
+    }
+
+    if (key.rightArrow && cursorPosition < userInput.length) {
+      setCursorPosition(cursorPosition + 1);
+      return;
+    }
+
+    if (key.upArrow) {
+      setCursorPosition(0);
+      return;
+    }
+
+    if (key.downArrow) {
+      setCursorPosition(userInput.length);
+      return;
+    }
+
+    // Handle regular character input
+    if (!key.ctrl && !key.meta && input && input.length === 1) {
+      const newInput =
+        userInput.slice(0, cursorPosition) +
+        input +
+        userInput.slice(cursorPosition);
+      setUserInput(newInput);
+      setCursorPosition(cursorPosition + 1);
+    } else if (input.length > 1) {
+      // This is a special case that can happen with some terminals when pasting
+      // without explicit keyboard shortcuts - they send the entire pasted content
+      // as a single input event
+
+      // Some terminals translate newlines to \r, so we normalize that to \n
+      const normalizedInput = input.replace(/\r/g, "\n");
+
+      const newInput =
+        userInput.slice(0, cursorPosition) +
+        normalizedInput +
+        userInput.slice(cursorPosition);
+      setUserInput(newInput);
+      setCursorPosition(cursorPosition + normalizedInput.length);
     }
   });
 
+  const renderMessages = () => {
+    return messages.map((message, index) => (
+      <Box key={index} flexDirection="column" marginBottom={1}>
+        <Box>
+          <Text bold color={message.type === "user" ? "green" : "blue"}>
+            {message.type === "user"
+              ? "You: "
+              : selectedAgent
+              ? `${selectedAgent.name}: `
+              : "Assistant: "}
+          </Text>
+        </Box>
+        <Box marginLeft={2} flexDirection="column">
+          {message.isStreaming ? (
+            <Box flexDirection="column">
+              <Text wrap="wrap">{message.content}</Text>
+              <Box marginTop={1}>
+                <Text color="green">
+                  <Spinner type="dots" /> Thinking...
+                </Text>
+              </Box>
+            </Box>
+          ) : (
+            <Text wrap="wrap">{message.content}</Text>
+          )}
+        </Box>
+      </Box>
+    ));
+  };
+
+  // Render error state
   if (error) {
-    return <Text color="red">Error: {error}</Text>;
+    return (
+      <Box flexDirection="column" height="100%">
+        <Box flexDirection="column" flexGrow={1}>
+          {renderMessages()}
+
+          <Box marginY={1}>
+            <Box borderStyle="round" borderColor="red" padding={1}>
+              <Text>{error}</Text>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box flexDirection="column" marginTop={0} paddingTop={0}>
+          <Box marginTop={0}>
+            <Text color="gray">Press Ctrl+C to exit</Text>
+          </Box>
+        </Box>
+      </Box>
+    );
   }
 
+  // Render agent selector
   if (!selectedAgent) {
     return (
       <AgentSelector
@@ -246,112 +455,173 @@ const AskAgent: FC<AskAgentProps> = ({
         onError={setError}
         onConfirm={(agents) => {
           setSelectedAgent(agents[0]);
-          setIsAskingQuestion(true);
         }}
       />
     );
   }
 
-  if (isProcessingQuestion) {
-    return (
-      <Box flexDirection="column">
-        <Box marginBottom={1}>
-          <Text bold color="blue">
-            Agent:{" "}
-          </Text>
-          <Text>{selectedAgent?.name}</Text>
-        </Box>
-        <Box marginBottom={1} flexDirection="column">
-          <Text bold color="blue">
-            Question:
-          </Text>
-          <Box marginY={1}></Box>
-          <Text>{question}</Text>
-        </Box>
-        <Box marginBottom={1}>
-          <Text color="green">
-            <Spinner type="dots" /> Thinking...
-          </Text>
-        </Box>
-        {answer && (
-          <Box flexDirection="column" marginTop={1}>
-            <Text bold>Response:</Text>
-            <Box marginTop={1} flexDirection="column">
-              <Text>{answer}</Text>
+  // Calculate input box dimensions
+  const inputWidth = stdout?.columns ? stdout.columns - 10 : 70;
+  const mentionPrefix = selectedAgent ? `@${selectedAgent.name} ` : "";
+  const prefixLength = mentionPrefix.length;
+
+  // Calculate cursor display without modifying the original input
+  const displayInput =
+    userInput.length <= inputWidth - prefixLength
+      ? userInput
+      : userInput.slice(
+          Math.max(
+            0,
+            cursorPosition - Math.floor((inputWidth - prefixLength) / 2)
+          ),
+          cursorPosition + Math.ceil((inputWidth - prefixLength) / 2)
+        );
+
+  const visibleCursorPosition =
+    userInput.length <= inputWidth - prefixLength
+      ? cursorPosition
+      : Math.min(
+          inputWidth - prefixLength,
+          cursorPosition -
+            Math.max(
+              0,
+              cursorPosition - Math.floor((inputWidth - prefixLength) / 2)
+            )
+        );
+
+  // Create a display string with cursor
+  const beforeCursor = displayInput.slice(0, visibleCursorPosition);
+  // Always show a space for the cursor position, even when the input is empty
+  const atCursor = displayInput.charAt(visibleCursorPosition) || " ";
+  const afterCursor = displayInput.slice(visibleCursorPosition + 1);
+
+  // Main chat UI
+  return (
+    <Box flexDirection="column" height="100%">
+      {/* Welcome header */}
+      <Box flexDirection="row" marginBottom={1}>
+        <Box borderStyle="round" borderColor="gray" paddingX={1} paddingY={1}>
+          <Box flexDirection="column">
+            <Box justifyContent="center">
+              <Text bold>Welcome to Dust CLI beta!</Text>
+            </Box>
+            <Box height={1}></Box>
+            <Box justifyContent="center">
+              <Text>
+                You&apos;re currently chatting with {selectedAgent.name} (
+                {selectedAgent.sId})
+              </Text>
+            </Box>
+            <Box height={1}></Box>
+            <Box justifyContent="center">
+              <Text dimColor>
+                Type your message below and press Enter to send
+              </Text>
             </Box>
           </Box>
-        )}
-      </Box>
-    );
-  }
-
-  if (answer !== null) {
-    return (
-      <Box flexDirection="column">
-        <Box marginBottom={1}>
-          <Text bold>Agent: </Text>
-          <Text>{selectedAgent?.name}</Text>
         </Box>
+        <Box></Box>
+      </Box>
 
-        {/* Show conversation history if available */}
-        {conversationHistory.length > 0 && (
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold>Conversation History:</Text>
-            {conversationHistory.map((item, index) => (
-              <Box
-                key={index}
-                flexDirection="column"
-                marginLeft={1}
-                marginBottom={1}
+      <Box flexDirection="column" flexGrow={1}>
+        {renderMessages()}
+      </Box>
+
+      {/* Input box */}
+      <Box flexDirection="column" marginTop={0} paddingTop={0}>
+        <Box
+          borderStyle="round"
+          borderColor="gray"
+          padding={0}
+          paddingX={1}
+          marginTop={0}
+        >
+          {userInput.includes("\n") ? (
+            // Multiline
+            <Box flexDirection="column">
+              {(() => {
+                // Find which line and position the cursor is on
+                let currentPos = 0;
+                const lines = userInput.split("\n");
+                const cursorLine = lines.findIndex((line) => {
+                  if (
+                    cursorPosition >= currentPos &&
+                    cursorPosition <= currentPos + line.length
+                  ) {
+                    return true;
+                  }
+                  currentPos += line.length + 1; // +1 for the \n character
+                  return false;
+                });
+
+                const cursorPosInLine =
+                  cursorLine >= 0
+                    ? cursorPosition -
+                      (cursorLine === 0
+                        ? 0
+                        : lines
+                            .slice(0, cursorLine)
+                            .reduce((sum, line) => sum + line.length + 1, 0))
+                    : 0;
+
+                return lines.map((line, index) => (
+                  <Box key={index}>
+                    {index === 0 && (
+                      <Text color={isProcessingQuestion ? "gray" : "cyan"} bold>
+                        {mentionPrefix}
+                      </Text>
+                    )}
+
+                    {index === cursorLine ? (
+                      // This is the line with the cursor
+                      <>
+                        <Text>{line.substring(0, cursorPosInLine)}</Text>
+                        <Text
+                          backgroundColor={
+                            isProcessingQuestion ? "gray" : "blue"
+                          }
+                          color="white"
+                        >
+                          {line.charAt(cursorPosInLine) || " "}
+                        </Text>
+                        <Text>{line.substring(cursorPosInLine + 1)}</Text>
+                      </>
+                    ) : (
+                      // Regular line without cursor
+                      // For empty lines, just render a space to ensure the line is visible
+                      <Text>{line === "" ? " " : line}</Text>
+                    )}
+                  </Box>
+                ));
+              })()}
+            </Box>
+          ) : (
+            // Single line
+            <Box>
+              <Text color={isProcessingQuestion ? "gray" : "cyan"} bold>
+                {mentionPrefix}
+              </Text>
+              <Text>{beforeCursor}</Text>
+              <Text
+                backgroundColor={isProcessingQuestion ? "gray" : "blue"}
+                color="white"
               >
-                <Box>
-                  <Text bold color="green">
-                    You:{" "}
-                  </Text>
-                  <Text dimColor>
-                    {item.question.length > 60
-                      ? `${item.question.substring(0, 60)}...`
-                      : item.question}
-                  </Text>
-                </Box>
-                <Box marginLeft={1}>
-                  <Text bold color="blue">
-                    {selectedAgent?.name}:{" "}
-                  </Text>
-                  <Text dimColor>
-                    {item.answer.length > 60
-                      ? `${item.answer.substring(0, 60)}...`
-                      : item.answer}
-                  </Text>
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        )}
+                {atCursor}
+              </Text>
+              <Text>{afterCursor}</Text>
+            </Box>
+          )}
+        </Box>
 
-        <Box marginBottom={1}>
-          <Text bold color="blue">
-            Question:{" "}
+        <Box marginTop={0}>
+          <Text dimColor>
+            ↵ to send · \↵ for new line · ESC to clear · Ctrl+G to open in
+            browser
           </Text>
-          <Text>{question}</Text>
-        </Box>
-        <Box flexDirection="column" marginTop={1}>
-          <Text bold color="blue">
-            Response:
-          </Text>
-          <Box marginTop={1} flexDirection="column">
-            <Text>{answer}</Text>
-          </Box>
-        </Box>
-        <Box marginTop={2} flexDirection="column">
-          <Text bold color="blue">
-            Type and Enter to ask a follow-up question. {"\n"}
-          </Text>
-          <Text dimColor>Press Ctrl+C to exit. {"\n"}</Text>
         </Box>
       </Box>
-    );
-  }
+    </Box>
+  );
 };
 
-export default AskAgent;
+export default CliChat;
