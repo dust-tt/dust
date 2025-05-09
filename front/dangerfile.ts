@@ -158,13 +158,12 @@ async function checkRawSqlRegistry(filePaths: string[]) {
   if (filesWithRawSql.length > 0) {
     if (hasLabel(rawSqlAckLabel)) {
       for (const file of filesWithRawSql) {
-        warn("File has been modified and contains raw sql code.", file);
+        warn(`File "${file}" has been modified and contains raw sql code.`);
       }
     } else {
       for (const file of filesWithRawSql) {
         fail(
-          `File has been modified and contains raw sql code. Please add "${rawSqlAckLabel}" label and verify that those query cannot be made without Sequelize Model.`,
-          file
+          `File "${file}" has been modified and contains raw sql code. Please add "${rawSqlAckLabel}" label and verify that those query cannot be made without Sequelize Model.`
         );
       }
     }
