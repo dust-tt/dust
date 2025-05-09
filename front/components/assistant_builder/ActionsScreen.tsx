@@ -397,63 +397,61 @@ export default function ActionsScreen({
               </ContentMessage>
             )}
           </div>
-          <div className="flex flex-row gap-2">
-            <AddKnowledgeDropdown
-              hasFeature={hasFeature}
-              setAction={setAction}
-            />
-            <AddToolsDropdown
-              setBuilderState={setBuilderState}
-              setEdited={setEdited}
-              setAction={setAction}
-              defaultTools={selectableDefaultTools}
-              defaultMCPServerViews={selectableDefaultMCPServerViews}
-              nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
-            />
+          {!isLegacyConfig && (
+            <div className="flex flex-row gap-2">
+              <AddKnowledgeDropdown
+                hasFeature={hasFeature}
+                setAction={setAction}
+              />
+              <AddToolsDropdown
+                setBuilderState={setBuilderState}
+                setEdited={setEdited}
+                setAction={setAction}
+                defaultTools={selectableDefaultTools}
+                defaultMCPServerViews={selectableDefaultMCPServerViews}
+                nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
+              />
 
-            {!isLegacyConfig && (
-              <>
-                <div className="flex-grow" />
-                <AdvancedSettings
-                  maxStepsPerRun={builderState.maxStepsPerRun}
-                  setMaxStepsPerRun={(maxStepsPerRun) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      maxStepsPerRun,
-                    }));
-                  }}
-                  setReasoningModel={
-                    enableReasoningTool &&
-                    builderState.actions.find((a) => a.type === "REASONING")
-                      ? (model) => {
-                          setEdited(true);
-                          setBuilderState((state) => ({
-                            ...state,
-                            actions: state.actions.map((a) =>
-                              a.type === "REASONING"
-                                ? {
-                                    ...a,
-                                    configuration: {
-                                      ...a.configuration,
-                                      modelId: model.modelId,
-                                      providerId: model.providerId,
-                                      reasoningEffort:
-                                        model.reasoningEffort ?? null,
-                                    },
-                                  }
-                                : a
-                            ),
-                          }));
-                        }
-                      : undefined
-                  }
-                  reasoningModels={reasoningModels}
-                  builderState={builderState}
-                />
-              </>
-            )}
-          </div>
+              <div className="flex-grow" />
+              <AdvancedSettings
+                maxStepsPerRun={builderState.maxStepsPerRun}
+                setMaxStepsPerRun={(maxStepsPerRun) => {
+                  setEdited(true);
+                  setBuilderState((state) => ({
+                    ...state,
+                    maxStepsPerRun,
+                  }));
+                }}
+                setReasoningModel={
+                  enableReasoningTool &&
+                  builderState.actions.find((a) => a.type === "REASONING")
+                    ? (model) => {
+                        setEdited(true);
+                        setBuilderState((state) => ({
+                          ...state,
+                          actions: state.actions.map((a) =>
+                            a.type === "REASONING"
+                              ? {
+                                  ...a,
+                                  configuration: {
+                                    ...a.configuration,
+                                    modelId: model.modelId,
+                                    providerId: model.providerId,
+                                    reasoningEffort:
+                                      model.reasoningEffort ?? null,
+                                  },
+                                }
+                              : a
+                          ),
+                        }));
+                      }
+                    : undefined
+                }
+                reasoningModels={reasoningModels}
+                builderState={builderState}
+              />
+            </div>
+          )}
         </div>
         {nonGlobalSpacessUsedInActions.length > 0 && (
           <div className="w-full">
@@ -465,7 +463,7 @@ export default function ActionsScreen({
           </div>
         )}
         <div className="flex h-full min-h-40 flex-col gap-4">
-          {builderState.actions.length === 0 ? (
+          {!isLegacyConfig && builderState.actions.length === 0 ? (
             <div className="flex h-36 w-full items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night">
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Add knowledge and tools to enhance your agent's capabilities.
