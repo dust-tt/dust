@@ -25,8 +25,8 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import {
-  isServerSideMCPServerConfiguration,
   isRetrievalConfiguration,
+  isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";

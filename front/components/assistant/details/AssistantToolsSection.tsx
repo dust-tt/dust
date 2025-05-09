@@ -18,10 +18,10 @@ import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
-  isServerSideMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
+  isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
