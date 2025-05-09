@@ -23,12 +23,13 @@ export function PromptHistory({
   onConfigChange: (config: LightAgentConfigurationType) => void;
   currentConfig: LightAgentConfigurationType | null;
 }) {
-  const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
+  const dateFormatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
-    month: "short",
+    month: "long",
     day: "numeric",
     hour: "numeric",
     minute: "numeric",
+    hour12: true,
   });
 
   const formatVersionLabel = useCallback(
