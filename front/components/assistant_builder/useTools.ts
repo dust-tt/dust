@@ -74,6 +74,7 @@ function getDefaultTools({
       const webtoolsServer = mcpServerViews.find(
         (view) => view.server.name === webtoolsV2ServerName
       );
+
       if (webtoolsServer != null) {
         return isWebNavigationEnabled;
       }
@@ -92,7 +93,6 @@ function getMCPServerViews({
 }: {
   mcpServerViews: MCPServerViewType[];
 }) {
-  console.log("recal: getMCPServerViews");
   const grouped = groupBy(mcpServerViews, (view) => view.server.availability);
 
   return {
@@ -123,30 +123,59 @@ export const useTools = ({ enableReasoningTool, actions }: UseToolsProps) => {
     });
   }, [enableReasoningTool, isWebNavigationEnabled, mcpServerViews]);
 
-  const { defaultMCPServerViews, nonDefaultMCPServerViews } = useMemo(() => {
-    return getMCPServerViews({
-      mcpServerViews,
-    });
-  }, [mcpServerViews]);
+  const { defaultMCPServerViews, nonDefaultMCPServerViews } = useMemo(
+    () => getMCPServerViews({ mcpServerViews }),
+    [mcpServerViews]
+  );
 
-  // This is to filter out the non-enabled tools and non-configrable tools that are already selected.
-  const selectableDefaultTools = useMemo(() => {
-    return defaultTools.filter((tool) => {
-      return !actions.some((action) => action.type === tool.type);
-    });
-  }, [defaultTools, actions]);
+  const selectableDefaultTools = useMemo(
+    () =>
+      defaultTools.filter((tool) => {
+        const isConfigurable = DEFAULT_TOOLS_WITH_CONFIGURATION.find(
+          (defaultTool) => defaultTool === tool.type
+        );
 
-  const selectableDefaultMCPServerViews = useMemo(() => {
-    return defaultMCPServerViews.filter((view) => {
-      return !actions.some((action) => action.name === view.server.name);
-    });
-  }, [defaultMCPServerViews, actions]);
+        // If it's not configurable, we need to remove it from the list
+        if (!isConfigurable) {
+          return !actions.some((action) => action.type === tool.type);
+        }
 
-  const selectableNonDefaultMCPServerViews = useMemo(() => {
-    return nonDefaultMCPServerViews.filter((view) => {
-      return !actions.some((action) => action.name === view.server.name);
-    });
-  }, [nonDefaultMCPServerViews, actions]);
+        return true;
+      }),
+    [defaultTools, actions]
+  );
+
+  const selectableDefaultMCPServerViews = useMemo(
+    () =>
+      defaultMCPServerViews.filter((view) => {
+        const selectedAction = actions.find(
+          (action) => action.name === view.server.name
+        );
+
+        if (selectedAction) {
+          return !selectedAction.noConfigurationRequired;
+        }
+
+        return true;
+      }),
+    [defaultMCPServerViews, actions]
+  );
+
+  const selectableNonDefaultMCPServerViews = useMemo(
+    () =>
+      nonDefaultMCPServerViews.filter((view) => {
+        const selectedAction = actions.find(
+          (action) => action.name === view.server.name
+        );
+
+        if (selectedAction) {
+          return !selectedAction.noConfigurationRequired;
+        }
+
+        return true;
+      }),
+    [nonDefaultMCPServerViews, actions]
+  );
 
   return {
     selectableDefaultTools,
