@@ -16,9 +16,9 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
+import { InstructionDiffExtension } from "@app/components/assistant_builder/instructions/InstructionDiffExtension";
+import { InstructionHistory } from "@app/components/assistant_builder/instructions/InstructionsHistory";
 import { InstructionSuggestions } from "@app/components/assistant_builder/instructions/InstructionSuggestions";
-import { PromptDiffExtension } from "@app/components/assistant_builder/instructions/PromptDiffExtension";
-import { PromptHistory } from "@app/components/assistant_builder/instructions/PromptHistory";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import {
   plainTextFromTipTapContent,
@@ -82,7 +82,7 @@ export function InstructionScreen({
       Text,
       ParagraphExtension,
       History,
-      PromptDiffExtension,
+      InstructionDiffExtension,
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),
@@ -224,7 +224,7 @@ export function InstructionScreen({
     }
 
     if (diffMode && compareVersion) {
-      if (editor.storage.promptDiff?.isDiffMode) {
+      if (editor.storage.instructionDiff?.isDiffMode) {
         editor.commands.exitDiff();
       }
 
@@ -234,7 +234,7 @@ export function InstructionScreen({
       editor.commands.applyDiff(compareText, currentText);
       editor.setEditable(false);
     } else if (!diffMode && editor) {
-      if (editor.storage.promptDiff?.isDiffMode) {
+      if (editor.storage.instructionDiff?.isDiffMode) {
         editor.commands.exitDiff();
         editor.setEditable(true);
       }
@@ -289,7 +289,7 @@ export function InstructionScreen({
 
             {configsWithUniqueInstructions &&
               configsWithUniqueInstructions.length > 1 && (
-                <PromptHistory
+                <InstructionHistory
                   history={configsWithUniqueInstructions.slice(1)}
                   currentInstructions={builderState.instructions || ""}
                   selectedConfig={compareVersion}

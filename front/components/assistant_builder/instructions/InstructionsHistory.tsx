@@ -15,19 +15,19 @@ import React from "react";
 import type { LightAgentConfigurationType } from "@app/types";
 import { GaugeDiff } from "@app/components/assistant_builder/instructions/GaugeDiff";
 
-interface PromptHistoryProps {
+interface InstructionHistoryProps {
   history: LightAgentConfigurationType[];
   currentInstructions: string;
   selectedConfig: LightAgentConfigurationType | null;
   onSelect: (config: LightAgentConfigurationType) => void;
 }
 
-export function PromptHistory({
+export function InstructionHistory({
   history,
   onSelect,
   currentInstructions,
   selectedConfig,
-}: PromptHistoryProps) {
+}: InstructionHistoryProps) {
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "long",
