@@ -16,17 +16,19 @@ import { useState } from "react";
 import type {
   ActionSpecificationWithType,
   AssistantBuilderActionType,
+  AssistantBuilderDataVisualizationType,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
-  getDataVisualizationAction,
+  getDataVisualizationActionConfiguration,
   getDefaultActionConfiguration,
   getDefaultMCPServerActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { asDisplayName } from "@app/types";
+
+type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 
 interface AddToolsDropdownProps {
   setEdited: (edited: boolean) => void;
@@ -35,8 +37,8 @@ interface AddToolsDropdownProps {
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   defaultTools: ActionSpecificationWithType[];
-  defaultMCPServerViews: (MCPServerViewType & { label: string })[];
-  nonDefaultMCPServerViews: (MCPServerViewType & { label: string })[];
+  defaultMCPServerViews: MCPServerViewTypeWithLabel[];
+  nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
 }
 
 export function AddToolsDropdown({
@@ -48,24 +50,24 @@ export function AddToolsDropdown({
   nonDefaultMCPServerViews,
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
-
   const [filteredDefaultTools, setFilteredDefaultTools] =
     useState(defaultTools);
-  const [filteredDefaultMCPServerViews, setFilteredDefaultMCPServerViews] =
-    useState(defaultMCPServerViews);
-  const [
-    filteredNonDefaultMCPServerViews,
-    setFilteredNonDefaultMCPServerViews,
-  ] = useState(nonDefaultMCPServerViews);
+  const [filteredMCPServerViews, setFilteredMCPServerViews] = useState([
+    ...defaultMCPServerViews,
+    ...nonDefaultMCPServerViews,
+  ]);
+
+  const noFilteredTools =
+    filteredDefaultTools.length === 0 && filteredMCPServerViews.length === 0;
 
   function onOpenChange(open: boolean) {
-    if (open) {
-      // Update filtered list with the latest values when the dropdown is opened
-      setFilteredDefaultTools(defaultTools);
-      setFilteredDefaultMCPServerViews(defaultMCPServerViews);
-      setFilteredNonDefaultMCPServerViews(nonDefaultMCPServerViews);
-    } else {
-      setSearchText("");
+    if (!open) {
+      // Delay slightly to avoid flickering when the dropdown is closed.
+      setTimeout(() => {
+        setSearchText("");
+        setFilteredDefaultTools([]);
+        setFilteredMCPServerViews([]);
+      }, 200);
     }
   }
 
@@ -76,43 +78,38 @@ export function AddToolsDropdown({
         tool.label.toLowerCase().includes(text.toLowerCase())
       )
     );
-    setFilteredDefaultMCPServerViews(
-      defaultMCPServerViews.filter((view) =>
-        view.label.toLowerCase().includes(text.toLowerCase())
-      )
-    );
-    setFilteredNonDefaultMCPServerViews(
-      nonDefaultMCPServerViews.filter((view) =>
+    setFilteredMCPServerViews(
+      [...defaultMCPServerViews, ...nonDefaultMCPServerViews].filter((view) =>
         view.label.toLowerCase().includes(text.toLowerCase())
       )
     );
   }
 
-  function onClickDefaultTool(toolType: AssistantBuilderActionType) {
+  function onClickDefaultTool(
+    actionType:
+      | AssistantBuilderActionType
+      | AssistantBuilderDataVisualizationType
+  ) {
     setEdited(true);
-    const defaultAction = getDefaultActionConfiguration(toolType);
+
+    if (actionType === "DATA_VISUALIZATION") {
+      // Data visualization is not an action, but we need to show it in the UI like an action.
+      // So we need to set visualizationEnabled true and add it as an action.
+      setBuilderState((state) => ({
+        ...state,
+        visualizationEnabled: true,
+      }));
+    }
+
+    const defaultAction =
+      actionType === "DATA_VISUALIZATION"
+        ? getDataVisualizationActionConfiguration()
+        : getDefaultActionConfiguration(actionType);
     assert(defaultAction);
 
     setAction({
       type: defaultAction.noConfigurationRequired ? "insert" : "pending",
       action: defaultAction,
-    });
-  }
-
-  // Data visualization is not an action, but we need to show it in the UI like an action.
-  // So we need to set visualizationEnabled true and add it as an action.
-  function onClickDataVisualization() {
-    setEdited(true);
-    setBuilderState((state) => ({
-      ...state,
-      visualizationEnabled: true,
-    }));
-
-    const defaultDataVisualizationAction = getDataVisualizationAction();
-
-    setAction({
-      type: "insert",
-      action: defaultDataVisualizationAction,
     });
   }
 
@@ -147,77 +144,106 @@ export function AddToolsDropdown({
         align="start"
         collisionPadding={10}
         dropdownHeaders={
-          <>
-            <DropdownMenuSearchbar
-              autoFocus
-              name="search-tools"
-              placeholder="Search Tools"
-              value={searchText}
-              onChange={onChangeSearchText}
-            />
-          </>
+          <DropdownMenuSearchbar
+            autoFocus
+            name="search-tools"
+            placeholder="Search Tools"
+            value={searchText}
+            onChange={onChangeSearchText}
+          />
         }
       >
         {searchText.length > 0 &&
-          filteredDefaultTools.length === 0 &&
-          filteredDefaultMCPServerViews.length === 0 &&
-          filteredNonDefaultMCPServerViews.length === 0 && (
+          (noFilteredTools ? (
             <DropdownMenuLabel label="No tools found" />
-          )}
-
-        {searchText.length === 0 && <DropdownMenuLabel label="Top tools" />}
-        {filteredDefaultTools.map((tool) => {
-          return (
-            <DropdownMenuItem
-              truncateText
-              key={tool.label}
-              icon={<Avatar icon={tool.dropDownIcon} size="sm" />}
-              label={tool.label}
-              description={tool.description}
-              onClick={() => {
-                if (tool.type === "DATA_VISUALIZATION") {
-                  onClickDataVisualization();
-                } else {
-                  onClickDefaultTool(tool.type);
-                }
-              }}
-            />
-          );
-        })}
-
-        {filteredDefaultMCPServerViews.map((view) => {
-          return (
-            <DropdownMenuItem
-              truncateText
-              key={view.id}
-              icon={() => getAvatar(view.server)}
-              label={view.label}
-              description={view.server.description}
-              onClick={() => onClickMCPServer(view)}
-            />
-          );
-        })}
-
-        {filteredNonDefaultMCPServerViews.length > 0 && (
-          <>
-            {searchText.length === 0 && (
-              <DropdownMenuLabel label="Other tools" />
-            )}
-            {filteredNonDefaultMCPServerViews.map((view) => {
-              return (
-                <DropdownMenuItem
-                  truncateText
-                  key={view.id}
-                  icon={getAvatar(view.server)}
-                  label={asDisplayName(view.server.name)}
-                  description={view.server.description}
-                  onClick={() => onClickMCPServer(view)}
+          ) : (
+            <>
+              <DropdownMenuLabel label="Search results" />
+              {filteredDefaultTools.map((tool) => (
+                <DefaultToolDropdownMenuItem
+                  key={tool.label}
+                  tool={tool}
+                  onClick={(tool) => onClickDefaultTool(tool.type)}
                 />
-              );
-            })}
+              ))}
+              {filteredMCPServerViews.map((view) => (
+                <MCPDropdownMenuItem
+                  key={view.id}
+                  view={view}
+                  onClick={onClickMCPServer}
+                />
+              ))}
+            </>
+          ))}
+
+        {searchText.length === 0 && (
+          <>
+            <DropdownMenuLabel label="Top tools" />
+            {defaultTools.map((tool) => (
+              <DefaultToolDropdownMenuItem
+                key={tool.label}
+                tool={tool}
+                onClick={() => onClickDefaultTool(tool.type)}
+              />
+            ))}
+            {defaultMCPServerViews.map((view) => (
+              <MCPDropdownMenuItem
+                key={view.id}
+                view={view}
+                onClick={onClickMCPServer}
+              />
+            ))}
+            {nonDefaultMCPServerViews.length > 0 && (
+              <>
+                <DropdownMenuLabel label="Other tools" />
+                {nonDefaultMCPServerViews.map((view) => (
+                  <MCPDropdownMenuItem
+                    key={view.id}
+                    view={view}
+                    onClick={onClickMCPServer}
+                  />
+                ))}
+              </>
+            )}
           </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function DefaultToolDropdownMenuItem({
+  tool,
+  onClick,
+}: {
+  tool: ActionSpecificationWithType;
+  onClick: (toolType: ActionSpecificationWithType) => void;
+}) {
+  return (
+    <DropdownMenuItem
+      truncateText
+      icon={<Avatar icon={tool.dropDownIcon} size="sm" />}
+      label={tool.label}
+      description={tool.description}
+      onClick={() => onClick(tool)}
+    />
+  );
+}
+
+function MCPDropdownMenuItem({
+  view,
+  onClick,
+}: {
+  view: MCPServerViewTypeWithLabel;
+  onClick: (view: MCPServerViewType) => void;
+}) {
+  return (
+    <DropdownMenuItem
+      truncateText
+      icon={getAvatar(view.server)}
+      label={view.label}
+      description={view.server.description}
+      onClick={() => onClick(view)}
+    />
   );
 }

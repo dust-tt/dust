@@ -490,7 +490,7 @@ export function getDefaultActionConfiguration(
   return null;
 }
 
-export function getDataVisualizationAction() {
+export function getDataVisualizationActionConfiguration() {
   return {
     id: uniqueId(),
     ...getDataVisualizationConfiguration(),

@@ -12,7 +12,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   BUILDER_FLOWS,
-  getDataVisualizationAction,
+  getDataVisualizationActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
@@ -182,7 +182,7 @@ export default function EditAssistant({
             ...actions,
             // DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
             ...(agentConfiguration.visualizationEnabled
-              ? [getDataVisualizationAction()]
+              ? [getDataVisualizationActionConfiguration()]
               : []),
           ],
           visualizationEnabled: agentConfiguration.visualizationEnabled,
