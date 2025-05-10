@@ -5,6 +5,7 @@ import Auth from "./commands/Auth.js";
 import Status from "./commands/Status.js";
 import Logout from "./commands/Logout.js";
 import AgentsMCP from "./commands/AgentsMCP.js";
+import Chat from "./commands/Chat.js";
 import Help from "./Help.js";
 
 interface AppProps {
@@ -54,6 +55,8 @@ const App: FC<AppProps> = ({ cli }) => {
       return <Logout />;
     case "agents-mcp":
       return <AgentsMCP port={flags.port} sId={flags.sId} />;
+    case "chat":
+      return <Chat sId={flags.sId?.[0]} />;
     case "help":
       return <Help />;
     default:

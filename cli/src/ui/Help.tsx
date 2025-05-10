@@ -26,6 +26,11 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
+          <Text bold>chat</Text> Chat with a Dust agent
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
           <Text bold>agents-mcp</Text> Select agents and start a stdio MCP
           server
         </Text>

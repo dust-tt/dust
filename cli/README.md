@@ -42,6 +42,9 @@ dust <command> [options]
   - `dust agents-mcp`
   - Optional: `--port <number>` or `-p <number>` to specify the listening port (defaults to auto-selection)
   - Optional: `--sId <sId>` or `-s <sId>` to specify the agent sId to use directly (can be repeated)
+- **`chat`**: Chat with a Dust agent.
+  - `dust chat`
+  - Optional: `--sId <sId>` or `-s <sId>` to specify the agent sId to use directly
 - **`help`**: Display help information.
   - `dust help`
 
@@ -57,6 +60,8 @@ dust <command> [options]
 - `dust agents-mcp`
 - `dust agents-mcp --port 8080`
 - `dust agents-mcp --sId 1234567890`
+- `dust chat`
+- `dust chat --sId 1234567890`
 - `dust help`
 
 ## Development

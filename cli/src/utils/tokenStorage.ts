@@ -55,10 +55,7 @@ export const TokenStorage = {
   /**
    * Saves the selected workspace ID
    */
-  async saveWorkspaceId(
-    workspaceSid: string,
-    workspaceName?: string
-  ): Promise<void> {
+  async saveWorkspaceId(workspaceSid: string): Promise<void> {
     await keytar.setPassword(SERVICE_NAME, WORKSPACE_KEY, workspaceSid);
   },
 

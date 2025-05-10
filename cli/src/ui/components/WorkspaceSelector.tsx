@@ -76,14 +76,14 @@ const WorkspaceSelector: FC<WorkspaceSelectorProps> = ({ onComplete }) => {
     fetchWorkspaces();
   }, []);
 
-  const handleSelect = useCallback(async (item: any) => {
-    const extendedItem = item as ExtendedItem;
-    await TokenStorage.saveWorkspaceId(
-      extendedItem.value,
-      extendedItem.workspace.name
-    );
-    onComplete?.();
-  }, []);
+  const handleSelect = useCallback(
+    async (item: any) => {
+      const extendedItem = item as ExtendedItem;
+      await TokenStorage.saveWorkspaceId(extendedItem.value);
+      onComplete?.();
+    },
+    [onComplete]
+  );
 
   if (isLoading) {
     return (

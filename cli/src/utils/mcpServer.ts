@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import http from "http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
@@ -237,7 +237,7 @@ export async function startMcpServer(
 
   const startHttpServer = (port = requestedPort || 0): Promise<number> =>
     new Promise((resolve, reject) => {
-      httpServer.once("error", (err: NodeJS.ErrnoException) => {
+      httpServer.once("error", (err: Error & { code?: string }) => {
         if (requestedPort && err.code === "EADDRINUSE") {
           reject(new Error(`Port ${requestedPort} is already in use.`));
         } else if (err.code === "EADDRINUSE") {
