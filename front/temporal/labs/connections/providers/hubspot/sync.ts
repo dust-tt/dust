@@ -11,6 +11,7 @@ import {
   getWorkspaceByModelId,
   renderLightWorkspaceType,
 } from "@app/lib/workspace";
+import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import type { AssociationsResponseType } from "@app/temporal/labs/connections/providers/hubspot/client";
 import {
@@ -286,7 +287,8 @@ async function upsertToDustDatasource(
   orders: Order[],
   notes: Note[],
   portalId: string,
-  hubspotClient: HubspotClient
+  hubspotClient: HubspotClient,
+  localLogger: Logger
 ): Promise<void> {
   const documentId = `company-${company.id}`;
   const props = company.properties || {};
@@ -305,13 +307,13 @@ async function upsertToDustDatasource(
   try {
     const user = await UserResource.fetchByModelId(userId);
     if (!user) {
-      logger.error({ workspaceId }, "[labs-hubspot] User not found");
+      localLogger.error({ workspaceId }, "[labs-hubspot] User not found");
       return;
     }
 
     const workspace = await getWorkspaceByModelId(workspaceId);
     if (!workspace) {
-      logger.error({ workspaceId }, "[labs-hubspot] Workspace not found");
+      localLogger.error({ workspaceId }, "[labs-hubspot] Workspace not found");
       return;
     }
 
@@ -328,14 +330,17 @@ async function upsertToDustDatasource(
     );
 
     if (!datasourceView) {
-      logger.error({}, "[labs-hubspot] No datasource view found. Stopping.");
+      localLogger.error(
+        {},
+        "[labs-hubspot] No datasource view found. Stopping."
+      );
       return;
     }
 
     const dataSource = datasourceView.dataSource;
 
     if (!dataSource) {
-      logger.error({}, "[labs-hubspot] No datasource found. Stopping.");
+      localLogger.error({}, "[labs-hubspot] No datasource found. Stopping.");
       return;
     }
 
@@ -356,7 +361,7 @@ async function upsertToDustDatasource(
     });
 
     if (upsertRes.isErr()) {
-      logger.error(
+      localLogger.error(
         {
           error: upsertRes.error,
           companyId: company.id,
@@ -367,12 +372,12 @@ async function upsertToDustDatasource(
       return;
     }
 
-    logger.info(
+    localLogger.info(
       { companyId: company.id, companyName: props.name },
       `[labs-hubspot] Upserted hubspot company to Dust datasource`
     );
   } catch (error) {
-    logger.error(
+    localLogger.error(
       { error, companyId: company.id, companyName: props.name },
       `[labs-hubspot] Error upserting company to Dust datasource`
     );
@@ -384,6 +389,11 @@ export async function syncHubspotConnection(
   cursor: string | null = null
 ): Promise<Result<void, Error>> {
   const isFullSync = cursor === null;
+  const localLogger = logger.child({
+    workspaceId: configuration.workspaceId,
+    userId: configuration.userId,
+    dataSourceViewId: configuration.dataSourceViewId,
+  });
   try {
     await markSyncStarted(configuration);
 
@@ -399,7 +409,7 @@ export async function syncHubspotConnection(
       return new Err(new Error("No data source view found"));
     }
 
-    const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+    const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), localLogger);
 
     const credentialsRes = await oauthApi.getCredentials({
       credentialsId: credentialId,
@@ -407,7 +417,7 @@ export async function syncHubspotConnection(
 
     if (credentialsRes.isErr()) {
       const errorMsg = "Error fetching credentials from OAuth API";
-      logger.error({ error: credentialsRes.error }, errorMsg);
+      localLogger.error({ error: credentialsRes.error }, errorMsg);
       await markSyncFailed(configuration, errorMsg);
       return new Err(new Error("Failed to fetch credentials"));
     }
@@ -421,7 +431,7 @@ export async function syncHubspotConnection(
 
     const credentials = credentialsRes.value.credential.content;
     const hubspotClient = new HubspotClient(credentials.accessToken);
-    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
     const since = isFullSync
       ? null
@@ -534,7 +544,7 @@ export async function syncHubspotConnection(
       ...Array.from(additionalCompanyIds),
     ];
 
-    logger.info(
+    localLogger.info(
       { count: companyIds.length, isFullSync, since },
       "Found companies to sync"
     );
@@ -586,7 +596,8 @@ export async function syncHubspotConnection(
             orders,
             notes,
             credentials.portalId,
-            hubspotClient
+            hubspotClient,
+            localLogger
           );
         }
       }
@@ -595,13 +606,13 @@ export async function syncHubspotConnection(
       return new Ok(undefined);
     } catch (error) {
       const errorMsg = `${error instanceof Error ? error.message : String(error)}`;
-      logger.error({ error }, errorMsg);
+      localLogger.error({ error }, errorMsg);
       await markSyncFailed(configuration, errorMsg);
       return new Err(error as Error);
     }
   } catch (error) {
     const errorMsg = `${error instanceof Error ? error.message : String(error)}`;
-    logger.error({ error }, errorMsg);
+    localLogger.error({ error }, errorMsg);
     await markSyncFailed(configuration, errorMsg);
     return new Err(error as Error);
   }
