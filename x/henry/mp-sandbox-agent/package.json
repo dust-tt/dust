@@ -2,6 +2,10 @@
   "name": "mp-sandbox",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "test": "bun test sandbox.test.ts agent/helpers.test.ts",
+    "start": "bun main.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -9,9 +13,12 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@micropython/micropython-webassembly-pyscript": "^1.24.1",
     "dotenv": "^16.4.7",
+    "google-search-results-nodejs": "^2.1.0",
     "openai": "^4.85.1",
+    "tiktoken": "^1.0.20",
     "zod": "^3.24.2"
   }
 }
