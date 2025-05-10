@@ -4,6 +4,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { Ajv } from "ajv";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { getGlobalDispatcher } from "undici";
 
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
@@ -37,6 +38,7 @@ import {
   getOAuthConnectionAccessToken,
   Ok,
 } from "@app/types";
+import { createSSRFInterceptor } from "@app/types/shared/utils/ssrf";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
@@ -155,6 +157,10 @@ export const connectToMCPServer = async (
           try {
             const req = {
               requestInit: {
+                dispatcher: getGlobalDispatcher().compose(
+                  // @ts-expect-error: looks like undici typing is not up to date
+                  createSSRFInterceptor()
+                ),
                 headers: {
                   ...(accessToken
                     ? { Authorization: `Bearer ${accessToken}` }
@@ -182,9 +188,17 @@ export const connectToMCPServer = async (
     }
     case "remoteMCPServerUrl": {
       const url = new URL(params.remoteMCPServerUrl);
-
+      const req = {
+        requestInit: {
+          dispatcher: getGlobalDispatcher().compose(
+            // @ts-expect-error: looks like undici typing is not up to date
+            createSSRFInterceptor()
+          ),
+          headers: {},
+        },
+      };
       try {
-        const sseTransport = new SSEClientTransport(url);
+        const sseTransport = new SSEClientTransport(url, req);
         await mcpClient.connect(sseTransport);
       } catch (e: unknown) {
         return new Err(
