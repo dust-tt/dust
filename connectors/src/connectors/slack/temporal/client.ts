@@ -1,6 +1,7 @@
 import { Err, Ok, removeNulls } from "@dust-tt/client";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { SlackThread } from "@connectors/lib/models/slack";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -95,6 +96,26 @@ export async function launchSlackSyncOneThreadWorkflow(
       "Skipping webhook for Slack connector because it is paused (thread sync)."
     );
 
+    return new Ok(undefined);
+  }
+
+  const thread = await SlackThread.findOne({
+    where: {
+      connectorId: connectorId,
+      slackChannelId: channelId,
+      slackThreadTs: threadTs,
+    },
+  });
+  if (thread && thread.skipReason) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        threadTs,
+        skipReason: thread.skipReason,
+      },
+      `Skipping thread ${threadTs} for channel ${channelId} because: ${thread.skipReason}`
+    );
     return new Ok(undefined);
   }
 

@@ -143,6 +143,7 @@ export const SlackCommandSchema = t.type({
     t.literal("enable-bot"),
     t.literal("sync-channel"),
     t.literal("sync-thread"),
+    t.literal("skip-thread"),
     t.literal("uninstall-for-unknown-team-ids"),
     t.literal("whitelist-domains"),
     t.literal("whitelist-bot"),

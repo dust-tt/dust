@@ -169,6 +169,54 @@ SlackChannel.init(
   }
 );
 
+export class SlackThread extends ConnectorBaseModel<SlackThread> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare slackChannelId: string;
+  declare slackThreadTs: string;
+
+  declare skipReason: string | null;
+}
+SlackThread.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    slackChannelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    slackThreadTs: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "slack_threads",
+    indexes: [
+      {
+        fields: ["slackChannelId", "slackThreadTs", "connectorId"],
+        unique: true,
+      },
+      { fields: ["connectorId"] },
+      { fields: ["slackChannelId", "updatedAt"] },
+    ],
+  }
+);
+
 export class SlackChatBotMessage extends ConnectorBaseModel<SlackChatBotMessage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
