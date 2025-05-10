@@ -47,7 +47,7 @@ function getDefaultConfigurationSpecification(
   };
 }
 
-function getDefaultTools({
+function getAvailableDefaultTools({
   enableReasoningTool,
   isWebNavigationEnabled,
   mcpServerViews,
@@ -90,7 +90,7 @@ function getDefaultTools({
   return list.map((item) => getDefaultConfigurationSpecification(item));
 }
 
-function getMCPServerViews({
+function getGroupedMCPServerViews({
   mcpServerViews,
 }: {
   mcpServerViews: MCPServerViewType[];
@@ -131,7 +131,7 @@ export const useTools = ({
       (action) => action.type === "WEB_NAVIGATION"
     );
 
-    return getDefaultTools({
+    return getAvailableDefaultTools({
       enableReasoningTool,
       isWebNavigationEnabled,
       mcpServerViews,
@@ -148,7 +148,7 @@ export const useTools = ({
       };
     }
 
-    return getMCPServerViews({ mcpServerViews });
+    return getGroupedMCPServerViews({ mcpServerViews });
   }, [mcpServerViews, hasFeature]);
 
   const selectableDefaultTools = useMemo(

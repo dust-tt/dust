@@ -276,7 +276,7 @@ export default function ActionsScreen({
     [setBuilderState, setEdited]
   );
 
-  const removeTool = useCallback(
+  const removeAction = useCallback(
     (selectedAction: AssistantBuilderActionState) => {
       setEdited(true);
       setBuilderState((state) => {
@@ -485,8 +485,8 @@ export default function ActionsScreen({
                       action,
                     });
                   }}
-                  removeTool={() => {
-                    removeTool(action);
+                  removeAction={() => {
+                    removeAction(action);
                   }}
                   isLegacyConfig={isLegacyConfig}
                 />
@@ -708,12 +708,12 @@ function NewActionModal({
 function ActionCard({
   action,
   editAction,
-  removeTool,
+  removeAction,
   isLegacyConfig,
 }: {
   action: AssistantBuilderActionAndDataVisualizationConfiguration;
   editAction: () => void;
-  removeTool: () => void;
+  removeAction: () => void;
   isLegacyConfig: boolean;
 }) {
   const { mcpServerViews } = useContext(AssistantBuilderContext);
@@ -737,7 +737,7 @@ function ActionCard({
           size="mini"
           icon={XMarkIcon}
           onClick={(e: any) => {
-            removeTool();
+            removeAction();
             e.stopPropagation();
           }}
         />
