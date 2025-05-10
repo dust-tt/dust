@@ -9,7 +9,6 @@ import { ReasoningModelConfigurationSection } from "@app/components/assistant_bu
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
@@ -18,7 +17,7 @@ import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_action
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
-import { asDisplayName, assertNever, slugify } from "@app/types";
+import { asDisplayName, assertNever } from "@app/types";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -80,7 +79,6 @@ export function MCPAction({
   owner,
   allowedSpaces,
   action,
-  isEditing,
   updateAction,
   setEdited,
 }: MCPActionProps) {
@@ -91,13 +89,9 @@ export function MCPAction({
 
   const noMCPServerView = mcpServerViews.length === 0;
 
-  const [selectedMCPServerView, setSelectedMCPServerView] =
-    useState<MCPServerViewType | null>(
-      mcpServerViews.find(
-        (mcpServerView) =>
-          mcpServerView.id === actionConfiguration.mcpServerViewId
-      ) ?? null
-    );
+  const selectedMCPServerView = mcpServerViews.find(
+    (mcpServerView) => mcpServerView.id === actionConfiguration.mcpServerViewId
+  );
 
   // MCPServerView on default MCP server will not allow switching to another one.
   const selectedServerAvailability: MCPServerAvailability | null = useMemo(
@@ -107,36 +101,6 @@ export function MCPAction({
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showTablesModal, setShowTablesModal] = useState(false);
-
-  const handleServerSelection = useCallback(
-    (serverView: MCPServerViewType) => {
-      setEdited(true);
-      setSelectedMCPServerView(serverView);
-
-      const requirements = getMCPServerRequirements(serverView);
-      updateAction({
-        actionName: slugify(serverView.server.name),
-        actionDescription:
-          requirements.requiresDataSourceConfiguration ||
-          requirements.requiresTableConfiguration
-            ? ""
-            : serverView.server.description,
-        getNewActionConfig: () => ({
-          mcpServerViewId: serverView.id,
-          dataSourceConfigurations: null,
-          tablesConfigurations: null,
-          childAgentId: null,
-          reasoningModel: null,
-          timeFrame: null,
-          // We initialize boolean with false because leaving them unset means false (toggle on the left).
-          additionalConfiguration: Object.fromEntries(
-            requirements.requiredBooleans.map((key) => [key, false])
-          ),
-        }),
-      });
-    },
-    [setEdited, updateAction]
-  );
 
   const handleConfigUpdate = useCallback(
     (
@@ -202,40 +166,25 @@ export function MCPAction({
       )}
       {/* Server selection */}
       {(selectedServerAvailability === null ||
-        selectedServerAvailability === "manual") &&
-        (isEditing ? (
-          <div className="text-sm text-foreground dark:text-foreground-night">
-            <div>{selectedMCPServerView?.server.description}</div>
-            <br />
-            {selectedServerAvailability === "manual" && (
-              <div>
-                Available to you via{" "}
-                <b>
-                  {
-                    allowedSpaces.find(
-                      (space) => space.sId === selectedMCPServerView?.spaceId
-                    )?.name
-                  }
-                </b>{" "}
-                space.
-              </div>
-            )}
-
-            {selectedMCPServerView && (
-              <MCPToolsList tools={selectedMCPServerView.server.tools} />
-            )}
-          </div>
-        ) : (
-          <>
-            <MCPServerSelector
-              owner={owner}
-              allowedSpaces={allowedSpaces}
-              mcpServerViews={mcpServerViews}
-              selectedMCPServerView={selectedMCPServerView}
-              handleServerSelection={handleServerSelection}
-            />
-          </>
-        ))}
+        selectedServerAvailability === "manual") && (
+        <div className="text-sm text-foreground dark:text-foreground-night">
+          <div>{selectedMCPServerView?.server.description}</div>
+          <br />
+          {selectedServerAvailability === "manual" && (
+            <div>
+              Available to you via{" "}
+              <b>
+                {
+                  allowedSpaces.find(
+                    (space) => space.sId === selectedMCPServerView?.spaceId
+                  )?.name
+                }
+              </b>{" "}
+              space.
+            </div>
+          )}
+        </div>
+      )}
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
@@ -302,6 +251,9 @@ export function MCPAction({
           }));
         }}
       />
+      {selectedMCPServerView && (
+        <MCPToolsList tools={selectedMCPServerView.server.tools} />
+      )}
     </>
   );
 }

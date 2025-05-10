@@ -1,5 +1,4 @@
 import {
-  ActionGlobeAltIcon,
   Avatar,
   BookOpenIcon,
   Button,
@@ -7,17 +6,13 @@ import {
   CardActionButton,
   CardGrid,
   Chip,
-  classNames,
   ContentMessage,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -26,7 +21,6 @@ import {
   Input,
   MoreIcon,
   Page,
-  PlusIcon,
   Popover,
   Sheet,
   SheetContainer,
@@ -38,9 +32,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import assert from "assert";
-import { uniqueId } from "lodash";
-import { BarChartIcon, LightbulbIcon } from "lucide-react";
+import Link from "next/dist/client/link";
 import type { ReactNode } from "react";
 import React, {
   useCallback,
@@ -50,6 +42,7 @@ import React, {
   useState,
 } from "react";
 
+import { DataVisualization } from "@app/components/assistant_builder/actions/DataVisualization";
 import {
   ActionDustAppRun,
   isActionDustAppRunValid as hasErrorActionDustAppRun,
@@ -77,11 +70,14 @@ import {
   ActionWebNavigation,
   hasErrorActionWebNavigation,
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
+import { AddToolsDropdown } from "@app/components/assistant_builder/AddToolsDropdown";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
+  AssistantBuilderActionAndDataVisualizationConfiguration,
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionConfigurationWithId,
+  AssistantBuilderActionState,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderReasoningConfiguration,
@@ -92,19 +88,19 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   getDefaultActionConfiguration,
-  getDefaultMCPServerActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import {
   isReservedName,
-  isUsableAsCapability,
-  isUsableInKnowledge,
   useBuilderActionInfo,
 } from "@app/components/assistant_builder/useBuilderActionInfo";
+import { useTools } from "@app/components/assistant_builder/useTools";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
-import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import {
+  ACTION_SPECIFICATIONS,
+  DATA_VISUALIZATION_SPECIFICATION,
+} from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -126,11 +122,6 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
-const ADVANCED_ACTION_CATEGORIES = [
-  "DUST_APP_RUN",
-  "MCP",
-] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
-
 function ActionModeSection({
   children,
   show,
@@ -142,7 +133,7 @@ function ActionModeSection({
 }
 
 export function hasActionError(
-  action: AssistantBuilderActionConfiguration,
+  action: AssistantBuilderActionAndDataVisualizationConfiguration,
   mcpServerViews: MCPServerViewType[]
 ): string | null {
   switch (action.type) {
@@ -161,6 +152,7 @@ export function hasActionError(
     case "WEB_NAVIGATION":
       return hasErrorActionWebNavigation(action);
     case "REASONING":
+    case "DATA_VISUALIZATION":
       return null;
     default:
       assertNever(action);
@@ -168,7 +160,7 @@ export function hasActionError(
 }
 
 function actionIcon(
-  action: AssistantBuilderActionConfiguration,
+  action: AssistantBuilderActionAndDataVisualizationConfiguration,
   mcpServerViews: MCPServerViewType[]
 ) {
   if (action.type === "MCP") {
@@ -180,24 +172,31 @@ function actionIcon(
       return getAvatar(server, "xs");
     }
   }
+
+  if (action.type === "DATA_VISUALIZATION") {
+    return (
+      <Avatar icon={DATA_VISUALIZATION_SPECIFICATION.cardIcon} size="xs" />
+    );
+  }
+
   return (
     <Avatar icon={ACTION_SPECIFICATIONS[action.type].cardIcon} size="xs" />
   );
 }
 
-function actionDisplayName(action: AssistantBuilderActionConfiguration) {
-  if (action.type === "MCP") {
+function actionDisplayName(
+  action: AssistantBuilderActionAndDataVisualizationConfiguration
+) {
+  if (action.type === "MCP" || action.type === "DATA_VISUALIZATION") {
     return asDisplayName(action.name);
   }
+
   return `${ACTION_SPECIFICATIONS[action.type].label}${
     !isDefaultActionName(action) ? " - " + action.name : ""
   }`;
 }
 
-type SpaceIdToActions = Record<
-  string,
-  AssistantBuilderActionConfigurationWithId[]
->;
+type SpaceIdToActions = Record<string, AssistantBuilderActionState[]>;
 
 interface ActionScreenProps {
   owner: WorkspaceType;
@@ -222,18 +221,24 @@ export default function ActionsScreen({
   enableReasoningTool,
   reasoningModels,
 }: ActionScreenProps) {
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
 
+  const { nonGlobalSpacessUsedInActions, spaceIdToActions } =
+    useBuilderActionInfo(builderState);
+
   const {
-    configurableActions,
-    nonGlobalSpacessUsedInActions,
-    spaceIdToActions,
-  } = useBuilderActionInfo(builderState);
+    selectableDefaultTools,
+    selectableDefaultMCPServerViews,
+    selectableNonDefaultMCPServerViews,
+  } = useTools({
+    enableReasoningTool,
+    actions: builderState.actions,
+    hasFeature,
+  });
 
   const updateAction = useCallback(
     function _updateAction({
@@ -255,15 +260,14 @@ export default function ActionsScreen({
         actions: state.actions.map((action) =>
           action.name === actionName
             ? {
+                ...action,
                 name: newActionName ?? action.name,
                 description: newActionDescription ?? action.description,
-                type: action.type,
                 // This is quite unsatisfying, but using `as any` here and repeating every
                 // other key in the object instead of spreading is actually the safest we can do.
                 // There is no way (that I could find) to make typescript understand that
                 // type and configuration are compatible.
                 configuration: getNewActionConfig(action.configuration) as any,
-                id: action.id,
               }
             : action
         ),
@@ -272,13 +276,21 @@ export default function ActionsScreen({
     [setBuilderState, setEdited]
   );
 
-  const deleteAction = useCallback(
-    (name: string) => {
+  const removeTool = useCallback(
+    (selectedAction: AssistantBuilderActionState) => {
       setEdited(true);
       setBuilderState((state) => {
         return {
           ...state,
-          actions: state.actions.filter((a) => a.name !== name),
+          actions: state.actions.filter(
+            (action) => action.name !== selectedAction.name
+          ),
+          // We include DATA_VISUALIZATION in the actions list, but it's not a real action.
+          // It's a boolean value (visualizationEnabled) so we need to set it to false here.
+          visualizationEnabled:
+            selectedAction.type === "DATA_VISUALIZATION"
+              ? false
+              : state.visualizationEnabled,
         };
       });
     },
@@ -360,6 +372,16 @@ export default function ActionsScreen({
                 Before replying, the agent can use multiple of those tools to
                 gather information and provide you with the best possible
                 answer.
+                <br />
+                Need help? Check out our{" "}
+                <Link
+                  href="https://docs.dust.tt/docs/data"
+                  className="text-highlight"
+                  target="_blank"
+                >
+                  guide
+                </Link>
+                .
               </span>
             </Page.P>
           </div>
@@ -379,80 +401,61 @@ export default function ActionsScreen({
               </ContentMessage>
             )}
           </div>
-          <div className="flex flex-row gap-2">
-            {configurableActions.length > 0 && !isLegacyConfig && (
-              <AddAction
-                mcpServerViews={mcpServerViews}
-                onAddAction={(action) => {
-                  setAction({
-                    type: action.noConfigurationRequired ? "insert" : "pending",
-                    action,
-                  });
-                }}
+          {!isLegacyConfig && (
+            <div className="flex flex-row gap-2">
+              <AddKnowledgeDropdown
                 hasFeature={hasFeature}
+                setAction={setAction}
               />
-            )}
-            <Capabilities
-              builderState={builderState}
-              setBuilderState={setBuilderState}
-              setEdited={setEdited}
-              setAction={setAction}
-              deleteAction={deleteAction}
-              enableReasoningTool={enableReasoningTool}
-            />
+              <AddToolsDropdown
+                setBuilderState={setBuilderState}
+                setEdited={setEdited}
+                setAction={setAction}
+                defaultTools={selectableDefaultTools}
+                defaultMCPServerViews={selectableDefaultMCPServerViews}
+                nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
+              />
 
-            {!isLegacyConfig && (
-              <>
-                <div className="flex-grow" />
-                <Button
-                  label="Read our guide"
-                  size="sm"
-                  variant="outline"
-                  icon={BookOpenIcon}
-                  onClick={() => {
-                    window.open("https://docs.dust.tt/docs/tools", "_blank");
-                  }}
-                />
-                <AdvancedSettings
-                  maxStepsPerRun={builderState.maxStepsPerRun}
-                  setMaxStepsPerRun={(maxStepsPerRun) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      maxStepsPerRun,
-                    }));
-                  }}
-                  setReasoningModel={
-                    enableReasoningTool &&
-                    builderState.actions.find((a) => a.type === "REASONING")
-                      ? (model) => {
-                          setEdited(true);
-                          setBuilderState((state) => ({
-                            ...state,
-                            actions: state.actions.map((a) =>
-                              a.type === "REASONING"
-                                ? {
-                                    ...a,
-                                    configuration: {
-                                      ...a.configuration,
-                                      modelId: model.modelId,
-                                      providerId: model.providerId,
-                                      reasoningEffort:
-                                        model.reasoningEffort ?? null,
-                                    },
-                                  }
-                                : a
-                            ),
-                          }));
-                        }
-                      : undefined
-                  }
-                  reasoningModels={reasoningModels}
-                  builderState={builderState}
-                />
-              </>
-            )}
-          </div>
+              <div className="flex-grow" />
+              <AdvancedSettings
+                maxStepsPerRun={builderState.maxStepsPerRun}
+                setMaxStepsPerRun={(maxStepsPerRun) => {
+                  setEdited(true);
+                  setBuilderState((state) => ({
+                    ...state,
+                    maxStepsPerRun,
+                  }));
+                }}
+                setReasoningModel={
+                  enableReasoningTool &&
+                  builderState.actions.find((a) => a.type === "REASONING")
+                    ? (model) => {
+                        setEdited(true);
+                        setBuilderState((state) => ({
+                          ...state,
+                          actions: state.actions.map((a) =>
+                            a.type === "REASONING"
+                              ? {
+                                  ...a,
+                                  configuration: {
+                                    ...a.configuration,
+                                    modelId: model.modelId,
+                                    providerId: model.providerId,
+                                    reasoningEffort:
+                                      model.reasoningEffort ?? null,
+                                  },
+                                }
+                              : a
+                          ),
+                        }));
+                      }
+                    : undefined
+                }
+                reasoningModels={reasoningModels}
+                builderState={builderState}
+              />
+            </div>
+          )}
         </div>
         {nonGlobalSpacessUsedInActions.length > 0 && (
           <div className="w-full">
@@ -464,43 +467,32 @@ export default function ActionsScreen({
           </div>
         )}
         <div className="flex h-full min-h-40 flex-col gap-4">
-          {configurableActions.length === 0 && (
-            <div
-              className={classNames(
-                "flex h-36 w-full items-center justify-center rounded-xl",
-                "bg-muted-background dark:bg-muted-background-night"
-              )}
-            >
-              <AddAction
-                mcpServerViews={mcpServerViews}
-                onAddAction={(action) => {
-                  setAction({
-                    type: action.noConfigurationRequired ? "insert" : "pending",
-                    action,
-                  });
-                }}
-                hasFeature={hasFeature}
-              />
+          {!isLegacyConfig && builderState.actions.length === 0 ? (
+            <div className="flex h-36 w-full items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Add knowledge and tools to enhance your agent's capabilities.
+              </p>
             </div>
+          ) : (
+            <CardGrid>
+              {builderState.actions.map((action) => (
+                <ActionCard
+                  action={action}
+                  key={action.name}
+                  editAction={() => {
+                    setAction({
+                      type: "edit",
+                      action,
+                    });
+                  }}
+                  removeTool={() => {
+                    removeTool(action);
+                  }}
+                  isLegacyConfig={isLegacyConfig}
+                />
+              ))}
+            </CardGrid>
           )}
-          <CardGrid>
-            {configurableActions.map((a) => (
-              <ActionCard
-                action={a}
-                key={a.name}
-                editAction={() => {
-                  setAction({
-                    type: "edit",
-                    action: a,
-                  });
-                }}
-                deleteAction={() => {
-                  deleteAction(a.name);
-                }}
-                isLegacyConfig={isLegacyConfig}
-              />
-            ))}
-          </CardGrid>
         </div>
       </div>
     </>
@@ -510,10 +502,10 @@ export default function ActionsScreen({
 type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
-  initialAction: AssistantBuilderActionConfigurationWithId | null;
+  initialAction: AssistantBuilderActionState | null;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
-  onSave: (newAction: AssistantBuilderActionConfigurationWithId) => void;
+  onSave: (newAction: AssistantBuilderActionState) => void;
   onClose: () => void;
   updateAction: (args: {
     actionName: string;
@@ -536,9 +528,8 @@ function NewActionModal({
   setEdited,
   builderState,
 }: NewActionModalProps) {
-  const [newActionConfig, setNewActionConfig] = useState<
-    (AssistantBuilderActionConfiguration & { id: string }) | null
-  >(null);
+  const [newActionConfig, setNewActionConfig] =
+    useState<AssistantBuilderActionState | null>(null);
 
   const [showInvalidActionError, setShowInvalidActionError] = useState<
     string | null
@@ -565,7 +556,7 @@ function NewActionModal({
 
   function getActionNameError(
     name: string | undefined,
-    existingActions: AssistantBuilderActionConfiguration[]
+    existingActions: AssistantBuilderActionAndDataVisualizationConfiguration[]
   ): string | null {
     if (!name || name.trim().length === 0) {
       return "The name cannot be empty.";
@@ -705,7 +696,7 @@ function NewActionModal({
             onClick: onCloseLocal,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: initialAction?.noConfigurationRequired ? "Close" : "Save",
             onClick: onModalSave,
           }}
         />
@@ -717,16 +708,20 @@ function NewActionModal({
 function ActionCard({
   action,
   editAction,
-  deleteAction,
+  removeTool,
   isLegacyConfig,
 }: {
-  action: AssistantBuilderActionConfiguration;
+  action: AssistantBuilderActionAndDataVisualizationConfiguration;
   editAction: () => void;
-  deleteAction: () => void;
+  removeTool: () => void;
   isLegacyConfig: boolean;
 }) {
   const { mcpServerViews } = useContext(AssistantBuilderContext);
-  const spec = ACTION_SPECIFICATIONS[action.type];
+  const spec =
+    action.type === "DATA_VISUALIZATION"
+      ? DATA_VISUALIZATION_SPECIFICATION
+      : ACTION_SPECIFICATIONS[action.type];
+
   if (!spec) {
     // Unreachable
     return null;
@@ -742,7 +737,7 @@ function ActionCard({
           size="mini"
           icon={XMarkIcon}
           onClick={(e: any) => {
-            deleteAction();
+            removeTool();
             e.stopPropagation();
           }}
         />
@@ -778,7 +773,7 @@ function ActionCard({
 
 interface ActionConfigEditorProps {
   owner: WorkspaceType;
-  action: AssistantBuilderActionConfigurationWithId;
+  action: AssistantBuilderActionState;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
   instructions: string | null;
@@ -937,13 +932,16 @@ function ActionConfigEditor({
     case "REASONING":
       return <ActionReasoning />;
 
+    case "DATA_VISUALIZATION":
+      return <DataVisualization />;
+
     default:
       assertNever(action);
   }
 }
 
 interface ActionEditorProps {
-  action: AssistantBuilderActionConfigurationWithId;
+  action: AssistantBuilderActionState;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
   showInvalidActionNameError: string | null;
@@ -986,6 +984,7 @@ function ActionEditor({
       case "PROCESS":
       case "REASONING":
       case "WEB_NAVIGATION":
+      case "DATA_VISUALIZATION":
         return false;
       case "TABLES_QUERY":
       case "RETRIEVAL_EXHAUSTIVE":
@@ -1003,6 +1002,7 @@ function ActionEditor({
           requirements.requiresDataSourceConfiguration ||
           requirements.requiresTableConfiguration
         );
+
       default:
         assertNever(actionType);
     }
@@ -1016,9 +1016,13 @@ function ActionEditor({
         <div className="flex w-full flex-row items-center justify-between px-1">
           <Page.Header
             title={actionDisplayName(action) || "Select tools"}
-            icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+            icon={
+              action.type === "DATA_VISUALIZATION"
+                ? DATA_VISUALIZATION_SPECIFICATION.cardIcon
+                : ACTION_SPECIFICATIONS[action.type].cardIcon
+            }
           />
-          {shouldDisplayAdvancedSettings && (
+          {shouldDisplayAdvancedSettings && !action.noConfigurationRequired && (
             <Popover
               trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}
               popoverTriggerAsChild
@@ -1198,326 +1202,48 @@ function AdvancedSettings({
   );
 }
 
-interface AddActionProps {
-  mcpServerViews: MCPServerViewType[];
-  onAddAction: (action: AssistantBuilderActionConfigurationWithId) => void;
+interface AddKnowledgeDropdownProps {
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
+  setAction: (action: AssistantBuilderSetActionType) => void;
 }
 
-function AddAction({
-  mcpServerViews,
-  onAddAction,
+function AddKnowledgeDropdown({
   hasFeature,
-}: AddActionProps) {
+  setAction,
+}: AddKnowledgeDropdownProps) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="primary"
-          label="Add a tool"
-          data-gtm-label="toolAddingButton"
-          data-gtm-location="toolsPanel"
-          icon={PlusIcon}
-        />
+        <Button label="Add knowledge" size="sm" icon={BookOpenIcon} isSelect />
       </DropdownMenuTrigger>
-
-      <DropdownMenuContent>
-        <DropdownMenuGroup>
-          <DropdownMenuLabel label="Knowledge" />
-          {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
-            const spec = ACTION_SPECIFICATIONS[key];
-            if (!hasFeature(spec.flag)) {
-              return null;
-            }
-            const defaultAction = getDefaultActionConfiguration(key);
-            if (!defaultAction) {
-              return null;
-            }
-
-            return (
-              <DropdownMenuItem
-                key={key}
-                onClick={() => onAddAction(defaultAction)}
-                icon={spec.dropDownIcon}
-                label={spec.label}
-                description={spec.description}
-              />
-            );
-          })}
-          {mcpServerViews
-            .filter((view) => isUsableInKnowledge(view.id, mcpServerViews))
-            .map((view) => {
-              return (
-                <DropdownMenuItem
-                  key={view.id}
-                  icon={() => (
-                    <Avatar visual={getAvatar(view.server)} size="xs" />
-                  )}
-                  label={asDisplayName(view.server.name)}
-                  description={view.server.description}
-                  onClick={() =>
-                    onAddAction({
-                      ...getDefaultMCPServerActionConfiguration(view),
-                      id: uniqueId(),
-                    })
-                  }
-                />
-              );
-            })}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel label="Advanced" />
-          {ADVANCED_ACTION_CATEGORIES.map((key) => {
-            const spec = ACTION_SPECIFICATIONS[key];
-            if (!hasFeature(spec.flag)) {
-              return null;
-            }
-            const defaultAction = getDefaultActionConfiguration(key);
-            if (!defaultAction) {
-              return null;
-            }
-
-            return (
-              <DropdownMenuItem
-                key={key}
-                onClick={() => onAddAction(defaultAction)}
-                icon={spec.dropDownIcon}
-                label={spec.label}
-                description={spec.description}
-              />
-            );
-          })}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function Capabilities({
-  builderState,
-  setBuilderState,
-  setEdited,
-  setAction,
-  deleteAction,
-  enableReasoningTool,
-}: {
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
-  setAction: (action: AssistantBuilderSetActionType) => void;
-  deleteAction: (name: string) => void;
-  enableReasoningTool: boolean;
-}) {
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
-
-  const Capability = ({
-    name,
-    description,
-    enabled,
-    icon,
-    onEnable,
-    onDisable,
-  }: {
-    name: string;
-    description: string;
-    enabled: boolean;
-    icon?: React.ComponentType;
-    onEnable: () => void;
-    onDisable: () => void;
-  }) => {
-    return (
-      <DropdownMenuCheckboxItem
-        checked={enabled}
-        onCheckedChange={enabled ? onDisable : onEnable}
-        className="mb-0 mt-0 pb-0 pr-0 pt-0"
+      <DropdownMenuContent
+        align="start"
+        className="w-[20rem] md:w-[22rem]"
+        collisionPadding={10}
       >
-        <DropdownMenuItem icon={icon} label={name} description={description} />
-      </DropdownMenuCheckboxItem>
-    );
-  };
+        {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
+          const spec = ACTION_SPECIFICATIONS[key];
+          if (!hasFeature(spec.flag)) {
+            return null;
+          }
+          const action = getDefaultActionConfiguration(key);
+          if (!action) {
+            return null;
+          }
 
-  // Default servers with no configuration requirements are usable as capabilities
-  const mcpServerViewsCapabilities = useMemo(() => {
-    return mcpServerViews.filter((view) =>
-      isUsableAsCapability(view.id, mcpServerViews)
-    );
-  }, [mcpServerViews]);
-
-  const isWebNavigationEnabled = useMemo(() => {
-    return !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION");
-  }, [builderState.actions]);
-
-  const isReasoningEnabled = useMemo(() => {
-    return !!builderState.actions.find((a) => a.type === "REASONING");
-  }, [builderState.actions]);
-
-  const totalCapabilities = useMemo(() => {
-    let total = 0;
-    if (isWebNavigationEnabled) {
-      total++;
-    }
-    if (isReasoningEnabled) {
-      total++;
-    }
-    if (builderState.visualizationEnabled) {
-      total++;
-    }
-
-    for (const view of mcpServerViewsCapabilities) {
-      if (
-        builderState.actions.find(
-          (a) => a.type === "MCP" && a.configuration.mcpServerViewId === view.id
-        )
-      ) {
-        total++;
-      }
-    }
-
-    return total;
-  }, [
-    isWebNavigationEnabled,
-    isReasoningEnabled,
-    builderState.visualizationEnabled,
-    mcpServerViewsCapabilities,
-    builderState.actions,
-  ]);
-
-  // Users should see the old web Capabilities only if
-  // their agents has it selected in the past or
-  // if they don't have mcp_actions activated
-  const shouldShowOldWebCapabilities = useMemo(() => {
-    // this is to catch any changes in the name
-    const webtoolsV2ServerName: InternalMCPServerNameType =
-      "web_search_&_browse_v2";
-
-    const webtoolsServer = mcpServerViews.find(
-      (view) => view.server.name === webtoolsV2ServerName
-    );
-    if (webtoolsServer != null) {
-      return isWebNavigationEnabled;
-    }
-
-    return true;
-  }, [isWebNavigationEnabled, mcpServerViews]);
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          label={"Capabilities"}
-          size="sm"
-          isCounter={totalCapabilities > 0}
-          counterValue={`${totalCapabilities}`}
-          isSelect
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        {shouldShowOldWebCapabilities && (
-          <Capability
-            name="Web search & browse"
-            description="Agent can search (Google) and retrieve information from specific websites."
-            icon={() => <Avatar icon={ActionGlobeAltIcon} size="sm" />}
-            enabled={isWebNavigationEnabled}
-            onEnable={() => {
-              setEdited(true);
-              const defaultWebNavigationAction =
-                getDefaultActionConfiguration("WEB_NAVIGATION");
-              assert(defaultWebNavigationAction);
-              setAction({
-                type: "insert",
-                action: defaultWebNavigationAction,
-              });
-            }}
-            onDisable={() => {
-              const defaultWebNavigationAction =
-                getDefaultActionConfiguration("WEB_NAVIGATION");
-              assert(defaultWebNavigationAction);
-              deleteAction(defaultWebNavigationAction.name);
-            }}
-          />
-        )}
-
-        <Capability
-          name="Data visualization"
-          description="Agent can generate charts and graphs."
-          icon={() => <Avatar icon={BarChartIcon} size="sm" />}
-          enabled={builderState.visualizationEnabled}
-          onEnable={() => {
-            setEdited(true);
-            setBuilderState((state) => ({
-              ...state,
-              visualizationEnabled: true,
-            }));
-          }}
-          onDisable={() => {
-            setEdited(true);
-            setBuilderState((state) => ({
-              ...state,
-              visualizationEnabled: false,
-            }));
-          }}
-        />
-
-        {enableReasoningTool && (
-          <Capability
-            name="Reasoning"
-            description="Agent can decide to trigger a reasoning model for complex tasks"
-            icon={() => <Avatar icon={LightbulbIcon} size="sm" />}
-            enabled={isReasoningEnabled}
-            onEnable={() => {
-              setEdited(true);
-              const defaultReasoningAction =
-                getDefaultActionConfiguration("REASONING");
-              assert(defaultReasoningAction);
-              setAction({
-                type: "insert",
-                action: defaultReasoningAction,
-              });
-            }}
-            onDisable={() => {
-              const defaultReasoningAction =
-                getDefaultActionConfiguration("REASONING");
-              assert(defaultReasoningAction);
-              deleteAction(defaultReasoningAction.name);
-            }}
-          />
-        )}
-
-        {mcpServerViewsCapabilities.map((view) => {
           return (
-            <Capability
-              key={view.id}
-              icon={() => getAvatar(view.server)}
-              name={asDisplayName(view.server.name)}
-              description={view.server.description}
-              enabled={
-                !!builderState.actions.find(
-                  (a) =>
-                    a.type === "MCP" &&
-                    a.configuration.mcpServerViewId === view.id
-                )
-              }
-              onEnable={() => {
-                setEdited(true);
-                const action = getDefaultMCPServerActionConfiguration(view);
-                assert(action);
+            <DropdownMenuItem
+              truncateText
+              key={key}
+              onClick={() => {
                 setAction({
-                  type: "insert",
-                  action: {
-                    ...action,
-                    id: uniqueId(),
-                  },
+                  type: action.noConfigurationRequired ? "insert" : "pending",
+                  action,
                 });
               }}
-              onDisable={() => {
-                const action = getDefaultMCPServerActionConfiguration(view);
-                assert(action);
-                deleteAction(action.name);
-              }}
+              icon={<Avatar icon={spec.dropDownIcon} size="sm" />}
+              label={spec.label}
+              description={spec.description}
             />
           );
         })}
