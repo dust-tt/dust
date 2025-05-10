@@ -2450,6 +2450,7 @@ export type UpsertTableResponseType = z.infer<typeof UpsertTableResponseSchema>;
 
 const SupportedUsageTablesSchema = FlexibleEnumSchema<
   | "users"
+  | "inactive_users"
   | "assistant_messages"
   | "builders"
   | "assistants"
