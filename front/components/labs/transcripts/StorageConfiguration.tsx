@@ -78,11 +78,11 @@ export function StorageConfiguration({
       return;
     }
 
-    const success = await updateTranscriptsConfiguration({
+    const response = await updateTranscriptsConfiguration({
       dataSourceViewId: dataSourceView ? dataSourceView.sId : null,
     });
 
-    if (success) {
+    if (response.ok) {
       sendNotification({
         type: "success",
         title: "Success!",
@@ -92,10 +92,11 @@ export function StorageConfiguration({
       });
       await mutateTranscriptsConfiguration();
     } else {
+      const responseBody = await response.json();
       sendNotification({
         type: "error",
         title: "Failed to update",
-        description: "Could not update the configuration. Please try again.",
+        description: responseBody.error.message,
       });
     }
   };

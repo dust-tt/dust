@@ -103,7 +103,7 @@ export function useUpdateTranscriptsConfiguration({
   transcriptConfigurationId: number;
 }) {
   return async (data: Partial<PatchTranscriptsConfiguration>) => {
-    const response = await fetch(
+    return fetch(
       `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
       {
         method: "PATCH",
@@ -113,8 +113,6 @@ export function useUpdateTranscriptsConfiguration({
         body: JSON.stringify(data),
       }
     );
-
-    return response.ok;
   };
 }
 

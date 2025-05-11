@@ -47,12 +47,12 @@ export function ProcessingConfiguration({
     assistant: LightAgentConfigurationType
   ) => {
     setAssistantSelected(assistant);
-    const success = await updateTranscriptsConfiguration({
+    const response = await updateTranscriptsConfiguration({
       isActive: transcriptsConfiguration.isActive,
       agentConfigurationId: assistant.sId,
     });
 
-    if (success) {
+    if (response.ok) {
       sendNotification({
         type: "success",
         title: "Success!",
@@ -69,9 +69,9 @@ export function ProcessingConfiguration({
   };
 
   const handleSetIsActive = async (isActive: boolean) => {
-    const success = await updateTranscriptsConfiguration({ isActive });
+    const response = await updateTranscriptsConfiguration({ isActive });
 
-    if (success) {
+    if (response.ok) {
       sendNotification({
         type: "success",
         title: "Success!",
