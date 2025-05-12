@@ -1,4 +1,9 @@
 import type {
+  ClientSideMCPServerConfigurationType,
+  MCPServerConfigurationType,
+  MCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
+import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
@@ -14,7 +19,6 @@ import type {
   Result,
   SupportedFileContentType,
 } from "@app/types";
-import { LocalMCPServerConfigurationType } from "@app/lib/actions/mcp";
 
 export type ActionGeneratedFileType = {
   fileId: string;
@@ -136,11 +140,19 @@ export abstract class BaseActionConfigurationServerRunner<
 
 export type AgentLoopContextType = {
   agentConfiguration: AgentConfigurationType;
-  actionConfiguration?: ActionConfigurationType;
-  localActionConfigurations?: LocalMCPServerConfigurationType[];
+  actionConfiguration: MCPToolConfigurationType;
+  localActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
   stepActionIndex: number;
   stepActions: ActionConfigurationType[];
   citationsRefsOffset: number;
+};
+
+export type AgentLoopListToolsContextType = {
+  agentConfiguration: AgentConfigurationType; // TODO: check if useful
+  agentActionConfiguration: MCPServerConfigurationType;
+  localActionConfigurations?: ClientSideMCPServerConfigurationType[];
+  conversation: ConversationType;
+  agentMessage: AgentMessageType;
 };

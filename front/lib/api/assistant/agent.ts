@@ -381,10 +381,7 @@ async function* runMultiActionsAgent(
     agentConfiguration,
     conversation,
     agentMessage,
-    stepActionIndex: -1,
-    stepActions: [],
     localActionConfigurations: clientSideMCPActions,
-    citationsRefsOffset: 0,
   });
 
   if (!isLastGenerationIteration) {

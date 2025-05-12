@@ -97,11 +97,6 @@ export const INTERNAL_MCP_SERVERS: Record<
       update_object: "high",
     },
   },
-  run_dust_app: {
-    id: 8,
-    availability: "auto",
-    flag: "mcp_actions",
-  },
   agent_router: {
     id: 8,
     availability: "auto_hidden_builder",
@@ -111,6 +106,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 9,
     availability: "auto",
     flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
+  },
+  run_dust_app: {
+    id: 10,
+    availability: "auto",
+    flag: "dev_mcp_actions",
   },
 
   // Dev

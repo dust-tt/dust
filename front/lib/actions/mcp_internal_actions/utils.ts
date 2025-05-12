@@ -8,11 +8,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import {
-  isMCPToolConfiguration,
-  isServerSideMCPToolConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   findMatchingSubSchemas,
@@ -313,13 +309,8 @@ export function augmentInputsWithConfiguration({
 }: {
   owner: WorkspaceType;
   rawInputs: Record<string, unknown>;
-  actionConfiguration: ActionConfigurationType;
+  actionConfiguration: MCPToolConfigurationType;
 }): Record<string, unknown> {
-  // For non-MCP actions, we don't do inputs augmentation
-  if (!isMCPToolConfiguration(actionConfiguration)) {
-    return rawInputs;
-  }
-
   const { inputSchema } = actionConfiguration;
   if (!inputSchema.properties) {
     return rawInputs;

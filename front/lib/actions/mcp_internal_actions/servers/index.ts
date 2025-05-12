@@ -16,7 +16,10 @@ import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type {
+  AgentLoopContextType,
+  AgentLoopListToolsContextType,
+} from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
@@ -29,7 +32,8 @@ export async function getInternalMCPServer(
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
   },
-  agentLoopContext?: AgentLoopContextType
+  agentLoopContext?: AgentLoopContextType,
+  agentLoopListToolsContext?: AgentLoopListToolsContextType
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
@@ -59,7 +63,7 @@ export async function getInternalMCPServer(
     case "reasoning_v2":
       return reasoningServer(auth, agentLoopContext);
     case "run_dust_app":
-      return dustAppServer(auth, agentLoopContext);
+      return dustAppServer(auth, agentLoopContext, agentLoopListToolsContext);
     case "agent_router":
       return agentRouterServer(auth);
     default:
