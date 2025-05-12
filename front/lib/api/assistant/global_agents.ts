@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
+
 import {
   DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
