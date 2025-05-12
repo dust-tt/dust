@@ -1,5 +1,3 @@
-import React from "react";
-import { useContext, useMemo } from "react";
 import {
   Card,
   CommandLineIcon,
@@ -13,6 +11,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { sortBy } from "lodash";
+import React from "react";
+import { useContext, useMemo } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
