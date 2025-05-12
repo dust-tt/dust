@@ -78,6 +78,180 @@ function convertDatasetSchemaToZodRawShape(
   return shape;
 }
 
+async function prepareAppContext(auth: Authenticator, actionConfig: any) {
+  if (!actionConfig.dustAppConfiguration.appId) {
+    throw new Error("Missing Dust app ID");
+  }
+
+  const app = await AppResource.fetchById(
+    auth,
+    actionConfig.dustAppConfiguration.appId
+  );
+  if (!app) {
+    throw new Error("Could not find Dust app");
+  }
+
+  const appSpec = JSON.parse(app.savedSpecification || "[]") as DustAppBlock[];
+  const appConfig = extractConfig(
+    JSON.parse(app.savedSpecification || "{}")
+  ) as DustAppConfig;
+
+  const inputSpec = appSpec.find((b: DustAppBlock) => b.type === "input");
+  const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
+  const datasetName = inputConfig?.dataset;
+
+  if (!datasetName || !app.description) {
+    throw new Error("Missing dataset name or app description");
+  }
+
+  const schema = await getDatasetSchema(auth, app, datasetName);
+  if (!schema) {
+    throw new Error("Missing dataset schema name");
+  }
+
+  return { app, schema, appConfig };
+}
+
+async function processDustFileOutput(
+  sanitizedOutput: DustFileOutput,
+  conversation: any,
+  appName: string,
+  auth: Authenticator
+): Promise<MCPToolResultContentType[]> {
+  const content: MCPToolResultContentType[] = [];
+
+  const containsValidStructuredOutput = (
+    output: DustFileOutput
+  ): output is {
+    __dust_file?: {
+      type: "structured";
+      content: Array<
+        Record<string, string | number | null | boolean | undefined>
+      >;
+    };
+  } =>
+    output.__dust_file?.type === "structured" &&
+    Array.isArray(output.__dust_file.content) &&
+    output.__dust_file.content.length > 0 &&
+    output.__dust_file.content.every(
+      (r) =>
+        typeof r === "object" &&
+        Object.values(r).every(
+          (v) =>
+            !v ||
+            typeof v === "string" ||
+            typeof v === "number" ||
+            typeof v === "boolean"
+        )
+    );
+
+  const containsValidDocumentOutput = (
+    output: DustFileOutput
+  ): output is {
+    __dust_file?: { type: "document"; content: string };
+  } =>
+    output.__dust_file?.type === "document" &&
+    typeof output.__dust_file.content === "string";
+
+  if (containsValidStructuredOutput(sanitizedOutput)) {
+    const fileTitle = getDustAppRunResultsFileTitle({
+      appName,
+      resultsFileContentType: "text/csv",
+    });
+
+    const { csvFile } = await generateCSVFileAndSnippet(auth, {
+      title: fileTitle,
+      conversationId: conversation.sId,
+      results: sanitizedOutput.__dust_file?.content ?? [],
+    });
+
+    await uploadFileToConversationDataSource({
+      auth,
+      file: csvFile,
+    });
+
+    content.push({
+      type: "resource",
+      resource: {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+        uri: `file://${csvFile.id}`,
+        fileId: csvFile.sId,
+        title: fileTitle,
+        contentType: csvFile.contentType,
+        snippet: csvFile.snippet,
+        text: `Generated CSV file: ${fileTitle}`,
+      },
+    });
+
+    delete sanitizedOutput.__dust_file;
+  } else if (containsValidDocumentOutput(sanitizedOutput)) {
+    const fileTitle = getDustAppRunResultsFileTitle({
+      appName,
+      resultsFileContentType: "text/plain",
+    });
+
+    const plainTextFile = await generatePlainTextFile(auth, {
+      title: fileTitle,
+      conversationId: conversation.sId,
+      content: sanitizedOutput.__dust_file?.content ?? "",
+    });
+
+    content.push({
+      type: "resource",
+      resource: {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+        uri: `file://${plainTextFile.id}`,
+        fileId: plainTextFile.sId,
+        title: fileTitle,
+        contentType: plainTextFile.contentType,
+        snippet: plainTextFile.snippet,
+        text: `Generated text file: ${fileTitle}`,
+      },
+    });
+
+    delete sanitizedOutput.__dust_file;
+  }
+
+  return content;
+}
+
+async function prepareParamsWithHistory(
+  params: any,
+  schema: DatasetSchema,
+  agentLoopContext: AgentLoopContextType,
+  auth: Authenticator
+) {
+  if (
+    schema?.some((s) => s.key === DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY)
+  ) {
+    const model = SUPPORTED_MODEL_CONFIGS.find(
+      (m) =>
+        m.modelId === agentLoopContext.agentConfiguration.model.modelId &&
+        m.providerId === agentLoopContext.agentConfiguration.model.providerId
+    );
+
+    if (model) {
+      const MIN_GENERATION_TOKENS = 2048;
+      const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
+
+      const convoRes = await renderConversationForModel(auth, {
+        conversation: agentLoopContext.conversation,
+        model,
+        prompt: "",
+        allowedTokenCount,
+        excludeImages: true,
+      });
+
+      if (convoRes.isOk()) {
+        const messages = convoRes.value.modelConversation.messages;
+        params[DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY] =
+          JSON.stringify(messages);
+      }
+    }
+  }
+  return params;
+}
+
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_dust_app",
   version: "1.0.0",
@@ -95,44 +269,21 @@ export default async function createServer(
   const owner = auth.getNonNullableWorkspace();
 
   if (agentLoopListToolsContext) {
-    const agentActionConfiguration =
-      agentLoopListToolsContext.agentActionConfiguration;
-
-    if (!isMCPConfigurationForDustAppRun(agentActionConfiguration)) {
-      throw new Error("Could not find Dust app configuration");
+    if (
+      !isMCPConfigurationForDustAppRun(
+        agentLoopListToolsContext.agentActionConfiguration
+      )
+    ) {
+      throw new Error("Invalid Dust app configuration");
     }
 
-    if (!agentActionConfiguration.dustAppConfiguration?.appId) {
-      throw new Error("Could not find Dust app configuration");
-    }
-
-    const app = await AppResource.fetchById(
+    const { app, schema } = await prepareAppContext(
       auth,
-      agentActionConfiguration.dustAppConfiguration.appId
+      agentLoopListToolsContext.agentActionConfiguration
     );
 
-    if (!app) {
-      throw new Error("Could not find Dust app configuration");
-    }
-
-    const appSpec = JSON.parse(
-      app.savedSpecification || "[]"
-    ) as DustAppBlock[];
-    const appConfig = extractConfig(
-      JSON.parse(app.savedSpecification || "{}")
-    ) as DustAppConfig;
-
-    const inputSpec = appSpec.find((b: DustAppBlock) => b.type === "input");
-    const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
-    const datasetName = inputConfig?.dataset;
-
-    if (!datasetName || !app.description) {
-      throw new Error("Missing dataset name or app description");
-    }
-
-    const schema = await getDatasetSchema(auth, app, datasetName);
-    if (!schema) {
-      throw new Error("Dataset schema is missing");
+    if (!app.description) {
+      throw new Error("Missing app description");
     }
 
     server.tool(
@@ -153,40 +304,16 @@ export default async function createServer(
     );
   } else if (agentLoopContext) {
     if (!isMCPInternalDustAppRun(agentLoopContext.actionConfiguration)) {
-      throw new Error("Could ... configuration");
+      throw new Error("Invalid Dust app run configuration");
     }
 
-    if (!agentLoopContext.actionConfiguration.dustAppConfiguration?.appId) {
-      throw new Error("Could not find Dust app configuration");
-    }
-
-    const app = await AppResource.fetchById(
+    const { app, schema, appConfig } = await prepareAppContext(
       auth,
-      agentLoopContext.actionConfiguration.dustAppConfiguration.appId
+      agentLoopContext.actionConfiguration
     );
 
-    if (!app) {
-      throw new Error("Could not find app");
-    }
-
-    const appSpec = JSON.parse(
-      app.savedSpecification || "[]"
-    ) as DustAppBlock[];
-    const appConfig = extractConfig(
-      JSON.parse(app.savedSpecification || "{}")
-    ) as DustAppConfig;
-
-    const inputSpec = appSpec.find((b: DustAppBlock) => b.type === "input");
-    const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
-    const datasetName = inputConfig?.dataset;
-
-    if (!datasetName || !app.description) {
-      throw new Error("Missing dataset name or app description");
-    }
-
-    const schema = await getDatasetSchema(auth, app, datasetName);
-    if (!schema) {
-      throw new Error("Dataset schema is missing");
+    if (!app.description) {
+      throw new Error("Missing app description");
     }
 
     server.tool(
@@ -196,41 +323,15 @@ export default async function createServer(
       async (params) => {
         const content: MCPToolResultContentType[] = [];
 
-        if (
-          schema?.some(
-            (s) => s.key === DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY
-          )
-        ) {
-          const model = SUPPORTED_MODEL_CONFIGS.find(
-            (m) =>
-              m.modelId === agentLoopContext.agentConfiguration.model.modelId &&
-              m.providerId ===
-                agentLoopContext.agentConfiguration.model.providerId
-          );
-
-          if (model) {
-            const MIN_GENERATION_TOKENS = 2048;
-            const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
-
-            const convoRes = await renderConversationForModel(auth, {
-              conversation: agentLoopContext.conversation,
-              model,
-              prompt: "",
-              allowedTokenCount,
-              excludeImages: true,
-            });
-
-            if (convoRes.isOk()) {
-              const messages = convoRes.value.modelConversation.messages;
-              params[DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY] =
-                JSON.stringify(messages);
-            }
-          }
-        }
+        params = await prepareParamsWithHistory(
+          params,
+          schema,
+          agentLoopContext,
+          auth
+        );
 
         const prodCredentials = await prodAPICredentialsForOwner(owner);
         const requestedGroupIds = auth.groups().map((g) => g.sId);
-
         const apiConfig = config.getDustAPIConfig();
 
         const api = new DustAPI(
@@ -313,101 +414,17 @@ export default async function createServer(
           "type" in output.__dust_file &&
           "content" in output.__dust_file;
 
-        const containsValidStructuredOutput = (
-          output: DustFileOutput
-        ): output is {
-          __dust_file?: {
-            type: "structured";
-            content: Array<
-              Record<string, string | number | null | boolean | undefined>
-            >;
-          };
-        } =>
-          output.__dust_file?.type === "structured" &&
-          Array.isArray(output.__dust_file.content) &&
-          output.__dust_file.content.length > 0 &&
-          output.__dust_file.content.every(
-            (r) =>
-              typeof r === "object" &&
-              Object.values(r).every(
-                (v) =>
-                  !v ||
-                  typeof v === "string" ||
-                  typeof v === "number" ||
-                  typeof v === "boolean"
-              )
-          );
-
-        const containsValidDocumentOutput = (
-          output: DustFileOutput
-        ): output is {
-          __dust_file?: { type: "document"; content: string };
-        } =>
-          output.__dust_file?.type === "document" &&
-          typeof output.__dust_file.content === "string";
-
         if (
           containsFileOutput(sanitizedOutput) &&
           agentLoopContext?.conversation
         ) {
-          if (containsValidStructuredOutput(sanitizedOutput)) {
-            const fileTitle = getDustAppRunResultsFileTitle({
-              appName: app.name,
-              resultsFileContentType: "text/csv",
-            });
-
-            const { csvFile } = await generateCSVFileAndSnippet(auth, {
-              title: fileTitle,
-              conversationId: agentLoopContext.conversation.sId,
-              results: sanitizedOutput.__dust_file?.content ?? [],
-            });
-
-            await uploadFileToConversationDataSource({
-              auth,
-              file: csvFile,
-            });
-
-            content.push({
-              type: "resource",
-              resource: {
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-                uri: `file://${csvFile.id}`,
-                fileId: csvFile.sId,
-                title: fileTitle,
-                contentType: csvFile.contentType,
-                snippet: csvFile.snippet,
-                text: `Generated CSV file: ${fileTitle}`,
-              },
-            });
-
-            delete sanitizedOutput.__dust_file;
-          } else if (containsValidDocumentOutput(sanitizedOutput)) {
-            const fileTitle = getDustAppRunResultsFileTitle({
-              appName: app.name,
-              resultsFileContentType: "text/plain",
-            });
-
-            const plainTextFile = await generatePlainTextFile(auth, {
-              title: fileTitle,
-              conversationId: agentLoopContext.conversation.sId,
-              content: sanitizedOutput.__dust_file?.content ?? "",
-            });
-
-            content.push({
-              type: "resource",
-              resource: {
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-                uri: `file://${plainTextFile.id}`,
-                fileId: plainTextFile.sId,
-                title: fileTitle,
-                contentType: plainTextFile.contentType,
-                snippet: plainTextFile.snippet,
-                text: `Generated text file: ${fileTitle}`,
-              },
-            });
-
-            delete sanitizedOutput.__dust_file;
-          }
+          const fileContent = await processDustFileOutput(
+            sanitizedOutput,
+            agentLoopContext.conversation,
+            app.name,
+            auth
+          );
+          content.push(...fileContent);
         }
 
         content.push({
