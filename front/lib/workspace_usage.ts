@@ -259,6 +259,7 @@ export async function getUserUsageData(
       ],
     ],
     where: {
+      workspaceId: wId,
       createdAt: {
         [Op.gt]: startDate,
         [Op.lt]: endDate,
