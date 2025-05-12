@@ -34,10 +34,13 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
-import type {LightAgentConfigurationType, SubscriptionType, UserType, WorkspaceType} from "@app/types";
-import {
-  isAdmin
+import type {
+  LightAgentConfigurationType,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
 } from "@app/types";
+import { isAdmin } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const AGENT_MANAGER_TABS_LEGACY = [
