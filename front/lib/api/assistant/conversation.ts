@@ -273,7 +273,12 @@ export async function getConversation(
     ],
   });
 
-  const renderRes = await batchRenderMessages(auth, conversation.sId, messages);
+  const renderRes = await batchRenderMessages(
+    auth,
+    conversation.sId,
+    messages,
+    "full"
+  );
 
   if (renderRes.isErr()) {
     return new Err(renderRes.error);
@@ -924,9 +929,6 @@ export async function* postUserMessage(
                   parentMessageId: userMessage.sId,
                   status: "created",
                   actions: [],
-                  actionsCount: 0,
-                  citations: {},
-                  generatedFiles: [],
                   content: null,
                   chainOfThought: null,
                   rawContents: [],
@@ -1438,9 +1440,6 @@ export async function* editUserMessage(
                 parentMessageId: userMessage.sId,
                 status: "created",
                 actions: [],
-                actionsCount: 0,
-                citations: {},
-                generatedFiles: [],
                 content: null,
                 chainOfThought: null,
                 rawContents: [],
@@ -1687,9 +1686,6 @@ export async function* retryAgentMessage(
         parentMessageId: message.parentMessageId,
         status: "created",
         actions: [],
-        actionsCount: 0,
-        citations: {},
-        generatedFiles: [],
         content: null,
         chainOfThought: null,
         rawContents: [],

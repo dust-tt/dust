@@ -6,13 +6,13 @@ import { AgentMessageActionsDrawer } from "@app/components/assistant/conversatio
 import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
 import type {
   AgentActionType,
-  AgentMessageType,
+  LightAgentMessageType,
   LightWorkspaceType,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
-  agentMessage: AgentMessageType;
+  agentMessage: LightAgentMessageType;
   conversationId: string;
   lastAgentStateClassification: AgentStateClassification;
   owner: LightWorkspaceType;
@@ -33,8 +33,8 @@ export function AgentMessageActions({
         setChipLabel("Thinking");
         break;
       case "acting":
-        if (agentMessage.actions && agentMessage.actions.length > 0) {
-          setChipLabel(renderActionName(agentMessage.actions));
+        if (agentMessage.lightActions && agentMessage.lightActions.length > 0) {
+          setChipLabel(renderActionName(agentMessage.lightActions));
         }
         break;
       case "done":
@@ -43,7 +43,7 @@ export function AgentMessageActions({
       default:
         assertNever(lastAgentStateClassification);
     }
-  }, [lastAgentStateClassification, agentMessage.actions]);
+  }, [lastAgentStateClassification, agentMessage.lightActions]);
 
   const isThinkingOrActing = useMemo(
     () => agentMessage.status === "created",
@@ -108,7 +108,11 @@ function ActionDetails({
   );
 }
 
-function renderActionName(actions: AgentActionType[]): string {
+function renderActionName(
+  actions: {
+    type: AgentActionType["type"];
+  }[]
+): string {
   const uniqueActionTypes = actions.reduce(
     (acc, action) => {
       if (!acc.includes(action.type)) {

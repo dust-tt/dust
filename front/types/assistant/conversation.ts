@@ -51,8 +51,13 @@ export type MessageType =
   | UserMessageType
   | ContentFragmentType;
 
+export type LightMessageType =
+  | LightAgentMessageType
+  | UserMessageType
+  | ContentFragmentType;
+
 export type MessageWithContentFragmentsType =
-  | AgentMessageType
+  | LightAgentMessageType
   | (UserMessageType & {
       contenFragments?: ContentFragmentType[];
     });
@@ -61,6 +66,8 @@ export type WithRank<T> = T & {
   rank: number;
 };
 export type MessageWithRankType = WithRank<MessageType>;
+
+export type LightMessageWithRankType = WithRank<LightMessageType>;
 
 /**
  * User messages
@@ -105,7 +112,9 @@ export type UserMessageType = {
 };
 export type UserMessageWithRankType = WithRank<UserMessageType>;
 
-export function isUserMessageType(arg: MessageType): arg is UserMessageType {
+export function isUserMessageType(
+  arg: MessageType | LightMessageType
+): arg is UserMessageType {
   return arg.type === "user_message";
 }
 
@@ -177,7 +186,34 @@ export type AgentMessageType = {
   configuration: LightAgentConfigurationType;
   status: AgentMessageStatus;
   actions: AgentActionType[];
+  content: string | null;
+  chainOfThought: string | null;
+  rawContents: Array<{
+    step: number;
+    content: string;
+  }>;
+  error: {
+    code: string;
+    message: string;
+  } | null;
+};
+
+export type LightAgentMessageType = {
+  id: ModelId;
+  agentMessageId: ModelId;
+  created: number;
+  type: "agent_message";
+  sId: string;
+  visibility: MessageVisibility;
+  version: number;
+  parentMessageId: string | null;
+  configuration: LightAgentConfigurationType;
+  status: AgentMessageStatus;
   actionsCount: number;
+  lightActions: {
+    type: AgentActionType["type"];
+    id: ModelId;
+  }[];
   citations: Record<string, CitationType>;
   generatedFiles: ActionGeneratedFileType[];
   content: string | null;
@@ -300,7 +336,7 @@ export type SubmitMessageError = {
 export interface FetchConversationMessagesResponse {
   hasMore: boolean;
   lastValue: number | null;
-  messages: MessageWithRankType[];
+  messages: LightMessageWithRankType[];
 }
 
 /**

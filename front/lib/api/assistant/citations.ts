@@ -19,7 +19,12 @@ import type {
   WebsearchResultType,
 } from "@app/lib/actions/websearch";
 import { rand } from "@app/lib/utils/seeded_random";
-import type { AgentActionType, CitationType } from "@app/types";
+import type {
+  AgentActionType,
+  AgentMessageType,
+  CitationType,
+  LightAgentMessageType,
+} from "@app/types";
 
 let REFS: string[] | null = null;
 const getRand = rand("chawarma");
@@ -113,6 +118,22 @@ export function makeWebsearchResultsCitation(
     provider: "document",
   };
 }
+
+export const getLightAgentMessageFromAgentMessage = (
+  agentMessage: AgentMessageType
+): LightAgentMessageType => {
+  const { actions, ...rest } = agentMessage;
+  return {
+    ...rest,
+    actionsCount: actions.length,
+    lightActions: actions.map((a) => ({
+      type: a.type,
+      id: a.id,
+    })),
+    citations: getCitationsFromActions(actions),
+    generatedFiles: actions.flatMap((a) => a.generatedFiles),
+  };
+};
 
 export const getCitationsFromActions = (
   actions: AgentActionType[]

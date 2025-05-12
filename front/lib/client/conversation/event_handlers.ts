@@ -1,5 +1,6 @@
 import { cloneDeep } from "lodash";
 
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
   AgentMessageNewEvent,
@@ -19,10 +20,17 @@ export function updateMessagePagesWithOptimisticData(
   currentMessagePages: FetchConversationMessagesResponse[] | undefined,
   messageOrPlaceholder: AgentMessageWithRankType | UserMessageWithRankType
 ): FetchConversationMessagesResponse[] {
+  const m = isAgentMessageType(messageOrPlaceholder)
+    ? {
+        ...getLightAgentMessageFromAgentMessage(messageOrPlaceholder),
+        rank: messageOrPlaceholder.rank,
+      }
+    : messageOrPlaceholder;
+
   if (!currentMessagePages || currentMessagePages.length === 0) {
     return [
       {
-        messages: [messageOrPlaceholder],
+        messages: [m],
         hasMore: false,
         lastValue: null,
       },
@@ -31,7 +39,7 @@ export function updateMessagePagesWithOptimisticData(
 
   // We need to deep clone here, since SWR relies on the reference.
   const updatedMessages = cloneDeep(currentMessagePages);
-  updatedMessages.at(0)?.messages.push(messageOrPlaceholder);
+  updatedMessages.at(0)?.messages.push(m);
 
   return updatedMessages;
 }

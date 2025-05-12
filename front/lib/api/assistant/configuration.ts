@@ -663,7 +663,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>({
   sort?: SortStrategyType;
   dangerouslySkipPermissionFiltering?: boolean;
 }): Promise<
-  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
+  V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
 > {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {

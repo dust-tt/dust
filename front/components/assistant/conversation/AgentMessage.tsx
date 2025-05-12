@@ -54,7 +54,11 @@ import type {
   MessageTemporaryState,
 } from "@app/lib/assistant/state/messageReducer";
 import { messageReducer } from "@app/lib/assistant/state/messageReducer";
-import type { AgentMessageType, UserType, WorkspaceType } from "@app/types";
+import type {
+  LightAgentMessageType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
@@ -69,14 +73,14 @@ function cleanUpCitations(message: string): string {
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
-  message: AgentMessageType;
+  message: LightAgentMessageType;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
 }
 
 function makeInitialMessageStreamState(
-  message: AgentMessageType
+  message: LightAgentMessageType
 ): MessageTemporaryState {
   return {
     actionProgress: new Map(),
@@ -190,7 +194,7 @@ export function AgentMessage({
     { isReadyToConsumeStream: shouldStream }
   );
 
-  const agentMessageToRender = ((): AgentMessageType => {
+  const agentMessageToRender = ((): LightAgentMessageType => {
     switch (message.status) {
       case "succeeded":
       case "failed":
@@ -418,7 +422,7 @@ export function AgentMessage({
     streaming,
     lastTokenClassification,
   }: {
-    agentMessage: AgentMessageType;
+    agentMessage: LightAgentMessageType;
     references: { [key: string]: MarkdownCitation };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
@@ -562,7 +566,7 @@ export function AgentMessage({
     );
   }
 
-  async function retryHandler(agentMessage: AgentMessageType) {
+  async function retryHandler(agentMessage: LightAgentMessageType) {
     setIsRetryHandlerProcessing(true);
     await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
