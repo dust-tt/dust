@@ -24,4 +24,4 @@ jobs:
             ./cli/package-lock.json
       - name: Typecheck and Lint
         working-directory: cli
-        run: npm ci && npx tsc --version && npm run tsc && npm run lint
+        run: npm ci && npx tsc --version && npx tsc && npm run lint
