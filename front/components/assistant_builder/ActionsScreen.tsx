@@ -241,7 +241,6 @@ export default function ActionsScreen({
   } = useTools({
     enableReasoningTool,
     actions: builderState.actions,
-    hasFeature,
   });
 
   const updateAction = useCallback(

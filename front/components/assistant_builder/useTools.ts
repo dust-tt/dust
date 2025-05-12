@@ -16,7 +16,6 @@ import {
   DATA_VISUALIZATION_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { WhitelistableFeature } from "@app/types";
 import { asDisplayName } from "@app/types";
 
 const DEFAULT_TOOLS_WITH_CONFIGURATION = [
@@ -122,7 +121,7 @@ function getGroupedMCPServerViews({
   );
 
   return {
-    mcpServerViewsWithKnowledge,
+    mcpServerViewsWithKnowledge: mcpServerViewsWithKnowledge || [],
     defaultMCPServerViews: grouped.auto || [],
     nonDefaultMCPServerViews: grouped.manual || [],
   };
@@ -131,14 +130,9 @@ function getGroupedMCPServerViews({
 interface UseToolsProps {
   enableReasoningTool: boolean;
   actions: AssistantBuilderActionState[];
-  hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean;
 }
 
-export const useTools = ({
-  enableReasoningTool,
-  actions,
-  hasFeature,
-}: UseToolsProps) => {
+export const useTools = ({ enableReasoningTool, actions }: UseToolsProps) => {
   const { mcpServerViews, initialActions } = useContext(
     AssistantBuilderContext
   );
@@ -160,18 +154,8 @@ export const useTools = ({
     defaultMCPServerViews,
     nonDefaultMCPServerViews,
   } = useMemo(() => {
-    const isMCPEnabled = hasFeature(ACTION_SPECIFICATIONS["MCP"].flag);
-
-    if (!isMCPEnabled) {
-      return {
-        mcpServerViewsWithKnowledge: [],
-        defaultMCPServerViews: [],
-        nonDefaultMCPServerViews: [],
-      };
-    }
-
     return getGroupedMCPServerViews({ mcpServerViews });
-  }, [mcpServerViews, hasFeature]);
+  }, [mcpServerViews]);
 
   const selectableNonMCPActions = useMemo(
     () =>
