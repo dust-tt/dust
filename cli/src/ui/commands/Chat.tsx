@@ -41,10 +41,16 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const [userInput, setUserInput] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
   const { stdout } = useStdout();
-  // Debounce state and refs for token streaming
-  const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const responseTextRef = useRef<string>("");
-  const responseCotRef = useRef<string>("");
+
+  const eventsRef = useRef<
+    {
+      type: "tokens" | "chain_of_thought" | "success";
+      text: string;
+      timestamp: number;
+    }[]
+  >([]);
+  const lastProcessedEventIndexRef = useRef<number>(-1);
+  const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
 
@@ -180,97 +186,105 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
         }
 
         // Initialize response tracking with refs to avoid closure issues
-        responseTextRef.current = "";
-        responseCotRef.current = "";
+        eventsRef.current = [];
 
-        // Define a debounced update function
-        const updateMessagesDebounced = () => {
-          // Clear any existing timeout
-          if (updateTimeoutRef.current) {
-            clearTimeout(updateTimeoutRef.current);
+        const updateStreamingMessage = () => {
+          return;
+          const events = eventsRef.current;
+          const lastProcessedEventIndex = lastProcessedEventIndexRef.current;
+
+          const eventsToProcess = events.slice(lastProcessedEventIndex + 1);
+          if (eventsToProcess.length === 0) {
+            return;
           }
 
-          // Set a new timeout for the update
-          updateTimeoutRef.current = setTimeout(() => {
-            const responseText = responseTextRef.current;
-            const responseCot = responseCotRef.current;
+          lastProcessedEventIndexRef.current = events.length - 1;
+          const isStreaming = !eventsToProcess.some(
+            (e) => e.type === "success"
+          );
 
-            setMessages((prev) => {
-              const newMessages = [...prev];
-              const lastMessage = newMessages[newMessages.length - 1];
-              if (lastMessage.type === "assistant" && lastMessage.isStreaming) {
-                // Format the chain of thought during streaming too
-                // This will make it consistent as it's being updated
-                const formattedCot = responseCot
-                  .replace(/^\n+/, "") // Remove leading newlines
-                  .replace(/\n{3,}/g, "\n\n") // Replace 3+ consecutive newlines with just 2
-                  .replace(/\n+$/, ""); // Remove trailing newlines
+          if (!isStreaming && updateIntervalRef.current) {
+            clearInterval(updateIntervalRef.current);
+            updateIntervalRef.current = null;
+          }
 
-                // Format the response text - remove leading newlines
-                const formattedText = responseText.replace(/^\n+/, ""); // Remove leading newlines
+          const newText = eventsToProcess
+            .filter((e) => e.type === "tokens")
+            .map((e) => e.text)
+            .join("");
 
-                newMessages[newMessages.length - 1] = {
-                  ...lastMessage,
-                  content: formattedText,
-                  chainOfThought: formattedCot,
-                };
+          const newCot = eventsToProcess
+            .filter((e) => e.type === "chain_of_thought")
+            .map((e) => e.text)
+            .join("");
+
+          if (!newText && !newCot && isStreaming) {
+            return;
+          }
+
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const lastMessage = newMessages[newMessages.length - 1];
+
+            const format = (text: string) => {
+              let formatted = text
+                .replace(/^\n+/, "") // Remove leading newlines
+                .replace(/\n{3,}/g, "\n\n"); // Replace 3+ consecutive newlines with just 2
+
+              if (!isStreaming) {
+                // If done streaming, remove trailing newlines
+                formatted = formatted.replace(/\n+$/, "");
               }
-              return newMessages;
-            });
-          }, 10); // Very small debounce of 10ms to batch rapid updates
+
+              return formatted;
+            };
+
+            return [
+              ...newMessages.slice(0, -1),
+              {
+                ...lastMessage,
+                content: format(lastMessage.content + newText),
+                chainOfThought: format(lastMessage.chainOfThought + newCot),
+                isStreaming,
+              },
+            ];
+          });
         };
 
+        // updateIntervalRef.current = setInterval(() => {
+        //   updateStreamingMessage();
+        // }, 500);
+
         for await (const event of streamRes.value.eventStream) {
+          console.log("EVENT", event);
           if (event.type === "generation_tokens") {
             if (event.classification === "tokens") {
-              responseTextRef.current += event.text;
+              eventsRef.current.push({
+                type: "tokens",
+                text: event.text,
+                timestamp: event.created,
+              });
             } else if (event.classification === "chain_of_thought") {
-              responseCotRef.current += event.text;
+              eventsRef.current.push({
+                type: "chain_of_thought",
+                text: event.text,
+                timestamp: event.created,
+              });
             }
-
-            // Update the streaming message with debouncing
-            updateMessagesDebounced();
           } else if (event.type === "agent_error") {
             throw new Error(`Agent error: ${event.error.message}`);
           } else if (event.type === "user_message_error") {
             throw new Error(`User message error: ${event.error.message}`);
           } else if (event.type === "agent_message_success") {
-            // Clear any existing timeout to ensure we're using the final values
-            if (updateTimeoutRef.current) {
-              clearTimeout(updateTimeoutRef.current);
-              updateTimeoutRef.current = null;
-            }
-
-            // Complete the message using the current values from refs
-            setMessages((prev) => {
-              const newMessages = [...prev];
-              const lastMessage = newMessages[newMessages.length - 1];
-              if (lastMessage.type === "assistant" && lastMessage.isStreaming) {
-                // Format the chain of thought for the final message
-                const formattedCot = responseCotRef.current
-                  .replace(/^\n+/, "") // Remove leading newlines
-                  .replace(/\n{3,}/g, "\n\n") // Replace 3+ consecutive newlines with just 2
-                  .replace(/\n+$/, ""); // Remove trailing newlines
-
-                // Format the response text - remove leading newlines
-                const formattedText = responseTextRef.current.replace(
-                  /^\n+/,
-                  ""
-                ); // Remove leading newlines
-
-                newMessages[newMessages.length - 1] = {
-                  ...lastMessage,
-                  content: formattedText,
-                  chainOfThought: formattedCot,
-                  isStreaming: false,
-                };
-              }
-              return newMessages;
+            eventsRef.current.push({
+              type: "success",
+              text: "",
+              timestamp: event.created,
             });
-            break;
           }
         }
       } catch (error) {
+        console.log("ERROR", error);
         if (controller.signal.aborted) {
           // The request was aborted, handled above
           return;
@@ -302,6 +316,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           return newMessages;
         });
       } finally {
+        console.log("FINALLY");
         setIsProcessingQuestion(false);
         setAbortController(null);
       }
@@ -312,10 +327,16 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-        updateTimeoutRef.current = null;
+      console.log("UNMOUNT");
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
       }
+      console.log("EVENTS", eventsRef.current);
+      console.log(
+        "lastProcessedEventIndex",
+        lastProcessedEventIndexRef.current
+      );
     };
   }, []);
 
@@ -475,15 +496,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             <>
               {/* Chain of thought in gray italic */}
               <Text dimColor italic wrap="wrap">
-                {
-                  // Process chain of thought to prevent more than 2 consecutive empty lines
-                  // and ensure the last line is not empty
-                  message.chainOfThought
-                    // Replace 3+ consecutive newlines with just 2 newlines
-                    .replace(/\n{3,}/g, "\n\n")
-                    // Remove trailing newlines
-                    .replace(/\n+$/, "")
-                }
+                {message.chainOfThought}
               </Text>
               <Box marginBottom={1}></Box>
             </>
