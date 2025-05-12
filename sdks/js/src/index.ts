@@ -757,10 +757,6 @@ export class DustAPI {
           return;
         }
 
-        if (reconnectAttempts >= maxReconnectAttempts) {
-          throw new Error("Exceeded maximum reconnection attempts");
-        }
-
         const res = await createRequest(lastEventId);
 
         if (res.isErr()) {
@@ -809,7 +805,11 @@ export class DustAPI {
 
         // Stream ended - check if we need to reconnect
         if (!receivedTerminalEvent && autoReconnect) {
-          reconnectAttempts++;
+          reconnectAttempts += 1;
+
+          if (reconnectAttempts >= maxReconnectAttempts) {
+            throw new Error("Exceeded maximum reconnection attempts");
+          }
 
           await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
           continue;
