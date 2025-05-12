@@ -234,7 +234,7 @@ export default function ActionsScreen({
     useBuilderActionInfo(builderState);
 
   const {
-    mcpServerViewsWithDataSources,
+    mcpServerViewsWithKnowledge,
     selectableNonMCPActions,
     selectableDefaultMCPServerViews,
     selectableNonDefaultMCPServerViews,
@@ -410,7 +410,7 @@ export default function ActionsScreen({
               <AddKnowledgeDropdown
                 hasFeature={hasFeature}
                 setAction={setAction}
-                mcpServerViewsWithDataSources={mcpServerViewsWithDataSources}
+                mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
               />
               <AddToolsDropdown
                 setBuilderState={setBuilderState}
@@ -1209,14 +1209,14 @@ function AdvancedSettings({
 
 interface AddKnowledgeDropdownProps {
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
-  mcpServerViewsWithDataSources: (MCPServerViewType & { label: string })[];
+  mcpServerViewsWithKnowledge: (MCPServerViewType & { label: string })[];
   setAction: (action: AssistantBuilderSetActionType) => void;
 }
 
 function AddKnowledgeDropdown({
   hasFeature,
   setAction,
-  mcpServerViewsWithDataSources,
+  mcpServerViewsWithKnowledge,
 }: AddKnowledgeDropdownProps) {
   return (
     <DropdownMenu modal={false}>
@@ -1254,7 +1254,7 @@ function AddKnowledgeDropdown({
             />
           );
         })}
-        {mcpServerViewsWithDataSources.map((view) => {
+        {mcpServerViewsWithKnowledge.map((view) => {
           const action = getDefaultMCPServerActionConfiguration(view);
           assert(action);
 
