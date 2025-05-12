@@ -328,6 +328,8 @@ export default function WorkspaceAssistants({
         subscription={subscription}
         owner={owner}
         navChildren={<AssistantSidebarMenu owner={owner} />}
+        hasTopPadding={false}
+        isWideMode
       >
         <AssistantDetails
           owner={owner}
@@ -336,6 +338,7 @@ export default function WorkspaceAssistants({
           onClose={() => setShowDetails(null)}
         />
         <Page.Vertical gap="xl" align="stretch">
+          <div className="sm:h-2 lg:h-8" />
           <Page.Header title="Manage Agents" icon={RobotIcon} />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-row gap-2">
