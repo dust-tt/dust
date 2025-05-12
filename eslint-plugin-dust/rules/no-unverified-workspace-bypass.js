@@ -26,7 +26,7 @@ module.exports = {
             context.report({
               node,
               message:
-                'Usage of dangerouslyBypassWorkspaceIsolationSecurity requires a comment starting with "WORKSPACE_ISOLATION_BYPASS" explaining the security bypass',
+                'Usage of dangerouslyBypassWorkspaceIsolationSecurity requires a comment starting with "WORKSPACE_ISOLATION_BYPASS:" explaining the security bypass',
             });
           }
         }
