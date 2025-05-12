@@ -3,7 +3,6 @@ import type {
   FindOptions,
   IncludeOptions,
   InferAttributes,
-  ModelStatic,
   Transaction,
   WhereOptions,
 } from "sequelize";
@@ -24,6 +23,8 @@ import type {
   Result,
 } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
+
+import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -53,12 +54,12 @@ export interface MembershipResource
   extends ReadonlyAttributesType<MembershipModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MembershipResource extends BaseResource<MembershipModel> {
-  static model: ModelStatic<MembershipModel> = MembershipModel;
+  static model: ModelStaticWorkspaceAware<MembershipModel> = MembershipModel;
 
   readonly user?: Attributes<UserModel>;
 
   constructor(
-    model: ModelStatic<MembershipModel>,
+    model: ModelStaticWorkspaceAware<MembershipModel>,
     blob: Attributes<MembershipModel>,
     { user }: { user?: Attributes<UserModel> } = {}
   ) {
@@ -176,9 +177,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       findOptions.limit = limit;
     }
 
-    const rows = await MembershipModel.findAll({
+    const rows = await this.model.findAll({
       ...findOptions,
       where: { ...findOptions.where, ...paginationWhereClause },
+      // WORKSPACE_ISOLATION_BYPASS: We could fetch via workspaceId or via userIds, check is done above
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     // Need a separate query to get the total count, findAndCountAll does not support pagination based on where clause.
@@ -463,13 +466,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   static async fetchByUserIds(
     userIds: ModelId[]
   ): Promise<MembershipResource[]> {
-    const membershipModels = await MembershipModel.findAll({
+    const membershipModels = await this.model.findAll({
       where: {
         userId: userIds,
       },
+      // WORKSPACE_ISOLATION_BYPASS: fetch by userIds
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return membershipModels.map(
-      (m) => new MembershipResource(MembershipModel, m.get())
+      (m) => new MembershipResource(this.model, m.get())
     );
   }
 
