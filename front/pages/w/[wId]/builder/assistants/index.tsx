@@ -78,9 +78,9 @@ export const AGENT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents
   {
     id: "all_custom",
-    label: "All custom agents",
+    label: "All",
     icon: RobotIcon,
-    description: "All agents.",
+    description: "All custom agents.",
   },
   {
     id: "editable_by_me",
@@ -398,6 +398,9 @@ export default function WorkspaceAssistants({
                       tooltip={
                         AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                           ?.description
+                      }
+                      icon={
+                        AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
                       }
                     />
                   ))}
