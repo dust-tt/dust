@@ -11,7 +11,7 @@ import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_act
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -96,7 +96,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  agentLoopRunContext?: AgentLoopRunContextType
 ): McpServer {
   const server = new McpServer(serverInfo);
 
@@ -109,8 +109,8 @@ function createServer(
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
     async ({ tables }) => {
-      if (!agentLoopContext) {
-        throw new Error("Unreachable: missing agentLoopContext.");
+      if (!agentLoopRunContext) {
+        throw new Error("Unreachable: missing agentLoopRunContext.");
       }
 
       const owner = auth.getNonNullableWorkspace();
@@ -119,7 +119,7 @@ function createServer(
 
       // Render conversation for the action.
       const supportedModel = getSupportedModelConfig(
-        agentLoopContext.agentConfiguration.model
+        agentLoopRunContext.agentConfiguration.model
       );
       if (!supportedModel) {
         throw new Error("Unreachable: Supported model not found.");
@@ -134,9 +134,9 @@ function createServer(
       }
 
       const renderedConversationRes = await renderConversationForModel(auth, {
-        conversation: agentLoopContext.conversation,
+        conversation: agentLoopRunContext.conversation,
         model: supportedModel,
-        prompt: agentLoopContext.agentConfiguration.instructions ?? "",
+        prompt: agentLoopRunContext.agentConfiguration.instructions ?? "",
         allowedTokenCount,
         excludeImages: true,
       });
@@ -224,7 +224,7 @@ function createServer(
         type: "database",
         tables: configuredTables,
       };
-      const { model } = agentLoopContext.agentConfiguration;
+      const { model } = agentLoopRunContext.agentConfiguration;
       config.MODEL.provider_id = model.providerId;
       config.MODEL.model_id = model.modelId;
 
@@ -236,13 +236,13 @@ function createServer(
         [
           {
             conversation: renderedConversation.modelConversation.messages,
-            instructions: agentLoopContext.agentConfiguration.instructions,
+            instructions: agentLoopRunContext.agentConfiguration.instructions,
           },
         ],
         {
-          conversationId: agentLoopContext.conversation.sId,
-          workspaceId: agentLoopContext.conversation.owner.sId,
-          agentMessageId: agentLoopContext.agentMessage.sId,
+          conversationId: agentLoopRunContext.conversation.sId,
+          workspaceId: agentLoopRunContext.conversation.owner.sId,
+          agentMessageId: agentLoopRunContext.agentMessage.sId,
         }
       );
       if (res.isErr()) {
@@ -259,7 +259,7 @@ function createServer(
           logger.error(
             {
               workspaceId: owner.id,
-              conversationId: agentLoopContext.conversation.id,
+              conversationId: agentLoopRunContext.conversation.id,
               error: event.content.message,
             },
             "Error running query_tables app"
@@ -276,7 +276,7 @@ function createServer(
             logger.error(
               {
                 workspaceId: owner.id,
-                conversationId: agentLoopContext.conversation.id,
+                conversationId: agentLoopRunContext.conversation.id,
                 error: e.error,
               },
               "Error running query_tables app"
@@ -340,7 +340,7 @@ function createServer(
         // Generate the CSV file.
         const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
           title: queryTitle,
-          conversationId: agentLoopContext.conversation.sId,
+          conversationId: agentLoopRunContext.conversation.sId,
           results,
         });
 
@@ -390,7 +390,7 @@ function createServer(
           // Generate the section file.
           const sectionFile = await generateSectionFile(auth, {
             title: queryTitle,
-            conversationId: agentLoopContext.conversation.sId,
+            conversationId: agentLoopRunContext.conversation.sId,
             results,
             sectionColumnsPrefix,
           });

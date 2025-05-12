@@ -13,7 +13,7 @@ import {
   contentNodeMentionDirective,
 } from "@app/components/markdown/ContentNodeMentionBlock";
 import {
-  MentionBlock,
+  getMentionPlugin,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import type { UserMessageType, WorkspaceType } from "@app/types";
@@ -36,10 +36,10 @@ export function UserMessage({
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
-      mention: MentionBlock,
+      mention: getMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
     }),
-    []
+    [owner]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(

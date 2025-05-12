@@ -8,6 +8,7 @@ import {
   PlusIcon,
   RobotIcon,
   SearchInput,
+  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -192,6 +193,7 @@ export default function WorkspaceAssistants({
   const {
     agentConfigurations,
     mutateRegardlessOfQueryParams: mutateAgentConfigurations,
+    isAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "manage",
@@ -202,13 +204,15 @@ export default function WorkspaceAssistants({
     selection.includes(a.sId)
   );
 
-  const { agentConfigurations: archivedAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "archived",
-      includes: ["usage", "feedbacks"],
-      disabled: !hasAgentDiscovery || selectedTab !== "archived",
-    });
+  const {
+    agentConfigurations: archivedAgentConfigurations,
+    isAgentConfigurationsLoading: isArchivedAgentConfigurationsLoading,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "archived",
+    includes: ["usage", "feedbacks"],
+    disabled: !hasAgentDiscovery || selectedTab !== "archived",
+  });
 
   const agentsByTab = useMemo(() => {
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
@@ -460,7 +464,12 @@ export default function WorkspaceAssistants({
                   </TabsList>
                 </Tabs>
               )}
-              {activeTab && agentsByTab[activeTab] ? (
+              {isAgentConfigurationsLoading ||
+              isArchivedAgentConfigurationsLoading ? (
+                <div className="mt-8 flex justify-center">
+                  <Spinner size="lg" />
+                </div>
+              ) : activeTab && agentsByTab[activeTab] ? (
                 <AssistantsTable
                   isBatchEdit={isBatchEdit}
                   selection={selection}

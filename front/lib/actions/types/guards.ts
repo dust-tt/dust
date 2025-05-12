@@ -159,6 +159,15 @@ export function isMCPConfigurationForInternalWebsearch(
   );
 }
 
+export function isMCPConfigurationForDustAppRun(
+  arg: AgentActionConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "run_dust_app")
+  );
+}
+
 // MCP Tools
 
 export function isMCPToolConfiguration(
@@ -174,7 +183,7 @@ export function isMCPToolConfiguration(
 
 export function isMCPInternalSearch(
   arg: ActionConfigurationType
-): arg is MCPToolConfigurationType {
+): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
     isInternalMCPServerOfName(arg.internalMCPServerId, "search")
@@ -183,7 +192,7 @@ export function isMCPInternalSearch(
 
 export function isMCPInternalInclude(
   arg: ActionConfigurationType
-): arg is MCPToolConfigurationType {
+): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
     isInternalMCPServerOfName(arg.internalMCPServerId, "include_data")
@@ -192,10 +201,19 @@ export function isMCPInternalInclude(
 
 export function isMCPInternalWebsearch(
   arg: ActionConfigurationType
-): arg is MCPToolConfigurationType {
+): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
     isInternalMCPServerOfName(arg.internalMCPServerId, "web_search_&_browse_v2")
+  );
+}
+
+export function isMCPInternalDustAppRun(
+  arg: ActionConfigurationType
+): arg is ServerSideMCPToolConfigurationType {
+  return (
+    isServerSideMCPToolConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "run_dust_app")
   );
 }
 

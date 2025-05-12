@@ -1,6 +1,7 @@
 "use strict";
 
 const noRawSqlRule = require("./rules/no-raw-sql");
+const noUnverifiedWorkspaceBypass = require("./rules/no-unverified-workspace-bypass.js");
 
 module.exports = {
   meta: {
@@ -9,5 +10,6 @@ module.exports = {
   },
   rules: {
     "no-raw-sql": noRawSqlRule,
+    "no-unverified-workspace-bypass": noUnverifiedWorkspaceBypass,
   },
 };

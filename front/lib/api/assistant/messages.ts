@@ -163,7 +163,8 @@ async function batchRenderAgentMessages(
     (async () => tableQueryTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
-    (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      browseActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
