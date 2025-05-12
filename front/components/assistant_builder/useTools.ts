@@ -103,16 +103,16 @@ function getGroupedMCPServerViews({
 
   // We show the MCP actions with data sources in Knowledge dropdown,
   // and the ones without data sources in Tools dropdown.
-  const { mcpServerViewsWithDataSources, mcpServerViewsWithoutDataSources } =
+  const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutDataSources } =
     groupBy(mcpServerViewsWithLabel, (view) => {
       const requirements = getMCPServerRequirements(view);
 
-      const isDataSourceRequired =
+      const isWithKnowledge =
         requirements.requiresDataSourceConfiguration ||
         requirements.requiresTableConfiguration;
 
-      return isDataSourceRequired
-        ? "mcpServerViewsWithDataSources"
+      return isWithKnowledge
+        ? "mcpServerViewsWithKnowledge"
         : "mcpServerViewsWithoutDataSources";
     });
 
@@ -122,7 +122,7 @@ function getGroupedMCPServerViews({
   );
 
   return {
-    mcpServerViewsWithDataSources,
+    mcpServerViewsWithKnowledge,
     defaultMCPServerViews: grouped.auto || [],
     nonDefaultMCPServerViews: grouped.manual || [],
   };
@@ -156,7 +156,7 @@ export const useTools = ({
   }, [enableReasoningTool, initialActions, mcpServerViews]);
 
   const {
-    mcpServerViewsWithDataSources,
+    mcpServerViewsWithKnowledge,
     defaultMCPServerViews,
     nonDefaultMCPServerViews,
   } = useMemo(() => {
@@ -164,7 +164,7 @@ export const useTools = ({
 
     if (!isMCPEnabled) {
       return {
-        mcpServerViewsWithDataSources: [],
+        mcpServerViewsWithKnowledge: [],
         defaultMCPServerViews: [],
         nonDefaultMCPServerViews: [],
       };
@@ -223,7 +223,7 @@ export const useTools = ({
   );
 
   return {
-    mcpServerViewsWithDataSources, // All of them require configuration so no need to filter out the selected ones.
+    mcpServerViewsWithKnowledge, // All of them require configuration so no need to filter out the selected ones.
     selectableNonMCPActions,
     selectableDefaultMCPServerViews,
     selectableNonDefaultMCPServerViews,
