@@ -3,7 +3,10 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { ActionConfigurationType, AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type {
+  ActionConfigurationType,
+  AgentActionSpecification,
+} from "@app/lib/actions/types/agent";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
