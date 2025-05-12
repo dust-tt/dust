@@ -23,6 +23,7 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantsTable } from "@app/components/assistant/AssistantsTable";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { DeleteAssistantsDialog } from "@app/components/assistant/DeleteAssistantsDialog";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -33,11 +34,9 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
-import type {
-  LightAgentConfigurationType,
-  SubscriptionType,
-  UserType,
-  WorkspaceType,
+import type {LightAgentConfigurationType, SubscriptionType, UserType, WorkspaceType} from "@app/types";
+import {
+  isAdmin
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
@@ -170,6 +169,9 @@ export default function WorkspaceAssistants({
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
   const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
+  const [isBatchEdit, setIsBatchEdit] = useState(false);
+  const [selection, setSelection] = useState<string[]>([]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const activeTab = useMemo(() => {
     if (assistantSearch.trim() !== "") {
       return "search";
@@ -192,6 +194,10 @@ export default function WorkspaceAssistants({
     agentsGetView: "manage",
     includes: ["authors", "usage", "feedbacks"],
   });
+
+  const selectedAgents = agentConfigurations.filter((a) =>
+    selection.includes(a.sId)
+  );
 
   const { agentConfigurations: archivedAgentConfigurations } =
     useAgentConfigurations({
@@ -331,6 +337,13 @@ export default function WorkspaceAssistants({
         hasTopPadding={false}
         isWideMode
       >
+        <DeleteAssistantsDialog
+          owner={owner}
+          agentConfigurations={selectedAgents}
+          isOpen={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          setSelection={setSelection}
+        />
         <AssistantDetails
           owner={owner}
           user={user}
@@ -350,27 +363,40 @@ export default function WorkspaceAssistants({
                   setAssistantSearch(s);
                 }}
               />
-              <div className="flex gap-2">
-                {hasAgentDiscovery && (
-                  <TagsFilterMenu
-                    tags={uniqueTags}
-                    selectedTags={selectedTags}
-                    setSelectedTags={setSelectedTags}
-                    owner={owner}
-                  />
-                )}
-                <Link
-                  href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
-                >
-                  <Button
-                    variant="primary"
-                    icon={PlusIcon}
-                    label="Create an agent"
-                    data-gtm-label="assistantCreationButton"
-                    data-gtm-location="assistantsWorkspace"
-                  />
-                </Link>
-              </div>
+              {!isBatchEdit && (
+                <div className="flex gap-2">
+                  {isAdmin(owner) && (
+                    <Button
+                      variant="outline"
+                      icon={PencilSquareIcon}
+                      label="Batch edit"
+                      onClick={() => {
+                        setIsBatchEdit(true);
+                      }}
+                    />
+                  )}
+
+                  {hasAgentDiscovery && (
+                    <TagsFilterMenu
+                      tags={uniqueTags}
+                      selectedTags={selectedTags}
+                      setSelectedTags={setSelectedTags}
+                      owner={owner}
+                    />
+                  )}
+                  <Link
+                    href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
+                  >
+                    <Button
+                      variant="primary"
+                      icon={PlusIcon}
+                      label="Create an agent"
+                      data-gtm-label="assistantCreationButton"
+                      data-gtm-location="assistantsWorkspace"
+                    />
+                  </Link>
+                </div>
+              )}
             </div>
             <div className="flex flex-row gap-2">
               {selectedTags.map((tag) => (
@@ -386,27 +412,56 @@ export default function WorkspaceAssistants({
               ))}
             </div>
             <div className="flex flex-col pt-3">
-              <Tabs value={activeTab}>
-                <TabsList>
-                  {visibleTabs.map((tab) => (
-                    <TabsTrigger
-                      key={tab.id}
-                      value={tab.id}
-                      label={tab.label}
-                      onClick={() => !assistantSearch && setSelectedTab(tab.id)}
-                      tooltip={
-                        AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
-                          ?.description
-                      }
-                      icon={
-                        AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
-                      }
-                    />
-                  ))}
-                </TabsList>
-              </Tabs>
+              {isBatchEdit && (
+                <div className="mb-2 flex flex-row gap-2">
+                  <Button
+                    variant="outline"
+                    label="Cancel edition"
+                    onClick={() => {
+                      setIsBatchEdit(false);
+                      setSelection([]);
+                    }}
+                  />
+                  <Button
+                    variant="warning"
+                    icon={TrashIcon}
+                    label="Archive selection"
+                    disabled={selection.length === 0}
+                    onClick={() => {
+                      setIsDeleteDialogOpen(true);
+                    }}
+                  />
+                </div>
+              )}
+
+              {!isBatchEdit && (
+                <Tabs value={activeTab}>
+                  <TabsList>
+                    {visibleTabs.map((tab) => (
+                      <TabsTrigger
+                        key={tab.id}
+                        value={tab.id}
+                        label={tab.label}
+                        onClick={() =>
+                          !assistantSearch && setSelectedTab(tab.id)
+                        }
+                        tooltip={
+                          AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
+                            ?.description
+                        }
+                        icon={
+                          AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
+                        }
+                      />
+                    ))}
+                  </TabsList>
+                </Tabs>
+              )}
               {activeTab && agentsByTab[activeTab] ? (
                 <AssistantsTable
+                  isBatchEdit={isBatchEdit}
+                  selection={selection}
+                  setSelection={setSelection}
                   owner={owner}
                   agents={agentsByTab[activeTab]}
                   tags={uniqueTags}
