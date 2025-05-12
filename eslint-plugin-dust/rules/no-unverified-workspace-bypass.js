@@ -19,7 +19,7 @@ module.exports = {
           const comments = sourceCode.getCommentsBefore(node);
 
           const hasWorkspaceBypassComment = comments.some((comment) =>
-            comment.value.trim().startsWith("WORKSPACE_ISOLATION_BYPASS"),
+            comment.value.trim().startsWith("WORKSPACE_ISOLATION_BYPASS:"),
           );
 
           if (!hasWorkspaceBypassComment) {
