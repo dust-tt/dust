@@ -3,6 +3,7 @@ import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
+import { skip } from "node:test";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -2089,6 +2090,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
         .array(),
       z.undefined(),
     ]),
+    skipToolsValidation: z.boolean().optional().default(false),
   }),
   z
     .object({
@@ -2189,7 +2191,8 @@ export const PatchDataSourceViewRequestSchema = z.union([
       parentsToAdd: z.union([z.array(z.string()), z.undefined()]),
       parentsToRemove: z.array(z.string()).optional(),
     })
-    // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
+    // For the fields to be not optional, see:
+    // https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
     .transform((o) => ({
       parentsToAdd: o.parentsToAdd,
       parentsToRemove: o.parentsToRemove,
@@ -2258,7 +2261,9 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   upsert_context: z
     .object({
       sync_type: z.union([z.enum(["batch", "incremental"]), z.undefined()]),
-    }) // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
+    })
+    // For the fields to be not optional, see:
+    // https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
     .transform((o) => ({
       sync_type: o.sync_type,
     }))

@@ -632,6 +632,7 @@ export async function processTranscriptActivity(
         content: `Transcript: ${transcriptTitle}`,
         mentions: [{ configurationId: agentConfigurationId }],
         context: baseContext,
+        skipToolsValidation: true,
       },
       { resolveAfterFullGeneration: true }
     );

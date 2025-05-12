@@ -661,11 +661,13 @@ export async function* postUserMessage(
     content,
     mentions,
     context,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    skipToolsValidation: boolean;
   }
 ): AsyncGenerator<
   | UserMessageErrorEvent
@@ -896,6 +898,7 @@ export async function* postUserMessage(
                   agentConfigurationId: configuration.sId,
                   agentConfigurationVersion: configuration.version,
                   workspaceId: owner.id,
+                  skipToolsValidation,
                 },
                 { transaction: t }
               );
@@ -932,6 +935,7 @@ export async function* postUserMessage(
                   error: null,
                   configuration,
                   rank: messageRow.rank,
+                  skipToolsValidation: agentMessageRow.skipToolsValidation,
                 } satisfies AgentMessageWithRankType,
               };
             })();
@@ -1113,10 +1117,8 @@ function canAccessAgent(
   }
 }
 
-/** This method creates a new user message version, and if there are new agent
- *  mentions, run them
- *  TODO: support editing with new agent mentions for any
- *  message (rather than just the last)
+/**
+ * This method creates a new user message version, and if there are new agent mentions, run them.
  */
 export async function* editUserMessage(
   auth: Authenticator,
@@ -1125,11 +1127,13 @@ export async function* editUserMessage(
     message,
     content,
     mentions,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
+    skipToolsValidation: boolean;
   }
 ): AsyncGenerator<
   | UserMessageNewEvent
@@ -1407,6 +1411,7 @@ export async function* editUserMessage(
                 agentConfigurationId: configuration.sId,
                 agentConfigurationVersion: configuration.version,
                 workspaceId: owner.id,
+                skipToolsValidation: false,
               },
               { transaction: t }
             );
@@ -1443,6 +1448,7 @@ export async function* editUserMessage(
                 error: null,
                 configuration,
                 rank: messageRow.rank,
+                skipToolsValidation: agentMessageRow.skipToolsValidation,
               } satisfies AgentMessageWithRankType,
             };
           })();
@@ -1648,6 +1654,7 @@ export async function* retryAgentMessage(
           agentConfigurationVersion:
             messageRow.agentMessage.agentConfigurationVersion,
           workspaceId: auth.getNonNullableWorkspace().id,
+          skipToolsValidation: messageRow.agentMessage.skipToolsValidation,
         },
         { transaction: t }
       );
@@ -1689,6 +1696,7 @@ export async function* retryAgentMessage(
         error: null,
         configuration: message.configuration,
         rank: m.rank,
+        skipToolsValidation: agentMessageRow.skipToolsValidation,
       };
 
       return {

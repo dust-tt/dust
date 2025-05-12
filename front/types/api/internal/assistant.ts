@@ -3,7 +3,7 @@ import * as t from "io-ts";
 
 import { getSupportedNonImageMimeTypes } from "../../files";
 
-export const InternalPostMessagesRequestBodySchema = t.type({
+export const MessageBaseSchema = t.type({
   content: t.refinement(
     t.string,
     (s): s is string => s.length > 0,
@@ -20,6 +20,13 @@ export const InternalPostMessagesRequestBodySchema = t.type({
     }),
   ]),
 });
+
+export const InternalPostMessagesRequestBodySchema = t.intersection([
+  MessageBaseSchema,
+  t.type({
+    skipToolsValidation: t.union([t.boolean, t.undefined]),
+  }),
+]);
 
 const ContentFragmentBaseSchema = t.intersection([
   t.type({
@@ -182,8 +189,9 @@ export const InternalPostConversationsRequestBodySchema = t.type({
     t.literal("deleted"),
     t.literal("test"),
   ]),
-  message: t.union([InternalPostMessagesRequestBodySchema, t.null]),
+  message: t.union([MessageBaseSchema, t.null]),
   contentFragments: t.array(InternalPostContentFragmentRequestBodySchema),
+  skipToolsValidation: t.union([t.boolean, t.undefined]),
 });
 
 export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([

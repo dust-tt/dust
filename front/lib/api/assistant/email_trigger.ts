@@ -391,6 +391,7 @@ export async function triggerFromEmail({
         profilePictureUrl: user.imageUrl,
         origin: "email",
       },
+      skipToolsValidation: true,
     },
     { resolveAfterFullGeneration: true }
   );

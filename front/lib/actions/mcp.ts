@@ -456,7 +456,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     const { status: s } = await getExecutionStatusFromConfig(
       auth,
-      actionConfiguration
+      actionConfiguration,
+      agentMessage
     );
     let status:
       | "allowed_implicitly"

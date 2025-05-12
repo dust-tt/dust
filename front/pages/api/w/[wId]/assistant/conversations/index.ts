@@ -71,8 +71,13 @@ async function handler(
         });
       }
 
-      const { title, visibility, message, contentFragments } =
-        bodyValidation.right;
+      const {
+        title,
+        visibility,
+        message,
+        contentFragments,
+        skipToolsValidation,
+      } = bodyValidation.right;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -180,6 +185,7 @@ async function handler(
               clientSideMCPServerIds:
                 message.context.clientSideMCPServerIds ?? [],
             },
+            skipToolsValidation: skipToolsValidation ?? false,
           },
           { resolveAfterFullGeneration: false }
         );
