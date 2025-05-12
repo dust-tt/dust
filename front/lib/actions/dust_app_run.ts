@@ -836,6 +836,7 @@ export async function dustAppRunTypesFromAgentMessageIds(
 
   const actions = await AgentDustAppRunAction.findAll({
     where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
       agentMessageId: agentMessageIds,
     },
     include: [
