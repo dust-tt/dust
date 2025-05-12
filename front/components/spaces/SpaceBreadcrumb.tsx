@@ -2,7 +2,7 @@ import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
   Breadcrumbs,
   CloudArrowLeftRightIcon,
-  SuitcaseIcon,
+  BoltIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -82,7 +82,7 @@ export function SpaceBreadCrumbs({
       } else if (category === "actions") {
         return [
           {
-            icon: SuitcaseIcon,
+            icon: BoltIcon,
             label: "Tools",
           },
         ];

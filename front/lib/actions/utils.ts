@@ -5,7 +5,7 @@ import {
   MagnifyingGlassIcon,
   PlanetIcon,
   ScanIcon,
-  SuitcaseIcon,
+  BoltIcon,
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";
@@ -94,8 +94,8 @@ export const ACTION_SPECIFICATIONS: Record<
   MCP: {
     label: "More...",
     description: "Add additional sets of tools",
-    cardIcon: SuitcaseIcon,
-    dropDownIcon: SuitcaseIcon,
+    cardIcon: BoltIcon,
+    dropDownIcon: BoltIcon,
     flag: "mcp_actions",
   },
 };
