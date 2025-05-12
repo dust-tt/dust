@@ -261,6 +261,9 @@ async function getMCPServerActionConfiguration(
       )
     : null;
 
+  builderAction.configuration.dustAppConfiguration =
+    action.dustAppConfiguration;
+
   builderAction.configuration.childAgentId = action.childAgentId;
 
   const { reasoningModel } = action;
