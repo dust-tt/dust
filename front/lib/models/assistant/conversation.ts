@@ -463,9 +463,6 @@ Message.init(
         fields: ["workspaceId", "conversationId"],
       },
       {
-        fields: ["workspaceId", "id"],
-      },
-      {
         fields: ["workspaceId", "conversationId", "sId"],
       },
     ],
