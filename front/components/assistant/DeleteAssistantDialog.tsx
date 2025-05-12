@@ -81,8 +81,8 @@ export function DeleteAssistantDialog({
           }}
           rightButtonProps={{
             label: isPrivateAssistant
-              ? "Delete the agent"
-              : "Delete for everyone",
+              ? "Archive the agent"
+              : "Archive for everyone",
             disabled: isDeleting,
             variant: "warning",
             onClick: async (e: React.MouseEvent) => {
