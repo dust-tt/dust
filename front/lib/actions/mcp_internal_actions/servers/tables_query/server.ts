@@ -8,17 +8,11 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  getDatabaseExampleRowsContent,
-  getQueryWritingInstructionsContent,
-  getSchemaContent,
-} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
-import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -31,7 +25,6 @@ import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types";
 import { assertNever } from "@app/types";
-import { CoreAPI } from "@app/types/core/core_api";
 
 // We need a model with at least 54k tokens to run tables_query.
 const TABLES_QUERY_MIN_TOKEN = 50_000;
@@ -51,82 +44,6 @@ function createServer(
   agentLoopRunContext?: AgentLoopRunContextType
 ): McpServer {
   const server = new McpServer(serverInfo);
-
-  server.tool(
-    "get_database_schema",
-    "Retrieves the database schema for the specified tables. You MUST call this tool at least once before attempting to query tables to understand their structure. This tool provides essential information about table columns, types, and relationships needed to write accurate SQL queries.",
-    {
-      tables:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
-    },
-    async ({ tables }) => {
-      // Fetch table configurations
-      const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
-        auth,
-        tables
-      );
-      if (agentTableConfigurationsRes.isErr()) {
-        return makeMCPToolTextError(
-          `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
-        );
-      }
-      const agentTableConfigurations = agentTableConfigurationsRes.value;
-      if (agentTableConfigurations.length === 0) {
-        return makeMCPToolTextError(
-          "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
-        );
-      }
-      const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
-        auth,
-        [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
-      );
-      const dataSourceViewsMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.id, dsv])
-      );
-
-      // Format table identifiers for Core API call
-      const configuredTables: Array<[number, string, string]> = [];
-      for (const t of agentTableConfigurations) {
-        const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
-        if (!dataSourceView || !dataSourceView.dataSource.dustAPIDataSourceId) {
-          throw new Error(
-            `Missing data source ID for view ${t.dataSourceViewId}`
-          );
-        }
-
-        configuredTables.push([
-          parseInt(dataSourceView.dataSource.dustAPIProjectId, 10),
-          dataSourceView.dataSource.dustAPIDataSourceId,
-          t.tableId,
-        ]);
-      }
-
-      // Call Core API's /database_schema endpoint
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const viewFilter = dataSourceViewsMap
-        .get(agentTableConfigurations[0].dataSourceViewId)
-        ?.toViewFilter();
-      const schemaResult = await coreAPI.getDatabaseSchema({
-        tables: configuredTables,
-        filter: viewFilter,
-      });
-
-      if (schemaResult.isErr()) {
-        return makeMCPToolTextError(
-          `Error retrieving database schema: ${schemaResult.error.message}`
-        );
-      }
-
-      return {
-        isError: false,
-        content: [
-          ...getSchemaContent(schemaResult.value.schemas),
-          ...getQueryWritingInstructionsContent(schemaResult.value.dialect),
-          ...getDatabaseExampleRowsContent(schemaResult.value.schemas),
-        ],
-      };
-    }
-  );
 
   server.tool(
     "query_tables",
