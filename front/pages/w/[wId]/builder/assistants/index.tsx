@@ -78,9 +78,9 @@ export const AGENT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents
   {
     id: "all_custom",
-    label: "All custom agents",
+    label: "All",
     icon: RobotIcon,
-    description: "All agents.",
+    description: "All custom agents.",
   },
   {
     id: "editable_by_me",
@@ -328,6 +328,8 @@ export default function WorkspaceAssistants({
         subscription={subscription}
         owner={owner}
         navChildren={<AssistantSidebarMenu owner={owner} />}
+        hasTopPadding={false}
+        isWideMode
       >
         <AssistantDetails
           owner={owner}
@@ -335,7 +337,7 @@ export default function WorkspaceAssistants({
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
         />
-        <Page.Vertical gap="xl" align="stretch">
+        <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
           <Page.Header title="Manage Agents" icon={RobotIcon} />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-row gap-2">
@@ -396,6 +398,9 @@ export default function WorkspaceAssistants({
                         AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                           ?.description
                       }
+                      icon={
+                        AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
+                      }
                     />
                   ))}
                 </TabsList>
@@ -429,7 +434,7 @@ export default function WorkspaceAssistants({
               )}
             </div>
           </Page.Vertical>
-        </Page.Vertical>
+        </div>
       </AppContentLayout>
     </ConversationsNavigationProvider>
   );

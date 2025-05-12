@@ -1,5 +1,6 @@
 import {
   Avatar,
+  BracesIcon,
   Button,
   ClipboardIcon,
   Cog6ToothIcon,
@@ -363,7 +364,7 @@ export function AssistantsTable({
                     label: "Copy agent ID",
                     "data-gtm-label": "assistantCopyButton",
                     "data-gtm-location": "assistantDetails",
-                    icon: ClipboardIcon,
+                    icon: BracesIcon,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void navigator.clipboard.writeText(
@@ -386,7 +387,7 @@ export function AssistantsTable({
                     kind: "item" as const,
                   },
                   {
-                    label: "Delete",
+                    label: "Archive",
                     "data-gtm-label": "assistantDeletionButton",
                     "data-gtm-location": "assistantDetails",
                     icon: TrashIcon,
