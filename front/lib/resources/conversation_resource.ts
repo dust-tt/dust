@@ -24,8 +24,7 @@ import type {
   LightAgentConfigurationType,
   Result,
 } from "@app/types";
-import { ConversationError, removeNulls } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 
 import { GroupResource } from "./group_resource";
 import { frontSequelize } from "./storage";
@@ -430,14 +429,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  async updateVisiblity(
-    visibility: ConversationVisibility,
-    title?: string | null
-  ) {
-    return this.update({
-      title,
-      visibility,
-    });
+  async updateTitle(title: string) {
+    return this.update({ title });
+  }
+
+  async markAsDeleted() {
+    return this.update({ visibility: "deleted" });
   }
 
   async updateRequestedGroupIds(

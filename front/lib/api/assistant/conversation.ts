@@ -155,16 +155,14 @@ export async function createConversation(
   };
 }
 
-export async function updateConversation(
+export async function updateConversationTitle(
   auth: Authenticator,
-  conversationId: string,
   {
+    conversationId,
     title,
-    visibility,
   }: {
-    title: string | null;
-    // Deletion should be performed by `deleteConversation` only.
-    visibility: Exclude<ConversationVisibility, "deleted">;
+    conversationId: string;
+    title: string;
   }
 ): Promise<Result<ConversationType, ConversationError>> {
   const conversation = await ConversationResource.fetchById(
@@ -176,7 +174,7 @@ export async function updateConversation(
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
-  await conversation.updateVisiblity(visibility, title);
+  await conversation.updateTitle(title);
 
   return getConversation(auth, conversationId);
 }
@@ -211,7 +209,7 @@ export async function deleteConversation(
   if (destroy) {
     await conversation.delete(auth);
   } else {
-    await conversation.updateVisiblity("deleted");
+    await conversation.markAsDeleted();
   }
   return new Ok({ success: true });
 }
