@@ -85,7 +85,7 @@ export function DeleteAssistantDialog({
               : "Delete for everyone",
             disabled: isDeleting,
             variant: "warning",
-            onClick: async (e) => {
+            onClick: async (e: React.MouseEvent) => {
               e.preventDefault();
               setIsDeleting(true);
               await doDelete();
