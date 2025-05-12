@@ -459,17 +459,12 @@ export function AgentMessage({
       }));
 
     // Get completed images.
-    const completedImages = messageStreamState.message.actions.flatMap(
-      (action) =>
-        action.generatedFiles.filter((file) =>
-          isSupportedImageContentType(file.contentType)
-        )
+    const completedImages = messageStreamState.message.generatedFiles.filter(
+      (file) => isSupportedImageContentType(file.contentType)
     );
 
-    const generatedFiles = agentMessage.actions.flatMap((action) =>
-      action.generatedFiles.filter(
-        (file) => !isSupportedImageContentType(file.contentType)
-      )
+    const generatedFiles = agentMessage.generatedFiles.filter(
+      (file) => !isSupportedImageContentType(file.contentType)
     );
 
     return (

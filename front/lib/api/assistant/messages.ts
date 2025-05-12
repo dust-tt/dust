@@ -10,7 +10,6 @@ import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/actions/reason
 import { retrievalActionTypesFromAgentMessageIds } from "@app/lib/actions/retrieval";
 import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/actions/tables_query";
-import { LightAgentActionType } from "@app/lib/actions/types";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/actions/websearch";
 import {
   AgentMessageContentParser,
@@ -255,15 +254,10 @@ async function batchRenderAgentMessages(
           parentMessageId:
             messages.find((m) => m.id === message.parentId)?.sId ?? null,
           status: agentMessage.status,
-          actions:
-            viewType === "light"
-              ? actions.map(
-                  (a) =>
-                    new LightAgentActionType(a.id, a.type, a.generatedFiles)
-                )
-              : actions,
-          citations:
-            viewType === "light" ? getCitationsFromActions(actions) : undefined,
+          actions: viewType === "light" ? [] : actions,
+          actionsCount: actions.length,
+          citations: getCitationsFromActions(actions),
+          generatedFiles: actions.flatMap((a) => a.generatedFiles),
           content: parsedContent.content,
           chainOfThought: parsedContent.chainOfThought,
           rawContents:

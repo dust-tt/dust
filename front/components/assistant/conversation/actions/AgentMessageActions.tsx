@@ -33,7 +33,7 @@ export function AgentMessageActions({
         setChipLabel("Thinking");
         break;
       case "acting":
-        if (agentMessage.actions.length > 0) {
+        if (agentMessage.actions && agentMessage.actions.length > 0) {
           setChipLabel(renderActionName(agentMessage.actions));
         }
         break;
@@ -61,7 +61,7 @@ export function AgentMessageActions({
         owner={owner}
       />
       <ActionDetails
-        hasActions={agentMessage.actions.length !== 0}
+        hasActions={agentMessage.actionsCount > 0}
         isActionStepDone={!isThinkingOrActing}
         label={chipLabel}
         onClick={() => setIsActionDrawerOpened(true)}

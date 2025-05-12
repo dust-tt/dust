@@ -10,12 +10,11 @@ import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
 import type { WebsearchActionType } from "@app/lib/actions/websearch";
 
-import { LightAgentActionType } from "@app/lib/actions/types";
+import { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type { LightAgentConfigurationType } from "./agent";
-import { ConnectorProvider } from "@dust-tt/client";
 
 /**
  * Mentions
@@ -156,7 +155,7 @@ export interface CitationType {
   description?: string;
   href?: string;
   title: string;
-  provider: ConnectorProvider | "document" | "image";
+  provider: string;
 }
 
 /**
@@ -177,8 +176,10 @@ export type AgentMessageType = {
   parentMessageId: string | null;
   configuration: LightAgentConfigurationType;
   status: AgentMessageStatus;
-  actions: (LightAgentActionType | AgentActionType)[];
-  citations?: Record<string, CitationType>;
+  actions: AgentActionType[];
+  actionsCount: number;
+  citations: Record<string, CitationType>;
+  generatedFiles: ActionGeneratedFileType[];
   content: string | null;
   chainOfThought: string | null;
   rawContents: Array<{

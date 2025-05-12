@@ -412,7 +412,7 @@ async function* runMultiActionsAgent(
 
   // Prepend emulated actions to the current agent message before rendering the conversation for the
   // model.
-  agentMessage.actions = emulatedActions.concat(agentMessage.actions);
+  agentMessage.actions = emulatedActions.concat(agentMessage.actions ?? []);
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {

@@ -68,22 +68,22 @@ export abstract class BaseAction {
   }): Promise<FunctionMessageTypeModel>;
 }
 
-export class LightAgentActionType extends BaseAction {
-  constructor(
-    id: ModelId,
-    type: BaseActionType,
-    generatedFiles: ActionGeneratedFileType[] = []
-  ) {
-    super(id, type, generatedFiles);
-  }
-  renderForFunctionCall(): FunctionCallType {
-    throw new Error("Not implemented");
-  }
+// export class LightAgentActionType extends BaseAction {
+//   constructor(
+//     id: ModelId,
+//     type: BaseActionType,
+//     generatedFiles: ActionGeneratedFileType[] = []
+//   ) {
+//     super(id, type, generatedFiles);
+//   }
+//   renderForFunctionCall(): FunctionCallType {
+//     throw new Error("Not implemented");
+//   }
 
-  renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
-    throw new Error("Not implemented");
-  }
-}
+//   renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
+//     throw new Error("Not implemented");
+//   }
+// }
 
 export type ExtractActionBlob<T extends BaseAction> = Pick<
   T,
