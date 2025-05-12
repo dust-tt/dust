@@ -36,7 +36,7 @@ interface AddToolsDropdownProps {
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
-  defaultTools: ActionSpecificationWithType[];
+  nonDefaultMCPActions: ActionSpecificationWithType[];
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
 }
@@ -45,27 +45,27 @@ export function AddToolsDropdown({
   setEdited,
   setAction,
   setBuilderState,
-  defaultTools,
+  nonDefaultMCPActions,
   defaultMCPServerViews,
   nonDefaultMCPServerViews,
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
-  const [filteredDefaultTools, setFilteredDefaultTools] =
-    useState(defaultTools);
+  const [filteredNonMCPActions, setFilteredNonMCPActions] =
+    useState(nonDefaultMCPActions);
   const [filteredMCPServerViews, setFilteredMCPServerViews] = useState([
     ...defaultMCPServerViews,
     ...nonDefaultMCPServerViews,
   ]);
 
   const noFilteredTools =
-    filteredDefaultTools.length === 0 && filteredMCPServerViews.length === 0;
+    filteredNonMCPActions.length === 0 && filteredMCPServerViews.length === 0;
 
   function onOpenChange(open: boolean) {
     if (!open) {
       // Delay slightly to avoid flickering when the dropdown is closed.
       setTimeout(() => {
         setSearchText("");
-        setFilteredDefaultTools([]);
+        setFilteredNonMCPActions([]);
         setFilteredMCPServerViews([]);
       }, 200);
     }
@@ -73,8 +73,8 @@ export function AddToolsDropdown({
 
   function onChangeSearchText(text: string) {
     setSearchText(text);
-    setFilteredDefaultTools(
-      defaultTools.filter((tool) =>
+    setFilteredNonMCPActions(
+      nonDefaultMCPActions.filter((tool) =>
         tool.label.toLowerCase().includes(text.toLowerCase())
       )
     );
@@ -159,7 +159,7 @@ export function AddToolsDropdown({
           ) : (
             <>
               <DropdownMenuLabel label="Search results" />
-              {filteredDefaultTools.map((tool) => (
+              {filteredNonMCPActions.map((tool) => (
                 <DefaultToolDropdownMenuItem
                   key={tool.label}
                   tool={tool}
@@ -179,7 +179,7 @@ export function AddToolsDropdown({
         {searchText.length === 0 && (
           <>
             <DropdownMenuLabel label="Top tools" />
-            {defaultTools.map((tool) => (
+            {nonDefaultMCPActions.map((tool) => (
               <DefaultToolDropdownMenuItem
                 key={tool.label}
                 tool={tool}

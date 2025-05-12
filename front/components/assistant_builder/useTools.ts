@@ -10,6 +10,7 @@ import type {
   AssistantBuilderDataVisualizationConfiguration,
 } from "@app/components/assistant_builder/types";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,
@@ -47,7 +48,7 @@ function getDefaultConfigurationSpecification(
   };
 }
 
-function getAvailableDefaultTools({
+function getAvailableNonMCPActions({
   enableReasoningTool,
   isWebNavigationEnabled,
   mcpServerViews,
@@ -100,12 +101,28 @@ function getGroupedMCPServerViews({
     label: asDisplayName(view.server.name),
   }));
 
+  // We show the MCP actions with data sources in Knowledge dropdown,
+  // and without data sources in Tools dropdown.
+  const { mcpServerViewsWithDataSources, mcpServerViewsWithoutDataSources } =
+    groupBy(mcpServerViewsWithLabel, (view) => {
+      const requirements = getMCPServerRequirements(view);
+
+      const isDataSourceRequired =
+        requirements.requiresDataSourceConfiguration ||
+        requirements.requiresTableConfiguration;
+
+      return isDataSourceRequired
+        ? "mcpServerViewsWithDataSources"
+        : "mcpServerViewsWithoutDataSources";
+    });
+
   const grouped = groupBy(
-    mcpServerViewsWithLabel,
+    mcpServerViewsWithoutDataSources,
     (view) => view.server.availability
   );
 
   return {
+    mcpServerViewsWithDataSources,
     defaultMCPServerViews: grouped.auto || [],
     nonDefaultMCPServerViews: grouped.manual || [],
   };
@@ -126,23 +143,28 @@ export const useTools = ({
     AssistantBuilderContext
   );
 
-  const defaultTools = useMemo(() => {
+  const nonDefaultMCPActions = useMemo(() => {
     const isWebNavigationEnabled = !!initialActions.find(
       (action) => action.type === "WEB_NAVIGATION"
     );
 
-    return getAvailableDefaultTools({
+    return getAvailableNonMCPActions({
       enableReasoningTool,
       isWebNavigationEnabled,
       mcpServerViews,
     });
   }, [enableReasoningTool, initialActions, mcpServerViews]);
 
-  const { defaultMCPServerViews, nonDefaultMCPServerViews } = useMemo(() => {
+  const {
+    mcpServerViewsWithDataSources,
+    defaultMCPServerViews,
+    nonDefaultMCPServerViews,
+  } = useMemo(() => {
     const isMCPEnabled = hasFeature(ACTION_SPECIFICATIONS["MCP"].flag);
 
     if (!isMCPEnabled) {
       return {
+        mcpServerViewsWithDataSources: [],
         defaultMCPServerViews: [],
         nonDefaultMCPServerViews: [],
       };
@@ -151,9 +173,9 @@ export const useTools = ({
     return getGroupedMCPServerViews({ mcpServerViews });
   }, [mcpServerViews, hasFeature]);
 
-  const selectableDefaultTools = useMemo(
+  const selectableNonMCPActions = useMemo(
     () =>
-      defaultTools.filter((tool) => {
+      nonDefaultMCPActions.filter((tool) => {
         const isConfigurable = DEFAULT_TOOLS_WITH_CONFIGURATION.find(
           (defaultTool) => defaultTool === tool.type
         );
@@ -165,7 +187,7 @@ export const useTools = ({
 
         return true;
       }),
-    [defaultTools, actions]
+    [nonDefaultMCPActions, actions]
   );
 
   const selectableDefaultMCPServerViews = useMemo(
@@ -201,7 +223,8 @@ export const useTools = ({
   );
 
   return {
-    selectableDefaultTools,
+    mcpServerViewsWithDataSources, // All of them require configuration so no need to filter out the selected ones.
+    selectableNonMCPActions,
     selectableDefaultMCPServerViews,
     selectableNonDefaultMCPServerViews,
   };

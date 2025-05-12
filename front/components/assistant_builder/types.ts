@@ -411,8 +411,10 @@ export function getDefaultReasoningActionConfiguration(): AssistantBuilderAction
       reasoningEffort: null,
     },
     name: DEFAULT_REASONING_ACTION_NAME,
-    description: DEFAULT_REASONING_ACTION_DESCRIPTION,
+    // Old reasoning is actually configurable, but it is set to true (= non-configurable) because we have a special dropdown menu to configure and
+    // we don't want to show the configuration modal. We will remove this and the dropdown when we fully switch to MCP.
     noConfigurationRequired: true,
+    description: DEFAULT_REASONING_ACTION_DESCRIPTION,
   } satisfies AssistantBuilderActionConfiguration;
 }
 

@@ -32,6 +32,8 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import assert from "assert";
+import { uniqueId } from "lodash";
 import Link from "next/dist/client/link";
 import type { ReactNode } from "react";
 import React, {
@@ -88,6 +90,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   getDefaultActionConfiguration,
+  getDefaultMCPServerActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import {
@@ -231,7 +234,8 @@ export default function ActionsScreen({
     useBuilderActionInfo(builderState);
 
   const {
-    selectableDefaultTools,
+    mcpServerViewsWithDataSources,
+    selectableNonMCPActions,
     selectableDefaultMCPServerViews,
     selectableNonDefaultMCPServerViews,
   } = useTools({
@@ -406,12 +410,13 @@ export default function ActionsScreen({
               <AddKnowledgeDropdown
                 hasFeature={hasFeature}
                 setAction={setAction}
+                mcpServerViewsWithDataSources={mcpServerViewsWithDataSources}
               />
               <AddToolsDropdown
                 setBuilderState={setBuilderState}
                 setEdited={setEdited}
                 setAction={setAction}
-                defaultTools={selectableDefaultTools}
+                nonDefaultMCPActions={selectableNonMCPActions}
                 defaultMCPServerViews={selectableDefaultMCPServerViews}
                 nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
               />
@@ -1204,12 +1209,14 @@ function AdvancedSettings({
 
 interface AddKnowledgeDropdownProps {
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
+  mcpServerViewsWithDataSources: (MCPServerViewType & { label: string })[];
   setAction: (action: AssistantBuilderSetActionType) => void;
 }
 
 function AddKnowledgeDropdown({
   hasFeature,
   setAction,
+  mcpServerViewsWithDataSources,
 }: AddKnowledgeDropdownProps) {
   return (
     <DropdownMenu modal={false}>
@@ -1244,6 +1251,26 @@ function AddKnowledgeDropdown({
               icon={<Avatar icon={spec.dropDownIcon} size="sm" />}
               label={spec.label}
               description={spec.description}
+            />
+          );
+        })}
+        {mcpServerViewsWithDataSources.map((view) => {
+          const action = getDefaultMCPServerActionConfiguration(view);
+          assert(action);
+
+          return (
+            <DropdownMenuItem
+              truncateText
+              key={view.id}
+              onClick={() => {
+                setAction({
+                  type: "pending",
+                  action: { id: uniqueId(), ...action },
+                });
+              }}
+              icon={getAvatar(view.server)}
+              label={view.label}
+              description={view.server.description}
             />
           );
         })}
