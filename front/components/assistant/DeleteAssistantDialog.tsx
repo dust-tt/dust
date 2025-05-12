@@ -66,8 +66,7 @@ export function DeleteAssistantDialog({
                     assistantName: agentConfiguration?.name ?? "",
                   })}
               </span>{" "}
-              This will archive the agent for everyone. You can restore it
-              anytime in the Manage Agents page.
+              This will archive the agent for everyone.
             </div>
           </DialogDescription>
         </DialogHeader>

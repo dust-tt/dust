@@ -63,8 +63,7 @@ export function DeleteAssistantsDialog({
                 {total > 0 &&
                   `These agents have been used ${total} time${pluralize(total)} in the last 30 days.`}
               </span>{" "}
-              This will archive the agents for everyone. You can restore them
-              anytime in the Manage Agents page.
+              This will archive the agents for everyone.
             </div>
           </DialogDescription>
         </DialogHeader>
