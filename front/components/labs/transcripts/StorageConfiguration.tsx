@@ -40,7 +40,7 @@ export function StorageConfiguration({
   isSpacesLoading,
 }: StorageConfigurationProps) {
   const sendNotification = useSendNotification();
-  const updateTranscriptsConfiguration = useUpdateTranscriptsConfiguration({
+  const { doUpdate } = useUpdateTranscriptsConfiguration({
     workspaceId: owner.sId,
     transcriptConfigurationId: transcriptsConfiguration.id,
   });
@@ -78,26 +78,12 @@ export function StorageConfiguration({
       return;
     }
 
-    const response = await updateTranscriptsConfiguration({
+    const response = await doUpdate({
       dataSourceViewId: dataSourceView ? dataSourceView.sId : null,
     });
 
-    if (response.ok) {
-      sendNotification({
-        type: "success",
-        title: "Success!",
-        description: dataSourceView
-          ? "We will now store your meeting transcripts."
-          : "We will no longer store your meeting transcripts.",
-      });
+    if (response.isOk()) {
       await mutateTranscriptsConfiguration();
-    } else {
-      const responseBody = await response.json();
-      sendNotification({
-        type: "error",
-        title: "Failed to update",
-        description: responseBody.error.message,
-      });
     }
   };
 

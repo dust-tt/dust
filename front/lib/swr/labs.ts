@@ -23,6 +23,7 @@ import {
   isOAuthProvider,
   setupOAuthConnection,
 } from "@app/types";
+import { Ok, Err, type Result } from "@app/types/shared/result";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
@@ -102,18 +103,46 @@ export function useUpdateTranscriptsConfiguration({
   workspaceId: string;
   transcriptConfigurationId: number;
 }) {
-  return async (data: Partial<PatchTranscriptsConfiguration>) => {
-    return fetch(
-      `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+  const sendNotification = useSendNotification();
+  const doUpdate = async (
+    data: Partial<PatchTranscriptsConfiguration>
+  ): Promise<Result<undefined, Error>> => {
+    try {
+      const response = await fetch(
+        `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json();
+        sendNotification({
+          type: "error",
+          title: "Failed to update transcript configuration",
+          description: error.error?.message || "Unknown error",
+        });
+        return new Err(new Error(error.error?.message || "Unknown error"));
       }
-    );
+      sendNotification({
+        type: "success",
+        title: "Transcript configuration updated",
+        description: "Transcript configuration updated successfully.",
+      });
+      return new Ok(undefined);
+    } catch (e: any) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update transcript configuration",
+        description: e.message || "Unknown error",
+      });
+      return new Err(e instanceof Error ? e : new Error(String(e)));
+    }
   };
+  return { doUpdate };
 }
 
 export type SalesforceDataSourceWithPersonalConnection = DataSourceType & {
