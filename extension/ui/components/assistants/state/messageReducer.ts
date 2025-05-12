@@ -7,6 +7,8 @@ import type {
   AgentMessagePublicType,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
+  ToolNotificationEvent,
+  ToolNotificationProgress,
 } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
 
