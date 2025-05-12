@@ -98,6 +98,7 @@ async function deleteTableQueryConfigurationForAgent(
  * /!\ Only deletes draft agent configuration if it hasn't been used in any messages.
  */
 async function deleteDraftAgentConfigurationAndRelatedResources(
+  workspace: LightWorkspaceType,
   agent: AgentConfiguration,
   logger: Logger,
   execute: boolean
@@ -110,6 +111,7 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   // Only deletes draft agent configuration without mentions.
   const hasAtLeastOneMention = await Mention.findOne({
     where: {
+      workspaceId: workspace.id,
       agentConfigurationId: agent.sId,
     },
   });
@@ -171,6 +173,7 @@ async function removeDraftAgentConfigurationsForWorkspace(
 
   for (const agent of draftAgents) {
     const isDeleted = await deleteDraftAgentConfigurationAndRelatedResources(
+      workspace,
       agent,
       logger,
       execute

@@ -624,11 +624,19 @@ Mention.init(
     modelName: "mention",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["messageId"],
       },
       {
+        fields: ["workspaceId", "messageId"],
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
+      {
         fields: ["agentConfigurationId", "createdAt"],
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId", "createdAt"],
       },
     ],
   }
