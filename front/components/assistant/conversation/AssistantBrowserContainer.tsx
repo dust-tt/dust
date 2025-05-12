@@ -69,6 +69,7 @@ export function AssistantBrowserContainer({
         isLoading={isLoading}
         handleAssistantClick={handleAssistantClick}
       />
+      <div className="h-8 w-8 shrink-0" />
     </div>
   );
 }

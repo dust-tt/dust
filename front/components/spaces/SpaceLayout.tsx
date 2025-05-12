@@ -102,7 +102,7 @@ export function SpaceLayout({
         />
       }
     >
-      <div className="flex flex-col pt-4">
+      <div className="flex w-full flex-col pt-8">
         <Page.Vertical gap="lg" align="stretch">
           <SpaceSearchInput
             category={category}
@@ -113,6 +113,7 @@ export function SpaceLayout({
             space={space}
             dataSourceView={dataSourceView}
             parentId={parentId}
+            className="maw-w-[860px]"
           >
             {children}
           </SpaceSearchInput>
