@@ -646,11 +646,13 @@ async function processActionSpecification({
 // should not be used outside of api/assistant. We allow a ModelId interface here because for
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
 export async function processActionTypesFromAgentMessageIds(
-  agentMessageIds: ModelId[]
+  auth: Authenticator,
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<ProcessActionType[]> {
   const models = await AgentProcessAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 
