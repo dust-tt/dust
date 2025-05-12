@@ -136,7 +136,7 @@ export function useAgentConfigurations({
     agentConfigurations: data
       ? data.agentConfigurations
       : emptyArray<LightAgentConfigurationType>(),
-    isAgentConfigurationsLoading: !error && !data,
+    isAgentConfigurationsLoading: !error && !data && !disabled,
     isAgentConfigurationsError: error,
     mutate,
     mutateRegardlessOfQueryParams,
