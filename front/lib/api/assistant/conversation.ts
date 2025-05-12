@@ -218,8 +218,7 @@ export async function deleteConversation(
 export async function getConversation(
   auth: Authenticator,
   conversationId: string,
-  includeDeleted: boolean = false,
-  viewType: "light" | "full" = "full"
+  includeDeleted: boolean = false
 ): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -274,12 +273,7 @@ export async function getConversation(
     ],
   });
 
-  const renderRes = await batchRenderMessages(
-    auth,
-    conversation.sId,
-    messages,
-    viewType
-  );
+  const renderRes = await batchRenderMessages(auth, conversation.sId, messages);
 
   if (renderRes.isErr()) {
     return new Err(renderRes.error);

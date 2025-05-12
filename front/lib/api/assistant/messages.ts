@@ -408,7 +408,7 @@ export async function batchRenderMessages(
   auth: Authenticator,
   conversationId: string,
   messages: Message[],
-  viewType: "light" | "full"
+  viewType: "light" | "full" = "full"
 ): Promise<Result<MessageWithRankType[], ConversationError>> {
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),

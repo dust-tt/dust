@@ -33,12 +33,7 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversationRes = await getConversation(
-    auth,
-    conversationId,
-    false,
-    "light"
-  );
+  const conversationRes = await getConversation(auth, conversationId);
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
