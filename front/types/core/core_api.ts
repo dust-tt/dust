@@ -1919,7 +1919,7 @@ export class CoreAPI {
     filter,
   }: {
     tables: Array<[number, string, string]>; // project_id, data_source_id, table_id
-    filter?: CoreAPISearchFilter | null;
+    filter: CoreAPISearchFilter;
   }): Promise<
     CoreAPIResponse<{
       dialect: string;

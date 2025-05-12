@@ -466,7 +466,7 @@ This is an exhaustive list of all supported Salesforce functions:
 export function getGenericDialectInstructions(dialect: string): string {
   return `Provide a valid SQL query that is compatible with ${dialect}.
     Follow these guidelines:
-    - always use the fully qualified table names (DATABASE_NAME.SCHEMA_NAME.TABLE_NAME). Never omit a part of it.chat
+    - always use the fully qualified table names (DATABASE_NAME.SCHEMA_NAME.TABLE_NAME). Never omit a part of it
     - when joining tables in SQL, it's crucial to consider all relevant columns in the join condition.
     - use caution when joining tables to prevent accidental data multiplication. It's usually a good idea to count distinct values when using joins.`;
 }

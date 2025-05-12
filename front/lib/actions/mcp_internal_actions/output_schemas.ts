@@ -132,9 +132,7 @@ export const isResourceWithName = (
 };
 
 export const DatabaseSchemaResourceSchema = z.object({
-  mimeType: z.literal(
-    INTERNAL_MIME_TYPES.TOOL_OUTPUT.TABLES_QUERY_DATABASE_SCHEMA
-  ),
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATABASE_SCHEMA),
   text: z.string(),
   uri: z.string(),
 });
@@ -157,7 +155,7 @@ export const isDatabaseSchemaResourceType = (
 
 export const QueryWritingInstructionsResourceSchema = z.object({
   mimeType: z.literal(
-    INTERNAL_MIME_TYPES.TOOL_OUTPUT.TABLES_QUERY_QUERY_WRITING_INSTRUCTIONS
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.QUERY_WRITING_INSTRUCTIONS
   ),
   text: z.string(),
   uri: z.string(),
@@ -181,9 +179,7 @@ export const isQueryWritingInstructionsResourceType = (
 };
 
 export const ExampleRowsResourceSchema = z.object({
-  mimeType: z.literal(
-    INTERNAL_MIME_TYPES.TOOL_OUTPUT.TABLES_QUERY_EXAMPLE_ROWS
-  ),
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXAMPLE_ROWS),
   text: z.string(),
   uri: z.string(),
 });

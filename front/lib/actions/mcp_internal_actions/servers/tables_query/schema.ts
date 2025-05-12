@@ -15,7 +15,7 @@ export function getSchemaContent(
       type: "resource",
       resource: {
         text: schemas.map((s) => s.dbml).join("\n\n"),
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TABLES_QUERY_DATABASE_SCHEMA,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATABASE_SCHEMA,
         uri: "",
       },
     },
@@ -40,9 +40,7 @@ export function getQueryWritingInstructionsContent(
       type: "resource",
       resource: {
         text: instructions,
-        mimeType:
-          INTERNAL_MIME_TYPES.TOOL_OUTPUT
-            .TABLES_QUERY_QUERY_WRITING_INSTRUCTIONS,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.QUERY_WRITING_INSTRUCTIONS,
         uri: "",
       },
     },
@@ -115,7 +113,7 @@ export function getDatabaseExampleRowsContent(
       type: "resource",
       resource: {
         text,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TABLES_QUERY_EXAMPLE_ROWS,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXAMPLE_ROWS,
         uri: "",
       },
     },
