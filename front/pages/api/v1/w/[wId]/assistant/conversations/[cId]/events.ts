@@ -30,6 +30,12 @@ import type { WithAPIErrorResponse } from "@app/types";
  *         description: ID of the conversation
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: lastEventId
+ *         required: false
+ *         description: ID of the last event
+ *         schema:
+ *           type: string
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -59,6 +65,18 @@ async function handler(
       api_error: {
         type: "conversation_not_found",
         message: "Conversation not found.",
+      },
+    });
+  }
+
+  const lastEventId = req.query.lastEventId || null;
+  if (lastEventId && typeof lastEventId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Invalid query parameters, `lastEventId` should be string if specified.",
       },
     });
   }
@@ -93,7 +111,7 @@ async function handler(
       const eventStream: AsyncGenerator<ConversationEventType> =
         getConversationEvents({
           conversationId: conversation.sId,
-          lastEventId: null,
+          lastEventId,
           signal,
         });
 
