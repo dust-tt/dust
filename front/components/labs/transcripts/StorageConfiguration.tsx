@@ -4,7 +4,6 @@ import {
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
@@ -39,7 +38,6 @@ export function StorageConfiguration({
   spaces,
   isSpacesLoading,
 }: StorageConfigurationProps) {
-  const sendNotification = useSendNotification();
   const { doUpdate } = useUpdateTranscriptsConfiguration({
     workspaceId: owner.sId,
     transcriptConfigurationId: transcriptsConfiguration.id,
