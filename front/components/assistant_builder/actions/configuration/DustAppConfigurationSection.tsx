@@ -11,6 +11,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { sortBy } from "lodash";
+import React from "react";
 import { useContext, useMemo } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
@@ -127,7 +128,7 @@ export function DustAppConfigurationSection({
             return (
               <RadioGroup defaultValue={selectedConfig?.appId || undefined}>
                 {appsInSpace.map((app, idx, arr) => (
-                  <div key={app.sId}>
+                  <React.Fragment key={app.sId}>
                     <RadioGroupCustomItem
                       value={app.sId}
                       id={app.sId}
@@ -136,7 +137,7 @@ export function DustAppConfigurationSection({
                       }
                       iconPosition="start"
                       customItem={
-                        <Label htmlFor={app.sId} className="font-normal">
+                        <Label htmlFor={app.sId} className="w-full font-normal">
                           <Card
                             variant="tertiary"
                             size="sm"
@@ -196,7 +197,7 @@ export function DustAppConfigurationSection({
                       }}
                     />
                     {idx !== arr.length - 1 && <Separator />}
-                  </div>
+                  </React.Fragment>
                 ))}
               </RadioGroup>
             );
