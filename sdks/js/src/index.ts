@@ -735,17 +735,14 @@ export class DustAPI {
     ];
 
     const createRequest = async (lastId?: string | null) => {
-      const params = new URLSearchParams();
+      let path = `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`;
       if (lastId) {
-        params.append("lastEventId", lastId);
+        path += `?lastEventId=${lastId}`;
       }
-
-      const path = `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`;
-      const fullPath = lastId ? `${path}?${params.toString()}` : path;
 
       return this.request({
         method: "GET",
-        path: fullPath,
+        path,
         signal,
       });
     };
