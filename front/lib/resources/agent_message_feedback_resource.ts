@@ -275,6 +275,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     const feedbackForMessages = await Message.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: conversation.id,
         agentMessageId: {
           [Op.ne]: null,

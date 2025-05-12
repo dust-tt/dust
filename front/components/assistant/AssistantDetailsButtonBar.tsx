@@ -1,4 +1,5 @@
 import {
+  BracesIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
@@ -84,7 +85,7 @@ export function AssistantDetailsButtonBar({
                 e.stopPropagation();
                 await navigator.clipboard.writeText(agentConfiguration.sId);
               }}
-              icon={ClipboardIcon}
+              icon={BracesIcon}
             />
             {agentConfiguration.scope !== "global" && (
               <>
@@ -102,7 +103,7 @@ export function AssistantDetailsButtonBar({
                 />
                 {allowDeletion && (
                   <DropdownMenuItem
-                    label="Delete"
+                    label="Archive"
                     icon={TrashIcon}
                     onClick={() => {
                       setShowDeletionModal(true);

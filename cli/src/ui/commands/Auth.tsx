@@ -1,14 +1,16 @@
-import React, { FC, useCallback, useEffect, useState } from "react";
+import type { MeResponseType } from "@dust-tt/client";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
+import { jwtDecode } from "jwt-decode";
 import fetch from "node-fetch";
 import open from "open";
-import { jwtDecode } from "jwt-decode";
-import TokenStorage from "../../utils/tokenStorage.js";
+import type { FC} from "react";
+import React, { useCallback, useEffect, useState } from "react";
+
 import { getDustClient, resetDustClient } from "../../utils/dustClient.js";
-import WorkspaceSelector from "../components/WorkspaceSelector.js";
-import { MeResponseType } from "@dust-tt/client";
 import { normalizeError } from "../../utils/errors.js";
+import TokenStorage from "../../utils/tokenStorage.js";
+import WorkspaceSelector from "../components/WorkspaceSelector.js";
 
 interface DeviceCodeResponse {
   device_code: string;
@@ -57,7 +59,110 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
   const scope =
     "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
 
-  const startDeviceFlow = async () => {
+  const startPolling = useCallback(
+    (deviceCodeData: DeviceCodeResponse) => {
+      setIsPolling(true);
+
+      const pollInterval = deviceCodeData.interval;
+      const expiresIn = deviceCodeData.expires_in;
+      const maxAttempts = Math.floor(expiresIn / pollInterval);
+
+      let attempts = 0;
+
+      const pollForToken = async () => {
+        if (attempts >= maxAttempts) {
+          setIsPolling(false);
+          setError("Authentication timed out. Please try again.");
+          return;
+        }
+
+        try {
+          const response = await fetch(`https://${auth0Domain}/oauth/token`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+              device_code: deviceCodeData.device_code,
+              client_id: clientId,
+            }),
+          });
+
+          const data = (await response.json()) as
+            | TokenResponse
+            | TokenErrorResponse;
+
+          if ("error" in data) {
+            if (data.error === "authorization_pending") {
+              attempts++;
+              setTimeout(pollForToken, pollInterval * 1000);
+            } else if (data.error === "slow_down") {
+              attempts++;
+              setTimeout(pollForToken, (pollInterval + 5) * 1000);
+            } else {
+              // An actual error occurred
+              setIsPolling(false);
+              setError(
+                `Authentication error: ${data.error_description || data.error}`
+              );
+            }
+          } else {
+            // Store tokens in secure storage
+            await TokenStorage.saveTokens(
+              data.access_token,
+              data.refresh_token
+            );
+
+            // Decode the access token to get the region
+            try {
+              const decodedToken = jwtDecode<DecodedAccessToken>(
+                data.access_token
+              );
+              // Construct the claim name dynamically
+              const claimNamespace = process.env.AUTH0_CLAIM_NAMESPACE || ""; // Use env var with fallback
+              const regionClaimName = `${claimNamespace}region`;
+
+              // Use the specific claim namespace from Auth0
+              const region = decodedToken[regionClaimName];
+              if (region) {
+                // Save the exact region value (e.g., 'us-central1', 'europe-west1')
+                await TokenStorage.saveRegion(region);
+              } else {
+                // Default to a standard value if region is not found in token
+                console.warn(
+                  `Region claim ('${regionClaimName}') not found in token, defaulting to 'us-central1'.`
+                );
+                // Store a default value like 'us-central1' consistent with extension logic if needed
+                await TokenStorage.saveRegion("us-central1");
+              }
+            } catch (decodeError) {
+              console.error("Failed to decode access token:", decodeError);
+              // Save default region on error
+              await TokenStorage.saveRegion("us-central1");
+              setError(
+                "Authentication succeeded, but failed to process user region."
+              );
+            }
+
+            resetDustClient();
+
+            setIsPolling(false);
+
+            setShowWorkspaceSelector(true);
+          }
+        } catch (err) {
+          setIsPolling(false);
+          setError(normalizeError(err).message);
+        }
+      };
+
+      setTimeout(pollForToken, pollInterval * 1000);
+    },
+    [clientId, auth0Domain]
+  );
+
+  const startDeviceFlow = useCallback(async () => {
     // First check if we already have valid tokens, skip this if force flag is true
     if (!force) {
       const hasValidToken = await TokenStorage.hasValidAccessToken();
@@ -117,104 +222,7 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
 
     // Start polling for the token
     startPolling(data);
-  };
-
-  const startPolling = (deviceCodeData: DeviceCodeResponse) => {
-    setIsPolling(true);
-
-    const pollInterval = deviceCodeData.interval;
-    const expiresIn = deviceCodeData.expires_in;
-    const maxAttempts = Math.floor(expiresIn / pollInterval);
-
-    let attempts = 0;
-
-    const pollForToken = async () => {
-      if (attempts >= maxAttempts) {
-        setIsPolling(false);
-        setError("Authentication timed out. Please try again.");
-        return;
-      }
-
-      try {
-        const response = await fetch(`https://${auth0Domain}/oauth/token`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({
-            grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-            device_code: deviceCodeData.device_code,
-            client_id: clientId,
-          }),
-        });
-
-        const data = (await response.json()) as
-          | TokenResponse
-          | TokenErrorResponse;
-
-        if ("error" in data) {
-          if (data.error === "authorization_pending") {
-            attempts++;
-            setTimeout(pollForToken, pollInterval * 1000);
-          } else if (data.error === "slow_down") {
-            attempts++;
-            setTimeout(pollForToken, (pollInterval + 5) * 1000);
-          } else {
-            // An actual error occurred
-            setIsPolling(false);
-            setError(
-              `Authentication error: ${data.error_description || data.error}`
-            );
-          }
-        } else {
-          // Store tokens in secure storage
-          await TokenStorage.saveTokens(data.access_token, data.refresh_token);
-
-          // Decode the access token to get the region
-          try {
-            const decodedToken = jwtDecode<DecodedAccessToken>(
-              data.access_token
-            );
-            // Construct the claim name dynamically
-            const claimNamespace = process.env.AUTH0_CLAIM_NAMESPACE || ""; // Use env var with fallback
-            const regionClaimName = `${claimNamespace}region`;
-
-            // Use the specific claim namespace from Auth0
-            const region = decodedToken[regionClaimName];
-            if (region) {
-              // Save the exact region value (e.g., 'us-central1', 'europe-west1')
-              await TokenStorage.saveRegion(region);
-            } else {
-              // Default to a standard value if region is not found in token
-              console.warn(
-                `Region claim ('${regionClaimName}') not found in token, defaulting to 'us-central1'.`
-              );
-              // Store a default value like 'us-central1' consistent with extension logic if needed
-              await TokenStorage.saveRegion("us-central1");
-            }
-          } catch (decodeError) {
-            console.error("Failed to decode access token:", decodeError);
-            // Save default region on error
-            await TokenStorage.saveRegion("us-central1");
-            setError(
-              "Authentication succeeded, but failed to process user region."
-            );
-          }
-
-          resetDustClient();
-
-          setIsPolling(false);
-
-          setShowWorkspaceSelector(true);
-        }
-      } catch (err) {
-        setIsPolling(false);
-        setError(normalizeError(err).message);
-      }
-    };
-
-    setTimeout(pollForToken, pollInterval * 1000);
-  };
+  }, [force, clientId, auth0Domain, audience, scope, startPolling]);
 
   const handleWorkspaceSelectionComplete = useCallback(async () => {
     setShowWorkspaceSelector(false);
@@ -238,8 +246,8 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
   }, []);
 
   useEffect(() => {
-    startDeviceFlow();
-  }, []);
+    void startDeviceFlow();
+  }, [startDeviceFlow]);
 
   if (error) {
     return (

@@ -26,17 +26,17 @@ export type WithStakeLevelType<T> = T & {
   stakeLevel: MCPToolStakeLevelType;
 };
 
-export type PlatformMCPToolTypeWithStakeLevel =
+export type ServerSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType> & {
     toolServerId: string;
   };
 
-export type LocalMCPToolTypeWithStakeLevel =
+export type ClientSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType>;
 
 export type MCPToolWithStakeLevelType =
-  | PlatformMCPToolTypeWithStakeLevel
-  | LocalMCPToolTypeWithStakeLevel;
+  | ServerSideMCPToolTypeWithStakeLevel
+  | ClientSideMCPToolTypeWithStakeLevel;
 
 export type MCPServerType = {
   id: string;
@@ -85,8 +85,3 @@ export type InternalMCPServerDefinitionType = Omit<
 export type MCPServerTypeWithViews = MCPServerType & {
   views: MCPServerViewType[];
 };
-
-// TODO(MCP2025-04-30) Temporary token to identify MCP progress notifications.
-// As of now `progressToken` is not accessible in the `ToolCallback` interface. PR has been merged,
-// but not released yet (https://github.com/modelcontextprotocol/typescript-sdk/pull/328).
-export const MCP_PROGRESS_TOKEN = 0;

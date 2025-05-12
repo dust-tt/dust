@@ -8,6 +8,7 @@ import type {
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
 import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
@@ -28,7 +29,7 @@ import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
-  AgentLoopContextType,
+  AgentLoopRunContextType,
   BaseActionRunParams,
   ExtractActionBlob,
 } from "@app/lib/actions/types";
@@ -40,7 +41,7 @@ import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
-import { isPlatformMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import {
   processAndStoreFromUrl,
@@ -90,8 +91,8 @@ export type BaseMCPServerConfigurationType = {
   description: string | null;
 };
 
-// Platform = Remote MCP Server OR our own MCP server.
-export type PlatformMCPServerConfigurationType =
+// Server-side MCP server = Remote MCP Server OR our own MCP server.
+export type ServerSideMCPServerConfigurationType =
   BaseMCPServerConfigurationType & {
     dataSources: DataSourceConfiguration[] | null;
     tables: TableDataSourceConfiguration[] | null;
@@ -100,19 +101,21 @@ export type PlatformMCPServerConfigurationType =
     timeFrame: TimeFrame | null;
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
+    dustAppConfiguration: DustAppRunConfigurationType | null;
     internalMCPServerId: string | null; // As convenience, hold the sId of the internal server if it is an internal server.
   };
 
-export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType & {
-  localMcpServerId: string;
-};
+export type ClientSideMCPServerConfigurationType =
+  BaseMCPServerConfigurationType & {
+    clientSideMcpServerId: string;
+  };
 
 export type MCPServerConfigurationType =
-  | PlatformMCPServerConfigurationType
-  | LocalMCPServerConfigurationType;
+  | ServerSideMCPServerConfigurationType
+  | ClientSideMCPServerConfigurationType;
 
-export type PlatformMCPToolType = Omit<
-  PlatformMCPServerConfigurationType,
+export type ServerSideMCPToolType = Omit<
+  ServerSideMCPServerConfigurationType,
   "type"
 > & {
   type: "mcp_configuration";
@@ -122,7 +125,10 @@ export type PlatformMCPToolType = Omit<
   toolServerId: string;
 };
 
-export type LocalMCPToolType = Omit<LocalMCPServerConfigurationType, "type"> & {
+export type ClientSideMCPToolType = Omit<
+  ClientSideMCPServerConfigurationType,
+  "type"
+> & {
   type: "mcp_configuration";
   inputSchema: JSONSchema;
 };
@@ -132,15 +138,15 @@ type WithToolNameMetadata<T> = T & {
   mcpServerName: string;
 };
 
-export type PlatformMCPToolConfigurationType =
-  WithToolNameMetadata<PlatformMCPToolType>;
+export type ServerSideMCPToolConfigurationType =
+  WithToolNameMetadata<ServerSideMCPToolType>;
 
-export type LocalMCPToolConfigurationType =
-  WithToolNameMetadata<LocalMCPToolType>;
+export type ClientSideMCPToolConfigurationType =
+  WithToolNameMetadata<ClientSideMCPToolType>;
 
 export type MCPToolConfigurationType =
-  | PlatformMCPToolConfigurationType
-  | LocalMCPToolConfigurationType;
+  | ServerSideMCPToolConfigurationType
+  | ClientSideMCPToolConfigurationType;
 
 type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
@@ -467,7 +473,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         action: mcpAction,
         inputs: rawInputs,
-        stake: isPlatformMCPToolConfiguration(actionConfiguration)
+        stake: isServerSideMCPToolConfiguration(actionConfiguration)
           ? actionConfiguration.permission
           : FALLBACK_MCP_TOOL_STAKE_LEVEL,
         metadata: {
@@ -497,7 +503,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             data.type === "always_approved" &&
             data.actionId === mcpAction.id
           ) {
-            assert(isPlatformMCPToolConfiguration(actionConfiguration));
+            assert(isServerSideMCPToolConfiguration(actionConfiguration));
             const user = auth.getNonNullableUser();
             await user.appendToMetadata(
               `toolsValidations:${actionConfiguration.toolServerId}`,
@@ -578,7 +584,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       actionConfiguration,
     });
 
-    const agentLoopContext: AgentLoopContextType = {
+    const agentLoopRunContext: AgentLoopRunContextType = {
       actionConfiguration,
       agentConfiguration,
       conversation,
@@ -592,7 +598,14 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       MCPToolResultContentType[],
       Error | McpError
     > | null = null;
-    for await (const event of tryCallMCPTool(auth, inputs, agentLoopContext)) {
+    for await (const event of tryCallMCPTool(
+      auth,
+      inputs,
+      agentLoopRunContext,
+      {
+        progressToken: action.id,
+      }
+    )) {
       if (event.type === "result") {
         toolCallResult = event.result;
       } else if (event.type === "notification") {

@@ -3,11 +3,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   getMCPServerResultsChannelId,
-  parseLocalMCPRequestId,
-} from "@app/lib/api/actions/mcp_local";
+  parseClientSideMCPRequestId,
+} from "@app/lib/api/actions/mcp_client_side";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
@@ -71,7 +71,7 @@ async function handler(
     });
   }
 
-  const parsed = parseLocalMCPRequestId(r.right.requestId);
+  const parsed = parseClientSideMCPRequestId(r.right.requestId);
   if (!parsed) {
     return apiError(req, res, {
       status_code: 400,
@@ -108,12 +108,12 @@ async function handler(
 
   // Publish MCP action results.
   await publishEvent({
-    origin: "mcp_local_results",
+    origin: "mcp_client_side_results",
     channel: getMCPServerResultsChannelId(auth, {
       mcpServerId: serverId,
     }),
     event: JSON.stringify({
-      type: "mcp_local_results",
+      type: "mcp_client_side_results",
       messageId,
       result: r.right.result,
     }),

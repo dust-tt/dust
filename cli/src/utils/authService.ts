@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
-import TokenStorage from "./tokenStorage.js";
+
 import { resetDustClient } from "./dustClient.js";
+import TokenStorage from "./tokenStorage.js";
 
 interface RefreshTokenResponse {
   access_token: string;
@@ -73,7 +74,7 @@ export const AuthService = {
       }
     }
 
-    return await TokenStorage.getAccessToken();
+    return TokenStorage.getAccessToken();
   },
 
   /**

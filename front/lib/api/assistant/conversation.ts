@@ -155,15 +155,14 @@ export async function createConversation(
   };
 }
 
-export async function updateConversation(
+export async function updateConversationTitle(
   auth: Authenticator,
-  conversationId: string,
   {
+    conversationId,
     title,
-    visibility,
   }: {
-    title: string | null;
-    visibility: ConversationVisibility;
+    conversationId: string;
+    title: string;
   }
 ): Promise<Result<ConversationType, ConversationError>> {
   const conversation = await ConversationResource.fetchById(
@@ -172,10 +171,10 @@ export async function updateConversation(
   );
 
   if (!conversation) {
-    throw new Error(`Conversation ${conversationId} not found`);
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
-  await conversation.updateVisiblity(visibility, title);
+  await conversation.updateTitle(title);
 
   return getConversation(auth, conversationId);
 }
@@ -210,7 +209,7 @@ export async function deleteConversation(
   if (destroy) {
     await conversation.delete(auth);
   } else {
-    await conversation.updateVisiblity("deleted");
+    await conversation.updateVisibilityToDeleted();
   }
   return new Ok({ success: true });
 }
@@ -239,6 +238,7 @@ export async function getConversation(
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
+      workspaceId: owner.id,
     },
     order: [
       ["rank", "ASC"],
@@ -320,6 +320,7 @@ export async function getConversationMessageType(
     where: {
       conversationId: conversation.id,
       sId: messageId,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 
@@ -610,6 +611,8 @@ async function getConversationRankVersionLock(
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
   const hash = md5(`conversation_message_rank_version_${conversation.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
+  // OK because we need to setup a lock
+  // eslint-disable-next-line dust/no-raw-sql
   await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
     replacements: { key: lockKey },
@@ -820,7 +823,8 @@ export async function* postUserMessage(
               await UserMessage.create(
                 {
                   content,
-                  localMCPServerIds: context.localMCPServerIds ?? [],
+                  // TODO(MCP Clean-up): Rename field in DB.
+                  clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
                   userContextUsername: context.username,
                   userContextTimezone: context.timezone,
                   userContextFullName: context.fullName,
@@ -1316,8 +1320,8 @@ export async function* editUserMessage(
               await UserMessage.create(
                 {
                   content,
-                  // No support for local MCP servers when editing/retrying a user message.
-                  localMCPServerIds: [],
+                  // No support for client-side MCP servers when editing/retrying a user message.
+                  clientSideMCPServerIds: [],
                   userContextUsername: userMessageRow.userContextUsername,
                   userContextTimezone: userMessageRow.userContextTimezone,
                   userContextFullName: userMessageRow.userContextFullName,

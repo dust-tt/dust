@@ -8,6 +8,7 @@ import {
   PlusIcon,
   RobotIcon,
   SearchInput,
+  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -78,9 +79,9 @@ export const AGENT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents
   {
     id: "all_custom",
-    label: "All custom agents",
+    label: "All",
     icon: RobotIcon,
-    description: "All agents.",
+    description: "All custom agents.",
   },
   {
     id: "editable_by_me",
@@ -187,19 +188,22 @@ export default function WorkspaceAssistants({
   const {
     agentConfigurations,
     mutateRegardlessOfQueryParams: mutateAgentConfigurations,
+    isAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "manage",
     includes: ["authors", "usage", "feedbacks"],
   });
 
-  const { agentConfigurations: archivedAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "archived",
-      includes: ["usage", "feedbacks"],
-      disabled: !hasAgentDiscovery || selectedTab !== "archived",
-    });
+  const {
+    agentConfigurations: archivedAgentConfigurations,
+    isAgentConfigurationsLoading: isArchivedAgentConfigurationsLoading,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "archived",
+    includes: ["usage", "feedbacks"],
+    disabled: !hasAgentDiscovery || selectedTab !== "archived",
+  });
 
   const agentsByTab = useMemo(() => {
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
@@ -328,6 +332,8 @@ export default function WorkspaceAssistants({
         subscription={subscription}
         owner={owner}
         navChildren={<AssistantSidebarMenu owner={owner} />}
+        hasTopPadding={false}
+        isWideMode
       >
         <AssistantDetails
           owner={owner}
@@ -335,7 +341,7 @@ export default function WorkspaceAssistants({
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
         />
-        <Page.Vertical gap="xl" align="stretch">
+        <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
           <Page.Header title="Manage Agents" icon={RobotIcon} />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-row gap-2">
@@ -396,11 +402,19 @@ export default function WorkspaceAssistants({
                         AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                           ?.description
                       }
+                      icon={
+                        AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
+                      }
                     />
                   ))}
                 </TabsList>
               </Tabs>
-              {activeTab && agentsByTab[activeTab] ? (
+              {isAgentConfigurationsLoading ||
+              isArchivedAgentConfigurationsLoading ? (
+                <div className="mt-8 flex justify-center">
+                  <Spinner size="lg" />
+                </div>
+              ) : activeTab && agentsByTab[activeTab] ? (
                 <AssistantsTable
                   owner={owner}
                   agents={agentsByTab[activeTab]}
@@ -429,7 +443,7 @@ export default function WorkspaceAssistants({
               )}
             </div>
           </Page.Vertical>
-        </Page.Vertical>
+        </div>
       </AppContentLayout>
     </ConversationsNavigationProvider>
   );

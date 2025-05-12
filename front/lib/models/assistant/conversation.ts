@@ -145,7 +145,9 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
 
   declare content: string;
 
-  declare localMCPServerIds: string[];
+  // TODO(MCP Clean-up): Remove these once we have migrated to the new MCP server ids.
+  declare localMCPServerIds?: string[];
+  declare clientSideMCPServerIds: string[];
 
   declare userContextUsername: string;
   declare userContextTimezone: string;
@@ -173,7 +175,13 @@ UserMessage.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    // TODO(MCP Clean-up): Remove these once we have migrated to the new MCP server ids.
     localMCPServerIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
+    },
+    clientSideMCPServerIds: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: false,
       defaultValue: [],
@@ -450,6 +458,12 @@ Message.init(
       {
         fields: ["parentId"],
         concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "conversationId"],
+      },
+      {
+        fields: ["workspaceId", "conversationId", "sId"],
       },
     ],
     hooks: {

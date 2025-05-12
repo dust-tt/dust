@@ -17,6 +17,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -143,6 +144,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   reasoningModel: ReasoningModelConfiguration | null;
   timeFrame: TimeFrame | null;
   additionalConfiguration: Record<string, boolean | number | string>;
+  dustAppConfiguration: DustAppRunConfigurationType | null;
 };
 
 // Builder State
@@ -443,6 +445,7 @@ export function getDefaultMCPServerActionConfiguration(
       reasoningModel: null,
       timeFrame: null,
       additionalConfiguration: {},
+      dustAppConfiguration: null,
     },
     name: mcpServerView?.server.name ?? "",
     description:

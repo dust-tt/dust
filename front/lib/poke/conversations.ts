@@ -123,7 +123,10 @@ export async function getPokeConversation(
                   }
                   case "dust_app_run_action": {
                     const runAction = await AgentDustAppRunAction.findOne({
-                      where: { id: a.id },
+                      where: {
+                        id: a.id,
+                        workspaceId: auth.getNonNullableWorkspace().id,
+                      },
                       attributes: ["runId", "appWorkspaceId", "appId"],
                       raw: true,
                     });

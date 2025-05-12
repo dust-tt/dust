@@ -147,7 +147,13 @@ export {
   TooltipRoot,
   TooltipTrigger,
 } from "./Tooltip";
-export { TourGuide } from "./TourGuide";
+export {
+  TourGuide,
+  TourGuideCard,
+  TourGuideCardContent,
+  TourGuideCardTitle,
+  TourGuideCardVisual,
+} from "./TourGuide";
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
 export { ValueCard } from "./ValueCard";

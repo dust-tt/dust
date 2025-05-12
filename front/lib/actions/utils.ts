@@ -22,8 +22,8 @@ import {
   isMCPInternalInclude,
   isMCPInternalSearch,
   isMCPInternalWebsearch,
-  isPlatformMCPToolConfiguration,
   isRetrievalConfiguration,
+  isServerSideMCPToolConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
@@ -238,7 +238,7 @@ export function getCitationsCount({
       return 0;
     case "mcp_configuration":
       if (
-        isPlatformMCPToolConfiguration(action) &&
+        isServerSideMCPToolConfiguration(action) &&
         isInternalMCPServerOfName(
           action.internalMCPServerId,
           "web_search_&_browse_v2"
@@ -310,7 +310,7 @@ export async function getExecutionStatusFromConfig(
   status: "allowed_implicitly" | "pending";
   serverId?: string;
 }> {
-  if (!isPlatformMCPToolConfiguration(actionConfiguration)) {
+  if (!isServerSideMCPToolConfiguration(actionConfiguration)) {
     return { status: "pending" };
   }
 

@@ -9,9 +9,8 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runReasoning } from "@app/lib/actions/reasoning";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import { MCP_PROGRESS_TOKEN } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { isModelId, isModelProviderId, isReasoningEffortId } from "@app/types";
 
@@ -26,7 +25,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  agentLoopRunContext?: AgentLoopRunContextType
 ): McpServer {
   const server = new McpServer(serverInfo);
 
@@ -41,10 +40,10 @@ function createServer(
     },
     async (
       { model: { modelId, providerId, temperature, reasoningEffort } },
-      { sendNotification }
+      { sendNotification, _meta }
     ) => {
-      if (!agentLoopContext) {
-        throw new Error("Unreachable: missing agentLoopContext.");
+      if (!agentLoopRunContext) {
+        throw new Error("Unreachable: missing agentLoopRunContext.");
       }
 
       if (
@@ -61,7 +60,7 @@ function createServer(
       };
 
       const { conversation, agentConfiguration, agentMessage } =
-        agentLoopContext;
+        agentLoopRunContext;
 
       for await (const event of runReasoning(auth, {
         reasoningModel: { modelId, providerId, temperature, reasoningEffort },
@@ -87,23 +86,25 @@ function createServer(
               actionOutput.content += text;
             }
 
-            const notification: MCPProgressNotificationType = {
-              method: "notifications/progress",
-              params: {
-                progress: 0,
-                total: 1,
-                progressToken: MCP_PROGRESS_TOKEN,
-                data: {
-                  label: "Thinking...",
-                  output: {
-                    type: "text",
-                    text,
+            if (_meta?.progressToken) {
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: _meta?.progressToken,
+                  data: {
+                    label: "Thinking...",
+                    output: {
+                      type: "text",
+                      text,
+                    },
                   },
                 },
-              },
-            };
+              };
 
-            await sendNotification(notification);
+              await sendNotification(notification);
+            }
 
             break;
           }

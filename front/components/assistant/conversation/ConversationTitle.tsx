@@ -77,10 +77,7 @@ export function ConversationTitle({
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              title,
-              visibility: conversation?.visibility,
-            }),
+            body: JSON.stringify({ title }),
           }
         );
         await mutate(

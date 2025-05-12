@@ -1054,7 +1054,7 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
-  localMCPServerIds: z.array(z.string()).optional().nullable(),
+  clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -1333,21 +1333,29 @@ const NotificationContentSchema = z.union([
   NotificationTextContentSchema,
 ]);
 
-const MCPNotificationEventSchema = z.object({
+const ToolNotificationProgressSchema = z.object({
+  progress: z.number(),
+  total: z.number(),
+  data: z.object({
+    label: z.string(),
+    output: NotificationContentSchema.optional(),
+  }),
+});
+
+export type ToolNotificationProgress = z.infer<
+  typeof ToolNotificationProgressSchema
+>;
+
+const ToolNotificationEventSchema = z.object({
   type: z.literal("tool_notification"),
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
   action: MCPActionTypeSchema,
-  notification: z.object({
-    progress: z.number(),
-    total: z.number(),
-    data: z.object({
-      label: z.string(),
-      output: NotificationContentSchema.optional(),
-    }),
-  }),
+  notification: ToolNotificationProgressSchema,
 });
+
+export type ToolNotificationEvent = z.infer<typeof ToolNotificationEventSchema>;
 
 const MCPValidationMetadataSchema = z.object({
   mcpServerName: z.string(),
@@ -1398,7 +1406,7 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryStartedEventSchema,
   WebsearchParamsEventSchema,
   MCPParamsEventSchema,
-  MCPNotificationEventSchema,
+  ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
@@ -1952,7 +1960,7 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       })
     ),
     context: UserMessageContextSchema.extend({
-      localMCPServerIds: z.array(z.string()).optional().nullable(),
+      clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
   }),
   z
@@ -2919,7 +2927,13 @@ export type PostMCPResultsResponseType = z.infer<
   typeof PostMCPResultsResponseSchema
 >;
 
-const MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export type RemoteMCPToolStakeLevelPublicType =
+  (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
+const MCP_TOOL_STAKE_LEVELS = [
+  ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "never_ask",
+] as const;
 export type MCPToolStakeLevelPublicType =
   (typeof MCP_TOOL_STAKE_LEVELS)[number];
 

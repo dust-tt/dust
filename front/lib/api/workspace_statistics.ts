@@ -7,9 +7,13 @@ import { Err, maxFileSizeToHumanReadable, Ok, removeNulls } from "@app/types";
 
 const DATA_SOURCE_STATISTICS_CONCURRENCY = 10;
 
+type HumanReadableStats<Stats> = Omit<Stats, "text_size"> & {
+  text_size: string;
+};
+
 interface DataSourceStatistics {
   name: string;
-  text_size: string;
+  text_size: number;
   document_count: number;
 }
 
@@ -25,8 +29,11 @@ interface WorkspaceStats {
   text_size: number;
 }
 
-type HumanReadableWorkspaceStats = Omit<WorkspaceStats, "text_size"> & {
-  text_size: string;
+type HumanReadableWorkspaceStats = Omit<
+  HumanReadableStats<WorkspaceStats>,
+  "dataSources"
+> & {
+  dataSources: HumanReadableStats<DataSourceStatistics>[];
 };
 
 export async function computeWorkspaceStatistics(
@@ -78,7 +85,7 @@ export async function computeWorkspaceStatistics(
           ...acc.dataSources,
           {
             name,
-            text_size: maxFileSizeToHumanReadable(text_size, 2),
+            text_size,
             document_count,
           },
         ],
@@ -87,8 +94,17 @@ export async function computeWorkspaceStatistics(
     { text_size: 0, document_count: 0, dataSources: [] }
   );
 
+  // Show the largest data sources first.
+  stats.dataSources.sort(
+    (dataSourceA, dataSourceB) => dataSourceB.text_size - dataSourceA.text_size
+  );
+
   return new Ok({
-    ...stats,
     text_size: maxFileSizeToHumanReadable(stats.text_size, 2),
+    document_count: stats.document_count,
+    dataSources: stats.dataSources.map((dataSource) => ({
+      ...dataSource,
+      text_size: maxFileSizeToHumanReadable(dataSource.text_size, 2),
+    })),
   });
 }

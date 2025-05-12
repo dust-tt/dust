@@ -42,7 +42,7 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import {
-  MentionBlock,
+  getMentionPlugin,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import {
@@ -452,7 +452,7 @@ export function AgentMessage({
         message.sId
       ),
       sup: CiteBlock,
-      mention: MentionBlock,
+      mention: getMentionPlugin(owner),
     }),
     [owner, conversationId, message.sId, agentConfiguration.sId]
   );
