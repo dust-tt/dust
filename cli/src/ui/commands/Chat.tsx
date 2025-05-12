@@ -5,11 +5,12 @@ import type {
 import { Box, Text, useInput, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import open from "open";
-import type { FC} from "react";
+import type { FC } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
+import { normalizeError } from "../../utils/errors.js";
 import { useMe } from "../../utils/hooks/use_me.js";
 import AgentSelector from "../components/AgentSelector.js";
 
@@ -56,7 +57,9 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
   const handleSubmitQuestion = useCallback(
     async (questionText: string) => {
-      if (!selectedAgent || !me || meError || isMeLoading) {return;}
+      if (!selectedAgent || !me || meError || isMeLoading) {
+        return;
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -273,9 +276,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           return;
         }
 
-        setError(
-          `Error: ${error instanceof Error ? error.message : String(error)}`
-        );
+        setError(`Error: ${normalizeError(error).message}`);
 
         // Update or remove the streaming message
         setMessages((prev) => {
@@ -292,9 +293,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
               // No content was streamed, add an error message
               newMessages[newMessages.length - 1] = {
                 type: "assistant",
-                content: `Error: ${
-                  error instanceof Error ? error.message : String(error)
-                }`,
+                content: `Error: ${normalizeError(error).message}`,
                 chainOfThought: "",
                 isStreaming: false,
               };
@@ -385,7 +384,9 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       }
 
       // Only allow submission if not processing, "me" is loaded and user input is not empty
-      if (!canSubmit) {return;}
+      if (!canSubmit) {
+        return;
+      }
 
       void handleSubmitQuestion(userInput);
       setUserInput("");
