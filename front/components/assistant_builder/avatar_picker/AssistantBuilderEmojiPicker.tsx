@@ -109,7 +109,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
           <PopoverTrigger asChild>
             <Button variant="outline" icon={PaintIcon} label="Pick a color" />
           </PopoverTrigger>
-          <PopoverContent mountPortal={false} fullWidth>
+          <PopoverContent mountPortal={false} className="w-fit">
             <ColorPicker
               selectedColor={selectedBgColor}
               colors={
