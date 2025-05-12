@@ -777,9 +777,11 @@ export class DustAPI {
           if (event.type === "event") {
             if (event.data) {
               try {
-                const data = JSON.parse(event.data).data;
-                lastEventId = data.eventId;
-                pendingEvents.push(data);
+                const eventData = JSON.parse(event.data);
+                if (eventData.eventId) {
+                  lastEventId = eventData.eventId;
+                }
+                pendingEvents.push(eventData.data);
               } catch (err) {
                 logger.error(
                   { error: err },
