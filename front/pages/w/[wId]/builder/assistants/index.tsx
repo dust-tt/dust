@@ -372,7 +372,7 @@ export default function WorkspaceAssistants({
               />
               {!isBatchEdit && (
                 <div className="flex gap-2">
-                  {isAdmin(owner) && (
+                  {hasAgentDiscovery && isAdmin(owner) && (
                     <Button
                       variant="outline"
                       icon={PencilSquareIcon}
