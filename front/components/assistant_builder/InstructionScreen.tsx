@@ -292,7 +292,7 @@ export function InstructionScreen({
             {agentConfigurationHistory &&
               agentConfigurationHistory.length > 1 && (
                 <InstructionHistory
-                  history={agentConfigurationHistory.slice(1)}
+                  history={agentConfigurationHistory}
                   currentInstructions={builderState.instructions || ""}
                   selectedConfig={compareVersion}
                   onSelect={(config) => {
