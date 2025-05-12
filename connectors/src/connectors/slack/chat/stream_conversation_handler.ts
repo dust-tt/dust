@@ -18,14 +18,9 @@ import {
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
-import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-
-// Copied from front/hooks/useEventSource.ts
-const RECONNECT_DELAY = 5000; // 5 seconds.
-const MAX_RECONNECT_ATTEMPTS = 10;
 
 interface StreamConversationToSlackParams {
   assistantName: string;
@@ -52,8 +47,7 @@ export async function streamConversationToSlack(
   dustAPI: DustAPI,
   conversationData: StreamConversationToSlackParams
 ): Promise<Result<undefined, Error>> {
-  const { assistantName, connector, conversation, agentConfigurations } =
-    conversationData;
+  const { assistantName, agentConfigurations } = conversationData;
 
   // Immediately post the conversation URL once available.
   await postSlackMessageUpdate(
@@ -69,31 +63,7 @@ export async function streamConversationToSlack(
     { adhereToRateLimit: false }
   );
 
-  let streamRes: Result<undefined, Error>;
-  let reconnectAttempts = 0;
-  do {
-    streamRes = await streamAgentAnswerToSlack(dustAPI, conversationData);
-
-    if (
-      streamRes.isErr() &&
-      streamRes.error instanceof SlackAnswerRetryableError
-    ) {
-      logger.warn(
-        {
-          connectorId: connector.id,
-          conversationId: conversation.sId,
-          error: streamRes.error,
-        },
-        "Retryable error in Slack answer stream."
-      );
-      await setTimeoutAsync(RECONNECT_DELAY);
-      reconnectAttempts++;
-    } else {
-      return streamRes;
-    }
-  } while (reconnectAttempts < MAX_RECONNECT_ATTEMPTS);
-
-  return streamRes;
+  return streamAgentAnswerToSlack(dustAPI, conversationData);
 }
 
 class SlackAnswerRetryableError extends Error {
@@ -184,13 +154,6 @@ async function streamAgentAnswerToSlack(
             `Agent message error: code: ${event.error.code} message: ${event.error.message}`
           )
         );
-      }
-      case "error": {
-        const message = `Error: code: ${event.content.code} message: ${event.content.message}`;
-        if (event.content.code === "stream_error") {
-          return new Err(new SlackAnswerRetryableError(message));
-        }
-        return new Err(new Error(message));
       }
 
       case "agent_action_success": {

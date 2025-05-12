@@ -92,6 +92,18 @@ interface DustResponse {
   body: Readable | string;
 }
 
+// Copied from front/hooks/useEventSource.ts
+const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
+const DEFAULT_RECONNECT_DELAY = 5000;
+
+type AgentEvent =
+  | UserMessageErrorEvent
+  | AgentErrorEvent
+  | AgentActionSuccessEvent
+  | GenerationTokensEvent
+  | AgentMessageSuccessEvent
+  | AgentActionSpecificEvent;
+
 const textFromResponse = async (response: DustResponse): Promise<string> => {
   if (typeof response.body === "string") {
     return response.body;
@@ -640,12 +652,28 @@ export class DustAPI {
     conversation,
     userMessageId,
     signal,
+    options = {
+      maxReconnectAttempts: DEFAULT_MAX_RECONNECT_ATTEMPTS,
+      reconnectDelay: DEFAULT_RECONNECT_DELAY,
+      autoReconnect: true,
+    },
   }: {
     conversation: ConversationPublicType;
     userMessageId: string;
     signal?: AbortSignal;
-  }) {
-    // find the agent message with the parentMessageId equal to the user message id
+    options?: {
+      maxReconnectAttempts?: number;
+      reconnectDelay?: number;
+      autoReconnect?: boolean;
+    };
+  }): Promise<
+    Result<
+      {
+        eventStream: AsyncGenerator<AgentEvent, void, unknown>;
+      },
+      { type: string; message: string } | Error
+    >
+  > {
     const agentMessages = conversation.content
       .map((versions) => {
         const m = versions[versions.length - 1];
@@ -656,6 +684,7 @@ export class DustAPI {
           m && m.type === "agent_message" && m.parentMessageId === userMessageId
         );
       });
+
     if (agentMessages.length === 0) {
       return new Err(new Error("Failed to retrieve agent message"));
     }
@@ -665,6 +694,12 @@ export class DustAPI {
       conversation,
       agentMessage,
       signal,
+      options: {
+        maxReconnectAttempts:
+          options.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS,
+        reconnectDelay: options.reconnectDelay ?? DEFAULT_RECONNECT_DELAY,
+        autoReconnect: options.autoReconnect ?? true,
+      },
     });
   }
 
@@ -672,120 +707,121 @@ export class DustAPI {
     conversation,
     agentMessage,
     signal,
+    options,
   }: {
     conversation: ConversationPublicType;
     agentMessage: AgentMessagePublicType;
     signal?: AbortSignal;
-  }) {
-    const res = await this.request({
-      method: "GET",
-      path: `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`,
-      signal,
-    });
+    options: {
+      maxReconnectAttempts: number;
+      reconnectDelay: number;
+      autoReconnect: boolean;
+    };
+  }): Promise<
+    Result<
+      {
+        eventStream: AsyncGenerator<AgentEvent, void, unknown>;
+      },
+      { type: string; message: string }
+    >
+  > {
+    const { maxReconnectAttempts, reconnectDelay, autoReconnect } = options;
 
-    if (res.isErr()) {
-      return res;
-    }
+    let lastEventId: string | null = null;
 
-    if (!res.value.response.ok || !res.value.response.body) {
-      return new Err({
-        type: "dust_api_error",
-        message: `Error running streamed app: status_code=${
-          res.value.response.status
-        }  - message=${await textFromResponse(res.value.response)}`,
-      });
-    }
+    const terminalEventTypes: AgentEvent["type"][] = [
+      "agent_message_success",
+      "agent_error",
+      "user_message_error",
+    ];
 
-    let pendingEvents: (
-      | UserMessageErrorEvent
-      | AgentErrorEvent
-      | AgentActionSuccessEvent
-      | GenerationTokensEvent
-      | AgentMessageSuccessEvent
-      | AgentActionSpecificEvent
-    )[] = [];
-
-    const parser = createParser((event) => {
-      if (event.type === "event") {
-        if (event.data) {
-          try {
-            const data = JSON.parse(event.data).data;
-            // TODO: shall we use the schema to validate the data?
-            switch (data.type) {
-              case "user_message_error": {
-                pendingEvents.push(data as UserMessageErrorEvent);
-                break;
-              }
-              case "agent_error": {
-                pendingEvents.push(data as AgentErrorEvent);
-                break;
-              }
-              case "agent_action_success": {
-                pendingEvents.push(data as AgentActionSuccessEvent);
-                break;
-              }
-              case "generation_tokens": {
-                pendingEvents.push(data as GenerationTokensEvent);
-                break;
-              }
-              case "agent_message_success": {
-                pendingEvents.push(data as AgentMessageSuccessEvent);
-                break;
-              }
-              case "browse_params":
-              case "dust_app_run_block":
-              case "dust_app_run_params":
-              case "process_params":
-              case "retrieval_params":
-              case "search_labels_params":
-              case "tables_query_output":
-              case "tables_query_params":
-              case "websearch_params":
-                pendingEvents.push(data as AgentActionSpecificEvent);
-                break;
-            }
-          } catch (err) {
-            this._logger.error(
-              { error: err },
-              "Failed parsing chunk from Dust API"
-            );
-          }
-        }
+    const createRequest = async (lastId?: string | null) => {
+      let path = `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`;
+      if (lastId) {
+        path += `?lastEventId=${lastId}`;
       }
-    });
 
-    const reader = res.value.response.body;
+      return this.request({
+        method: "GET",
+        path,
+        signal,
+      });
+    };
+
     const logger = this._logger;
+    let reconnectAttempts = 0;
+    let receivedTerminalEvent = false;
 
-    const streamEvents = async function* () {
-      try {
+    const streamEventsWithReconnection = async function* () {
+      while (true) {
+        if (signal?.aborted) {
+          return;
+        }
+
+        const res = await createRequest(lastEventId);
+
+        if (res.isErr()) {
+          const error = res.error;
+          throw new Error(`Error requesting event stream: ${error.message}`);
+        }
+
+        if (!res.value.response.ok || !res.value.response.body) {
+          throw new Error(
+            `Error requesting event stream: status_code=${res.value.response.status}`
+          );
+        }
+
+        let pendingEvents: AgentEvent[] = [];
+
+        const parser = createParser((event) => {
+          if (event.type === "event") {
+            if (event.data) {
+              try {
+                const data = JSON.parse(event.data).data;
+                lastEventId = data.eventId;
+                pendingEvents.push(data);
+              } catch (err) {
+                logger.error(
+                  { error: err },
+                  "Failed parsing chunk from Dust API"
+                );
+              }
+            }
+          }
+        });
+
+        const reader = res.value.response.body;
+
         for await (const chunk of reader) {
           parser.feed(new TextDecoder().decode(chunk));
           for (const event of pendingEvents) {
             yield event;
+            // Check if this is a terminal event
+            if (terminalEventTypes.includes(event.type)) {
+              receivedTerminalEvent = true;
+            }
           }
           pendingEvents = [];
         }
-      } catch (e) {
-        logger.error(
-          {
-            error: e,
-            errorStr: JSON.stringify(e),
-            errorSource: "streamAgentAnswerEvents",
-          },
-          "DustAPI error: streaming chunks"
-        );
-        yield {
-          type: "error",
-          content: {
-            code: "stream_error",
-            message: "Error streaming chunks",
-          },
-        } as DustAppRunErroredEvent;
+
+        // Stream ended - check if we need to reconnect
+        if (!receivedTerminalEvent && autoReconnect) {
+          reconnectAttempts += 1;
+
+          if (reconnectAttempts >= maxReconnectAttempts) {
+            throw new Error("Exceeded maximum reconnection attempts");
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
+          continue;
+        }
+
+        // terminal event or autoReconnect disabled, exit the generator
+        return;
       }
     };
 
-    return new Ok({ eventStream: streamEvents() });
+    return new Ok({ eventStream: streamEventsWithReconnection() });
   }
 
   async cancelMessageGeneration({
