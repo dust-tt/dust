@@ -572,7 +572,7 @@ export function useBatchDeleteAgentConfigurations({
 
       sendNotification({
         type: "error",
-        title: `Error deleting agents`,
+        title: `Error archiving agents`,
         description: `Error: ${errorData.message}`,
       });
     }
