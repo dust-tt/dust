@@ -216,6 +216,7 @@ const TOOL_MIME_TYPES = {
       "BOOLEAN",
       "ENUM",
       "REASONING_MODEL",
+      "DUST_APP",
       "NULLABLE_TIME_FRAME",
     ],
   }),

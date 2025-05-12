@@ -503,6 +503,7 @@ export async function createOrUpgradeAgentConfiguration({
           tables: action.tables,
           childAgentId: action.childAgentId,
           additionalConfiguration: action.additionalConfiguration,
+          dustAppConfiguration: action.dustAppConfiguration,
           timeFrame: action.timeFrame,
         } as ServerSideMCPServerConfigurationType,
         agentConfigurationRes.value

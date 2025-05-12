@@ -19,6 +19,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "primitive_types_debugger",
   "query_tables",
   "reasoning_v2",
+  "run_dust_app",
   "search",
   "think",
   "web_search_&_browse_v2",
@@ -105,6 +106,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 9,
     availability: "auto",
     flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
+  },
+  run_dust_app: {
+    id: 10,
+    availability: "auto",
+    flag: "dev_mcp_actions",
   },
 
   // Dev

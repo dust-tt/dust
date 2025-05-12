@@ -19,7 +19,8 @@ import {
   isRemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopListToolsContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import apiConfig from "@app/lib/api/config";
 import type {
@@ -108,8 +109,15 @@ export type MCPConnectionParams =
 
 export const connectToMCPServer = async (
   auth: Authenticator,
-  params: MCPConnectionParams,
-  agentLoopContext?: AgentLoopContextType
+  {
+    params,
+    agentLoopRunContext,
+    agentLoopListToolsContext,
+  }: {
+    params: MCPConnectionParams;
+    agentLoopRunContext?: AgentLoopRunContextType;
+    agentLoopListToolsContext?: AgentLoopListToolsContextType;
+  }
 ): Promise<Result<Client, Error>> => {
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
@@ -130,7 +138,8 @@ export const connectToMCPServer = async (
             params.mcpServerId,
             server,
             auth,
-            agentLoopContext
+            agentLoopRunContext,
+            agentLoopListToolsContext
           );
           await mcpClient.connect(client);
           break;
@@ -288,8 +297,10 @@ export async function fetchRemoteServerMetaDataByURL(
   url: string
 ): Promise<Result<Omit<MCPServerType, "id">, Error>> {
   const r = await connectToMCPServer(auth, {
-    type: "remoteMCPServerUrl",
-    remoteMCPServerUrl: url,
+    params: {
+      type: "remoteMCPServerUrl",
+      remoteMCPServerUrl: url,
+    },
   });
 
   if (r.isErr()) {

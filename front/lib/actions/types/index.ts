@@ -1,4 +1,9 @@
 import type {
+  ClientSideMCPServerConfigurationType,
+  MCPServerConfigurationType,
+  MCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
+import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
@@ -133,12 +138,21 @@ export abstract class BaseActionConfigurationServerRunner<
   ): AsyncGenerator<unknown>;
 }
 
-export type AgentLoopContextType = {
+export type AgentLoopRunContextType = {
   agentConfiguration: AgentConfigurationType;
-  actionConfiguration: ActionConfigurationType;
+  actionConfiguration: MCPToolConfigurationType;
+  clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
   stepActionIndex: number;
   stepActions: ActionConfigurationType[];
   citationsRefsOffset: number;
+};
+
+export type AgentLoopListToolsContextType = {
+  agentConfiguration: AgentConfigurationType;
+  agentActionConfiguration: MCPServerConfigurationType;
+  clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
+  conversation: ConversationType;
+  agentMessage: AgentMessageType;
 };

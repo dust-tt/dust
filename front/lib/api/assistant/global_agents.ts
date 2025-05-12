@@ -2,8 +2,6 @@ import fs from "fs";
 import path from "path";
 import { promisify } from "util";
 
-const readFileAsync = promisify(fs.readFile);
-
 import {
   DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
@@ -56,6 +54,8 @@ import {
   O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O3_MODEL_CONFIG,
 } from "@app/types";
+
+const readFileAsync = promisify(fs.readFile);
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
@@ -163,6 +163,7 @@ function _getAgentRouterToolsConfiguration(
       reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
+      dustAppConfiguration: null,
     },
   ];
 }

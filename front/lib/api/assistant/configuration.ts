@@ -1339,6 +1339,7 @@ export async function createAgentActionConfiguration(
               serverDescription !== action.description
                 ? action.description
                 : null,
+            appId: action.dustAppConfiguration?.appId ?? null,
           },
           { transaction: t }
         );
@@ -1390,6 +1391,7 @@ export async function createAgentActionConfiguration(
           reasoningModel: action.reasoningModel,
           timeFrame: action.timeFrame,
           additionalConfiguration: action.additionalConfiguration,
+          dustAppConfiguration: action.dustAppConfiguration,
         });
       });
     }
