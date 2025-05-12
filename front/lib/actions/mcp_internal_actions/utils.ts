@@ -432,13 +432,9 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const mayRequiresTimeFrameConfiguration =
-    Object.keys(
-      findPathsToConfiguration({
-        mcpServer: server,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
-      })
-    ).length > 0;
+  const mayRequiresTimeFrameConfiguration = server.tools.some(
+    (tool) => tool.inputSchema?.properties?.timeFrame
+  );
 
   const requiredStrings = Object.keys(
     findPathsToConfiguration({

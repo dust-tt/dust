@@ -1,4 +1,4 @@
-import type { OAuthConnectionType, OAuthProvider } from "../../oauth/lib";
+import type { OAuthConnectionType } from "../../oauth/lib";
 import type { OAuthAPIError } from "../../oauth/oauth_api";
 import { OAuthAPI } from "../../oauth/oauth_api";
 import type { LoggerInterface } from "../../shared/logger";
