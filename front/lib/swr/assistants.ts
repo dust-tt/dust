@@ -565,7 +565,7 @@ export function useBatchDeleteAgentConfigurations({
       sendNotification({
         type: "success",
         title: `Successfully archived ${agentConfigurationIds.length} agents`,
-        description: `${agentConfigurationIds.length} agents were successfully deleted.`,
+        description: `${agentConfigurationIds.length} agents were successfully archived.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
