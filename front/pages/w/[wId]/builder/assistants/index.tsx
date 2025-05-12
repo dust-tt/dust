@@ -337,8 +337,7 @@ export default function WorkspaceAssistants({
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
         />
-        <div className="sm:h-2 lg:h-8" />
-        <Page.Vertical gap="xl" align="stretch" sizing="grow">
+        <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
           <Page.Header title="Manage Agents" icon={RobotIcon} />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-row gap-2">
@@ -435,7 +434,7 @@ export default function WorkspaceAssistants({
               )}
             </div>
           </Page.Vertical>
-        </Page.Vertical>
+        </div>
       </AppContentLayout>
     </ConversationsNavigationProvider>
   );
