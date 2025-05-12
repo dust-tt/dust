@@ -92,6 +92,8 @@ export function SpaceLayout({
     <AppContentLayout
       subscription={subscription}
       owner={owner}
+      hasTopPadding={false}
+      isWideMode
       navChildren={
         <SpaceSideBarMenu
           owner={owner}

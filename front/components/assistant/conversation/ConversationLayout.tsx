@@ -126,6 +126,7 @@ const ConversationLayoutContent = ({
             <ConversationTitle owner={owner} baseUrl={baseUrl} />
           )
         }
+        hasTopPadding={false}
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         {conversationError ? (
