@@ -538,11 +538,13 @@ export async function* runReasoning(
 }
 
 export async function reasoningActionTypesFromAgentMessageIds(
-  agentMessageIds: ModelId[]
+  auth: Authenticator,
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<ReasoningActionType[]> {
   const models = await AgentReasoningAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 
