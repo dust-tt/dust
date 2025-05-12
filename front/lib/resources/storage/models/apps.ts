@@ -78,6 +78,8 @@ AppModel.init(
       { unique: true, fields: ["sId"] },
       { fields: ["workspaceId", "visibility"] },
       { fields: ["workspaceId", "sId", "visibility"] },
+      { fields: ["workspaceId", "sId"] },
+      { fields: ["workspaceId", "vaultId"] },
     ],
   }
 );
