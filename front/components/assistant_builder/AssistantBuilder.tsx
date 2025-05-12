@@ -556,6 +556,7 @@ export default function AssistantBuilder({
                         agentConfigurationId={agentConfigurationId}
                         models={models}
                         setIsInstructionDiffMode={setIsInstructionDiffMode}
+                        isInstructionDiffMode={isInstructionDiffMode}
                       />
                     );
                   case "actions":

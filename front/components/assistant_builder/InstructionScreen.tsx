@@ -59,6 +59,7 @@ export function InstructionScreen({
   setDoTypewriterEffect,
   agentConfigurationId,
   models,
+  isInstructionDiffMode,
   setIsInstructionDiffMode,
 }: {
   owner: WorkspaceType;
@@ -74,6 +75,7 @@ export function InstructionScreen({
   setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
   agentConfigurationId: string | null;
   models: ModelConfigurationType[];
+  isInstructionDiffMode: boolean;
   setIsInstructionDiffMode: (isDiffMode: boolean) => void;
 }) {
   const editor = useEditor({
@@ -105,7 +107,6 @@ export function InstructionScreen({
   });
   const editorService = useInstructionEditorService(editor);
 
-  const [diffMode, setDiffMode] = useState(false);
   const [compareVersion, setCompareVersion] =
     useState<LightAgentConfigurationType | null>(null);
 
@@ -115,8 +116,6 @@ export function InstructionScreen({
     disabled: !agentConfigurationId,
     limit: 30,
   });
-  // const [currentConfig, setCurrentConfig] =
-  // useState<LightAgentConfigurationType | null>(null);
 
   // Deduplicate configs based on instructions
   const configsWithUniqueInstructions: LightAgentConfigurationType[] =
@@ -223,7 +222,7 @@ export function InstructionScreen({
       return;
     }
 
-    if (diffMode && compareVersion) {
+    if (isInstructionDiffMode && compareVersion) {
       if (editor.storage.instructionDiff?.isDiffMode) {
         editor.commands.exitDiff();
       }
@@ -233,13 +232,13 @@ export function InstructionScreen({
 
       editor.commands.applyDiff(compareText, currentText);
       editor.setEditable(false);
-    } else if (!diffMode && editor) {
+    } else if (!isInstructionDiffMode && editor) {
       if (editor.storage.instructionDiff?.isDiffMode) {
         editor.commands.exitDiff();
         editor.setEditable(true);
       }
     }
-  }, [diffMode, compareVersion, editor]);
+  }, [isInstructionDiffMode, compareVersion, editor]);
 
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
@@ -266,7 +265,7 @@ export function InstructionScreen({
 
         <div className="mt-2 flex w-full flex-col gap-2 sm:w-auto">
           <div className="flex items-center gap-2 self-end">
-            {!diffMode && (
+            {!isInstructionDiffMode && (
               <AdvancedSettings
                 generationSettings={builderState.generationSettings}
                 setGenerationSettings={(generationSettings) => {
@@ -295,7 +294,6 @@ export function InstructionScreen({
                   selectedConfig={compareVersion}
                   onSelect={(config) => {
                     setCompareVersion(config);
-                    setDiffMode(true);
                     setIsInstructionDiffMode(true);
                   }}
                 />
@@ -305,7 +303,7 @@ export function InstructionScreen({
       </div>
       <Separator />
 
-      {diffMode && compareVersion && (
+      {isInstructionDiffMode && compareVersion && (
         <>
           {compareVersion?.versionCreatedAt && (
             <Label>
@@ -319,8 +317,6 @@ export function InstructionScreen({
               variant="outline"
               size="sm"
               onClick={() => {
-                setDiffMode(false);
-                // editor?.commands.exitDiff();
                 setIsInstructionDiffMode(false);
                 setCompareVersion(null);
               }}
@@ -340,8 +336,7 @@ export function InstructionScreen({
                   }));
 
                   setCompareVersion(null);
-
-                  setDiffMode(false);
+                  setIsInstructionDiffMode(false);
                 }
               }}
               label="Restore this version"
