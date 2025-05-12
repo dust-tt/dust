@@ -5,13 +5,11 @@ import type { BuilderScreen } from "@app/components/assistant_builder/types";
 
 interface PrevNextButtonsProps {
   screen: BuilderScreen;
-  setScreen: (screen: BuilderScreen) => void;
   setCurrentTab: (tab: string) => void;
 }
 
 export function PrevNextButtons({
   screen,
-  setScreen,
   setCurrentTab,
 }: PrevNextButtonsProps) {
   return (
@@ -25,7 +23,6 @@ export function PrevNextButtons({
           data-gtm-location="assistantBuilder"
           onClick={() => {
             const newScreen = screen === "actions" ? "instructions" : "actions";
-            setScreen(newScreen);
             setCurrentTab(newScreen);
           }}
         />
@@ -41,7 +38,6 @@ export function PrevNextButtons({
           onClick={() => {
             const newScreen =
               screen === "instructions" ? "actions" : "settings";
-            setScreen(newScreen);
             setCurrentTab(newScreen);
           }}
         />

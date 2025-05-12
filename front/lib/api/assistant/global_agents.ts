@@ -11,6 +11,8 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { PlatformMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import config from "@app/lib/api/config";
@@ -18,6 +20,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationStatus,
@@ -136,6 +139,34 @@ function _getDefaultWebActionsForGlobalAgent({
   ];
 }
 
+function _getAgentRouterToolsConfiguration(
+  agentId: GLOBAL_AGENTS_SID,
+  mcpServerView: MCPServerViewResource | null,
+  internalMCPServerId: string
+): PlatformMCPServerConfigurationType[] {
+  if (!mcpServerView) {
+    return [];
+  }
+  return [
+    {
+      id: -1,
+      sId: agentId + "-agent-router-list-action",
+      type: "mcp_server_configuration",
+      name: "list_agents",
+      description:
+        "List the published agents of the workspace. Useful to route to the best matching agent.",
+      mcpServerViewId: mcpServerView.sId,
+      internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+    },
+  ];
+}
+
 /**
  * GLOBAL AGENTS CONFIGURATION
  *
@@ -146,9 +177,11 @@ function _getDefaultWebActionsForGlobalAgent({
 function _getHelperGlobalAgent({
   auth,
   helperPromptInstance,
+  agentRouterMCPServerView,
 }: {
   auth: Authenticator;
   helperPromptInstance: HelperAssistantPrompt;
+  agentRouterMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let prompt = "";
 
@@ -177,6 +210,7 @@ function _getHelperGlobalAgent({
       }
     : dummyModelConfiguration;
   const status = modelConfiguration ? "active" : "disabled_by_admin";
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -212,6 +246,14 @@ function _getHelperGlobalAgent({
       ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.HELPER,
       }),
+      ..._getAgentRouterToolsConfiguration(
+        GLOBAL_AGENTS_SID.HELPER,
+        agentRouterMCPServerView,
+        internalMCPServerNameToSId({
+          name: "agent_router",
+          workspaceId: owner.id,
+        })
+      ),
     ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
@@ -1221,9 +1263,11 @@ function _getDustGlobalAgent(
   {
     settings,
     preFetchedDataSources,
+    agentRouterMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
+    agentRouterMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -1381,6 +1425,17 @@ function _getDustGlobalAgent(
     description: null,
   });
 
+  actions.push(
+    ..._getAgentRouterToolsConfiguration(
+      GLOBAL_AGENTS_SID.DUST,
+      agentRouterMCPServerView,
+      internalMCPServerNameToSId({
+        name: "agent_router",
+        workspaceId: owner.id,
+      })
+    )
+  );
+
   // Fix the action ids.
   actions.forEach((action, i) => {
     action.id = -i;
@@ -1399,7 +1454,8 @@ function getGlobalAgent(
   sId: string | number,
   preFetchedDataSources: PrefetchedDataSourcesType | null,
   helperPromptInstance: HelperAssistantPrompt,
-  globaAgentSettings: GlobalAgentSettings[]
+  globaAgentSettings: GlobalAgentSettings[],
+  agentRouterMCPServerView: MCPServerViewResource | null
 ): AgentConfigurationType | null {
   const settings =
     globaAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -1410,6 +1466,7 @@ function getGlobalAgent(
       agentConfiguration = _getHelperGlobalAgent({
         auth,
         helperPromptInstance,
+        agentRouterMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
@@ -1514,6 +1571,7 @@ function getGlobalAgent(
       agentConfiguration = _getDustGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
+        agentRouterMCPServerView,
       });
       break;
     default:
@@ -1568,16 +1626,32 @@ export async function getGlobalAgents(
     throw new Error("Unexpected `auth` without `plan`.");
   }
 
-  const [preFetchedDataSources, globaAgentSettings, helperPromptInstance] =
-    await Promise.all([
-      variant === "full"
-        ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
-        : null,
-      GlobalAgentSettings.findAll({
-        where: { workspaceId: owner.id },
-      }),
-      HelperAssistantPrompt.getInstance(),
-    ]);
+  const [
+    preFetchedDataSources,
+    globaAgentSettings,
+    helperPromptInstance,
+    agentRouterMcpServerViews,
+  ] = await Promise.all([
+    variant === "full"
+      ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
+      : null,
+    GlobalAgentSettings.findAll({
+      where: { workspaceId: owner.id },
+    }),
+    HelperAssistantPrompt.getInstance(),
+    MCPServerViewResource.listByMCPServer(
+      auth,
+      internalMCPServerNameToSId({
+        name: "agent_router",
+        workspaceId: owner.id,
+      })
+    ),
+  ]);
+
+  // We prefetch the agent router mcp server view to be able to add this tool to some global agents.
+  const agentRouterMCPServerView =
+    agentRouterMcpServerViews.find((view) => view.space.kind === "global") ??
+    null;
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
@@ -1622,7 +1696,8 @@ export async function getGlobalAgents(
       sId,
       preFetchedDataSources,
       helperPromptInstance,
-      globaAgentSettings
+      globaAgentSettings,
+      agentRouterMCPServerView
     )
   );
 

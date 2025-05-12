@@ -49,7 +49,7 @@ async function handler(
         success: true,
         serverViews: mcpServerViews
           .map((mcpServerView) => mcpServerView.toJSON())
-          .filter((s) => !s.server.isDefault),
+          .filter((s) => s.server.availability === "manual"),
       });
     }
     case "POST": {

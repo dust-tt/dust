@@ -4,6 +4,7 @@ import {
   Sheet,
   SheetContainer,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -45,16 +46,15 @@ export function SlackIntegration({
 }: SlackIntegrationProps) {
   const [newSelection, setNewSelection] = useState<SlackChannel[]>([]);
   useEffect(() => {
-    if (existingSelection.length > 0 && newSelection.length === 0) {
+    if (existingSelection.length > 0) {
       setNewSelection(existingSelection);
     }
-  }, [existingSelection, newSelection]);
+  }, [existingSelection]);
 
   const customIsNodeChecked = useCallback(
     (node: ContentNode) => {
-      return (
-        newSelection?.some((c) => c.slackChannelId === node.internalId) || false
-      );
+      const channelId = node.internalId.substring("slack-channel-".length);
+      return newSelection?.some((c) => c.slackChannelId === channelId) || false;
     },
     [newSelection]
   );
@@ -100,12 +100,14 @@ export function SlackIntegration({
           Object.values(newModel).forEach((item) => {
             const { isSelected, node } = item;
             const index = newSelection.findIndex(
-              (c) => c.slackChannelId === node.internalId
+              (c) => `slack-channel-${c.slackChannelId}` === node.internalId
             );
 
             if (isSelected && index === -1) {
               newSelection.push({
-                slackChannelId: node.internalId,
+                slackChannelId: node.internalId.substring(
+                  "slack-channel-".length
+                ),
                 slackChannelName: node.title,
               });
             }
@@ -162,6 +164,9 @@ export function SlackAssistantDefaultManager({
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Slack Integration</SheetTitle>
+          <SheetDescription>
+            Configure default Slack channels for this assistant
+          </SheetDescription>
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-4">

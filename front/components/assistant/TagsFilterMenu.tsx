@@ -1,8 +1,9 @@
 import {
   Button,
+  Chip,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   TagIcon,
@@ -11,14 +12,15 @@ import { useState } from "react";
 
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { TagsManager } from "./TagsManager";
 
 type TagsFilterMenuProps = {
   tags: TagType[];
-  selectedTags: string[];
-  setSelectedTags: (tags: string[]) => void;
+  selectedTags: TagType[];
+  setSelectedTags: (tags: TagType[]) => void;
   owner: WorkspaceType;
 };
 
@@ -56,9 +58,9 @@ export const TagsFilterMenu = ({
           <Button
             variant="primary"
             icon={TagIcon}
-            label={
-              selectedTags.length > 0 ? `Tags (${selectedTags.length})` : "Tags"
-            }
+            label={"Tags"}
+            counterValue={selectedTags.length.toString()}
+            isCounter={selectedTags.length > 0}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -69,33 +71,32 @@ export const TagsFilterMenu = ({
               value={tagSearch}
               onChange={setTagSearch}
               button={
-                <Button
-                  variant="primary"
-                  label="Manage tags"
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    setTagManagerOpen(true);
-                  }}
-                />
+                isAdmin(owner) ? (
+                  <Button
+                    variant="primary"
+                    label="Manage tags"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      setTagManagerOpen(true);
+                    }}
+                  />
+                ) : undefined
               }
             />
           }
         >
-          {filteredTags.map((tag) => (
-            <DropdownMenuCheckboxItem
-              key={tag.sId}
-              checked={selectedTags.includes(tag.sId)}
-              onCheckedChange={(checked) => {
-                if (checked) {
-                  setSelectedTags([...selectedTags, tag.sId]);
-                } else {
-                  setSelectedTags(selectedTags.filter((t) => t !== tag.sId));
-                }
-              }}
-            >
-              {tag.name}
-            </DropdownMenuCheckboxItem>
-          ))}
+          {filteredTags
+            .filter((tag) => !selectedTags.includes(tag))
+            .map((tag) => (
+              <DropdownMenuItem
+                key={tag.sId}
+                onClick={() => {
+                  setSelectedTags([...selectedTags, tag]);
+                }}
+              >
+                <Chip label={tag.name} size="xs" color="golden" />
+              </DropdownMenuItem>
+            ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </>

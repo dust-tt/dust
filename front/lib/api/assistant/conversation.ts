@@ -746,6 +746,20 @@ export async function* postUserMessage(
   const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
+    if (!canAccessAgent(agentConfig)) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "not_allowed",
+          message:
+            "This agent is either disabled or you don't have access to it.",
+        },
+      };
+      return;
+    }
+
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
       yield {
         type: "agent_disabled_error",
@@ -1075,6 +1089,26 @@ export async function* postUserMessage(
   void logIfUserUnknown();
 }
 
+/**
+ * Can a user mention a given configuration
+ */
+function canAccessAgent(
+  agentConfiguration: LightAgentConfigurationType
+): boolean {
+  switch (agentConfiguration.status) {
+    case "active":
+    case "draft":
+      return agentConfiguration.canRead;
+    case "disabled_free_workspace":
+    case "disabled_missing_datasource":
+    case "disabled_by_admin":
+    case "archived":
+      return false;
+    default:
+      assertNever(agentConfiguration.status);
+  }
+}
+
 /** This method creates a new user message version, and if there are new agent
  *  mentions, run them
  *  TODO: support editing with new agent mentions for any
@@ -1194,6 +1228,20 @@ export async function* editUserMessage(
   const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
+    if (!canAccessAgent(agentConfig)) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "not_allowed",
+          message:
+            "This agent is either disabled or you don't have access to it.",
+        },
+      };
+      return;
+    }
+
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
       yield {
         type: "agent_disabled_error",

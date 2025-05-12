@@ -50,7 +50,7 @@ async function handler(
       const flattenedServerViews = serverViews
         .flat()
         .filter((v): v is MCPServerViewType => v !== null)
-        .filter((v) => v.server.isDefault === false);
+        .filter((v) => v.server.availability === "manual");
 
       return res.status(200).json({
         success: true,

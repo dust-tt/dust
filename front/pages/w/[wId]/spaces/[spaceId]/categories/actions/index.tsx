@@ -31,7 +31,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
   const space = await SpaceResource.fetchById(auth, spaceId);

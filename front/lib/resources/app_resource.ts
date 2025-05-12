@@ -111,7 +111,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll(
       {
         where: {
-          appId: this.id,
+          appId: this.sId,
           workspaceId: owner.id,
         },
       }
@@ -120,7 +120,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       where: {
         workspaceId: owner.id,
         status: "active",
-        sId: {
+        id: {
           [Op.in]: dustAppRunConfigurations.map((c) => c.agentConfigurationId),
         },
       },

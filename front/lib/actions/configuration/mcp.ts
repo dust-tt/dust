@@ -141,6 +141,7 @@ export async function fetchMCPServerActionConfigurations(
         name: config.name ?? serverName,
         description: config.singleToolDescriptionOverride ?? serverDescription,
         mcpServerViewId: mcpServerView?.sId ?? "",
+        internalMCPServerId: config.internalMCPServerId,
         dataSources: dataSourceConfigurations.map(
           renderDataSourceConfiguration
         ),
@@ -159,6 +160,7 @@ export async function fetchMCPServerActionConfigurations(
                 reasoningEffort: reasoningConfigurations[0].reasoningEffort,
               }
             : null,
+        timeFrame: config.timeFrame,
       });
     }
   }

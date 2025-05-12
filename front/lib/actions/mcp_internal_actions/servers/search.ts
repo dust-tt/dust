@@ -140,56 +140,51 @@ function createServer(
       );
 
       // Now we can search each data source.
-      const searchResults = await concurrentExecutor(
-        coreSearchArgs,
-        async (searchArgs) => {
+      const searchResults = await coreAPI.searchDataSources(
+        query,
+        topK,
+        credentials,
+        false,
+        coreSearchArgs.map((args) => {
           // In addition to the tags provided by the user, we also add the tags that the model inferred
           // from the conversation history.
           const finalTagsIn = [
-            ...(searchArgs.filter.tags?.in ?? []),
+            ...(args.filter.tags?.in ?? []),
             ...(tagsIn ?? []),
           ];
           const finalTagsNot = [
-            ...(searchArgs.filter.tags?.not ?? []),
+            ...(args.filter.tags?.not ?? []),
             ...(tagsNot ?? []),
           ];
 
-          return coreAPI.searchDataSource(
-            searchArgs.projectId,
-            searchArgs.dataSourceId,
-            {
-              query,
-              topK: topK,
-              credentials,
-              fullText: false,
-              filter: {
-                ...searchArgs.filter,
-                tags: {
-                  in: finalTagsIn.length > 0 ? finalTagsIn : null,
-                  not: finalTagsNot.length > 0 ? finalTagsNot : null,
-                },
-                timestamp: {
-                  gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
-                  lt: null,
-                },
+          return {
+            projectId: args.projectId,
+            dataSourceId: args.dataSourceId,
+            filter: {
+              ...args.filter,
+              tags: {
+                in: finalTagsIn.length > 0 ? finalTagsIn : null,
+                not: finalTagsNot.length > 0 ? finalTagsNot : null,
               },
-              view_filter: searchArgs.view_filter,
-            }
-          );
-        },
-        { concurrency: 10 }
+              timestamp: {
+                gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+                lt: null,
+              },
+            },
+            view_filter: args.view_filter,
+          };
+        })
       );
 
-      // If any of the search results are invalid, return an error message.
-      if (searchResults.some((res) => res.isErr())) {
+      if (searchResults.isErr()) {
         return {
           isError: true,
-          content: removeNulls(
-            searchResults.map((res) => (res.isErr() ? res.error : null))
-          ).map((error) => ({
-            type: "text",
-            text: error.message,
-          })),
+          content: [
+            {
+              type: "text",
+              text: searchResults.error.message,
+            },
+          ],
         };
       }
 
@@ -207,44 +202,32 @@ function createServer(
 
       const refs = getRefs().slice(refsOffset, refsOffset + topK);
 
-      const results: SearchResultResourceType[] = removeNulls(
-        searchResults.map((res) => (res.isOk() ? res.value : null))
-      ).flatMap((res) => {
-        if (res.documents.length === 0) {
-          return [];
-        }
+      const results: SearchResultResourceType[] =
+        searchResults.value.documents.map((doc) => {
+          const dataSourceView = coreSearchArgs.find(
+            (args) =>
+              args.dataSourceView.dataSource.dustAPIDataSourceId ===
+              doc.data_source_id
+          )?.dataSourceView;
 
-        const firstDocument = res.documents[0];
+          assert(dataSourceView, "DataSource view not found");
 
-        const dataSourceView = coreSearchArgs.find(
-          (args) =>
-            args.dataSourceView.dataSource.dustAPIDataSourceId ===
-            firstDocument?.data_source_id
-        )?.dataSourceView;
+          return {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+            uri: doc.source_url ?? "",
+            text: getDisplayNameForDocument(doc),
 
-        assert(dataSourceView, "DataSource view not found");
-
-        return res.documents.map((doc) => ({
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-          uri: doc.source_url ?? "",
-          text: getDisplayNameForDocument(doc),
-
-          id: doc.document_id,
-          source: {
-            provider: dataSourceView.dataSource.connectorProvider ?? undefined,
-            name: getDataSourceNameFromView(dataSourceView),
-          },
-          tags: doc.tags,
-          ref: refs.shift() as string,
-          chunks: doc.chunks.map((chunk) => chunk.text),
-        }));
-      });
-
-      const queryResource: SearchQueryResourceType = {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-        text: makeQueryDescription(query, timeFrame, tagsIn, tagsNot),
-        uri: "",
-      };
+            id: doc.document_id,
+            source: {
+              provider:
+                dataSourceView.dataSource.connectorProvider ?? undefined,
+              name: getDataSourceNameFromView(dataSourceView),
+            },
+            tags: doc.tags,
+            ref: refs.shift() as string,
+            chunks: doc.chunks.map((chunk) => chunk.text),
+          };
+        });
 
       return {
         isError: false,
@@ -255,7 +238,7 @@ function createServer(
           })),
           {
             type: "resource" as const,
-            resource: queryResource,
+            resource: makeQueryResource(query, timeFrame, tagsIn, tagsNot),
           },
         ],
       };
@@ -338,12 +321,12 @@ function createServer(
   return server;
 }
 
-function makeQueryDescription(
+function makeQueryResource(
   query: string,
   relativeTimeFrame: TimeFrame | null,
   tagsIn?: string[],
   tagsNot?: string[]
-) {
+): SearchQueryResourceType {
   const timeFrameAsString = relativeTimeFrame
     ? "over the last " +
       (relativeTimeFrame.duration > 1
@@ -356,11 +339,14 @@ function makeQueryDescription(
     tagsNot && tagsNot.length > 0
       ? `, excluding labels ${tagsNot?.join(", ")}`
       : "";
-  if (!query) {
-    return `Searching ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
-  }
 
-  return `Searching "${query}", ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
+  return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
+    text: query
+      ? `Searching "${query}", ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`
+      : `Searching ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`,
+    uri: "",
+  };
 }
 
 export default createServer;

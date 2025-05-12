@@ -9,10 +9,7 @@ import type {
 } from "@app/lib/actions/constants";
 import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
-import {
-  augmentInputsWithConfiguration,
-  hideInternalConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPToolResultContentType,
   ProgressNotificationContentType,
@@ -22,6 +19,10 @@ import {
   isResourceWithName,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  augmentInputsWithConfiguration,
+  hideInternalConfiguration,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
@@ -65,10 +66,12 @@ import type {
   ModelConfigurationType,
   ModelId,
   Result,
+  TimeFrame,
 } from "@app/types";
 import {
   assertNever,
   extensionsForContentType,
+  hasNullUnicodeCharacter,
   isSupportedFileContentType,
   Ok,
   removeNulls,
@@ -94,8 +97,10 @@ export type PlatformMCPServerConfigurationType =
     tables: TableDataSourceConfiguration[] | null;
     childAgentId: string | null;
     reasoningModel: ReasoningModelConfiguration | null;
+    timeFrame: TimeFrame | null;
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
+    internalMCPServerId: string | null; // As convenience, hold the sId of the internal server if it is an internal server.
   };
 
 export type LocalMCPServerConfigurationType = BaseMCPServerConfigurationType & {
@@ -106,33 +111,36 @@ export type MCPServerConfigurationType =
   | PlatformMCPServerConfigurationType
   | LocalMCPServerConfigurationType;
 
-export type PlatformMCPToolConfigurationType = Omit<
+export type PlatformMCPToolType = Omit<
   PlatformMCPServerConfigurationType,
   "type"
 > & {
   type: "mcp_configuration";
   inputSchema: JSONSchema;
-  isDefault: boolean;
+  availability: MCPServerAvailability;
   permission: MCPToolStakeLevelType;
   toolServerId: string;
 };
 
-export type LocalMCPToolConfigurationType = Omit<
-  LocalMCPServerConfigurationType,
-  "type"
-> & {
+export type LocalMCPToolType = Omit<LocalMCPServerConfigurationType, "type"> & {
   type: "mcp_configuration";
   inputSchema: JSONSchema;
 };
 
-export type WithToolNameMetadata<T> = T & {
+type WithToolNameMetadata<T> = T & {
   originalName: string;
   mcpServerName: string;
 };
 
-export type MCPToolConfigurationType = WithToolNameMetadata<
-  PlatformMCPToolConfigurationType | LocalMCPToolConfigurationType
->;
+export type PlatformMCPToolConfigurationType =
+  WithToolNameMetadata<PlatformMCPToolType>;
+
+export type LocalMCPToolConfigurationType =
+  WithToolNameMetadata<LocalMCPToolType>;
+
+export type MCPToolConfigurationType =
+  | PlatformMCPToolConfigurationType
+  | LocalMCPToolConfigurationType;
 
 type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
@@ -167,6 +175,7 @@ type MCPSuccessEvent = {
   action: MCPActionType;
 };
 
+// TODO(MCP 2025-05-06): Add action to the error event.
 type MCPErrorEvent = {
   type: "tool_error";
   created: number;
@@ -178,7 +187,7 @@ type MCPErrorEvent = {
   };
 };
 
-export type MCPNotificationEvent = {
+export type ToolNotificationEvent = {
   type: "tool_notification";
   created: number;
   configurationId: string;
@@ -230,7 +239,7 @@ function hideFileContentForModel({
 export type MCPActionRunningEvents =
   | MCPParamsEvent
   | MCPApproveExecutionEvent
-  | MCPNotificationEvent;
+  | ToolNotificationEvent;
 
 type MCPActionBlob = ExtractActionBlob<MCPActionType>;
 
@@ -373,7 +382,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     | MCPSuccessEvent
     | MCPErrorEvent
     | MCPApproveExecutionEvent
-    | MCPNotificationEvent,
+    | ToolNotificationEvent,
     void
   > {
     const owner = auth.getNonNullableWorkspace();
@@ -395,6 +404,22 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       params: rawInputs,
       step,
     };
+
+    for (const value of Object.values(rawInputs)) {
+      if (typeof value === "string" && hasNullUnicodeCharacter(value)) {
+        yield {
+          type: "tool_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "tool_error",
+            message: "Invalid Unicode character in inputs, please retry.",
+          },
+        };
+        return;
+      }
+    }
 
     // Create the action object in the database and yield an event for
     // the generation of the params. We store the action here as the params have been generated, if

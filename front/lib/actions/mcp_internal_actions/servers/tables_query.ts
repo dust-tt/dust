@@ -87,9 +87,9 @@ function getSectionColumnsPrefix(
 }
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "tables_query",
+  name: "query_tables",
   version: "1.0.0",
-  description: "Tables, Spreadsheets, Notion DBs (quantitative).",
+  description: "Tables, Spreadsheets, Notion DBs (quantitative) (mcp).",
   icon: "ActionTableIcon",
   authorization: null,
 };
@@ -101,7 +101,7 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "tables_query",
+    "query_tables",
     "Query data tables described below by executing a SQL query automatically generated from the conversation context. " +
       "The function does not require any inputs, the SQL query will be inferred from the conversation history.",
     {

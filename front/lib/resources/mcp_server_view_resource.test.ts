@@ -42,7 +42,7 @@ describe("MCPServerViewResource", () => {
           workspace2
         );
 
-        expect(INTERNAL_MCP_SERVERS["think"].isDefault).toBe(true);
+        expect(INTERNAL_MCP_SERVERS["think"].availability).toBe("auto");
 
         // Get auth for workspace1
         const auth1 = await Authenticator.internalAdminForWorkspace(

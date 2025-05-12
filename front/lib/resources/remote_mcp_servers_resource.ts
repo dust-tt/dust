@@ -303,7 +303,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       cachedDescription:
         this.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION,
       authorization: this.authorization,
-      isDefault: false, // So far we don't have defaults remote MCP servers.
+      availability: "manual", // So far we don't have auto remote MCP servers.
 
       // Remote MCP Server specifics
       url: this.url,

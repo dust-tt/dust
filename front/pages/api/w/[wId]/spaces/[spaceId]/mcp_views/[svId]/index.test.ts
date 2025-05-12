@@ -44,14 +44,14 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     await FeatureFlagFactory.basic(
-      INTERNAL_MCP_SERVERS["authentication_debugger"]
+      INTERNAL_MCP_SERVERS["primitive_types_debugger"]
         .flag as WhitelistableFeature,
       workspace
     );
 
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
-      "authentication_debugger",
+      "primitive_types_debugger",
       t
     );
 
@@ -94,14 +94,14 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
       });
 
       await FeatureFlagFactory.basic(
-        INTERNAL_MCP_SERVERS["authentication_debugger"]
+        INTERNAL_MCP_SERVERS["primitive_types_debugger"]
           .flag as WhitelistableFeature,
         workspace
       );
 
       const internalServer = await InternalMCPServerInMemoryResource.makeNew(
         auth,
-        "authentication_debugger",
+        "primitive_types_debugger",
         t
       );
 
@@ -153,13 +153,13 @@ describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => 
     const { req, res, workspace, space } = await setupTest(t, "admin", "GET");
 
     await FeatureFlagFactory.basic(
-      INTERNAL_MCP_SERVERS["authentication_debugger"]
+      INTERNAL_MCP_SERVERS["primitive_types_debugger"]
         .flag as WhitelistableFeature,
       workspace
     );
 
     const mcpServerId = internalMCPServerNameToSId({
-      name: "authentication_debugger",
+      name: "primitive_types_debugger",
       workspaceId: workspace.id,
     });
 

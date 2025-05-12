@@ -420,10 +420,15 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(groups);
   }
 
-  static async fetchByAgentConfiguration(
-    auth: Authenticator,
-    agentConfiguration: AgentConfiguration | AgentConfigurationType
-  ): Promise<GroupResource> {
+  static async fetchByAgentConfiguration({
+    auth,
+    agentConfiguration,
+    isDeletionFlow = false,
+  }: {
+    auth: Authenticator;
+    agentConfiguration: AgentConfiguration | AgentConfigurationType;
+    isDeletionFlow?: boolean;
+  }): Promise<GroupResource | null> {
     const workspace = auth.getNonNullableWorkspace();
     const groupAgents = await GroupAgentModel.findAll({
       where: {
@@ -442,6 +447,23 @@ export class GroupResource extends BaseResource<GroupModel> {
       ],
     });
 
+    if (agentConfiguration.status === "draft") {
+      if (groupAgents.length === 0) {
+        return null;
+      }
+      throw new Error(
+        "Unexpected: draft agent shouldn't have an editor group."
+      );
+    }
+
+    // In the case of agents deletion, it is possible that the agent has no
+    // editor group associated with it, because the group may have been deleted
+    // when deleting another version of the agent with the same sId.
+    if (isDeletionFlow && groupAgents.length === 0) {
+      return null;
+    }
+
+    // In other cases, the agent should always have exactly one editor group.
     if (groupAgents.length !== 1) {
       throw new Error(
         "Unexpected: agent should have exactly one editor group."

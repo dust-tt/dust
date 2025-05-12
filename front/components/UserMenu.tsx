@@ -15,11 +15,12 @@ import {
   Icon,
   LightbulbIcon,
   LogoutIcon,
+  ShapesIcon,
   StarIcon,
+  TestTubeIcon,
   UserIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { BugIcon, TestTubeIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
@@ -139,7 +140,7 @@ export function UserMenu({
         <DropdownMenuLabel label="Beta" />
         <DropdownMenuItem
           label="Exploratory features"
-          icon={<TestTubeIcon />}
+          icon={TestTubeIcon}
           href={`/w/${owner.sId}/labs`}
         />
 
@@ -162,7 +163,7 @@ export function UserMenu({
           <>
             <DropdownMenuLabel label="Advanced" />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger label="Dev Tools" icon={<BugIcon />} />
+              <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
               <DropdownMenuSubContent>
                 {router.route === "/w/[wId]/assistant/[cId]" && (
                   <DropdownMenuItem
@@ -176,7 +177,7 @@ export function UserMenu({
                         );
                       }
                     }}
-                    icon={<BugIcon />}
+                    icon={ShapesIcon}
                   />
                 )}
                 {!isOnlyAdmin(owner) && (

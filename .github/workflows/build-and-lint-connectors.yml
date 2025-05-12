@@ -7,6 +7,10 @@ on:
       - connectors/**
       - .github/workflows/build-and-lint-connectors.yml
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   check-eslint:
     runs-on: ubuntu-latest

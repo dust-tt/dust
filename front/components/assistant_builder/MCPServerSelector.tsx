@@ -90,7 +90,7 @@ export function MCPServerSelector({
               <RadioGroup defaultValue={selectedMCPServerView?.id}>
                 {mcpServerViewsInSpace
                   // Default servers can be added as capabilities or in the first level of the "Add tools" list
-                  .filter((view) => !view.server.isDefault)
+                  .filter((view) => view.server.availability === "manual")
                   .map((mcpServerView, idx, arr) => (
                     <React.Fragment key={mcpServerView.id}>
                       <div className="flex w-full flex-row items-center justify-between gap-2">

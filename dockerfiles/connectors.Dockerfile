@@ -1,4 +1,3 @@
-
 # start installing poppler tools for pdf text extraction
 FROM node:20.13.0 AS build
 
@@ -27,6 +26,11 @@ WORKDIR /app
 COPY /connectors/package*.json ./
 RUN npm ci
 COPY /connectors/ .
+
+# Remove test files
+RUN find . -name "*.test.ts" -delete
+RUN find . -name "*.test.tsx" -delete
+
 RUN npm run build
 
 

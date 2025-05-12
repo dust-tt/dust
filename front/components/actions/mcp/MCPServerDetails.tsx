@@ -203,7 +203,7 @@ export function MCPServerDetails({
                   icon={InformationCircleIcon}
                   onClick={() => setSelectedTab("info")}
                 />
-                {!mcpServer?.isDefault && (
+                {mcpServer?.availability === "manual" && (
                   <TabsTrigger
                     value="sharing"
                     label="Sharing"
@@ -212,20 +212,21 @@ export function MCPServerDetails({
                   />
                 )}
 
-                {effectiveMCPServer && !effectiveMCPServer.isDefault && (
-                  <>
-                    <div className="grow" />
-                    <Button
-                      variant="outline"
-                      icon={TrashIcon}
-                      label={"Remove"}
-                      size="sm"
-                      onClick={() => {
-                        setMCPServerToDelete(effectiveMCPServer);
-                      }}
-                    />
-                  </>
-                )}
+                {effectiveMCPServer &&
+                  effectiveMCPServer.availability === "manual" && (
+                    <>
+                      <div className="grow" />
+                      <Button
+                        variant="outline"
+                        icon={TrashIcon}
+                        label={"Remove"}
+                        size="sm"
+                        onClick={() => {
+                          setMCPServerToDelete(effectiveMCPServer);
+                        }}
+                      />
+                    </>
+                  )}
               </TabsList>
             </Tabs>
           </SheetHeader>

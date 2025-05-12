@@ -224,6 +224,7 @@ interface DropdownMenuContentProps
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
   dropdownHeaders?: React.ReactNode;
+  onOpenAutoFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
 }
 
 const DropdownMenuContent = React.forwardRef<
@@ -511,6 +512,26 @@ const DropdownMenuSearchbar = React.forwardRef<
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       e.stopPropagation();
       onKeyDown?.(e);
+      if (!e.defaultPrevented) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const firstItem = document.querySelector(
+            '[data-radix-menu-content][data-state=open] [role="menuitem"]'
+          );
+          if (firstItem instanceof HTMLElement) {
+            firstItem.click();
+          }
+        }
+        if (e.key === "Tab" || e.key === "ArrowDown") {
+          e.preventDefault();
+          const firstItem = document.querySelector(
+            '[data-radix-menu-content][data-state=open] [role="menuitem"]'
+          );
+          if (firstItem instanceof HTMLElement) {
+            firstItem.focus();
+          }
+        }
+      }
     };
 
     return (
