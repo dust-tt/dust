@@ -29,7 +29,10 @@ import { removeNulls } from "@app/types";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
-async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
+async function destroyActionsRelatedResources(
+  auth: Authenticator,
+  agentMessageIds: Array<ModelId>
+) {
   // First, retrieve the retrieval actions and documents.
   const retrievalActions = await AgentRetrievalAction.findAll({
     attributes: ["id"],
@@ -38,6 +41,7 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
 
   // Destroy retrieval resources.
   await RetrievalDocumentResource.deleteAllForActions(
+    auth,
     retrievalActions.map((a) => a.id)
   );
 
@@ -205,7 +209,7 @@ export async function destroyConversation(
       })
     );
 
-    await destroyActionsRelatedResources(agentMessageIds);
+    await destroyActionsRelatedResources(auth, agentMessageIds);
 
     await UserMessage.destroy({
       where: { id: userMessageIds },
