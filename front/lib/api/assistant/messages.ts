@@ -311,6 +311,7 @@ async function batchRenderContentFragment(
  * because there's no easy way to fetch only the latest version of a message.
  */
 async function getMaxRankMessages(
+  auth: Authenticator,
   conversation: ConversationResource,
   paginationParams: PaginationParams
 ): Promise<ModelId[]> {
@@ -318,6 +319,7 @@ async function getMaxRankMessages(
 
   const where: WhereOptions<Message> = {
     conversationId: conversation.id,
+    workspaceId: auth.getNonNullableWorkspace().id,
   };
 
   if (lastValue) {
@@ -345,12 +347,17 @@ async function getMaxRankMessages(
 }
 
 async function fetchMessagesForPage(
+  auth: Authenticator,
   conversation: ConversationResource,
   paginationParams: PaginationParams
 ): Promise<{ hasMore: boolean; messages: Message[] }> {
   const { orderColumn, orderDirection, limit } = paginationParams;
 
-  const messageIds = await getMaxRankMessages(conversation, paginationParams);
+  const messageIds = await getMaxRankMessages(
+    auth,
+    conversation,
+    paginationParams
+  );
 
   const hasMore = messageIds.length > limit;
   const relevantMessageIds = hasMore ? messageIds.slice(0, limit) : messageIds;
@@ -359,6 +366,7 @@ async function fetchMessagesForPage(
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
       id: {
         [Op.in]: relevantMessageIds,
       },
@@ -453,6 +461,7 @@ export async function fetchConversationMessages(
   }
 
   const { hasMore, messages } = await fetchMessagesForPage(
+    auth,
     conversation,
     paginationParams
   );

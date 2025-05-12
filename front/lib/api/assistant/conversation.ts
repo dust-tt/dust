@@ -239,6 +239,7 @@ export async function getConversation(
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
+      workspaceId: owner.id,
     },
     order: [
       ["rank", "ASC"],
@@ -320,6 +321,7 @@ export async function getConversationMessageType(
     where: {
       conversationId: conversation.id,
       sId: messageId,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 
