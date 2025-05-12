@@ -39,7 +39,7 @@ export function UserMessage({
       mention: getMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
     }),
-    []
+    [owner]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
