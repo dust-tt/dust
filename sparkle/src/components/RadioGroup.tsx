@@ -165,12 +165,12 @@ const RadioGroupCustomItem = React.forwardRef<
     return (
       <div
         className={cn(
-          "s-flex s-flex-col",
+          "s-flex s-flex-col s-w-full",
           className,
           `s-items-${iconPosition}`
         )}
       >
-        <div className="s-flex s-items-center s-gap-2">
+        <div className="s-flex s-items-center s-gap-2 s-w-full">
           {item}
           {customItem}
         </div>

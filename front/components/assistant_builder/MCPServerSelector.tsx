@@ -101,7 +101,7 @@ export function MCPServerSelector({
                           customItem={
                             <Label
                               htmlFor={mcpServerView.id}
-                              className="font-normal"
+                              className="w-full font-normal"
                             >
                               <Card
                                 variant="tertiary"
