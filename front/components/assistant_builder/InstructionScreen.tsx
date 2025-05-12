@@ -94,7 +94,7 @@ export function InstructionScreen({
       (!doTypewriterEffect && builderState.instructions) || ""
     ),
     onUpdate: ({ editor }) => {
-      if (!doTypewriterEffect) {
+      if (!doTypewriterEffect && !isInstructionDiffMode) {
         const json = editor.getJSON();
         const plainText = plainTextFromTipTapContent(json);
         setEdited(true);
@@ -116,25 +116,6 @@ export function InstructionScreen({
     disabled: !agentConfigurationId,
     limit: 30,
   });
-
-  // Deduplicate configs based on instructions
-  const configsWithUniqueInstructions: LightAgentConfigurationType[] =
-    useMemo(() => {
-      const uniqueInstructions = new Set<string>();
-      const configs: LightAgentConfigurationType[] = [];
-      agentConfigurationHistory?.forEach((config) => {
-        if (
-          !config.instructions ||
-          uniqueInstructions.has(config.instructions)
-        ) {
-          return;
-        } else {
-          uniqueInstructions.add(config.instructions);
-          configs.push(config);
-        }
-      });
-      return configs;
-    }, [agentConfigurationHistory]);
 
   const [letterIndex, setLetterIndex] = useState(0);
 
@@ -249,6 +230,28 @@ export function InstructionScreen({
     hour12: true,
   });
 
+  const restoreVersion = () => {
+    const text = compareVersion?.instructions;
+    if (!editor || !text) {
+      return;
+    }
+
+    setEdited(true);
+    setBuilderState((state) => ({
+      ...state,
+      instructions: text,
+    }));
+
+    if (editor.storage.instructionDiff?.isDiffMode) {
+      editor.commands.exitDiff();
+    }
+
+    editorService.resetContent(tipTapContentFromPlainText(text));
+
+    setCompareVersion(null);
+    setIsInstructionDiffMode(false);
+  };
+
   return (
     <div className="flex grow flex-col gap-4">
       <div className="flex flex-col sm:flex-row">
@@ -286,10 +289,10 @@ export function InstructionScreen({
               />
             )}
 
-            {configsWithUniqueInstructions &&
-              configsWithUniqueInstructions.length > 1 && (
+            {agentConfigurationHistory &&
+              agentConfigurationHistory.length > 1 && (
                 <InstructionHistory
-                  history={configsWithUniqueInstructions.slice(1)}
+                  history={agentConfigurationHistory.slice(1)}
                   currentInstructions={builderState.instructions || ""}
                   selectedConfig={compareVersion}
                   onSelect={(config) => {
@@ -327,18 +330,7 @@ export function InstructionScreen({
               variant="warning"
               size="sm"
               icon={ArrowPathIcon}
-              onClick={() => {
-                if (compareVersion?.instructions) {
-                  setEdited(true);
-                  setBuilderState((state) => ({
-                    ...state,
-                    instructions: compareVersion.instructions || "",
-                  }));
-
-                  setCompareVersion(null);
-                  setIsInstructionDiffMode(false);
-                }
-              }}
+              onClick={restoreVersion}
               label="Restore this version"
             />
           </div>
