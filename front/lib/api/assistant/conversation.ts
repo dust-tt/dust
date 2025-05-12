@@ -163,7 +163,8 @@ export async function updateConversation(
     visibility,
   }: {
     title: string | null;
-    visibility: ConversationVisibility;
+    // Deletion should be performed by `deleteConversation` only.
+    visibility: Exclude<ConversationVisibility, "deleted">;
   }
 ): Promise<Result<ConversationType, ConversationError>> {
   const conversation = await ConversationResource.fetchById(
