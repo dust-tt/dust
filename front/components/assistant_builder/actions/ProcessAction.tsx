@@ -1,14 +1,12 @@
 import {
-  Button,
   Checkbox,
   classNames,
   Hoverable,
   IconButton,
   Input,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import { ChevronDownIcon, ChevronUpIcon, SparklesIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
@@ -20,8 +18,14 @@ import type {
   AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
 import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
-import type { Result, SpaceType, WorkspaceType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import {
+  Err,
+  Ok,
+  Result,
+  type SpaceType,
+  type WorkspaceType,
+} from "@app/types";
+import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 
 export function hasErrorActionProcess(
   action: AssistantBuilderActionConfiguration
@@ -95,7 +99,6 @@ export function ActionProcess({
       value: 1,
       unit: "day",
     });
-  const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [schemaEdit, setSchemaEdit] = useState(
     actionConfiguration?._jsonSchemaString ??
@@ -103,7 +106,6 @@ export function ActionProcess({
         ? JSON.stringify(actionConfiguration.jsonSchema, null, 2)
         : null)
   );
-  const sendNotification = useSendNotification();
   const toggleAdvancedSettings = () => {
     setShowAdvancedSettings((prev) => !prev);
   };
@@ -131,60 +133,6 @@ export function ActionProcess({
   }
   const timeFrame = actionConfiguration.timeFrame || defaultTimeFrame;
   const timeFrameDisabled = !actionConfiguration.timeFrame;
-
-  const generateSchemaFromInstructions = async () => {
-    setEdited(true);
-    let fullInstructions = `${instructions}`;
-    if (description) {
-      fullInstructions += `\n\nTool description:\n${description}`;
-    }
-    if (instructions !== null) {
-      setIsGeneratingSchema(true);
-      try {
-        const res = await generateSchema({
-          owner,
-          instructions: fullInstructions,
-        });
-
-        if (res.isOk()) {
-          const schemaObject = res.value;
-          const schemaString = schemaObject
-            ? JSON.stringify(schemaObject, null, 2)
-            : null;
-
-          setSchemaEdit(schemaString);
-          setEdited(true);
-          updateAction((previousAction) => ({
-            ...previousAction,
-            jsonSchema: schemaObject,
-            _jsonSchemaString: schemaString,
-          }));
-        } else {
-          sendNotification({
-            title: "Failed to generate schema.",
-            type: "error",
-            description: `An error occurred while generating the schema: ${res.error.message}`,
-          });
-        }
-      } catch (e) {
-        sendNotification({
-          title: "Failed to generate schema.",
-          type: "error",
-          description: `An error occurred while generating the schema. Please contact us if the error persists.`,
-        });
-      } finally {
-        setIsGeneratingSchema(false);
-      }
-    } else {
-      setSchemaEdit(null);
-      setEdited(true);
-      updateAction((previousAction) => ({
-        ...previousAction,
-        jsonSchema: null,
-        _jsonSchemaString: null,
-      }));
-    }
-  };
 
   return (
     <>
@@ -332,60 +280,20 @@ export function ActionProcess({
               disabled={timeFrameDisabled}
             />
           </div>
-          <>
-            <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-              Schema
-            </div>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Optionally, provide a schema for the data to be extracted. If you
-              do not specify a schema, the tool will determine the schema based
-              on the conversation context.
-            </div>
-            <Button
-              tooltip="Automatically re-generate the extraction schema based on Instructions"
-              label="Re-generate from Instructions"
-              variant="primary"
-              icon={SparklesIcon}
-              size="sm"
-              disabled={isGeneratingSchema || !instructions}
-              onClick={generateSchemaFromInstructions}
-            />
-            <TextArea
-              error={
-                schemaEdit ? isValidJsonSchema(schemaEdit).error : undefined
-              }
-              showErrorLabel={true}
-              placeholder={
-                '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
-              }
-              value={schemaEdit ?? ""}
-              disabled={isGeneratingSchema}
-              onChange={(e) => {
-                const newSchemaString = e.target.value;
-                setSchemaEdit(newSchemaString);
-                setEdited(true);
-
-                const parsedSchema = isValidJsonSchema(newSchemaString);
-                if (parsedSchema.isValid) {
-                  updateAction((previousAction) => ({
-                    ...previousAction,
-                    jsonSchema: newSchemaString
-                      ? JSON.parse(newSchemaString)
-                      : null,
-                    _jsonSchemaString: newSchemaString,
-                  }));
-                } else {
-                  // If parsing fails, still update the string version but don't update the schema
-                  updateAction((previousAction) => ({
-                    ...previousAction,
-                    _jsonSchemaString: newSchemaString,
-                  }));
-                }
-              }}
-            />
-          </>
         </>
       )}
+      <JsonSchemaConfigurationSection
+        instructions={instructions ?? ""}
+        schemaEdit={schemaEdit ?? ""}
+        setSchemaEdit={setSchemaEdit}
+        setEdited={setEdited}
+        updateAction={updateAction}
+        description={description ?? ""}
+        schemaConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+        generateSchema={(instructions: string) =>
+          generateSchema({ owner, instructions })
+        }
+      />
     </>
   );
 }
