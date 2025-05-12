@@ -29,8 +29,8 @@ import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/acti
 import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
-  RetrievalDocument,
-  RetrievalDocumentChunk,
+  RetrievalDocumentChunkModel,
+  RetrievalDocumentModel,
 } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import {
@@ -198,8 +198,8 @@ async function main() {
   await AgentMCPAction.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
   await AgentChildAgentConfiguration.sync({ alter: true });
-  await RetrievalDocument.sync({ alter: true });
-  await RetrievalDocumentChunk.sync({ alter: true });
+  await RetrievalDocumentModel.sync({ alter: true });
+  await RetrievalDocumentChunkModel.sync({ alter: true });
 
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
