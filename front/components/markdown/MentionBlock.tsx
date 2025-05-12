@@ -1,26 +1,61 @@
-import { useContext } from "react";
+import {
+  ChatBubbleBottomCenterTextIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  EyeIcon,
+} from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import { visit } from "unist-util-visit";
 
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useURLSheet } from "@app/hooks/useURLSheet";
+import { setQueryParam } from "@app/lib/utils/router";
+import type { WorkspaceType } from "@app/types";
 
-export function MentionBlock({
+// Not exported, the one exported is getMentionPlugin since we need to pass the owner.
+function MentionBlock({
+  owner,
   agentName,
   agentSId,
 }: {
+  owner: WorkspaceType;
   agentName: string;
   agentSId: string;
 }) {
-  const { setAnimate, setSelectedAssistant } = useContext(InputBarContext);
+  const router = useRouter();
+  const { onOpenChange: onOpenChangeAssistantModal } =
+    useURLSheet("assistantDetails");
+
+  const handleStartConversation = async () => {
+    await router.push(`/w/${owner.sId}/assistant/new?assistant=${agentSId}`);
+  };
+
+  const handleSeeDetails = () => {
+    onOpenChangeAssistantModal(true);
+    setQueryParam(router, "assistantDetails", agentSId);
+  };
+
   return (
-    <span
-      className="inline-block cursor-pointer font-medium text-highlight-500"
-      onClick={() => {
-        setSelectedAssistant({ configurationId: agentSId });
-        setAnimate(true);
-      }}
-    >
-      @{agentName}
-    </span>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <span className="inline-block cursor-pointer font-medium text-highlight-500">
+          @{agentName}
+        </span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
+          onClick={handleStartConversation}
+          icon={() => <ChatBubbleBottomCenterTextIcon />}
+          label={`New conversation with ${agentName}`}
+        />
+        <DropdownMenuItem
+          onClick={handleSeeDetails}
+          icon={() => <EyeIcon />}
+          label={`About ${agentName}`}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -37,4 +72,20 @@ export function mentionDirective() {
       }
     });
   };
+}
+
+export function getMentionPlugin(owner: WorkspaceType) {
+  const MentionPlugin = ({
+    agentName,
+    agentSId,
+  }: {
+    agentName: string;
+    agentSId: string;
+  }) => {
+    return (
+      <MentionBlock owner={owner} agentName={agentName} agentSId={agentSId} />
+    );
+  };
+
+  return MentionPlugin;
 }
