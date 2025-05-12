@@ -17,7 +17,7 @@ import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_acti
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type {
-  AgentLoopContextType,
+  AgentLoopRunContextType,
   AgentLoopListToolsContextType,
 } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,7 +32,7 @@ export async function getInternalMCPServer(
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
   },
-  agentLoopContext?: AgentLoopContextType,
+  agentLoopRunContext?: AgentLoopRunContextType,
   agentLoopListToolsContext?: AgentLoopListToolsContextType
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
@@ -47,23 +47,27 @@ export async function getInternalMCPServer(
     case "child_agent_debugger":
       return childAgentDebuggerServer();
     case "query_tables":
-      return tablesQueryServer(auth, agentLoopContext);
+      return tablesQueryServer(auth, agentLoopRunContext);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
     case "think":
       return thinkServer();
     case "web_search_&_browse_v2":
-      return webtoolsServer(agentLoopContext);
+      return webtoolsServer(agentLoopRunContext);
     case "search":
-      return searchServer(auth, agentLoopContext);
+      return searchServer(auth, agentLoopRunContext);
     case "include_data":
-      return includeDataServer(auth, agentLoopContext);
+      return includeDataServer(auth, agentLoopRunContext);
     case "ask_agent":
       return askAgentServer(auth);
     case "reasoning_v2":
-      return reasoningServer(auth, agentLoopContext);
+      return reasoningServer(auth, agentLoopRunContext);
     case "run_dust_app":
-      return dustAppServer(auth, agentLoopContext, agentLoopListToolsContext);
+      return dustAppServer(
+        auth,
+        agentLoopRunContext,
+        agentLoopListToolsContext
+      );
     case "agent_router":
       return agentRouterServer(auth);
     default:

@@ -11,7 +11,7 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
 import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { AgentLoopListToolsContextType } from "@app/lib/actions/types";
 import { isMCPConfigurationForDustAppRun } from "@app/lib/actions/types/guards";
 import { isMCPInternalDustAppRun } from "@app/lib/actions/types/guards";
@@ -29,6 +29,10 @@ import type { DatasetSchema } from "@app/types";
 import { getHeaderFromGroupIds, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 import { ConfigurableToolInputSchemas } from "../input_schemas";
+import type {
+  ServerSideMCPServerConfigurationType,
+  ServerSideMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 
 interface DustAppBlock {
   type: string;
@@ -78,8 +82,13 @@ function convertDatasetSchemaToZodRawShape(
   return shape;
 }
 
-async function prepareAppContext(auth: Authenticator, actionConfig: any) {
-  if (!actionConfig.dustAppConfiguration.appId) {
+async function prepareAppContext(
+  auth: Authenticator,
+  actionConfig:
+    | ServerSideMCPServerConfigurationType
+    | ServerSideMCPToolConfigurationType
+) {
+  if (!actionConfig.dustAppConfiguration?.appId) {
     throw new Error("Missing Dust app ID");
   }
 
@@ -218,7 +227,7 @@ async function processDustFileOutput(
 async function prepareParamsWithHistory(
   params: any,
   schema: DatasetSchema,
-  agentLoopContext: AgentLoopContextType,
+  agentLoopRunContext: AgentLoopRunContextType,
   auth: Authenticator
 ) {
   if (
@@ -226,8 +235,8 @@ async function prepareParamsWithHistory(
   ) {
     const model = SUPPORTED_MODEL_CONFIGS.find(
       (m) =>
-        m.modelId === agentLoopContext.agentConfiguration.model.modelId &&
-        m.providerId === agentLoopContext.agentConfiguration.model.providerId
+        m.modelId === agentLoopRunContext.agentConfiguration.model.modelId &&
+        m.providerId === agentLoopRunContext.agentConfiguration.model.providerId
     );
 
     if (model) {
@@ -235,7 +244,7 @@ async function prepareParamsWithHistory(
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
 
       const convoRes = await renderConversationForModel(auth, {
-        conversation: agentLoopContext.conversation,
+        conversation: agentLoopRunContext.conversation,
         model,
         prompt: "",
         allowedTokenCount,
@@ -262,7 +271,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 export default async function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType,
+  agentLoopRunContext?: AgentLoopRunContextType,
   agentLoopListToolsContext?: AgentLoopListToolsContextType
 ): Promise<McpServer> {
   const server = new McpServer(serverInfo);
@@ -274,7 +283,7 @@ export default async function createServer(
         agentLoopListToolsContext.agentActionConfiguration
       )
     ) {
-      throw new Error("Invalid Dust app configuration");
+      throw new Error("Invalid Dust app run agent configuration");
     }
 
     const { app, schema } = await prepareAppContext(
@@ -302,14 +311,14 @@ export default async function createServer(
         };
       }
     );
-  } else if (agentLoopContext) {
-    if (!isMCPInternalDustAppRun(agentLoopContext.actionConfiguration)) {
-      throw new Error("Invalid Dust app run configuration");
+  } else if (agentLoopRunContext) {
+    if (!isMCPInternalDustAppRun(agentLoopRunContext.actionConfiguration)) {
+      throw new Error("Invalid Dust app run tool configuration");
     }
 
     const { app, schema, appConfig } = await prepareAppContext(
       auth,
-      agentLoopContext.actionConfiguration
+      agentLoopRunContext.actionConfiguration
     );
 
     if (!app.description) {
@@ -326,7 +335,7 @@ export default async function createServer(
         params = await prepareParamsWithHistory(
           params,
           schema,
-          agentLoopContext,
+          agentLoopRunContext,
           auth
         );
 
@@ -416,11 +425,11 @@ export default async function createServer(
 
         if (
           containsFileOutput(sanitizedOutput) &&
-          agentLoopContext?.conversation
+          agentLoopRunContext?.conversation
         ) {
           const fileContent = await processDustFileOutput(
             sanitizedOutput,
-            agentLoopContext.conversation,
+            agentLoopRunContext.conversation,
             app.name,
             auth
           );

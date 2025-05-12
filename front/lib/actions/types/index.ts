@@ -138,7 +138,7 @@ export abstract class BaseActionConfigurationServerRunner<
   ): AsyncGenerator<unknown>;
 }
 
-export type AgentLoopContextType = {
+export type AgentLoopRunContextType = {
   agentConfiguration: AgentConfigurationType;
   actionConfiguration: MCPToolConfigurationType;
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];

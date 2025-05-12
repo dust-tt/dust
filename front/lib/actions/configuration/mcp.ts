@@ -44,12 +44,15 @@ export async function fetchMCPServerActionConfigurations(
     return new Map();
   }
 
+  const workspace = auth.getNonNullableWorkspace();
+
   const whereClause: WhereOptions<
     AgentDataSourceConfiguration &
       AgentTablesQueryConfigurationTable &
       AgentReasoningConfiguration &
       AgentChildAgentConfiguration
   > = {
+    workspaceId: workspace.id,
     mcpServerConfigurationId: {
       [Op.in]: mcpServerConfigurations.map((r) => r.id),
     },
@@ -69,6 +72,7 @@ export async function fetchMCPServerActionConfigurations(
 
   const allDustApps = await AppModel.findAll({
     where: {
+      workspaceId: workspace.id,
       sId: {
         [Op.in]: removeNulls(mcpServerConfigurations.map((r) => r.appId)),
       },

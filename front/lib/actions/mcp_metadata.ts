@@ -19,7 +19,7 @@ import {
   isRemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { AgentLoopListToolsContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import apiConfig from "@app/lib/api/config";
@@ -111,11 +111,11 @@ export const connectToMCPServer = async (
   auth: Authenticator,
   {
     params,
-    agentLoopContext,
+    agentLoopRunContext,
     agentLoopListToolsContext,
   }: {
     params: MCPConnectionParams;
-    agentLoopContext?: AgentLoopContextType;
+    agentLoopRunContext?: AgentLoopRunContextType;
     agentLoopListToolsContext?: AgentLoopListToolsContextType;
   }
 ): Promise<Result<Client, Error>> => {
@@ -138,7 +138,7 @@ export const connectToMCPServer = async (
             params.mcpServerId,
             server,
             auth,
-            agentLoopContext,
+            agentLoopRunContext,
             agentLoopListToolsContext
           );
           await mcpClient.connect(client);

@@ -29,7 +29,7 @@ import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
-  AgentLoopContextType,
+  AgentLoopRunContextType,
   BaseActionRunParams,
   ExtractActionBlob,
 } from "@app/lib/actions/types";
@@ -584,7 +584,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       actionConfiguration,
     });
 
-    const agentLoopContext: AgentLoopContextType = {
+    const agentLoopRunContext: AgentLoopRunContextType = {
       actionConfiguration,
       agentConfiguration,
       conversation,
@@ -598,9 +598,14 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       MCPToolResultContentType[],
       Error | McpError
     > | null = null;
-    for await (const event of tryCallMCPTool(auth, inputs, agentLoopContext, {
-      progressToken: action.id,
-    })) {
+    for await (const event of tryCallMCPTool(
+      auth,
+      inputs,
+      agentLoopRunContext,
+      {
+        progressToken: action.id,
+      }
+    )) {
       if (event.type === "result") {
         toolCallResult = event.result;
       } else if (event.type === "notification") {

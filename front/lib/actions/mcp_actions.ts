@@ -42,7 +42,7 @@ import {
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import type {
-  AgentLoopContextType,
+  AgentLoopRunContextType,
   AgentLoopListToolsContextType,
 } from "@app/lib/actions/types";
 import {
@@ -144,14 +144,14 @@ type MCPCallToolEvent =
 export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
-  agentLoopContext: AgentLoopContextType,
+  agentLoopRunContext: AgentLoopRunContextType,
   {
     progressToken,
   }: {
     progressToken: ModelId;
   }
 ): AsyncGenerator<MCPCallToolEvent, void> {
-  if (!isMCPToolConfiguration(agentLoopContext.actionConfiguration)) {
+  if (!isMCPToolConfiguration(agentLoopRunContext.actionConfiguration)) {
     yield {
       type: "result",
       result: new Err(
@@ -166,10 +166,10 @@ export async function* tryCallMCPTool(
 
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
-    agentLoopContext.actionConfiguration,
+    agentLoopRunContext.actionConfiguration,
     {
-      conversationId: agentLoopContext.conversation.sId,
-      messageId: agentLoopContext.agentMessage.sId,
+      conversationId: agentLoopRunContext.conversation.sId,
+      messageId: agentLoopRunContext.agentMessage.sId,
     }
   );
   if (connectionParamsRes.isErr()) {
@@ -184,7 +184,7 @@ export async function* tryCallMCPTool(
   try {
     const r = await connectToMCPServer(auth, {
       params: connectionParamsRes.value,
-      agentLoopContext,
+      agentLoopRunContext,
     });
     if (r.isErr()) {
       yield {
@@ -221,7 +221,7 @@ export async function* tryCallMCPTool(
     // Start the tool call in parallel.
     const toolPromise = mcpClient.callTool(
       {
-        name: agentLoopContext.actionConfiguration.originalName,
+        name: agentLoopRunContext.actionConfiguration.originalName,
         arguments: inputs,
         _meta: {
           progressToken,
@@ -266,8 +266,8 @@ export async function* tryCallMCPTool(
       logger.error(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          conversationId: agentLoopContext.conversation.sId,
-          messageId: agentLoopContext.agentMessage.sId,
+          conversationId: agentLoopRunContext.conversation.sId,
+          messageId: agentLoopRunContext.agentMessage.sId,
           error: toolCallResult.content,
         },
         `Error calling MCP tool in tryCallMCPTool().`
