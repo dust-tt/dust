@@ -85,9 +85,14 @@ function createServer(
 
       // Call Core API's /database_schema endpoint
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const viewFilter = dataSourceViewsMap
-        .get(agentTableConfigurations[0].dataSourceViewId)
-        ?.toViewFilter();
+      const viewId = agentTableConfigurations[0].dataSourceViewId;
+      const view = dataSourceViewsMap.get(viewId);
+      if (!view) {
+        throw new Error(
+          `unreachable: Missing view ${viewId} for agent table configuration ${agentTableConfigurations[0].id}.`
+        );
+      }
+      const viewFilter = view.toViewFilter();
       const schemaResult = await coreAPI.getDatabaseSchema({
         tables: configuredTables,
         filter: viewFilter,
