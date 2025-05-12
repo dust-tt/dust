@@ -1333,21 +1333,29 @@ const NotificationContentSchema = z.union([
   NotificationTextContentSchema,
 ]);
 
-const MCPNotificationEventSchema = z.object({
+const ToolNotificationProgressSchema = z.object({
+  progress: z.number(),
+  total: z.number(),
+  data: z.object({
+    label: z.string(),
+    output: NotificationContentSchema.optional(),
+  }),
+});
+
+export type ToolNotificationProgress = z.infer<
+  typeof ToolNotificationProgressSchema
+>;
+
+const ToolNotificationEventSchema = z.object({
   type: z.literal("tool_notification"),
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
   action: MCPActionTypeSchema,
-  notification: z.object({
-    progress: z.number(),
-    total: z.number(),
-    data: z.object({
-      label: z.string(),
-      output: NotificationContentSchema.optional(),
-    }),
-  }),
+  notification: ToolNotificationProgressSchema,
 });
+
+export type ToolNotificationEvent = z.infer<typeof ToolNotificationEventSchema>;
 
 const MCPValidationMetadataSchema = z.object({
   mcpServerName: z.string(),
@@ -2926,7 +2934,8 @@ const MCP_TOOL_STAKE_LEVELS = [
   ...REMOTE_MCP_TOOL_STAKE_LEVELS,
   "never_ask",
 ] as const;
-export type MCPToolStakeLevelPublicType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
+export type MCPToolStakeLevelPublicType =
+  (typeof MCP_TOOL_STAKE_LEVELS)[number];
 
 const MCP_VALIDATION_OUTPUTS = [
   "approved",
