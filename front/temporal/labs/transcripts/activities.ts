@@ -254,7 +254,7 @@ export async function processTranscriptActivity(
   );
 
   const hasExistingHistory =
-    await transcriptsConfiguration.fetchHistoryForFileId(fileId);
+    await transcriptsConfiguration.fetchHistoryForFileId(auth, fileId);
   if (hasExistingHistory) {
     localLogger.info(
       {},
@@ -486,10 +486,10 @@ export async function processTranscriptActivity(
       );
     }
 
-    await transcriptsConfiguration.setStorageStatusForFileId(
+    await transcriptsConfiguration.setStorageStatusForFileId(auth, {
       fileId,
-      shouldStoreTranscript
-    );
+      stored: shouldStoreTranscript,
+    });
 
     localLogger.info(
       {
@@ -679,10 +679,7 @@ export async function processTranscriptActivity(
       allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
     });
 
-    await transcriptsConfiguration.setConversationHistory(
-      fileId,
-      conversation.sId
-    );
+    await transcriptsConfiguration(fileId, conversation.sId);
 
     await sendEmailWithTemplate({
       to: user.email,

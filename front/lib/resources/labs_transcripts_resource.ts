@@ -243,29 +243,13 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
-  async setConversationHistory(
-    fileId: string,
-    conversationId: string
-  ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
+  async setStorageStatusForFileId(
+    auth: Authenticator,
+    { fileId, stored }: { fileId: string; stored: boolean }
+  ) {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
-        configurationId: this.id,
-        fileId,
-      },
-    });
-
-    if (!history) {
-      return null;
-    }
-
-    await history?.update({ conversationId });
-
-    return history.get();
-  }
-
-  async setStorageStatusForFileId(fileId: string, stored: boolean) {
-    const history = await LabsTranscriptsHistoryModel.findOne({
-      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         configurationId: this.id,
         fileId,
       },
@@ -278,10 +262,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   async fetchHistoryForFileId(
+    auth: Authenticator,
     fileId: LabsTranscriptsHistoryModel["fileId"]
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         configurationId: this.id,
         fileId,
       },
@@ -292,24 +278,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     }
 
     return history.get();
-  }
-
-  async listHistory({
-    limit = 20,
-    sort = "DESC",
-  }: {
-    limit: number;
-    sort: "ASC" | "DESC";
-  }): Promise<InferAttributes<LabsTranscriptsHistoryModel>[]> {
-    const histories = await LabsTranscriptsHistoryModel.findAll({
-      where: {
-        configurationId: this.id,
-      },
-      limit,
-      order: [["createdAt", sort]],
-    });
-
-    return histories.map((history) => history.get());
   }
 
   private async deleteHistory(
