@@ -373,15 +373,16 @@ async function* runMultiActionsAgent(
   });
 
   // Get client-side MCP server configurations from user message context.
-  const clientSideMCPActions = createClientSideMCPServerConfigurations(
-    userMessage.context.clientSideMCPServerIds
-  );
+  const clientSideMCPActionConfigurations =
+    createClientSideMCPServerConfigurations(
+      userMessage.context.clientSideMCPServerIds
+    );
 
   const { tools: mcpActions, error } = await tryListMCPTools(auth, {
     agentConfiguration,
     conversation,
     agentMessage,
-    localActionConfigurations: clientSideMCPActions,
+    clientSideActionConfigurations: clientSideMCPActionConfigurations,
   });
 
   if (!isLastGenerationIteration) {

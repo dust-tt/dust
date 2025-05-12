@@ -141,7 +141,7 @@ export abstract class BaseActionConfigurationServerRunner<
 export type AgentLoopContextType = {
   agentConfiguration: AgentConfigurationType;
   actionConfiguration: MCPToolConfigurationType;
-  localActionConfigurations?: ClientSideMCPServerConfigurationType[];
+  clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
   stepActionIndex: number;
@@ -152,7 +152,7 @@ export type AgentLoopContextType = {
 export type AgentLoopListToolsContextType = {
   agentConfiguration: AgentConfigurationType; // TODO: check if useful
   agentActionConfiguration: MCPServerConfigurationType;
-  localActionConfigurations?: ClientSideMCPServerConfigurationType[];
+  clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
 };

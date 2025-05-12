@@ -382,7 +382,7 @@ export async function tryListMCPTools(
   // Filter for MCP server configurations.
   const mcpServerActions = [
     ...agentLoopListToolsContext.agentConfiguration.actions,
-    ...(agentLoopListToolsContext.localActionConfigurations ?? []),
+    ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
   ].filter(isMCPServerConfiguration);
 
   // Discover all the tools exposed by all the mcp servers available.
