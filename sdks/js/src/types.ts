@@ -2919,9 +2919,14 @@ export type PostMCPResultsResponseType = z.infer<
   typeof PostMCPResultsResponseSchema
 >;
 
-const MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
-export type MCPToolStakeLevelPublicType =
-  (typeof MCP_TOOL_STAKE_LEVELS)[number];
+const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export type RemoteMCPToolStakeLevelPublicType =
+  (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
+const MCP_TOOL_STAKE_LEVELS = [
+  ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "never_ask",
+] as const;
+export type MCPToolStakeLevelPublicType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
 
 const MCP_VALIDATION_OUTPUTS = [
   "approved",
