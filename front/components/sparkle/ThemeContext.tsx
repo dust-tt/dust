@@ -79,8 +79,8 @@ const disableAnimation = () => {
 // This is to avoid rendering the light theme first when the user has dark theme.
 // We want to run this before React hydration in the browser's global scope,
 // so we should not rely on any external variables.
-// (Yuka 05/12/2025) I'm not sure how to minify at build time, using manually minified script for now.
-const minifiedThemeScript = `try{const theme=localStorage.getItem("theme")||"system";const isDark=theme==="dark"||(theme==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(isDark){document.documentElement.classList.add("dark");document.documentElement.classList.add("s-dark")}}catch(e){}`;
+// TODO (05/12/2025 yuka) I'm not sure how to minify at build time, using manually minified script for now.
+const minifiedThemeScript = `function(){try{const theme=localStorage.getItem("theme")||"system";const isDark=theme==="dark"||(theme==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(isDark){document.documentElement.classList.add("dark");document.documentElement.classList.add("s-dark")}}catch(e){}}`;
 
 const ThemeScript = memo(function ThemeInitScript() {
   return (
