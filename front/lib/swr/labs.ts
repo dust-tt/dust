@@ -23,8 +23,8 @@ import {
   isOAuthProvider,
   setupOAuthConnection,
 } from "@app/types";
-import type {Result} from "@app/types/shared/result";
-import { Err, Ok  } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
