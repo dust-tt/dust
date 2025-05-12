@@ -93,7 +93,7 @@ export function ConversationTitle({
         alert("Failed to update title");
       }
     },
-    [activeConversationId, conversation?.visibility, mutate, owner.sId]
+    [activeConversationId, mutate, owner.sId]
   );
 
   if (!activeConversationId) {
