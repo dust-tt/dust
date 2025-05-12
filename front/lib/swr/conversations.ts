@@ -13,6 +13,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
   ConversationError,
@@ -267,4 +268,31 @@ export function useVisualizationRetry({
   );
 
   return handleVisualizationRetry;
+}
+
+export function useConversationMessage({
+  conversationId,
+  workspaceId,
+  messageId,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+  messageId: string | null;
+}) {
+  const messageFetcher: Fetcher<FetchConversationMessageResponse> = fetcher;
+
+  const { data, error, mutate, isLoading, isValidating } = useSWRWithDefaults(
+    messageId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}`
+      : null,
+    messageFetcher
+  );
+
+  return {
+    message: data?.message,
+    isMessageError: error,
+    isMessageLoading: isLoading,
+    isValidating,
+    mutateMessage: mutate,
+  };
 }

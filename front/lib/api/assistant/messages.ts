@@ -10,11 +10,13 @@ import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/actions/reason
 import { retrievalActionTypesFromAgentMessageIds } from "@app/lib/actions/retrieval";
 import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/actions/tables_query";
+import { LightAgentActionType } from "@app/lib/actions/types";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/actions/websearch";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
+import { getCitationsFromActions } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
@@ -33,7 +35,7 @@ import type {
   AgentActionType,
   AgentMessageType,
   ContentFragmentType,
-  ConversationType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   MessageWithRankType,
   ModelId,
@@ -112,7 +114,8 @@ async function batchRenderUserMessages(
 
 async function batchRenderAgentMessages(
   auth: Authenticator,
-  messages: Message[]
+  messages: Message[],
+  viewType: "light" | "full"
 ): Promise<
   Result<
     { m: AgentMessageType; rank: number; version: number }[],
@@ -252,7 +255,15 @@ async function batchRenderAgentMessages(
           parentMessageId:
             messages.find((m) => m.id === message.parentId)?.sId ?? null,
           status: agentMessage.status,
-          actions: actions,
+          actions:
+            viewType === "light"
+              ? actions.map(
+                  (a) =>
+                    new LightAgentActionType(a.id, a.type, a.generatedFiles)
+                )
+              : actions,
+          citations:
+            viewType === "light" ? getCitationsFromActions(actions) : undefined,
           content: parsedContent.content,
           chainOfThought: parsedContent.chainOfThought,
           rawContents:
@@ -402,11 +413,12 @@ async function fetchMessagesForPage(
 export async function batchRenderMessages(
   auth: Authenticator,
   conversationId: string,
-  messages: Message[]
+  messages: Message[],
+  viewType: "light" | "full"
 ): Promise<Result<MessageWithRankType[], ConversationError>> {
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
-    batchRenderAgentMessages(auth, messages),
+    batchRenderAgentMessages(auth, messages, viewType),
     batchRenderContentFragment(auth, conversationId, messages),
   ]);
 
@@ -460,7 +472,8 @@ export async function fetchConversationMessages(
   const renderedMessagesRes = await batchRenderMessages(
     auth,
     conversationId,
-    messages
+    messages,
+    "light"
   );
 
   if (renderedMessagesRes.isErr()) {
@@ -486,7 +499,7 @@ export function canReadMessage(auth: Authenticator, message: AgentMessageType) {
 
 export async function fetchMessageInConversation(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   messageId: string
 ) {
   return Message.findOne({

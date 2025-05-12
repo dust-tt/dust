@@ -21,11 +21,6 @@ import React from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import {
-  getDocumentIcon,
-  makeDocumentCitation,
-} from "@app/components/actions/retrieval/utils";
-import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
@@ -41,6 +36,7 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
+import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
 import {
   MentionBlock,
   mentionDirective,
@@ -52,18 +48,7 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
-import {
-  isImageProgressOutput,
-  isSearchResultResourceType,
-  isWebsearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { RetrievalActionType } from "@app/lib/actions/retrieval";
-import {
-  isMCPActionType,
-  isRetrievalActionType,
-  isWebsearchActionType,
-} from "@app/lib/actions/types/guards";
-import type { WebsearchActionType } from "@app/lib/actions/websearch";
+import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
@@ -74,7 +59,6 @@ import {
   assertNever,
   GLOBAL_AGENTS_SID,
   isSupportedImageContentType,
-  removeNulls,
 } from "@app/types";
 
 function cleanUpCitations(message: string): string {
@@ -143,10 +127,6 @@ export function AgentMessage({
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
-
-  const [references, setReferences] = React.useState<{
-    [key: string]: MarkdownCitation;
-  }>({});
 
   const [activeReferences, setActiveReferences] = React.useState<
     { index: number; document: MarkdownCitation }[]
@@ -226,6 +206,22 @@ export function AgentMessage({
         assertNever(message.status);
     }
   })();
+
+  const references =
+    Object.entries(agentMessageToRender?.citations ?? {}).reduce<
+      Record<string, MarkdownCitation>
+    >((acc, citation) => {
+      if (citation) {
+        const IconComponent = getCitationIcon(citation[1].provider, isDark);
+        acc[citation[0]] = {
+          href: citation[1].href,
+          title: citation[1].title,
+          description: citation[1].description,
+          icon: <IconComponent />,
+        };
+      }
+      return acc;
+    }, {}) ?? {};
 
   // Autoscroll is performed when a message is generating and the page is
   // already scrolled down; but if the user has scrolled the page up after the
@@ -359,88 +355,6 @@ export function AgentMessage({
     }
   }
 
-  React.useEffect(() => {
-    // Retrieval actions.
-    const retrievalActionsWithDocs = agentMessageToRender.actions
-      .filter((a) => isRetrievalActionType(a) && a.documents)
-      .sort((a, b) => a.id - b.id) as RetrievalActionType[];
-    const allDocs = removeNulls(
-      retrievalActionsWithDocs.map((a) => a.documents).flat()
-    );
-    const allDocsReferences = allDocs.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, d) => {
-      acc[d.reference] = makeDocumentCitation(d, isDark);
-      return acc;
-    }, {});
-
-    // Websearch actions.
-    const websearchActionsWithResults = agentMessageToRender.actions
-      .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
-      .sort((a, b) => a.id - b.id) as WebsearchActionType[];
-    const allWebResults = removeNulls(
-      websearchActionsWithResults.map((a) => a.output?.results).flat()
-    );
-    const allWebReferences = allWebResults.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, l) => {
-      acc[l.reference] = makeWebsearchResultsCitation(l);
-      return acc;
-    }, {});
-
-    // MCP actions with search results.
-    const searchResultsWithDocs = removeNulls(
-      agentMessageToRender.actions
-        .filter(isMCPActionType)
-        .flatMap((action) =>
-          action.output
-            ?.filter(isSearchResultResourceType)
-            .map((o) => o.resource)
-        )
-    );
-    const allMCPSearchResultsReferences = searchResultsWithDocs.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, d) => {
-      acc[d.ref] = {
-        href: d.uri,
-        title: d.text,
-        icon: getDocumentIcon(d.source.provider),
-      };
-      return acc;
-    }, {});
-
-    const websearchResultsWithDocs = removeNulls(
-      agentMessageToRender.actions
-        .filter(isMCPActionType)
-        .flatMap((action) =>
-          action.output?.filter(isWebsearchResultResourceType)
-        )
-    );
-
-    const allMCPWebsearchResultsReferences = websearchResultsWithDocs.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, d) => {
-      acc[d.resource.reference] = {
-        href: d.resource.uri,
-        title: d.resource.title,
-        icon: <DocumentIcon />,
-      };
-      return acc;
-    }, {});
-
-    // Merge all references.
-    setReferences({
-      ...allDocsReferences,
-      ...allWebReferences,
-      ...allMCPSearchResultsReferences,
-      ...allMCPWebsearchResultsReferences,
-    });
-  }, [
-    agentMessageToRender.actions,
-    agentMessageToRender.status,
-    agentMessageToRender.sId,
-    isDark,
-  ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
   const additionalMarkdownComponents: Components = React.useMemo(
@@ -563,6 +477,7 @@ export function AgentMessage({
         <div className="flex flex-col gap-2">
           <AgentMessageActions
             agentMessage={agentMessage}
+            conversationId={conversationId}
             lastAgentStateClassification={messageStreamState.agentState}
             owner={owner}
           />

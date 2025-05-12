@@ -10,10 +10,12 @@ import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
 import type { WebsearchActionType } from "@app/lib/actions/websearch";
 
+import { LightAgentActionType } from "@app/lib/actions/types";
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type { LightAgentConfigurationType } from "./agent";
+import { ConnectorProvider } from "@dust-tt/client";
 
 /**
  * Mentions
@@ -150,6 +152,13 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   tool_action: "Using a tool",
 };
 
+export interface CitationType {
+  description?: string;
+  href?: string;
+  title: string;
+  provider: ConnectorProvider | "document" | "image";
+}
+
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
  *
@@ -168,7 +177,8 @@ export type AgentMessageType = {
   parentMessageId: string | null;
   configuration: LightAgentConfigurationType;
   status: AgentMessageStatus;
-  actions: AgentActionType[];
+  actions: (LightAgentActionType | AgentActionType)[];
+  citations?: Record<string, CitationType>;
   content: string | null;
   chainOfThought: string | null;
   rawContents: Array<{

@@ -138,7 +138,9 @@ async function handler(
 
         const updatedConversationRes = await getConversation(
           auth,
-          conversation.sId
+          conversation.sId,
+          false,
+          "light"
         );
 
         if (updatedConversationRes.isErr()) {
@@ -195,7 +197,12 @@ async function handler(
         // created as well, so pulling the conversation again will allow to have an up to date view
         // of the conversation with agent messages included so that the user of the API can start
         // streaming events from these agent messages directly.
-        const updatedRes = await getConversation(auth, conversation.sId);
+        const updatedRes = await getConversation(
+          auth,
+          conversation.sId,
+          false,
+          "light"
+        );
 
         if (updatedRes.isErr()) {
           return apiErrorForConversation(req, res, updatedRes.error);

@@ -13,12 +13,14 @@ import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;
+  conversationId: string;
   lastAgentStateClassification: AgentStateClassification;
   owner: LightWorkspaceType;
 }
 
 export function AgentMessageActions({
   agentMessage,
+  conversationId,
   lastAgentStateClassification,
   owner,
 }: AgentMessageActionsProps) {
@@ -51,7 +53,8 @@ export function AgentMessageActions({
   return (
     <div className="flex flex-col items-start gap-y-4">
       <AgentMessageActionsDrawer
-        actions={agentMessage.actions}
+        conversationId={conversationId}
+        messageId={agentMessage.sId}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
         isActing={lastAgentStateClassification === "acting"}
