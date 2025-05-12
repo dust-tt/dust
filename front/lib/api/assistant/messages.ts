@@ -173,7 +173,8 @@ async function batchRenderAgentMessages(
     (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () =>
       searchLabelsActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () => mcpActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      mcpActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
   ]);
 
   if (!agentConfigurations) {
