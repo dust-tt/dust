@@ -92,6 +92,7 @@ interface DustResponse {
   body: Readable | string;
 }
 
+// Copied from front/hooks/useEventSource.ts
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
 const DEFAULT_RECONNECT_DELAY = 5000;
 
