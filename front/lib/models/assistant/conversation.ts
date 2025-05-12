@@ -465,6 +465,9 @@ Message.init(
       {
         fields: ["workspaceId", "id"],
       },
+      {
+        fields: ["workspaceId", "conversationId", "sId"],
+      },
     ],
     hooks: {
       beforeValidate: (message) => {
