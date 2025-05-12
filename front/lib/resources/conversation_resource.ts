@@ -2,7 +2,6 @@ import * as _ from "lodash";
 import type {
   CreationAttributes,
   InferAttributes,
-  ModelStatic,
   Transaction,
 } from "sequelize";
 import { literal, Op, Sequelize } from "sequelize";
@@ -28,6 +27,7 @@ import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 
 import { GroupResource } from "./group_resource";
 import { frontSequelize } from "./storage";
+import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 import type { ResourceFindOptions } from "./types";
 
 export type FetchConversationOptions = {
@@ -42,7 +42,8 @@ export interface ConversationResource
   extends ReadonlyAttributesType<ConversationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ConversationResource extends BaseResource<ConversationModel> {
-  static model: ModelStatic<ConversationModel> = ConversationModel;
+  static model: ModelStaticWorkspaceAware<ConversationModel> =
+    ConversationModel;
 
   static async makeNew(
     auth: Authenticator,
@@ -103,6 +104,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ) {
     return this.baseFetch(auth, options, {
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         sId: sIds,
       },
     });
@@ -284,6 +286,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       attributes: ["userId", "updatedAt", "conversationId"],
       where: {
         userId: user.id,
+        workspaceId: owner.id,
         action: "posted",
       },
       order: [["updatedAt", "DESC"]],
@@ -369,6 +372,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     await frontSequelize.transaction(async (t) => {
       const participant = await ConversationParticipantModel.findOne({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           conversationId: conversation.id,
           userId: user.id,
         },
