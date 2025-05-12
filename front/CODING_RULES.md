@@ -286,7 +286,7 @@ export function useFolders({ owner, spaceId } : { owner: LightWorkspaceType, spa
 ```
 
 Data posting should be done in hooks colocated with the SWR hooks. Do not fetch directly in
-componenets. Success and failure notifications should be sent from the hook.
+components. Success and failure notifications should be sent from the hook.
 
 ```
 export function useCreateFolder({
