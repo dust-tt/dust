@@ -1,6 +1,3 @@
-import { AssistantBuilderProcessConfiguration } from "@app/components/assistant_builder/types";
-import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
-import { Result } from "@app/types";
 import {
   Button,
   SparklesIcon,
@@ -8,6 +5,10 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
+
+import type { AssistantBuilderProcessConfiguration } from "@app/components/assistant_builder/types";
+import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
+import type { Result } from "@app/types";
 
 interface JsonSchemaConfigurationSectionProps {
   instructions: string;

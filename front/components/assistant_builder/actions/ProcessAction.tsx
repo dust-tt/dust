@@ -11,6 +11,7 @@ import React, { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
+import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
 import type {
   AssistantBuilderActionConfiguration,
@@ -18,14 +19,9 @@ import type {
   AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
 import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
-import {
-  Err,
-  Ok,
-  Result,
-  type SpaceType,
-  type WorkspaceType,
-} from "@app/types";
-import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
+import type { Result } from "@app/types";
+import type { SpaceType, WorkspaceType } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export function hasErrorActionProcess(
   action: AssistantBuilderActionConfiguration
