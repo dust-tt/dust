@@ -1,5 +1,5 @@
 import { Box, Text, useInput, useStdout } from "ink";
-import type { ReactNode} from "react";
+import type { ReactNode } from "react";
 import React, { useEffect, useState } from "react";
 
 export interface BaseItem {
@@ -47,9 +47,6 @@ export const SelectWithSearch = <T extends BaseItem>({
   const [selectionOrder, setSelectionOrder] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  // Used to trigger re-render on "enter" press when the terminal size is too small.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_forceRerenderKey, setForceRerenderKey] = useState(0);
 
   const selectedBlockHeight =
     selectionOrder.length > 0
@@ -95,13 +92,6 @@ export const SelectWithSearch = <T extends BaseItem>({
 
   useInput(
     (input, key) => {
-      if (terminalHeight < 30) {
-        if (key.return) {
-          setForceRerenderKey((k) => k + 1);
-        }
-        return;
-      }
-
       const currentItem = paginatedFilteredItems[cursor];
       const currentItemId = currentItem?.id;
 
@@ -171,16 +161,6 @@ export const SelectWithSearch = <T extends BaseItem>({
     },
     { isActive: true }
   );
-
-  if (terminalHeight < 25) {
-    return (
-      <Box>
-        <Text color="red">
-          Terminal height must be at least 25 lines. Resize and press Enter.
-        </Text>
-      </Box>
-    );
-  }
 
   return (
     <Box flexDirection="column">
