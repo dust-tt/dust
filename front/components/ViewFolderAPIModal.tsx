@@ -80,7 +80,9 @@ export function ViewFolderAPIModal({
     }
   };
 
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const theme = localStorage.getItem("theme");
+  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -122,7 +124,7 @@ export function ViewFolderAPIModal({
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("upsert")}`}
                 language="shell"
@@ -156,7 +158,7 @@ export function ViewFolderAPIModal({
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("search")}`}
                 language="shell"

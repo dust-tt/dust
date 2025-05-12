@@ -59,7 +59,9 @@ export function While({
     onBlockUpdate(b);
   };
 
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const theme = localStorage.getItem("theme");
+  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
 
   return (
     <Block
@@ -111,7 +113,7 @@ export function While({
                 )}
               >
                 <CodeEditor
-                  data-color-mode={theme === "dark" ? "dark" : "light"}
+                  data-color-mode={isDark ? "dark" : "light"}
                   readOnly={readOnly}
                   value={block.spec.condition_code}
                   language="js"

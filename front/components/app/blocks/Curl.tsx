@@ -107,7 +107,9 @@ export default function Curl({
     }
   });
 
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const theme = localStorage.getItem("theme");
+  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
 
   return (
     <Block
@@ -185,7 +187,7 @@ export default function Curl({
           <div className="flex w-full font-normal">
             <div className="w-full">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.headers_code}
                 language="js"
@@ -207,7 +209,7 @@ export default function Curl({
           <div className="flex w-full font-normal">
             <div className="w-full">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.body_code}
                 language="js"

@@ -90,7 +90,9 @@ export function ViewAppAPIModal({
     }
   };
 
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const theme = localStorage.getItem("theme");
+  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
 
   return (
     <Sheet>
@@ -133,7 +135,7 @@ export function ViewAppAPIModal({
                 <span className="italic">{app.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("run")}`}
                 language="shell"

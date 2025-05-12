@@ -204,7 +204,9 @@ export default function Chat({
   const [isModelSupportsResponseFormat, setIsModelSupportsResponseFormat] =
     useState(config ? supportsResponseFormat(config) : false);
 
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const theme = localStorage.getItem("theme");
+  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
 
   return (
     <Block
@@ -390,7 +392,7 @@ export default function Chat({
                     <div className="flex w-full font-normal">
                       <div className="w-full leading-5">
                         <CodeEditor
-                          data-color-mode={theme === "dark" ? "dark" : "light"}
+                          data-color-mode={isDark ? "dark" : "light"}
                           readOnly={readOnly}
                           value={responseFormatText}
                           language="json"
@@ -444,7 +446,7 @@ export default function Chat({
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.instructions}
                 language="jinja2"
@@ -468,7 +470,7 @@ export default function Chat({
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.messages_code}
                 language="js"
@@ -495,7 +497,7 @@ export default function Chat({
                 <div className="flex w-full font-normal">
                   <div className="w-full leading-4">
                     <CodeEditor
-                      data-color-mode={theme === "dark" ? "dark" : "light"}
+                      data-color-mode={isDark ? "dark" : "light"}
                       readOnly={readOnly}
                       value={block.spec.functions_code}
                       language="js"

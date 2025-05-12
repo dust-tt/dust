@@ -214,7 +214,10 @@ export default function Database({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const theme = localStorage.getItem("theme");
+  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
+
   return (
     <Block
       owner={owner}
@@ -246,7 +249,7 @@ export default function Database({
           <Label>Query</Label>
           <div className="w-full font-normal">
             <CodeEditor
-              data-color-mode={theme === "dark" ? "dark" : "light"}
+              data-color-mode={isDark ? "dark" : "light"}
               readOnly={readOnly}
               value={block.spec.query}
               language="jinja2"

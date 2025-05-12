@@ -194,7 +194,9 @@ export default function DataSource({
     onBlockUpdate(b);
   };
 
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const theme = localStorage.getItem("theme");
+  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
 
   return (
     <Block
@@ -256,7 +258,7 @@ export default function DataSource({
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.query}
                 language="jinja2"
@@ -283,7 +285,7 @@ export default function DataSource({
               <div className="flex w-full flex-col gap-2">
                 <div className="flex w-full flex-col gap-2">
                   <CodeEditor
-                    data-color-mode={theme === "dark" ? "dark" : "light"}
+                    data-color-mode={isDark ? "dark" : "light"}
                     readOnly={readOnly}
                     value={block.spec.filter_code}
                     language="js"
