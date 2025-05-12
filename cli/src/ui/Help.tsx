@@ -27,7 +27,7 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>chat</Text> Chat with a Dust agent
+          <Text bold>chat</Text> Chat with a Dust agent (default)
         </Text>
       </Box>
       <Box marginLeft={2}>

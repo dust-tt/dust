@@ -46,7 +46,7 @@ const App: FC<AppProps> = ({ cli }) => {
     return <Help />;
   }
 
-  const command = input[0] || "help";
+  const command = input[0] || "chat";
 
   switch (command) {
     case "login":

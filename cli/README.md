@@ -23,11 +23,13 @@ Depending on your distribution, you will need to run the following command:
 
 ## Usage
 
-The Dust CLI allows you to manage your Dust authentication session (no features yet).
+The Dust CLI allows you to manage your Dust authentication session and chat with Dust agents.
 
 ```bash
-dust <command> [options]
+dust [command] [options]
 ```
+
+When no command is provided, the `chat` command will be used by default.
 
 ### Commands
 
@@ -42,8 +44,8 @@ dust <command> [options]
   - `dust agents-mcp`
   - Optional: `--port <number>` or `-p <number>` to specify the listening port (defaults to auto-selection)
   - Optional: `--sId <sId>` or `-s <sId>` to specify the agent sId to use directly (can be repeated)
-- **`chat`**: Chat with a Dust agent.
-  - `dust chat`
+- **`chat`**: Chat with a Dust agent (default command).
+  - `dust chat` or simply `dust`
   - Optional: `--sId <sId>` or `-s <sId>` to specify the agent sId to use directly
 - **`help`**: Display help information.
   - `dust help`
@@ -56,6 +58,7 @@ dust <command> [options]
 
 ## Examples
 
+- `dust` (starts a chat with a Dust agent)
 - `dust login`
 - `dust agents-mcp`
 - `dust agents-mcp --port 8080`
