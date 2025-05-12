@@ -6,7 +6,7 @@ import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
-import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
   getConversation,
@@ -173,7 +173,7 @@ async function handler(
         }
 
         // Local MCP servers are only available to authenticated users (not API keys).
-        if (message.context.localMCPServerIds) {
+        if (message.context.clientSideMCPServerIds) {
           if (!auth.user()) {
             return apiError(req, res, {
               status_code: 401,
@@ -186,7 +186,7 @@ async function handler(
           }
 
           const hasServerAccess = await concurrentExecutor(
-            message.context.localMCPServerIds,
+            message.context.clientSideMCPServerIds,
             async (serverId) =>
               validateMCPServerAccess(auth, {
                 workspaceId: auth.getNonNullableWorkspace().sId,
@@ -341,7 +341,8 @@ async function handler(
               email: message.context.email ?? null,
               profilePictureUrl: message.context.profilePictureUrl ?? null,
               origin: message.context.origin ?? "api",
-              localMCPServerIds: message.context.localMCPServerIds ?? [],
+              clientSideMCPServerIds:
+                message.context.clientSideMCPServerIds ?? [],
             },
           },
           { resolveAfterFullGeneration: blocking === true }

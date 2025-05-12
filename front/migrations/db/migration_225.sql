@@ -1,3 +1,2 @@
--- Add Dust App specific columns to the existing table
-ALTER TABLE public.agent_mcp_server_configurations
-  ADD COLUMN "appId" VARCHAR(255) NULL;
+-- Migration created on May 09, 2025
+ALTER TABLE "public"."user_messages" ADD COLUMN "clientSideMCPServerIds" VARCHAR(255)[] NOT NULL DEFAULT ARRAY[]::VARCHAR(255)[];

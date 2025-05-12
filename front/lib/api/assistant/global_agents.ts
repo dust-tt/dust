@@ -8,7 +8,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { PlatformMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
@@ -142,7 +142,7 @@ function _getAgentRouterToolsConfiguration(
   agentId: GLOBAL_AGENTS_SID,
   mcpServerView: MCPServerViewResource | null,
   internalMCPServerId: string
-): PlatformMCPServerConfigurationType[] {
+): ServerSideMCPServerConfigurationType[] {
   if (!mcpServerView) {
     return [];
   }

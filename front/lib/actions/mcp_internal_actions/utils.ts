@@ -11,7 +11,7 @@ import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isMCPToolConfiguration,
-  isPlatformMCPToolConfiguration,
+  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -84,8 +84,8 @@ export function generateConfiguredInput({
 }): ConfigurableToolInputType {
   // It's okay to return null if the schema of the mime type is nullable.
   assert(
-    isPlatformMCPToolConfiguration(actionConfiguration),
-    "Action configuration must be a platform MCP tool configuration"
+    isServerSideMCPToolConfiguration(actionConfiguration),
+    "Action configuration must be a server-side MCP tool configuration"
   );
 
   switch (mimeType) {

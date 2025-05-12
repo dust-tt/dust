@@ -21,7 +21,7 @@ import {
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
-import { createLocalMCPServerConfigurations } from "@app/lib/api/actions/mcp_local";
+import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -372,9 +372,9 @@ async function* runMultiActionsAgent(
     conversation,
   });
 
-  // Get local MCP server configurations from user message context.
-  const localMCPActions = createLocalMCPServerConfigurations(
-    userMessage.context.localMCPServerIds
+  // Get client-side MCP server configurations from user message context.
+  const clientSideMCPActions = createClientSideMCPServerConfigurations(
+    userMessage.context.clientSideMCPServerIds
   );
 
   const { tools: mcpActions, error } = await tryListMCPTools(auth, {
@@ -383,7 +383,7 @@ async function* runMultiActionsAgent(
     agentMessage,
     stepActionIndex: -1,
     stepActions: [],
-    localActionConfigurations: localMCPActions,
+    localActionConfigurations: clientSideMCPActions,
     citationsRefsOffset: 0,
   });
 

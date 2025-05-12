@@ -4,7 +4,7 @@ import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import type { PlatformMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
@@ -505,7 +505,7 @@ export async function createOrUpgradeAgentConfiguration({
           additionalConfiguration: action.additionalConfiguration,
           dustAppConfiguration: action.dustAppConfiguration,
           timeFrame: action.timeFrame,
-        } as PlatformMCPServerConfigurationType,
+        } as ServerSideMCPServerConfigurationType,
         agentConfigurationRes.value
       );
       if (res.isErr()) {

@@ -18,10 +18,10 @@ import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
-  isPlatformMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
+  isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -155,7 +155,7 @@ function renderOtherAction(
       avatar: <Avatar icon={ChatBubbleThoughtIcon} size="xs" />,
       order: 0,
     };
-  } else if (isPlatformMCPServerConfiguration(action)) {
+  } else if (isServerSideMCPServerConfiguration(action)) {
     const mcpServer = mcpServers.find((s) =>
       s.views.some((v) => v.id === action.mcpServerViewId)
     );

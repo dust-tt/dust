@@ -12,12 +12,12 @@ import {
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
 } from "@app/lib/actions/constants";
 import type {
-  LocalMCPServerConfigurationType,
-  LocalMCPToolConfigurationType,
+  ClientSideMCPServerConfigurationType,
+  ClientSideMCPToolConfigurationType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
-  PlatformMCPServerConfigurationType,
-  PlatformMCPToolConfigurationType,
+  ServerSideMCPServerConfigurationType,
+  ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -33,25 +33,25 @@ import type {
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   MCPConnectionParams,
-  PlatformMCPConnectionParams,
+  ServerSideMCPConnectionParams,
 } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
   extractMetadataFromTools,
-  isConnectViaLocalMCPServer,
+  isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isMCPServerConfiguration,
   isMCPToolConfiguration,
-  isPlatformMCPServerConfiguration,
-  isPlatformMCPToolConfiguration,
+  isServerSideMCPServerConfiguration,
+  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import type {
-  LocalMCPToolTypeWithStakeLevel,
+  ClientSideMCPToolTypeWithStakeLevel,
   MCPToolType,
-  PlatformMCPToolTypeWithStakeLevel,
+  ServerSideMCPToolTypeWithStakeLevel,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -77,10 +77,10 @@ const MAX_TOOL_NAME_LENGTH = 64;
 
 const TOOL_NAME_SEPARATOR = "___";
 
-function makePlatformMCPToolConfigurations(
-  config: PlatformMCPServerConfigurationType,
-  tools: PlatformMCPToolTypeWithStakeLevel[]
-): PlatformMCPToolConfigurationType[] {
+function makeServerSideMCPToolConfigurations(
+  config: ServerSideMCPServerConfigurationType,
+  tools: ServerSideMCPToolTypeWithStakeLevel[]
+): ServerSideMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -105,10 +105,10 @@ function makePlatformMCPToolConfigurations(
   }));
 }
 
-function makeLocalMCPToolConfigurations(
-  config: LocalMCPServerConfigurationType,
-  tools: LocalMCPToolTypeWithStakeLevel[]
-): LocalMCPToolConfigurationType[] {
+function makeClientSideMCPToolConfigurations(
+  config: ClientSideMCPServerConfigurationType,
+  tools: ClientSideMCPToolTypeWithStakeLevel[]
+): ClientSideMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -116,8 +116,8 @@ function makeLocalMCPToolConfigurations(
     description: tool.description ?? null,
     inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
     id: config.id,
-    localMcpServerId: config.localMcpServerId,
-    availability: "manual", // can't be auto for local MCP servers.
+    clientSideMcpServerId: config.clientSideMcpServerId,
+    availability: "manual", // Can't be auto for client-side MCP servers.
     originalName: tool.name,
     mcpServerName: config.name,
   }));
@@ -315,8 +315,8 @@ async function getMCPClientConnectionParams(
 ): Promise<Result<MCPConnectionParams, Error>> {
   if (
     (isMCPServerConfiguration(config) &&
-      isPlatformMCPServerConfiguration(config)) ||
-    (isMCPToolConfiguration(config) && isPlatformMCPToolConfiguration(config))
+      isServerSideMCPServerConfiguration(config)) ||
+    (isMCPToolConfiguration(config) && isServerSideMCPToolConfiguration(config))
   ) {
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
@@ -333,8 +333,8 @@ async function getMCPClientConnectionParams(
   }
 
   return new Ok({
-    type: "localMCPServerId",
-    mcpServerId: config.localMcpServerId,
+    type: "clientSideMCPServerId",
+    mcpServerId: config.clientSideMcpServerId,
     conversationId,
     messageId,
   });
@@ -489,11 +489,11 @@ export async function tryListMCPTools(
   };
 }
 
-async function listToolsForLocalMCPServer(
+async function listToolsForClientSideMCPServer(
   mcpClient: Client,
-  config: LocalMCPServerConfigurationType
+  config: ClientSideMCPServerConfigurationType
 ): Promise<Result<MCPToolConfigurationType[], Error>> {
-  let allTools: LocalMCPToolTypeWithStakeLevel[] = [];
+  let allTools: ClientSideMCPToolTypeWithStakeLevel[] = [];
   let nextPageCursor;
 
   // Fetch all tools, handling pagination if supported by the MCP server.
@@ -516,15 +516,18 @@ async function listToolsForLocalMCPServer(
   } while (nextPageCursor);
 
   // Create the configurations directly here
-  const localToolConfigs = makeLocalMCPToolConfigurations(config, allTools);
-  return new Ok(localToolConfigs);
+  const clientSideToolConfigs = makeClientSideMCPToolConfigurations(
+    config,
+    allTools
+  );
+  return new Ok(clientSideToolConfigs);
 }
 
-async function listToolsForPlatformMCPServer(
+async function listToolsForServerSideMCPServer(
   auth: Authenticator,
-  connectionParams: PlatformMCPConnectionParams,
+  connectionParams: ServerSideMCPConnectionParams,
   mcpClient: Client,
-  config: PlatformMCPServerConfigurationType
+  config: ServerSideMCPServerConfigurationType
 ): Promise<Result<MCPToolConfigurationType[], Error>> {
   let allToolsRaw: MCPToolType[] = [];
   let nextPageCursor;
@@ -549,12 +552,12 @@ async function listToolsForPlatformMCPServer(
       toolServerId: "",
     }));
 
-    // Create configurations and add required properties
-    const platformToolConfigs = makePlatformMCPToolConfigurations(
+    // Create configurations and add required properties.
+    const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
       config,
       rawTools
     );
-    return new Ok(platformToolConfigs);
+    return new Ok(serverSideToolConfigs);
   }
 
   const availability = getInternalMCPServerAvailability(
@@ -606,11 +609,11 @@ async function listToolsForPlatformMCPServer(
     toolServerId: connectionParams.mcpServerId,
   }));
 
-  const platformToolConfigs = makePlatformMCPToolConfigurations(
+  const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,
     toolsWithStakes
   );
-  return new Ok(platformToolConfigs);
+  return new Ok(serverSideToolConfigs);
 }
 
 async function listMCPServerTools(
@@ -644,18 +647,18 @@ async function listMCPServerTools(
     mcpClient = r.value;
 
     let toolsRes: Result<MCPToolConfigurationType[], Error>;
-    if (isConnectViaLocalMCPServer(connectionParams)) {
+    if (isConnectViaClientSideMCPServer(connectionParams)) {
       assert(
-        !isPlatformMCPServerConfiguration(config),
-        "Config should not be a platform configuration when connecting via Local MCP Server."
+        !isServerSideMCPServerConfiguration(config),
+        "Config should not be a server-side configuration when connecting via client-side MCP Server."
       );
-      toolsRes = await listToolsForLocalMCPServer(mcpClient, config);
+      toolsRes = await listToolsForClientSideMCPServer(mcpClient, config);
     } else {
       assert(
-        isPlatformMCPServerConfiguration(config),
-        "Config should be a platform configuration when connecting via Platform MCP Server."
+        isServerSideMCPServerConfiguration(config),
+        "Config should be a server-side configuration when connecting via server-side MCP Server."
       );
-      toolsRes = await listToolsForPlatformMCPServer(
+      toolsRes = await listToolsForServerSideMCPServer(
         auth,
         connectionParams,
         mcpClient,
