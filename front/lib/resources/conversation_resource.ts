@@ -433,7 +433,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.update({ title });
   }
 
-  async markAsDeleted() {
+  async updateVisibilityToDeleted() {
     return this.update({ visibility: "deleted" });
   }
 

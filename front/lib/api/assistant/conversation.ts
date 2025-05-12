@@ -209,7 +209,7 @@ export async function deleteConversation(
   if (destroy) {
     await conversation.delete(auth);
   } else {
-    await conversation.markAsDeleted();
+    await conversation.updateVisibilityToDeleted();
   }
   return new Ok({ success: true });
 }
