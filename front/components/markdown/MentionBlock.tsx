@@ -47,12 +47,12 @@ function MentionBlock({
         <DropdownMenuItem
           onClick={handleStartConversation}
           icon={() => <ChatBubbleBottomCenterTextIcon />}
-          label={`New conversation with ${agentName}`}
+          label={`New conversation with @${agentName}`}
         />
         <DropdownMenuItem
           onClick={handleSeeDetails}
           icon={() => <EyeIcon />}
-          label={`About ${agentName}`}
+          label={`About @${agentName}`}
         />
       </DropdownMenuContent>
     </DropdownMenu>
