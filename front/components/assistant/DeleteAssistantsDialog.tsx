@@ -14,6 +14,7 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
+import { pluralize } from "@app/types";
 
 interface DeleteAssistantsDialogProps {
   agentConfigurations: LightAgentConfigurationType[];
@@ -60,9 +61,10 @@ export function DeleteAssistantsDialog({
             <div>
               <span className="font-bold">
                 {total > 0 &&
-                  `These agents have been used ${total} times in the last 30 days.`}
+                  `These agents have been used ${total} time${pluralize(total)} in the last 30 days.`}
               </span>{" "}
-              This will archive the agents for everyone.
+              This will archive the agents for everyone. You can restore them
+              anytime in the Manage Agents page.
             </div>
           </DialogDescription>
         </DialogHeader>

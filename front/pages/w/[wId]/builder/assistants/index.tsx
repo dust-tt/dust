@@ -419,11 +419,11 @@ export default function WorkspaceAssistants({
               ))}
             </div>
             <div className="flex flex-col pt-3">
-              {isBatchEdit && (
+              {isBatchEdit ? (
                 <div className="mb-2 flex flex-row gap-2">
                   <Button
                     variant="outline"
-                    label="Cancel edition"
+                    label="Cancel editing"
                     onClick={() => {
                       setIsBatchEdit(false);
                       setSelection([]);
@@ -439,9 +439,7 @@ export default function WorkspaceAssistants({
                     }}
                   />
                 </div>
-              )}
-
-              {!isBatchEdit && (
+              ) : (
                 <Tabs value={activeTab}>
                   <TabsList>
                     {visibleTabs.map((tab) => (

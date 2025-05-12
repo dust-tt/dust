@@ -62,7 +62,7 @@ const getTableColumns = (tags: TagType[], isBatchEdit: boolean) => {
     ...(isBatchEdit
       ? [
           {
-            header: "Select",
+            header: "",
             accessorKey: "select",
             cell: (info: CellContext<RowData, boolean>) => (
               <DataTable.CellContent>
