@@ -1406,7 +1406,7 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryStartedEventSchema,
   WebsearchParamsEventSchema,
   MCPParamsEventSchema,
-  MCPNotificationEventSchema,
+  ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
