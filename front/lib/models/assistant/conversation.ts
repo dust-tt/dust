@@ -459,6 +459,12 @@ Message.init(
         fields: ["parentId"],
         concurrently: true,
       },
+      {
+        fields: ["workspaceId", "conversationId"],
+      },
+      {
+        fields: ["workspaceId", "conversationId", "sId"],
+      },
     ],
     hooks: {
       beforeValidate: (message) => {

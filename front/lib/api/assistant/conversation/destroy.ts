@@ -183,7 +183,10 @@ export async function destroyConversation(
       "agentMessageId",
       "contentFragmentId",
     ],
-    where: { conversationId: conversation.id },
+    where: {
+      conversationId: conversation.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   // To preserve the DB, we delete messages in batches.
