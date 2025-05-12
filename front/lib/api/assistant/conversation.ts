@@ -171,7 +171,7 @@ export async function updateConversationTitle(
   );
 
   if (!conversation) {
-    throw new Error(`Conversation ${conversationId} not found`);
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
   await conversation.updateTitle(title);
