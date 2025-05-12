@@ -4,7 +4,6 @@ import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import {
   emptyArray,
@@ -19,6 +18,7 @@ import type {
   ConversationError,
   ConversationType,
   ConversationWithoutContentType,
+  FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
 

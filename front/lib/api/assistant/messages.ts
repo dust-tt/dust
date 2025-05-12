@@ -35,6 +35,7 @@ import type {
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
+  FetchConversationMessagesResponse,
   LightAgentConfigurationType,
   MessageWithRankType,
   ModelId,
@@ -431,12 +432,6 @@ export async function batchRenderMessages(
       .sort((a, b) => a.rank - b.rank || a.version - b.version)
       .map(({ m, rank }) => ({ ...m, rank }))
   );
-}
-
-export interface FetchConversationMessagesResponse {
-  hasMore: boolean;
-  lastValue: number | null;
-  messages: MessageWithRankType[];
 }
 
 export async function fetchConversationMessages(

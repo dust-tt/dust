@@ -1,10 +1,10 @@
 import { cloneDeep } from "lodash";
 
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
   AgentMessageNewEvent,
   AgentMessageWithRankType,
+  FetchConversationMessagesResponse,
   UserMessageNewEvent,
   UserMessageWithRankType,
 } from "@app/types";
