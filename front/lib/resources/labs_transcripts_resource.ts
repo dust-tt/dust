@@ -218,7 +218,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      await this.deleteHistory(transaction);
+      await this.deleteHistory(auth, transaction);
       await this.model.destroy({
         where: {
           id: this.id,
@@ -239,6 +239,27 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     blob: Omit<CreationAttributes<LabsTranscriptsHistoryModel>, "id">
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel>> {
     const history = await LabsTranscriptsHistoryModel.create(blob);
+
+    return history.get();
+  }
+
+  async setConversationHistory(
+    auth: Authenticator,
+    { conversationId, fileId }: { conversationId: string; fileId: string }
+  ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
+    const history = await LabsTranscriptsHistoryModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        configurationId: this.id,
+        fileId,
+      },
+    });
+
+    if (!history) {
+      return null;
+    }
+
+    await history?.update({ conversationId });
 
     return history.get();
   }
@@ -281,11 +302,13 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   private async deleteHistory(
+    auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     try {
       await LabsTranscriptsHistoryModel.destroy({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           configurationId: this.id,
         },
         transaction,
