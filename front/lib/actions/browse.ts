@@ -301,7 +301,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
 export async function browseActionTypesFromAgentMessageIds(
   auth: Authenticator,
-  agentMessageIds: ModelId[]
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<BrowseActionType[]> {
   const models = await AgentBrowseAction.findAll({
     where: {
