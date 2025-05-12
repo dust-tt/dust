@@ -1,5 +1,6 @@
-import React, { FC } from "react";
 import { Box, Text } from "ink";
+import type { FC } from "react";
+import React from "react";
 
 const Help: FC = () => {
   return (

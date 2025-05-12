@@ -1,15 +1,17 @@
-import React, { FC, useCallback, useEffect, useRef, useState } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
-import Spinner from "ink-spinner";
-import open from "open";
-import { getDustClient } from "../../utils/dustClient.js";
-import AuthService from "../../utils/authService.js";
-import {
+import type {
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
-import AgentSelector from "../components/AgentSelector.js";
+import { Box, Text, useInput, useStdout } from "ink";
+import Spinner from "ink-spinner";
+import open from "open";
+import type { FC} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+
+import AuthService from "../../utils/authService.js";
+import { getDustClient } from "../../utils/dustClient.js";
 import { useMe } from "../../utils/hooks/use_me.js";
+import AgentSelector from "../components/AgentSelector.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
@@ -54,7 +56,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
   const handleSubmitQuestion = useCallback(
     async (questionText: string) => {
-      if (!selectedAgent || !me || meError || isMeLoading) return;
+      if (!selectedAgent || !me || meError || isMeLoading) {return;}
 
       setMessages((prev) => [
         ...prev,
@@ -323,7 +325,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     // Ctrl+G to open conversation in browser
     if (key.ctrl && input === "g") {
       if (conversationId) {
-        (async () => {
+        void (async () => {
           const workspaceId = await AuthService.getSelectedWorkspaceId();
           if (workspaceId) {
             const url = `https://dust.tt/w/${workspaceId}/assistant/${conversationId}`;
@@ -383,9 +385,9 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       }
 
       // Only allow submission if not processing, "me" is loaded and user input is not empty
-      if (!canSubmit) return;
+      if (!canSubmit) {return;}
 
-      handleSubmitQuestion(userInput);
+      void handleSubmitQuestion(userInput);
       setUserInput("");
       setCursorPosition(0);
 

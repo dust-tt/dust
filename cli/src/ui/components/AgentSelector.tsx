@@ -1,9 +1,12 @@
-import React, { FC, ReactNode, useCallback, useEffect } from "react";
-import { useAgents } from "../../utils/hooks/use_agents.js";
+import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { Box, Text, useStdout } from "ink";
 import Spinner from "ink-spinner";
-import { BaseItem, SelectWithSearch } from "./SelectWithSearch.js";
-import { GetAgentConfigurationsResponseType } from "@dust-tt/client";
+import type { FC, ReactNode} from "react";
+import React, { useCallback, useEffect } from "react";
+
+import { useAgents } from "../../utils/hooks/use_agents.js";
+import type { BaseItem} from "./SelectWithSearch.js";
+import { SelectWithSearch } from "./SelectWithSearch.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];

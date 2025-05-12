@@ -1,5 +1,6 @@
-import React, { ReactNode, useEffect, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
+import type { ReactNode} from "react";
+import React, { useEffect, useState } from "react";
 
 export interface BaseItem {
   id: string;

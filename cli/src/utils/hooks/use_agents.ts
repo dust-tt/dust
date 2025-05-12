@@ -1,7 +1,8 @@
+import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { useEffect, useState } from "react";
-import { GetAgentConfigurationsResponseType } from "@dust-tt/client";
-import { getDustClient } from "../dustClient.js";
+
 import AuthService from "../authService.js";
+import { getDustClient } from "../dustClient.js";
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
 
@@ -53,7 +54,7 @@ export function useAgents() {
       setIsLoading(false);
     }
 
-    fetchAgents();
+    void fetchAgents();
   }, [isLoading, error, allAgents.length]);
 
   return { allAgents, error, isLoading, currentWorkspaceId };

@@ -1,9 +1,11 @@
-import express, { Request, Response } from "express";
-import http from "http";
+import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import type { Request, Response } from "express";
+import express from "express";
+import http from "http";
 import { z } from "zod";
-import { GetAgentConfigurationsResponseType } from "@dust-tt/client";
+
 import { getDustClient } from "./dustClient.js";
 import { normalizeError } from "./errors.js";
 

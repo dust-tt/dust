@@ -1,11 +1,13 @@
-import React, { FC } from "react";
 import { Box, Text } from "ink";
 import type { Result } from "meow";
-import Auth from "./commands/Auth.js";
-import Status from "./commands/Status.js";
-import Logout from "./commands/Logout.js";
+import type { FC } from "react";
+import React from "react";
+
 import AgentsMCP from "./commands/AgentsMCP.js";
+import Auth from "./commands/Auth.js";
 import Chat from "./commands/Chat.js";
+import Logout from "./commands/Logout.js";
+import Status from "./commands/Status.js";
 import Help from "./Help.js";
 
 interface AppProps {

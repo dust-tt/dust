@@ -1,11 +1,13 @@
-import React, { FC, useEffect, useState } from "react";
+import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
+import clipboardy from "clipboardy";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
-import { GetAgentConfigurationsResponseType } from "@dust-tt/client";
-import { startMcpServer } from "../../utils/mcpServer.js";
-import clipboardy from "clipboardy";
-import AgentSelector from "../components/AgentSelector.js";
+import type { FC} from "react";
+import React, { useEffect, useState } from "react";
+
 import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
+import { startMcpServer } from "../../utils/mcpServer.js";
+import AgentSelector from "../components/AgentSelector.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
@@ -29,7 +31,7 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
   // This useEffect handles starting the server after confirmedSelection is set
   useEffect(() => {
     if (confirmedSelection && !isServerStarted) {
-      startMcpServer(
+      void startMcpServer(
         confirmedSelection,
         (url) => {
           setIsServerStarted(true);

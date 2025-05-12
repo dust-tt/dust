@@ -1,5 +1,5 @@
-import keytar from "keytar";
 import { jwtDecode } from "jwt-decode";
+import keytar from "keytar";
 
 // Constants for storage
 const SERVICE_NAME = "dust-cli";
@@ -44,7 +44,7 @@ export const TokenStorage = {
    */
   async hasValidAccessToken(): Promise<boolean> {
     const accessToken = await this.getAccessToken();
-    if (!accessToken) return false;
+    if (!accessToken) {return false;}
 
     const decoded = jwtDecode<JWTPayload>(accessToken);
     const currentTime = Math.floor(Date.now() / 1000);

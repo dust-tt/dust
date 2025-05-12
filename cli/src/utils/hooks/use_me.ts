@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { getDustClient } from "../dustClient.js";
 import type { MeResponseType } from "@dust-tt/client";
+import { useEffect, useState } from "react";
+
+import { getDustClient } from "../dustClient.js";
 
 export function useMe() {
   const [me, setMe] = useState<MeResponseType["user"] | null>(null);
@@ -35,7 +36,7 @@ export function useMe() {
       setIsLoading(false);
     }
 
-    fetchMe();
+    void fetchMe();
   }, [error, isLoading, me]);
 
   return { me, error, isLoading };

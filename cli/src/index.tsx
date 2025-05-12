@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import React from "react";
 import { render } from "ink";
 import meow from "meow";
-import App from "./ui/App.js";
+import React from "react";
 import updateNotifier from "update-notifier";
+
 import pkg from "../package.json" with { type: "json" };
+import App from "./ui/App.js"; 
 
 updateNotifier({
   pkg,

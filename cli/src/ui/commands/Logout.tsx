@@ -1,6 +1,8 @@
-import React, { FC, useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
+import type { FC} from "react";
+import React, { useEffect, useState } from "react";
+
 import AuthService from "../../utils/authService.js";
 import { normalizeError } from "../../utils/errors.js";
 
@@ -22,7 +24,7 @@ const Logout: FC = () => {
       }
     };
 
-    performLogout();
+    void performLogout();
   }, []);
 
   if (isLoading) {

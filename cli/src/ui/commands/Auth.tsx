@@ -1,14 +1,16 @@
-import React, { FC, useCallback, useEffect, useState } from "react";
+import type { MeResponseType } from "@dust-tt/client";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
+import { jwtDecode } from "jwt-decode";
 import fetch from "node-fetch";
 import open from "open";
-import { jwtDecode } from "jwt-decode";
-import TokenStorage from "../../utils/tokenStorage.js";
+import type { FC} from "react";
+import React, { useCallback, useEffect, useState } from "react";
+
 import { getDustClient, resetDustClient } from "../../utils/dustClient.js";
-import WorkspaceSelector from "../components/WorkspaceSelector.js";
-import { MeResponseType } from "@dust-tt/client";
 import { normalizeError } from "../../utils/errors.js";
+import TokenStorage from "../../utils/tokenStorage.js";
+import WorkspaceSelector from "../components/WorkspaceSelector.js";
 
 interface DeviceCodeResponse {
   device_code: string;
@@ -244,7 +246,7 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
   }, []);
 
   useEffect(() => {
-    startDeviceFlow();
+    void startDeviceFlow();
   }, [startDeviceFlow]);
 
   if (error) {
