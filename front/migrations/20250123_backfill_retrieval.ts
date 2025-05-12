@@ -2,8 +2,8 @@ import _ from "lodash";
 import { Op, Sequelize } from "sequelize";
 
 import {
-  RetrievalDocument,
-  RetrievalDocumentChunk,
+  RetrievalDocumentChunkModel,
+  RetrievalDocumentModel,
 } from "@app/lib/models/assistant/actions/retrieval";
 import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { Logger } from "@app/logger/logger";
@@ -18,7 +18,7 @@ interface TableConfig {
 }
 
 const TABLE_RETRIEVAL_DOCUMENT: TableConfig = {
-  model: RetrievalDocument,
+  model: RetrievalDocumentModel,
   attributes: ["id", "workspaceId", "dataSourceViewId"],
   where: (workspaceId: number, lastSeenId: number) => ({
     retrievalActionId: {
@@ -30,7 +30,7 @@ const TABLE_RETRIEVAL_DOCUMENT: TableConfig = {
 };
 
 const TABLE_RETRIEVAL_DOCUMENT_CHUNK: TableConfig = {
-  model: RetrievalDocumentChunk,
+  model: RetrievalDocumentChunkModel,
   attributes: ["id", "retrievalDocumentId"],
   where: (workspaceId: number, lastSeenId: number) => ({
     retrievalDocumentId: {
@@ -55,22 +55,23 @@ async function backfillTableRetrievalDocumentChunk(
   );
 
   for (;;) {
-    const documents: RetrievalDocument[] = await RetrievalDocument.findAll({
-      where: {
-        id: { [Op.gt]: lastSeenId },
-        workspaceId: workspace.id,
-      },
-      attributes: ["id", "workspaceId"],
-      limit: batchSize,
-      order: [["id", "ASC"]],
-    });
+    const documents: RetrievalDocumentModel[] =
+      await RetrievalDocumentModel.findAll({
+        where: {
+          id: { [Op.gt]: lastSeenId },
+          workspaceId: workspace.id,
+        },
+        attributes: ["id", "workspaceId"],
+        limit: batchSize,
+        order: [["id", "ASC"]],
+      });
 
     if (documents.length === 0) {
       break;
     }
 
     if (execute) {
-      await RetrievalDocumentChunk.update(
+      await RetrievalDocumentChunkModel.update(
         {
           workspaceId: workspace.id,
         },
