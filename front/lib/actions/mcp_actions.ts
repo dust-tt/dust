@@ -42,8 +42,8 @@ import {
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import type {
-  AgentLoopRunContextType,
   AgentLoopListToolsContextType,
+  AgentLoopRunContextType,
 } from "@app/lib/actions/types";
 import {
   isMCPServerConfiguration,

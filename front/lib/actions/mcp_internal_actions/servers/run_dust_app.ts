@@ -10,6 +10,10 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
+import type {
+  ServerSideMCPServerConfigurationType,
+  ServerSideMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { AgentLoopListToolsContextType } from "@app/lib/actions/types";
@@ -29,10 +33,6 @@ import type { DatasetSchema } from "@app/types";
 import { getHeaderFromGroupIds, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 import { ConfigurableToolInputSchemas } from "../input_schemas";
-import type {
-  ServerSideMCPServerConfigurationType,
-  ServerSideMCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
 
 interface DustAppBlock {
   type: string;
