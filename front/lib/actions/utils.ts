@@ -236,7 +236,7 @@ export function getCitationsCount({
         isServerSideMCPToolConfiguration(action) &&
         isInternalMCPServerOfName(
           action.internalMCPServerId,
-          "web_search_&_browse_v2"
+          "web_search_&_browse"
         )
       ) {
         return getWebsearchNumResults({

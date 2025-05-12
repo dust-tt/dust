@@ -62,6 +62,7 @@ AgentWebsearchConfiguration.init(
 
 AgentConfiguration.hasMany(AgentWebsearchConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
+  as: "websearchConfigurations",
 });
 AgentWebsearchConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },

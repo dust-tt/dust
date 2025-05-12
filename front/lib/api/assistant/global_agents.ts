@@ -1631,7 +1631,7 @@ export async function getGlobalAgents(
     preFetchedDataSources,
     globaAgentSettings,
     helperPromptInstance,
-    agentRouterMcpServerViews,
+    agentRouterMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -1640,19 +1640,11 @@ export async function getGlobalAgents(
       where: { workspaceId: owner.id },
     }),
     HelperAssistantPrompt.getInstance(),
-    MCPServerViewResource.listByMCPServer(
+    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      internalMCPServerNameToSId({
-        name: "agent_router",
-        workspaceId: owner.id,
-      })
+      "agent_router"
     ),
   ]);
-
-  // We prefetch the agent router mcp server view to be able to add this tool to some global agents.
-  const agentRouterMCPServerView =
-    agentRouterMcpServerViews.find((view) => view.space.kind === "global") ??
-    null;
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
