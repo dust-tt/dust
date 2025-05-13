@@ -564,6 +564,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
 
     let dsConfigs = await TrackerDataSourceConfigurationModel.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: dataSourceModelId,
         scope: "watched",
         // TODO(DOC_TRACKER): GIN index.
