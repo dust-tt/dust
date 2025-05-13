@@ -10,7 +10,7 @@ import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { actionRefsOffset } from "@app/lib/actions/utils";
 import { getWebsearchNumResults } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
-import type { MCPServerDefinitionType } from "@app/lib/api/mcp";
+import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import {
   browseUrls,
   isBrowseScrapeSuccessResponse,
@@ -19,8 +19,8 @@ import { webSearch } from "@app/lib/utils/websearch";
 import type { OAuthProvider } from "@app/types";
 
 export const provider: OAuthProvider = "google_drive" as const;
-export const serverInfo: MCPServerDefinitionType = {
-  name: "web_search_&_browse_v2",
+export const serverInfo: InternalMCPServerDefinitionType = {
+  name: "web_search_&_browse",
   version: "1.0.0",
   description:
     "Agent can search (Google) and retrieve information from specific websites.",

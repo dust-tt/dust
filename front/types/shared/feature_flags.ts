@@ -26,6 +26,7 @@ export const WHITELISTABLE_FEATURES = [
   "show_debug_tools",
   "usage_data_api",
   "custom_webcrawler",
+  "exploded_tables_query",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

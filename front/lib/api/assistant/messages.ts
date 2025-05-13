@@ -162,15 +162,19 @@ async function batchRenderAgentMessages(
     (async () =>
       retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    (async () => tableQueryTypesFromAgentMessageIds(auth, agentMessageIds))(),
+    (async () =>
+      tableQueryTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       processActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () =>
       browseActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
-      conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
-    (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
+      conversationIncludeFileTypesFromAgentMessageIds(auth, {
+        agentMessageIds,
+      }))(),
+    (async () =>
+      reasoningActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       searchLabelsActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>

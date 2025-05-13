@@ -70,7 +70,7 @@ export function PokeDataTableConditionalFetch<T, M>({
   return (
     <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
       <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
-        <h2 className="text-md font-bold">{header} :</h2>
+        <h2 className="text-md font-bold">{header}</h2>
         {globalActions}
       </div>
       <div className="flex flex-grow flex-col justify-center p-4">

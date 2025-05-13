@@ -29,13 +29,20 @@ export function useFileProcessedContent(
     mutate,
   } = useSWRWithDefaults(
     isDisabled ? null : getFileProcessedUrl(owner, fileId),
-    // Stream fetcher -> don't try to parse the stream
-    // Wait for initial response to trigger swr error handling
+    // Stream fetcher -> don't try to parse the stream.
+    // Wait for initial response to trigger swr error handling.
     async (...args) => {
-      const response = await fetch(...args);
+      const response = await fetch(...args, { redirect: "manual" });
+
+      // File is not safe to display -> opaque redirect response. Return null.
+      if (response.type === "opaqueredirect") {
+        return null;
+      }
+
       if (!response.ok) {
         throw new Error(`Error reading the file content: ${response.status}`);
       }
+
       return response;
     },
     config

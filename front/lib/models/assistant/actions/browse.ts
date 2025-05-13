@@ -51,8 +51,13 @@ AgentBrowseConfiguration.init(
         unique: true,
         fields: ["sId"],
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove this index.
       {
         fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
         concurrently: true,
       },
     ],
@@ -61,10 +66,17 @@ AgentBrowseConfiguration.init(
 );
 
 AgentConfiguration.hasMany(AgentBrowseConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  foreignKey: {
+    name: "agentConfigurationId",
+    allowNull: false,
+  },
+  as: "browseConfigurations",
 });
 AgentBrowseConfiguration.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  foreignKey: {
+    name: "agentConfigurationId",
+    allowNull: false,
+  },
 });
 
 export class AgentBrowseAction extends WorkspaceAwareModel<AgentBrowseAction> {

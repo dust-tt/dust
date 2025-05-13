@@ -2,6 +2,7 @@ import {
   Button,
   Chip,
   DustIcon,
+  ListSelectIcon,
   MagnifyingGlassIcon,
   Page,
   PencilSquareIcon,
@@ -349,7 +350,11 @@ export default function WorkspaceAssistants({
           agentConfigurations={selectedAgents}
           isOpen={isDeleteDialogOpen}
           onClose={() => setIsDeleteDialogOpen(false)}
-          setSelection={setSelection}
+          onSave={() => {
+            setSelection([]);
+            setIsDeleteDialogOpen(false);
+            setIsBatchEdit(false);
+          }}
         />
         <AssistantDetails
           owner={owner}
@@ -375,7 +380,7 @@ export default function WorkspaceAssistants({
                   {hasAgentDiscovery && isAdmin(owner) && (
                     <Button
                       variant="outline"
-                      icon={PencilSquareIcon}
+                      icon={ListSelectIcon}
                       label="Batch edit"
                       onClick={() => {
                         setIsBatchEdit(true);

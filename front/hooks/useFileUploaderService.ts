@@ -13,6 +13,7 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
+  DEFAULT_FILE_CONTENT_TYPE,
   Err,
   getFileFormatCategory,
   isAPIErrorResponse,
@@ -130,33 +131,45 @@ export function useFileUploaderService({
   const processSelectedFiles = (
     selectedFiles: File[]
   ): Result<FileBlob, FileBlobUploadError>[] => {
-    return selectedFiles.reduce(
-      (acc, file) => {
-        while (fileBlobs.some((f) => f.id === file.name)) {
-          const [base, ext] = file.name.split(/\.(?=[^.]+$)/);
-          const name = findAvailableTitle(base, ext, [
-            ...fileBlobs.map((f) => f.filename),
-          ]);
-          file = new File([file], name, { type: file.type });
+    const getRenamedFile = (file: File, fileType: string): File => {
+      let currentFile = file;
+      while (fileBlobs.some((f) => f.id === currentFile.name)) {
+        const [base, ext] = currentFile.name.split(/\.(?=[^.]+$)/);
+        const name = findAvailableTitle(base, ext, [
+          ...fileBlobs.map((f) => f.filename),
+        ]);
+        if (name !== currentFile.name) {
+          currentFile = new File([currentFile], name, { type: fileType });
         }
+      }
+      return currentFile;
+    };
 
-        if (!isSupportedFileContentType(file.type)) {
+    return selectedFiles.reduce<Result<FileBlob, FileBlobUploadError>[]>(
+      (acc, file) => {
+        const fileType = file.type || DEFAULT_FILE_CONTENT_TYPE;
+
+        // File objects are immutable - we can't modify their properties directly.
+        // When we need to change the name or type, we must create a new File object.
+        const renamedFile = getRenamedFile(file, fileType);
+
+        if (!isSupportedFileContentType(fileType)) {
           acc.push(
             new Err(
               new FileBlobUploadError(
                 "file_type_not_supported",
-                file,
-                `File "${file.name}" is not supported (${file.type}).`
+                renamedFile,
+                `File "${renamedFile.name}" is not supported (${fileType}).`
               )
             )
           );
           return acc;
         }
 
-        acc.push(new Ok(createFileBlob(file, file.type)));
+        acc.push(new Ok(createFileBlob(renamedFile, fileType)));
         return acc;
       },
-      [] as (Ok<FileBlob> | Err<FileBlobUploadError>)[]
+      []
     );
   };
 

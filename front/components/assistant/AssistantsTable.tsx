@@ -180,6 +180,7 @@ const getTableColumns = (tags: TagType[], isBatchEdit: boolean) => {
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
+          tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
               ? formatTimestampToFriendlyDate(info.getValue(), "short")

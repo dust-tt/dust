@@ -24,7 +24,12 @@ GroupSpaceModel.init(
     sequelize: frontSequelize,
     indexes: [
       { fields: ["vaultId", "groupId"], unique: true },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       { fields: ["groupId"] },
+      {
+        fields: ["workspaceId", "groupId"],
+        concurrently: true,
+      },
     ],
   }
 );

@@ -18,11 +18,12 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "notion",
   "primitive_types_debugger",
   "query_tables",
+  "query_tables_v2",
   "reasoning_v2",
   "run_dust_app",
   "search",
   "think",
-  "web_search_&_browse_v2",
+  "web_search_&_browse",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -73,10 +74,10 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "auto",
     flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
   },
-  "web_search_&_browse_v2": {
+  "web_search_&_browse": {
     id: 5,
     availability: "auto",
-    flag: "mcp_actions",
+    flag: null,
   },
   think: {
     id: 6,
@@ -145,6 +146,12 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1008,
     availability: "manual",
     flag: "dev_mcp_actions",
+  },
+  query_tables_v2: {
+    id: 1009,
+    availability: "auto",
+    // We'll eventually switch everyone to this new tables query toolset.
+    flag: "exploded_tables_query",
   },
 };
 
