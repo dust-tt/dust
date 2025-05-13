@@ -380,6 +380,7 @@ export async function deleteAgentsActivity({
     const agentProcessConfigurations = await AgentProcessConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentProcessAction.destroy({
@@ -399,6 +400,7 @@ export async function deleteAgentsActivity({
     await AgentProcessConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 

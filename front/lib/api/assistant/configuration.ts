@@ -522,7 +522,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tagsPerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
-    fetchAgentProcessActionConfigurations({ configurationIds, variant }),
+    fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchTableQueryActionConfigurations({ configurationIds, variant }),
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
