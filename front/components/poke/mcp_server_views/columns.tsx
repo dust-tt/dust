@@ -42,7 +42,7 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       },
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>Server Name</p>
             <IconButton
               variant="outline"
@@ -74,7 +74,7 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       },
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>Created At</p>
             <IconButton
               variant="outline"
@@ -96,7 +96,7 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       },
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>Last edited at</p>
             <IconButton
               variant="outline"

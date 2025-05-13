@@ -25,7 +25,7 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
       },
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>sId</p>
             <IconButton
               variant="outline"
@@ -49,7 +49,7 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
       },
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>Data Source</p>
             <IconButton
               variant="outline"

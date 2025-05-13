@@ -22,7 +22,7 @@ export function makeColumnsForSpaces(
       },
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>sId</p>
             <IconButton
               variant="outline"
@@ -39,7 +39,7 @@ export function makeColumnsForSpaces(
       accessorKey: "name",
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>Name</p>
             <IconButton
               variant="outline"
@@ -56,7 +56,7 @@ export function makeColumnsForSpaces(
       accessorKey: "kind",
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>Kind</p>
             <IconButton
               variant="outline"
@@ -78,7 +78,7 @@ export function makeColumnsForSpaces(
       },
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>Is Restricted</p>
             <IconButton
               variant="outline"

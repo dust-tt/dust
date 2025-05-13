@@ -28,7 +28,7 @@ export function makeColumnsForApps(
       },
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>sId</p>
             <IconButton
               variant="outline"
@@ -45,7 +45,7 @@ export function makeColumnsForApps(
       accessorKey: "name",
       header: ({ column }) => {
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <p>Name</p>
             <IconButton
               variant="outline"
