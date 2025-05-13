@@ -42,14 +42,14 @@ import { Err } from "@app/types";
 import { CoreAPI } from "@app/types";
 
 export async function retrieveNewTranscriptsActivity(
-  transcriptsConfigurationId: ModelId
+  transcriptsConfigurationId: string
 ): Promise<string[]> {
   const localLogger = mainLogger.child({
-    transcriptsConfigurationId,
+    transcriptsConfigurationId: transcriptsConfigurationId,
   });
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByModelId(
+    await LabsTranscriptsConfigurationResource.fetchById(
       transcriptsConfigurationId
     );
 
@@ -129,7 +129,7 @@ export async function retrieveNewTranscriptsActivity(
 }
 
 export async function processTranscriptActivity(
-  transcriptsConfigurationId: ModelId,
+  transcriptsConfigurationId: string,
   fileId: string
 ) {
   function convertCitationsToLinks(
@@ -187,7 +187,7 @@ export async function processTranscriptActivity(
   }
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByModelId(
+    await LabsTranscriptsConfigurationResource.fetchById(
       transcriptsConfigurationId
     );
 
@@ -341,12 +341,14 @@ export async function processTranscriptActivity(
   }
 
   try {
-    await transcriptsConfiguration.recordHistory({
-      configurationId: transcriptsConfiguration.id,
-      fileId,
-      fileName: transcriptTitle.substring(0, 255),
-      workspaceId: owner.id,
-    });
+    await LabsTranscriptsConfigurationResource.recordHistoryWithSId(
+      transcriptsConfiguration.sId,
+      {
+        fileId,
+        fileName: transcriptTitle.substring(0, 255),
+        workspaceId: owner.id,
+      }
+    );
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
       localLogger.info(
