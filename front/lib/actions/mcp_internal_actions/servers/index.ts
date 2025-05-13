@@ -48,7 +48,7 @@ export async function getInternalMCPServer(
     case "query_tables":
       return tablesQueryServer(auth, agentLoopRunContext);
     case "query_tables_v2":
-      return tablesQueryServerV2(auth);
+      return tablesQueryServerV2(auth, agentLoopRunContext);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
     case "think":

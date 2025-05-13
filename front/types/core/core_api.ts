@@ -1904,7 +1904,11 @@ export class CoreAPI {
       },
       body: JSON.stringify({
         query,
-        tables,
+        tables: tables.map((t) => [
+          parseInt(t.project_id),
+          t.data_source_id,
+          t.table_id,
+        ]),
       }),
     });
 
@@ -1936,7 +1940,11 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          tables,
+          tables: tables.map((t) => [
+            parseInt(t.project_id),
+            t.data_source_id,
+            t.table_id,
+          ]),
         }),
       }
     );

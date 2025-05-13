@@ -294,7 +294,7 @@ function createServer(
 
       return {
         isError: false,
-        content: [],
+        content,
       };
     }
   );
