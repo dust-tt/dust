@@ -3,9 +3,9 @@ import type { Fetcher, KeyedMutator } from "swr";
 
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import {
-  emptyArray,
   fetcher,
   fetcherWithBody,
+  emptyArray,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { PokeListDataSourceViews } from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
