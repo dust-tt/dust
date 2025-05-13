@@ -59,6 +59,7 @@ AgentWebsearchConfiguration.init(
       {
         fields: ["workspaceId", "agentConfigurationId"],
         concurrently: true,
+        name: "agent_websearch_config_workspace_id_agent_config_id",
       },
     ],
     sequelize: frontSequelize,
