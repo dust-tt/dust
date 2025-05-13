@@ -31,12 +31,12 @@ import {
 import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
