@@ -130,6 +130,7 @@ AgentMCPServerConfiguration.init(
       {
         fields: ["workspaceId", "agentConfigurationId"],
         concurrently: true,
+        name: "agent_mcp_srv_config_w_id_agent_config_id",
       },
       {
         unique: true,
