@@ -35,14 +35,14 @@ async function migrateWorkspaceReasoningActions({
     order: [["id", "ASC"]],
   });
 
-  logger.info(
-    `Found ${reasoningConfigs.length} reasoning configurations to migrate`
-  );
-
   if (reasoningConfigs.length === 0) {
     logger.info("No reasoning configurations to migrate");
     return;
   }
+
+  logger.info(
+    `Found ${reasoningConfigs.length} reasoning configurations to migrate`
+  );
 
   // Create the MCP server views in system and global spaces.
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
