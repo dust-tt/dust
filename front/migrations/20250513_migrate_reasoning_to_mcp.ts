@@ -150,6 +150,7 @@ makeScript(
     wId: {
       type: "string",
       description: "Workspace ID to migrate",
+      required: true,
     },
   },
   async ({ execute, wId }, parentLogger) => {
