@@ -46,7 +46,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  // Convert to PokeMCPServerViewType
   const pokeMCPServerView = await mcpServerViewToPokeJSON(mcpServerView);
 
   return {
