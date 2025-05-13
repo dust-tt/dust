@@ -59,8 +59,7 @@ export type RemoteMCPServerType = MCPServerType & {
 };
 
 export interface MCPServerViewType {
-  id: ModelId;
-  sId: string;
+  id: string;
   createdAt: number;
   updatedAt: number;
   spaceId: string;
