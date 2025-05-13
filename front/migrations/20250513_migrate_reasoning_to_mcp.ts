@@ -74,7 +74,7 @@ async function migrateWorkspaceReasoningActions({
         // The data model is a bit ugly, this was a bit temporary.
         logger.info(
           { configModelId: reasoningConfig.id },
-          `Already an MCP reasoning config, skipping`
+          `Already an MCP reasoning config, skipping.`
         );
         return;
       }
@@ -105,11 +105,18 @@ async function migrateWorkspaceReasoningActions({
             configModelId: reasoningConfig.id,
             mcpConfigModelId: mcpConfig.id,
           },
-          `Migrated reasoning config to MCP server config`
+          `Migrated reasoning config to MCP server config.`
+        );
+      } else {
+        logger.info(
+          {
+            configModelId: reasoningConfig.id,
+          },
+          `Would create MCP server config and migrate reasoning config to it.`
         );
       }
     },
-    { concurrency: 5 }
+    { concurrency: 10 }
   );
 
   logger.info(
