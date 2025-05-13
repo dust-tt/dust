@@ -300,6 +300,7 @@ export async function deleteAgentsActivity({
       {
         where: {
           agentConfigurationId: agent.id,
+          workspaceId: workspace.id,
         },
       }
     );
@@ -313,6 +314,7 @@ export async function deleteAgentsActivity({
     await AgentDustAppRunConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 

@@ -53,6 +53,7 @@ async function deleteDustAppRunConfigurationForAgent(
   const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: agent.workspaceId,
     },
   });
 
@@ -63,6 +64,7 @@ async function deleteDustAppRunConfigurationForAgent(
   await AgentDustAppRunConfiguration.destroy({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: agent.workspaceId,
     },
   });
 }
