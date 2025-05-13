@@ -29,7 +29,7 @@ function _getRecentAuthorIdsKey({
 
 async function fetchRecentAuthorIdsWithVersion(
   auth: Authenticator,
-  agentId: string
+  { agentId }: { agentId: string }
 ) {
   return AgentConfiguration.findAll({
     attributes: [
@@ -55,18 +55,18 @@ async function fetchRecentAuthorIdsWithVersion(
  * This approach is cost-effective, as the TTL naturally clears out old data without extra cleanup overhead.
  */
 async function setAuthorIdsWithVersionInRedis(
+  auth: Authenticator,
   {
     agentId,
-    workspaceId,
+    authorIdsWithScore,
   }: {
     agentId: string;
-    workspaceId: string;
-  },
-  authorIdsWithScore: { value: string; score: number }[]
+    authorIdsWithScore: { value: string; score: number }[];
+  }
 ) {
   const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
     agentId,
-    workspaceId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
   });
 
   await runOnRedis({ origin: "update_authors" }, async (redis) => {
@@ -81,15 +81,13 @@ async function populateAuthorIdsFromDb(
   auth: Authenticator,
   {
     agentId,
-    workspaceId,
   }: {
     agentId: string;
-    workspaceId: string;
   }
 ) {
   const recentAuthorIdsWithVersion = await fetchRecentAuthorIdsWithVersion(
     auth,
-    agentId
+    { agentId }
   );
 
   if (recentAuthorIdsWithVersion.length === 0) {
@@ -102,13 +100,10 @@ async function populateAuthorIdsFromDb(
     score: a.version,
   }));
 
-  await setAuthorIdsWithVersionInRedis(
-    {
-      agentId,
-      workspaceId,
-    },
-    authorIdsWithScore
-  );
+  await setAuthorIdsWithVersionInRedis(auth, {
+    agentId,
+    authorIdsWithScore,
+  });
 
   return recentAuthorIdsWithVersion.map((a) => a.authorId.toString());
 }
@@ -138,11 +133,7 @@ export async function getAgentsRecentAuthors({
   agents: LightAgentConfigurationType[];
   auth: Authenticator;
 }): Promise<AgentRecentAuthors[]> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Owner is required");
-  }
-  const { sId: workspaceId } = owner;
+  const owner = auth.getNonNullableWorkspace();
   const currentUserId = auth.user()?.id;
 
   const recentAuthorsIdsByAgentId: Record<string, number[] | null> = (
@@ -155,7 +146,7 @@ export async function getAgentsRecentAuthors({
         }
         const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
           agentId,
-          workspaceId,
+          workspaceId: owner.sId,
         });
         let recentAuthorIds = await runOnRedis(
           { origin: "agent_recent_authors" },
@@ -166,7 +157,6 @@ export async function getAgentsRecentAuthors({
           // Populate from the database and store in Redis if the entry is not already present.
           recentAuthorIds = await populateAuthorIdsFromDb(auth, {
             agentId,
-            workspaceId,
           });
         }
         return [agentId, recentAuthorIds.map((id) => parseInt(id, 10))];
@@ -224,23 +214,13 @@ export async function agentConfigurationWasUpdatedBy({
   agent: LightAgentConfigurationType;
   auth: Authenticator;
 }) {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Owner is required");
-  }
-
-  const { sId: workspaceId } = owner;
   const { sId: agentId, version, versionAuthorId: authorId } = agent;
-
   if (!authorId) {
     return;
   }
 
-  await setAuthorIdsWithVersionInRedis(
-    {
-      agentId,
-      workspaceId,
-    },
-    [{ value: authorId.toString(), score: version }]
-  );
+  await setAuthorIdsWithVersionInRedis(auth, {
+    agentId,
+    authorIdsWithScore: [{ value: authorId.toString(), score: version }],
+  });
 }
