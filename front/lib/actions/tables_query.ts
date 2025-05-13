@@ -286,13 +286,14 @@ const getTablesQueryError = (error: string) => {
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
 export async function tableQueryTypesFromAgentMessageIds(
   auth: Authenticator,
-  agentMessageIds: ModelId[]
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<TablesQueryActionType[]> {
   const owner = auth.getNonNullableWorkspace();
 
   const actions = await AgentTablesQueryAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
     include: [
       {
