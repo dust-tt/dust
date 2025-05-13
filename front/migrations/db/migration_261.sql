@@ -1,0 +1,2 @@
+-- Empty migration to avoid overload during remediations
+-- see https://github.com/dust-tt/tasks/issues/2842 for details
