@@ -526,7 +526,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchTableQueryActionConfigurations({ configurationIds, variant }),
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
-    fetchBrowseActionConfigurations({ configurationIds, variant }),
+    fetchBrowseActionConfigurations(auth, { configurationIds, variant }),
     fetchReasoningActionConfigurations({ configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"

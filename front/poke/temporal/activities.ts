@@ -343,6 +343,7 @@ export async function deleteAgentsActivity({
     const agentBrowseConfigurations = await AgentBrowseConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentBrowseAction.destroy({
@@ -355,6 +356,7 @@ export async function deleteAgentsActivity({
     await AgentBrowseConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
