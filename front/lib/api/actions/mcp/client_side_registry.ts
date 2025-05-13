@@ -81,7 +81,7 @@ export async function registerMCPServer(
 }
 
 /**
- * Get server metadata for a given server ID.
+ * Get server metadata for a given list of server IDs.
  */
 export async function getMCPServersMetadata(
   auth: Authenticator,
