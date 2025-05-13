@@ -20,6 +20,14 @@ module.exports = {
   create: function (context) {
     return {
       CallExpression(node) {
+        // Skip super.init calls
+        if (
+          node.callee.type === "MemberExpression" &&
+          node.callee.object.type === "Super"
+        ) {
+          return;
+        }
+
         // Check if it's a Model.init call
         if (
           node.callee.type === "MemberExpression" &&
