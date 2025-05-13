@@ -115,8 +115,8 @@ async function migrateWorkspaceReasoningActions({
           agentConfigurationId: null,
         });
 
-        revertSql += `UPDATE "agent_reasoning_configurations" SET "agent_configuration_id" = '${reasoningConfig.agentConfigurationId}' WHERE "id" = '${reasoningConfig.id}';\n`;
-        revertSql += `UPDATE "agent_reasoning_configurations" SET "mcp_server_configuration_id" = NULL WHERE "id" = '${reasoningConfig.id}';\n`;
+        revertSql += `UPDATE "agent_reasoning_configurations" SET "agentConfigurationId" = '${reasoningConfig.agentConfigurationId}' WHERE "id" = '${reasoningConfig.id}';\n`;
+        revertSql += `UPDATE "agent_reasoning_configurations" SET "mcpServerConfigurationId" = NULL WHERE "id" = '${reasoningConfig.id}';\n`;
 
         // Log the model IDs for an easier rollback.
         logger.info(
