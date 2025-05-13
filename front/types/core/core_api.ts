@@ -1916,15 +1916,12 @@ export class CoreAPI {
 
   async getDatabaseSchema({
     tables,
-    filter,
   }: {
     tables: Array<[number, string, string]>; // project_id, data_source_id, table_id
-    filter: CoreAPISearchFilter;
   }): Promise<
     CoreAPIResponse<{
       dialect: string;
       schemas: Array<{
-        table_schema: Record<string, any>;
         dbml: string;
         head?: Array<Record<string, any>>;
       }>;
@@ -1939,7 +1936,6 @@ export class CoreAPI {
         },
         body: JSON.stringify({
           tables,
-          view_filter: filter,
         }),
       }
     );

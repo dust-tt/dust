@@ -79,19 +79,9 @@ function createServer(auth: Authenticator): McpServer {
 
       // Call Core API's /database_schema endpoint
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const viewId = agentTableConfigurations[0].dataSourceViewId;
-      const view = dataSourceViewsMap.get(viewId);
-      if (!view) {
-        throw new Error(
-          `unreachable: Missing view ${viewId} for agent table configuration ${agentTableConfigurations[0].id}.`
-        );
-      }
-      const viewFilter = view.toViewFilter();
       const schemaResult = await coreAPI.getDatabaseSchema({
         tables: configuredTables,
-        filter: viewFilter,
       });
-
       if (schemaResult.isErr()) {
         return makeMCPToolTextError(
           `Error retrieving database schema: ${schemaResult.error.message}`

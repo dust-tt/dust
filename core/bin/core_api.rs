@@ -3624,7 +3624,6 @@ async fn tags_search(
 #[derive(serde::Deserialize)]
 struct DatabasesSchemaPayload {
     tables: Vec<(i64, String, String)>,
-    view_filter: Option<SearchFilter>,
 }
 
 async fn databases_schema_retrieve(
@@ -3653,28 +3652,16 @@ async fn databases_schema_retrieve(
             "Failed to retrieve tables",
             Some(e),
         ),
-        Ok(tables) => {
-            match tables
-                .into_iter()
-                .filter(|table| {
-                    table
-                        .as_ref()
-                        .map_or(true, |t| t.match_filter(&payload.view_filter))
-                })
-                .collect::<Option<Vec<Table>>>()
-            {
-                None => error_response(
-                    StatusCode::NOT_FOUND,
-                    "table_not_found",
-                    "No table found",
-                    None,
-                ),
-                Some(tables) => match get_tables_schema(
-                    tables,
-                    state.store.clone(),
-                    state.databases_store.clone(),
-                )
-                .await
+        Ok(tables) => match tables.into_iter().collect::<Option<Vec<Table>>>() {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "table_not_found",
+                "No table found",
+                None,
+            ),
+            Some(tables) => {
+                match get_tables_schema(tables, state.store.clone(), state.databases_store.clone())
+                    .await
                 {
                     Err(e) => error_response(
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -3698,9 +3685,9 @@ async fn databases_schema_retrieve(
                             })),
                         }),
                     ),
-                },
+                }
             }
-        }
+        },
     }
 }
 
