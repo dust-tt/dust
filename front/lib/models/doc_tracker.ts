@@ -185,8 +185,13 @@ TrackerDataSourceConfigurationModel.init(
         using: "gin",
         name: "tracker_data_source_configuration_parent_ids_gin_idx",
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       { fields: ["dataSourceId"] },
       { fields: ["dataSourceViewId"] },
+      {
+        fields: ["workspaceId", "dataSourceId"],
+        concurrently: true,
+      },
     ],
   }
 );
