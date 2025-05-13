@@ -180,7 +180,6 @@ export default function CreateAssistant({
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
       mcpServerViews={mcpServerViews}
-      initialActions={[]}
     >
       <AssistantBuilder
         owner={owner}

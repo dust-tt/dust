@@ -9,7 +9,6 @@ import type {
   AssistantBuilderActionType,
   AssistantBuilderDataVisualizationConfiguration,
 } from "@app/components/assistant_builder/types";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   ACTION_SPECIFICATIONS,
@@ -25,7 +24,6 @@ const DEFAULT_TOOLS_WITH_CONFIGURATION = [
 
 const DEFAULT_TOOLS_WITHOUT_CONFIGURATION = [
   "REASONING",
-  "WEB_NAVIGATION",
   "DATA_VISUALIZATION",
 ] as const satisfies Array<
   | AssistantBuilderActionConfiguration["type"]
@@ -50,12 +48,8 @@ function getDefaultConfigurationSpecification(
 
 function getAvailableNonMCPActions({
   enableReasoningTool,
-  isWebNavigationEnabled,
-  mcpServerViews,
 }: {
   enableReasoningTool: boolean;
-  isWebNavigationEnabled: boolean;
-  mcpServerViews: MCPServerViewType[];
 }) {
   // We should not show the option if it's already selected.
   const list = [
@@ -64,25 +58,6 @@ function getAvailableNonMCPActions({
   ].filter((tool) => {
     if (tool === "REASONING") {
       return enableReasoningTool;
-    }
-
-    // Users should see the old web Capabilities only if
-    // their agents has it selected in the past or
-    // if they don't have mcp_actions activated.
-    if (tool === "WEB_NAVIGATION") {
-      // this is to catch any changes in the name
-      const webtoolsV2ServerName: InternalMCPServerNameType =
-        "web_search_&_browse_v2";
-
-      const webtoolsServer = mcpServerViews.find(
-        (view) => view.server.name === webtoolsV2ServerName
-      );
-
-      if (webtoolsServer != null) {
-        return isWebNavigationEnabled;
-      }
-
-      return true;
     }
 
     return true;
@@ -162,21 +137,12 @@ interface UseToolsProps {
 }
 
 export const useTools = ({ enableReasoningTool, actions }: UseToolsProps) => {
-  const { mcpServerViews, initialActions, spaces } = useContext(
-    AssistantBuilderContext
+  const { mcpServerViews, spaces } = useContext(AssistantBuilderContext);
+
+  const nonDefaultMCPActions = useMemo(
+    () => getAvailableNonMCPActions({ enableReasoningTool }),
+    [enableReasoningTool]
   );
-
-  const nonDefaultMCPActions = useMemo(() => {
-    const isWebNavigationEnabled = !!initialActions.find(
-      (action) => action.type === "WEB_NAVIGATION"
-    );
-
-    return getAvailableNonMCPActions({
-      enableReasoningTool,
-      isWebNavigationEnabled,
-      mcpServerViews,
-    });
-  }, [enableReasoningTool, initialActions, mcpServerViews]);
 
   const {
     mcpServerViewsWithKnowledge,
