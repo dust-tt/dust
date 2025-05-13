@@ -106,6 +106,7 @@ export async function getMCPServersMetadata(
     const results = await redis.mGet(keys);
 
     return results.map((result) => {
+      // Server existence is checked when posting a message. It's safe to ignore here.
       if (!result) {
         return null;
       }
