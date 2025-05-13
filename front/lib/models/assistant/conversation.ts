@@ -60,6 +60,7 @@ ConversationModel.init(
   {
     modelName: "conversation",
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         unique: true,
         fields: ["sId"],
@@ -67,6 +68,10 @@ ConversationModel.init(
       {
         fields: ["workspaceId"],
         name: "conversations_wId_idx",
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "sId"],
       },
     ],
     sequelize: frontSequelize,
@@ -109,17 +114,26 @@ ConversationParticipantModel.init(
       {
         fields: ["userId"],
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["userId", "conversationId"],
+        unique: true,
+      },
+      {
+        fields: ["workspaceId", "userId", "conversationId"],
         unique: true,
       },
       {
         fields: ["conversationId"],
         concurrently: true,
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["userId", "action"],
         concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "userId", "action"],
       },
     ],
   }
@@ -624,11 +638,19 @@ Mention.init(
     modelName: "mention",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["messageId"],
       },
       {
+        fields: ["workspaceId", "messageId"],
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
+      {
         fields: ["agentConfigurationId", "createdAt"],
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId", "createdAt"],
       },
     ],
   }

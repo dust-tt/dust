@@ -8,7 +8,7 @@ import type {
   IncludeResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -38,7 +38,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  agentLoopRunContext?: AgentLoopRunContextType
 ): McpServer {
   const server = new McpServer(serverInfo);
 
@@ -59,22 +59,22 @@ function createServer(
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const credentials = dustManagedCredentials();
 
-      if (!agentLoopContext) {
+      if (!agentLoopRunContext) {
         throw new Error(
-          "agentLoopContext is required where the tool is called."
+          "agentLoopRunContext is required where the tool is called."
         );
       }
 
       // Compute the topK and refsOffset for the search.
       const topK = getRetrievalTopK({
-        agentConfiguration: agentLoopContext.agentConfiguration,
-        stepActions: agentLoopContext.stepActions,
+        agentConfiguration: agentLoopRunContext.agentConfiguration,
+        stepActions: agentLoopRunContext.stepActions,
       });
       const refsOffset = actionRefsOffset({
-        agentConfiguration: agentLoopContext.agentConfiguration,
-        stepActionIndex: agentLoopContext.stepActionIndex,
-        stepActions: agentLoopContext.stepActions,
-        refsOffset: agentLoopContext.citationsRefsOffset,
+        agentConfiguration: agentLoopRunContext.agentConfiguration,
+        stepActionIndex: agentLoopRunContext.stepActionIndex,
+        stepActions: agentLoopRunContext.stepActions,
+        refsOffset: agentLoopRunContext.citationsRefsOffset,
       });
 
       // Get the core search args for each data source, fail if any of them are invalid.

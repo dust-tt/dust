@@ -145,10 +145,16 @@ LabsTranscriptsHistoryModel.init(
     modelName: "labs_transcripts_history",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove this index.
       {
         fields: ["fileId", "configurationId"],
         unique: true,
         name: "labs_transcripts_histories_file_configuration_id",
+      },
+      {
+        fields: ["workspaceId", "configurationId", "fileId"],
+        unique: true,
+        name: "labs_transcripts_histories_workspace_configuration_file_id",
       },
     ],
   }

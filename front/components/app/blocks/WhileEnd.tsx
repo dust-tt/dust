@@ -2,6 +2,7 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import dynamic from "next/dynamic";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 import type { SpecificationBlockType, SpecificationType } from "@app/types";
@@ -59,7 +60,7 @@ export function While({
     onBlockUpdate(b);
   };
 
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
 
   return (
     <Block
@@ -111,7 +112,7 @@ export function While({
                 )}
               >
                 <CodeEditor
-                  data-color-mode={theme === "dark" ? "dark" : "light"}
+                  data-color-mode={isDark ? "dark" : "light"}
                   readOnly={readOnly}
                   value={block.spec.condition_code}
                   language="js"

@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   deleteConversation,
-  updateConversation,
+  updateConversationTitle,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -18,13 +18,7 @@ import type {
 } from "@app/types";
 
 export const PatchConversationsRequestBodySchema = t.type({
-  title: t.union([t.string, t.null]),
-  visibility: t.union([
-    t.literal("unlisted"),
-    t.literal("workspace"),
-    t.literal("deleted"),
-    t.literal("test"),
-  ]),
+  title: t.string,
 });
 
 export type GetConversationsResponseBody = {
@@ -94,11 +88,11 @@ async function handler(
         });
       }
 
-      const { title, visibility } = bodyValidation.right;
+      const { title } = bodyValidation.right;
 
-      const result = await updateConversation(auth, conversation.sId, {
+      const result = await updateConversationTitle(auth, {
+        conversationId: conversation.sId,
         title,
-        visibility,
       });
 
       if (result.isErr()) {

@@ -83,8 +83,13 @@ AgentRetrievalConfiguration.init(
     modelName: "agent_retrieval_configuration",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove this index.
       {
         fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
         concurrently: true,
       },
       {
@@ -241,7 +246,7 @@ AgentMessage.hasMany(AgentRetrievalAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
-export class RetrievalDocument extends WorkspaceAwareModel<RetrievalDocument> {
+export class RetrievalDocumentModel extends WorkspaceAwareModel<RetrievalDocumentModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -256,11 +261,11 @@ export class RetrievalDocument extends WorkspaceAwareModel<RetrievalDocument> {
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
 
-  declare chunks: NonAttribute<RetrievalDocumentChunk[]>;
+  declare chunks: NonAttribute<RetrievalDocumentChunkModel[]>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
-RetrievalDocument.init(
+RetrievalDocumentModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -301,30 +306,32 @@ RetrievalDocument.init(
     modelName: "retrieval_document",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove this index.
       { fields: ["retrievalActionId"] },
       { fields: ["dataSourceViewId"] },
+      { fields: ["workspaceId", "retrievalActionId"] },
     ],
   }
 );
 
-AgentRetrievalAction.hasMany(RetrievalDocument, {
+AgentRetrievalAction.hasMany(RetrievalDocumentModel, {
   foreignKey: { name: "retrievalActionId", allowNull: true },
   onDelete: "SET NULL",
 });
-RetrievalDocument.belongsTo(AgentRetrievalAction, {
+RetrievalDocumentModel.belongsTo(AgentRetrievalAction, {
   foreignKey: { name: "retrievalActionId", allowNull: true },
 });
 
-DataSourceViewModel.hasMany(RetrievalDocument, {
+DataSourceViewModel.hasMany(RetrievalDocumentModel, {
   foreignKey: { allowNull: true },
   onDelete: "SET NULL",
 });
-RetrievalDocument.belongsTo(DataSourceViewModel, {
+RetrievalDocumentModel.belongsTo(DataSourceViewModel, {
   as: "dataSourceView",
   foreignKey: { allowNull: true },
 });
 
-export class RetrievalDocumentChunk extends WorkspaceAwareModel<RetrievalDocumentChunk> {
+export class RetrievalDocumentChunkModel extends WorkspaceAwareModel<RetrievalDocumentChunkModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -332,10 +339,10 @@ export class RetrievalDocumentChunk extends WorkspaceAwareModel<RetrievalDocumen
   declare offset: number;
   declare score: number | null;
 
-  declare retrievalDocumentId: ForeignKey<RetrievalDocument["id"]>;
+  declare retrievalDocumentId: ForeignKey<RetrievalDocumentModel["id"]>;
 }
 
-RetrievalDocumentChunk.init(
+RetrievalDocumentChunkModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -370,11 +377,11 @@ RetrievalDocumentChunk.init(
   }
 );
 
-RetrievalDocument.hasMany(RetrievalDocumentChunk, {
+RetrievalDocumentModel.hasMany(RetrievalDocumentChunkModel, {
   foreignKey: { name: "retrievalDocumentId", allowNull: false },
   onDelete: "CASCADE",
   as: "chunks",
 });
-RetrievalDocumentChunk.belongsTo(RetrievalDocument, {
+RetrievalDocumentChunkModel.belongsTo(RetrievalDocumentModel, {
   foreignKey: { name: "retrievalDocumentId", allowNull: false },
 });

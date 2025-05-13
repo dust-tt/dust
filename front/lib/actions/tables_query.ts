@@ -38,7 +38,7 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { assertNever, Ok, removeNulls } from "@app/types";
+import { Ok, removeNulls } from "@app/types";
 
 // Need a model with at least 54k to run tables query.
 const TABLES_QUERY_MIN_TOKEN = 50_000;
@@ -286,13 +286,14 @@ const getTablesQueryError = (error: string) => {
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
 export async function tableQueryTypesFromAgentMessageIds(
   auth: Authenticator,
-  agentMessageIds: ModelId[]
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<TablesQueryActionType[]> {
   const owner = auth.getNonNullableWorkspace();
 
   const actions = await AgentTablesQueryAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
     include: [
       {
@@ -867,9 +868,7 @@ function getSectionColumnsPrefix(
     case "zendesk":
     case "bigquery":
     case "gong":
-    case null:
-      return null;
     default:
-      assertNever(provider);
+      return null;
   }
 }

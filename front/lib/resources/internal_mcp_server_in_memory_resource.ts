@@ -63,8 +63,10 @@ export class InternalMCPServerInMemoryResource {
     const getCachedMetadata = cacheWithRedis(
       async (id: string) => {
         const s = await connectToMCPServer(auth, {
-          type: "mcpServerId",
-          mcpServerId: id,
+          params: {
+            type: "mcpServerId",
+            mcpServerId: id,
+          },
         });
 
         if (s.isErr()) {

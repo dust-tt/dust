@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
@@ -22,7 +23,6 @@ import type {
 } from "@app/types";
 
 import Block from "./Block";
-
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
   { ssr: false }
@@ -194,7 +194,7 @@ export default function DataSource({
     onBlockUpdate(b);
   };
 
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
 
   return (
     <Block
@@ -256,7 +256,7 @@ export default function DataSource({
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.query}
                 language="jinja2"
@@ -283,7 +283,7 @@ export default function DataSource({
               <div className="flex w-full flex-col gap-2">
                 <div className="flex w-full flex-col gap-2">
                   <CodeEditor
-                    data-color-mode={theme === "dark" ? "dark" : "light"}
+                    data-color-mode={isDark ? "dark" : "light"}
                     readOnly={readOnly}
                     value={block.spec.filter_code}
                     language="js"

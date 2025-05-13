@@ -164,6 +164,7 @@ export const TourGuideCard = React.forwardRef<
           "dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night",
           className
         )}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {children}
         <TourGuideCardActions
@@ -182,12 +183,16 @@ export interface TourGuideProps {
   children: React.ReactNode;
   autoStart?: boolean;
   onStart?: () => void;
+  onEnd?: () => void;
+  onDismiss?: () => void;
 }
 
 export function TourGuide({
   children,
   autoStart = true,
   onStart,
+  onEnd,
+  onDismiss,
 }: TourGuideProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isActive, setIsActive] = useState(autoStart);
@@ -273,11 +278,13 @@ export function TourGuide({
       setCurrentIndex(currentIndex + 1);
     } else {
       setIsActive(false);
+      onEnd?.();
     }
   };
 
   const handleDismiss = () => {
     setIsActive(false);
+    onDismiss?.();
   };
 
   if (!isActive || cards.length === 0) {

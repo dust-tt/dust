@@ -94,7 +94,10 @@ export async function getPokeConversation(
                   case "tables_query_action": {
                     a.runId = (
                       await AgentTablesQueryAction.findOne({
-                        where: { id: a.id },
+                        where: {
+                          id: a.id,
+                          workspaceId: auth.getNonNullableWorkspace().id,
+                        },
                         attributes: ["runId"],
                         raw: true,
                       })
@@ -123,7 +126,10 @@ export async function getPokeConversation(
                   }
                   case "dust_app_run_action": {
                     const runAction = await AgentDustAppRunAction.findOne({
-                      where: { id: a.id },
+                      where: {
+                        id: a.id,
+                        workspaceId: auth.getNonNullableWorkspace().id,
+                      },
                       attributes: ["runId", "appWorkspaceId", "appId"],
                       raw: true,
                     });

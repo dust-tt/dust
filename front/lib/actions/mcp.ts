@@ -8,6 +8,7 @@ import type {
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
 import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
@@ -28,7 +29,7 @@ import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
-  AgentLoopContextType,
+  AgentLoopRunContextType,
   BaseActionRunParams,
   ExtractActionBlob,
 } from "@app/lib/actions/types";
@@ -100,6 +101,7 @@ export type ServerSideMCPServerConfigurationType =
     timeFrame: TimeFrame | null;
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
+    dustAppConfiguration: DustAppRunConfigurationType | null;
     internalMCPServerId: string | null; // As convenience, hold the sId of the internal server if it is an internal server.
   };
 
@@ -582,7 +584,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       actionConfiguration,
     });
 
-    const agentLoopContext: AgentLoopContextType = {
+    const agentLoopRunContext: AgentLoopRunContextType = {
       actionConfiguration,
       agentConfiguration,
       conversation,
@@ -596,9 +598,14 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       MCPToolResultContentType[],
       Error | McpError
     > | null = null;
-    for await (const event of tryCallMCPTool(auth, inputs, agentLoopContext, {
-      progressToken: action.id,
-    })) {
+    for await (const event of tryCallMCPTool(
+      auth,
+      inputs,
+      agentLoopRunContext,
+      {
+        progressToken: action.id,
+      }
+    )) {
       if (event.type === "result") {
         toolCallResult = event.result;
       } else if (event.type === "notification") {
@@ -891,11 +898,13 @@ const buildErrorEvent = (
 // have `sId` on actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of
 // this action).
 export async function mcpActionTypesFromAgentMessageIds(
-  agentMessageIds: ModelId[]
+  auth: Authenticator,
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<MCPActionType[]> {
   const actions = await AgentMCPAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
     include: [
       {

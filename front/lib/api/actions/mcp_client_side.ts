@@ -2,6 +2,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 
 import type { ClientSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { getMCPServersMetadata } from "@app/lib/api/actions/mcp/client_side_registry";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -84,18 +85,25 @@ export function getMCPServerResultsChannelId(
  * @param clientSideMCPServerIds - Array of client-side MCP server IDs from user message context
  * @returns Array of ClientSideMCPServerConfigurationType objects
  */
-export function createClientSideMCPServerConfigurations(
+export async function createClientSideMCPServerConfigurations(
+  auth: Authenticator,
   clientSideMCPServerIds?: string[]
-): ClientSideMCPServerConfigurationType[] {
+): Promise<ClientSideMCPServerConfigurationType[]> {
   if (!clientSideMCPServerIds || clientSideMCPServerIds.length === 0) {
     return [];
   }
+
+  const metadata = await getMCPServersMetadata(auth, {
+    serverIds: clientSideMCPServerIds,
+  });
 
   return clientSideMCPServerIds.map((serverId) => ({
     description: `Use the MCP Server ${serverId} to interact with the client-side MCP server.`,
     id: -1, // Default ID for client-side MCP servers.
     clientSideMcpServerId: serverId,
-    name: `MCP Server ${serverId}`,
+    name:
+      metadata.find((m) => m?.serverId === serverId)?.serverName ||
+      `MCP Server ${serverId}`,
     sId: serverId,
     type: "mcp_server_configuration",
   }));

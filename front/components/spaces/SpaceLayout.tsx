@@ -92,6 +92,8 @@ export function SpaceLayout({
     <AppContentLayout
       subscription={subscription}
       owner={owner}
+      hasTopPadding={false}
+      isWideMode
       navChildren={
         <SpaceSideBarMenu
           owner={owner}
@@ -100,7 +102,7 @@ export function SpaceLayout({
         />
       }
     >
-      <div className="flex flex-col pt-4">
+      <div className="flex w-full flex-col pt-8">
         <Page.Vertical gap="lg" align="stretch">
           <SpaceSearchInput
             category={category}

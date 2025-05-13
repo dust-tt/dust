@@ -185,8 +185,13 @@ TrackerDataSourceConfigurationModel.init(
         using: "gin",
         name: "tracker_data_source_configuration_parent_ids_gin_idx",
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       { fields: ["dataSourceId"] },
       { fields: ["dataSourceViewId"] },
+      {
+        fields: ["workspaceId", "dataSourceId"],
+        concurrently: true,
+      },
     ],
   }
 );
@@ -296,15 +301,14 @@ DataSourceModel.hasMany(TrackerGenerationModel, {
   onDelete: "RESTRICT",
 });
 TrackerGenerationModel.belongsTo(DataSourceModel, {
-  foreignKey: { allowNull: false },
+  foreignKey: { allowNull: false, name: "dataSourceId" },
   as: "dataSource",
 });
 
 DataSourceModel.hasMany(TrackerGenerationModel, {
   foreignKey: { allowNull: true },
-  as: "maintainedDocumentDataSource",
 });
 TrackerGenerationModel.belongsTo(DataSourceModel, {
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: true, name: "maintainedDocumentDataSourceId" },
   as: "maintainedDocumentDataSource",
 });

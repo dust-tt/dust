@@ -1,3 +1,5 @@
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+
 import type {
   AgentMessageType,
   ConversationType,
@@ -29,6 +31,13 @@ export type PokeDataSourceType = DataSourceType &
 export type PokeDataSourceViewType = DataSourceViewType &
   PokeItemBase & {
     dataSource: PokeDataSourceType;
+    space: PokeSpaceType;
+  };
+
+export type PokeMCPServerViewType = MCPServerViewType &
+  // Consequence of small inconsistencies in typing between MCPServerViewType and
+  // DataSourceViewType, hard to fix and only affects this type for now.
+  Omit<PokeItemBase, "id"> & {
     space: PokeSpaceType;
   };
 
