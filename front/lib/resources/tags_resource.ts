@@ -199,6 +199,10 @@ export class TagResource extends BaseResource<TagModel> {
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
   ) {
+    if (!agentConfiguration.canEdit && !auth.isAdmin()) {
+      throw new Error("You are not allowed to add tags to this agent");
+    }
+
     await TagAgentModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       tagId: this.id,
@@ -210,6 +214,10 @@ export class TagResource extends BaseResource<TagModel> {
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
   ) {
+    if (!agentConfiguration.canEdit && !auth.isAdmin()) {
+      throw new Error("You are not allowed to remove tags from this agent");
+    }
+
     await TagAgentModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,

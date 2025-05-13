@@ -7,6 +7,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { TagType } from "@app/types/tag";
@@ -101,13 +102,18 @@ async function handler(
         });
       }
 
-      for (const tag of tagsToAdd) {
-        await tag.addToAgent(auth, agent);
-      }
-
-      for (const tag of tagsToRemove) {
-        await tag.removeFromAgent(auth, agent);
-      }
+      await Promise.all([
+        concurrentExecutor(tagsToAdd, (tag) => tag.addToAgent(auth, agent), {
+          concurrency: 10,
+        }),
+        concurrentExecutor(
+          tagsToRemove,
+          (tag) => tag.removeFromAgent(auth, agent),
+          {
+            concurrency: 10,
+          }
+        ),
+      ]);
 
       const tags = await TagResource.listForAgent(auth, agent.id);
 
