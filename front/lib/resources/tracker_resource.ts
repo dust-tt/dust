@@ -498,6 +498,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         lastNotifiedAt: { [Op.or]: [{ [Op.lt]: new Date(lookBackMs) }, null] },
         deletedAt: null,
       },
+      // WORKSPACE_ISOLATION_BYPASS: Allow global query as we have one global workflow for all workspaces
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {
