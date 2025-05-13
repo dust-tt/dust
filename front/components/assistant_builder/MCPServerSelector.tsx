@@ -147,7 +147,13 @@ export function MCPServerSelector({
                               className="flex max-h-96 w-96 flex-col"
                             >
                               {mcpServerView.server.tools.map((tool) => (
-                                <DropdownMenuItem key={tool.name}>
+                                <DropdownMenuItem
+                                  key={tool.name}
+                                  className="cursor-default hover:bg-transparent dark:hover:bg-transparent"
+                                  onSelect={(event) => {
+                                    event.preventDefault();
+                                  }}
+                                >
                                   <div className="flex flex-col gap-1">
                                     <p className="text-sm font-semibold text-foreground dark:text-foreground-night">
                                       {tool.name}
