@@ -1019,7 +1019,7 @@ function ActionEditor({
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
           <Page.Header
-            title={actionDisplayName(action) || "Select tools"}
+            title={actionDisplayName(action)}
             icon={
               action.type === "DATA_VISUALIZATION"
                 ? DATA_VISUALIZATION_SPECIFICATION.cardIcon

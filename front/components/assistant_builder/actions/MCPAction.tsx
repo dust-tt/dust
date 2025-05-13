@@ -94,6 +94,10 @@ export function MCPAction({
     (mcpServerView) => mcpServerView.id === actionConfiguration.mcpServerViewId
   );
 
+  // If there is only one tool, instead of showing the MCPToolsList, we show it
+  // as description.
+  const hasOnlyOneTool = selectedMCPServerView?.server.tools.length === 1;
+
   // MCPServerView on default MCP server will not allow switching to another one.
   const selectedServerAvailability: MCPServerAvailability | null = useMemo(
     () => selectedMCPServerView?.server.availability ?? null,
@@ -169,7 +173,11 @@ export function MCPAction({
       {(selectedServerAvailability === null ||
         selectedServerAvailability === "manual") && (
         <div className="text-sm text-foreground dark:text-foreground-night">
-          <div>{selectedMCPServerView?.server.description}</div>
+          <div>
+            {hasOnlyOneTool
+              ? selectedMCPServerView?.server.tools[0].description
+              : selectedMCPServerView?.server.description}
+          </div>
           <br />
           {selectedServerAvailability === "manual" && (
             <div>
@@ -265,7 +273,7 @@ export function MCPAction({
           }));
         }}
       />
-      {selectedMCPServerView && (
+      {selectedMCPServerView && !hasOnlyOneTool && (
         <MCPToolsList tools={selectedMCPServerView.server.tools} />
       )}
     </>
