@@ -40,7 +40,7 @@ export function makeColumnsForAssistants(
       },
       header: ({ column }) => {
         return (
-          <div className="flex items-center space-x-2">
+          <div className="flex space-x-2">
             <p>Id</p>
             <IconButton
               variant="outline"
@@ -57,7 +57,7 @@ export function makeColumnsForAssistants(
       accessorKey: "name",
       header: ({ column }) => {
         return (
-          <div className="flex items-center space-x-2">
+          <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
               variant="outline"
