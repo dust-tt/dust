@@ -32,15 +32,6 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       header: "sId",
     },
     {
-      accessorKey: "server.id",
-      cell: ({ row }) => {
-        const { mcpServerViewLink, server } = row.original;
-
-        return <LinkWrapper href={mcpServerViewLink}>{server.id}</LinkWrapper>;
-      },
-      header: "Server ID",
-    },
-    {
       accessorKey: "server.name",
       cell: ({ row }) => {
         const { mcpServerViewLink, server } = row.original;
