@@ -7,12 +7,11 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType, PokeMCPServerViewType } from "@app/types";
 
 interface ViewMCPServerViewTableProps {
-  mcpServerView: PokeMCPServerViewType | MCPServerViewType;
+  mcpServerView: PokeMCPServerViewType;
   owner: LightWorkspaceType;
 }
 
@@ -51,7 +50,7 @@ export function ViewMCPServerViewTable({
                 <PokeTableHead>Space</PokeTableHead>
                 <PokeTableCellWithLink
                   href={`/poke/${owner.sId}/spaces/${mcpServerView.spaceId}`}
-                  content={`${"space" in mcpServerView ? mcpServerView.space?.name || "" : ""} (${mcpServerView.spaceId})`}
+                  content={mcpServerView.space.name}
                 />
               </PokeTableRow>
               <PokeTableRow>
