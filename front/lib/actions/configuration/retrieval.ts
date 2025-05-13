@@ -44,6 +44,7 @@ export async function fetchAgentRetrievalActionConfigurations(
   const retrievalDatasourceConfigurations =
     await AgentDataSourceConfiguration.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         retrievalConfigurationId: {
           [Op.in]: retrievalConfigurations.map((r) => r.id),
         },
