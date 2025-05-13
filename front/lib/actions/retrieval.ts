@@ -1,5 +1,6 @@
 import assert from "assert";
 import _ from "lodash";
+import { Op } from "sequelize";
 
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -846,11 +847,12 @@ function retrievalActionSpecification({
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
 export async function retrievalActionTypesFromAgentMessageIds(
   auth: Authenticator,
-  agentMessageIds: ModelId[]
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<RetrievalActionType[]> {
   const models = await AgentRetrievalAction.findAll({
     where: {
-      agentMessageId: agentMessageIds,
+      agentMessageId: { [Op.in]: agentMessageIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 

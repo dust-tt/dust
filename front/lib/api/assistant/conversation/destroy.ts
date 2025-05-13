@@ -1,4 +1,5 @@
 import { chunk } from "lodash";
+import { Op } from "sequelize";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
@@ -36,7 +37,10 @@ async function destroyActionsRelatedResources(
   // First, retrieve the retrieval actions and documents.
   const retrievalActions = await AgentRetrievalAction.findAll({
     attributes: ["id"],
-    where: { agentMessageId: agentMessageIds },
+    where: {
+      agentMessageId: { [Op.in]: agentMessageIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   // Destroy retrieval resources.
