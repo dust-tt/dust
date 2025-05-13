@@ -29,7 +29,6 @@ use tracing::{error, info, Level};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
 
-use dust::search_stores::search_store::NodeItem;
 use dust::{
     api_keys::validate_api_key,
     app,
@@ -40,7 +39,7 @@ use dust::{
         qdrant::QdrantClients,
     },
     databases::{
-        database::{execute_query, QueryDatabaseError},
+        database::{execute_query, get_tables_schema, QueryDatabaseError},
         table::{LocalTable, Row, Table},
     },
     databases_store::store as databases_store,
@@ -51,8 +50,8 @@ use dust::{
     run,
     search_filter::{Filterable, SearchFilter},
     search_stores::search_store::{
-        DatasourceViewFilter, ElasticsearchSearchStore, NodesSearchFilter, NodesSearchOptions,
-        SearchStore, TagsQueryType,
+        DatasourceViewFilter, ElasticsearchSearchStore, NodeItem, NodesSearchFilter,
+        NodesSearchOptions, SearchStore, TagsQueryType,
     },
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
@@ -3623,13 +3622,81 @@ async fn tags_search(
 }
 
 #[derive(serde::Deserialize)]
+struct DatabasesSchemaPayload {
+    tables: Vec<(i64, String, String)>,
+}
+
+async fn databases_schema_retrieve(
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DatabasesSchemaPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match try_join_all(
+        payload
+            .tables
+            .iter()
+            .map(|(project_id, data_source_id, table_id)| {
+                let project = project::Project::new_from_id(*project_id);
+                let store = state.store.clone();
+                async move {
+                    store
+                        .load_data_source_table(&project, data_source_id, table_id)
+                        .await
+                }
+            }),
+    )
+    .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve tables",
+            Some(e),
+        ),
+        Ok(tables) => match tables.into_iter().collect::<Option<Vec<Table>>>() {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "table_not_found",
+                "No table found",
+                None,
+            ),
+            Some(tables) => {
+                match get_tables_schema(tables, state.store.clone(), state.databases_store.clone())
+                    .await
+                {
+                    Err(e) => error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "schema_retrieval_failed",
+                        "Failed to retrieve table schemas",
+                        Some(e),
+                    ),
+                    Ok((dialect, schemas)) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "dialect": dialect,
+                                "schemas": schemas.iter().map(|s| {
+                                    json!({
+                                        "table_schema": s.schema,
+                                        "dbml": s.dbml,
+                                        "head": s.head,
+                                    })
+                                }).collect::<Vec<_>>(),
+                            })),
+                        }),
+                    ),
+                }
+            }
+        },
+    }
+}
+
+#[derive(serde::Deserialize)]
 struct DatabaseQueryRunPayload {
     query: String,
     tables: Vec<(i64, String, String)>,
     view_filter: Option<SearchFilter>,
 }
-
-// use axum_macros::debug_handler;
 
 async fn databases_query_run(
     State(state): State<Arc<APIState>>,
@@ -4107,6 +4174,10 @@ fn main() {
         .route(
             "/query_database",
             post(databases_query_run),
+        )
+        .route(
+            "/database_schema",
+            post(databases_schema_retrieve),
         )
         .route("/sqlite_workers", delete(sqlite_workers_delete))
 

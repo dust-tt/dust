@@ -18,6 +18,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "notion",
   "primitive_types_debugger",
   "query_tables",
+  "query_tables_v2",
   "reasoning_v2",
   "run_dust_app",
   "search",
@@ -145,6 +146,12 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1008,
     availability: "manual",
     flag: "dev_mcp_actions",
+  },
+  query_tables_v2: {
+    id: 1009,
+    availability: "auto",
+    // We'll eventually switch everyone to this new tables query toolset.
+    flag: "exploded_tables_query",
   },
 };
 
