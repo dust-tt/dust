@@ -315,6 +315,13 @@ export async function getExecutionStatusFromConfig(
     return { status: "pending" };
   }
 
+  // If the agent message is marked as "skipToolsValidation" we skip all tools validation
+  // irrespective of the `actionConfiguration.permission`. This is set when the agent message was
+  // created by an API call where the caller explicitly set `skipToolsValidation` to true.
+  if (agentMessage.skipToolsValidation) {
+    return { status: "allowed_implicitly" };
+  }
+
   /**
    * Permissions:
    * - "never_ask": Automatically approved
