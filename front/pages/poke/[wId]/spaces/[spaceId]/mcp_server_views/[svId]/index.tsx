@@ -7,40 +7,23 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { mcpServerViewToPokeJSON } from "@app/lib/poke/utils";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { PokeMCPServerViewType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   mcpServerView: PokeMCPServerViewType;
   owner: WorkspaceType;
 }>(async (context, auth) => {
-  const { wId, spaceId, svId } = context.params || {};
-  if (
-    typeof wId !== "string" ||
-    typeof spaceId !== "string" ||
-    typeof svId !== "string"
-  ) {
-    return {
-      notFound: true,
-    };
-  }
+  const owner = auth.getNonNullableWorkspace();
 
-  const owner = auth.workspace();
-  if (!owner) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space) {
+  const { svId } = context.params || {};
+  if (typeof svId !== "string") {
     return {
       notFound: true,
     };
   }
 
   const mcpServerView = await MCPServerViewResource.fetchById(auth, svId);
-  if (!mcpServerView || mcpServerView.space.id !== space.id) {
+  if (!mcpServerView) {
     return {
       notFound: true,
     };
