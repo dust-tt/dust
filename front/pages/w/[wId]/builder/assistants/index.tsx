@@ -349,7 +349,11 @@ export default function WorkspaceAssistants({
           agentConfigurations={selectedAgents}
           isOpen={isDeleteDialogOpen}
           onClose={() => setIsDeleteDialogOpen(false)}
-          setSelection={setSelection}
+          onSave={() => {
+            setSelection([]);
+            setIsDeleteDialogOpen(false);
+            setIsBatchEdit(false);
+          }}
         />
         <AssistantDetails
           owner={owner}

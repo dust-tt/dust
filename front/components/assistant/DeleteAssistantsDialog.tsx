@@ -20,17 +20,17 @@ interface DeleteAssistantsDialogProps {
   agentConfigurations: LightAgentConfigurationType[];
   isOpen: boolean;
   isPrivateAssistant?: boolean;
-  onClose: () => void;
-  setSelection: (selection: string[]) => void;
   owner: LightWorkspaceType;
+  onClose: () => void;
+  onSave: () => void;
 }
 
 export function DeleteAssistantsDialog({
   agentConfigurations,
   isOpen,
-  onClose,
   owner,
-  setSelection,
+  onClose,
+  onSave,
 }: DeleteAssistantsDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const doDelete = useBatchDeleteAgentConfigurations({
@@ -85,8 +85,7 @@ export function DeleteAssistantsDialog({
               setIsDeleting(true);
               await doDelete();
               setIsDeleting(false);
-              setSelection([]);
-              onClose();
+              onSave();
             },
           }}
         />
