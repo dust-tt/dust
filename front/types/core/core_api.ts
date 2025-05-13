@@ -1914,6 +1914,35 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async getDatabaseSchema({
+    tables,
+  }: {
+    tables: Array<[number, string, string]>; // project_id, data_source_id, table_id
+  }): Promise<
+    CoreAPIResponse<{
+      dialect: string;
+      schemas: Array<{
+        dbml: string;
+        head?: Array<Record<string, any>>;
+      }>;
+    }>
+  > {
+    const response = await this._fetchWithError(
+      `${this._url}/database_schema`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tables,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async getDataSourceFolders(
     {
       projectId,
