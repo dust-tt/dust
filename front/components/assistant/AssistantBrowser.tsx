@@ -36,6 +36,7 @@ import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
@@ -118,7 +119,7 @@ export function AssistantBrowser({
 
   const router = useRouter();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
+  const { isDark } = useTheme();
   const [sortType, setSortType] = useState<"popularity" | "alphabetical">(
     "popularity"
   );
@@ -205,22 +206,22 @@ export function AssistantBrowser({
   const hasAgentDiscovery = featureFlags.hasFeature("agent_discovery");
 
   // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
-  const visibleTabs = useMemo(() => {
-    return (hasAgentDiscovery ? AGENTS_TABS : AGENTS_TABS_LEGACY).filter(
-      (tab) => agentsByTab[tab.id].length > 0
-    );
-  }, [agentsByTab, hasAgentDiscovery]);
+  const visibleTabs = hasAgentDiscovery ? AGENTS_TABS : AGENTS_TABS_LEGACY;
+
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
   const viewTab = useMemo(() => {
+    const enabledTabs = visibleTabs.filter(
+      (tab) => agentsByTab[tab.id].length > 0
+    );
     return selectedTab &&
       isValidTab(
         selectedTab,
-        visibleTabs.map((tab) => tab.id)
+        enabledTabs.map((tab) => tab.id)
       )
       ? selectedTab
-      : visibleTabs[0]?.id;
-  }, [selectedTab, visibleTabs]);
+      : enabledTabs[0]?.id;
+  }, [selectedTab, visibleTabs, agentsByTab]);
 
   const handleMoreClick = (agent: LightAgentConfigurationType) => {
     setQueryParam(router, "assistantDetails", agent.sId);
@@ -287,7 +288,7 @@ export function AssistantBrowser({
             </>
           ) : isLoading ? (
             <div className="flex justify-center py-8">
-              <Spinner variant="dark" size="md" />
+              <Spinner variant={isDark ? "light" : "dark"} size="md" />
             </div>
           ) : (
             <div className="p-2 text-sm text-gray-500">No results found</div>
@@ -330,6 +331,7 @@ export function AssistantBrowser({
             <TabsList>
               {visibleTabs.map((tab) => (
                 <TabsTrigger
+                  disabled={agentsByTab[tab.id].length === 0}
                   key={tab.id}
                   value={tab.id}
                   label={tab.label}
@@ -367,6 +369,12 @@ export function AssistantBrowser({
           <ScrollBar orientation="horizontal" className="hidden" />
         </ScrollArea>
       </div>
+
+      {isLoading && (
+        <div className="flex justify-center py-8">
+          <Spinner size="lg" />
+        </div>
+      )}
 
       {viewTab === "all" && hasAgentDiscovery ? (
         <>
