@@ -87,7 +87,7 @@ async function migrateWorkspaceReasoningActions({
         // This should never happen since we fetch where agentConfigurationId is not null.
         // The data model is a bit ugly, this was a bit temporary.
         logger.info(
-          { configModelId: reasoningConfig.id },
+          { reasoningConfigurationId: reasoningConfig.id },
           `Already an MCP reasoning config, skipping.`
         );
         return;
@@ -121,15 +121,15 @@ async function migrateWorkspaceReasoningActions({
         // Log the model IDs for an easier rollback.
         logger.info(
           {
-            configModelId: reasoningConfig.id,
-            mcpConfigModelId: mcpConfig.id,
+            reasoningConfigurationId: reasoningConfig.id,
+            mcpServerConfigurationId: mcpConfig.id,
           },
           `Migrated reasoning config to MCP server config.`
         );
       } else {
         logger.info(
           {
-            configModelId: reasoningConfig.id,
+            reasoningConfigurationId: reasoningConfig.id,
           },
           `Would create MCP server config and migrate reasoning config to it.`
         );
