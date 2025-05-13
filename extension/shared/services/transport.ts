@@ -27,7 +27,8 @@ export class DustMcpServerTransport implements Transport {
 
   constructor(
     private readonly dustAPI: DustAPI,
-    private readonly serverId: string = this.generateUUID()
+    private readonly serverId: string = this.generateUUID(),
+    private readonly serverName: string = "Dust Extension"
   ) {}
 
   /**
@@ -51,6 +52,7 @@ export class DustMcpServerTransport implements Transport {
   private async registerServer(): Promise<boolean> {
     const registerRes = await this.dustAPI.registerMCPServer({
       serverId: this.serverId,
+      serverName: this.serverName,
     });
     if (registerRes.isErr()) {
       logger.error(`Failed to register MCP server: ${registerRes.error}`);
