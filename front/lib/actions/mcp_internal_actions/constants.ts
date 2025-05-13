@@ -144,7 +144,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   ask_agent: {
     id: 1008,
     availability: "manual",
-    flag: "experimental_mcp_actions",
+    flag: "dev_mcp_actions",
   },
 };
 
