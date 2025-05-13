@@ -30,6 +30,7 @@ import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useTags, useUpdateAgentTags } from "@app/lib/swr/tags";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
@@ -55,7 +56,7 @@ const TagSelector = ({
   onChange: () => Promise<any>;
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-
+  const { isDark } = useTheme();
   const updateAgentTags = useUpdateAgentTags({
     owner,
     agentConfigurationId,
@@ -80,7 +81,6 @@ const TagSelector = ({
                   removeTagIds: isChecked ? [t.sId] : [],
                 });
                 await onChange();
-                setIsLoading(false);
               }}
               checked={isChecked}
             >
@@ -89,8 +89,8 @@ const TagSelector = ({
           );
         })}
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-            <Spinner variant="dark" />
+          <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-black/50">
+            <Spinner variant={isDark ? "light" : "dark"} />
           </div>
         )}
       </DropdownMenuContent>
