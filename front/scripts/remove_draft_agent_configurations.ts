@@ -68,6 +68,7 @@ async function deleteTableQueryConfigurationForAgent(
   const tableQueryConfigurations = await AgentTablesQueryConfiguration.findAll({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: agent.workspaceId,
     },
   });
 
@@ -86,6 +87,7 @@ async function deleteTableQueryConfigurationForAgent(
   await AgentTablesQueryConfiguration.destroy({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: agent.workspaceId,
     },
   });
 }
