@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -38,6 +39,17 @@ async function migrateWorkspaceReasoningActions({
       agentConfigurationId: { [Op.not]: null },
       mcpServerConfigurationId: null,
     },
+    // Filter on active agents.
+    include: [
+      {
+        attributes: [],
+        model: AgentConfiguration,
+        required: true,
+        where: {
+          status: "active",
+        },
+      },
+    ],
     order: [["id", "ASC"]],
   });
 
