@@ -94,6 +94,7 @@ export type TabAppLayoutNavigation = {
   isCurrent: (currentRoute: string) => boolean;
   subMenuLabel?: string;
   subMenu?: AppLayoutNavigation[];
+  ref?: React.RefObject<HTMLDivElement>;
 };
 
 export type SidebarNavigation = {
@@ -103,7 +104,10 @@ export type SidebarNavigation = {
   menus: AppLayoutNavigation[];
 };
 
-export const getTopNavigationTabs = (owner: WorkspaceType) => {
+export const getTopNavigationTabs = (
+  owner: WorkspaceType,
+  spaceMenuButtonRef: React.RefObject<HTMLDivElement>
+) => {
   const nav: TabAppLayoutNavigation[] = [];
 
   nav.push({
@@ -122,12 +126,13 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
 
   nav.push({
     id: "data_sources",
-    label: "Knowledge",
+    label: "Spaces",
     icon: BookOpenIcon,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces/"),
     sizing: "hug",
+    ref: spaceMenuButtonRef,
   });
 
   if (isAdmin(owner)) {
