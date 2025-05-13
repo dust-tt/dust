@@ -6,7 +6,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -103,20 +102,12 @@ async function handler(
       }
 
       for (const tag of tagsToAdd) {
-        await TagAgentModel.create({
-          workspaceId: auth.getNonNullableWorkspace().id,
-          tagId: tag.id,
-          agentConfigurationId: agent.id,
-        });
+        await tag.addToAgent(auth, agent);
       }
 
-      await TagAgentModel.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          tagId: tagsToRemove.map((t) => t.id),
-          agentConfigurationId: agent.id,
-        },
-      });
+      for (const tag of tagsToRemove) {
+        await tag.removeFromAgent(auth, agent);
+      }
 
       const tags = await TagResource.listForAgent(auth, agent.id);
 
