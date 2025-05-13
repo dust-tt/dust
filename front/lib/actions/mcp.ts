@@ -898,11 +898,13 @@ const buildErrorEvent = (
 // have `sId` on actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of
 // this action).
 export async function mcpActionTypesFromAgentMessageIds(
-  agentMessageIds: ModelId[]
+  auth: Authenticator,
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<MCPActionType[]> {
   const actions = await AgentMCPAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
     include: [
       {
