@@ -23,7 +23,6 @@ function prepareMCPServerViewsForDisplay(
         // For display purposes
         mcpServerViewLink: `/poke/${owner.sId}/spaces/${sv.spaceId}/mcp_server_views/${sv.id}`,
         spaceLink: `/poke/${owner.sId}/spaces/${sv.spaceId}`,
-        spaceName: sv.spaceId,
         editedAt: sv.editedByUser?.editedAt ?? undefined,
         editedBy: sv.editedByUser?.fullName ?? undefined,
         name: sv.server.name,

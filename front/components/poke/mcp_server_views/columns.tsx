@@ -6,7 +6,6 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 interface MCPServerView {
   id: string;
-  sId?: string;
   createdAt: number;
   updatedAt: number;
   spaceId: string;
@@ -18,12 +17,15 @@ interface MCPServerView {
   editedAt?: number;
   editedBy?: string;
   mcpServerViewLink: string;
-  spaceName: string;
   spaceLink: string;
 }
 
 export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
   return [
+    {
+      accessorKey: "server.id",
+      header: "sId",
+    },
     {
       accessorKey: "server.name",
       cell: ({ row }) => {
@@ -49,43 +51,16 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       },
     },
     {
-      accessorKey: "server.id",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Server ID</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
+      accessorKey: "space",
+      cell: ({ row }) => {
+        const { spaceLink, spaceId } = row.original;
+        return <LinkWrapper href={spaceLink}>{spaceId}</LinkWrapper>;
       },
+      header: "Space",
     },
     {
-      accessorKey: "spaceName",
-      cell: ({ row }) => {
-        const { spaceLink, spaceName } = row.original;
-
-        return <LinkWrapper href={spaceLink}>{spaceName}</LinkWrapper>;
-      },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Space</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      accessorKey: "editedBy",
+      header: "Last edited by",
     },
     {
       accessorKey: "createdAt",
@@ -96,23 +71,6 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
         return (
           <div className="flex space-x-2">
             <p>Created At</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: "editedBy",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Last edited by</p>
             <IconButton
               variant="outline"
               icon={ArrowsUpDownIcon}
