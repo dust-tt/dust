@@ -39,8 +39,8 @@ export function ProcessingConfiguration({
 
   const sendNotification = useSendNotification();
   const { doUpdate } = useUpdateTranscriptsConfiguration({
-    workspaceId: owner.sId,
-    transcriptConfigurationId: transcriptsConfiguration.id,
+    owner,
+    transcriptsConfiguration,
   });
 
   const handleSelectAssistant = async (

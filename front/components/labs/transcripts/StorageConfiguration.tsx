@@ -39,8 +39,8 @@ export function StorageConfiguration({
   isSpacesLoading,
 }: StorageConfigurationProps) {
   const { doUpdate } = useUpdateTranscriptsConfiguration({
-    workspaceId: owner.sId,
-    transcriptConfigurationId: transcriptsConfiguration.id,
+    owner,
+    transcriptsConfiguration,
   });
 
   const [storeInFolder, setStoreInFolder] = useState(false);
@@ -82,6 +82,8 @@ export function StorageConfiguration({
 
     if (response.isOk()) {
       await mutateTranscriptsConfiguration();
+    } else {
+      setSelectionConfigurations({});
     }
   };
 

@@ -14,17 +14,20 @@ import type {
   ConnectionCredentials,
   DataSourceType,
   LabsConnectionProvider,
+  LabsTranscriptsConfigurationType,
   LightWorkspaceType,
   ModelId,
+  Result,
 } from "@app/types";
 import {
   assertNever,
+  Err,
   isHubspotCredentials,
   isOAuthProvider,
+  normalizeError,
+  Ok,
   setupOAuthConnection,
 } from "@app/types";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
@@ -98,50 +101,43 @@ export function useLabsTranscriptsIsConnectorConnected({
 }
 
 export function useUpdateTranscriptsConfiguration({
-  workspaceId,
-  transcriptConfigurationId,
+  owner,
+  transcriptsConfiguration,
 }: {
-  workspaceId: string;
-  transcriptConfigurationId: number;
+  owner: LightWorkspaceType;
+  transcriptsConfiguration: LabsTranscriptsConfigurationType;
 }) {
   const sendNotification = useSendNotification();
   const doUpdate = async (
     data: Partial<PatchTranscriptsConfiguration>
   ): Promise<Result<undefined, Error>> => {
-    try {
-      const response = await fetch(
-        `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        }
-      );
-      if (!response.ok) {
-        const error = await response.json();
-        sendNotification({
-          type: "error",
-          title: "Failed to update transcript configuration",
-          description: error.error?.message || "Unknown error",
-        });
-        return new Err(new Error(error.error?.message || "Unknown error"));
+    const response = await fetch(
+      `/api/w/${owner.sId}/labs/transcripts/${transcriptsConfiguration.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
       }
-      sendNotification({
-        type: "success",
-        title: "Transcript configuration updated",
-        description: "Transcript configuration updated successfully.",
-      });
-      return new Ok(undefined);
-    } catch (e: any) {
+    );
+    if (!response.ok) {
+      const error = await response.json();
       sendNotification({
         type: "error",
         title: "Failed to update transcript configuration",
-        description: e.message || "Unknown error",
+        description: error.error?.message || "Unknown error",
       });
-      return new Err(e instanceof Error ? e : new Error(String(e)));
+      return new Err(normalizeError(error));
     }
+    sendNotification({
+      type: "success",
+      title: "Success!",
+      description: data.dataSourceViewId
+        ? "We will now store your meeting transcripts."
+        : "We will no longer store your meeting transcripts.",
+    });
+    return new Ok(undefined);
   };
   return { doUpdate };
 }
