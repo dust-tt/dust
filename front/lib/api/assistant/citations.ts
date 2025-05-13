@@ -125,11 +125,18 @@ export const getLightAgentMessageFromAgentMessage = (
   const { actions, ...rest } = agentMessage;
   return {
     ...rest,
-    actionsCount: actions.length,
     lightActions: actions.map((a) => ({
       type: a.type,
       id: a.id,
     })),
+    configuration: {
+      sId: agentMessage.configuration.sId,
+      name: agentMessage.configuration.name,
+      pictureUrl: agentMessage.configuration.pictureUrl,
+      status: agentMessage.configuration.status,
+      canRead: agentMessage.configuration.canRead,
+      requestedGroupIds: agentMessage.configuration.requestedGroupIds,
+    },
     citations: getCitationsFromActions(actions),
     generatedFiles: actions.flatMap((a) => a.generatedFiles),
   };

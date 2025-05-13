@@ -14,7 +14,10 @@ import { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
-import type { LightAgentConfigurationType } from "./agent";
+import type {
+  AgentConfigurationStatus,
+  LightAgentConfigurationType,
+} from "./agent";
 
 /**
  * Mentions
@@ -207,9 +210,15 @@ export type LightAgentMessageType = {
   visibility: MessageVisibility;
   version: number;
   parentMessageId: string | null;
-  configuration: LightAgentConfigurationType;
+  configuration: {
+    sId: string;
+    name: string;
+    pictureUrl: string;
+    status: AgentConfigurationStatus;
+    canRead: boolean;
+    requestedGroupIds: string[][];
+  };
   status: AgentMessageStatus;
-  actionsCount: number;
   lightActions: {
     type: AgentActionType["type"];
     id: ModelId;

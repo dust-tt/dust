@@ -61,7 +61,7 @@ export function AgentMessageActions({
         owner={owner}
       />
       <ActionDetails
-        hasActions={agentMessage.actionsCount > 0}
+        hasActions={agentMessage.lightActions.length > 0}
         isActionStepDone={!isThinkingOrActing}
         label={chipLabel}
         onClick={() => setIsActionDrawerOpened(true)}
