@@ -15,12 +15,18 @@ import { makeScript } from "@app/scripts/helpers";
 async function migrateWorkspaceReasoningActions({
   wId,
   execute,
-  logger,
+  parentLogger,
 }: {
   wId: string;
   execute: boolean;
-  logger: typeof Logger;
+  parentLogger: typeof Logger;
 }): Promise<void> {
+  const logger = parentLogger.child({
+    workspaceId: wId,
+  });
+
+  logger.info("Starting migration of reasoning actions to MCP.");
+
   // Get admin auth for the workspace
   const auth = await Authenticator.internalAdminForWorkspace(wId);
 
@@ -36,16 +42,19 @@ async function migrateWorkspaceReasoningActions({
   });
 
   if (reasoningConfigs.length === 0) {
-    logger.info("No reasoning configurations to migrate");
+    logger.info("No reasoning configurations to migrate.");
     return;
   }
 
   logger.info(
-    `Found ${reasoningConfigs.length} reasoning configurations to migrate`
+    `Found ${reasoningConfigs.length} reasoning configurations to migrate.`
   );
 
-  // Create the MCP server views in system and global spaces.
-  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+  if (execute) {
+    // Create the MCP server views in system and global spaces.
+    await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+    logger.info("Created MCP server views in system and global spaces.");
+  }
 
   const mcpServerView =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
@@ -104,7 +113,7 @@ async function migrateWorkspaceReasoningActions({
   );
 
   logger.info(
-    `Successfully migrated ${reasoningConfigs.length} reasoning configurations to MCP`
+    `Successfully migrated ${reasoningConfigs.length} reasoning configurations to MCP.`
   );
 }
 
@@ -115,16 +124,11 @@ makeScript(
       description: "Workspace ID to migrate",
     },
   },
-  async ({ execute, wId }, logger) => {
-    const workspaceLogger = logger.child({ workspaceId: wId });
-    workspaceLogger.info("Starting migration of reasoning actions to MCP");
-
+  async ({ execute, wId }, parentLogger) => {
     await migrateWorkspaceReasoningActions({
       wId,
       execute,
-      logger: workspaceLogger,
+      parentLogger,
     });
-
-    workspaceLogger.info("Migration completed");
   }
 );
