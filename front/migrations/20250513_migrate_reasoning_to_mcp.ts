@@ -107,9 +107,9 @@ async function migrateWorkspaceReasoningActions({
           appId: null,
         });
 
-        revertSql += `DELETE FROM "agent_mcp_server_configurations" WHERE "id" = '${mcpConfig.id}';\n`;
         revertSql += `UPDATE "agent_reasoning_configurations" SET "agentConfigurationId" = '${reasoningConfig.agentConfigurationId}' WHERE "id" = '${reasoningConfig.id}';\n`;
         revertSql += `UPDATE "agent_reasoning_configurations" SET "mcpServerConfigurationId" = NULL WHERE "id" = '${reasoningConfig.id}';\n`;
+        revertSql += `DELETE FROM "agent_mcp_server_configurations" WHERE "id" = '${mcpConfig.id}';\n`;
 
         // Untie the reasoning config from the agent configuration and move it to the MCP server configuration.
         await reasoningConfig.update({
