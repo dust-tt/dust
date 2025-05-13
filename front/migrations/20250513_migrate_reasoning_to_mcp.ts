@@ -138,9 +138,15 @@ async function migrateWorkspaceReasoningActions({
     { concurrency: 10 }
   );
 
-  logger.info(
-    `Successfully migrated ${reasoningConfigs.length} reasoning configurations to MCP.`
-  );
+  if (execute) {
+    logger.info(
+      `Successfully migrated ${reasoningConfigs.length} reasoning configurations to MCP.`
+    );
+  } else {
+    logger.info(
+      `Would have migrated ${reasoningConfigs.length} reasoning configurations to MCP.`
+    );
+  }
 
   return revertSql;
 }
