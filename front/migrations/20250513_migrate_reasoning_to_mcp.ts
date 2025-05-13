@@ -42,7 +42,6 @@ async function migrateWorkspaceReasoningActions({
   });
 
   if (reasoningConfigs.length === 0) {
-    logger.info("No reasoning configurations to migrate.");
     return;
   }
 
@@ -53,7 +52,6 @@ async function migrateWorkspaceReasoningActions({
   if (execute) {
     // Create the MCP server views in system and global spaces.
     await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-    logger.info("Created MCP server views in system and global spaces.");
   }
 
   const mcpServerView =
