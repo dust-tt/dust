@@ -1,3 +1,4 @@
+import fs from "fs";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
@@ -21,7 +22,7 @@ async function migrateWorkspaceReasoningActions({
   wId: string;
   execute: boolean;
   parentLogger: typeof Logger;
-}): Promise<void> {
+}): Promise<string> {
   const logger = parentLogger.child({
     workspaceId: wId,
   });
@@ -55,7 +56,7 @@ async function migrateWorkspaceReasoningActions({
   });
 
   if (reasoningConfigs.length === 0) {
-    return;
+    return "";
   }
 
   logger.info(
@@ -75,6 +76,8 @@ async function migrateWorkspaceReasoningActions({
   if (!mcpServerView) {
     throw new Error("Reasoning MCP server view not found.");
   }
+
+  let revertSql = "";
 
   // For each reasoning configuration, create an MCP server configuration and link it
   await concurrentExecutor(
@@ -104,11 +107,16 @@ async function migrateWorkspaceReasoningActions({
           appId: null,
         });
 
+        revertSql += `DELETE FROM "agent_mcp_server_configurations" WHERE "id" = '${mcpConfig.id}';\n`;
+
         // Untie the reasoning config from the agent configuration and move it to the MCP server configuration.
         await reasoningConfig.update({
           mcpServerConfigurationId: mcpConfig.id,
           agentConfigurationId: null,
         });
+
+        revertSql += `UPDATE "agent_reasoning_configurations" SET "agent_configuration_id" = '${reasoningConfig.agentConfigurationId}' WHERE "id" = '${reasoningConfig.id}';\n`;
+        revertSql += `UPDATE "agent_reasoning_configurations" SET "mcp_server_configuration_id" = NULL WHERE "id" = '${reasoningConfig.id}';\n`;
 
         // Log the model IDs for an easier rollback.
         logger.info(
@@ -133,6 +141,8 @@ async function migrateWorkspaceReasoningActions({
   logger.info(
     `Successfully migrated ${reasoningConfigs.length} reasoning configurations to MCP.`
   );
+
+  return revertSql;
 }
 
 makeScript(
@@ -143,10 +153,15 @@ makeScript(
     },
   },
   async ({ execute, wId }, parentLogger) => {
-    await migrateWorkspaceReasoningActions({
+    const revertSql = await migrateWorkspaceReasoningActions({
       wId,
       execute,
       parentLogger,
     });
+
+    if (execute) {
+      const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      fs.writeFileSync(`${now}_reasoning_to_mcp_revert.sql`, revertSql);
+    }
   }
 );
