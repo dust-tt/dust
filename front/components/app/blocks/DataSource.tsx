@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
@@ -22,7 +23,6 @@ import type {
 } from "@app/types";
 
 import Block from "./Block";
-
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
   { ssr: false }
@@ -194,9 +194,7 @@ export default function DataSource({
     onBlockUpdate(b);
   };
 
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const theme = localStorage.getItem("theme");
-  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
+  const { isDark } = useTheme();
 
   return (
     <Block

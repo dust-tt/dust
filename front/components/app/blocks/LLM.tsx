@@ -7,6 +7,7 @@ import { useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import ModelPicker from "@app/components/app/ModelPicker";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 import type {
@@ -152,9 +153,7 @@ export default function LLM({
 
   const [newStop, setNewStop] = useState("");
 
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const theme = localStorage.getItem("theme");
-  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
+  const { isDark } = useTheme();
 
   return (
     <Block

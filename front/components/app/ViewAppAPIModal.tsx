@@ -16,6 +16,7 @@ import {
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -90,9 +91,7 @@ export function ViewAppAPIModal({
     }
   };
 
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const theme = localStorage.getItem("theme");
-  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
+  const { isDark } = useTheme();
 
   return (
     <Sheet>

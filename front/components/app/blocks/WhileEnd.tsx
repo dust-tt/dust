@@ -2,6 +2,7 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import dynamic from "next/dynamic";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 import type { SpecificationBlockType, SpecificationType } from "@app/types";
@@ -59,9 +60,7 @@ export function While({
     onBlockUpdate(b);
   };
 
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const theme = localStorage.getItem("theme");
-  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
+  const { isDark } = useTheme();
 
   return (
     <Block

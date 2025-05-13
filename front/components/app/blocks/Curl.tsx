@@ -12,6 +12,7 @@ import {
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
@@ -107,9 +108,7 @@ export default function Curl({
     }
   });
 
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const theme = localStorage.getItem("theme");
-  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
+  const { isDark } = useTheme();
 
   return (
     <Block

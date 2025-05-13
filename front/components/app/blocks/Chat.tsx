@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import ModelPicker from "@app/components/app/ModelPicker";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { supportsResponseFormat } from "@app/lib/providers";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type {
@@ -204,9 +205,7 @@ export default function Chat({
   const [isModelSupportsResponseFormat, setIsModelSupportsResponseFormat] =
     useState(config ? supportsResponseFormat(config) : false);
 
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const theme = localStorage.getItem("theme");
-  const isDark = theme === "dark" || (theme === "system" && mediaQuery.matches);
+  const { isDark } = useTheme();
 
   return (
     <Block
