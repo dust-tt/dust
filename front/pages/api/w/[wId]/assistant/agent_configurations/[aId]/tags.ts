@@ -14,21 +14,17 @@ import type { TagType } from "@app/types/tag";
 
 // Changed schema to accept optional add/remove lists
 export const PatchAgentTagsRequestBodySchema = t.intersection([
-  t.type({}),
   t.partial({
     addTagIds: t.array(t.string),
     removeTagIds: t.array(t.string),
   }),
-  // Refinement to ensure at least one of the arrays exists and is not empty
   t.refinement(
-    t.type({
-      // Use t.type inside refinement for better type checking
-      addTagIds: t.union([t.array(t.string), t.undefined]),
-      removeTagIds: t.union([t.array(t.string), t.undefined]),
+    t.partial({
+      addTagIds: t.array(t.string),
+      removeTagIds: t.array(t.string),
     }),
     (body) =>
-      (body.addTagIds instanceof Array && body.addTagIds.length > 0) ||
-      (body.removeTagIds instanceof Array && body.removeTagIds.length > 0),
+      (body.addTagIds?.length ?? 0) > 0 || (body.removeTagIds?.length ?? 0) > 0,
     "Either addTagIds or removeTagIds must be provided and contain at least one ID."
   ),
 ]);

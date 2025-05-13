@@ -474,7 +474,6 @@ export default function WorkspaceAssistants({
                   setSelection={setSelection}
                   owner={owner}
                   agents={agentsByTab[activeTab]}
-                  tags={uniqueTags}
                   setShowDetails={setShowDetails}
                   handleToggleAgentStatus={handleToggleAgentStatus}
                   showDisabledFreeWorkspacePopup={
@@ -483,6 +482,7 @@ export default function WorkspaceAssistants({
                   setShowDisabledFreeWorkspacePopup={
                     setShowDisabledFreeWorkspacePopup
                   }
+                  mutateAgentConfigurations={mutateAgentConfigurations}
                 />
               ) : (
                 !assistantSearch && (
