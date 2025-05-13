@@ -91,7 +91,10 @@ export function makeGetAssistantSuggestions() {
           }
 
           reactRenderer = new ReactRenderer(MentionList, {
-            props,
+            props: {
+              ...props,
+              isLoading: props.editor.storage.MentionStorage.isLoading,
+            },
             editor: props.editor,
           });
 

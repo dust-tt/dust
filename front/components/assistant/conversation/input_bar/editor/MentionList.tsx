@@ -1,4 +1,5 @@
 import { Avatar } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import React, {
   forwardRef,
   useEffect,
@@ -13,6 +14,7 @@ interface MentionListProps {
   command: any;
   items: EditorSuggestion[];
   query: string;
+  isLoading: boolean;
 }
 
 export const MentionList = forwardRef(function MentionList(
@@ -101,11 +103,15 @@ export const MentionList = forwardRef(function MentionList(
   return (
     <div
       className={classNames(
-        "flex flex-col gap-y-1 overflow-y-auto rounded-xl border px-3 py-2 shadow-xl",
+        "flex min-w-16 flex-col gap-y-1 overflow-y-auto rounded-xl border px-3 py-2 shadow-xl",
         "border-border bg-background dark:border-border-night dark:bg-primary-950"
       )}
     >
-      {props.items.length ? (
+      {props.isLoading ? (
+        <div className="flex justify-center py-2">
+          <Spinner variant="dark" size="sm" />
+        </div>
+      ) : props.items.length ? (
         props.items.map((item, index) => (
           <div
             className="flex flex-initial items-center gap-x-2 py-1"
