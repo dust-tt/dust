@@ -42,6 +42,7 @@ async function deleteRetrievalConfigurationForAgent(
   await AgentRetrievalConfiguration.destroy({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: workspace.id,
     },
   });
 }
