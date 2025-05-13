@@ -73,8 +73,12 @@ export const mcpServersSortingFn = (
   a: { mcpServer: MCPServerType },
   b: { mcpServer: MCPServerType }
 ) => {
-  const { serverType: aServerType } = getServerTypeAndIdFromSId(a.mcpServer.id);
-  const { serverType: bServerType } = getServerTypeAndIdFromSId(b.mcpServer.id);
+  const { serverType: aServerType } = getServerTypeAndIdFromSId(
+    a.mcpServer.sId
+  );
+  const { serverType: bServerType } = getServerTypeAndIdFromSId(
+    b.mcpServer.sId
+  );
   if (aServerType === bServerType) {
     return a.mcpServer.name.localeCompare(b.mcpServer.name);
   }
@@ -84,6 +88,6 @@ export const mcpServersSortingFn = (
 export function mcpServerIsRemote(
   server: MCPServerType
 ): server is RemoteMCPServerType {
-  const serverType = getServerTypeAndIdFromSId(server.id).serverType;
+  const serverType = getServerTypeAndIdFromSId(server.sId).serverType;
   return serverType === "remote";
 }

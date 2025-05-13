@@ -73,8 +73,8 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   });
 
   // Use the serverId from state for the hooks
-  const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer.id);
-  const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.id);
+  const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer.sId);
+  const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.sId);
 
   const onSubmit = useCallback(
     async (values: MCPFormType) => {

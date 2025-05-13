@@ -71,7 +71,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated", () => {
     // Only the server view that is not in the global space should be return as activable.
     expect(res._getJSONData().serverViews).toHaveLength(1);
     expect(res._getJSONData().serverViews[0].server.id).toBe(
-      mcpServer2.toJSON().id
+      mcpServer2.toJSON().sId
     );
   });
 });
