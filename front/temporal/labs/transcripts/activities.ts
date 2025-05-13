@@ -341,14 +341,11 @@ export async function processTranscriptActivity(
   }
 
   try {
-    await LabsTranscriptsConfigurationResource.recordHistoryWithSId(
-      transcriptsConfiguration.sId,
-      {
-        fileId,
-        fileName: transcriptTitle.substring(0, 255),
-        workspaceId: owner.id,
-      }
-    );
+    await transcriptsConfiguration.recordHistory({
+      fileId,
+      fileName: transcriptTitle.substring(0, 255),
+      workspaceId: owner.id,
+    });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
       localLogger.info(

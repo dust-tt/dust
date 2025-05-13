@@ -14,11 +14,7 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import {
-  getResourceIdFromSId,
-  getResourceNameAndIdFromSId,
-  makeSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   LabsTranscriptsConfigurationType,
@@ -261,20 +257,15 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   /**
    * History
    */
-  static async recordHistoryWithSId(
-    configurationSId: string,
+  async recordHistory(
     blob: Omit<
       CreationAttributes<LabsTranscriptsHistoryModel>,
       "id" | "configurationId"
     >
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel>> {
-    const details = getResourceNameAndIdFromSId(configurationSId);
-    if (!details || details.resourceName !== "transcripts_configuration") {
-      throw new Error("Invalid configuration sId");
-    }
     const history = await LabsTranscriptsHistoryModel.create({
       ...blob,
-      configurationId: Number(details.resourceModelId),
+      configurationId: this.id,
     });
     return history.get();
   }

@@ -24,7 +24,6 @@ import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   DataSourceViewType,
-  ModelId,
   SubscriptionType,
   WhitelistableFeature,
   WorkspaceType,
@@ -93,7 +92,7 @@ export default function LabsTranscriptsIndex({
   const sendNotification = useSendNotification();
 
   const handleDisconnectProvider = async (
-    transcriptConfigurationId: ModelId | null
+    transcriptConfigurationId: string | null
   ) => {
     if (!transcriptConfigurationId) {
       return;
