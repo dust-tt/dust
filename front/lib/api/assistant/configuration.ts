@@ -528,7 +528,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
-    fetchWebsearchActionConfigurations({ configurationIds, variant }),
+    fetchWebsearchActionConfigurations(auth, { configurationIds, variant }),
     fetchBrowseActionConfigurations(auth, { configurationIds, variant }),
     fetchReasoningActionConfigurations({ configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
