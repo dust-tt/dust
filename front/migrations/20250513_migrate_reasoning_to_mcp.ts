@@ -32,6 +32,7 @@ async function migrateWorkspaceReasoningActions({
       agentConfigurationId: { [Op.not]: null },
       mcpServerConfigurationId: null,
     },
+    order: [["id", "ASC"]],
   });
 
   logger.info(
