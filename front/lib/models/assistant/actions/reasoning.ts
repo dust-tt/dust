@@ -83,6 +83,10 @@ AgentReasoningConfiguration.init(
         fields: ["agentConfigurationId"],
         concurrently: true,
       },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
+        concurrently: true,
+      },
     ],
     sequelize: frontSequelize,
   }
