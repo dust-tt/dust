@@ -35,9 +35,7 @@ export type PokeDataSourceViewType = DataSourceViewType &
   };
 
 export type PokeMCPServerViewType = MCPServerViewType &
-  // Consequence of small inconsistencies in typing between MCPServerViewType and
-  // DataSourceViewType, hard to fix and only affects this type for now.
-  Omit<PokeItemBase, "id"> & {
+  PokeItemBase & {
     space: PokeSpaceType;
   };
 
