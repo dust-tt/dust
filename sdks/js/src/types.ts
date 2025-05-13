@@ -2894,6 +2894,15 @@ export type ValidateActionRequestBodyType = z.infer<
   typeof ValidateActionRequestBodySchema
 >;
 
+export const PublicRegisterMCPRequestBodySchema = z.object({
+  serverId: z.string(),
+  serverName: z.string().min(3).max(25),
+});
+
+export type PublicRegisterMCPRequestBody = z.infer<
+  typeof PublicRegisterMCPRequestBodySchema
+>;
+
 export const RegisterMCPResponseSchema = z.object({
   success: z.boolean(),
   expiresAt: z.string(),
