@@ -279,6 +279,7 @@ export async function deleteAgentsActivity({
     const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentDataSourceConfiguration.destroy({
