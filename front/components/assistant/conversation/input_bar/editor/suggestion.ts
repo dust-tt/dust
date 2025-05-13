@@ -110,7 +110,10 @@ export function makeGetAssistantSuggestions() {
         },
 
         onUpdate(props: any) {
-          reactRenderer.updateProps(props);
+          reactRenderer.updateProps({
+            ...props,
+            isLoading: props.editor.storage.MentionStorage.isLoading,
+          });
 
           if (!props.clientRect) {
             return;

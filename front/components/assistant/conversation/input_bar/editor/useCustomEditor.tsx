@@ -197,6 +197,7 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
+  isAssistantSuggestionsLoading: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 }
 
@@ -206,6 +207,7 @@ const useCustomEditor = ({
   suggestions,
   disableAutoFocus,
   onUrlDetected,
+  isAssistantSuggestionsLoading,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -248,8 +250,9 @@ const useCustomEditor = ({
   useEffect(() => {
     if (editor) {
       editor.storage.MentionStorage.suggestions = suggestions;
+      editor.storage.MentionStorage.isLoading = isAssistantSuggestionsLoading;
     }
-  }, [suggestions, editor]);
+  }, [suggestions, editor, isAssistantSuggestionsLoading]);
 
   editor?.setOptions({
     editorProps: {

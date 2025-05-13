@@ -10,6 +10,7 @@ export const MentionStorageExtension = Extension.create({
   addStorage() {
     return {
       suggestions: {} as EditorSuggestions,
+      isLoading: false as boolean,
     };
   },
 });

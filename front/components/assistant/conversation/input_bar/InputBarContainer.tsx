@@ -75,7 +75,10 @@ const InputBarContainer = ({
   onNodeSelect,
   attachedNodes,
 }: InputBarContainerProps) => {
-  const suggestions = useAssistantSuggestions(agentConfigurations, owner);
+  const {
+    allSuggestions: suggestions,
+    isLoading: isAssistantSuggestionsLoading,
+  } = useAssistantSuggestions(agentConfigurations, owner);
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -99,6 +102,7 @@ const InputBarContainer = ({
     resetEditorContainerSize,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
+    isAssistantSuggestionsLoading,
   });
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
