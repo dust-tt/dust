@@ -1,4 +1,5 @@
 import assert from "assert";
+import { Op } from "sequelize";
 
 import { DEFAULT_SEARCH_LABELS_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
@@ -299,11 +300,13 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
 // should not be used outside of api/assistant. We allow a ModelId interface here because for
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
 export async function searchLabelsActionTypesFromAgentMessageIds(
-  agentMessageIds: ModelId[]
+  auth: Authenticator,
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<SearchLabelsActionType[]> {
   const models = await AgentSearchLabelsAction.findAll({
     where: {
-      agentMessageId: agentMessageIds,
+      agentMessageId: { [Op.in]: agentMessageIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 

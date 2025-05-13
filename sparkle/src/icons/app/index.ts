@@ -81,6 +81,7 @@ export { default as ListIcon } from "./List";
 export { default as ListAddIcon } from "./ListAdd";
 export { default as ListCheckIcon } from "./ListCheck";
 export { default as ListRemoveIcon } from "./ListRemove";
+export { default as ListSelectIcon } from "./ListSelect";
 export { default as LockIcon } from "./Lock";
 export { default as LoginIcon } from "./Login";
 export { default as LogoutIcon } from "./Logout";

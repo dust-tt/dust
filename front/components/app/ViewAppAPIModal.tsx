@@ -16,6 +16,7 @@ import {
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -90,7 +91,7 @@ export function ViewAppAPIModal({
     }
   };
 
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
 
   return (
     <Sheet>
@@ -133,7 +134,7 @@ export function ViewAppAPIModal({
                 <span className="italic">{app.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("run")}`}
                 language="shell"

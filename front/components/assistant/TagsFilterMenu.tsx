@@ -56,7 +56,7 @@ export const TagsFilterMenu = ({
       <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="primary"
+            variant="outline"
             icon={TagIcon}
             label={"Tags"}
             counterValue={selectedTags.length.toString()}

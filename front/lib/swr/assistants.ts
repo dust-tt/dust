@@ -527,6 +527,61 @@ export function useDeleteAgentConfiguration({
   return doDelete;
 }
 
+export function useBatchDeleteAgentConfigurations({
+  owner,
+  agentConfigurationIds,
+}: {
+  owner: LightWorkspaceType;
+  agentConfigurationIds: string[];
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list", // Anything would work
+      disabled: true, // We only use the hook to mutate the cache
+    });
+
+  const doDelete = async () => {
+    if (agentConfigurationIds.length === 0) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/delete`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          agentConfigurationIds,
+        }),
+      }
+    );
+
+    if (res.ok) {
+      void mutateAgentConfigurations();
+
+      sendNotification({
+        type: "success",
+        title: `Successfully archived agents`,
+        description: `${agentConfigurationIds.length} agents were successfully archived.`,
+      });
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: `Error archiving agents`,
+        description: `Error: ${errorData.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doDelete;
+}
+
 export function useUpdateAgentScope({
   owner,
   agentConfigurationId,

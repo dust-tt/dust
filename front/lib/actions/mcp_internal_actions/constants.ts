@@ -10,12 +10,12 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_router",
   "ask_agent",
-  "child_agent_debugger",
   "file_generation",
   "github",
   "hubspot",
   "image_generation",
   "include_data",
+  "notion",
   "primitive_types_debugger",
   "query_tables",
   "reasoning_v2",
@@ -81,12 +81,12 @@ export const INTERNAL_MCP_SERVERS: Record<
   think: {
     id: 6,
     availability: "auto",
-    flag: "experimental_mcp_actions",
+    flag: "dev_mcp_actions",
   },
   hubspot: {
     id: 7,
     availability: "manual",
-    flag: "experimental_mcp_actions",
+    flag: "dev_mcp_actions",
     tools_stakes: {
       get_object_properties: "never_ask",
       get_objects_by_properties: "low",
@@ -100,7 +100,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   agent_router: {
     id: 8,
     availability: "auto_hidden_builder",
-    flag: "experimental_mcp_actions",
+    flag: "dev_mcp_actions",
   },
   include_data: {
     id: 9,
@@ -112,13 +112,20 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "auto",
     flag: "dev_mcp_actions",
   },
-
-  // Dev
-  child_agent_debugger: {
-    id: 1001,
+  notion: {
+    id: 11,
     availability: "manual",
     flag: "dev_mcp_actions",
+    tools_stakes: {
+      retrieve_database_content: "never_ask",
+      query_database: "never_ask",
+      retrieve_page: "never_ask",
+      retrieve_database_schema: "never_ask",
+      search: "never_ask",
+    },
   },
+
+  // Dev
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
@@ -137,7 +144,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   ask_agent: {
     id: 1008,
     availability: "manual",
-    flag: "experimental_mcp_actions",
+    flag: "dev_mcp_actions",
   },
 };
 

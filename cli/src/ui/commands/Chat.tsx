@@ -41,10 +41,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const [userInput, setUserInput] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
   const { stdout } = useStdout();
-  // Debounce state and refs for token streaming
-  const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const responseTextRef = useRef<string>("");
-  const responseCotRef = useRef<string>("");
+
+  const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const contentRef = useRef<string>("");
+  const chainOfThoughtRef = useRef<string>("");
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
 
@@ -179,94 +179,41 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           );
         }
 
-        // Initialize response tracking with refs to avoid closure issues
-        responseTextRef.current = "";
-        responseCotRef.current = "";
+        const updateStreamingMessage = (isStreaming: boolean) => {
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const lastMessage = newMessages[newMessages.length - 1];
 
-        // Define a debounced update function
-        const updateMessagesDebounced = () => {
-          // Clear any existing timeout
-          if (updateTimeoutRef.current) {
-            clearTimeout(updateTimeoutRef.current);
-          }
-
-          // Set a new timeout for the update
-          updateTimeoutRef.current = setTimeout(() => {
-            const responseText = responseTextRef.current;
-            const responseCot = responseCotRef.current;
-
-            setMessages((prev) => {
-              const newMessages = [...prev];
-              const lastMessage = newMessages[newMessages.length - 1];
-              if (lastMessage.type === "assistant" && lastMessage.isStreaming) {
-                // Format the chain of thought during streaming too
-                // This will make it consistent as it's being updated
-                const formattedCot = responseCot
-                  .replace(/^\n+/, "") // Remove leading newlines
-                  .replace(/\n{3,}/g, "\n\n") // Replace 3+ consecutive newlines with just 2
-                  .replace(/\n+$/, ""); // Remove trailing newlines
-
-                // Format the response text - remove leading newlines
-                const formattedText = responseText.replace(/^\n+/, ""); // Remove leading newlines
-
-                newMessages[newMessages.length - 1] = {
-                  ...lastMessage,
-                  content: formattedText,
-                  chainOfThought: formattedCot,
-                };
-              }
-              return newMessages;
-            });
-          }, 10); // Very small debounce of 10ms to batch rapid updates
+            return [
+              ...newMessages.slice(0, -1),
+              {
+                ...lastMessage,
+                content: contentRef.current,
+                chainOfThought: chainOfThoughtRef.current,
+                isStreaming: isStreaming,
+              },
+            ];
+          });
         };
+
+        updateIntervalRef.current = setInterval(() => {
+          updateStreamingMessage(true);
+        }, 1000);
 
         for await (const event of streamRes.value.eventStream) {
           if (event.type === "generation_tokens") {
             if (event.classification === "tokens") {
-              responseTextRef.current += event.text;
+              contentRef.current += event.text;
             } else if (event.classification === "chain_of_thought") {
-              responseCotRef.current += event.text;
+              chainOfThoughtRef.current += event.text;
             }
-
-            // Update the streaming message with debouncing
-            updateMessagesDebounced();
           } else if (event.type === "agent_error") {
             throw new Error(`Agent error: ${event.error.message}`);
           } else if (event.type === "user_message_error") {
             throw new Error(`User message error: ${event.error.message}`);
           } else if (event.type === "agent_message_success") {
-            // Clear any existing timeout to ensure we're using the final values
-            if (updateTimeoutRef.current) {
-              clearTimeout(updateTimeoutRef.current);
-              updateTimeoutRef.current = null;
-            }
-
-            // Complete the message using the current values from refs
-            setMessages((prev) => {
-              const newMessages = [...prev];
-              const lastMessage = newMessages[newMessages.length - 1];
-              if (lastMessage.type === "assistant" && lastMessage.isStreaming) {
-                // Format the chain of thought for the final message
-                const formattedCot = responseCotRef.current
-                  .replace(/^\n+/, "") // Remove leading newlines
-                  .replace(/\n{3,}/g, "\n\n") // Replace 3+ consecutive newlines with just 2
-                  .replace(/\n+$/, ""); // Remove trailing newlines
-
-                // Format the response text - remove leading newlines
-                const formattedText = responseTextRef.current.replace(
-                  /^\n+/,
-                  ""
-                ); // Remove leading newlines
-
-                newMessages[newMessages.length - 1] = {
-                  ...lastMessage,
-                  content: formattedText,
-                  chainOfThought: formattedCot,
-                  isStreaming: false,
-                };
-              }
-              return newMessages;
-            });
+            clearInterval(updateIntervalRef.current);
+            updateStreamingMessage(false);
             break;
           }
         }
@@ -312,9 +259,9 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-        updateTimeoutRef.current = null;
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
       }
     };
   }, []);
@@ -476,13 +423,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
               {/* Chain of thought in gray italic */}
               <Text dimColor italic wrap="wrap">
                 {
-                  // Process chain of thought to prevent more than 2 consecutive empty lines
-                  // and ensure the last line is not empty
                   message.chainOfThought
-                    // Replace 3+ consecutive newlines with just 2 newlines
-                    .replace(/\n{3,}/g, "\n\n")
-                    // Remove trailing newlines
-                    .replace(/\n+$/, "")
+                    .replace(/^\n+/, "") // Remove leading newlines
+                    .replace(/\n{3,}/g, "\n\n") // Replace 3+ consecutive newlines with just 2
+                    .replace(/\n+$/, "") // Remove trailing newlines
                 }
               </Text>
               <Box marginBottom={1}></Box>
@@ -499,7 +443,13 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
               </Box>
             </Box>
           ) : (
-            <Text wrap="wrap">{message.content}</Text>
+            <Text wrap="wrap">
+              {
+                message.content
+                  .replace(/^\n+/, "") // Remove leading newlines
+                  .replace(/\n+$/, "") // Remove trailing newlines
+              }
+            </Text>
           )}
         </Box>
       </Box>

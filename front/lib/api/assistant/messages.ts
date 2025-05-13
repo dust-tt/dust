@@ -43,6 +43,7 @@ import type {
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 
 async function batchRenderUserMessages(
+  auth: Authenticator,
   messages: Message[]
 ): Promise<{ m: UserMessageType; rank: number; version: number }[]> {
   const userMessages = messages.filter(
@@ -60,6 +61,7 @@ async function batchRenderUserMessages(
   const [mentions, users] = await Promise.all([
     Mention.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         messageId: userMessages.map((m) => m.id),
       },
     }),
@@ -161,15 +163,18 @@ async function batchRenderAgentMessages(
       retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => tableQueryTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      processActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () =>
       browseActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
-    (async () => searchLabelsActionTypesFromAgentMessageIds(agentMessageIds))(),
-    (async () => mcpActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      searchLabelsActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
+    (async () =>
+      mcpActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
   ]);
 
   if (!agentConfigurations) {
@@ -414,7 +419,7 @@ export async function batchRenderMessages(
   messages: Message[]
 ): Promise<Result<MessageWithRankType[], ConversationError>> {
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
-    batchRenderUserMessages(messages),
+    batchRenderUserMessages(auth, messages),
     batchRenderAgentMessages(auth, messages),
     batchRenderContentFragment(auth, conversationId, messages),
   ]);

@@ -149,6 +149,7 @@ export default function AssistantBuilder({
   const [instructionsError, setInstructionsError] = useState<string | null>(
     null
   );
+  const [isInstructionDiffMode, setIsInstructionDiffMode] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [hasAnyActionsError, setHasAnyActionsError] = useState<boolean>(false);
 
@@ -335,8 +336,10 @@ export default function AssistantBuilder({
       localInstructionError = `Instructions may exceed context size window.`;
     }
 
-    // We only keep the first error. If there are multiple errors, the user will have to fix them one by one.
-    setInstructionsError(localInstructionError);
+    if (!isInstructionDiffMode) {
+      // We only keep the first error. If there are multiple errors, the user will have to fix them one by one.
+      setInstructionsError(localInstructionError);
+    }
 
     // Check if there are any errors in the actions
     const anyActionError = builderState.actions.some((action) =>
@@ -352,6 +355,7 @@ export default function AssistantBuilder({
     builderState.actions,
     builderState.generationSettings.modelSettings.modelId,
     initialBuilderState?.handle,
+    isInstructionDiffMode,
     mcpServerViews,
   ]);
 
@@ -551,6 +555,8 @@ export default function AssistantBuilder({
                         setDoTypewriterEffect={setDoTypewriterEffect}
                         agentConfigurationId={agentConfigurationId}
                         models={models}
+                        setIsInstructionDiffMode={setIsInstructionDiffMode}
+                        isInstructionDiffMode={isInstructionDiffMode}
                       />
                     );
                   case "actions":

@@ -801,7 +801,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "document_tracker"
-  | "experimental_mcp_actions"
   | "force_gdrive_labels_scope"
   | "google_ai_studio_experimental_models_feature"
   | "index_private_slack_channel"
