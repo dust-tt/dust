@@ -40,6 +40,7 @@ import type {
   PublicPostMCPResultsRequestBody,
   PublicPostMessageFeedbackRequestBody,
   PublicPostMessagesRequestBody,
+  PublicRegisterMCPRequestBody,
   RegisterMCPResponseType,
   SearchRequestBodyType,
   UserMessageErrorEvent,
@@ -1284,15 +1285,20 @@ export class DustAPI {
 
   async registerMCPServer({
     serverId,
+    serverName,
   }: {
     serverId: string;
+    serverName: string;
   }): Promise<Result<RegisterMCPResponseType, APIError>> {
+    const body: PublicRegisterMCPRequestBody = {
+      serverId,
+      serverName,
+    };
+
     const res = await this.request({
       method: "POST",
       path: "mcp/register",
-      body: {
-        serverId,
-      },
+      body,
     });
 
     return this._resultFromResponse(RegisterMCPResponseSchema, res);

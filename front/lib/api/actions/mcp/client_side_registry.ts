@@ -23,25 +23,29 @@ export function getMCPServerRegistryKey({
  * Interface for MCP server registration metadata.
  */
 interface MCPServerRegistration {
-  serverId: string;
-  workspaceId: string;
-  userId: string;
-  registeredAt: number;
   lastHeartbeat: number;
+  registeredAt: number;
+  serverId: string;
+  serverName: string;
+  userId: string;
+  workspaceId: string;
 }
 
 /**
  * Register a new MCP server.
  */
-export async function registerMCPServer({
-  auth,
-  workspaceId,
-  serverId,
-}: {
-  auth: Authenticator;
-  workspaceId: string;
-  serverId: string;
-}): Promise<{ success: boolean; expiresAt: string }> {
+export async function registerMCPServer(
+  auth: Authenticator,
+  {
+    serverId,
+    serverName,
+    workspaceId,
+  }: {
+    serverId: string;
+    serverName: string;
+    workspaceId: string;
+  }
+): Promise<{ success: boolean; expiresAt: string }> {
   const userId = auth.getNonNullableUser().id.toString();
   const now = Date.now();
 
@@ -52,11 +56,12 @@ export async function registerMCPServer({
   });
 
   const metadata: MCPServerRegistration = {
-    serverId,
-    workspaceId,
-    userId,
-    registeredAt: now,
     lastHeartbeat: now,
+    registeredAt: now,
+    serverId,
+    serverName,
+    userId,
+    workspaceId,
   };
 
   await runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
@@ -73,6 +78,42 @@ export async function registerMCPServer({
     success: true,
     expiresAt,
   };
+}
+
+/**
+ * Get server metadata for a given list of server IDs.
+ */
+export async function getMCPServersMetadata(
+  auth: Authenticator,
+  {
+    serverIds,
+  }: {
+    serverIds: string[];
+  }
+): Promise<(MCPServerRegistration | null)[]> {
+  const userId = auth.getNonNullableUser().id.toString();
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
+  const keys = serverIds.map((serverId) =>
+    getMCPServerRegistryKey({
+      serverId,
+      userId,
+      workspaceId,
+    })
+  );
+
+  return runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
+    const results = await redis.mGet(keys);
+
+    return results.map((result) => {
+      // Server existence is checked when posting a message. It's safe to ignore here.
+      if (!result) {
+        return null;
+      }
+
+      return JSON.parse(result);
+    });
+  });
 }
 
 /**
