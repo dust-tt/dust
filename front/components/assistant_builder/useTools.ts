@@ -16,6 +16,7 @@ import {
   DATA_VISUALIZATION_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { SpaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
 
 const DEFAULT_TOOLS_WITH_CONFIGURATION = [
@@ -92,17 +93,45 @@ function getAvailableNonMCPActions({
 
 function getGroupedMCPServerViews({
   mcpServerViews,
+  spaces,
 }: {
   mcpServerViews: MCPServerViewType[];
+  spaces: SpaceType[];
 }) {
-  const mcpServerViewsWithLabel = mcpServerViews.map((view) => ({
-    ...view,
-    label: asDisplayName(view.server.name),
-  }));
+  const serverIdToCount = mcpServerViews.reduce(
+    (acc, view) => {
+      acc[view.server.id] = (acc[view.server.id] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  const mcpServerViewsWithLabel = mcpServerViews.map((view) => {
+    // There can be the same tool available in different spaces, in that case we need to show the space name.
+    const displayeName = asDisplayName(view.server.name);
+
+    if (serverIdToCount[view.server.id] > 1) {
+      const spaceName = spaces.find(
+        (space) => space.sId === view.spaceId
+      )?.name;
+
+      if (spaceName) {
+        return {
+          ...view,
+          label: `${displayeName} (${spaceName})`,
+        };
+      }
+    }
+
+    return {
+      ...view,
+      label: displayeName,
+    };
+  });
 
   // We show the MCP actions with data sources in Knowledge dropdown,
   // and the ones without data sources in Tools dropdown.
-  const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutDataSources } =
+  const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
       const requirements = getMCPServerRequirements(view);
 
@@ -112,11 +141,11 @@ function getGroupedMCPServerViews({
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"
-        : "mcpServerViewsWithoutDataSources";
+        : "mcpServerViewsWithoutKnowledge";
     });
 
   const grouped = groupBy(
-    mcpServerViewsWithoutDataSources,
+    mcpServerViewsWithoutKnowledge,
     (view) => view.server.availability
   );
 
@@ -133,7 +162,7 @@ interface UseToolsProps {
 }
 
 export const useTools = ({ enableReasoningTool, actions }: UseToolsProps) => {
-  const { mcpServerViews, initialActions } = useContext(
+  const { mcpServerViews, initialActions, spaces } = useContext(
     AssistantBuilderContext
   );
 
@@ -154,8 +183,8 @@ export const useTools = ({ enableReasoningTool, actions }: UseToolsProps) => {
     defaultMCPServerViews,
     nonDefaultMCPServerViews,
   } = useMemo(() => {
-    return getGroupedMCPServerViews({ mcpServerViews });
-  }, [mcpServerViews]);
+    return getGroupedMCPServerViews({ mcpServerViews, spaces });
+  }, [mcpServerViews, spaces]);
 
   const selectableNonMCPActions = useMemo(
     () =>
