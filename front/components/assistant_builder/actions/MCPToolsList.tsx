@@ -12,7 +12,7 @@ export function MCPToolsList({
       <h4 className="heading-xl mb-3 flex-grow pt-4 text-foreground dark:text-foreground-night">
         Available tools
       </h4>
-      {tools.length !== 0 ? (
+      {tools.length === 0 ? (
         <p className="text-muted-foreground dark:text-muted-foreground-night">
           No tools available
         </p>
