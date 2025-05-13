@@ -91,6 +91,7 @@ AgentRetrievalConfiguration.init(
       {
         fields: ["workspaceId", "agentConfigurationId"],
         concurrently: true,
+        name: "agent_retrieval_config_workspace_id_agent_config_id",
       },
       {
         unique: true,
