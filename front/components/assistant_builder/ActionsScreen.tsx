@@ -1,5 +1,4 @@
 import {
-  ActionGlobeAltIcon,
   Avatar,
   BookOpenIcon,
   Button,
@@ -102,7 +101,6 @@ import {
   useBuilderActionInfo,
 } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -1385,24 +1383,6 @@ function Capabilities({
     builderState.actions,
   ]);
 
-  // Users should see the old web Capabilities only if
-  // their agents has it selected in the past or
-  // if they don't have mcp_actions activated
-  const shouldShowOldWebCapabilities = useMemo(() => {
-    // this is to catch any changes in the name
-    const webtoolsV2ServerName: InternalMCPServerNameType =
-      "web_search_&_browse_v2";
-
-    const webtoolsServer = mcpServerViews.find(
-      (view) => view.server.name === webtoolsV2ServerName
-    );
-    if (webtoolsServer != null) {
-      return isWebNavigationEnabled;
-    }
-
-    return true;
-  }, [isWebNavigationEnabled, mcpServerViews]);
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1416,31 +1396,6 @@ function Capabilities({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        {shouldShowOldWebCapabilities && (
-          <Capability
-            name="Web search & browse"
-            description="Agent can search (Google) and retrieve information from specific websites."
-            icon={() => <Avatar icon={ActionGlobeAltIcon} size="sm" />}
-            enabled={isWebNavigationEnabled}
-            onEnable={() => {
-              setEdited(true);
-              const defaultWebNavigationAction =
-                getDefaultActionConfiguration("WEB_NAVIGATION");
-              assert(defaultWebNavigationAction);
-              setAction({
-                type: "insert",
-                action: defaultWebNavigationAction,
-              });
-            }}
-            onDisable={() => {
-              const defaultWebNavigationAction =
-                getDefaultActionConfiguration("WEB_NAVIGATION");
-              assert(defaultWebNavigationAction);
-              deleteAction(defaultWebNavigationAction.name);
-            }}
-          />
-        )}
-
         <Capability
           name="Data visualization"
           description="Agent can generate charts and graphs."

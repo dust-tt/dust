@@ -53,7 +53,7 @@ export async function getInternalMCPServer(
       return primitiveTypesDebuggerServer();
     case "think":
       return thinkServer();
-    case "web_search_&_browse_v2":
+    case "web_search_&_browse":
       return webtoolsServer(agentLoopRunContext);
     case "search":
       return searchServer(auth, agentLoopRunContext);

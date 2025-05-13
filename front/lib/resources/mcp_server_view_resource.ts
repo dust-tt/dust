@@ -13,7 +13,10 @@ import {
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
-import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  InternalMCPServerNameType,
+  MCPServerAvailability,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerByName,
@@ -342,6 +345,23 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   }
 
+  // Auto internal MCP server are supposed to be created in the global space.
+  // They can be null if ensureAllAutoToolsAreCreated has not been called.
+  static async getMCPServerViewForAutoInternalTool(
+    auth: Authenticator,
+    name: InternalMCPServerNameType
+  ) {
+    const views = await this.listByMCPServer(
+      auth,
+      internalMCPServerNameToSId({
+        name,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    );
+
+    return views.find((view) => view.space.kind === "global") ?? null;
+  }
+
   // Deletion.
 
   protected async softDelete(
@@ -389,7 +409,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return new Ok(deletedCount);
   }
 
-  getRemoteMCPServerResource(): RemoteMCPServerResource {
+  private getRemoteMCPServerResource(): RemoteMCPServerResource {
     if (this.serverType !== "remote") {
       throw new Error("This MCP server view is not a remote server view");
     }
@@ -407,7 +427,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.remoteMCPServer;
   }
 
-  getInternalMCPServerResource(): InternalMCPServerInMemoryResource {
+  private getInternalMCPServerResource(): InternalMCPServerInMemoryResource {
     if (this.serverType !== "internal") {
       throw new Error("This MCP server view is not an internal server view");
     }

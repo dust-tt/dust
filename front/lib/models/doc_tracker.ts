@@ -296,15 +296,14 @@ DataSourceModel.hasMany(TrackerGenerationModel, {
   onDelete: "RESTRICT",
 });
 TrackerGenerationModel.belongsTo(DataSourceModel, {
-  foreignKey: { allowNull: false },
+  foreignKey: { allowNull: false, name: "dataSourceId" },
   as: "dataSource",
 });
 
 DataSourceModel.hasMany(TrackerGenerationModel, {
   foreignKey: { allowNull: true },
-  as: "maintainedDocumentDataSource",
 });
 TrackerGenerationModel.belongsTo(DataSourceModel, {
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: true, name: "maintainedDocumentDataSourceId" },
   as: "maintainedDocumentDataSource",
 });

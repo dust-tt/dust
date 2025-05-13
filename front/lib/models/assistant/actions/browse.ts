@@ -66,10 +66,17 @@ AgentBrowseConfiguration.init(
 );
 
 AgentConfiguration.hasMany(AgentBrowseConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  foreignKey: {
+    name: "agentConfigurationId",
+    allowNull: false,
+  },
+  as: "browseConfigurations",
 });
 AgentBrowseConfiguration.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  foreignKey: {
+    name: "agentConfigurationId",
+    allowNull: false,
+  },
 });
 
 export class AgentBrowseAction extends WorkspaceAwareModel<AgentBrowseAction> {
