@@ -3,6 +3,8 @@ import {
   BracesIcon,
   Button,
   Checkbox,
+  ChevronDownIcon,
+  Chip,
   ClipboardIcon,
   Cog6ToothIcon,
   DataTable,
@@ -12,6 +14,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
   PencilSquareIcon,
   SliderToggle,
   Tooltip,
@@ -106,30 +112,65 @@ const getTableColumns = (tags: TagType[], isBatchEdit: boolean) => {
             header: "Tags",
             accessorKey: "tags",
             cell: (info: CellContext<RowData, TagType[]>) => (
-              <DataTable.CellContent>
-                <Tooltip
-                  label={
-                    info.getValue().length > 0
-                      ? info
-                          .getValue()
-                          .map((t) => t.name)
-                          .join(", ")
-                      : "-"
-                  }
-                  trigger={
-                    info.getValue().length > 0
-                      ? info
-                          .getValue()
-                          .map((t) => t.name)
-                          .join(", ")
-                      : "-"
-                  }
-                />
+              <DataTable.CellContent
+                grow
+                className="flex flex-row items-center"
+              >
+                <div className="flex flex-row items-center">
+                  <div className="flex-grow truncate">
+                    <Tooltip
+                      tooltipTriggerAsChild
+                      label={
+                        info.getValue().length > 0
+                          ? info
+                              .getValue()
+                              .map((t) => t.name)
+                              .join(", ")
+                          : "-"
+                      }
+                      trigger={
+                        <span>
+                          {info.getValue().length > 0
+                            ? info
+                                .getValue()
+                                .map((t) => t.name)
+                                .join(", ")
+                            : "-"}
+                        </span>
+                      }
+                    />
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
+                      <Button
+                        variant="ghost"
+                        icon={ChevronDownIcon}
+                        size="xmini"
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {tags.map((t) => (
+                        <DropdownMenuCheckboxItem
+                          key={t.sId}
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                          }}
+                          checked={info.row.original.tags.some(
+                            (x) => x.sId === t.sId
+                          )}
+                        >
+                          <Chip size="xs" label={t.name} color="golden" />
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </DataTable.CellContent>
             ),
             isFilterable: true,
             meta: {
-              className: "w-32",
+              className: "w-32 xl:w-64",
               tooltip: "Tags",
             },
           },
