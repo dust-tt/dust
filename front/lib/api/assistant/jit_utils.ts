@@ -116,17 +116,17 @@ export function listFiles(
           !isContentNodeTable;
         // Tables from knowledge are not materialized as raw content. As such, they cannot be
         // searched--except for notion databases, that may have children.
-        const isTableMaterializable =
+        const isUnmaterializedTable =
           isContentNodeTable &&
           m.contentType !== CONTENT_NODE_MIME_TYPES.NOTION.DATABASE;
         const isSearchable =
           canDoJIT &&
           isSearchableContentType(m.contentType) &&
-          isTableMaterializable;
+          !isUnmaterializedTable;
         const isExtractable =
           canDoJIT &&
           isExtractableContentType(m.contentType) &&
-          isTableMaterializable;
+          !isUnmaterializedTable;
         const baseAttachment: BaseConversationAttachmentType = {
           title: m.title,
           contentType: m.contentType,
