@@ -530,7 +530,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
     fetchWebsearchActionConfigurations(auth, { configurationIds, variant }),
     fetchBrowseActionConfigurations(auth, { configurationIds, variant }),
-    fetchReasoningActionConfigurations({ configurationIds, variant }),
+    fetchReasoningActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
