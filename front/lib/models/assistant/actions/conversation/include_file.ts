@@ -70,6 +70,7 @@ AgentConversationIncludeFileAction.init(
       {
         fields: ["workspaceId", "agentMessageId"],
         concurrently: true,
+        name: "agent_conv_include_file_action_w_id_agent_message_id",
       },
     ],
   }
