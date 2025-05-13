@@ -16,13 +16,13 @@ import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import React from "react";
 
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
+import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { SpaceDataTable } from "@app/components/poke/spaces/table";
@@ -221,6 +221,7 @@ const WorkspacePage = ({
             </div>
             <DataSourceDataTable owner={owner} />
             <DataSourceViewsDataTable owner={owner} />
+            <MCPServerViewsDataTable owner={owner} />
             <SpaceDataTable owner={owner} />
             <AssistantsDataTable owner={owner} />
             <AppDataTable owner={owner} />
