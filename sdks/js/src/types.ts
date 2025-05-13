@@ -1962,6 +1962,7 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
     context: UserMessageContextSchema.extend({
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
+    skipToolsValidation: z.boolean().optional().default(false),
   }),
   z
     .object({

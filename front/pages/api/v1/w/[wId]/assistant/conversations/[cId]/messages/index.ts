@@ -112,7 +112,8 @@ async function handler(
         });
       }
 
-      const { content, context, mentions, blocking } = r.data;
+      const { content, context, mentions, blocking, skipToolsValidation } =
+        r.data;
 
       if (isEmptyString(context.username)) {
         return apiError(req, res, {
@@ -151,6 +152,7 @@ async function handler(
             origin: context.origin ?? "api",
             clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
           },
+          skipToolsValidation,
         },
         { resolveAfterFullGeneration: blocking === true }
       );
