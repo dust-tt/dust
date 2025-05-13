@@ -243,6 +243,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ) {
     const groupSpaces = await GroupSpaceModel.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         groupId: groups.map((g) => g.id),
       },
     });
