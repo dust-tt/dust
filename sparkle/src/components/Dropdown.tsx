@@ -250,6 +250,7 @@ const DropdownMenuContent = React.forwardRef<
         className={cn(
           menuStyleClasses.container,
           "s-flex s-flex-col s-p-0 s-shadow-md",
+          dropdownHeaders && "s-h-80 xs:s-h-96", // We use dropdownHeaders for putting search bar, so we can set the height for the container
           className
         )}
         {...props}

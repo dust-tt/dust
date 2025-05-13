@@ -233,8 +233,13 @@ AgentMCPAction.init(
     modelName: "agent_mcp_action",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["agentMessageId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentMessageId"],
         concurrently: true,
       },
     ],

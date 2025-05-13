@@ -3,7 +3,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/ask_agent";
-import { default as childAgentDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/child_agent_debugger";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
@@ -45,8 +44,6 @@ export async function getInternalMCPServer(
       return imageGenerationDallEServer(auth);
     case "file_generation":
       return generateFileServer(auth);
-    case "child_agent_debugger":
-      return childAgentDebuggerServer();
     case "query_tables":
       return tablesQueryServer(auth, agentLoopRunContext);
     case "primitive_types_debugger":
