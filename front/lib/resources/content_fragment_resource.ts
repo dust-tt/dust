@@ -268,7 +268,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     let generatedTables: string[] = [];
 
     if (this.fileId) {
-      const file = await FileResource.fetchByModelId(this.fileId);
+      const file = await FileResource.fetchWithModelId(auth, this.fileId);
       if (file) {
         fileStringId = file.sId;
         snippet = file.snippet;
