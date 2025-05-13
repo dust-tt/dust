@@ -1,11 +1,11 @@
 import type { Icon } from "@dust-tt/sparkle";
 import {
+  BoltIcon,
   ChatBubbleThoughtIcon,
   CommandLineIcon,
   MagnifyingGlassIcon,
   PlanetIcon,
   ScanIcon,
-  BoltIcon,
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";

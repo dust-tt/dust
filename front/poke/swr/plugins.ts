@@ -1,9 +1,9 @@
 import type { Fetcher } from "swr";
 
-import { PluginListItem } from "@app/lib/api/poke/types";
+import type { PluginListItem } from "@app/lib/api/poke/types";
 import {
-  fetcher,
   emptyArray,
+  fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";

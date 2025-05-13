@@ -1,7 +1,7 @@
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
-import { fetcher, emptyArray } from "@app/lib/swr/swr";
+import { emptyArray,fetcher } from "@app/lib/swr/swr";
 import type { GetKillSwitchesResponseBody } from "@app/pages/api/poke/kill";
 
 const EMPTY_ARRAY: GetKillSwitchesResponseBody["killSwitches"] = [];

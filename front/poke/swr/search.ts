@@ -1,8 +1,8 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokeSearchItemsResponseBody } from "@app/pages/api/poke/search";
-import { PokeItemBase } from "@app/types";
+import type { PokeItemBase } from "@app/types";
 
 const EMPTY_ARRAY: PokeItemBase[] = [];
 

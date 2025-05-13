@@ -1,8 +1,8 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
+  BoltIcon,
   Breadcrumbs,
   CloudArrowLeftRightIcon,
-  BoltIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
 

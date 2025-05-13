@@ -1,4 +1,5 @@
 import {
+  BoltIcon,
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
@@ -6,7 +7,6 @@ import {
   NavigationListItem,
   NavigationListLabel,
   PlusIcon,
-  BoltIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type { ReturnTypeOf } from "@octokit/core/types";
