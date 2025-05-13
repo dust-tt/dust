@@ -160,7 +160,7 @@ async function batchRenderAgentMessages(
       return agents as LightAgentConfigurationType[];
     })(),
     (async () =>
-      retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
+      retrievalActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => tableQueryTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () =>
