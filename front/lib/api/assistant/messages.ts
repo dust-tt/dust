@@ -170,7 +170,9 @@ async function batchRenderAgentMessages(
     (async () =>
       browseActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
-      conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
+      conversationIncludeFileTypesFromAgentMessageIds(auth, {
+        agentMessageIds,
+      }))(),
     (async () =>
       reasoningActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
