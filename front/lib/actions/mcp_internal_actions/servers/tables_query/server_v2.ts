@@ -9,7 +9,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -26,12 +25,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: null,
 };
 
-function createServer(
-  auth: Authenticator,
-  agentLoopRunContext?: AgentLoopRunContextType
-): McpServer {
-  void agentLoopRunContext;
-
+function createServer(auth: Authenticator): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(

@@ -4,8 +4,8 @@ import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_act
 import {
   DUST_SQLITE_INSTRUCTIONS,
   getGenericDialectInstructions,
+  SALESFORCE_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/dialect_instructions";
-import { SALESFORCE_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/dialect_instructions";
 
 export function getSchemaContent(
   schemas: { dbml: string }[]

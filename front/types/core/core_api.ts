@@ -1924,7 +1924,6 @@ export class CoreAPI {
     CoreAPIResponse<{
       dialect: string;
       schemas: Array<{
-        table_id: string;
         table_schema: Record<string, any>;
         dbml: string;
         head?: Array<Record<string, any>>;

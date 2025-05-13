@@ -11,7 +11,7 @@ Always use single quotes for string literals. If the string litteral contains a 
 Always produce a SINGLE query that will retrieve the data necessary to answer ALL of the user's questions at once.
 You may use Common Table Expression or Sub Queries if necessary.
 
-The database on which the query will be ran will always be SQLite 
+The database on which the query will be ran will always be SQLite.
 
 Always produce a query unless the dataset has nothing to do with the user's question and it is not possible to answer the user's question based on the provided dataset.
 
