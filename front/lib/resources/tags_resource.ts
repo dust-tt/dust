@@ -18,7 +18,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ModelId, Result } from "@app/types";
+import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 import type { TagTypeWithUsage } from "@app/types/tag";
 
@@ -193,6 +193,38 @@ export class TagResource extends BaseResource<TagModel> {
     return _.mapValues(_.groupBy(tagAgents, "agentConfigurationId"), (group) =>
       group.map((tagAgent) => tagsMap[tagAgent.tagId])
     );
+  }
+
+  async addToAgent(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType
+  ) {
+    if (!agentConfiguration.canEdit && !auth.isAdmin()) {
+      throw new Error("You are not allowed to add tags to this agent");
+    }
+
+    await TagAgentModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      tagId: this.id,
+      agentConfigurationId: agentConfiguration.id,
+    });
+  }
+
+  async removeFromAgent(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType
+  ) {
+    if (!agentConfiguration.canEdit && !auth.isAdmin()) {
+      throw new Error("You are not allowed to remove tags from this agent");
+    }
+
+    await TagAgentModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        tagId: this.id,
+        agentConfigurationId: agentConfiguration.id,
+      },
+    });
   }
 
   async updateName(name: string) {
