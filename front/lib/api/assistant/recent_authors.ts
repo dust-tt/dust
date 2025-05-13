@@ -27,7 +27,10 @@ function _getRecentAuthorIdsKey({
   return `agent_recent_author_ids_${workspaceId}_${agentId}`;
 }
 
-async function fetchRecentAuthorIdsWithVersion(agentId: string) {
+async function fetchRecentAuthorIdsWithVersion(
+  auth: Authenticator,
+  agentId: string
+) {
   return AgentConfiguration.findAll({
     attributes: [
       "authorId",
@@ -35,6 +38,7 @@ async function fetchRecentAuthorIdsWithVersion(agentId: string) {
     ],
     group: "authorId",
     where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
       sId: agentId,
     },
     order: [
@@ -73,15 +77,20 @@ async function setAuthorIdsWithVersionInRedis(
   });
 }
 
-async function populateAuthorIdsFromDb({
-  agentId,
-  workspaceId,
-}: {
-  agentId: string;
-  workspaceId: string;
-}) {
-  const recentAuthorIdsWithVersion =
-    await fetchRecentAuthorIdsWithVersion(agentId);
+async function populateAuthorIdsFromDb(
+  auth: Authenticator,
+  {
+    agentId,
+    workspaceId,
+  }: {
+    agentId: string;
+    workspaceId: string;
+  }
+) {
+  const recentAuthorIdsWithVersion = await fetchRecentAuthorIdsWithVersion(
+    auth,
+    agentId
+  );
 
   if (recentAuthorIdsWithVersion.length === 0) {
     return [];
@@ -155,7 +164,7 @@ export async function getAgentsRecentAuthors({
         );
         if (recentAuthorIds.length === 0) {
           // Populate from the database and store in Redis if the entry is not already present.
-          recentAuthorIds = await populateAuthorIdsFromDb({
+          recentAuthorIds = await populateAuthorIdsFromDb(auth, {
             agentId,
             workspaceId,
           });
