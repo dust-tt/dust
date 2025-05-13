@@ -1,3 +1,5 @@
+import * as fs from "fs";
+
 import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -22,15 +24,7 @@ async function migrateWorkspace(
   workspace: Workspace,
   logger: LoggerInterface,
   execute: boolean
-): Promise<void> {
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      execute,
-    },
-    "Starting migration for workspace"
-  );
-
+): Promise<string> {
   // Create internal authenticator
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
@@ -51,8 +45,10 @@ async function migrateWorkspace(
       },
       "Failed to get MCP server view for web_search_&_browse"
     );
-    return;
+    return "";
   }
+
+  let revertSql = "";
 
   // List all active agent configurations with browse or websearch
   const agentConfigs = await AgentConfiguration.findAll({
@@ -95,7 +91,7 @@ async function migrateWorkspace(
 
     if (execute) {
       // Create MCP server configuration
-      await AgentMCPServerConfiguration.create({
+      const mcpServerConfig = await AgentMCPServerConfiguration.create({
         sId: generateRandomModelSId(),
         workspaceId: workspace.id,
         agentConfigurationId: agentConfig.id,
@@ -105,13 +101,16 @@ async function migrateWorkspace(
         timeFrame: null,
       });
 
+      revertSql += `DELETE FROM agent_mcp_server_configurations WHERE id = ${mcpServerConfig.id};`;
+
       // Delete old configurations
       for (const browseConfig of agentConfig.browseConfigurations) {
         await browseConfig.destroy();
+        revertSql += `INSERT INTO agent_browse_configurations (id, created_at, updated_at, agent_configuration_id, name, description) VALUES (${browseConfig.id}, ${browseConfig.createdAt}, ${browseConfig.updatedAt}, ${agentConfig.id}, ${browseConfig.name}, ${browseConfig.description});`;
       }
-
       for (const websearchConfig of agentConfig.websearchConfigurations) {
         await websearchConfig.destroy();
+        revertSql += `INSERT INTO agent_websearch_configurations (id, created_at, updated_at, agent_configuration_id, name, description) VALUES (${websearchConfig.id}, ${websearchConfig.createdAt}, ${websearchConfig.updatedAt}, ${agentConfig.id}, ${websearchConfig.name}, ${websearchConfig.description});`;
       }
 
       logger.info(
@@ -131,12 +130,15 @@ async function migrateWorkspace(
       );
     }
   }
+
+  return revertSql;
 }
 
 async function main(
   args: { workspaceId?: string; execute: boolean },
   logger: LoggerInterface
 ) {
+  let revertSql = "";
   if (args.workspaceId) {
     const workspace = await Workspace.findOne({
       where: {
@@ -148,7 +150,7 @@ async function main(
       throw new Error(`Workspace ${args.workspaceId} not found`);
     }
 
-    await migrateWorkspace(workspace, logger, args.execute);
+    revertSql += await migrateWorkspace(workspace, logger, args.execute);
   } else {
     const workspaces = await Workspace.findAll();
     logger.info(
@@ -159,8 +161,12 @@ async function main(
     );
 
     for (const workspace of workspaces) {
-      await migrateWorkspace(workspace, logger, args.execute);
+      revertSql += await migrateWorkspace(workspace, logger, args.execute);
     }
+  }
+  if (args.execute) {
+    const now = new Date().toISOString();
+    fs.writeFileSync(`websearch_to_mcp_revert_${now}.sql`, revertSql);
   }
 }
 
