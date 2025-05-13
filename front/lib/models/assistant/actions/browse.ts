@@ -59,6 +59,7 @@ AgentBrowseConfiguration.init(
       {
         fields: ["workspaceId", "agentConfigurationId"],
         concurrently: true,
+        name: "agent_browse_config_workspace_id_agent_config_id",
       },
     ],
     sequelize: frontSequelize,
