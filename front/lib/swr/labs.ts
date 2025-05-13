@@ -14,13 +14,18 @@ import type {
   ConnectionCredentials,
   DataSourceType,
   LabsConnectionProvider,
+  LabsTranscriptsConfigurationType,
   LightWorkspaceType,
   ModelId,
+  Result,
 } from "@app/types";
 import {
   assertNever,
+  Err,
   isHubspotCredentials,
   isOAuthProvider,
+  normalizeError,
+  Ok,
   setupOAuthConnection,
 } from "@app/types";
 
@@ -96,15 +101,18 @@ export function useLabsTranscriptsIsConnectorConnected({
 }
 
 export function useUpdateTranscriptsConfiguration({
-  workspaceId,
-  transcriptConfigurationId,
+  owner,
+  transcriptsConfiguration,
 }: {
-  workspaceId: string;
-  transcriptConfigurationId: number;
+  owner: LightWorkspaceType;
+  transcriptsConfiguration: LabsTranscriptsConfigurationType;
 }) {
-  return async (data: Partial<PatchTranscriptsConfiguration>) => {
+  const sendNotification = useSendNotification();
+  const doUpdate = async (
+    data: Partial<PatchTranscriptsConfiguration>
+  ): Promise<Result<undefined, Error>> => {
     const response = await fetch(
-      `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
+      `/api/w/${owner.sId}/labs/transcripts/${transcriptsConfiguration.id}`,
       {
         method: "PATCH",
         headers: {
@@ -113,9 +121,25 @@ export function useUpdateTranscriptsConfiguration({
         body: JSON.stringify(data),
       }
     );
-
-    return response.ok;
+    if (!response.ok) {
+      const error = await response.json();
+      sendNotification({
+        type: "error",
+        title: "Failed to update transcript configuration",
+        description: error.error?.message || "Unknown error",
+      });
+      return new Err(normalizeError(error));
+    }
+    sendNotification({
+      type: "success",
+      title: "Success!",
+      description: data.dataSourceViewId
+        ? "We will now store your meeting transcripts."
+        : "We will no longer store your meeting transcripts.",
+    });
+    return new Ok(undefined);
   };
+  return { doUpdate };
 }
 
 export type SalesforceDataSourceWithPersonalConnection = DataSourceType & {

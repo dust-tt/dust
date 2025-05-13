@@ -4,7 +4,6 @@ import {
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
@@ -39,10 +38,9 @@ export function StorageConfiguration({
   spaces,
   isSpacesLoading,
 }: StorageConfigurationProps) {
-  const sendNotification = useSendNotification();
-  const updateTranscriptsConfiguration = useUpdateTranscriptsConfiguration({
-    workspaceId: owner.sId,
-    transcriptConfigurationId: transcriptsConfiguration.id,
+  const { doUpdate } = useUpdateTranscriptsConfiguration({
+    owner,
+    transcriptsConfiguration,
   });
 
   const [storeInFolder, setStoreInFolder] = useState(false);
@@ -78,25 +76,14 @@ export function StorageConfiguration({
       return;
     }
 
-    const success = await updateTranscriptsConfiguration({
+    const response = await doUpdate({
       dataSourceViewId: dataSourceView ? dataSourceView.sId : null,
     });
 
-    if (success) {
-      sendNotification({
-        type: "success",
-        title: "Success!",
-        description: dataSourceView
-          ? "We will now store your meeting transcripts."
-          : "We will no longer store your meeting transcripts.",
-      });
+    if (response.isOk()) {
       await mutateTranscriptsConfiguration();
     } else {
-      sendNotification({
-        type: "error",
-        title: "Failed to update",
-        description: "Could not update the configuration. Please try again.",
-      });
+      setSelectionConfigurations({});
     }
   };
 

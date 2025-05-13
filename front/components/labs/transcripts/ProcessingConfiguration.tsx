@@ -38,21 +38,21 @@ export function ProcessingConfiguration({
     );
 
   const sendNotification = useSendNotification();
-  const updateTranscriptsConfiguration = useUpdateTranscriptsConfiguration({
-    workspaceId: owner.sId,
-    transcriptConfigurationId: transcriptsConfiguration.id,
+  const { doUpdate } = useUpdateTranscriptsConfiguration({
+    owner,
+    transcriptsConfiguration,
   });
 
   const handleSelectAssistant = async (
     assistant: LightAgentConfigurationType
   ) => {
     setAssistantSelected(assistant);
-    const success = await updateTranscriptsConfiguration({
+    const response = await doUpdate({
       isActive: transcriptsConfiguration.isActive,
       agentConfigurationId: assistant.sId,
     });
 
-    if (success) {
+    if (response.isOk()) {
       sendNotification({
         type: "success",
         title: "Success!",
@@ -69,23 +69,10 @@ export function ProcessingConfiguration({
   };
 
   const handleSetIsActive = async (isActive: boolean) => {
-    const success = await updateTranscriptsConfiguration({ isActive });
+    const response = await doUpdate({ isActive });
 
-    if (success) {
-      sendNotification({
-        type: "success",
-        title: "Success!",
-        description: isActive
-          ? "We will start summarizing your meeting transcripts."
-          : "We will no longer summarize your meeting transcripts.",
-      });
+    if (response.isOk()) {
       await mutateTranscriptsConfiguration();
-    } else {
-      sendNotification({
-        type: "error",
-        title: "Failed to update",
-        description: "Could not update the configuration. Please try again.",
-      });
     }
   };
 
