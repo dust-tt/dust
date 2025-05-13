@@ -62,7 +62,7 @@ const getOptimisticDataForCreate = (
           views: [
             ...mcpServerWithViews.views,
             {
-              id: 0,
+              id: -1, // The ID is not known at optimistic data creation time.
               sId: "global",
               createdAt: Date.now(),
               updatedAt: Date.now(),
