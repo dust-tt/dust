@@ -35,6 +35,7 @@ async function migrateWorkspaceReasoningActions({
   // (non-MCP version) and not yet linked to an MCP server configuration
   const reasoningConfigs = await AgentReasoningConfiguration.findAll({
     where: {
+      // No index here so that might be slow.
       workspaceId: auth.getNonNullableWorkspace().id,
       agentConfigurationId: { [Op.not]: null },
       mcpServerConfigurationId: null,
