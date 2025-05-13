@@ -16,10 +16,14 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
 
-async function deleteRetrievalConfigurationForAgent(agent: AgentConfiguration) {
+async function deleteRetrievalConfigurationForAgent(
+  workspace: LightWorkspaceType,
+  agent: AgentConfiguration
+) {
   const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: workspace.id,
     },
   });
 
@@ -38,6 +42,7 @@ async function deleteRetrievalConfigurationForAgent(agent: AgentConfiguration) {
   await AgentRetrievalConfiguration.destroy({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: workspace.id,
     },
   });
 }
@@ -48,6 +53,7 @@ async function deleteDustAppRunConfigurationForAgent(
   const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: agent.workspaceId,
     },
   });
 
@@ -58,6 +64,7 @@ async function deleteDustAppRunConfigurationForAgent(
   await AgentDustAppRunConfiguration.destroy({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: agent.workspaceId,
     },
   });
 }
@@ -68,6 +75,7 @@ async function deleteTableQueryConfigurationForAgent(
   const tableQueryConfigurations = await AgentTablesQueryConfiguration.findAll({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: agent.workspaceId,
     },
   });
 
@@ -86,6 +94,7 @@ async function deleteTableQueryConfigurationForAgent(
   await AgentTablesQueryConfiguration.destroy({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: agent.workspaceId,
     },
   });
 }
@@ -127,7 +136,7 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   }
 
   // Delete the retrieval configurations.
-  await deleteRetrievalConfigurationForAgent(agent);
+  await deleteRetrievalConfigurationForAgent(workspace, agent);
 
   // Delete the dust app run configurations.
   await deleteDustAppRunConfigurationForAgent(agent);

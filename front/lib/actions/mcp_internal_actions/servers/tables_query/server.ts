@@ -31,61 +31,6 @@ const TABLES_QUERY_MIN_TOKEN = 50_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
-function getTablesQueryResultsFileTitle({
-  output,
-}: {
-  output: Record<string, unknown> | null;
-}): string {
-  return typeof output?.query_title === "string"
-    ? output.query_title
-    : "query_results";
-}
-
-function getTablesQueryError(error: string) {
-  switch (error) {
-    case "too_many_result_rows":
-      return {
-        code: "too_many_result_rows" as const,
-        message: `The query returned too many rows. Please refine your query.`,
-      };
-    default:
-      return {
-        code: "tables_query_error" as const,
-        message: `Error running TablesQuery app: ${error}`,
-      };
-  }
-}
-
-/**
- * Get the prefix for a row in a section file.
- * This prefix is used to identify the row in the section file.
- * We currently only support Salesforce since it's the only connector for which we can generate a prefix.
- */
-function getSectionColumnsPrefix(
-  provider: ConnectorProvider | null
-): string[] | null {
-  switch (provider) {
-    case "salesforce":
-      return ["Id", "Name"];
-    case "confluence":
-    case "github":
-    case "google_drive":
-    case "intercom":
-    case "notion":
-    case "slack":
-    case "microsoft":
-    case "webcrawler":
-    case "snowflake":
-    case "zendesk":
-    case "bigquery":
-    case "gong":
-    case null:
-      return null;
-    default:
-      assertNever(provider);
-  }
-}
-
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "query_tables",
   version: "1.0.0",
@@ -425,6 +370,61 @@ function createServer(
   );
 
   return server;
+}
+
+function getTablesQueryResultsFileTitle({
+  output,
+}: {
+  output: Record<string, unknown> | null;
+}): string {
+  return typeof output?.query_title === "string"
+    ? output.query_title
+    : "query_results";
+}
+
+function getTablesQueryError(error: string) {
+  switch (error) {
+    case "too_many_result_rows":
+      return {
+        code: "too_many_result_rows" as const,
+        message: `The query returned too many rows. Please refine your query.`,
+      };
+    default:
+      return {
+        code: "tables_query_error" as const,
+        message: `Error running TablesQuery app: ${error}`,
+      };
+  }
+}
+
+/**
+ * Get the prefix for a row in a section file.
+ * This prefix is used to identify the row in the section file.
+ * We currently only support Salesforce since it's the only connector for which we can generate a prefix.
+ */
+function getSectionColumnsPrefix(
+  provider: ConnectorProvider | null
+): string[] | null {
+  switch (provider) {
+    case "salesforce":
+      return ["Id", "Name"];
+    case "confluence":
+    case "github":
+    case "google_drive":
+    case "intercom":
+    case "notion":
+    case "slack":
+    case "microsoft":
+    case "webcrawler":
+    case "snowflake":
+    case "zendesk":
+    case "bigquery":
+    case "gong":
+    case null:
+      return null;
+    default:
+      assertNever(provider);
+  }
 }
 
 export default createServer;

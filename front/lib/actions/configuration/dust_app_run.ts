@@ -22,7 +22,10 @@ export async function fetchDustAppRunActionConfigurations(
   }
 
   const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll({
-    where: { agentConfigurationId: { [Op.in]: configurationIds } },
+    where: {
+      agentConfigurationId: { [Op.in]: configurationIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   if (dustAppRunConfigurations.length === 0) {

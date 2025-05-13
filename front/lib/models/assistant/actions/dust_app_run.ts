@@ -52,8 +52,13 @@ AgentDustAppRunConfiguration.init(
         unique: true,
         fields: ["sId"],
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove this index.
       {
         fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
         concurrently: true,
       },
     ],

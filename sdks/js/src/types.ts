@@ -822,6 +822,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "snowflake_connector_feature"
   | "usage_data_api"
   | "custom_webcrawler"
+  | "exploded_tables_query"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

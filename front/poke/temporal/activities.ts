@@ -279,6 +279,7 @@ export async function deleteAgentsActivity({
     const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentDataSourceConfiguration.destroy({
@@ -291,6 +292,7 @@ export async function deleteAgentsActivity({
     await AgentRetrievalConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
@@ -298,6 +300,7 @@ export async function deleteAgentsActivity({
       {
         where: {
           agentConfigurationId: agent.id,
+          workspaceId: workspace.id,
         },
       }
     );
@@ -311,6 +314,7 @@ export async function deleteAgentsActivity({
     await AgentDustAppRunConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
@@ -318,6 +322,7 @@ export async function deleteAgentsActivity({
       await AgentTablesQueryConfiguration.findAll({
         where: {
           agentConfigurationId: agent.id,
+          workspaceId: workspace.id,
         },
       });
     await AgentTablesQueryAction.destroy({
@@ -337,12 +342,14 @@ export async function deleteAgentsActivity({
     await AgentTablesQueryConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
     const agentBrowseConfigurations = await AgentBrowseConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentBrowseAction.destroy({
@@ -355,6 +362,7 @@ export async function deleteAgentsActivity({
     await AgentBrowseConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
@@ -382,6 +390,7 @@ export async function deleteAgentsActivity({
     const agentProcessConfigurations = await AgentProcessConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentProcessAction.destroy({
@@ -401,6 +410,7 @@ export async function deleteAgentsActivity({
     await AgentProcessConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 

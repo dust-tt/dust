@@ -14,6 +14,7 @@ import {
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { DataSourceType, SpaceType, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -80,7 +81,7 @@ export function ViewFolderAPIModal({
     }
   };
 
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -122,7 +123,7 @@ export function ViewFolderAPIModal({
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("upsert")}`}
                 language="shell"
@@ -156,7 +157,7 @@ export function ViewFolderAPIModal({
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("search")}`}
                 language="shell"

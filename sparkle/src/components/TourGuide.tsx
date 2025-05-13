@@ -164,6 +164,7 @@ export const TourGuideCard = React.forwardRef<
           "dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night",
           className
         )}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {children}
         <TourGuideCardActions
