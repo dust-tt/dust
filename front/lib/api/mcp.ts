@@ -10,7 +10,7 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
-import type { EditedByUser, ModelId } from "@app/types";
+import type { EditedByUser } from "@app/types";
 
 export type MCPToolType = {
   name: string;

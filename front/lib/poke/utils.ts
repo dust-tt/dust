@@ -58,7 +58,6 @@ export async function mcpServerViewToPokeJSON(
 
   return {
     ...json,
-    id: mcpServerView.id, // Use the numeric id from the resource
     link: workspace
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${mcpServerView.space.sId}/mcp_server_views/${mcpServerView.sId}`
       : null,
