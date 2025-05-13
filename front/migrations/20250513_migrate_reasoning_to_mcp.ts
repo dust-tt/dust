@@ -1,12 +1,9 @@
 import { Op } from "sequelize";
 
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
@@ -46,76 +43,61 @@ async function migrateWorkspaceReasoningActions({
     return;
   }
 
-  // Get the system space to create the MCP server view
-  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+  // Create the MCP server views in system and global spaces.
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-  // Get the reasoning_v2 MCP server ID
-  const reasoningMcpServerId = internalMCPServerNameToSId({
-    name: "reasoning_v2",
-    workspaceId: auth.getNonNullableWorkspace().id,
-  });
-
-  // Check if the reasoning_v2 MCP server view already exists in the system space
-  const mcpServerViews = await MCPServerViewResource.listByMCPServer(
-    auth,
-    reasoningMcpServerId
-  );
-
-  if (!execute) {
-    logger.info("Dry run - would create the following MCP configurations:");
-    for (const config of reasoningConfigs) {
-      logger.info(
-        `  - Reasoning config ${config.sId} for agent ${config.agentConfigurationId}`
-      );
-    }
-    return;
-  }
-
-  // Create the MCP server view if it doesn't exist
-  let mcpServerViewResource: MCPServerViewResource;
-  if (mcpServerViews.length === 0) {
-    logger.info("Creating reasoning MCP server view");
-    mcpServerViewResource = await MCPServerViewResource.create(auth, {
-      mcpServerId: reasoningMcpServerId,
-      space: systemSpace,
-    });
-  } else {
-    mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
+  const mcpServerView =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      mcpServerViews[0].id
+      "reasoning_v2"
     );
-    if (!mcpServerViewResource) {
-      throw new Error("Failed to fetch MCP server view");
-    }
+  if (!mcpServerView) {
+    throw new Error("Reasoning MCP server view not found.");
   }
 
   // For each reasoning configuration, create an MCP server configuration and link it
   await concurrentExecutor(
     reasoningConfigs,
     async (reasoningConfig) => {
-      // Create a new AgentMCPServerConfiguration
-      const mcpConfig = await AgentMCPServerConfiguration.create({
-        sId: generateRandomModelSId(),
-        agentConfigurationId: reasoningConfig.agentConfigurationId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        mcpServerViewId: mcpServerViewResource.id,
-        internalMCPServerId: reasoningMcpServerId,
-        additionalConfiguration: {},
-        timeFrame: null,
-        name: reasoningConfig.name,
-        singleToolDescriptionOverride: reasoningConfig.description,
-        appId: null,
-      });
+      if (!reasoningConfig.agentConfigurationId) {
+        // This should never happen since we fetch where agentConfigurationId is not null.
+        // The data model is a bit ugly, this was a bit temporary.
+        logger.info(
+          { configModelId: reasoningConfig.id },
+          `Already an MCP reasoning config, skipping`
+        );
+        return;
+      }
 
-      // Update the reasoning configuration to link it to the MCP server configuration
-      await reasoningConfig.update({
-        mcpServerConfigurationId: mcpConfig.id,
-        agentConfigurationId: null,
-      });
+      if (execute) {
+        const mcpConfig = await AgentMCPServerConfiguration.create({
+          sId: generateRandomModelSId(),
+          agentConfigurationId: reasoningConfig.agentConfigurationId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          mcpServerViewId: mcpServerView.id,
+          internalMCPServerId: mcpServerView.mcpServerId,
+          additionalConfiguration: {},
+          timeFrame: null,
+          name: reasoningConfig.name,
+          singleToolDescriptionOverride: reasoningConfig.description,
+          appId: null,
+        });
 
-      logger.info(
-        `Migrated reasoning config ${reasoningConfig.sId} to MCP server config ${mcpConfig.sId}`
-      );
+        // Untie the reasoning config from the agent configuration and move it to the MCP server configuration.
+        await reasoningConfig.update({
+          mcpServerConfigurationId: mcpConfig.id,
+          agentConfigurationId: null,
+        });
+
+        // Log the model IDs for an easier rollback.
+        logger.info(
+          {
+            configModelId: reasoningConfig.id,
+            mcpConfigModelId: mcpConfig.id,
+          },
+          `Migrated reasoning config to MCP server config`
+        );
+      }
     },
     { concurrency: 5 }
   );
@@ -130,7 +112,6 @@ makeScript(
     wId: {
       type: "string",
       description: "Workspace ID to migrate",
-      demandOption: true,
     },
   },
   async ({ execute, wId }, logger) => {
