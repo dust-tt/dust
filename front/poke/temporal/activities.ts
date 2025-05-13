@@ -232,6 +232,7 @@ export async function deleteAgentsActivity({
     const mcpServerConfigurations = await AgentMCPServerConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentDataSourceConfiguration.destroy({
@@ -273,6 +274,7 @@ export async function deleteAgentsActivity({
     await AgentMCPServerConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
