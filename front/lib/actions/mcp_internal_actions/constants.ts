@@ -123,6 +123,9 @@ export const INTERNAL_MCP_SERVERS: Record<
       retrieve_page: "never_ask",
       retrieve_database_schema: "never_ask",
       search: "never_ask",
+      create_page: "low",
+      create_page_from_database: "low",
+      update_page: "low",
     },
   },
 
