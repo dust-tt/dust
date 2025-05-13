@@ -113,7 +113,6 @@ export function SpaceLayout({
             space={space}
             dataSourceView={dataSourceView}
             parentId={parentId}
-            className="maw-w-[860px]"
           >
             {children}
           </SpaceSearchInput>
