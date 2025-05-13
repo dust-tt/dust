@@ -1,3 +1,5 @@
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+
 import type {
   AgentMessageType,
   ConversationType,
@@ -29,6 +31,11 @@ export type PokeDataSourceType = DataSourceType &
 export type PokeDataSourceViewType = DataSourceViewType &
   PokeItemBase & {
     dataSource: PokeDataSourceType;
+    space: PokeSpaceType;
+  };
+
+export type PokeMCPServerViewType = MCPServerViewType &
+  PokeItemBase & {
     space: PokeSpaceType;
   };
 
