@@ -209,7 +209,9 @@ function createServer(
         );
 
       if (results.length > 0) {
-        const queryTitle = fileName;
+        // date in yyyy-mm-dd
+        const humanReadableDate = new Date().toISOString().split("T")[0];
+        const queryTitle = `${fileName} (${humanReadableDate})`;
 
         // Generate the CSV file.
         const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
