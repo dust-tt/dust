@@ -23,6 +23,15 @@ interface MCPServerView {
 export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
   return [
     {
+      accessorKey: "id",
+      cell: ({ row }) => {
+        const { mcpServerViewLink, id } = row.original;
+
+        return <LinkWrapper href={mcpServerViewLink}>{id}</LinkWrapper>;
+      },
+      header: "sId",
+    },
+    {
       accessorKey: "server.id",
       cell: ({ row }) => {
         const { mcpServerViewLink, server } = row.original;
