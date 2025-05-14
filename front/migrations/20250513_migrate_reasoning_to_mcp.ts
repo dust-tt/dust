@@ -117,7 +117,6 @@ async function migrateWorkspaceReasoningActions({
           agentConfigurationId: null,
         });
 
-
         // Log the model IDs for an easier rollback.
         logger.info(
           {
