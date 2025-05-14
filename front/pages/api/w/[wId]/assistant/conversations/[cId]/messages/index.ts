@@ -28,8 +28,6 @@ async function handler(
 ): Promise<void> {
   const user = auth.getNonNullableUser();
 
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-
   if (typeof req.query.cId !== "string") {
     return apiError(req, res, {
       status_code: 400,
