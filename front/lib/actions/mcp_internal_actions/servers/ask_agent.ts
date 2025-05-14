@@ -100,6 +100,12 @@ function createServer(auth: Authenticator): McpServer {
       }
 
       const { conversation, message: createdUserMessage } = convRes.value;
+
+      if (!createdUserMessage) {
+        const errorMessage = "Failed to retrieve the created message.";
+        return makeMCPToolTextError(errorMessage);
+      }
+
       const streamRes = await api.streamAgentAnswerEvents({
         conversation: conversation,
         userMessageId: createdUserMessage.sId,
