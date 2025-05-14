@@ -33,6 +33,9 @@ import type { DatasetSchema } from "@app/types";
 import { getHeaderFromGroupIds, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 import { ConfigurableToolInputSchemas } from "../input_schemas";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+
+const MIN_GENERATION_TOKENS = 2048;
 
 interface DustAppBlock {
   type: string;
@@ -240,7 +243,6 @@ async function prepareParamsWithHistory(
     );
 
     if (model) {
-      const MIN_GENERATION_TOKENS = 2048;
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
 
       const convoRes = await renderConversationForModel(auth, {
@@ -369,15 +371,9 @@ export default async function createServer(
         );
 
         if (runRes.isErr()) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: `Error running Dust app: ${runRes.error.message}`,
-              },
-            ],
-          };
+          return makeMCPToolTextError(
+            `Error running Dust app: ${runRes.error.message}`
+          );
         }
 
         const { eventStream } = runRes.value;
@@ -385,29 +381,17 @@ export default async function createServer(
 
         for await (const event of eventStream) {
           if (event.type === "error") {
-            return {
-              isError: true,
-              content: [
-                {
-                  type: "text",
-                  text: `Error running Dust app: ${event.content.message}`,
-                },
-              ],
-            };
+            return makeMCPToolTextError(
+              `Error running Dust app: ${event.content.message}`
+            );
           }
 
           if (event.type === "block_execution") {
             const e = event.content.execution[0][0];
             if (e.error) {
-              return {
-                isError: true,
-                content: [
-                  {
-                    type: "text",
-                    text: `Error in block execution: ${e.error}`,
-                  },
-                ],
-              };
+              return makeMCPToolTextError(
+                `Error in block execution: ${e.error}`
+              );
             }
             lastBlockOutput = e.value;
           }
