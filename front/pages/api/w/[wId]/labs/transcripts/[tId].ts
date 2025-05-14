@@ -63,15 +63,14 @@ async function handler(
   }
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
+    await LabsTranscriptsConfigurationResource.fetchById(
       auth,
       transcriptsConfigurationId
     );
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.
   if (
     !transcriptsConfiguration ||
-    transcriptsConfiguration.userId !== user.id ||
-    transcriptsConfiguration.workspaceId !== owner.id
+    transcriptsConfiguration.userId !== user.id
   ) {
     return apiError(req, res, {
       status_code: 404,
