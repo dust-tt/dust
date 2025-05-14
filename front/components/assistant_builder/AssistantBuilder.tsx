@@ -503,32 +503,6 @@ export default function AssistantBuilder({
                         data-gtm-location={tab.dataGtm.location}
                       />
                     ))}
-                    {!isAgentDiscoveryEnabled && (
-                      <div className="flex w-full items-center justify-end">
-                        <SharingButton
-                          agentConfigurationId={agentConfigurationId}
-                          initialScope={
-                            initialBuilderState?.scope ?? defaultScope
-                          }
-                          newScope={builderState.scope}
-                          owner={owner}
-                          showSlackIntegration={showSlackIntegration}
-                          slackChannelSelected={selectedSlackChannels || []}
-                          slackDataSource={slackDataSource}
-                          setNewScope={(
-                            scope: Exclude<AgentConfigurationScope, "global">
-                          ) => {
-                            setEdited(scope !== initialBuilderState?.scope);
-                            setBuilderState((state) => ({ ...state, scope }));
-                          }}
-                          baseUrl={baseUrl}
-                          setNewLinkedSlackChannels={(channels) => {
-                            setSelectedSlackChannels(channels);
-                            setEdited(true);
-                          }}
-                        />
-                      </div>
-                    )}
                   </TabsList>
                 </Tabs>
               </div>
@@ -578,7 +552,6 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         assistantHandleError={assistantHandleError}
                         descriptionError={descriptionError}
-                        isAgentDiscoveryEnabled={isAgentDiscoveryEnabled}
                         slackChannelSelected={selectedSlackChannels || []}
                         slackDataSource={slackDataSource}
                         setSelectedSlackChannels={setSelectedSlackChannels}
