@@ -57,7 +57,7 @@ export function InstructionHistory({
         />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-64">
+      <DropdownMenuContent className="w-80">
         <DropdownMenuLabel label="Choose version to compare" />
         <DropdownMenuSeparator />
 
