@@ -41,6 +41,7 @@ import type {
 } from "@app/types";
 import { isAdmin, isBuilder, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 
 const TagSelector = ({
   tags,
@@ -64,7 +65,12 @@ const TagSelector = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <Button variant="ghost" icon={ChevronDownIcon} size="xmini" />
+        <Button
+          variant="ghost"
+          icon={ChevronDownIcon}
+          size="xmini"
+          className="invisible text-muted-foreground group-hover:visible"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         {tags.map((t) => {
@@ -177,6 +183,25 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
     },
+    {
+      header: "Access",
+      accessorKey: "scope",
+      cell: (info: CellContext<RowData, AgentConfigurationScope>) => (
+        <DataTable.CellContent>
+          {info.getValue() !== "hidden" && (
+            <Chip
+              size="xs"
+              label={SCOPE_INFO[info.getValue()].shortLabel}
+              color={SCOPE_INFO[info.getValue()].color}
+              icon={SCOPE_INFO[info.getValue()].icon}
+            />
+          )}
+        </DataTable.CellContent>
+      ),
+      meta: {
+        className: "w-32",
+      },
+    },
     ...(tags.length > 0
       ? [
           {
@@ -187,8 +212,8 @@ const getTableColumns = ({
                 grow
                 className="flex flex-row items-center"
               >
-                <div className="flex flex-row items-center">
-                  <div className="flex-grow truncate">
+                <div className="group flex flex-row items-center gap-1">
+                  <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
                     <Tooltip
                       tooltipTriggerAsChild
                       label={info.getValue()}
@@ -237,7 +262,7 @@ const getTableColumns = ({
       accessorFn: (row: RowData) => row.feedbacks,
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
-          return "-";
+          return "";
         }
         const f = info.getValue();
         if (f) {
