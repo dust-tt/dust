@@ -62,8 +62,13 @@ AgentTablesQueryConfiguration.init(
       },
       {
         fields: ["workspaceId", "agentConfigurationId"],
-        concurrently: true,
         name: "agent_tables_query_config_workspace_id_agent_config_id",
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "mcpServerConfigurationId"],
+        name: "agent_tables_query_config_workspace_id_mcp_srv_config_id",
+        concurrently: true,
       },
     ],
     sequelize: frontSequelize,
