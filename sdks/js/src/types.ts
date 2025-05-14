@@ -1961,11 +1961,11 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
     context: UserMessageContextSchema.extend({
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
-    skipToolsValidation: z.boolean().optional().default(false),
   }),
   z
     .object({
       blocking: z.boolean().optional(),
+      skipToolsValidation: z.boolean().optional(),
     })
     .partial()
 );
@@ -2091,11 +2091,11 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
         .array(),
       z.undefined(),
     ]),
-    skipToolsValidation: z.boolean().optional().default(false),
   }),
   z
     .object({
       blocking: z.boolean().optional(),
+      skipToolsValidation: z.boolean().optional(),
     })
     .partial()
 );

@@ -631,16 +631,14 @@ export class DustAPI {
   async postUserMessage({
     conversationId,
     message,
-    skipToolsValidation = false,
   }: {
     conversationId: string;
     message: PublicPostMessagesRequestBody;
-    skipToolsValidation?: boolean;
   }) {
     const res = await this.request({
       method: "POST",
       path: `assistant/conversations/${conversationId}/messages`,
-      body: { ...message, skipToolsValidation },
+      body: { ...message },
     });
 
     const r = await this._resultFromResponse(
