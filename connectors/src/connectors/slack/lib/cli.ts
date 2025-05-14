@@ -193,9 +193,7 @@ export const slack = async ({
           `Thread ${args.threadTs} will now be skipped with reason: ${args.skipReason}`
         );
       } else {
-        logger.info(
-          `Thread ${args.threadTs} not found in DB, skipping.`
-        );
+        logger.info(`Thread ${args.threadTs} not found in DB, skipping.`);
       }
 
       return { success: true };
