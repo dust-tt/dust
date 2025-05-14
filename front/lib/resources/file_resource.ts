@@ -86,12 +86,14 @@ export class FileResource extends BaseResource<FileModel> {
     _id: ModelId,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _transaction?: Transaction
-  ): Promise<any> {
-    // To make typescript happy. Ok are we're not using that method
-    throw Error("Not implemented. `fetchWithModelId` should be used instead");
+  ): Promise<FileResource | null> {
+    // Workspace isolation is handled in `fetchByModelIdWithAuth`.
+    throw Error(
+      "Not implemented. `fetchByModelIdWithAuth` should be used instead"
+    );
   }
 
-  static async fetchWithModelId(
+  static async fetchByModelIdWithAuth(
     auth: Authenticator,
     id: ModelId,
     transaction?: Transaction
