@@ -134,15 +134,21 @@ const StaticConversationItem: FC<{
       );
     case "agent_message_cot_line":
       return (
-        <Text dimColor italic>
-          {item.text}
-        </Text>
+        <Box marginLeft={2}>
+          <Text dimColor italic>
+            {item.text}
+          </Text>
+        </Box>
       );
     case "agent_message_content_line":
-      return <Text>{item.text}</Text>;
+      return (
+        <Box marginLeft={2}>
+          <Text>{item.text}</Text>
+        </Box>
+      );
     case "agent_message_cancelled":
       return (
-        <Box marginBottom={1}>
+        <Box marginBottom={1} marginTop={1}>
           <Text color="red">[Cancelled]</Text>
         </Box>
       );
@@ -369,10 +375,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
               .filter((item) => !prevIds.has(item.key))
               .slice(0, isStreaming ? -1 : undefined);
 
-            const hasContentLines =
-              prev[prev.length - 1].type === "agent_message_content_line";
-
             const newItems = [...prev];
+
+            const hasContentLines =
+              newItems[newItems.length - 1].type ===
+              "agent_message_content_line";
 
             // If we already inserted some content lines for the agent message, we don't insert more cot lines, even if
             // the agent generated some additional ones.
@@ -396,7 +403,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             }
 
             const hasCotLines =
-              prev[prev.length - 1].type === "agent_message_cot_line";
+              newItems[newItems.length - 1].type === "agent_message_cot_line";
 
             if (!hasContentLines && hasCotLines && contentLines.length > 0) {
               // This is the first content line, and we have some previous cot lines.
@@ -697,7 +704,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       {isProcessingQuestion && (
         <Box marginTop={1}>
           <Text color="green">
-            <Spinner type="dots" /> Thinking...
+            Thinking <Spinner type="simpleDots" />
           </Text>
         </Box>
       )}
