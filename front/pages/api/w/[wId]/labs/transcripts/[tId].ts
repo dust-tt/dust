@@ -63,7 +63,8 @@ async function handler(
   }
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByModelId(
+    await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
+      auth,
       transcriptsConfigurationId
     );
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.
@@ -166,7 +167,8 @@ async function handler(
       }
 
       const updatedTranscriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchByModelId(
+        await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
+          auth,
           transcriptsConfiguration.id
         );
 
@@ -192,6 +194,7 @@ async function handler(
           "Starting transcript retrieval workflow."
         );
         await launchRetrieveTranscriptsWorkflow(
+          auth,
           updatedTranscriptsConfiguration
         );
       }
