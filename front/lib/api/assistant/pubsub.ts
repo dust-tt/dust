@@ -47,11 +47,13 @@ export async function postUserMessageWithPubSub(
     content,
     mentions,
     context,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    skipToolsValidation: boolean;
   },
   { resolveAfterFullGeneration }: { resolveAfterFullGeneration: boolean }
 ): Promise<
@@ -68,6 +70,7 @@ export async function postUserMessageWithPubSub(
     content,
     mentions,
     context,
+    skipToolsValidation,
   });
 
   return handleUserMessageEvents(auth, {
@@ -84,11 +87,13 @@ export async function editUserMessageWithPubSub(
     message,
     content,
     mentions,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
+    skipToolsValidation: boolean;
   }
 ): Promise<
   Result<
@@ -104,6 +109,7 @@ export async function editUserMessageWithPubSub(
     message,
     content,
     mentions,
+    skipToolsValidation,
   });
   return handleUserMessageEvents(auth, {
     conversation,
@@ -539,6 +545,7 @@ export async function* getConversationEvents({
 }
 
 export async function cancelMessageGenerationEvent(
+  auth: Authenticator,
   messageIds: string[]
 ): Promise<void> {
   const redis = await getRedisClient({ origin: "cancel_message_generation" });
@@ -556,7 +563,10 @@ export async function cancelMessageGenerationEvent(
 
       // Already set the status to cancel
       const dbTask = Message.findOne({
-        where: { sId: messageId },
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          sId: messageId,
+        },
       }).then(async (message) => {
         if (message && message.agentMessageId) {
           await AgentMessage.update(

@@ -51,7 +51,7 @@ import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -232,6 +232,7 @@ export async function deleteAgentsActivity({
     const mcpServerConfigurations = await AgentMCPServerConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentDataSourceConfiguration.destroy({
@@ -273,12 +274,14 @@ export async function deleteAgentsActivity({
     await AgentMCPServerConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
     const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentDataSourceConfiguration.destroy({
@@ -291,6 +294,7 @@ export async function deleteAgentsActivity({
     await AgentRetrievalConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
@@ -298,6 +302,7 @@ export async function deleteAgentsActivity({
       {
         where: {
           agentConfigurationId: agent.id,
+          workspaceId: workspace.id,
         },
       }
     );
@@ -311,6 +316,7 @@ export async function deleteAgentsActivity({
     await AgentDustAppRunConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
@@ -318,6 +324,7 @@ export async function deleteAgentsActivity({
       await AgentTablesQueryConfiguration.findAll({
         where: {
           agentConfigurationId: agent.id,
+          workspaceId: workspace.id,
         },
       });
     await AgentTablesQueryAction.destroy({
@@ -337,12 +344,14 @@ export async function deleteAgentsActivity({
     await AgentTablesQueryConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
     const agentBrowseConfigurations = await AgentBrowseConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentBrowseAction.destroy({
@@ -355,6 +364,7 @@ export async function deleteAgentsActivity({
     await AgentBrowseConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
@@ -362,6 +372,7 @@ export async function deleteAgentsActivity({
       await AgentWebsearchConfiguration.findAll({
         where: {
           agentConfigurationId: agent.id,
+          workspaceId: workspace.id,
         },
       });
     await AgentWebsearchAction.destroy({
@@ -374,12 +385,14 @@ export async function deleteAgentsActivity({
     await AgentWebsearchConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
     const agentProcessConfigurations = await AgentProcessConfiguration.findAll({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentProcessAction.destroy({
@@ -399,6 +412,7 @@ export async function deleteAgentsActivity({
     await AgentProcessConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
@@ -702,7 +716,7 @@ export async function deleteWorkspaceActivity({
   await FileResource.deleteAllForWorkspace(workspace);
   await RunResource.deleteAllForWorkspace(workspace);
   await MembershipResource.deleteAllForWorkspace(workspace);
-  await WorkspaceHasDomain.destroy({
+  await WorkspaceHasDomainModel.destroy({
     where: { workspaceId: workspace.id },
   });
   await AgentUserRelation.destroy({

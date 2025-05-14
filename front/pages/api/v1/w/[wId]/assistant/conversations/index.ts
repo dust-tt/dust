@@ -6,7 +6,7 @@ import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
-import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
   getConversation,
@@ -71,10 +71,6 @@ import {
  *                 items:
  *                   $ref: '#/components/schemas/ContentFragment'
  *                 description: The list of content fragments to attach to this conversation (optional)
- *               blocking:
- *                 type: boolean
- *                 description: Whether to wait for the agent to generate the initial message (if blocking = false, you will need to use streaming events to get the messages)
- *                 example: true
  *               title:
  *                 type: string
  *                 description: The title of the conversation
@@ -86,6 +82,14 @@ import {
  *                   - workspace
  *                   - unlisted
  *                 example: unlisted
+ *               skipToolsValidation:
+ *                 type: boolean
+ *                 description: Whether to skip the tools validation of the agent messages triggered by this user message (optional, defaults to false)
+ *                 example: false
+ *               blocking:
+ *                 type: boolean
+ *                 description: Whether to wait for the agent to generate the initial message (if false, you will need to use streaming events to get the messages, defaults to false).
+ *                 example: true
  *     responses:
  *       200:
  *         description: Conversation created successfully.
@@ -132,6 +136,7 @@ async function handler(
         message,
         contentFragment,
         contentFragments,
+        skipToolsValidation,
         blocking,
       } = r.data;
 
@@ -173,7 +178,7 @@ async function handler(
         }
 
         // Local MCP servers are only available to authenticated users (not API keys).
-        if (message.context.localMCPServerIds) {
+        if (message.context.clientSideMCPServerIds) {
           if (!auth.user()) {
             return apiError(req, res, {
               status_code: 401,
@@ -186,7 +191,7 @@ async function handler(
           }
 
           const hasServerAccess = await concurrentExecutor(
-            message.context.localMCPServerIds,
+            message.context.clientSideMCPServerIds,
             async (serverId) =>
               validateMCPServerAccess(auth, {
                 workspaceId: auth.getNonNullableWorkspace().sId,
@@ -324,10 +329,9 @@ async function handler(
       }
 
       if (message) {
-        // If a message was provided we do await for the message to be created
-        // before returning the conversation along with the message.
-        // PostUserMessageWithPubSub returns swiftly since it only waits for the
-        // initial message creation event (or error)
+        // If a message was provided we do await for the message to be created before returning the
+        // conversation along with the message. PostUserMessageWithPubSub returns swiftly since it
+        // only waits for the initial message creation event (or error)
         const messageRes = await postUserMessageWithPubSub(
           auth,
           {
@@ -341,8 +345,10 @@ async function handler(
               email: message.context.email ?? null,
               profilePictureUrl: message.context.profilePictureUrl ?? null,
               origin: message.context.origin ?? "api",
-              localMCPServerIds: message.context.localMCPServerIds ?? [],
+              clientSideMCPServerIds:
+                message.context.clientSideMCPServerIds ?? [],
             },
+            skipToolsValidation: skipToolsValidation ?? false,
           },
           { resolveAfterFullGeneration: blocking === true }
         );

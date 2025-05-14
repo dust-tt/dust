@@ -801,7 +801,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "document_tracker"
-  | "experimental_mcp_actions"
   | "force_gdrive_labels_scope"
   | "google_ai_studio_experimental_models_feature"
   | "index_private_slack_channel"
@@ -810,7 +809,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_salesforce_personal_connections"
   | "labs_trackers"
   | "labs_transcripts"
-  | "mcp_actions"
   | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
@@ -823,6 +821,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "snowflake_connector_feature"
   | "usage_data_api"
   | "custom_webcrawler"
+  | "exploded_tables_query"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1054,7 +1053,7 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
-  localMCPServerIds: z.array(z.string()).optional().nullable(),
+  clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -1333,21 +1332,29 @@ const NotificationContentSchema = z.union([
   NotificationTextContentSchema,
 ]);
 
-const MCPNotificationEventSchema = z.object({
+const ToolNotificationProgressSchema = z.object({
+  progress: z.number(),
+  total: z.number(),
+  data: z.object({
+    label: z.string(),
+    output: NotificationContentSchema.optional(),
+  }),
+});
+
+export type ToolNotificationProgress = z.infer<
+  typeof ToolNotificationProgressSchema
+>;
+
+const ToolNotificationEventSchema = z.object({
   type: z.literal("tool_notification"),
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
   action: MCPActionTypeSchema,
-  notification: z.object({
-    progress: z.number(),
-    total: z.number(),
-    data: z.object({
-      label: z.string(),
-      output: NotificationContentSchema.optional(),
-    }),
-  }),
+  notification: ToolNotificationProgressSchema,
 });
+
+export type ToolNotificationEvent = z.infer<typeof ToolNotificationEventSchema>;
 
 const MCPValidationMetadataSchema = z.object({
   mcpServerName: z.string(),
@@ -1398,7 +1405,7 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryStartedEventSchema,
   WebsearchParamsEventSchema,
   MCPParamsEventSchema,
-  MCPNotificationEventSchema,
+  ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
@@ -1868,7 +1875,7 @@ export type PostContentFragmentResponseType = z.infer<
 
 export const CreateConversationResponseSchema = z.object({
   conversation: ConversationSchema,
-  message: UserMessageSchema,
+  message: UserMessageSchema.optional(),
 });
 
 export type CreateConversationResponseType = z.infer<
@@ -1952,12 +1959,13 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       })
     ),
     context: UserMessageContextSchema.extend({
-      localMCPServerIds: z.array(z.string()).optional().nullable(),
+      clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
   }),
   z
     .object({
       blocking: z.boolean().optional(),
+      skipToolsValidation: z.boolean().optional(),
     })
     .partial()
 );
@@ -1978,6 +1986,7 @@ export const PublicPostEditMessagesRequestBodySchema = z.object({
       configurationId: z.string(),
     })
   ),
+  skipToolsValidation: z.boolean().optional().default(false),
 });
 
 export type PublicPostEditMessagesRequestBody = z.infer<
@@ -2086,6 +2095,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
   z
     .object({
       blocking: z.boolean().optional(),
+      skipToolsValidation: z.boolean().optional(),
     })
     .partial()
 );
@@ -2182,7 +2192,8 @@ export const PatchDataSourceViewRequestSchema = z.union([
       parentsToAdd: z.union([z.array(z.string()), z.undefined()]),
       parentsToRemove: z.array(z.string()).optional(),
     })
-    // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
+    // For the fields to be not optional, see:
+    // https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
     .transform((o) => ({
       parentsToAdd: o.parentsToAdd,
       parentsToRemove: o.parentsToRemove,
@@ -2251,7 +2262,9 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   upsert_context: z
     .object({
       sync_type: z.union([z.enum(["batch", "incremental"]), z.undefined()]),
-    }) // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
+    })
+    // For the fields to be not optional, see:
+    // https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
     .transform((o) => ({
       sync_type: o.sync_type,
     }))
@@ -2886,6 +2899,15 @@ export type ValidateActionRequestBodyType = z.infer<
   typeof ValidateActionRequestBodySchema
 >;
 
+export const PublicRegisterMCPRequestBodySchema = z.object({
+  serverId: z.string(),
+  serverName: z.string().min(3).max(25),
+});
+
+export type PublicRegisterMCPRequestBody = z.infer<
+  typeof PublicRegisterMCPRequestBodySchema
+>;
+
 export const RegisterMCPResponseSchema = z.object({
   success: z.boolean(),
   expiresAt: z.string(),
@@ -2919,7 +2941,13 @@ export type PostMCPResultsResponseType = z.infer<
   typeof PostMCPResultsResponseSchema
 >;
 
-const MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export type RemoteMCPToolStakeLevelPublicType =
+  (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
+const MCP_TOOL_STAKE_LEVELS = [
+  ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "never_ask",
+] as const;
 export type MCPToolStakeLevelPublicType =
   (typeof MCP_TOOL_STAKE_LEVELS)[number];
 

@@ -157,7 +157,8 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
                 <DataTable data={rows} columns={columns} />
               </>
             )}
-            {rows.length === 0 && !isTagsLoading && (
+            {rows.length <= 1 && !isTagsLoading && (
+              // We show the emptyCTA if there's only one tag, which should be the default "Company" tag
               <EmptyCTA
                 action={
                   <div className="flex flex-row gap-2">

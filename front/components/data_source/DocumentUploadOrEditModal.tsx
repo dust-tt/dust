@@ -34,7 +34,11 @@ import type {
   PlanType,
   WorkspaceType,
 } from "@app/types";
-import { Err, getSupportedNonImageFileExtensions } from "@app/types";
+import {
+  Err,
+  getSupportedNonImageFileExtensions,
+  normalizeError,
+} from "@app/types";
 
 const MAX_NAME_CHARS = 32;
 
@@ -115,7 +119,18 @@ export const DocumentUploadOrEditModal = ({
   const { isContentLoading } = useFileProcessedContent(owner, fileId ?? null, {
     disabled: !fileId,
     onSuccess: async (response) => {
-      const content = await response.text();
+      let content = null;
+      // If response is null, either text extract fails or the file is not safe to display.
+      // Fallback to the local file content.
+      if (response === null) {
+        const fileBlob = fileUploaderService.getFileBlobs()[0];
+        if (fileBlob) {
+          content = await fileBlob.file.text();
+        }
+      } else {
+        content = await response.text();
+      }
+
       if (!content || content.trim().length === 0) {
         sendNotification({
           type: "error",
@@ -136,7 +151,7 @@ export const DocumentUploadOrEditModal = ({
       sendNotification({
         type: "error",
         title: "Error fetching document content",
-        description: error instanceof Error ? error.message : String(error),
+        description: normalizeError(error).message,
       });
     },
     shouldRetryOnError: false,
@@ -268,7 +283,7 @@ export const DocumentUploadOrEditModal = ({
         const fileBlobs = await fileUploaderService.handleFilesUpload([
           selectedFile,
         ]);
-        if (!fileBlobs || fileBlobs.length == 0 || !fileBlobs[0].fileId) {
+        if (!fileBlobs || fileBlobs.length === 0 || !fileBlobs[0].fileId) {
           fileUploaderService.resetUpload();
           return new Err(
             new Error(

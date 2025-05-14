@@ -1,4 +1,12 @@
-import { Chip, classNames, DataTable, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  Chip,
+  classNames,
+  DataTable,
+  EmptyCTA,
+  PlusIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 
@@ -85,6 +93,8 @@ export const AdminActionsList = ({
   });
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const showLoader = isMCPServersLoading || isLoading;
 
   const { connections } = useMCPServerConnections({
     owner,
@@ -187,7 +197,9 @@ export const AdminActionsList = ({
   const rows: RowData[] = mcpServers
     .filter((mcpServer) => mcpServer.availability === "manual")
     .map((mcpServer) => {
-      const mcpServerWithViews = mcpServers.find((s) => s.id === mcpServer.id);
+      const mcpServerWithViews = mcpServers.find(
+        (s) => s.sId === mcpServer.sId
+      );
       const mcpServerView = mcpServerWithViews?.views.find(
         (v) => v.spaceId === systemSpace?.sId
       );
@@ -199,7 +211,7 @@ export const AdminActionsList = ({
         mcpServerView,
         spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
         isConnected: !!connections.find(
-          (c) => c.internalMCPServerId === mcpServer.id
+          (c) => c.internalMCPServerId === mcpServer.sId
         ),
         onClick: () => {
           if (mcpServerView && mcpServer) {
@@ -221,41 +233,56 @@ export const AdminActionsList = ({
         owner={owner}
         setMCPServer={setMcpServer}
       />
-      {portalToHeader(
-        <AddActionMenu
-          owner={owner}
-          enabledMCPServers={mcpServers.map((s) => s.id)}
-          setIsLoading={setIsLoading}
-          createRemoteMCPServer={() => {
-            setInternalMCPServerToCreate(undefined);
-            setIsCreateOpen(true);
-          }}
-          createInternalMCPServer={async (mcpServer: MCPServerType) => {
-            if (mcpServer.authorization) {
-              setInternalMCPServerToCreate(mcpServer);
+      {rows.length > 0 &&
+        portalToHeader(
+          <AddActionMenu
+            owner={owner}
+            enabledMCPServers={mcpServers.map((s) => s.sId)}
+            setIsLoading={setIsLoading}
+            createRemoteMCPServer={() => {
+              setInternalMCPServerToCreate(undefined);
               setIsCreateOpen(true);
-            } else {
-              setIsLoading(true);
-              await createInternalMCPServer(mcpServer.name, true);
-              setIsLoading(false);
-            }
-          }}
-        />
-      )}
+            }}
+            createInternalMCPServer={async (mcpServer: MCPServerType) => {
+              if (mcpServer.authorization) {
+                setInternalMCPServerToCreate(mcpServer);
+                setIsCreateOpen(true);
+              } else {
+                setIsLoading(true);
+                await createInternalMCPServer(mcpServer.name, true);
+                setIsLoading(false);
+              }
+            }}
+          />
+        )}
 
-      {isMCPServersLoading || isLoading ? (
+      {showLoader && (
         <div className="mt-16 flex justify-center">
           <Spinner />
         </div>
-      ) : (
-        <DataTable
-          data={rows}
-          columns={columns}
-          className="pb-4"
-          filter={filter}
-          filterColumn="name"
-        />
       )}
+
+      {!showLoader &&
+        (rows.length === 0 ? (
+          <EmptyCTA
+            message="You don’t have any tools yet."
+            action={
+              <Button
+                icon={PlusIcon}
+                onClick={() => setIsCreateOpen(true)}
+                label="Add Tools"
+              />
+            }
+          />
+        ) : (
+          <DataTable
+            data={rows}
+            columns={columns}
+            className="pb-4"
+            filter={filter}
+            filterColumn="name"
+          />
+        ))}
     </>
   );
 };

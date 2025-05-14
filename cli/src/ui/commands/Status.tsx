@@ -1,7 +1,9 @@
-import React, { FC, useEffect, useState } from "react";
-import { Box, Text, Newline } from "ink";
+import type { MeResponseType, WorkspaceType } from "@dust-tt/client";
+import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
-import { MeResponseType, WorkspaceType } from "@dust-tt/client";
+import type { FC} from "react";
+import React, { useEffect, useState } from "react";
+
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
 
@@ -47,7 +49,7 @@ const Status: FC = () => {
       setIsLoading(false);
     };
 
-    checkAuth();
+    void checkAuth();
   }, []);
 
   if (isLoading) {

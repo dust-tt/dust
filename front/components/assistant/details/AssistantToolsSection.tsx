@@ -7,7 +7,6 @@ import {
   ScanIcon,
 } from "@dust-tt/sparkle";
 import _ from "lodash";
-import React from "react";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -18,10 +17,10 @@ import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
-  isPlatformMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
+  isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -155,14 +154,14 @@ function renderOtherAction(
       avatar: <Avatar icon={ChatBubbleThoughtIcon} size="xs" />,
       order: 0,
     };
-  } else if (isPlatformMCPServerConfiguration(action)) {
+  } else if (isServerSideMCPServerConfiguration(action)) {
     const mcpServer = mcpServers.find((s) =>
-      s.views.some((v) => v.id === action.mcpServerViewId)
+      s.views.some((v) => v.sId === action.mcpServerViewId)
     );
     if (!mcpServer) {
       return null;
     }
-    const { serverType } = getServerTypeAndIdFromSId(mcpServer.id);
+    const { serverType } = getServerTypeAndIdFromSId(mcpServer.sId);
     const avatar = getAvatar(mcpServer, "xs");
     return {
       title: action.name,

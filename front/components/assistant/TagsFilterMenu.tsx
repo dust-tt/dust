@@ -56,7 +56,7 @@ export const TagsFilterMenu = ({
       <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="primary"
+            variant="outline"
             icon={TagIcon}
             label={"Tags"}
             counterValue={selectedTags.length.toString()}
@@ -85,6 +85,11 @@ export const TagsFilterMenu = ({
             />
           }
         >
+          {filteredTags.length === 0 && (
+            <div className="flex items-center justify-center py-4 text-sm">
+              No tags found
+            </div>
+          )}
           {filteredTags
             .filter((tag) => !selectedTags.includes(tag))
             .map((tag) => (

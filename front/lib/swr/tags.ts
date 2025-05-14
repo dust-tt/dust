@@ -1,7 +1,9 @@
 import { useSendNotification } from "@dust-tt/sparkle";
+import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { PatchAgentTagsRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/tags";
 import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
 import type { GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/tags/suggest_from_agents";
 import type { GetTagsUsageResponseBody } from "@app/pages/api/w/[wId]/tags/usage";
@@ -201,4 +203,30 @@ export function useUpdateTag({
   return {
     updateTag,
   };
+}
+
+export function useUpdateAgentTags({
+  owner,
+  agentConfigurationId,
+}: {
+  owner: LightWorkspaceType;
+  agentConfigurationId: string;
+}) {
+  const updateAgentTags = useCallback(
+    async (body: PatchAgentTagsRequestBody) => {
+      await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/tags`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+    },
+    [owner, agentConfigurationId]
+  );
+
+  return updateAgentTags;
 }

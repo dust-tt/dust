@@ -6,11 +6,11 @@ import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { actionRefsOffset } from "@app/lib/actions/utils";
 import { getWebsearchNumResults } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
-import type { MCPServerDefinitionType } from "@app/lib/api/mcp";
+import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import {
   browseUrls,
   isBrowseScrapeSuccessResponse,
@@ -19,8 +19,8 @@ import { webSearch } from "@app/lib/utils/websearch";
 import type { OAuthProvider } from "@app/types";
 
 export const provider: OAuthProvider = "google_drive" as const;
-export const serverInfo: MCPServerDefinitionType = {
-  name: "web_search_&_browse_v2",
+export const serverInfo: InternalMCPServerDefinitionType = {
+  name: "web_search_&_browse",
   version: "1.0.0",
   description:
     "Agent can search (Google) and retrieve information from specific websites.",
@@ -31,7 +31,9 @@ export const serverInfo: MCPServerDefinitionType = {
   },
 };
 
-const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
+const createServer = (
+  agentLoopRunContext?: AgentLoopRunContextType
+): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -57,14 +59,14 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         ),
     },
     async ({ query, page }) => {
-      if (!agentLoopContext) {
+      if (!agentLoopRunContext) {
         throw new Error(
-          "agentLoopContext is required where the tool is called."
+          "agentLoopRunContext is required where the tool is called."
         );
       }
 
       const numResults = getWebsearchNumResults({
-        stepActions: agentLoopContext.stepActions,
+        stepActions: agentLoopRunContext.stepActions,
       });
 
       const websearchRes = await webSearch({
@@ -87,10 +89,10 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
       }
 
       const refsOffset = actionRefsOffset({
-        agentConfiguration: agentLoopContext.agentConfiguration,
-        stepActionIndex: agentLoopContext.stepActionIndex,
-        stepActions: agentLoopContext.stepActions,
-        refsOffset: agentLoopContext.citationsRefsOffset,
+        agentConfiguration: agentLoopRunContext.agentConfiguration,
+        stepActionIndex: agentLoopRunContext.stepActionIndex,
+        stepActions: agentLoopRunContext.stepActions,
+        refsOffset: agentLoopRunContext.citationsRefsOffset,
       });
       const refs = getRefs().slice(refsOffset, refsOffset + numResults);
 

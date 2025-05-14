@@ -136,7 +136,9 @@ export default function AssistantBuilder({
     "selectedTab",
     "instructions"
   );
-  const [screen, setScreen] = useState<BuilderScreen>("instructions");
+  const [screen, setScreen] = useState<BuilderScreen>(
+    currentTab && isValidTab(currentTab) ? currentTab : "instructions"
+  );
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
@@ -149,6 +151,7 @@ export default function AssistantBuilder({
   const [instructionsError, setInstructionsError] = useState<string | null>(
     null
   );
+  const [isInstructionDiffMode, setIsInstructionDiffMode] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [hasAnyActionsError, setHasAnyActionsError] = useState<boolean>(false);
 
@@ -265,7 +268,9 @@ export default function AssistantBuilder({
     if (!agentConfigurationId) {
       setBuilderState((state) => ({
         ...state,
-        editors: [...state.editors, user],
+        editors: state.editors.some((m) => m.sId === user.sId)
+          ? state.editors
+          : [...state.editors, user],
       }));
     }
   }, [
@@ -335,8 +340,10 @@ export default function AssistantBuilder({
       localInstructionError = `Instructions may exceed context size window.`;
     }
 
-    // We only keep the first error. If there are multiple errors, the user will have to fix them one by one.
-    setInstructionsError(localInstructionError);
+    if (!isInstructionDiffMode) {
+      // We only keep the first error. If there are multiple errors, the user will have to fix them one by one.
+      setInstructionsError(localInstructionError);
+    }
 
     // Check if there are any errors in the actions
     const anyActionError = builderState.actions.some((action) =>
@@ -352,6 +359,7 @@ export default function AssistantBuilder({
     builderState.actions,
     builderState.generationSettings.modelSettings.modelId,
     initialBuilderState?.handle,
+    isInstructionDiffMode,
     mcpServerViews,
   ]);
 
@@ -486,7 +494,7 @@ export default function AssistantBuilder({
       >
         <BuilderLayout
           leftPanel={
-            <div className="flex h-full flex-col gap-5 pb-6 pt-4">
+            <div className="flex h-full flex-col gap-4 pb-6 pt-4">
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
                 <Tabs
                   className="w-full"
@@ -551,6 +559,8 @@ export default function AssistantBuilder({
                         setDoTypewriterEffect={setDoTypewriterEffect}
                         agentConfigurationId={agentConfigurationId}
                         models={models}
+                        setIsInstructionDiffMode={setIsInstructionDiffMode}
+                        isInstructionDiffMode={isInstructionDiffMode}
                       />
                     );
                   case "actions":

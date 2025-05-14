@@ -3,7 +3,7 @@ import { removeLeadingAt } from "@app/components/assistant_builder/SettingsScree
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import type {
-  AssistantBuilderActionConfiguration,
+  AssistantBuilderActionAndDataVisualizationConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
@@ -115,7 +115,9 @@ export async function submitAssistantBuilderForm({
     PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
   >;
 
-  const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
+  const map: (
+    a: AssistantBuilderActionAndDataVisualizationConfiguration
+  ) => ActionsType = (a) => {
     let retrievalTimeFrame: RetrievalTimeframe = "auto";
 
     if (a.type === "RETRIEVAL_EXHAUSTIVE") {
@@ -206,6 +208,7 @@ export async function submitAssistantBuilderForm({
             childAgentId,
             reasoningModel: mcpReasoningModel,
             additionalConfiguration,
+            dustAppConfiguration,
             timeFrame,
           },
         } = a;
@@ -232,6 +235,7 @@ export async function submitAssistantBuilderForm({
               : null,
             timeFrame,
             additionalConfiguration,
+            dustAppConfiguration,
           },
         ];
 
@@ -300,6 +304,11 @@ export async function submitAssistantBuilderForm({
             reasoningEffort: reasoningModel.reasoningEffort ?? null,
           },
         ];
+
+      // Data visaulization is boolean value (visualizationEnabled), but in UI we display it
+      // like an action. We need to remove it before sending the request to the API.
+      case "DATA_VISUALIZATION":
+        return [];
 
       default:
         assertNever(a);

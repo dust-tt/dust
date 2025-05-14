@@ -216,6 +216,7 @@ const TOOL_MIME_TYPES = {
       "BOOLEAN",
       "ENUM",
       "REASONING_MODEL",
+      "DUST_APP",
       "NULLABLE_TIME_FRAME",
     ],
   }),
@@ -235,6 +236,9 @@ const TOOL_MIME_TYPES = {
       "SQL_QUERY",
       // Generic thinking tokens.
       "THINKING",
+      "DATABASE_SCHEMA",
+      "QUERY_WRITING_INSTRUCTIONS",
+      "EXAMPLE_ROWS",
       "WEBSEARCH_QUERY",
       "WEBSEARCH_RESULT",
     ],

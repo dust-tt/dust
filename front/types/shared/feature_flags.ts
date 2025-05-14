@@ -7,7 +7,6 @@ export const WHITELISTABLE_FEATURES = [
   "deepseek_r1_global_agent_feature",
   "dev_mcp_actions",
   "disable_run_logs",
-  "experimental_mcp_actions",
   "force_gdrive_labels_scope",
   "google_ai_studio_experimental_models_feature",
   "index_private_slack_channel",
@@ -16,7 +15,6 @@ export const WHITELISTABLE_FEATURES = [
   "labs_salesforce_personal_connections",
   "labs_trackers",
   "labs_transcripts",
-  "mcp_actions",
   "okta_enterprise_connection",
   "openai_o1_custom_assistants_feature",
   "openai_o1_feature",
@@ -27,6 +25,7 @@ export const WHITELISTABLE_FEATURES = [
   "show_debug_tools",
   "usage_data_api",
   "custom_webcrawler",
+  "exploded_tables_query",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

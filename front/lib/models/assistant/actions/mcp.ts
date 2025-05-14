@@ -22,6 +22,8 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
   declare timeFrame: TimeFrame | null;
   declare additionalConfiguration: Record<string, boolean | number | string>;
 
+  declare appId: string | null;
+
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
   declare mcpServerView: NonAttribute<MCPServerViewModel>;
 
@@ -91,6 +93,10 @@ AgentMCPServerConfiguration.init(
         },
       },
     },
+    appId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     mcpServerViewId: {
       type: DataTypes.BIGINT,
       allowNull: false,
@@ -116,9 +122,15 @@ AgentMCPServerConfiguration.init(
     modelName: "agent_mcp_server_configuration",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove this index.
       {
         fields: ["agentConfigurationId"],
         concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
+        concurrently: true,
+        name: "agent_mcp_srv_config_w_id_agent_config_id",
       },
       {
         unique: true,
@@ -227,8 +239,13 @@ AgentMCPAction.init(
     modelName: "agent_mcp_action",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["agentMessageId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentMessageId"],
         concurrently: true,
       },
     ],
@@ -346,7 +363,15 @@ AgentChildAgentConfiguration.init(
   },
   {
     modelName: "agent_child_agent_configuration",
-    indexes: [{ fields: ["mcpServerConfigurationId"] }],
+    indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index.
+      { fields: ["mcpServerConfigurationId"] },
+      {
+        fields: ["workspaceId", "mcpServerConfigurationId"],
+        name: "agent_child_agent_config_workspace_id_mcp_srv_config_id",
+        concurrently: true,
+      },
+    ],
     sequelize: frontSequelize,
   }
 );

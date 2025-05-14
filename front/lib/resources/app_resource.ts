@@ -50,10 +50,14 @@ export class AppResource extends ResourceWithSpace<AppModel> {
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<AppModel>
+    options: ResourceFindOptions<AppModel> = {}
   ) {
     const apps = await this.baseFetchWithAuthorization(auth, {
       ...options,
+      where: {
+        ...options.where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
     });
 
     // This is what enforces the accessibility to an app.
@@ -85,9 +89,6 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     options?: { includeDeleted: boolean }
   ) {
     return this.baseFetch(auth, {
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
       includeDeleted: options?.includeDeleted,
     });
   }

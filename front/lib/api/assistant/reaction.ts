@@ -32,6 +32,7 @@ export async function getMessageReactions(
 
   const messages = await Message.findAll({
     where: {
+      workspaceId: owner.id,
       conversationId: conversation.id,
     },
     attributes: ["sId"],

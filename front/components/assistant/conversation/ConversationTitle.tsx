@@ -77,10 +77,7 @@ export function ConversationTitle({
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              title,
-              visibility: conversation?.visibility,
-            }),
+            body: JSON.stringify({ title }),
           }
         );
         await mutate(
@@ -96,7 +93,7 @@ export function ConversationTitle({
         alert("Failed to update title");
       }
     },
-    [activeConversationId, conversation?.visibility, mutate, owner.sId]
+    [activeConversationId, mutate, owner.sId]
   );
 
   if (!activeConversationId) {

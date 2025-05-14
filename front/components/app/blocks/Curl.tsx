@@ -12,6 +12,7 @@ import {
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
@@ -107,7 +108,7 @@ export default function Curl({
     }
   });
 
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
 
   return (
     <Block
@@ -185,7 +186,7 @@ export default function Curl({
           <div className="flex w-full font-normal">
             <div className="w-full">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.headers_code}
                 language="js"
@@ -207,7 +208,7 @@ export default function Curl({
           <div className="flex w-full font-normal">
             <div className="w-full">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.body_code}
                 language="js"

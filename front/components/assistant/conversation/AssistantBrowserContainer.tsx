@@ -56,8 +56,7 @@ export function AssistantBrowserContainer({
     <div
       id="assistants-lists-container"
       className={classNames(
-        "duration-400 flex h-full w-full max-w-4xl flex-col gap-2 pt-8 transition-opacity",
-        isLoading ? "opacity-0" : "opacity-100"
+        "duration-400 flex h-full w-full max-w-4xl flex-col gap-2 pt-8"
       )}
     >
       <div id="assistants-list-header">
@@ -69,6 +68,7 @@ export function AssistantBrowserContainer({
         isLoading={isLoading}
         handleAssistantClick={handleAssistantClick}
       />
+      <div className="h-8 w-8 shrink-0" />
     </div>
   );
 }

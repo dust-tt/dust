@@ -23,25 +23,29 @@ export function getMCPServerRegistryKey({
  * Interface for MCP server registration metadata.
  */
 interface MCPServerRegistration {
-  serverId: string;
-  workspaceId: string;
-  userId: string;
-  registeredAt: number;
   lastHeartbeat: number;
+  registeredAt: number;
+  serverId: string;
+  serverName: string;
+  userId: string;
+  workspaceId: string;
 }
 
 /**
  * Register a new MCP server.
  */
-export async function registerMCPServer({
-  auth,
-  workspaceId,
-  serverId,
-}: {
-  auth: Authenticator;
-  workspaceId: string;
-  serverId: string;
-}): Promise<{ success: boolean; expiresAt: string }> {
+export async function registerMCPServer(
+  auth: Authenticator,
+  {
+    serverId,
+    serverName,
+    workspaceId,
+  }: {
+    serverId: string;
+    serverName: string;
+    workspaceId: string;
+  }
+): Promise<{ success: boolean; expiresAt: string }> {
   const userId = auth.getNonNullableUser().id.toString();
   const now = Date.now();
 
@@ -52,14 +56,15 @@ export async function registerMCPServer({
   });
 
   const metadata: MCPServerRegistration = {
-    serverId,
-    workspaceId,
-    userId,
-    registeredAt: now,
     lastHeartbeat: now,
+    registeredAt: now,
+    serverId,
+    serverName,
+    userId,
+    workspaceId,
   };
 
-  await runOnRedis({ origin: "mcp_local_request" }, async (redis) => {
+  await runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
     await redis.set(key, JSON.stringify(metadata), {
       EX: MCP_SERVER_REGISTRATION_TTL,
     });
@@ -73,6 +78,42 @@ export async function registerMCPServer({
     success: true,
     expiresAt,
   };
+}
+
+/**
+ * Get server metadata for a given list of server IDs.
+ */
+export async function getMCPServersMetadata(
+  auth: Authenticator,
+  {
+    serverIds,
+  }: {
+    serverIds: string[];
+  }
+): Promise<(MCPServerRegistration | null)[]> {
+  const userId = auth.getNonNullableUser().id.toString();
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
+  const keys = serverIds.map((serverId) =>
+    getMCPServerRegistryKey({
+      serverId,
+      userId,
+      workspaceId,
+    })
+  );
+
+  return runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
+    const results = await redis.mGet(keys);
+
+    return results.map((result) => {
+      // Server existence is checked when posting a message. It's safe to ignore here.
+      if (!result) {
+        return null;
+      }
+
+      return JSON.parse(result);
+    });
+  });
 }
 
 /**
@@ -98,7 +139,7 @@ export async function updateMCPServerHeartbeat({
 
   // Get existing registration and update it.
   const result = await runOnRedis(
-    { origin: "mcp_local_request" },
+    { origin: "mcp_client_side_request" },
     async (redis) => {
       // Get existing registration.
       const existing = await redis.get(key);
@@ -157,7 +198,7 @@ export async function validateMCPServerAccess(
     serverId,
   });
 
-  return runOnRedis({ origin: "mcp_local_request" }, async (redis) => {
+  return runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
     const exists = await redis.exists(key);
 
     if (exists) {

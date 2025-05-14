@@ -122,6 +122,7 @@ export function asDisplayName(name?: string | null) {
   return name
     .toLowerCase()
     .replace(/_/g, " ")
+    .replace(/github/g, "GitHub")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 

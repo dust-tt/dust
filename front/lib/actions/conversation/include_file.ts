@@ -453,11 +453,13 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
 // have `sId` on actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of
 // this action).
 export async function conversationIncludeFileTypesFromAgentMessageIds(
-  agentMessageIds: ModelId[]
+  auth: Authenticator,
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<ConversationIncludeFileActionType[]> {
   const actions = await AgentConversationIncludeFileAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 

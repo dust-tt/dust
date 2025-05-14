@@ -106,7 +106,7 @@ export function CoEditionContainer({
             uploaded: [],
           },
           input: text,
-          localMCPServerIds: removeNulls([serverId]),
+          clientSideMCPServerIds: removeNulls([serverId]),
           mentions:
             // This is best-effort, we mentions all agents participating in the conversation.
             conversationParticipants?.agents.map((a) => ({

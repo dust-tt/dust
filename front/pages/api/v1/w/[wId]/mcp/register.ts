@@ -1,7 +1,9 @@
 import type { RegisterMCPResponseType } from "@dust-tt/client";
+import { PublicRegisterMCPRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
-import { registerMCPServer } from "@app/lib/api/actions/mcp/local_registry";
+import { registerMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -74,9 +76,19 @@ async function handler(
     });
   }
 
-  // Extract the client-provided server ID.
-  const { serverId } = req.body;
-  if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
+  const r = PublicRegisterMCPRequestBodySchema.safeParse(req.body);
+  if (r.error) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: fromError(r.error).toString(),
+      },
+    });
+  }
+
+  const { serverId, serverName } = r.data;
+  if (!isValidUUIDv4(serverId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -87,10 +99,10 @@ async function handler(
   }
 
   // Register the server.
-  const registration = await registerMCPServer({
-    auth,
-    workspaceId: auth.getNonNullableWorkspace().sId,
+  const registration = await registerMCPServer(auth, {
     serverId,
+    serverName,
+    workspaceId: auth.getNonNullableWorkspace().sId,
   });
 
   res.status(200).json(registration);

@@ -1,5 +1,6 @@
-import React, { FC } from "react";
 import { Box, Text } from "ink";
+import type { FC } from "react";
+import React from "react";
 
 const Help: FC = () => {
   return (
@@ -22,6 +23,11 @@ const Help: FC = () => {
       <Box marginLeft={2}>
         <Text>
           <Text bold>logout</Text> Log out and clear saved tokens
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>chat</Text> Chat with a Dust agent (default)
         </Text>
       </Box>
       <Box marginLeft={2}>

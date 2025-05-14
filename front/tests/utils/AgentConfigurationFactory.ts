@@ -1,3 +1,4 @@
+import assert from "assert";
 import type { Transaction } from "sequelize";
 
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -7,7 +8,6 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types";
-import assert from "assert";
 
 export class AgentConfigurationFactory {
   static async createTestAgent(

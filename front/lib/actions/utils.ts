@@ -1,16 +1,19 @@
-import type { Icon } from "@dust-tt/sparkle";
 import {
+  BarChartIcon,
+  BoltIcon,
   ChatBubbleThoughtIcon,
   CommandLineIcon,
   MagnifyingGlassIcon,
   PlanetIcon,
   ScanIcon,
-  SuitcaseIcon,
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";
 
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type {
+  ActionSpecification,
+  AssistantBuilderActionConfiguration,
+} from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -19,27 +22,21 @@ import {
   isMCPInternalInclude,
   isMCPInternalSearch,
   isMCPInternalWebsearch,
-  isPlatformMCPToolConfiguration,
   isRetrievalConfiguration,
+  isServerSideMCPToolConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationType, WhitelistableFeature } from "@app/types";
+import type { AgentConfigurationType, AgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 
 export const ACTION_SPECIFICATIONS: Record<
   AssistantBuilderActionConfiguration["type"],
-  {
-    label: string;
-    description: string;
-    dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-    cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-    flag: WhitelistableFeature | null;
-  }
+  ActionSpecification
 > = {
   RETRIEVAL_EXHAUSTIVE: {
     label: "Include data",
@@ -94,10 +91,18 @@ export const ACTION_SPECIFICATIONS: Record<
   MCP: {
     label: "More...",
     description: "Add additional sets of tools",
-    cardIcon: SuitcaseIcon,
-    dropDownIcon: SuitcaseIcon,
-    flag: "mcp_actions",
+    cardIcon: BoltIcon,
+    dropDownIcon: BoltIcon,
+    flag: null,
   },
+};
+
+export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
+  label: "Data Visualization",
+  description: "Generate a data visualization",
+  cardIcon: BarChartIcon,
+  dropDownIcon: BarChartIcon,
+  flag: null,
 };
 
 /**
@@ -233,10 +238,10 @@ export function getCitationsCount({
       return 0;
     case "mcp_configuration":
       if (
-        isPlatformMCPToolConfiguration(action) &&
+        isServerSideMCPToolConfiguration(action) &&
         isInternalMCPServerOfName(
           action.internalMCPServerId,
-          "web_search_&_browse_v2"
+          "web_search_&_browse"
         )
       ) {
         return getWebsearchNumResults({
@@ -299,14 +304,22 @@ export function getMCPApprovalKey({
 
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
-  actionConfiguration: MCPToolConfigurationType
+  actionConfiguration: MCPToolConfigurationType,
+  agentMessage: AgentMessageType
 ): Promise<{
   stake?: MCPToolStakeLevelType;
   status: "allowed_implicitly" | "pending";
   serverId?: string;
 }> {
-  if (!isPlatformMCPToolConfiguration(actionConfiguration)) {
+  if (!isServerSideMCPToolConfiguration(actionConfiguration)) {
     return { status: "pending" };
+  }
+
+  // If the agent message is marked as "skipToolsValidation" we skip all tools validation
+  // irrespective of the `actionConfiguration.permission`. This is set when the agent message was
+  // created by an API call where the caller explicitly set `skipToolsValidation` to true.
+  if (agentMessage.skipToolsValidation) {
+    return { status: "allowed_implicitly" };
   }
 
   /**

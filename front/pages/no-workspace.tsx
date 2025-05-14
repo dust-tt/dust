@@ -14,16 +14,16 @@ import {
   withDefaultUserAuthPaywallWhitelisted,
 } from "@app/lib/iam/session";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 import type { UserTypeWithWorkspaces } from "@app/types";
 
 // Fetch workspace details for scenarios where auto-join is disabled.
 async function fetchWorkspaceDetails(
   user: UserTypeWithWorkspaces
-): Promise<WorkspaceHasDomain | null> {
+): Promise<WorkspaceHasDomainModel | null> {
   const [, userEmailDomain] = user.email.split("@");
-  const workspaceWithVerifiedDomain = await WorkspaceHasDomain.findOne({
+  const workspaceWithVerifiedDomain = await WorkspaceHasDomainModel.findOne({
     where: {
       domain: userEmailDomain,
     },

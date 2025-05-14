@@ -1,12 +1,14 @@
-import React, { FC, ReactNode, useEffect, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
+import type { ReactNode } from "react";
+import React, { useEffect, useState } from "react";
 
 export interface BaseItem {
   id: string;
   label: string; // Used for searching
 }
 
-interface MultiSelectWithSearchProps<T extends BaseItem> {
+interface SelectWithSearchProps<T extends BaseItem> {
+  selectMultiple?: boolean;
   items: T[];
   onConfirm: (selectedIds: string[]) => void;
   renderItem: (item: T, isSelected: boolean, isFocused: boolean) => ReactNode;
@@ -22,7 +24,8 @@ const DEFAULT_LEG_ROOM = 7;
 const DEFAULT_SEARCH_PROMPT = "Search Items:";
 const DEFAULT_SELECT_PROMPT = "Select Items";
 
-export const MultiSelectWithSearch = <T extends BaseItem>({
+export const SelectWithSearch = <T extends BaseItem>({
+  selectMultiple = true,
   items,
   onConfirm,
   renderItem,
@@ -35,7 +38,7 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
   legRoom = DEFAULT_LEG_ROOM,
   searchPrompt = DEFAULT_SEARCH_PROMPT,
   selectPrompt = DEFAULT_SELECT_PROMPT,
-}: MultiSelectWithSearchProps<T>) => {
+}: SelectWithSearchProps<T>) => {
   const { stdout } = useStdout();
   const terminalHeight = stdout?.rows || 24;
 
@@ -44,8 +47,6 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
   const [selectionOrder, setSelectionOrder] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  // Used to trigger re-render on "enter" press when the terminal size is too small.
-  const [_forceRerenderKey, setForceRerenderKey] = useState(0);
 
   const selectedBlockHeight =
     selectionOrder.length > 0
@@ -91,13 +92,6 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
 
   useInput(
     (input, key) => {
-      if (terminalHeight < 30) {
-        if (key.return) {
-          setForceRerenderKey((k) => k + 1);
-        }
-        return;
-      }
-
       const currentItem = paginatedFilteredItems[cursor];
       const currentItemId = currentItem?.id;
 
@@ -120,7 +114,7 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
           setCursor(0);
         }
       } else if (input === " ") {
-        if (currentItemId) {
+        if (currentItemId && selectMultiple) {
           setSelected((prevSelected) => {
             const newSelected = new Set(prevSelected);
             if (newSelected.has(currentItemId)) {
@@ -149,7 +143,7 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
             onConfirm(finalSelectionOrder);
           }
         }
-      } else if (key.escape) {
+      } else if (key.escape && selectMultiple) {
         if (selectionOrder.length > 0) {
           const lastSelectedId = selectionOrder[selectionOrder.length - 1];
           setSelectionOrder((prevOrder) => prevOrder.slice(0, -1));
@@ -168,16 +162,6 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
     { isActive: true }
   );
 
-  if (terminalHeight < 30) {
-    return (
-      <Box>
-        <Text color="red">
-          Terminal height must be at least 25 lines. Resize and press Enter.
-        </Text>
-      </Box>
-    );
-  }
-
   return (
     <Box flexDirection="column">
       <Box>
@@ -193,8 +177,10 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
       )}
       <Box marginTop={1}>
         <Text bold>
-          {selectPrompt} (Space to toggle, Enter to confirm, Esc to undo last
-          selection)
+          {selectPrompt}
+          {selectMultiple
+            ? " (Space to toggle, Enter to confirm, Esc to undo last selection)"
+            : " (Enter to confirm)"}
         </Text>
       </Box>
       <Box flexDirection="column" marginTop={1} minHeight={5}>
@@ -213,7 +199,7 @@ export const MultiSelectWithSearch = <T extends BaseItem>({
         )}
       </Box>
 
-      {selectionOrder.length > 0 && (
+      {selectMultiple && selectionOrder.length > 0 && (
         <Box
           flexDirection="column"
           marginTop={1}

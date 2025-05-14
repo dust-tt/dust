@@ -3,7 +3,7 @@ import { useCallback, useContext, useMemo } from "react";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   AssistantBuilderActionConfiguration,
-  AssistantBuilderActionConfigurationWithId,
+  AssistantBuilderActionState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
@@ -30,7 +30,7 @@ export const isUsableAsCapability = (
   id: string,
   mcpServerViews: MCPServerViewType[]
 ) => {
-  const view = mcpServerViews.find((v) => v.id === id);
+  const view = mcpServerViews.find((v) => v.sId === id);
   if (!view) {
     return false;
   }
@@ -44,7 +44,7 @@ export const isUsableInKnowledge = (
   id: string,
   mcpServerViews: MCPServerViewType[]
 ) => {
-  const view = mcpServerViews.find((v) => v.id === id);
+  const view = mcpServerViews.find((v) => v.sId === id);
   if (!view) {
     return false;
   }
@@ -58,7 +58,7 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
   const { spaces, mcpServerViews } = useContext(AssistantBuilderContext);
 
   const isCapabilityAction = useCallback(
-    (action: AssistantBuilderActionConfiguration) => {
+    (action: AssistantBuilderActionState) => {
       if (action.type === "MCP") {
         return isUsableAsCapability(
           action.configuration.mcpServerViewId,
@@ -77,7 +77,7 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
 
   const spaceIdToActions = useMemo(() => {
     return configurableActions.reduce<
-      Record<string, AssistantBuilderActionConfigurationWithId[]>
+      Record<string, AssistantBuilderActionState[]>
     >((acc, action) => {
       const addActionToSpace = (spaceId?: string) => {
         if (spaceId) {
@@ -127,7 +127,7 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
 
           if (action.configuration.mcpServerViewId) {
             const mcpServerView = mcpServerViews.find(
-              (v) => v.id === action.configuration.mcpServerViewId
+              (v) => v.sId === action.configuration.mcpServerViewId
             );
             // Default MCP server themselves are not accounted for in the space restriction.
             if (
@@ -141,6 +141,7 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
 
         case "WEB_NAVIGATION":
         case "REASONING":
+        case "DATA_VISUALIZATION": // Data visualization is not an action but we show it in the UI like an action.
           break;
 
         default:

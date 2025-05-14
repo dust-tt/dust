@@ -10,7 +10,7 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
-import type { EditedByUser } from "@app/types";
+import type { EditedByUser, ModelId } from "@app/types";
 
 export type MCPToolType = {
   name: string;
@@ -26,20 +26,20 @@ export type WithStakeLevelType<T> = T & {
   stakeLevel: MCPToolStakeLevelType;
 };
 
-export type PlatformMCPToolTypeWithStakeLevel =
+export type ServerSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType> & {
     toolServerId: string;
   };
 
-export type LocalMCPToolTypeWithStakeLevel =
+export type ClientSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType>;
 
 export type MCPToolWithStakeLevelType =
-  | PlatformMCPToolTypeWithStakeLevel
-  | LocalMCPToolTypeWithStakeLevel;
+  | ServerSideMCPToolTypeWithStakeLevel
+  | ClientSideMCPToolTypeWithStakeLevel;
 
 export type MCPServerType = {
-  id: string;
+  sId: string;
   name: string;
   version: string;
   description: string;
@@ -59,7 +59,8 @@ export type RemoteMCPServerType = MCPServerType & {
 };
 
 export interface MCPServerViewType {
-  id: string;
+  id: ModelId;
+  sId: string;
   createdAt: number;
   updatedAt: number;
   spaceId: string;
@@ -69,7 +70,7 @@ export interface MCPServerViewType {
 
 export type MCPServerDefinitionType = Omit<
   MCPServerType,
-  "tools" | "id" | "availability"
+  "tools" | "sId" | "availability"
 >;
 
 type InternalMCPServerType = MCPServerType & {
@@ -79,7 +80,7 @@ type InternalMCPServerType = MCPServerType & {
 
 export type InternalMCPServerDefinitionType = Omit<
   InternalMCPServerType,
-  "tools" | "id" | "availability"
+  "tools" | "sId" | "availability"
 >;
 
 export type MCPServerTypeWithViews = MCPServerType & {

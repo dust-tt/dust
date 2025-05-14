@@ -3136,7 +3136,7 @@ export async function markDatabasesAsUpserted({
   connectorId: ModelId;
   databaseIds: string[];
   runTimestamp: number;
-}): Promise<{ isNewDatabase: boolean }> {
+}): Promise<{ isNewDatabase: boolean; isMissing: boolean }> {
   const db = await NotionDatabase.findOne({
     where: {
       connectorId,
@@ -3147,7 +3147,7 @@ export async function markDatabasesAsUpserted({
   });
 
   if (!db) {
-    throw new Error("Could not find database in our DB.");
+    return { isNewDatabase: false, isMissing: true };
   }
 
   await NotionDatabase.update(
@@ -3164,5 +3164,5 @@ export async function markDatabasesAsUpserted({
     }
   );
 
-  return { isNewDatabase: !db.lastUpsertedRunTs };
+  return { isNewDatabase: !db.lastUpsertedRunTs, isMissing: false };
 }

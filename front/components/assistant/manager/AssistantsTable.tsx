@@ -1,17 +1,11 @@
 import {
   Avatar,
-  Button,
+  BracesIcon,
+  Checkbox,
+  Chip,
   ClipboardIcon,
-  Cog6ToothIcon,
   DataTable,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   PencilSquareIcon,
-  SliderToggle,
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
@@ -20,7 +14,11 @@ import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
+import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
+import { useTags } from "@app/lib/swr/tags";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentConfigurationScope,
@@ -28,7 +26,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder, pluralize } from "@app/types";
+import { isAdmin, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 type MoreMenuItem = {
@@ -40,6 +38,7 @@ type MoreMenuItem = {
 };
 
 type RowData = {
+  sId: string;
   name: string;
   description: string;
   pictureUrl: string;
@@ -49,19 +48,52 @@ type RowData = {
   scope: AgentConfigurationScope;
   onClick?: () => void;
   moreMenuItems?: MoreMenuItem[];
-  tags: TagType[];
+  agentTags: TagType[];
+  agentTagsAsString: string;
   action?: React.ReactNode;
+  isSelected: boolean;
+  canArchive: boolean;
 };
 
-const getTableColumns = (tags: TagType[]) => {
+const getTableColumns = ({
+  owner,
+  tags,
+  isBatchEdit,
+  mutateAgentConfigurations,
+}: {
+  owner: WorkspaceType;
+  tags: TagType[];
+  isBatchEdit: boolean;
+  mutateAgentConfigurations: () => Promise<any>;
+}) => {
   return [
+    ...(isBatchEdit
+      ? [
+          {
+            header: "",
+            accessorKey: "select",
+            cell: (info: CellContext<RowData, boolean>) => (
+              <DataTable.CellContent>
+                <Checkbox
+                  checked={info.row.original.isSelected}
+                  disabled={!info.row.original.canArchive}
+                />
+              </DataTable.CellContent>
+            ),
+            meta: {
+              className: "w-8",
+              tooltip: "Select",
+            },
+          },
+        ]
+      : []),
     {
       header: "Name",
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <div className={classNames("flex flex-row items-center gap-2 py-3")}>
-            <div className="">
+            <div>
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
@@ -76,36 +108,56 @@ const getTableColumns = (tags: TagType[]) => {
         </DataTable.CellContent>
       ),
     },
+    {
+      header: "Access",
+      accessorKey: "scope",
+      cell: (info: CellContext<RowData, AgentConfigurationScope>) => (
+        <DataTable.CellContent>
+          {info.getValue() !== "hidden" && (
+            <Chip
+              size="xs"
+              label={SCOPE_INFO[info.getValue()].shortLabel}
+              color={SCOPE_INFO[info.getValue()].color}
+              icon={SCOPE_INFO[info.getValue()].icon}
+            />
+          )}
+        </DataTable.CellContent>
+      ),
+      meta: {
+        className: "w-32",
+      },
+    },
     ...(tags.length > 0
       ? [
           {
             header: "Tags",
-            accessorKey: "tags",
-            cell: (info: CellContext<RowData, TagType[]>) => (
-              <DataTable.CellContent>
-                <Tooltip
-                  label={
-                    info.getValue().length > 0
-                      ? info
-                          .getValue()
-                          .map((t) => t.name)
-                          .join(", ")
-                      : "-"
-                  }
-                  trigger={
-                    info.getValue().length > 0
-                      ? info
-                          .getValue()
-                          .map((t) => t.name)
-                          .join(", ")
-                      : "-"
-                  }
-                />
+            accessorKey: "agentTagsAsString",
+            cell: (info: CellContext<RowData, string>) => (
+              <DataTable.CellContent
+                grow
+                className="flex flex-row items-center"
+              >
+                <div className="group flex flex-row items-center gap-1">
+                  <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
+                    <Tooltip
+                      tooltipTriggerAsChild
+                      label={info.getValue()}
+                      trigger={<span>{info.getValue()}</span>}
+                    />
+                  </div>
+                  <TableTagSelector
+                    tags={tags}
+                    agentTags={info.row.original.agentTags}
+                    agentConfigurationId={info.row.original.sId}
+                    owner={owner}
+                    onChange={mutateAgentConfigurations}
+                  />
+                </div>
               </DataTable.CellContent>
             ),
             isFilterable: true,
             meta: {
-              className: "w-32",
+              className: "w-32 xl:w-64",
               tooltip: "Tags",
             },
           },
@@ -156,6 +208,7 @@ const getTableColumns = (tags: TagType[]) => {
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
+          tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
               ? formatTimestampToFriendlyDate(info.getValue(), "short")
@@ -187,114 +240,34 @@ const getTableColumns = (tags: TagType[]) => {
   ];
 };
 
-type GlobalAgentActionProps = {
-  agent: LightAgentConfigurationType;
-  owner: WorkspaceType;
-  handleToggleAgentStatus: (
-    agent: LightAgentConfigurationType
-  ) => Promise<void>;
-  showDisabledFreeWorkspacePopup: string | null;
-  setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
-};
-
-function GlobalAgentAction({
-  agent,
-  owner,
-  handleToggleAgentStatus,
-  showDisabledFreeWorkspacePopup,
-  setShowDisabledFreeWorkspacePopup,
-}: GlobalAgentActionProps) {
-  const router = useRouter();
-  if (agent.sId === "helper") {
-    return null;
-  }
-
-  if (agent.sId === "dust") {
-    return (
-      <Button
-        variant="outline"
-        icon={Cog6ToothIcon}
-        size="xs"
-        disabled={!isBuilder(owner)}
-        onClick={(e: Event) => {
-          e.stopPropagation();
-          void router.push(`/w/${owner.sId}/builder/assistants/dust`);
-        }}
-      />
-    );
-  }
-
-  return (
-    <>
-      <SliderToggle
-        size="xs"
-        onClick={async (e) => {
-          e.stopPropagation();
-          await handleToggleAgentStatus(agent);
-        }}
-        selected={agent.status === "active"}
-        disabled={
-          !isBuilder(owner) || agent.status === "disabled_missing_datasource"
-        }
-      />
-      <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
-        <Dialog
-          open={showDisabledFreeWorkspacePopup === agent.sId}
-          onOpenChange={(open) => {
-            if (!open) {
-              setShowDisabledFreeWorkspacePopup(null);
-            }
-          }}
-        >
-          <DialogContent size="md">
-            <DialogHeader hideButton={false}>
-              <DialogTitle>Free plan</DialogTitle>
-            </DialogHeader>
-            <DialogContainer>
-              {`@${agent.name} is only available on our paid plans.`}
-            </DialogContainer>
-            <DialogFooter
-              leftButtonProps={{
-                label: "Cancel",
-                variant: "outline",
-                onClick: () => setShowDisabledFreeWorkspacePopup(null),
-              }}
-              rightButtonProps={{
-                label: "Check Dust plans",
-                variant: "primary",
-                onClick: () => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                },
-              }}
-            />
-          </DialogContent>
-        </Dialog>
-      </div>
-    </>
-  );
-}
-
-type AgentsTableProps = {
+type AssistantsTableProps = {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
-  tags: TagType[];
   setShowDetails: (agent: LightAgentConfigurationType) => void;
   handleToggleAgentStatus: (
     agent: LightAgentConfigurationType
   ) => Promise<void>;
   showDisabledFreeWorkspacePopup: string | null;
   setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
+  isBatchEdit: boolean;
+  selection: string[];
+  setSelection: (selection: string[]) => void;
+  mutateAgentConfigurations: () => Promise<any>;
 };
 
 export function AssistantsTable({
   owner,
   agents,
-  tags,
   setShowDetails,
   handleToggleAgentStatus,
   showDisabledFreeWorkspacePopup,
   setShowDisabledFreeWorkspacePopup,
-}: AgentsTableProps) {
+  isBatchEdit,
+  selection,
+  setSelection,
+  mutateAgentConfigurations,
+}: AssistantsTableProps) {
+  const { tags } = useTags({ owner });
   const [showDeleteDialog, setShowDeleteDialog] = useState<{
     open: boolean;
     agentConfiguration: LightAgentConfigurationType | undefined;
@@ -306,7 +279,12 @@ export function AssistantsTable({
   const rows: RowData[] = useMemo(
     () =>
       agents.map((agentConfiguration) => {
+        const canArchive =
+          (agentConfiguration.canEdit || isAdmin(owner)) &&
+          agentConfiguration.status !== "archived" &&
+          agentConfiguration.scope !== "global";
         return {
+          sId: agentConfiguration.sId,
           name: agentConfiguration.name,
           usage: agentConfiguration.usage ?? {
             messageCount: 0,
@@ -318,8 +296,15 @@ export function AssistantsTable({
           pictureUrl: agentConfiguration.pictureUrl,
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
+          editors: agentConfiguration.editors,
           scope: agentConfiguration.scope,
-          tags: agentConfiguration.tags,
+          agentTags: agentConfiguration.tags,
+          agentTagsAsString:
+            agentConfiguration.tags.length > 0
+              ? agentConfiguration.tags.map((t) => t.name).join(", ")
+              : "",
+          isSelected: selection.includes(agentConfiguration.sId),
+          canArchive,
           action:
             agentConfiguration.scope === "global" ? (
               <GlobalAgentAction
@@ -333,7 +318,17 @@ export function AssistantsTable({
               />
             ) : undefined,
           onClick: () => {
-            setShowDetails(agentConfiguration);
+            if (isBatchEdit) {
+              if (canArchive) {
+                setSelection(
+                  selection.includes(agentConfiguration.sId)
+                    ? selection.filter((s) => s !== agentConfiguration.sId)
+                    : [...selection, agentConfiguration.sId]
+                );
+              }
+            } else {
+              setShowDetails(agentConfiguration);
+            }
           },
           moreMenuItems:
             agentConfiguration.scope !== "global" &&
@@ -363,7 +358,7 @@ export function AssistantsTable({
                     label: "Copy agent ID",
                     "data-gtm-label": "assistantCopyButton",
                     "data-gtm-location": "assistantDetails",
-                    icon: ClipboardIcon,
+                    icon: BracesIcon,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void navigator.clipboard.writeText(
@@ -386,7 +381,7 @@ export function AssistantsTable({
                     kind: "item" as const,
                   },
                   {
-                    label: "Delete",
+                    label: "Archive",
                     "data-gtm-label": "assistantDeletionButton",
                     "data-gtm-location": "assistantDetails",
                     icon: TrashIcon,
@@ -410,6 +405,9 @@ export function AssistantsTable({
       setShowDetails,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
+      selection,
+      setSelection,
+      isBatchEdit,
     ]
   );
 
@@ -434,7 +432,12 @@ export function AssistantsTable({
           <DataTable
             className="relative"
             data={rows}
-            columns={getTableColumns(tags)}
+            columns={getTableColumns({
+              owner,
+              tags,
+              isBatchEdit,
+              mutateAgentConfigurations,
+            })}
           />
         )}
       </div>

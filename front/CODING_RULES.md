@@ -51,21 +51,22 @@ function addItem(items: string[], newItem: string) {
 }
 ```
 
-### [GEN6] Comments must be sentences wrapped at 100 characters
+### [GEN6] Comments must be sentences and properly wrapped
 
 Comments must be full sentences (starting with a capital letter and ending with a period) and must
-be wrapped at 100 characters. Wrapping at a lower characer count should be avoided.
+be wrapped at ~100 characters. Wrapping at clearly higher or lower characer count should be avoided.
+A bit of flexibility is allowed, in particular for long URLs or other long non wrappable strings.
 
 Example:
 
 ```
 // BAD
-// this is a comment that is neither a full sentence nor wrapped at 100 characers / it should be wrapped because otherwise it's really hard to read
+// this is a comment that is neither a full sentence nor wrapped at 100 characters (clearly higher) / it should be wrapped because otherwise it's really hard to read
 
 // BAD
 // This comment is a valid sentence but it
-// is wrapped at a lower character count than
-// 100. It should be wrapped at 100 characters.
+// is wrapped at a much lower character count than
+// 100. It should be wrapped at ~100 characters.
 
 // GOOD
 // This is a comment that is a full sentence and is wrapped at 100 characters. It is easy to read
@@ -78,6 +79,22 @@ Example:
 
 No sensitive data should be sent to our servers through URL or query string parameters. HTTP body or
 headers only are acceptable for sensitive data.
+
+### [SEC2] No ModelId exposure in URLs or API endpoints
+
+Never expose or accept ModelId in URLs, API endpoints or POST/PATCH payloads. Use string identifiers
+(sId) instead. This applies to all routes, including GET, POST, PATCH, and DELETE methods. ModelIds
+should be strictly internal and never exposed to the client.
+
+Example:
+
+```
+// BAD
+/api/w/[wId]/resource/[modelId]
+
+// GOOD
+/api/w/[wId]/resource/[sId]
+```
 
 ## ERROR
 
@@ -247,9 +264,11 @@ export function Component({ name }: MyComponentProps) { }
 
 Data fetching should rely on useSWR hooks and be abstracted in a `lib/swr/*` file.
 
-When using a disabled param and returning a loading flag, ensure `loading` is `false` if `disabled` is `true`.
+When using a disabled param and returning a loading flag, ensure `loading` is `false` if `disabled`
+is `true`.
 
-When a hook is expected to return an array of objects, return an empty array (from `emptyArray()`) while loading/error/disabled instead of `undefined`.
+When a hook is expected to return an array of objects, return an empty array (from `emptyArray()`)
+while loading/error/disabled instead of `undefined`.
 
 Example:
 
@@ -267,7 +286,8 @@ export function useFolders({ owner, spaceId } : { owner: LightWorkspaceType, spa
 }
 ```
 
-Data posting should be done in hooks colocated with the SWR hooks. Do not fetch directly in componenets.
+Data posting should be done in hooks colocated with the SWR hooks. Do not fetch directly in
+components. Success and failure notifications should be sent from the hook.
 
 ```
 export function useCreateFolder({

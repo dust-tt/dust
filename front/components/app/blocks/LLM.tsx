@@ -7,6 +7,7 @@ import { useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import ModelPicker from "@app/components/app/ModelPicker";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 import type {
@@ -152,7 +153,7 @@ export default function LLM({
 
   const [newStop, setNewStop] = useState("");
 
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
 
   return (
     <Block
@@ -438,7 +439,7 @@ export default function LLM({
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.prompt}
                 language="jinja2"

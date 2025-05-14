@@ -325,6 +325,9 @@ export type SupportedNonImageContentType = {
 // All the ones listed above
 export const supportedUploadableContentType = Object.keys(FILE_FORMATS);
 
+export const DEFAULT_FILE_CONTENT_TYPE: SupportedFileContentType =
+  "application/octet-stream";
+
 export function isSupportedFileContentType(
   contentType: string
 ): contentType is SupportedFileContentType {

@@ -768,6 +768,13 @@ async function answerMessage(
     conversation = convRes.value.conversation;
     userMessage = convRes.value.message;
 
+    if (!userMessage) {
+      return buildSlackMessageError(
+        new Err(new Error("Failed to retrieve the created message.")),
+        "createConversation"
+      );
+    }
+
     slackChatBotMessage.conversationId = conversation.sId;
     await slackChatBotMessage.save();
   }

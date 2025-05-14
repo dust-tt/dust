@@ -5,11 +5,11 @@ import { AdditionalConfigurationSection } from "@app/components/assistant_builde
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
+import { DustAppConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DustAppConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { MCPServerSelector } from "@app/components/assistant_builder/MCPServerSelector";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
@@ -18,7 +18,7 @@ import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_action
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
-import { asDisplayName, assertNever, slugify } from "@app/types";
+import { asDisplayName, assertNever } from "@app/types";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -80,7 +80,6 @@ export function MCPAction({
   owner,
   allowedSpaces,
   action,
-  isEditing,
   updateAction,
   setEdited,
 }: MCPActionProps) {
@@ -91,13 +90,13 @@ export function MCPAction({
 
   const noMCPServerView = mcpServerViews.length === 0;
 
-  const [selectedMCPServerView, setSelectedMCPServerView] =
-    useState<MCPServerViewType | null>(
-      mcpServerViews.find(
-        (mcpServerView) =>
-          mcpServerView.id === actionConfiguration.mcpServerViewId
-      ) ?? null
-    );
+  const selectedMCPServerView = mcpServerViews.find(
+    (mcpServerView) => mcpServerView.sId === actionConfiguration.mcpServerViewId
+  );
+
+  // If there is only one tool, instead of showing the MCPToolsList, we show it
+  // as description.
+  const hasOnlyOneTool = selectedMCPServerView?.server.tools.length === 1;
 
   // MCPServerView on default MCP server will not allow switching to another one.
   const selectedServerAvailability: MCPServerAvailability | null = useMemo(
@@ -107,36 +106,6 @@ export function MCPAction({
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showTablesModal, setShowTablesModal] = useState(false);
-
-  const handleServerSelection = useCallback(
-    (serverView: MCPServerViewType) => {
-      setEdited(true);
-      setSelectedMCPServerView(serverView);
-
-      const requirements = getMCPServerRequirements(serverView);
-      updateAction({
-        actionName: slugify(serverView.server.name),
-        actionDescription:
-          requirements.requiresDataSourceConfiguration ||
-          requirements.requiresTableConfiguration
-            ? ""
-            : serverView.server.description,
-        getNewActionConfig: () => ({
-          mcpServerViewId: serverView.id,
-          dataSourceConfigurations: null,
-          tablesConfigurations: null,
-          childAgentId: null,
-          reasoningModel: null,
-          timeFrame: null,
-          // We initialize boolean with false because leaving them unset means false (toggle on the left).
-          additionalConfiguration: Object.fromEntries(
-            requirements.requiredBooleans.map((key) => [key, false])
-          ),
-        }),
-      });
-    },
-    [setEdited, updateAction]
-  );
 
   const handleConfigUpdate = useCallback(
     (
@@ -200,42 +169,29 @@ export function MCPAction({
           viewType="table"
         />
       )}
-      {/* Server selection */}
-      {(selectedServerAvailability === null ||
-        selectedServerAvailability === "manual") &&
-        (isEditing ? (
-          <div className="text-sm text-foreground dark:text-foreground-night">
-            <div>{selectedMCPServerView?.server.description}</div>
-            <br />
-            {selectedServerAvailability === "manual" && (
-              <div>
-                Available to you via{" "}
-                <b>
-                  {
-                    allowedSpaces.find(
-                      (space) => space.sId === selectedMCPServerView?.spaceId
-                    )?.name
-                  }
-                </b>{" "}
-                space.
-              </div>
-            )}
 
-            {selectedMCPServerView && (
-              <MCPToolsList tools={selectedMCPServerView.server.tools} />
-            )}
+      <div className="text-sm text-foreground dark:text-foreground-night">
+        <div>
+          {hasOnlyOneTool
+            ? selectedMCPServerView?.server.tools[0].description
+            : selectedMCPServerView?.server.description}
+        </div>
+        <br />
+        {selectedServerAvailability === "manual" && (
+          <div>
+            Available to you via{" "}
+            <b>
+              {
+                allowedSpaces.find(
+                  (space) => space.sId === selectedMCPServerView?.spaceId
+                )?.name
+              }
+            </b>{" "}
+            space.
           </div>
-        ) : (
-          <>
-            <MCPServerSelector
-              owner={owner}
-              allowedSpaces={allowedSpaces}
-              mcpServerViews={mcpServerViews}
-              selectedMCPServerView={selectedMCPServerView}
-              handleServerSelection={handleServerSelection}
-            />
-          </>
-        ))}
+        )}
+      </div>
+
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
@@ -281,6 +237,19 @@ export function MCPAction({
           owner={owner}
         />
       )}
+      {requirements.requiredDustAppConfiguration && (
+        <DustAppConfigurationSection
+          owner={owner}
+          allowedSpaces={allowedSpaces}
+          selectedConfig={actionConfiguration.dustAppConfiguration}
+          onConfigSelect={(dustAppConfig) => {
+            handleConfigUpdate((old) => ({
+              ...old,
+              dustAppConfiguration: dustAppConfig,
+            }));
+          }}
+        />
+      )}
       {requirements.mayRequiresTimeFrameConfiguration && (
         <TimeFrameConfigurationSection
           onConfigUpdate={(timeFrame: TimeFrame | null) => {
@@ -302,6 +271,9 @@ export function MCPAction({
           }));
         }}
       />
+      {selectedMCPServerView && !hasOnlyOneTool && (
+        <MCPToolsList tools={selectedMCPServerView.server.tools} />
+      )}
     </>
   );
 }
@@ -313,7 +285,7 @@ export function hasErrorActionMCP(
   if (action.type === "MCP") {
     const mcpServerView = mcpServerViews.find(
       (mcpServerView) =>
-        mcpServerView.id === action.configuration.mcpServerViewId
+        mcpServerView.sId === action.configuration.mcpServerViewId
     );
     if (!mcpServerView) {
       return "Please select a tool.";

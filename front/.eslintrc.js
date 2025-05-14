@@ -57,6 +57,8 @@ module.exports = {
     "simple-import-sort/exports": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
     "dust/no-raw-sql": "error",
+    "dust/no-unverified-workspace-bypass": "error",
+    "dust/too-long-index-name": "error",
   },
   overrides: [
     {

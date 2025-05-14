@@ -29,8 +29,8 @@ import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/acti
 import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
-  RetrievalDocument,
-  RetrievalDocumentChunk,
+  RetrievalDocumentChunkModel,
+  RetrievalDocumentModel,
 } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import {
@@ -73,7 +73,7 @@ import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { TagModel } from "@app/lib/models/tags";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import {
   AppModel,
   Clone,
@@ -118,7 +118,7 @@ async function main() {
   await UserModel.sync({ alter: true });
   await UserMetadataModel.sync({ alter: true });
   await Workspace.sync({ alter: true });
-  await WorkspaceHasDomain.sync({ alter: true });
+  await WorkspaceHasDomainModel.sync({ alter: true });
   await MembershipModel.sync({ alter: true });
   await MembershipInvitation.sync({ alter: true });
   await GroupModel.sync({ alter: true });
@@ -198,8 +198,8 @@ async function main() {
   await AgentMCPAction.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
   await AgentChildAgentConfiguration.sync({ alter: true });
-  await RetrievalDocument.sync({ alter: true });
-  await RetrievalDocumentChunk.sync({ alter: true });
+  await RetrievalDocumentModel.sync({ alter: true });
+  await RetrievalDocumentChunkModel.sync({ alter: true });
 
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });

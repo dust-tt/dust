@@ -2,7 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { registerMCPServer } from "@app/lib/api/actions/mcp/local_registry";
+import { registerMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -11,6 +11,7 @@ import { isValidUUIDv4 } from "@app/types";
 
 const PostMCPRegisterRequestBodyCodec = t.type({
   serverId: t.string,
+  serverName: t.string,
 });
 
 type RegisterMCPResponseType = {
@@ -34,7 +35,6 @@ async function handler(
   }
 
   const bodyValidation = PostMCPRegisterRequestBodyCodec.decode(req.body);
-
   if (isLeft(bodyValidation) || !isValidUUIDv4(bodyValidation.right.serverId)) {
     return apiError(req, res, {
       status_code: 400,
@@ -45,13 +45,13 @@ async function handler(
     });
   }
 
-  const { serverId } = bodyValidation.right;
+  const { serverId, serverName } = bodyValidation.right;
 
   // Register the server.
-  const registration = await registerMCPServer({
-    auth,
-    workspaceId: auth.getNonNullableWorkspace().sId,
+  const registration = await registerMCPServer(auth, {
     serverId,
+    serverName,
+    workspaceId: auth.getNonNullableWorkspace().sId,
   });
 
   res.status(200).json(registration);

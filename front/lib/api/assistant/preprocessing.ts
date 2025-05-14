@@ -33,7 +33,7 @@ import {
  */
 
 export async function renderConversationForModel(
-  _auth: Authenticator,
+  auth: Authenticator,
   {
     conversation,
     model,
@@ -202,7 +202,7 @@ export async function renderConversationForModel(
       });
     } else if (isContentFragmentType(m)) {
       messages.push(
-        await renderLightContentFragmentForModel(m, conversation, model, {
+        await renderLightContentFragmentForModel(auth, m, conversation, model, {
           excludeImages: Boolean(excludeImages),
         })
       );

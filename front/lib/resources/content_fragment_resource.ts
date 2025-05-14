@@ -155,8 +155,12 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
   }
 
-  static async fromMessageId(id: ModelId) {
-    const message = await Message.findByPk(id, {
+  static async fromMessageId(auth: Authenticator, id: ModelId) {
+    const message = await Message.findOne({
+      where: {
+        id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       include: [{ model: ContentFragmentModel, as: "contentFragment" }],
     });
     if (!message) {
@@ -264,7 +268,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     let generatedTables: string[] = [];
 
     if (this.fileId) {
-      const file = await FileResource.fetchByModelId(this.fileId);
+      const file = await FileResource.fetchByModelIdWithAuth(auth, this.fileId);
       if (file) {
         fileStringId = file.sId;
         snippet = file.snippet;
@@ -596,6 +600,7 @@ export async function renderFromAttachmentId(
 // Render only a tag to specifiy that a content fragment was injected at a given position except for
 // images when the model support them.
 export async function renderLightContentFragmentForModel(
+  auth: Authenticator,
   message: ContentFragmentType,
   conversation: ConversationType,
   model: ModelConfigurationType,
@@ -608,6 +613,7 @@ export async function renderLightContentFragmentForModel(
   const { contentType, sId, title, contentFragmentVersion } = message;
 
   const contentFragment = await ContentFragmentResource.fromMessageId(
+    auth,
     message.id
   );
   if (!contentFragment) {

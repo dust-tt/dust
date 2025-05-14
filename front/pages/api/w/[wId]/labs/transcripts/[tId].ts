@@ -134,6 +134,20 @@ async function handler(
           ? await DataSourceViewResource.fetchById(auth, dataSourceViewId)
           : null;
 
+        if (dataSourceView) {
+          const canWrite = dataSourceView.canWrite(auth);
+          if (!canWrite) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "data_source_auth_error",
+                message:
+                  "The user does not have permission to write to the datasource view.",
+              },
+            });
+          }
+        }
+
         await transcriptsConfiguration.setDataSourceView(dataSourceView);
 
         if (

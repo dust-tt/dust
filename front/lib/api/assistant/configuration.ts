@@ -31,7 +31,7 @@ import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
-import { isPlatformMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   getGlobalAgents,
@@ -521,18 +521,21 @@ async function fetchWorkspaceAgentConfigurationsForView(
     favoriteStatePerAgent,
     tagsPerAgent,
   ] = await Promise.all([
-    fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
-    fetchAgentProcessActionConfigurations({ configurationIds, variant }),
+    fetchAgentRetrievalActionConfigurations(auth, {
+      configurationIds,
+      variant,
+    }),
+    fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
-    fetchTableQueryActionConfigurations({ configurationIds, variant }),
-    fetchWebsearchActionConfigurations({ configurationIds, variant }),
-    fetchBrowseActionConfigurations({ configurationIds, variant }),
-    fetchReasoningActionConfigurations({ configurationIds, variant }),
+    fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
+    fetchWebsearchActionConfigurations(auth, { configurationIds, variant }),
+    fetchBrowseActionConfigurations(auth, { configurationIds, variant }),
+    fetchReasoningActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
-    user && variant !== "extra_light"
+    variant !== "extra_light"
       ? TagResource.listForAgents(auth, configurationIds)
       : Promise.resolve([]),
   ]);
@@ -1310,7 +1313,7 @@ export async function createAgentActionConfiguration(
       });
     }
     case "mcp_server_configuration": {
-      assert(isPlatformMCPServerConfiguration(action));
+      assert(isServerSideMCPServerConfiguration(action));
 
       return frontSequelize.transaction(async (t) => {
         const mcpServerView = await MCPServerViewResource.fetchById(
@@ -1339,6 +1342,7 @@ export async function createAgentActionConfiguration(
               serverDescription !== action.description
                 ? action.description
                 : null,
+            appId: action.dustAppConfiguration?.appId ?? null,
           },
           { transaction: t }
         );
@@ -1390,6 +1394,7 @@ export async function createAgentActionConfiguration(
           reasoningModel: action.reasoningModel,
           timeFrame: action.timeFrame,
           additionalConfiguration: action.additionalConfiguration,
+          dustAppConfiguration: action.dustAppConfiguration,
         });
       });
     }

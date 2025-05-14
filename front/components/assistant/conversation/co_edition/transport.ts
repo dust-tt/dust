@@ -41,7 +41,8 @@ export class CoEditionTransport implements Transport {
 
   constructor(
     private readonly owner: LightWorkspaceType,
-    private readonly serverId: string = CoEditionTransport.generateUUID()
+    private readonly serverId: string = CoEditionTransport.generateUUID(),
+    private readonly serverName: string = "Co-Edition"
   ) {}
 
   /**
@@ -70,6 +71,7 @@ export class CoEditionTransport implements Transport {
       },
       body: JSON.stringify({
         serverId: this.serverId,
+        serverName: this.serverName,
       }),
     });
 

@@ -114,7 +114,7 @@ export function ConversationContainer({
       input,
       mentions,
       contentFragments,
-      localMCPServerIds: removeNulls([serverId]),
+      clientSideMCPServerIds: removeNulls([serverId]),
     };
 
     try {
@@ -215,7 +215,7 @@ export function ConversationContainer({
           input,
           mentions,
           contentFragments,
-          localMCPServerIds: removeNulls([serverId]),
+          clientSideMCPServerIds: removeNulls([serverId]),
         },
       });
 

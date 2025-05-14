@@ -1,4 +1,4 @@
-const WORKFLOW_VERSION = 46;
+const WORKFLOW_VERSION = 47;
 export const QUEUE_NAME = `notion-queue-v${WORKFLOW_VERSION}`;
 export const GARBAGE_COLLECT_QUEUE_NAME = `notion-gc-queue-v${WORKFLOW_VERSION}`;
 

@@ -112,7 +112,8 @@ async function handler(
         });
       }
 
-      const { content, context, mentions, blocking } = r.data;
+      const { content, context, mentions, blocking, skipToolsValidation } =
+        r.data;
 
       if (isEmptyString(context.username)) {
         return apiError(req, res, {
@@ -149,8 +150,9 @@ async function handler(
             email: context.email ?? null,
             profilePictureUrl: context.profilePictureUrl ?? null,
             origin: context.origin ?? "api",
-            localMCPServerIds: context.localMCPServerIds ?? [],
+            clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
           },
+          skipToolsValidation: skipToolsValidation ?? false,
         },
         { resolveAfterFullGeneration: blocking === true }
       );

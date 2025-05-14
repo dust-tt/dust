@@ -300,11 +300,11 @@ export function PricePlans({
       >
         <Tabs defaultValue="pro">
           <TabsList>
-            <TabsTrigger value="pro" label="Pro" buttonVariant="outline" />
+            <TabsTrigger value="pro" label="Pro" variant="outline" />
             <TabsTrigger
               value="enterprise"
               label="Enterprise"
-              buttonVariant="outline"
+              variant="outline"
             />
           </TabsList>
           <div className="mt-8">
