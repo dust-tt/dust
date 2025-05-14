@@ -197,6 +197,15 @@ function spreadLength(a: string, b: string) {
 }
 
 /**
+ * Gets a string to use when filtering agents by name, description, and last authors.
+ */
+export const getAgentSearchString = (
+  assistant: LightAgentConfigurationType
+) => {
+  return `${assistant.name} ${assistant.description} ${assistant?.lastAuthors?.join(", ")}`.toLowerCase();
+};
+
+/**
  * Returns true if a is a subfilter of b, i.e. all characters in a are present
  * in b in the same order.
  */

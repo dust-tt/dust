@@ -33,7 +33,11 @@ import React, { useCallback, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import {
+  compareForFuzzySort,
+  getAgentSearchString,
+  subFilter,
+} from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -174,20 +178,21 @@ export function AssistantBrowser({
       return { filteredAgents: [], filteredTags: [], uniqueTags };
     }
     const search = assistantSearch.toLowerCase().trim().replace(/^@/, "");
+
     const filteredAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter(
         (a) =>
           a.status === "active" &&
           // Filters on search query
-          subFilter(search, a.name.toLowerCase())
+          subFilter(search, getAgentSearchString(a))
       )
 
       .sort((a, b) => {
         return (
           compareForFuzzySort(
             assistantSearch,
-            a.name.toLowerCase(),
-            b.name.toLowerCase()
+            getAgentSearchString(a),
+            getAgentSearchString(b)
           ) || (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
         );
       });
