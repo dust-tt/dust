@@ -42,7 +42,6 @@ async function migrateWorkspaceTablesQueryActions({
   // Find all existing tables query configurations that are linked to an active agent configuration
   // First, get all the unique tablesQueryConfigurationIds that need migration
   const tableConfigurations = await AgentTablesQueryConfigurationTable.findAll({
-    attributes: ["tablesQueryConfigurationId"],
     where: {
       workspaceId: workspace.id,
       tablesQueryConfigurationId: { [Op.not]: null },
