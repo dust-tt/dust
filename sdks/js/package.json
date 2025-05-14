@@ -41,7 +41,6 @@
   },
   "dependencies": {
     "@types/json-schema": "^7.0.15",
-    "axios": "^1.7.9",
     "eventsource-parser": "^1.1.1",
     "moment-timezone": "^0.5.46",
     "zod": "^3.23.8"
