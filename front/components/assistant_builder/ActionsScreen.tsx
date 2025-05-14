@@ -168,7 +168,7 @@ function actionIcon(
 ) {
   if (action.type === "MCP") {
     const server = mcpServerViews.find(
-      (v) => v.id === action.configuration.mcpServerViewId
+      (v) => v.sId === action.configuration.mcpServerViewId
     )?.server;
 
     if (server) {
@@ -997,7 +997,7 @@ function ActionEditor({
       case "MCP":
         const selectedMCPServerView = mcpServerViews.find((mcpServerView) =>
           action.type === "MCP"
-            ? mcpServerView.id === action.configuration.mcpServerViewId
+            ? mcpServerView.sId === action.configuration.mcpServerViewId
             : false
         );
 

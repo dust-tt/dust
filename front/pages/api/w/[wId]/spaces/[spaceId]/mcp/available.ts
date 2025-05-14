@@ -41,12 +41,12 @@ async function handler(
 
       const globalServersId = workspaceServerViews
         .filter((s) => s.space.kind === "global")
-        .map((s) => s.toJSON().server.id);
+        .map((s) => s.toJSON().server.sId);
 
       const spaceServerViews = workspaceServerViews.filter(
         (s) => s.space.id === space.id
       );
-      const spaceServersId = spaceServerViews.map((s) => s.toJSON().server.id);
+      const spaceServersId = spaceServerViews.map((s) => s.toJSON().server.sId);
 
       const availableServer: MCPServerType[] = [];
 

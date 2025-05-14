@@ -438,7 +438,7 @@ export function getDefaultMCPServerActionConfiguration(
   return {
     type: "MCP",
     configuration: {
-      mcpServerViewId: mcpServerView?.id ?? "not-a-valid-sId",
+      mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
       dataSourceConfigurations: null,
       tablesConfigurations: null,
       childAgentId: null,
