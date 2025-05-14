@@ -125,10 +125,10 @@ async function prepareAppContext(
 }
 
 async function processDustFileOutput(
+  auth: Authenticator,
   sanitizedOutput: DustFileOutput,
   conversation: any,
-  appName: string,
-  auth: Authenticator
+  appName: string
 ): Promise<MCPToolResultContentType[]> {
   const content: MCPToolResultContentType[] = [];
 
@@ -415,10 +415,10 @@ export default async function createServer(
           agentLoopContext.agentLoopRunContext?.conversation
         ) {
           const fileContent = await processDustFileOutput(
+            auth,
             sanitizedOutput,
             agentLoopContext.agentLoopRunContext.conversation,
-            app.name,
-            auth
+            app.name
           );
           content.push(...fileContent);
         }
