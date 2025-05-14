@@ -19,7 +19,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<FetchConversationMessageResponse>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!(typeof req.query.cId === "string")) {
+  if (typeof req.query.cId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
