@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
   HistoryIcon,
 } from "@dust-tt/sparkle";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import React from "react";
 
 import { GaugeDiff } from "@app/components/assistant_builder/instructions/GaugeDiff";
@@ -45,6 +45,29 @@ export function InstructionHistory({
     []
   );
 
+  // Deduplicate history items with the same instructions in a single pass
+  // If the selectedConfig is part of a run with identical instructions,
+  // use it as the representative for that run
+  const displayHistory = useMemo(() => {
+    return history.reduce<LightAgentConfigurationType[]>(
+      (acc, config, index, array) => {
+        const currentInstructions = config.instructions ?? "";
+        const prevInstructions =
+          index > 0 ? array[index - 1].instructions ?? "" : null;
+        const isNewRun =
+          index === 0 || currentInstructions !== prevInstructions;
+
+        if (isNewRun) {
+          acc.push(config);
+        } else if (config.version === selectedConfig?.version) {
+          acc[acc.length - 1] = config;
+        }
+        return acc;
+      },
+      []
+    );
+  }, [history, selectedConfig]);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -72,7 +95,7 @@ export function InstructionHistory({
             }
           }}
         >
-          {history.map((config) => (
+          {displayHistory.map((config) => (
             <DropdownMenuRadioItem
               key={config.version}
               value={config.version.toString()}
