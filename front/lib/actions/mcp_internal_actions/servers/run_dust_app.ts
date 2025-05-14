@@ -16,7 +16,7 @@ import type {
 } from "@app/lib/actions/mcp";
 import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import type { AgentLoopListToolsContextType } from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isMCPConfigurationForDustAppRun } from "@app/lib/actions/types/guards";
 import { isMCPInternalDustAppRun } from "@app/lib/actions/types/guards";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
@@ -271,11 +271,12 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 export default async function createServer(
   auth: Authenticator,
-  agentLoopRunContext?: AgentLoopRunContextType,
-  agentLoopListToolsContext?: AgentLoopListToolsContextType
+  agentLoopContext: AgentLoopContextType
 ): Promise<McpServer> {
   const server = new McpServer(serverInfo);
   const owner = auth.getNonNullableWorkspace();
+
+  const { agentLoopRunContext, agentLoopListToolsContext } = agentLoopContext;
 
   if (agentLoopListToolsContext) {
     if (

@@ -156,3 +156,14 @@ export type AgentLoopListToolsContextType = {
   conversation: ConversationType;
   agentMessage: AgentMessageType;
 };
+
+export type AgentLoopContextType =
+  | {
+      agentLoopRunContext: AgentLoopRunContextType;
+      agentLoopListToolsContext?: never;
+    }
+  | {
+      agentLoopRunContext?: never;
+      agentLoopListToolsContext: AgentLoopListToolsContextType;
+    }
+  | { agentLoopRunContext?: never; agentLoopListToolsContext?: never };
