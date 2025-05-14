@@ -44,15 +44,13 @@ TabsList.displayName = TabsPrimitive.List.displayName;
 
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> & {
-    label?: string;
-    tooltip?: string;
-    icon?: React.ComponentType;
-    isLoading?: boolean;
-    buttonVariant?: React.ComponentProps<typeof Button>["variant"];
-    isCounter?: boolean;
-    counterValue?: string;
-  } & Omit<LinkWrapperProps, "children" | "className">
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> &
+    Pick<
+      React.ComponentProps<typeof Button>,
+      "label" | "tooltip" | "icon" | "isCounter" | "counterValue" | "variant"
+    > & {
+      isLoading?: boolean;
+    } & Omit<LinkWrapperProps, "children" | "className">
 >(
   (
     {
@@ -66,7 +64,7 @@ const TabsTrigger = React.forwardRef<
       replace,
       shallow,
       disabled,
-      buttonVariant = "ghost",
+      variant = "ghost",
       isCounter = false,
       counterValue,
       ...props
@@ -82,7 +80,7 @@ const TabsTrigger = React.forwardRef<
         {...props}
       >
         <Button
-          variant={buttonVariant}
+          variant={variant}
           size="sm"
           label={label}
           tooltip={tooltip}
