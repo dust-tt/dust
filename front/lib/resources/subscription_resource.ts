@@ -1,10 +1,5 @@
 import _ from "lodash";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
@@ -53,6 +48,8 @@ import type {
 } from "@app/types";
 import { Ok, sendUserOperationMessage } from "@app/types";
 
+import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
+
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 
@@ -64,11 +61,11 @@ export interface SubscriptionResource
   extends ReadonlyAttributesType<Subscription> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SubscriptionResource extends BaseResource<Subscription> {
-  static model: ModelStatic<Subscription> = Subscription;
+  static model: ModelStaticWorkspaceAware<Subscription> = Subscription;
   private readonly plan: PlanType;
 
   constructor(
-    model: ModelStatic<Subscription>,
+    model: ModelStaticWorkspaceAware<Subscription>,
     blob: Attributes<Subscription>,
     plan: PlanType
   ) {
@@ -94,7 +91,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const workspaceModelBySid = _.keyBy(workspaces, "sId");
 
     const activeSubscriptionByWorkspaceId = _.keyBy(
-      await Subscription.findAll({
+      await this.model.findAll({
         attributes: [
           "endDate",
           "id",
@@ -110,6 +107,8 @@ export class SubscriptionResource extends BaseResource<Subscription> {
           workspaceId: Object.values(workspaceModelBySid).map((w) => w.id),
           status: "active",
         },
+        // WORKSPACE_ISOLATION_BYPASS: workspaceId is filtered just above, but the check is refusing more than 1 elements in the array. It's ok here to have more than 1 element.
+        dangerouslyBypassWorkspaceIsolationSecurity: true,
         include: [
           {
             model: Plan,
