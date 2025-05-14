@@ -124,10 +124,18 @@ async function migrateWorkspaceTablesQueryActions({
           appId: null,
         });
 
-        revertSql += `DELETE FROM "agent_mcp_server_configurations" WHERE "id" = '${mcpConfig.id}';\n`;
+        // Reverse: create the tables query configuration.
+        revertSql +=
+          `INSERT INTO "agent_tables_query_configurations" ` +
+          `("id", "agentConfigurationId", "workspaceId", "name", "description", "createdAt", "updatedAt") ` +
+          `VALUES ('${tablesQueryConfig.id}', '${tablesQueryConfig.agentConfigurationId}', ` +
+          `'${tablesQueryConfig.workspaceId}', '${tablesQueryConfig.name}', '${tablesQueryConfig.description}', ` +
+          `'${format(tablesQueryConfig.createdAt, "yyyy-MM-dd")}', ` +
+          `'${format(tablesQueryConfig.updatedAt, "yyyy-MM-dd")}');\n`;
 
         // Update the tables query configuration tables to link to the new MCP server configuration.
         for (const table of tables) {
+          // Reverse: link to the tables query configuration instead of the MCP server configuration.
           revertSql +=
             `UPDATE "agent_tables_query_configuration_tables" ` +
             `SET "tablesQueryConfigurationId" = '${tablesQueryConfig.id}', "mcpServerConfigurationId" = NULL ` +
@@ -140,15 +148,10 @@ async function migrateWorkspaceTablesQueryActions({
         }
 
         // Delete the tables query configuration.
-        revertSql +=
-          `INSERT INTO "agent_tables_query_configurations" ` +
-          `("id", "agentConfigurationId", "workspaceId", "name", "description", "createdAt", "updatedAt") ` +
-          `VALUES ('${tablesQueryConfig.id}', '${tablesQueryConfig.agentConfigurationId}', ` +
-          `'${tablesQueryConfig.workspaceId}', '${tablesQueryConfig.name}', '${tablesQueryConfig.description}', ` +
-          `'${format(tablesQueryConfig.createdAt, "yyyy-MM-dd")}', ` +
-          `'${format(tablesQueryConfig.updatedAt, "yyyy-MM-dd")}');\n`;
-
         await tablesQueryConfig.destroy();
+
+        // Reverse: delete the MCP server configuration.
+        revertSql += `DELETE FROM "agent_mcp_server_configurations" WHERE "id" = '${mcpConfig.id}';\n`;
 
         logger.info(
           {
