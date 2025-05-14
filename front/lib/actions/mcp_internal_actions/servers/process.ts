@@ -2,12 +2,14 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 
+import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   IncludeQueryResourceType,
   IncludeResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -26,7 +28,6 @@ import {
   removeNulls,
   timeFrameFromNow,
 } from "@app/types";
-import { AgentLoopRunContextType } from "@app/lib/actions/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "extract_data",
@@ -69,17 +70,7 @@ function createServer(
         );
       }
 
-      // Compute the topK and refsOffset for the search.
-      const topK = getRetrievalTopK({
-        agentConfiguration: agentLoopRunContext.agentConfiguration,
-        stepActions: agentLoopRunContext.stepActions,
-      });
-      const refsOffset = actionRefsOffset({
-        agentConfiguration: agentLoopRunContext.agentConfiguration,
-        stepActionIndex: agentLoopRunContext.stepActionIndex,
-        stepActions: agentLoopRunContext.stepActions,
-        refsOffset: agentLoopRunContext.citationsRefsOffset,
-      });
+      const topK = PROCESS_ACTION_TOP_K;
 
       // Get the core search args for each data source, fail if any of them are invalid.
       const coreSearchArgsResults = await concurrentExecutor(
