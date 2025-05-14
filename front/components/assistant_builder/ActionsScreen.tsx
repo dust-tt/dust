@@ -1248,9 +1248,7 @@ function AddAction({
               return (
                 <DropdownMenuItem
                   key={view.id}
-                  icon={() => (
-                    <Avatar visual={getAvatar(view.server)} size="xs" />
-                  )}
+                  icon={() => getAvatar(view.server, "xs")}
                   label={asDisplayName(view.server.name)}
                   description={view.server.description}
                   onClick={() =>
