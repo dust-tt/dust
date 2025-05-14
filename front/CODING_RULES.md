@@ -51,21 +51,22 @@ function addItem(items: string[], newItem: string) {
 }
 ```
 
-### [GEN6] Comments must be sentences wrapped at 100 characters
+### [GEN6] Comments must be sentences and properly wrapped
 
 Comments must be full sentences (starting with a capital letter and ending with a period) and must
-be wrapped at 100 characters. Wrapping at a lower characer count should be avoided.
+be wrapped at ~100 characters. Wrapping at clearly higher or lower characer count should be avoided.
+A bit of flexibility is allowed, in particular for long URLs or other long non wrappable strings.
 
 Example:
 
 ```
 // BAD
-// this is a comment that is neither a full sentence nor wrapped at 100 characers / it should be wrapped because otherwise it's really hard to read
+// this is a comment that is neither a full sentence nor wrapped at 100 characers (clearly higher) / it should be wrapped because otherwise it's really hard to read
 
 // BAD
 // This comment is a valid sentence but it
-// is wrapped at a lower character count than
-// 100. It should be wrapped at 100 characters.
+// is wrapped at a much lower character count than
+// 100. It should be wrapped at ~100 characters.
 
 // GOOD
 // This is a comment that is a full sentence and is wrapped at 100 characters. It is easy to read
