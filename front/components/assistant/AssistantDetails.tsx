@@ -380,6 +380,7 @@ export function AssistantDetails({
   });
 
   useEffect(() => {
+    // Reset to info tab when we open/close the modal
     setSelectedTab("info");
   }, [assistantId]);
 
