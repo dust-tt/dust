@@ -1,5 +1,10 @@
 import {
+  ActionBrainIcon,
+  ActionGlobeIcon,
   ActionImageIcon,
+  ActionMagnifyingGlassIcon,
+  ActionScanIcon,
+  ActionTableIcon,
   Avatar,
   classNames,
   ConfettiBackground,
@@ -11,11 +16,79 @@ import {
   TourGuideCardVisual,
   TypingAnimation,
 } from "@dust-tt/sparkle";
-import { useRef } from "react";
+import type { ComponentType } from "react";
+import { useMemo, useRef } from "react";
 
-import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { UserType, WorkspaceType } from "@app/types";
+import type { ConnectorProvider, UserType, WorkspaceType } from "@app/types";
+
+// We want exactly 12 connections in the tour guide to have a clean grid layout.
+const CONNECTIONS_IN_TOUR_GUIDE: ConnectorProvider[] = [
+  "google_drive",
+  "notion",
+  "slack",
+  "snowflake",
+  "bigquery",
+  "confluence",
+  "intercom",
+  "microsoft",
+  "salesforce",
+  "zendesk",
+  "github",
+  "gong",
+] as const;
+
+// We want exactly 6 actions in the tour guide to have a clean grid layout.
+// So they are hardcoded.  :/
+const ACTIONS_IN_TOUR_GUIDE = [
+  {
+    label: "Search data",
+    icon: ActionMagnifyingGlassIcon,
+  },
+  {
+    label: "Table query",
+    icon: ActionTableIcon,
+  },
+  {
+    label: "Extract data",
+    icon: ActionScanIcon,
+  },
+  {
+    label: "Image generation",
+    icon: ActionImageIcon,
+  },
+  {
+    label: "Web search and browsing",
+    icon: ActionGlobeIcon,
+  },
+  {
+    label: "Reasoning",
+    icon: ActionBrainIcon,
+  },
+] as const;
+
+const FAKE_AGENTS = [
+  {
+    name: "Translator",
+    emoji: "💬",
+    backgroundColor: "bg-green-200 dark:bg-green-200-night",
+  },
+  {
+    name: "TrailblazerGuard",
+    emoji: "👮",
+    backgroundColor: "bg-blue-100 dark:bg-blue-100-night",
+  },
+  {
+    name: "Transport",
+    emoji: "🚌",
+    backgroundColor: "bg-blue-200 dark:bg-blue-200-night",
+  },
+  {
+    name: "TrendTracker",
+    emoji: "😻",
+    backgroundColor: "bg-rose-50 dark:bg-rose-50-night",
+  },
+] as const;
 
 export const WelcomeTourGuide = ({
   owner,
@@ -33,28 +106,20 @@ export const WelcomeTourGuide = ({
   onTourGuideEnd: () => void;
 }) => {
   const centeredRef = useRef<HTMLDivElement>(null);
-  const filteredAgents = [
-    {
-      name: "Translator",
-      emoji: "💬",
-      backgroundColor: "bg-green-200 dark:bg-green-200-night",
-    },
-    {
-      name: "TrailblazerGuard",
-      emoji: "👮",
-      backgroundColor: "bg-blue-100 dark:bg-blue-100-night",
-    },
-    {
-      name: "Transport",
-      emoji: "🚌",
-      backgroundColor: "bg-blue-200 dark:bg-blue-200-night",
-    },
-    {
-      name: "TrendTracker",
-      emoji: "😻",
-      backgroundColor: "bg-rose-50 dark:bg-rose-50-night",
-    },
-  ] as const;
+
+  const connections: {
+    name: string;
+    logo: ComponentType<{ className?: string }>;
+  }[] = useMemo(() => {
+    return Object.values(CONNECTOR_CONFIGURATIONS)
+      .filter((connector) =>
+        CONNECTIONS_IN_TOUR_GUIDE.includes(connector.connectorProvider)
+      )
+      .map((connector) => ({
+        name: connector.name,
+        logo: connector.getLogoComponent(),
+      }));
+  }, []);
 
   return (
     <TourGuide autoStart onEnd={onTourGuideEnd} onDismiss={onTourGuideEnd}>
@@ -115,7 +180,7 @@ export const WelcomeTourGuide = ({
                 "border-border bg-background dark:border-border-night dark:bg-background-night"
               )}
             >
-              {filteredAgents.map((agent) => {
+              {FAKE_AGENTS.map((agent) => {
                 return (
                   <div
                     key={agent.name}
@@ -164,26 +229,22 @@ export const WelcomeTourGuide = ({
           )}
         >
           <div className="grid grid-cols-6 gap-2">
-            {Object.values(CONNECTOR_CONFIGURATIONS)
-              .filter(
-                (connector) => connector.connectorProvider !== "webcrawler"
-              )
-              .map((connector) => {
-                return (
-                  <Tooltip
-                    key={connector.name}
-                    label={connector.name}
-                    trigger={
-                      <Avatar
-                        size="md"
-                        icon={connector.getLogoComponent()}
-                        backgroundColor="bg-white dark:s-bg-primary-800-night"
-                      />
-                    }
-                  />
-                );
-              })}
-            {Object.values(ACTION_SPECIFICATIONS).map((action) => {
+            {connections.map((c) => {
+              return (
+                <Tooltip
+                  key={c.name}
+                  label={c.name}
+                  trigger={
+                    <Avatar
+                      size="md"
+                      icon={c.logo}
+                      backgroundColor="bg-white dark:s-bg-primary-800-night"
+                    />
+                  }
+                />
+              );
+            })}
+            {ACTIONS_IN_TOUR_GUIDE.map((action) => {
               return (
                 <Tooltip
                   key={action.label}
@@ -191,7 +252,7 @@ export const WelcomeTourGuide = ({
                   trigger={
                     <Avatar
                       size="md"
-                      icon={action.cardIcon}
+                      icon={action.icon}
                       backgroundColor="bg-gray-700"
                       iconColor="text-gray-50"
                     />
@@ -199,37 +260,24 @@ export const WelcomeTourGuide = ({
                 />
               );
             })}
-            <Tooltip
-              label="Image generation"
-              trigger={
-                <Avatar
-                  size="md"
-                  icon={ActionImageIcon}
-                  backgroundColor="bg-gray-700"
-                  iconColor="text-gray-50"
-                />
-              }
-            />
           </div>
         </TourGuideCardVisual>
         <TourGuideCardTitle>
           Make your agents smarter by adding&nbsp;
           <span className="text-brand-red-rose dark:text-brand-red-rose">
             knowledge and tools
-          </span>{" "}
-          from your{" "}
-          <span className="text-brand-red-rose dark:text-brand-red-rose">
-            spaces
           </span>
           .
         </TourGuideCardTitle>
-        {/* <TourGuideCardContent className="py-2">
-          <Button
+        <TourGuideCardContent className="py-2">
+          Set up your connections and your tools in&nbsp;the{" "}
+          <span className="font-semibold text-foreground">spaces</span> tab.
+          {/* <Button
             label="Watch the full video"
             icon={PlayIcon}
             variant={"outline"}
-          />
-        </TourGuideCardContent> */}
+          /> */}
+        </TourGuideCardContent>
       </TourGuideCard>
       <TourGuideCard anchorRef={createAgentButtonRef}>
         <TourGuideCardVisual
