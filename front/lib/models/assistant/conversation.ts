@@ -453,9 +453,15 @@ Message.init(
         unique: true,
         fields: ["sId"],
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       {
         unique: true,
         fields: ["conversationId", "rank", "version"],
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "conversationId", "rank", "version"],
+        concurrently: true,
       },
       {
         fields: ["agentMessageId"],

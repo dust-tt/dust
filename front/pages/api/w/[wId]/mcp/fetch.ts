@@ -11,7 +11,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetRemoteMCPServersResponseBody = {
   success: boolean;
-  server: Omit<MCPServerType, "id">;
+  server: Omit<MCPServerType, "sId">;
 };
 
 const GetQueryParamsSchema = t.type({

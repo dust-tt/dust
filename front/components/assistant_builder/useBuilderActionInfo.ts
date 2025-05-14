@@ -30,7 +30,7 @@ export const isUsableAsCapability = (
   id: string,
   mcpServerViews: MCPServerViewType[]
 ) => {
-  const view = mcpServerViews.find((v) => v.id === id);
+  const view = mcpServerViews.find((v) => v.sId === id);
   if (!view) {
     return false;
   }
@@ -44,7 +44,7 @@ export const isUsableInKnowledge = (
   id: string,
   mcpServerViews: MCPServerViewType[]
 ) => {
-  const view = mcpServerViews.find((v) => v.id === id);
+  const view = mcpServerViews.find((v) => v.sId === id);
   if (!view) {
     return false;
   }
@@ -127,7 +127,7 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
 
           if (action.configuration.mcpServerViewId) {
             const mcpServerView = mcpServerViews.find(
-              (v) => v.id === action.configuration.mcpServerViewId
+              (v) => v.sId === action.configuration.mcpServerViewId
             );
             // Default MCP server themselves are not accounted for in the space restriction.
             if (

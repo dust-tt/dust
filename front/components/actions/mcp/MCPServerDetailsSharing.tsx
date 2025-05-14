@@ -73,7 +73,7 @@ export function MCPServerDetailsSharing({
   const { mcpServers } = useMCPServers({
     owner,
   });
-  const mcpServerWithViews = mcpServers.find((s) => s.id === mcpServer.id);
+  const mcpServerWithViews = mcpServers.find((s) => s.sId === mcpServer.sId);
   const [loading, setLoading] = useState(false);
 
   const views =

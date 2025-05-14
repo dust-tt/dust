@@ -291,7 +291,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         : this.sharedSecret;
 
     return {
-      id: this.sId,
+      sId: this.sId,
 
       name: this.name,
       description: this.description,

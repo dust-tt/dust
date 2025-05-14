@@ -160,13 +160,14 @@ async function batchRenderAgentMessages(
       return agents as LightAgentConfigurationType[];
     })(),
     (async () =>
-      retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
+      retrievalActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () =>
       tableQueryTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       processActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      websearchActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       browseActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>

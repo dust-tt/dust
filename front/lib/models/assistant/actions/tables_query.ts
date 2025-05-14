@@ -121,8 +121,25 @@ AgentTablesQueryConfigurationTable.init(
         fields: ["dataSourceViewId", "tableId", "tablesQueryConfigurationId"],
         name: "agent_tables_query_configuration_table_unique_dsv",
       },
+      {
+        fields: ["workspaceId", "tablesQueryConfigurationId"],
+        concurrently: true,
+        name: "agent_tables_query_config_table_w_id_tables_query_config_id",
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-14): Remove index
       { fields: ["dataSourceId"] },
+      {
+        fields: ["workspaceId", "dataSourceId"],
+        concurrently: true,
+        name: "agent_tables_query_config_table_workspace_id_data_source_id",
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-14): Remove index
       { fields: ["dataSourceViewId"] },
+      {
+        fields: ["workspaceId", "dataSourceViewId"],
+        concurrently: true,
+        name: "agent_tables_query_config_table_w_id_data_source_view_id",
+      },
     ],
     sequelize: frontSequelize,
   }

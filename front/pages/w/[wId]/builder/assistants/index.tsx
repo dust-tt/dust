@@ -35,7 +35,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import {
+  compareForFuzzySort,
+  getAgentSearchString,
+  subFilter,
+} from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
@@ -241,13 +245,13 @@ export default function WorkspaceAssistants({
           (a) =>
             a.status === "active" &&
             // Filters on search query
-            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase())
+            subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
         )
         .sort((a, b) => {
           return compareForFuzzySort(
             assistantSearch,
-            a.name.toLowerCase(),
-            b.name.toLowerCase()
+            getAgentSearchString(a),
+            getAgentSearchString(b)
           );
         }),
     };

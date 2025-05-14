@@ -251,6 +251,9 @@ export async function getDataSourceViewsUsageByCategory({
     AgentTablesQueryConfigurationTable.findAll({
       raw: true,
       group: ["dataSourceView.id"],
+      where: {
+        workspaceId: owner.id,
+      },
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
         [
@@ -508,6 +511,9 @@ export async function getDataSourcesUsageByCategory({
     AgentTablesQueryConfigurationTable.findAll({
       raw: true,
       group: ["dataSource.id"],
+      where: {
+        workspaceId: owner.id,
+      },
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
         [
@@ -722,6 +728,7 @@ export async function getDataSourceUsage({
         ],
       ],
       where: {
+        workspaceId: owner.id,
         dataSourceId: dataSource.id,
       },
       include: [
@@ -908,6 +915,7 @@ export async function getDataSourceViewUsage({
         ],
       ],
       where: {
+        workspaceId: owner.id,
         dataSourceViewId: dataSourceView.id,
       },
       include: [

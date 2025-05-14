@@ -29,7 +29,7 @@ import { assertNever } from "@app/types";
 // We need a model with at least 54k tokens to run tables_query.
 const TABLES_QUERY_MIN_TOKEN = 50_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
-const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
+export const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "query_tables",
@@ -402,7 +402,7 @@ function getTablesQueryError(error: string) {
  * This prefix is used to identify the row in the section file.
  * We currently only support Salesforce since it's the only connector for which we can generate a prefix.
  */
-function getSectionColumnsPrefix(
+export function getSectionColumnsPrefix(
   provider: ConnectorProvider | null
 ): string[] | null {
   switch (provider) {
