@@ -90,7 +90,7 @@ async function migrateWorkspaceTablesQueryActions({
   const mcpServerView =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      "query_tables_v2"
+      "query_tables"
     );
   if (!mcpServerView) {
     throw new Error("Tables Query MCP server view not found.");
