@@ -21,12 +21,7 @@ export const MessageBaseSchema = t.type({
   ]),
 });
 
-export const InternalPostMessagesRequestBodySchema = t.intersection([
-  MessageBaseSchema,
-  t.type({
-    skipToolsValidation: t.union([t.boolean, t.undefined]),
-  }),
-]);
+export const InternalPostMessagesRequestBodySchema = MessageBaseSchema;
 
 const ContentFragmentBaseSchema = t.intersection([
   t.type({
@@ -191,7 +186,6 @@ export const InternalPostConversationsRequestBodySchema = t.type({
   ]),
   message: t.union([MessageBaseSchema, t.null]),
   contentFragments: t.array(InternalPostContentFragmentRequestBodySchema),
-  skipToolsValidation: t.union([t.boolean, t.undefined]),
 });
 
 export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([

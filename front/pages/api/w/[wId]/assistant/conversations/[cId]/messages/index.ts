@@ -92,8 +92,7 @@ async function handler(
         });
       }
 
-      const { content, context, mentions, skipToolsValidation } =
-        bodyValidation.right;
+      const { content, context, mentions } = bodyValidation.right;
 
       if (context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -125,8 +124,6 @@ async function handler(
 
       const conversation = conversationRes.value;
 
-      /* postUserMessageWithPubSub returns swiftly since it only waits for the
-        initial message creation event (or error) */
       const messageRes = await postUserMessageWithPubSub(
         auth,
         {
@@ -142,7 +139,8 @@ async function handler(
             origin: "web",
             clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
           },
-          skipToolsValidation: skipToolsValidation ?? false,
+          // For now we never skip tools when interacting with agents from the web client.
+          skipToolsValidation: false,
         },
         { resolveAfterFullGeneration: false }
       );

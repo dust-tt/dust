@@ -71,13 +71,8 @@ async function handler(
         });
       }
 
-      const {
-        title,
-        visibility,
-        message,
-        contentFragments,
-        skipToolsValidation,
-      } = bodyValidation.right;
+      const { title, visibility, message, contentFragments } =
+        bodyValidation.right;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -185,7 +180,8 @@ async function handler(
               clientSideMCPServerIds:
                 message.context.clientSideMCPServerIds ?? [],
             },
-            skipToolsValidation: skipToolsValidation ?? false,
+            // For now we never skip tools when interacting with agents from the web client.
+            skipToolsValidation: false,
           },
           { resolveAfterFullGeneration: false }
         );
