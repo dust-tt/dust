@@ -78,6 +78,7 @@ export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
   declare channelId: string;
   declare messageTs?: string;
   declare documentId: string;
+  declare skipReason?: string;
 }
 SlackMessages.init(
   {
@@ -102,6 +103,10 @@ SlackMessages.init(
     documentId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
