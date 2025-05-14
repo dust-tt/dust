@@ -16,11 +16,11 @@ import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/r
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import logger from "@app/logger/logger";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
+import { AppResource } from "@app/lib/resources/app_resource";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
@@ -73,14 +73,10 @@ export async function fetchMCPServerActionConfigurations(
     },
   ];
 
-  const allDustApps = await AppModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      sId: {
-        [Op.in]: removeNulls(mcpServerConfigurations.map((r) => r.appId)),
-      },
-    },
-  });
+  const allDustApps = await AppResource.fetchByIds(
+    auth,
+    removeNulls(mcpServerConfigurations.map((r) => r.appId))
+  );
 
   // Find the associated data sources configurations.
   const allDataSourceConfigurations =
