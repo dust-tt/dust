@@ -521,13 +521,16 @@ async function fetchWorkspaceAgentConfigurationsForView(
     favoriteStatePerAgent,
     tagsPerAgent,
   ] = await Promise.all([
-    fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
-    fetchAgentProcessActionConfigurations({ configurationIds, variant }),
+    fetchAgentRetrievalActionConfigurations(auth, {
+      configurationIds,
+      variant,
+    }),
+    fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
-    fetchTableQueryActionConfigurations({ configurationIds, variant }),
-    fetchWebsearchActionConfigurations({ configurationIds, variant }),
-    fetchBrowseActionConfigurations({ configurationIds, variant }),
-    fetchReasoningActionConfigurations({ configurationIds, variant }),
+    fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
+    fetchWebsearchActionConfigurations(auth, { configurationIds, variant }),
+    fetchBrowseActionConfigurations(auth, { configurationIds, variant }),
+    fetchReasoningActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })

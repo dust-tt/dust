@@ -187,7 +187,9 @@ export const AdminActionsList = ({
   const rows: RowData[] = mcpServers
     .filter((mcpServer) => mcpServer.availability === "manual")
     .map((mcpServer) => {
-      const mcpServerWithViews = mcpServers.find((s) => s.id === mcpServer.id);
+      const mcpServerWithViews = mcpServers.find(
+        (s) => s.sId === mcpServer.sId
+      );
       const mcpServerView = mcpServerWithViews?.views.find(
         (v) => v.spaceId === systemSpace?.sId
       );
@@ -199,7 +201,7 @@ export const AdminActionsList = ({
         mcpServerView,
         spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
         isConnected: !!connections.find(
-          (c) => c.internalMCPServerId === mcpServer.id
+          (c) => c.internalMCPServerId === mcpServer.sId
         ),
         onClick: () => {
           if (mcpServerView && mcpServer) {
@@ -224,7 +226,7 @@ export const AdminActionsList = ({
       {portalToHeader(
         <AddActionMenu
           owner={owner}
-          enabledMCPServers={mcpServers.map((s) => s.id)}
+          enabledMCPServers={mcpServers.map((s) => s.sId)}
           setIsLoading={setIsLoading}
           createRemoteMCPServer={() => {
             setInternalMCPServerToCreate(undefined);

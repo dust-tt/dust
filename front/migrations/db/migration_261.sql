@@ -1,2 +1,2 @@
--- Empty migration to avoid overload during remediations
--- see https://github.com/dust-tt/tasks/issues/2842 for details
+-- Migration created on May 13, 2025
+CREATE UNIQUE INDEX CONCURRENTLY "messages_workspace_id_conversation_id_rank_version" ON "messages" ("workspaceId", "conversationId", "rank", "version");

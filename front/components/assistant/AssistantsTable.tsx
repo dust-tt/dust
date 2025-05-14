@@ -3,6 +3,8 @@ import {
   BracesIcon,
   Button,
   Checkbox,
+  ChevronDownIcon,
+  Chip,
   ClipboardIcon,
   Cog6ToothIcon,
   DataTable,
@@ -12,8 +14,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
   PencilSquareIcon,
   SliderToggle,
+  Spinner,
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
@@ -23,6 +30,8 @@ import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useTags, useUpdateAgentTags } from "@app/lib/swr/tags";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentConfigurationScope,
@@ -33,6 +42,62 @@ import type {
 import { isAdmin, isBuilder, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
+const TagSelector = ({
+  tags,
+  agentTags,
+  agentConfigurationId,
+  owner,
+  onChange,
+}: {
+  tags: TagType[];
+  agentTags: TagType[];
+  agentConfigurationId: string;
+  owner: WorkspaceType;
+  onChange: () => Promise<any>;
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const { isDark } = useTheme();
+  const updateAgentTags = useUpdateAgentTags({
+    owner,
+    agentConfigurationId,
+  });
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        <Button variant="ghost" icon={ChevronDownIcon} size="xmini" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {tags.map((t) => {
+          const isChecked = agentTags.some((x) => x.sId === t.sId);
+          return (
+            <DropdownMenuCheckboxItem
+              key={t.sId}
+              onClick={async (e: React.MouseEvent) => {
+                setIsLoading(true);
+                e.stopPropagation();
+                e.preventDefault();
+                await updateAgentTags({
+                  addTagIds: isChecked ? [] : [t.sId],
+                  removeTagIds: isChecked ? [t.sId] : [],
+                });
+                await onChange();
+              }}
+              checked={isChecked}
+            >
+              <Chip size="xs" label={t.name} color="golden" />
+            </DropdownMenuCheckboxItem>
+          );
+        })}
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-black/50">
+            <Spinner variant={isDark ? "light" : "dark"} />
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 type MoreMenuItem = {
   label: string;
   icon: React.ComponentType;
@@ -42,6 +107,7 @@ type MoreMenuItem = {
 };
 
 type RowData = {
+  sId: string;
   name: string;
   description: string;
   pictureUrl: string;
@@ -51,13 +117,24 @@ type RowData = {
   scope: AgentConfigurationScope;
   onClick?: () => void;
   moreMenuItems?: MoreMenuItem[];
-  tags: TagType[];
+  agentTags: TagType[];
+  agentTagsAsString: string;
   action?: React.ReactNode;
   isSelected: boolean;
   canArchive: boolean;
 };
 
-const getTableColumns = (tags: TagType[], isBatchEdit: boolean) => {
+const getTableColumns = ({
+  owner,
+  tags,
+  isBatchEdit,
+  mutateAgentConfigurations,
+}: {
+  owner: WorkspaceType;
+  tags: TagType[];
+  isBatchEdit: boolean;
+  mutateAgentConfigurations: () => Promise<any>;
+}) => {
   return [
     ...(isBatchEdit
       ? [
@@ -104,32 +181,33 @@ const getTableColumns = (tags: TagType[], isBatchEdit: boolean) => {
       ? [
           {
             header: "Tags",
-            accessorKey: "tags",
-            cell: (info: CellContext<RowData, TagType[]>) => (
-              <DataTable.CellContent>
-                <Tooltip
-                  label={
-                    info.getValue().length > 0
-                      ? info
-                          .getValue()
-                          .map((t) => t.name)
-                          .join(", ")
-                      : "-"
-                  }
-                  trigger={
-                    info.getValue().length > 0
-                      ? info
-                          .getValue()
-                          .map((t) => t.name)
-                          .join(", ")
-                      : "-"
-                  }
-                />
+            accessorKey: "agentTagsAsString",
+            cell: (info: CellContext<RowData, string>) => (
+              <DataTable.CellContent
+                grow
+                className="flex flex-row items-center"
+              >
+                <div className="flex flex-row items-center">
+                  <div className="flex-grow truncate">
+                    <Tooltip
+                      tooltipTriggerAsChild
+                      label={info.getValue()}
+                      trigger={<span>{info.getValue()}</span>}
+                    />
+                  </div>
+                  <TagSelector
+                    tags={tags}
+                    agentTags={info.row.original.agentTags}
+                    agentConfigurationId={info.row.original.sId}
+                    owner={owner}
+                    onChange={mutateAgentConfigurations}
+                  />
+                </div>
               </DataTable.CellContent>
             ),
             isFilterable: true,
             meta: {
-              className: "w-32",
+              className: "w-32 xl:w-64",
               tooltip: "Tags",
             },
           },
@@ -180,6 +258,7 @@ const getTableColumns = (tags: TagType[], isBatchEdit: boolean) => {
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
+          tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
               ? formatTimestampToFriendlyDate(info.getValue(), "short")
@@ -301,7 +380,6 @@ function GlobalAgentAction({
 type AgentsTableProps = {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
-  tags: TagType[];
   setShowDetails: (agent: LightAgentConfigurationType) => void;
   handleToggleAgentStatus: (
     agent: LightAgentConfigurationType
@@ -311,12 +389,12 @@ type AgentsTableProps = {
   isBatchEdit: boolean;
   selection: string[];
   setSelection: (selection: string[]) => void;
+  mutateAgentConfigurations: () => Promise<any>;
 };
 
 export function AssistantsTable({
   owner,
   agents,
-  tags,
   setShowDetails,
   handleToggleAgentStatus,
   showDisabledFreeWorkspacePopup,
@@ -324,7 +402,9 @@ export function AssistantsTable({
   isBatchEdit,
   selection,
   setSelection,
+  mutateAgentConfigurations,
 }: AgentsTableProps) {
+  const { tags } = useTags({ owner });
   const [showDeleteDialog, setShowDeleteDialog] = useState<{
     open: boolean;
     agentConfiguration: LightAgentConfigurationType | undefined;
@@ -341,6 +421,7 @@ export function AssistantsTable({
           agentConfiguration.status !== "archived" &&
           agentConfiguration.scope !== "global";
         return {
+          sId: agentConfiguration.sId,
           name: agentConfiguration.name,
           usage: agentConfiguration.usage ?? {
             messageCount: 0,
@@ -353,7 +434,11 @@ export function AssistantsTable({
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
           scope: agentConfiguration.scope,
-          tags: agentConfiguration.tags,
+          agentTags: agentConfiguration.tags,
+          agentTagsAsString:
+            agentConfiguration.tags.length > 0
+              ? agentConfiguration.tags.map((t) => t.name).join(",")
+              : "-",
           isSelected: selection.includes(agentConfiguration.sId),
           canArchive,
           action:
@@ -483,7 +568,12 @@ export function AssistantsTable({
           <DataTable
             className="relative"
             data={rows}
-            columns={getTableColumns(tags, isBatchEdit)}
+            columns={getTableColumns({
+              owner,
+              tags,
+              isBatchEdit,
+              mutateAgentConfigurations,
+            })}
           />
         )}
       </div>

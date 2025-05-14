@@ -2,22 +2,29 @@ import { Op } from "sequelize";
 
 import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/actions/constants";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 
-export async function fetchBrowseActionConfigurations({
-  configurationIds,
-  variant,
-}: {
-  configurationIds: ModelId[];
-  variant: AgentFetchVariant;
-}): Promise<Map<ModelId, BrowseConfigurationType[]>> {
+export async function fetchBrowseActionConfigurations(
+  auth: Authenticator,
+  {
+    configurationIds,
+    variant,
+  }: {
+    configurationIds: ModelId[];
+    variant: AgentFetchVariant;
+  }
+): Promise<Map<ModelId, BrowseConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();
   }
 
   const browseConfigurations = await AgentBrowseConfiguration.findAll({
-    where: { agentConfigurationId: { [Op.in]: configurationIds } },
+    where: {
+      agentConfigurationId: { [Op.in]: configurationIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   if (browseConfigurations.length === 0) {

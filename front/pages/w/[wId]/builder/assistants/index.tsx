@@ -2,6 +2,7 @@ import {
   Button,
   Chip,
   DustIcon,
+  ListSelectIcon,
   MagnifyingGlassIcon,
   Page,
   PencilSquareIcon,
@@ -34,7 +35,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import {
+  compareForFuzzySort,
+  getAgentSearchString,
+  subFilter,
+} from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
@@ -240,13 +245,13 @@ export default function WorkspaceAssistants({
           (a) =>
             a.status === "active" &&
             // Filters on search query
-            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase())
+            subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
         )
         .sort((a, b) => {
           return compareForFuzzySort(
             assistantSearch,
-            a.name.toLowerCase(),
-            b.name.toLowerCase()
+            getAgentSearchString(a),
+            getAgentSearchString(b)
           );
         }),
     };
@@ -349,7 +354,11 @@ export default function WorkspaceAssistants({
           agentConfigurations={selectedAgents}
           isOpen={isDeleteDialogOpen}
           onClose={() => setIsDeleteDialogOpen(false)}
-          setSelection={setSelection}
+          onSave={() => {
+            setSelection([]);
+            setIsDeleteDialogOpen(false);
+            setIsBatchEdit(false);
+          }}
         />
         <AssistantDetails
           owner={owner}
@@ -375,7 +384,7 @@ export default function WorkspaceAssistants({
                   {hasAgentDiscovery && isAdmin(owner) && (
                     <Button
                       variant="outline"
-                      icon={PencilSquareIcon}
+                      icon={ListSelectIcon}
                       label="Batch edit"
                       onClick={() => {
                         setIsBatchEdit(true);
@@ -474,7 +483,6 @@ export default function WorkspaceAssistants({
                   setSelection={setSelection}
                   owner={owner}
                   agents={agentsByTab[activeTab]}
-                  tags={uniqueTags}
                   setShowDetails={setShowDetails}
                   handleToggleAgentStatus={handleToggleAgentStatus}
                   showDisabledFreeWorkspacePopup={
@@ -483,6 +491,7 @@ export default function WorkspaceAssistants({
                   setShowDisabledFreeWorkspacePopup={
                     setShowDisabledFreeWorkspacePopup
                   }
+                  mutateAgentConfigurations={mutateAgentConfigurations}
                 />
               ) : (
                 !assistantSearch && (

@@ -122,9 +122,15 @@ AgentMCPServerConfiguration.init(
     modelName: "agent_mcp_server_configuration",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove this index.
       {
         fields: ["agentConfigurationId"],
         concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
+        concurrently: true,
+        name: "agent_mcp_srv_config_w_id_agent_config_id",
       },
       {
         unique: true,

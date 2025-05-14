@@ -442,6 +442,16 @@ export async function processTranscriptActivity(
       return;
     }
 
+    const canWrite = datasourceView.canWrite(auth);
+    if (!canWrite) {
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] User does not have permission to write to datasource view. Stopping."
+      );
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      return;
+    }
+
     const dataSource = datasourceView.dataSource;
 
     if (!dataSource) {

@@ -325,13 +325,18 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
-      this.connectorId
-    );
-    if (getConnectorAndCredentialsRes.isErr()) {
-      return new Err(getConnectorAndCredentialsRes.error);
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+
+    if (!connector) {
+      logger.error(
+        {
+          connectorId: this.connectorId,
+        },
+        "Notion connector not found."
+      );
+
+      return new Err(new Error("Connector not found"));
     }
-    const { connector } = getConnectorAndCredentialsRes.value;
 
     await connector.markAsPaused();
     const stopRes = await this.stop();
@@ -343,14 +348,18 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
-      this.connectorId
-    );
-    if (getConnectorAndCredentialsRes.isErr()) {
-      return new Err(getConnectorAndCredentialsRes.error);
-    }
-    const { connector } = getConnectorAndCredentialsRes.value;
+    const connector = await ConnectorResource.fetchById(this.connectorId);
 
+    if (!connector) {
+      logger.error(
+        {
+          connectorId: this.connectorId,
+        },
+        "Notion connector not found."
+      );
+
+      return new Err(new Error("Connector not found"));
+    }
     await connector.markAsUnpaused();
     const r = await this.resume();
     if (r.isErr()) {

@@ -78,9 +78,15 @@ AgentProcessConfiguration.init(
         fields: ["sId"],
         concurrently: true,
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove this index.
       {
         fields: ["agentConfigurationId"],
         concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
+        concurrently: true,
+        name: "agent_process_config_workspace_id_agent_config_id",
       },
     ],
     sequelize: frontSequelize,

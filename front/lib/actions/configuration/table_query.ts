@@ -4,6 +4,7 @@ import { Op } from "sequelize";
 import { renderTableConfiguration } from "@app/lib/actions/configuration/helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type { Authenticator } from "@app/lib/auth";
 import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
@@ -12,13 +13,16 @@ import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 
-export async function fetchTableQueryActionConfigurations({
-  configurationIds,
-  variant,
-}: {
-  configurationIds: ModelId[];
-  variant: AgentFetchVariant;
-}): Promise<Map<ModelId, TablesQueryConfigurationType[]>> {
+export async function fetchTableQueryActionConfigurations(
+  auth: Authenticator,
+  {
+    configurationIds,
+    variant,
+  }: {
+    configurationIds: ModelId[];
+    variant: AgentFetchVariant;
+  }
+): Promise<Map<ModelId, TablesQueryConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();
   }
@@ -26,6 +30,7 @@ export async function fetchTableQueryActionConfigurations({
   const tableQueryConfigurations = await AgentTablesQueryConfiguration.findAll({
     where: {
       agentConfigurationId: { [Op.in]: configurationIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 
@@ -36,6 +41,7 @@ export async function fetchTableQueryActionConfigurations({
   const agentTablesQueryConfigurationTables =
     await AgentTablesQueryConfigurationTable.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         tablesQueryConfigurationId: {
           [Op.in]: tableQueryConfigurations.map((r) => r.id),
         },

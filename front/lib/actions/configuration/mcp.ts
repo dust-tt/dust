@@ -37,7 +37,10 @@ export async function fetchMCPServerActionConfigurations(
   }
 
   const mcpServerConfigurations = await AgentMCPServerConfiguration.findAll({
-    where: { agentConfigurationId: { [Op.in]: configurationIds } },
+    where: {
+      agentConfigurationId: { [Op.in]: configurationIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   if (mcpServerConfigurations.length === 0) {

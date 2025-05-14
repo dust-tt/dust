@@ -97,7 +97,7 @@ const ConversationLayoutContent = ({
   });
 
   const hasCoEditionFeatureFlag = useMemo(
-    () => hasFeature("mcp_actions") && hasFeature("co_edition"),
+    () => hasFeature("co_edition"),
     [hasFeature]
   );
 
@@ -126,6 +126,7 @@ const ConversationLayoutContent = ({
             <ConversationTitle owner={owner} baseUrl={baseUrl} />
           )
         }
+        hasTopPadding={false}
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         {conversationError ? (

@@ -18,11 +18,12 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "notion",
   "primitive_types_debugger",
   "query_tables",
+  "query_tables_v2",
   "reasoning_v2",
   "run_dust_app",
   "search",
   "think",
-  "web_search_&_browse_v2",
+  "web_search_&_browse",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -46,14 +47,13 @@ export const INTERNAL_MCP_SERVERS: Record<
   // Notes:
   // ids should be stable, do not change them for production internal servers as it would break existing agents.
   // Let's start dev actions at 1000 to avoid conflicts with production actions.
-  // flag "mcp_actions" for actions that are part of the MCP actions feature.
   // flag "dev_mcp_actions" for actions that are only used internally for dev and testing.
 
   // Production
   github: {
     id: 1,
     availability: "manual",
-    flag: "mcp_actions",
+    flag: null,
     tools_stakes: {
       get_pull_request: "never_ask",
     },
@@ -66,17 +66,17 @@ export const INTERNAL_MCP_SERVERS: Record<
   file_generation: {
     id: 3,
     availability: "auto",
-    flag: "mcp_actions",
+    flag: null,
   },
   query_tables: {
     id: 4,
     availability: "auto",
     flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
   },
-  "web_search_&_browse_v2": {
+  "web_search_&_browse": {
     id: 5,
     availability: "auto",
-    flag: "mcp_actions",
+    flag: null,
   },
   think: {
     id: 6,
@@ -145,6 +145,12 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1008,
     availability: "manual",
     flag: "dev_mcp_actions",
+  },
+  query_tables_v2: {
+    id: 1009,
+    availability: "auto",
+    // We'll eventually switch everyone to this new tables query toolset.
+    flag: "exploded_tables_query",
   },
 };
 

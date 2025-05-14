@@ -80,7 +80,10 @@ export async function getPokeConversation(
                   case "retrieval_action": {
                     a.runId = (
                       await AgentRetrievalAction.findOne({
-                        where: { id: a.id },
+                        where: {
+                          id: a.id,
+                          workspaceId: auth.getNonNullableWorkspace().id,
+                        },
                         attributes: ["runId"],
                         raw: true,
                       })
@@ -94,7 +97,10 @@ export async function getPokeConversation(
                   case "tables_query_action": {
                     a.runId = (
                       await AgentTablesQueryAction.findOne({
-                        where: { id: a.id },
+                        where: {
+                          id: a.id,
+                          workspaceId: auth.getNonNullableWorkspace().id,
+                        },
                         attributes: ["runId"],
                         raw: true,
                       })
@@ -110,7 +116,10 @@ export async function getPokeConversation(
                   case "websearch_action": {
                     a.runId = (
                       await AgentWebsearchAction.findOne({
-                        where: { id: a.id },
+                        where: {
+                          id: a.id,
+                          workspaceId: auth.getNonNullableWorkspace().id,
+                        },
                         attributes: ["runId"],
                         raw: true,
                       })

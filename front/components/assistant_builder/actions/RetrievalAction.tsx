@@ -216,13 +216,14 @@ export function ActionRetrievalExhaustive({
           messageStatus={timeFrameError ? "error" : "default"}
           value={timeFrame.value?.toString() || ""}
           onChange={(e) => {
-            const value = parseInt(e.target.value, 10);
-            if (!isNaN(value) || !e.target.value) {
+            const duration = parseInt(e.target.value, 10);
+            if (!isNaN(duration) || !e.target.value) {
+              setTimeFrameError(null);
               setEdited(true);
               updateAction((previousAction) => ({
                 ...previousAction,
                 timeFrame: {
-                  value: e.target.value,
+                  value: duration || 1,
                   unit: timeFrame.unit,
                 },
               }));

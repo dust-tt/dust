@@ -7,26 +7,33 @@ import {
 } from "@app/lib/actions/configuration/helpers";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 
-export async function fetchAgentRetrievalActionConfigurations({
-  configurationIds,
-  variant,
-}: {
-  configurationIds: ModelId[];
-  variant: AgentFetchVariant;
-}): Promise<Map<ModelId, RetrievalConfigurationType[]>> {
+export async function fetchAgentRetrievalActionConfigurations(
+  auth: Authenticator,
+  {
+    configurationIds,
+    variant,
+  }: {
+    configurationIds: ModelId[];
+    variant: AgentFetchVariant;
+  }
+): Promise<Map<ModelId, RetrievalConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();
   }
 
   // Find the retrieval configurations for the given agent configurations.
   const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
-    where: { agentConfigurationId: { [Op.in]: configurationIds } },
+    where: {
+      agentConfigurationId: { [Op.in]: configurationIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   if (retrievalConfigurations.length === 0) {
@@ -37,6 +44,7 @@ export async function fetchAgentRetrievalActionConfigurations({
   const retrievalDatasourceConfigurations =
     await AgentDataSourceConfiguration.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         retrievalConfigurationId: {
           [Op.in]: retrievalConfigurations.map((r) => r.id),
         },

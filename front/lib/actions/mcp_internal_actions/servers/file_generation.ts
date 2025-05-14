@@ -176,7 +176,7 @@ const createServer = (auth: Authenticator): McpServer => {
         const r = getResourceNameAndIdFromSId(input);
         if (r && r.resourceName === "file") {
           const { resourceModelId } = r;
-          const file = await FileResource.fetchWithModelId(
+          const file = await FileResource.fetchByModelIdWithAuth(
             auth,
             resourceModelId
           );
