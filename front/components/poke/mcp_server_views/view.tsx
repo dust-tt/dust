@@ -38,7 +38,7 @@ export function ViewMCPServerViewTable({
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Server ID</PokeTableHead>
-                <PokeTableCellWithCopy label={mcpServerView.server.id} />
+                <PokeTableCellWithCopy label={mcpServerView.server.sId} />
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Server Description</PokeTableHead>

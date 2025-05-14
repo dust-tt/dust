@@ -467,6 +467,7 @@ export async function getSuggestedAgentsForConversation(
   // and this comes from a route so since we don't want to pass the model id in a route we use the conversation sId.
   const message = await Message.findOne({
     where: {
+      workspaceId: owner.id,
       conversationId: conversation.id,
     },
     order: [
@@ -661,11 +662,13 @@ export async function* postUserMessage(
     content,
     mentions,
     context,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    skipToolsValidation: boolean;
   }
 ): AsyncGenerator<
   | UserMessageErrorEvent
@@ -896,6 +899,7 @@ export async function* postUserMessage(
                   agentConfigurationId: configuration.sId,
                   agentConfigurationVersion: configuration.version,
                   workspaceId: owner.id,
+                  skipToolsValidation,
                 },
                 { transaction: t }
               );
@@ -932,6 +936,7 @@ export async function* postUserMessage(
                   error: null,
                   configuration,
                   rank: messageRow.rank,
+                  skipToolsValidation: agentMessageRow.skipToolsValidation,
                 } satisfies AgentMessageWithRankType,
               };
             })();
@@ -1113,10 +1118,8 @@ function canAccessAgent(
   }
 }
 
-/** This method creates a new user message version, and if there are new agent
- *  mentions, run them
- *  TODO: support editing with new agent mentions for any
- *  message (rather than just the last)
+/**
+ * This method creates a new user message version, and if there are new agent mentions, run them.
  */
 export async function* editUserMessage(
   auth: Authenticator,
@@ -1125,11 +1128,13 @@ export async function* editUserMessage(
     message,
     content,
     mentions,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
+    skipToolsValidation: boolean;
   }
 ): AsyncGenerator<
   | UserMessageNewEvent
@@ -1275,6 +1280,7 @@ export async function* editUserMessage(
         where: {
           sId: message.sId,
           conversationId: conversation.id,
+          workspaceId: owner.id,
         },
         include: [
           {
@@ -1292,6 +1298,7 @@ export async function* editUserMessage(
       }
       const newerMessage = await Message.findOne({
         where: {
+          workspaceId: owner.id,
           rank: messageRow.rank,
           conversationId: conversation.id,
           version: messageRow.version + 1,
@@ -1407,6 +1414,7 @@ export async function* editUserMessage(
                 agentConfigurationId: configuration.sId,
                 agentConfigurationVersion: configuration.version,
                 workspaceId: owner.id,
+                skipToolsValidation,
               },
               { transaction: t }
             );
@@ -1443,6 +1451,7 @@ export async function* editUserMessage(
                 error: null,
                 configuration,
                 rank: messageRow.rank,
+                skipToolsValidation: agentMessageRow.skipToolsValidation,
               } satisfies AgentMessageWithRankType,
             };
           })();
@@ -1612,6 +1621,7 @@ export async function* retryAgentMessage(
 
       const messageRow = await Message.findOne({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           conversationId: conversation.id,
           id: message.id,
         },
@@ -1630,6 +1640,7 @@ export async function* retryAgentMessage(
       }
       const newerMessage = await Message.findOne({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           rank: messageRow.rank,
           conversationId: conversation.id,
           version: messageRow.version + 1,
@@ -1648,6 +1659,7 @@ export async function* retryAgentMessage(
           agentConfigurationVersion:
             messageRow.agentMessage.agentConfigurationVersion,
           workspaceId: auth.getNonNullableWorkspace().id,
+          skipToolsValidation: messageRow.agentMessage.skipToolsValidation,
         },
         { transaction: t }
       );
@@ -1689,6 +1701,7 @@ export async function* retryAgentMessage(
         error: null,
         configuration: message.configuration,
         rank: m.rank,
+        skipToolsValidation: agentMessageRow.skipToolsValidation,
       };
 
       return {

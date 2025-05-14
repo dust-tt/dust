@@ -304,7 +304,9 @@ export type ActionSpecificationWithType = ActionSpecification & {
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
 export function getDefaultAssistantState() {
   return {
-    actions: [],
+    // Data Visualization is not an action but we show it like an action.
+    // We enable it by default so we should push it to actions list.
+    actions: [getDataVisualizationActionConfiguration()],
     handle: null,
     scope: "private",
     description: null,
@@ -438,7 +440,7 @@ export function getDefaultMCPServerActionConfiguration(
   return {
     type: "MCP",
     configuration: {
-      mcpServerViewId: mcpServerView?.id ?? "not-a-valid-sId",
+      mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
       dataSourceConfigurations: null,
       tablesConfigurations: null,
       childAgentId: null,

@@ -180,6 +180,8 @@ async function handler(
               clientSideMCPServerIds:
                 message.context.clientSideMCPServerIds ?? [],
             },
+            // For now we never skip tools when interacting with agents from the web client.
+            skipToolsValidation: false,
           },
           { resolveAfterFullGeneration: false }
         );

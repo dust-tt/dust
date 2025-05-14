@@ -91,7 +91,7 @@ export function MCPAction({
   const noMCPServerView = mcpServerViews.length === 0;
 
   const selectedMCPServerView = mcpServerViews.find(
-    (mcpServerView) => mcpServerView.id === actionConfiguration.mcpServerViewId
+    (mcpServerView) => mcpServerView.sId === actionConfiguration.mcpServerViewId
   );
 
   // If there is only one tool, instead of showing the MCPToolsList, we show it
@@ -285,7 +285,7 @@ export function hasErrorActionMCP(
   if (action.type === "MCP") {
     const mcpServerView = mcpServerViews.find(
       (mcpServerView) =>
-        mcpServerView.id === action.configuration.mcpServerViewId
+        mcpServerView.sId === action.configuration.mcpServerViewId
     );
     if (!mcpServerView) {
       return "Please select a tool.";

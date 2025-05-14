@@ -16,7 +16,7 @@ export function MCPServerDetailsInfo({
   mcpServer,
   owner,
 }: MCPServerDetailsInfoProps) {
-  const serverType = getServerTypeAndIdFromSId(mcpServer.id).serverType;
+  const serverType = getServerTypeAndIdFromSId(mcpServer.sId).serverType;
   return (
     <div className="flex flex-col gap-2">
       {mcpServerIsRemote(mcpServer) && (
@@ -26,7 +26,7 @@ export function MCPServerDetailsInfo({
         owner={owner}
         tools={mcpServer.tools}
         serverType={serverType}
-        serverId={mcpServer.id}
+        serverId={mcpServer.sId}
       />
     </div>
   );

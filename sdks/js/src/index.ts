@@ -609,6 +609,7 @@ export class DustAPI {
     contentFragment,
     contentFragments,
     blocking = false,
+    skipToolsValidation = false,
   }: PublicPostConversationsRequestBody) {
     const res = await this.request({
       method: "POST",
@@ -620,6 +621,7 @@ export class DustAPI {
         contentFragment,
         contentFragments,
         blocking,
+        skipToolsValidation,
       },
     });
 

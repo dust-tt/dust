@@ -3,6 +3,25 @@ import type { LoggerInterface } from "@dust-tt/client";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { normalizeError } from "@connectors/types/api";
 
+export class WithRetriesError extends Error {
+  constructor(
+    readonly errors: Array<{ attempt: number; error: unknown }>,
+    readonly retries: number,
+    readonly delayBetweenRetriesMs: number
+  ) {
+    const message = `Function failed after ${retries} attempts:\n${errors
+      .map(
+        ({ attempt, error }) => `Attempt ${attempt}: ${normalizeError(error)}`
+      )
+      .join("\n")}`;
+
+    super(message);
+    this.name = "WithRetriesError";
+    this.retries = retries;
+    this.delayBetweenRetriesMs = delayBetweenRetriesMs;
+  }
+}
+
 type RetryOptions = {
   retries?: number;
   delayBetweenRetriesMs?: number;
@@ -41,12 +60,6 @@ export function withRetries<T, U>(
       }
     }
 
-    const errorMessage = `Function failed after ${retries} attempts:\n${errors
-      .map(
-        ({ attempt, error }) => `Attempt ${attempt}: ${normalizeError(error)}`
-      )
-      .join("\n")}`;
-
-    throw new Error(errorMessage);
+    throw new WithRetriesError(errors, retries, delayBetweenRetriesMs);
   };
 }

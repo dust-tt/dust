@@ -90,6 +90,8 @@ function createServer(auth: Authenticator): McpServer {
           },
         },
         contentFragment: undefined,
+        // TODO(spolu): pull from the current agent message
+        skipToolsValidation: false,
       });
 
       if (convRes.isErr()) {

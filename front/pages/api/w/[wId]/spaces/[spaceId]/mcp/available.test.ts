@@ -69,6 +69,6 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     const response = res._getJSONData();
     expect(response.success).toBe(true);
     expect(response.servers).toHaveLength(1); // Only one available server as the other is assigned to the system space
-    expect(response.servers[0].id).toBe(internalServer.id);
+    expect(response.servers[0].sId).toBe(internalServer.id);
   });
 });

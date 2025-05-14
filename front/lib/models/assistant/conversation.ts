@@ -247,8 +247,10 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
-  // Not a relation as global agents are not in the DB
-  // needs both sId and version to uniquely identify the agent configuration
+  declare skipToolsValidation: boolean;
+
+  // Not a relation as global agents are not in the DB + sId is stable across versions. Both sId and
+  // version are needed to uniquely identify the agent configuration.
   declare agentConfigurationId: string;
   declare agentConfigurationVersion: number;
 
@@ -285,6 +287,11 @@ AgentMessage.init(
     errorMessage: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    skipToolsValidation: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     agentConfigurationId: {
       type: DataTypes.STRING,
@@ -453,9 +460,15 @@ Message.init(
         unique: true,
         fields: ["sId"],
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       {
         unique: true,
         fields: ["conversationId", "rank", "version"],
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "conversationId", "rank", "version"],
+        concurrently: true,
       },
       {
         fields: ["agentMessageId"],

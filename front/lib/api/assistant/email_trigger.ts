@@ -391,6 +391,10 @@ export async function triggerFromEmail({
         profilePictureUrl: user.imageUrl,
         origin: "email",
       },
+      // When running an agent from an email we have no chance of validating tools so we skip all of
+      // them and run the tools by default. This is in tension with the admin settings and could be
+      // revisited if needed.
+      skipToolsValidation: true,
     },
     { resolveAfterFullGeneration: true }
   );

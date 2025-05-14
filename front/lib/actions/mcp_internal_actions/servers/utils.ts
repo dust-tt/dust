@@ -112,6 +112,7 @@ export async function fetchAgentTableConfigurations(
     await AgentTablesQueryConfigurationTable.findAll({
       where: {
         id: { [Op.in]: configurationIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 

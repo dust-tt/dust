@@ -5,12 +5,12 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 interface MCPServerView {
-  id: string;
+  sId: string;
   createdAt: number;
   updatedAt: number;
   spaceId: string;
   server: {
-    id: string;
+    sId: string;
     name: string;
     description: string;
   };
@@ -23,11 +23,11 @@ interface MCPServerView {
 export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
   return [
     {
-      accessorKey: "id",
+      accessorKey: "sId",
       cell: ({ row }) => {
-        const { mcpServerViewLink, id } = row.original;
+        const { mcpServerViewLink, sId } = row.original;
 
-        return <LinkWrapper href={mcpServerViewLink}>{id}</LinkWrapper>;
+        return <LinkWrapper href={mcpServerViewLink}>{sId}</LinkWrapper>;
       },
       header: "sId",
     },
