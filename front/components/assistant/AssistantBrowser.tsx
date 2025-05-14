@@ -237,7 +237,7 @@ export function AssistantBrowser({
       {/* Search bar */}
       <div
         id="search-container"
-        className="flex w-full flex-row items-center justify-center gap-2 align-middle"
+        className="mb-2 flex w-full flex-row items-center justify-center gap-2 align-middle"
       >
         <SearchDropdownMenu
           searchInputValue={assistantSearch}
