@@ -287,7 +287,6 @@ export async function createConversationWithMessage({
         };
       }),
     ],
-    skipToolsValidation: skipToolsValidation ?? false,
   };
 
   // Create new conversation and post the initial message at the same time.
