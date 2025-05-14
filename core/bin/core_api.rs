@@ -3695,7 +3695,6 @@ async fn databases_schema_retrieve(
 struct DatabaseQueryRunPayload {
     query: String,
     tables: Vec<(i64, String, String)>,
-    view_filter: Option<SearchFilter>,
 }
 
 async fn databases_query_run(
@@ -3726,15 +3725,7 @@ async fn databases_query_run(
         ),
         Ok(tables) => {
             // Check that all tables exist.
-            match tables
-                .into_iter()
-                .filter(|table| {
-                    table
-                        .as_ref()
-                        .map_or(true, |t| t.match_filter(&payload.view_filter))
-                })
-                .collect::<Option<Vec<Table>>>()
-            {
+            match tables.into_iter().collect::<Option<Vec<Table>>>() {
                 None => error_response(
                     StatusCode::NOT_FOUND,
                     "table_not_found",

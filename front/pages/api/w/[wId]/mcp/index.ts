@@ -71,7 +71,7 @@ async function handler(
           async (r) => {
             const server = r.toJSON();
             const views = (
-              await MCPServerViewResource.listByMCPServer(auth, server.id)
+              await MCPServerViewResource.listByMCPServer(auth, server.sId)
             ).map((v) => v.toJSON());
             return { ...server, views };
           },
@@ -163,7 +163,7 @@ async function handler(
           success: true,
           server: {
             ...metadata,
-            id: newRemoteMCPServer.sId,
+            sId: newRemoteMCPServer.sId,
           },
         });
       } else {
