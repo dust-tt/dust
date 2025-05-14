@@ -14,7 +14,6 @@ import type {
   ParticipantActionType,
   UserMessageOrigin,
 } from "@app/types";
-import { MCPToolStakeLevelPublicType } from "@dust-tt/client";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;
