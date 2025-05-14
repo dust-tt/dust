@@ -118,6 +118,7 @@ type RowData = {
   onClick?: () => void;
   moreMenuItems?: MoreMenuItem[];
   agentTags: TagType[];
+  agentTagsAsString: string;
   action?: React.ReactNode;
   isSelected: boolean;
   canArchive: boolean;
@@ -180,8 +181,8 @@ const getTableColumns = ({
       ? [
           {
             header: "Tags",
-            accessorKey: "agentTags",
-            cell: (info: CellContext<RowData, TagType[]>) => (
+            accessorKey: "agentTagsAsString",
+            cell: (info: CellContext<RowData, string>) => (
               <DataTable.CellContent
                 grow
                 className="flex flex-row items-center"
@@ -190,24 +191,8 @@ const getTableColumns = ({
                   <div className="flex-grow truncate">
                     <Tooltip
                       tooltipTriggerAsChild
-                      label={
-                        info.getValue().length > 0
-                          ? info
-                              .getValue()
-                              .map((t) => t.name)
-                              .join(", ")
-                          : "-"
-                      }
-                      trigger={
-                        <span>
-                          {info.getValue().length > 0
-                            ? info
-                                .getValue()
-                                .map((t) => t.name)
-                                .join(", ")
-                            : "-"}
-                        </span>
-                      }
+                      label={info.getValue()}
+                      trigger={<span>{info.getValue()}</span>}
                     />
                   </div>
                   <TagSelector
@@ -450,6 +435,10 @@ export function AssistantsTable({
           feedbacks: agentConfiguration.feedbacks,
           scope: agentConfiguration.scope,
           agentTags: agentConfiguration.tags,
+          agentTagsAsString:
+            agentConfiguration.tags.length > 0
+              ? agentConfiguration.tags.map((t) => t.name).join(",")
+              : "-",
           isSelected: selection.includes(agentConfiguration.sId),
           canArchive,
           action:
