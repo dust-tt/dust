@@ -545,6 +545,7 @@ export async function* getConversationEvents({
 }
 
 export async function cancelMessageGenerationEvent(
+  auth: Authenticator,
   messageIds: string[]
 ): Promise<void> {
   const redis = await getRedisClient({ origin: "cancel_message_generation" });
@@ -562,7 +563,10 @@ export async function cancelMessageGenerationEvent(
 
       // Already set the status to cancel
       const dbTask = Message.findOne({
-        where: { sId: messageId },
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          sId: messageId,
+        },
       }).then(async (message) => {
         if (message && message.agentMessageId) {
           await AgentMessage.update(
