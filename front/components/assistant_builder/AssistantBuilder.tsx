@@ -227,13 +227,8 @@ export default function AssistantBuilder({
 
   const [rightPanelStatus, setRightPanelStatus] =
     useState<AssistantBuilderRightPanelStatus>({
-      tab:
-        template != null
-          ? "Template"
-          : screen == "instructions"
-            ? "Preview"
-            : null,
-      openedAt: screen == "instructions" ? Date.now() : null,
+      tab: template != null ? "Template" : null,
+      openedAt: template != null ? Date.now() : null,
     });
 
   // We deactivate the Preview button if the BuilderState is empty (= no instructions, no tools)
