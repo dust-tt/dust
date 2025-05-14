@@ -92,8 +92,20 @@ AgentDataSourceConfiguration.init(
         concurrently: true,
       },
       { fields: ["mcpServerConfigurationId"] },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-14): Remove index
       { fields: ["dataSourceId"] },
+      {
+        fields: ["workspaceId", "dataSourceId"],
+        concurrently: true,
+      },
+
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-14): Remove index
       { fields: ["dataSourceViewId"] },
+      {
+        fields: ["workspaceId", "dataSourceViewId"],
+        concurrently: true,
+        name: "agent_data_source_config_workspace_id_data_source_view_id",
+      },
       {
         fields: ["workspaceId"],
         concurrently: true,
