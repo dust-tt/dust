@@ -47,7 +47,6 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
-  WhitelistableFeature,
 } from "@app/types";
 import {
   asDisplayName,
@@ -243,7 +242,7 @@ const SYSTEM_SPACE_ITEMS = [
     label: "Tools",
     visual: BoltIcon,
     category: "actions" as DataSourceViewCategory,
-    flag: "mcp_actions" as WhitelistableFeature,
+    flag: null,
   },
 ];
 

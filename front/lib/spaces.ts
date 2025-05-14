@@ -130,7 +130,6 @@ export const CATEGORY_DETAILS: {
   actions: {
     label: "Tools",
     icon: ACTION_SPECIFICATIONS["MCP"].cardIcon,
-    flag: "mcp_actions",
   },
 };
 

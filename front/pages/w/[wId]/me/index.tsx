@@ -10,7 +10,6 @@ import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -38,9 +37,6 @@ export default function ProfilePage({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
   const { user, isUserLoading, mutateUser } = useUser();
 
   return (
@@ -68,12 +64,8 @@ export default function ProfilePage({
 
             <Separator />
 
-            {hasFeature("mcp_actions") && (
-              <>
-                <Page.SectionHeader title="Tools Confirmation Preferences" />
-                <UserToolsTable owner={owner} />
-              </>
-            )}
+            <Page.SectionHeader title="Tools Confirmation Preferences" />
+            <UserToolsTable owner={owner} />
           </Page.Layout>
         </Page>
       </AppContentLayout>
