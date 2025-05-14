@@ -184,7 +184,6 @@ async function handler(
           await concurrentExecutor(
             agentConfigurations.filter((a) => a.scope !== "global"),
             async (agentConfiguration) => {
-              console.log("agentConfiguration", editorsGroups.value);
               const editorGroup = editorsGroups.value[agentConfiguration.sId];
               if (editorGroup) {
                 const members = await editorGroup.getActiveMembers(auth);
