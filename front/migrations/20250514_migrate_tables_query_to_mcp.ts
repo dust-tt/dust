@@ -1,9 +1,9 @@
+import { format } from "date-fns";
 import fs from "fs";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { format } from "date-fns";
 import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
