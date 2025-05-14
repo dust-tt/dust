@@ -491,7 +491,7 @@ export function AssistantDetails({
                 <SheetTitle />
               </VisuallyHidden>
               <DescriptionSection />
-              {!isGlobalAgent ? (
+              {!showEditorsTabs && !showPerformanceTabs ? (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
                     <TabsTrigger
