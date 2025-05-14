@@ -22,7 +22,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { AssistantsTable } from "@app/components/assistant/AssistantsTable";
+import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteAssistantsDialog } from "@app/components/assistant/DeleteAssistantsDialog";
@@ -466,12 +466,8 @@ export default function WorkspaceAssistants({
                         icon={
                           AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
                         }
-                        isCounter
-                        counterValue={
-                          tab.id === "archived"
-                            ? "-"
-                            : `${agentsByTab[tab.id].length}`
-                        }
+                        isCounter={tab.id !== "archived"}
+                        counterValue={`${agentsByTab[tab.id].length}`}
                       />
                     ))}
                   </TabsList>
