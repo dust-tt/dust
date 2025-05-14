@@ -83,6 +83,9 @@ export async function getDataSourceViewsUsageByCategory({
     AgentDataSourceConfiguration.findAll({
       raw: true,
       group: ["dataSourceView.id"],
+      where: {
+        workspaceId: owner.id,
+      },
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
         [
@@ -136,6 +139,9 @@ export async function getDataSourceViewsUsageByCategory({
     AgentDataSourceConfiguration.findAll({
       raw: true,
       group: ["dataSourceView.id"],
+      where: {
+        workspaceId: owner.id,
+      },
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
         [
@@ -189,6 +195,9 @@ export async function getDataSourceViewsUsageByCategory({
     AgentDataSourceConfiguration.findAll({
       raw: true,
       group: ["dataSourceView.id"],
+      where: {
+        workspaceId: owner.id,
+      },
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
         [
@@ -355,6 +364,9 @@ export async function getDataSourcesUsageByCategory({
     AgentDataSourceConfiguration.findAll({
       raw: true,
       group: ["dataSource.id"],
+      where: {
+        workspaceId: owner.id,
+      },
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
         [
@@ -400,6 +412,9 @@ export async function getDataSourcesUsageByCategory({
     AgentDataSourceConfiguration.findAll({
       raw: true,
       group: ["dataSource.id"],
+      where: {
+        workspaceId: owner.id,
+      },
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
         [
@@ -445,6 +460,9 @@ export async function getDataSourcesUsageByCategory({
     AgentDataSourceConfiguration.findAll({
       raw: true,
       group: ["dataSource.id"],
+      where: {
+        workspaceId: owner.id,
+      },
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
         [
@@ -593,6 +611,7 @@ export async function getDataSourceUsage({
       ],
       where: {
         dataSourceId: dataSource.id,
+        workspaceId: owner.id,
       },
       include: [
         {

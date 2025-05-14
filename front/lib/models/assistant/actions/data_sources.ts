@@ -77,11 +77,27 @@ AgentDataSourceConfiguration.init(
   {
     modelName: "agent_data_source_configuration",
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       { fields: ["retrievalConfigurationId"] },
+      {
+        fields: ["workspaceId", "retrievalConfigurationId"],
+        concurrently: true,
+        name: "agent_data_source_config_workspace_id_retrieval_config_id",
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       { fields: ["processConfigurationId"] },
+      {
+        fields: ["workspaceId", "processConfigurationId"],
+        name: "agent_data_source_config_workspace_id_process_config_id",
+        concurrently: true,
+      },
       { fields: ["mcpServerConfigurationId"] },
       { fields: ["dataSourceId"] },
       { fields: ["dataSourceViewId"] },
+      {
+        fields: ["workspaceId"],
+        concurrently: true,
+      },
     ],
     sequelize: frontSequelize,
     hooks: {

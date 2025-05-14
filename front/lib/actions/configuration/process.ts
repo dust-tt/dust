@@ -44,6 +44,7 @@ export async function fetchAgentProcessActionConfigurations(
   const processDatasourceConfigurations =
     await AgentDataSourceConfiguration.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         processConfigurationId: {
           [Op.in]: processConfiguration.map((r) => r.id),
         },
