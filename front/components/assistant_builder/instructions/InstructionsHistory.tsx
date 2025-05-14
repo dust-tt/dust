@@ -43,8 +43,8 @@ export function InstructionHistory({
     []
   );
 
-  const sortedHistory = useMemo(() => {
-    return [...history].sort((a, b) => {
+  const historyWithPrev = useMemo(() => {
+    const sorted = [...history].sort((a, b) => {
       const timeA = a.versionCreatedAt
         ? new Date(a.versionCreatedAt).getTime()
         : a.version;
@@ -57,36 +57,44 @@ export function InstructionHistory({
       }
       return a.version - b.version;
     });
-  }, [history]);
 
-  // Deduplicate history items with the same instructions in a single pass
-  const displayHistory = useMemo(() => {
-    return sortedHistory.reduce<LightAgentConfigurationType[]>(
-      (acc, config, index, array) => {
-        const currentInstructions = config.instructions ?? "";
+    const result: Array<{
+      config: LightAgentConfigurationType;
+      prevInstructions: string;
+    }> = [];
+
+    let lastRawInstructions: string | null = null;
+
+    for (const config of sorted) {
+      const instructions = config.instructions ?? "";
+      const isNewRun =
+        lastRawInstructions === null || instructions !== lastRawInstructions;
+
+      if (isNewRun) {
+        // Compute prevInstructions from last result
         const prevInstructions =
-          index > 0 ? array[index - 1].instructions ?? "" : null;
-        const isNewRun =
-          index === 0 || currentInstructions !== prevInstructions;
+          result.length > 0
+            ? result[result.length - 1].config.instructions ?? ""
+            : "";
 
-        if (isNewRun) {
-          acc.push(config);
-        } else if (config.version === selectedConfig?.version) {
-          acc[acc.length - 1] = config;
-        }
-        return acc;
-      },
-      []
-    );
-  }, [sortedHistory, selectedConfig]);
+        result.push({
+          config,
+          prevInstructions,
+        });
+      } else if (config.version === selectedConfig?.version) {
+        // Replace representative of current run with selected config
+        const prevInstructions = result[result.length - 1].prevInstructions;
+        result[result.length - 1] = {
+          config,
+          prevInstructions,
+        };
+      }
 
-  // Compute previous instructions for each config in the display history
-  const historyWithPrev = useMemo(() => {
-    return displayHistory.map((config, index, array) => ({
-      config,
-      prevInstructions: index > 0 ? array[index - 1].instructions ?? "" : "",
-    }));
-  }, [displayHistory]);
+      lastRawInstructions = instructions;
+    }
+
+    return result;
+  }, [history, selectedConfig]);
 
   return (
     <DropdownMenu>
