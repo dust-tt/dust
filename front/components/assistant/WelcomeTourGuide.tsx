@@ -211,7 +211,7 @@ export const WelcomeTourGuide = ({
           >
             @mentions
           </span>{" "}
-          to call Agents and&nbsp;start a conversation.
+          to call agents and&nbsp;start a conversation.
         </TourGuideCardTitle>
         {/* <TourGuideCardContent className="py-2">
           <Button
