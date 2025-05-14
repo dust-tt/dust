@@ -18,7 +18,7 @@ export function MCPToolsList({
         </p>
       ) : (
         <ContentMessage variant="primary" className="max-w-full">
-          <ScrollArea className="h-36">
+          <ScrollArea viewportClassName="max-h-64">
             <div className="flex flex-col gap-4 space-y-0">
               {tools.map(
                 (
