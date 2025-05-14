@@ -15,6 +15,7 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isMCPConfigurationForDustAppRun } from "@app/lib/actions/types/guards";
@@ -33,20 +34,12 @@ import type { DatasetSchema } from "@app/types";
 import { getHeaderFromGroupIds, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 import { ConfigurableToolInputSchemas } from "../input_schemas";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 
 const MIN_GENERATION_TOKENS = 2048;
 
 interface DustAppBlock {
   type: string;
   name: string;
-}
-
-interface DustAppConfig {
-  [key: string]: {
-    dataset?: string;
-    [key: string]: unknown;
-  };
 }
 
 interface DustFileOutput {
@@ -103,10 +96,9 @@ async function prepareAppContext(
     throw new Error("Could not find Dust app");
   }
 
-  const appSpec = JSON.parse(app.savedSpecification || "[]") as DustAppBlock[];
-  const appConfig = extractConfig(
-    JSON.parse(app.savedSpecification || "{}")
-  ) as DustAppConfig;
+  const parsedSpec = app.parseSavedSpecification();
+  const appSpec = parsedSpec as DustAppBlock[];
+  const appConfig = extractConfig(parsedSpec);
 
   const inputSpec = appSpec.find((b: DustAppBlock) => b.type === "input");
   const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;

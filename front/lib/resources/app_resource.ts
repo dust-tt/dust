@@ -299,4 +299,8 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       space: this.space.toJSON(),
     };
   }
+
+  parseSavedSpecification() {
+    return JSON.parse(this.savedSpecification || "[]");
+  }
 }

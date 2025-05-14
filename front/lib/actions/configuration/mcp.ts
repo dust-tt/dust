@@ -15,12 +15,12 @@ import {
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import logger from "@app/logger/logger";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
-import { AppResource } from "@app/lib/resources/app_resource";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,

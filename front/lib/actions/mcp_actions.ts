@@ -184,7 +184,7 @@ export async function* tryCallMCPTool(
   try {
     const r = await connectToMCPServer(auth, {
       params: connectionParamsRes.value,
-      agentLoopRunContext,
+      agentLoopContext: { agentLoopRunContext },
     });
     if (r.isErr()) {
       yield {
@@ -648,7 +648,7 @@ async function listMCPServerTools(
     const connectionParams = connectionParamsRes.value;
     const r = await connectToMCPServer(auth, {
       params: connectionParams,
-      agentLoopListToolsContext,
+      agentLoopContext: { agentLoopListToolsContext },
     });
     if (r.isErr()) {
       return r;
