@@ -3,7 +3,7 @@ import { useCallback, useContext, useMemo } from "react";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   AssistantBuilderActionConfiguration,
-  AssistantBuilderActionConfigurationWithId,
+  AssistantBuilderActionState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
@@ -58,7 +58,7 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
   const { spaces, mcpServerViews } = useContext(AssistantBuilderContext);
 
   const isCapabilityAction = useCallback(
-    (action: AssistantBuilderActionConfiguration) => {
+    (action: AssistantBuilderActionState) => {
       if (action.type === "MCP") {
         return isUsableAsCapability(
           action.configuration.mcpServerViewId,
@@ -77,7 +77,7 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
 
   const spaceIdToActions = useMemo(() => {
     return configurableActions.reduce<
-      Record<string, AssistantBuilderActionConfigurationWithId[]>
+      Record<string, AssistantBuilderActionState[]>
     >((acc, action) => {
       const addActionToSpace = (spaceId?: string) => {
         if (spaceId) {
@@ -141,6 +141,7 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
 
         case "WEB_NAVIGATION":
         case "REASONING":
+        case "DATA_VISUALIZATION": // Data visualization is not an action but we show it in the UI like an action.
           break;
 
         default:
