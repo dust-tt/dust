@@ -368,6 +368,7 @@ AgentChildAgentConfiguration.init(
       { fields: ["mcpServerConfigurationId"] },
       {
         fields: ["workspaceId", "mcpServerConfigurationId"],
+        name: "agent_child_agent_config_workspace_id_mcp_srv_config_id",
         concurrently: true,
       },
     ],
