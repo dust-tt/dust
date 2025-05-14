@@ -402,12 +402,6 @@ export function SharingDropdown({
         : SCOPE_INFO[requestNewScope].confirmationModalData;
   }
 
-  const allowedToChange =
-    agentConfiguration?.scope !== "global" &&
-    !featureFlags.hasFeature("agent_discovery") &&
-    !disabled &&
-    (agentConfiguration?.canEdit || isAdmin(owner));
-
   return (
     <div>
       {requestNewScope && confirmationModalData && (
@@ -421,45 +415,9 @@ export function SharingDropdown({
           }
         />
       )}
-      <DropdownMenu modal={origin === "modal"}>
-        <DropdownMenuTrigger disabled={!allowedToChange} asChild>
-          <div className="group flex cursor-pointer items-center gap-2">
-            <SharingChip scope={newScope} />
-            {allowedToChange && (
-              <Button icon={ChevronDownIcon} size="xs" variant="ghost" />
-            )}
-          </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {scopes.map(([entryScope, entryData]) => (
-            <DropdownMenuItem
-              key={entryData.label}
-              label={entryData.label}
-              icon={entryData.icon}
-              onClick={() => {
-                /**
-                 * Skip confirmation modal in the following cases:
-                 * 1. Agent is being created (agentConfiguration is null)
-                 * 2. Selection is unchanged (newScope === value)
-                 * 3. Selection reverts to initial state (value === initialScope)
-                 */
-                const shouldSkipModal =
-                  !agentConfiguration ||
-                  newScope === entryScope ||
-                  entryScope === initialScope;
-
-                if (shouldSkipModal) {
-                  setNewScope(entryScope as NonGlobalScope);
-                  return;
-                }
-
-                // Show confirmation modal for scope changes on existing agents
-                setModalNewScope(entryScope as NonGlobalScope);
-              }}
-            />
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="group flex cursor-pointer items-center gap-2">
+        <SharingChip scope={newScope} />
+      </div>
     </div>
   );
 }

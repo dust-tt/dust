@@ -78,9 +78,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     ? (context.query.flow as BuilderFlow)
     : "personal_assistants";
 
-  const featureFlag = await getFeatureFlags(owner);
-  const isAgentDiscoveryEnabled = featureFlag.includes("agent_discovery");
-
   let configuration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -98,13 +95,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     }
     // We reset the scope according to the current flow. This ensures that cloning a workspace
     // agent with flow `personal_assistants` will initialize the agent as private.
-    configuration.scope = isAgentDiscoveryEnabled
-      ? flow === "personal_assistants"
-        ? "hidden"
-        : "visible"
-      : flow === "personal_assistants"
-        ? "private"
-        : "workspace";
+    configuration.scope = flow === "personal_assistants" ? "hidden" : "visible";
   } else if (templateId) {
     const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
       templateId,

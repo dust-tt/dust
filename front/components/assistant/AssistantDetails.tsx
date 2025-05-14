@@ -384,7 +384,6 @@ export function AssistantDetails({
     setSelectedTab("info");
   }, [assistantId]);
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const doUpdateScope = useUpdateAgentScope({
     owner,
     agentConfigurationId: assistantId,
@@ -395,10 +394,7 @@ export function AssistantDetails({
   );
 
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const showEditorsTabs =
-    featureFlags.includes("agent_discovery") &&
-    assistantId != null &&
-    !isGlobalAgent;
+  const showEditorsTabs = assistantId != null && !isGlobalAgent;
 
   const showPerformanceTabs =
     (agentConfiguration?.canEdit || isAdmin(owner)) &&
