@@ -65,12 +65,22 @@ const TagSelector = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <Button
-          variant="ghost"
-          icon={ChevronDownIcon}
-          size="xmini"
-          className="invisible text-muted-foreground group-hover:visible"
-        />
+        {agentTags.length === 0 ? (
+          <Button
+            variant="ghost"
+            icon={ChevronDownIcon}
+            size="xs"
+            label="Add tags"
+            className="invisible text-muted-foreground group-hover:visible"
+          />
+        ) : (
+          <Button
+            variant="ghost"
+            icon={ChevronDownIcon}
+            size="xmini"
+            className="invisible text-muted-foreground group-hover:visible"
+          />
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         {tags.map((t) => {
@@ -168,7 +178,7 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <div className={classNames("flex flex-row items-center gap-2 py-3")}>
-            <div className="">
+            <div>
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
@@ -262,7 +272,7 @@ const getTableColumns = ({
       accessorFn: (row: RowData) => row.feedbacks,
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
-          return "";
+          return "-";
         }
         const f = info.getValue();
         if (f) {
@@ -463,7 +473,7 @@ export function AssistantsTable({
           agentTagsAsString:
             agentConfiguration.tags.length > 0
               ? agentConfiguration.tags.map((t) => t.name).join(",")
-              : "-",
+              : "",
           isSelected: selection.includes(agentConfiguration.sId),
           canArchive,
           action:
