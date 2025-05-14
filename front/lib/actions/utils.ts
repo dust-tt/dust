@@ -96,7 +96,7 @@ export const ACTION_SPECIFICATIONS: Record<
     description: "Add additional sets of tools",
     cardIcon: BoltIcon,
     dropDownIcon: BoltIcon,
-    flag: "mcp_actions",
+    flag: null,
   },
 };
 

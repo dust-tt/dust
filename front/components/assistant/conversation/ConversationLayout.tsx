@@ -97,7 +97,7 @@ const ConversationLayoutContent = ({
   });
 
   const hasCoEditionFeatureFlag = useMemo(
-    () => hasFeature("mcp_actions") && hasFeature("co_edition"),
+    () => hasFeature("co_edition"),
     [hasFeature]
   );
 
