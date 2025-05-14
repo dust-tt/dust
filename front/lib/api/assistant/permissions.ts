@@ -108,6 +108,24 @@ export async function getAgentConfigurationGroupIdsFromActions(
       .filter((action) => isDustAppRunConfiguration(action))
       .map((action) => action.appId)
   );
+  const childAgentConfigurations = await AgentConfiguration.findAll({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      sId: {
+        [Op.in]: removeNulls(
+          actions.map((action) => {
+            if (
+              action.type === "mcp_server_configuration" &&
+              isServerSideMCPServerConfiguration(action)
+            ) {
+              return action.childAgentId;
+            }
+            return null;
+          })
+        ),
+      },
+    },
+  });
 
   // Map spaceId to its group requirements.
   const spacePermissions = new Map<string, Set<number>>();
@@ -149,12 +167,14 @@ export async function getAgentConfigurationGroupIdsFromActions(
     groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
   }
 
+  for (const childAgent of childAgentConfigurations) {
+    const groups = childAgent.requestedGroupIds;
+  }
+
   // Convert Map to array of arrays, filtering out empty sets.
   return Array.from(spacePermissions.values())
     .map((set) => Array.from(set))
     .filter((arr) => arr.length > 0);
-
-  // TODO(mcp): add something here for child agents.
 }
 
 export async function getContentFragmentGroupIds(
