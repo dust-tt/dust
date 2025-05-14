@@ -279,6 +279,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
           conversation = convRes.value.conversation;
           setConversationId(conversation.sId);
+
+          if (!convRes.value.message) {
+            throw new Error("No message created");
+          }
           userMessageId = convRes.value.message.sId;
         } else {
           const workspaceId = await AuthService.getSelectedWorkspaceId();

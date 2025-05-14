@@ -1875,7 +1875,7 @@ export type PostContentFragmentResponseType = z.infer<
 
 export const CreateConversationResponseSchema = z.object({
   conversation: ConversationSchema,
-  message: z.union([z.undefined(), UserMessageSchema]),
+  message: UserMessageSchema.optional(),
 });
 
 export type CreateConversationResponseType = z.infer<
