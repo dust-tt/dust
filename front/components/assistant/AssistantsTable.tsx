@@ -206,11 +206,6 @@ const getTableColumns = ({
               </DataTable.CellContent>
             ),
             isFilterable: true,
-            sortingFn: (a: Row<RowData>, b: Row<RowData>) => {
-              return a.original.agentTagsAsString.localeCompare(
-                b.original.agentTagsAsString
-              );
-            },
             meta: {
               className: "w-32 xl:w-64",
               tooltip: "Tags",
