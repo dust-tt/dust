@@ -1,9 +1,10 @@
-import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
 import type { InternalToolInputMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+
+import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
 
 export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
   /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
@@ -67,12 +68,15 @@ export const ConfigurableToolInputSchemas = {
     })
     .describe("An optional time frame to use for the tool.")
     .nullable(),
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z
-    .string()
-    .refine(isValidJsonSchema, {
-      message: "Value must be a valid JSON schema string",
-    })
-    .optional(),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.object({
+    value: z
+      .string()
+      .refine(isValidJsonSchema, {
+        message: "Value must be a valid JSON schema string",
+      })
+      .optional(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA),
+  }),
   // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Omit<
