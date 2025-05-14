@@ -74,7 +74,11 @@ export const TableTagSelector = ({
               }}
               checked={isChecked}
             >
-              <Chip size="xs" label={t.name} color="golden" />
+              <Chip
+                size="xs"
+                label={t.name}
+                color={t.reserved ? "blue" : "golden"}
+              />
             </DropdownMenuCheckboxItem>
           );
         })}

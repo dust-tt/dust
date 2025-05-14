@@ -931,13 +931,35 @@ export async function createAgentConfiguration(
         }
       );
 
+      const existingTags = existingAgent
+        ? await TagResource.listForAgent(auth, existingAgent.id)
+        : [];
+      const existingReservedTags = existingTags
+        .filter((t) => t.reserved)
+        .map((t) => t.sId);
+      if (
+        !isAdmin(owner) &&
+        !existingReservedTags.every((reservedTagId) =>
+          tags.some((tag) => tag.sId === reservedTagId)
+        )
+      ) {
+        throw new Error("Cannot remove reserved tag from agent");
+      }
+
       for (const tag of tags) {
-        const id = getResourceIdFromSId(tag.sId);
-        if (id) {
+        const tagResource = await TagResource.fetchById(auth, tag.sId);
+        if (tagResource) {
+          if (
+            !isAdmin(owner) &&
+            tagResource.reserved &&
+            !existingReservedTags.includes(tagResource.sId)
+          ) {
+            throw new Error("Cannot add reserved tag to agent");
+          }
           await TagAgentModel.create(
             {
               workspaceId: owner.id,
-              tagId: id,
+              tagId: tagResource.id,
               agentConfigurationId: agentConfigurationInstance.id,
             },
             { transaction: t }

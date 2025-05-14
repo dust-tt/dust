@@ -8,6 +8,8 @@ export class TagModel extends WorkspaceAwareModel<TagModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare reserved: boolean;
+
   declare name: string;
 }
 TagModel.init(
@@ -21,6 +23,11 @@ TagModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    reserved: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     name: {
       type: DataTypes.STRING,

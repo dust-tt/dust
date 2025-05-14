@@ -9,7 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import { isAdmin, type WithAPIErrorResponse } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 // Changed schema to accept optional add/remove lists
@@ -98,6 +98,20 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "Invalid tag ids",
+          },
+        });
+      }
+
+      if (
+        !isAdmin(auth.getNonNullableWorkspace()) &&
+        (tagsToAdd.some((tag) => tag.reserved) ||
+          tagsToRemove.some((tag) => tag.reserved))
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Reserved tags cannot be added or removed.",
           },
         });
       }

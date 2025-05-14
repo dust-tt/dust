@@ -99,7 +99,11 @@ export const TagsFilterMenu = ({
                   setSelectedTags([...selectedTags, tag]);
                 }}
               >
-                <Chip label={tag.name} size="xs" color="golden" />
+                <Chip
+                  label={tag.name}
+                  size="xs"
+                  color={tag.reserved ? "blue" : "golden"}
+                />
               </DropdownMenuItem>
             ))}
         </DropdownMenuContent>

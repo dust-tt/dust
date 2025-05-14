@@ -221,6 +221,7 @@ const IsSupportedModelSchema = new t.Type<SupportedModel>(
 const TagSchema = t.type({
   sId: t.string,
   name: t.string,
+  reserved: t.boolean,
 });
 
 const EditorSchema = t.type({

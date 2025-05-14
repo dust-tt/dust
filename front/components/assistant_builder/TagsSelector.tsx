@@ -68,7 +68,6 @@ export const TagsSelector = ({
       tags: [...state.tags, tag],
     }));
     setEdited(true);
-    setEdited(true);
   };
 
   return (
@@ -83,15 +82,19 @@ export const TagsSelector = ({
         {assistantTags.map((tag) => (
           <Chip
             key={tag.sId}
-            onRemove={() => {
-              setBuilderState((state) => ({
-                ...state,
-                tags: state.tags.filter((t) => t.sId !== tag.sId),
-              }));
-              setEdited(true);
-            }}
+            onRemove={
+              tag.reserved && !isAdmin(owner)
+                ? undefined
+                : () => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      tags: state.tags.filter((t) => t.sId !== tag.sId),
+                    }));
+                    setEdited(true);
+                  }
+            }
             size="xs"
-            color="golden"
+            color={tag.reserved ? "blue" : "golden"}
             label={tag.name}
           />
         ))}
@@ -148,19 +151,23 @@ export const TagsSelector = ({
               </>
             }
           >
-            {filteredTags.map((c) => (
+            {filteredTags.map((tag) => (
               <DropdownMenuItem
                 className="p-1"
-                key={c.sId}
+                key={tag.sId}
                 onClick={() => {
                   setBuilderState((state) => ({
                     ...state,
-                    tags: [...state.tags, c],
+                    tags: [...state.tags, tag],
                   }));
                   setEdited(true);
                 }}
               >
-                <Chip size="xs" color="golden" label={c.name} />
+                <Chip
+                  size="xs"
+                  color={tag.reserved ? "blue" : "golden"}
+                  label={tag.name}
+                />
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

@@ -113,9 +113,17 @@ export class TagResource extends BaseResource<TagModel> {
 
   static async findAll(
     auth: Authenticator,
-    options?: ResourceFindOptions<TagModel>
+    { includeReserved }: { includeReserved?: boolean } = {}
   ) {
-    return this.baseFetch(auth, options);
+    return this.baseFetch(auth, {
+      where: {
+        ...(includeReserved ? {} : { reserved: false }),
+      },
+      order: [
+        ["reserved", "DESC"],
+        ["name", "ASC"],
+      ],
+    });
   }
 
   static async findAllWithUsage(
@@ -227,8 +235,8 @@ export class TagResource extends BaseResource<TagModel> {
     });
   }
 
-  async updateName(name: string) {
-    await this.update({ name });
+  async updateTag({ name, reserved }: { name: string; reserved: boolean }) {
+    await this.update({ name, reserved });
   }
 
   async delete(
@@ -285,6 +293,7 @@ export class TagResource extends BaseResource<TagModel> {
     return {
       sId: this.sId,
       name: this.name,
+      reserved: this.reserved,
     };
   }
 }

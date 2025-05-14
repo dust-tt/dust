@@ -8,7 +8,7 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import { isAdmin, type WithAPIErrorResponse } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export type GetTagsResponseBody = {
@@ -35,7 +35,9 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      const tags = await TagResource.findAll(auth);
+      const tags = await TagResource.findAll(auth, {
+        includeReserved: isAdmin(auth.getNonNullableWorkspace()),
+      });
 
       return res.status(200).json({
         tags: tags.map((tag) => tag.toJSON()),

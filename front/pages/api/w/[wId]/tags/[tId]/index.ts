@@ -10,6 +10,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const PatchBodySchema = t.type({
   name: t.string,
+  reserved: t.boolean,
 });
 
 async function handler(
@@ -106,10 +107,9 @@ async function handler(
         });
       }
       const body = r.right;
-      const { name } = body;
+      const { name, reserved } = body;
 
-      await tag.updateName(name);
-
+      await tag.updateTag({ name, reserved });
       res.status(200).end();
       return;
     }
