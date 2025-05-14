@@ -78,7 +78,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        configuration: transcriptsConfiguration.toJSON(),
+        configuration: transcriptsConfiguration,
       });
   }
 }

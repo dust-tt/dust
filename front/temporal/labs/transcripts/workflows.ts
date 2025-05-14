@@ -4,6 +4,8 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
+import type { ModelId } from "@app/types";
+
 import type * as activities from "./activities";
 import { makeProcessTranscriptWorkflowId } from "./utils";
 
@@ -13,7 +15,7 @@ const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
   });
 
 export async function retrieveNewTranscriptsWorkflow(
-  transcriptsConfigurationId: string
+  transcriptsConfigurationId: ModelId
 ) {
   const filesToProcess = await retrieveNewTranscriptsActivity(
     transcriptsConfigurationId
@@ -45,7 +47,7 @@ export async function processTranscriptWorkflow({
   transcriptsConfigurationId,
 }: {
   fileId: string;
-  transcriptsConfigurationId: string;
+  transcriptsConfigurationId: ModelId;
 }): Promise<void> {
   await processTranscriptActivity(transcriptsConfigurationId, fileId);
 }
