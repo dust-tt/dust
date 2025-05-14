@@ -61,7 +61,7 @@ Example:
 
 ```
 // BAD
-// this is a comment that is neither a full sentence nor wrapped at 100 characers (clearly higher) / it should be wrapped because otherwise it's really hard to read
+// this is a comment that is neither a full sentence nor wrapped at 100 characters (clearly higher) / it should be wrapped because otherwise it's really hard to read
 
 // BAD
 // This comment is a valid sentence but it
