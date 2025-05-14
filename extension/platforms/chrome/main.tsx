@@ -22,6 +22,7 @@ import {
   Notification,
   Page,
 } from "@dust-tt/sparkle";
+import { compare } from "compare-versions";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -37,7 +38,8 @@ const ChromeExtensionWrapper = () => {
     if (!pendingUpdate) {
       return null;
     }
-    if (pendingUpdate.version > chrome.runtime.getManifest().version) {
+    const currentVersion = chrome.runtime.getManifest().version;
+    if (compare(pendingUpdate.version, currentVersion, ">")) {
       setIsLatestVersion(false);
     }
   };
@@ -64,17 +66,20 @@ const ChromeExtensionWrapper = () => {
         )}
       >
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
-          <div className="flex flex-col items-center text-center space-y-4">
-            <DustLogo className="h-6 w-24" />
-            <Page.Header title="Update required" />
+          <div className="flex flex-col items-center text-center gap-4">
+            <DustLogo className="h-12 w-48" />
+            <Page.Header title="New version ready" />
+            <Page.P>
+              Install the latest version to keep using Dust. <br />
+              Relaunch from toolbar.
+            </Page.P>
+            <Button
+              label="Update now"
+              onClick={async () => {
+                chrome.runtime.reload();
+              }}
+            />
           </div>
-          <Page.SectionHeader title="Panel closes after update. Click Dust icon in toolbar to return." />
-          <Button
-            label="Update now"
-            onClick={async () => {
-              chrome.runtime.reload();
-            }}
-          />
         </div>
       </div>
     );
