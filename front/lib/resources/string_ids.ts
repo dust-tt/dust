@@ -33,13 +33,14 @@ const RESOURCES_PREFIX = {
   mcp_server_view: "msv",
   remote_mcp_server: "rms",
   tag: "tag",
+  transcripts_configuration: "tsc",
 
   // Resources relative to the configuration of an MCP server.
   data_source_configuration: "dsc",
   table_configuration: "tbc",
   child_agent_configuration: "cac",
 
-  // Virtual resources (no database modelsassociated).
+  // Virtual resources (no database models associated).
   internal_mcp_server: "ims",
 };
 
