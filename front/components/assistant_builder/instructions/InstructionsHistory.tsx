@@ -17,7 +17,6 @@ import type { LightAgentConfigurationType } from "@app/types";
 
 interface InstructionHistoryProps {
   history: LightAgentConfigurationType[];
-  currentInstructions: string;
   selectedConfig: LightAgentConfigurationType | null;
   onSelect: (config: LightAgentConfigurationType) => void;
 }
@@ -25,7 +24,6 @@ interface InstructionHistoryProps {
 export function InstructionHistory({
   history,
   onSelect,
-  currentInstructions,
   selectedConfig,
 }: InstructionHistoryProps) {
   const formatVersionLabel = useCallback(
@@ -45,7 +43,6 @@ export function InstructionHistory({
     []
   );
 
-  // Sort history by creation date or version number
   const sortedHistory = useMemo(() => {
     return [...history].sort((a, b) => {
       const timeA = a.versionCreatedAt
@@ -55,8 +52,10 @@ export function InstructionHistory({
         ? new Date(b.versionCreatedAt).getTime()
         : b.version;
 
-      if (timeA !== timeB) return timeA - timeB;
-      return a.version - b.version; // Fallback to version for identical timestamps
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      return a.version - b.version;
     });
   }, [history]);
 
