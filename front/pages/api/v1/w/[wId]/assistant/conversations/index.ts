@@ -348,7 +348,7 @@ async function handler(
               clientSideMCPServerIds:
                 message.context.clientSideMCPServerIds ?? [],
             },
-            skipToolsValidation,
+            skipToolsValidation: skipToolsValidation ?? false,
           },
           { resolveAfterFullGeneration: blocking === true }
         );

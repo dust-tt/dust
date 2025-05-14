@@ -152,7 +152,7 @@ async function handler(
             origin: context.origin ?? "api",
             clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
           },
-          skipToolsValidation,
+          skipToolsValidation: skipToolsValidation ?? false,
         },
         { resolveAfterFullGeneration: blocking === true }
       );
