@@ -202,7 +202,7 @@ function spreadLength(a: string, b: string) {
 export const getAgentSearchString = (
   assistant: LightAgentConfigurationType
 ) => {
-  return `${assistant.name} ${assistant.description} ${assistant?.lastAuthors?.join(", ")}`.toLowerCase();
+  return assistant.name;
 };
 
 /**
