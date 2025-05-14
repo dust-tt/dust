@@ -1,7 +1,7 @@
 import { Err, Ok, removeNulls } from "@dust-tt/client";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { SlackThread } from "@connectors/lib/models/slack";
+import { SlackMessages } from "@connectors/lib/models/slack";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -99,11 +99,11 @@ export async function launchSlackSyncOneThreadWorkflow(
     return new Ok(undefined);
   }
 
-  const thread = await SlackThread.findOne({
+  const thread = await SlackMessages.findOne({
     where: {
       connectorId: connectorId,
-      slackChannelId: channelId,
-      slackThreadTs: threadTs,
+      channelId: channelId,
+      messageTs: threadTs,
     },
   });
   if (thread && thread.skipReason) {
@@ -114,7 +114,7 @@ export async function launchSlackSyncOneThreadWorkflow(
         threadTs,
         skipReason: thread.skipReason,
       },
-      `Skipping thread ${threadTs} for channel ${channelId} because: ${thread.skipReason}`
+      `Skipping thread : ${thread.skipReason}`
     );
     return new Ok(undefined);
   }

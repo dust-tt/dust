@@ -15,7 +15,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { throwOnError } from "@connectors/lib/cli";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { SlackChannel, SlackThread } from "@connectors/lib/models/slack";
+import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
 import { default as topLogger } from "@connectors/logger/logger";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -129,11 +129,11 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      const thread = await SlackThread.findOne({
+      const thread = await SlackMessages.findOne({
         where: {
           connectorId: connector.id,
-          slackChannelId: args.channelId,
-          slackThreadTs: args.threadId,
+          channelId: args.channelId,
+          messageTs: args.threadId,
         },
       });
       if (thread && thread.skipReason) {
@@ -177,12 +177,26 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      await SlackThread.upsert({
-        connectorId: connector.id,
-        slackChannelId: args.channelId,
-        slackThreadTs: args.threadTs,
-        skipReason: args.skipReason,
+      const existingMessage = await SlackMessages.findOne({
+        where: {
+          connectorId: connector.id,
+          channelId: args.channelId,
+          messageTs: args.threadTs,
+        },
       });
+
+      if (existingMessage) {
+        await existingMessage.update({
+          skipReason: args.skipReason,
+        });
+        logger.info(
+          `Thread ${args.threadTs} will now be skipped with reason: ${args.skipReason}`
+        );
+      } else {
+        logger.info(
+          `Thread ${args.threadTs} not found in DB, skipping.`
+        );
+      }
 
       return { success: true };
     }

@@ -78,6 +78,7 @@ export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
   declare channelId: string;
   declare messageTs?: string;
   declare documentId: string;
+  declare skipReason?: string;
 }
 SlackMessages.init(
   {
@@ -102,6 +103,10 @@ SlackMessages.init(
     documentId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
@@ -165,54 +170,6 @@ SlackChannel.init(
     indexes: [
       { fields: ["connectorId", "slackChannelId"], unique: true },
       { fields: ["connectorId"] },
-    ],
-  }
-);
-
-export class SlackThread extends ConnectorBaseModel<SlackThread> {
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare slackChannelId: string;
-  declare slackThreadTs: string;
-
-  declare skipReason: string | null;
-}
-SlackThread.init(
-  {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    slackChannelId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    slackThreadTs: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    skipReason: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-  },
-  {
-    sequelize: sequelizeConnection,
-    modelName: "slack_threads",
-    indexes: [
-      {
-        fields: ["slackChannelId", "slackThreadTs", "connectorId"],
-        unique: true,
-      },
-      { fields: ["connectorId"] },
-      { fields: ["slackChannelId", "updatedAt"] },
     ],
   }
 );

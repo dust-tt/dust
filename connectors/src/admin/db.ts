@@ -59,7 +59,6 @@ import {
   SlackChatBotMessage,
   SlackConfigurationModel,
   SlackMessages,
-  SlackThread,
 } from "@connectors/lib/models/slack";
 import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import {
@@ -92,7 +91,6 @@ async function main(): Promise<void> {
   await ConfluenceSpace.sync({ alter: true });
   await SlackConfigurationModel.sync({ alter: true });
   await SlackMessages.sync({ alter: true });
-  await SlackThread.sync({ alter: true });
   await SlackChannel.sync({ alter: true });
   await SlackChatBotMessage.sync({ alter: true });
   await SlackBotWhitelistModel.sync({ alter: true });
