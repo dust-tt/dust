@@ -8,6 +8,7 @@ import type { TagType } from "@app/types/tag";
 import type { ModelId } from "../shared/model_id";
 import type { ModelIdType, ModelProviderIdType } from "./assistant";
 import type { AgentActionType, AgentMessageType } from "./conversation";
+import { UserType } from "@app/types/user";
 
 /**
  * Agent configuration
@@ -127,6 +128,7 @@ export type LightAgentConfigurationType = {
 
   // `lastAuthors` is expensive to compute, so we only compute it when needed.
   lastAuthors?: AgentRecentAuthors;
+  editors?: UserType[];
   usage?: AgentUsageType;
   feedbacks?: { up: number; down: number };
 
