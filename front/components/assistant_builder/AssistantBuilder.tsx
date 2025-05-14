@@ -273,7 +273,9 @@ export default function AssistantBuilder({
     if (!agentConfigurationId) {
       setBuilderState((state) => ({
         ...state,
-        editors: [...state.editors, user],
+        editors: state.editors.some((m) => m.sId === user.sId)
+          ? state.editors
+          : [...state.editors, user],
       }));
     }
   }, [
