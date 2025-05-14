@@ -17,10 +17,68 @@ An AI agent that generates and executes Python code, inspired by [CodeAct (Wang 
 bun install
 ```
 
-3. Create a `.env` file in the root directory with your OpenAI API key:
+3. Create a `.env` file in the root directory with your API keys and configuration:
 
 ```
-OPENAI_API_KEY=your_api_key_here
+# Required API keys
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+SERPAPI_API_KEY=your_serpapi_key_here
+FIRECRAWL_API_KEY=your_firecrawl_key_here
+
+# LLM Configuration
+AI_PROVIDER=openai  # openai or anthropic
+AI_MODEL=gpt-4o    # See .env.example for available models
+AI_TEMPERATURE=0.0  # 0.0 to 1.0
+AI_MAX_TOKENS=4096  # Maximum tokens to generate
+
+# Logging
+LOG_LEVEL=INFO      # ERROR, WARN, INFO, DEBUG, TRACE
+```
+
+See `.env.example` for a full list of configuration options.
+
+## Usage
+
+Run the agent with a query:
+
+```bash
+bun start "What's the weather in Paris?"
+```
+
+You can set the log level using the LOG_LEVEL environment variable:
+
+```bash
+LOG_LEVEL=DEBUG bun start "What's the weather in Paris?"
+```
+
+Available log levels: ERROR, WARN, INFO, DEBUG, TRACE
+
+Or programmatically:
+
+```typescript
+import { Agent } from "./agent";
+import { fetchWeather, searchWeb } from "./tools";
+import { logger, LogLevel } from "./utils/logger";
+
+async function main() {
+  // Configure the logger
+  logger.setLevel(LogLevel.INFO);
+  
+  const agent = await Agent.create("What's the weather in Paris?");
+  
+  const tools = {
+    fetch_weather: fetchWeather,
+    search_web: searchWeb,
+  };
+  
+  let answer = null;
+  while (answer === null) {
+    answer = await agent.step(tools);
+  }
+  
+  logger.info("Final answer: %s", answer);
+}
 ```
 
 ## Development
@@ -30,3 +88,42 @@ To run tests:
 ```bash
 bun test
 ```
+
+For more detailed documentation, see [DOCUMENTATION.md](./DOCUMENTATION.md)
+
+## TODO
+
+Future enhancements to consider:
+
+- [agent] Final summary config: disable or configure prompt
+- [agent] "Artifacts" support (list of named docs/strings that can be passed to agent.step() that are shown to the agent)
+- [agent] Ability to pass "canStopExecution" to agent.step() - if true, the agent will have access to the stop execution tool during that step
+- [helpers] Add a tokenizer for better token management
+- Create an "Extract from page" tool that scrapes a page, processes it by 32k token chunks, and extracts relevant information
+- Implement a more robust web search and content processing system
+- Add ability to persist agent state to redis/postgres/filesystem for better recovery and continuation of long-running tasks
+
+## Improvement Status
+
+This project is currently undergoing improvements based on code review feedback:
+
+✅ **Completed**:
+- Configurable logging system (replacing direct console.log statements)
+- Consistent error handling with proper context information
+- Replace `any` types with proper TypeScript definitions
+- Configurable model selection with support for OpenAI and Anthropic
+- Improved environment variable validation
+- Better prompt organization and management
+
+🔄 **In Progress**:
+- None currently
+
+⏳ **Pending**:
+- Reduce coupling between Agent and PythonSandbox classes
+- Implement input validation for external inputs
+- Add resource limits to the sandbox
+- Improve handling of API keys
+- Expand test coverage
+- Improve JSDoc comments
+
+For more details, see the [Implementation Progress](./DOCUMENTATION.md#implementation-progress) section in the documentation.
