@@ -45,11 +45,24 @@ export function InstructionHistory({
     []
   );
 
+  // Sort history by creation date or version number
+  const sortedHistory = useMemo(() => {
+    return [...history].sort((a, b) => {
+      const timeA = a.versionCreatedAt
+        ? new Date(a.versionCreatedAt).getTime()
+        : a.version;
+      const timeB = b.versionCreatedAt
+        ? new Date(b.versionCreatedAt).getTime()
+        : b.version;
+
+      if (timeA !== timeB) return timeA - timeB;
+      return a.version - b.version; // Fallback to version for identical timestamps
+    });
+  }, [history]);
+
   // Deduplicate history items with the same instructions in a single pass
-  // If the selectedConfig is part of a run with identical instructions,
-  // use it as the representative for that run
   const displayHistory = useMemo(() => {
-    return history.reduce<LightAgentConfigurationType[]>(
+    return sortedHistory.reduce<LightAgentConfigurationType[]>(
       (acc, config, index, array) => {
         const currentInstructions = config.instructions ?? "";
         const prevInstructions =
@@ -66,7 +79,15 @@ export function InstructionHistory({
       },
       []
     );
-  }, [history, selectedConfig]);
+  }, [sortedHistory, selectedConfig]);
+
+  // Compute previous instructions for each config in the display history
+  const historyWithPrev = useMemo(() => {
+    return displayHistory.map((config, index, array) => ({
+      config,
+      prevInstructions: index > 0 ? array[index - 1].instructions ?? "" : "",
+    }));
+  }, [displayHistory]);
 
   return (
     <DropdownMenu>
@@ -95,7 +116,7 @@ export function InstructionHistory({
             }
           }}
         >
-          {displayHistory.map((config) => (
+          {historyWithPrev.map(({ config, prevInstructions }) => (
             <DropdownMenuRadioItem
               key={config.version}
               value={config.version.toString()}
@@ -103,8 +124,8 @@ export function InstructionHistory({
               <div className="flex w-full items-center justify-between">
                 <span>{formatVersionLabel(config)}</span>
                 <GaugeDiff
-                  original={config.instructions || ""}
-                  updated={currentInstructions}
+                  original={prevInstructions}
+                  updated={config.instructions ?? ""}
                 />
               </div>
             </DropdownMenuRadioItem>
