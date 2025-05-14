@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import { format } from "date-fns";
 import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
@@ -13,9 +14,11 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { removeNulls } from "@app/types";
 
 /**
- * Migrates tables query actions from non-MCP to MCP version for a specific workspace
+ * Migrates tables query actions from non-MCP to MCP version for a specific workspace.
+ * Overall plan is to find the tables configurations,
  */
 async function migrateWorkspaceTablesQueryActions({
   wId,
@@ -34,21 +37,48 @@ async function migrateWorkspaceTablesQueryActions({
 
   // Get admin auth for the workspace
   const auth = await Authenticator.internalAdminForWorkspace(wId);
+  const workspace = auth.getNonNullableWorkspace();
 
-  // Find all existing tables query configurations that are linked to an agent configuration
-  // (non-MCP version) and not yet linked to an MCP server configuration
-  const tablesQueryConfigs = await AgentTablesQueryConfigurationTable.findAll({
+  // Find all existing tables query configurations that are linked to an active agent configuration
+  // First, get all the unique tablesQueryConfigurationIds that need migration
+  const tableConfigurations = await AgentTablesQueryConfigurationTable.findAll({
+    attributes: ["tablesQueryConfigurationId"],
     where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId: workspace.id,
       tablesQueryConfigurationId: { [Op.not]: null },
       mcpServerConfigurationId: null,
     },
-    order: [["id", "ASC"]],
+    include: [
+      {
+        model: AgentTablesQueryConfiguration,
+        required: true,
+        include: [
+          {
+            model: AgentConfiguration,
+            required: true,
+            where: {
+              status: "active",
+            },
+          },
+        ],
+      },
+    ],
   });
 
-  if (tablesQueryConfigs.length === 0) {
+  const tablesQueryConfigIds = removeNulls(
+    tableConfigurations.map((config) => config.tablesQueryConfigurationId)
+  );
+
+  if (tablesQueryConfigIds.length === 0) {
     return "";
   }
+
+  const tablesQueryConfigs = await AgentTablesQueryConfiguration.findAll({
+    where: {
+      id: { [Op.in]: tablesQueryConfigIds },
+      workspaceId: workspace.id,
+    },
+  });
 
   logger.info(
     `Found ${tablesQueryConfigs.length} tables query configurations to migrate.`
@@ -70,34 +100,20 @@ async function migrateWorkspaceTablesQueryActions({
 
   let revertSql = "";
 
-  // For each tables query configuration, create an MCP server configuration and update relationships
+  // Replace each agent_tables_query_configuration with an MCP server configuration
+  // and link the corresponding agent_tables_query_configuration_tables to the MCP server configuration.
   await concurrentExecutor(
     tablesQueryConfigs,
     async (tablesQueryConfig) => {
-      if (!tablesQueryConfig.tablesQueryConfigurationId) {
-        // This should never happen since we fetch where tablesQueryConfigurationId is not null.
-        logger.info(
-          { tablesQueryConfigurationId: tablesQueryConfig.id },
-          `Already an MCP tables query config, skipping.`
-        );
-        return;
-      }
+      const tables = tableConfigurations.filter(
+        (table) => table.tablesQueryConfigurationId === tablesQueryConfig.id
+      );
 
       if (execute) {
-        // Find all tables associated with this configuration
-        const tables = await AgentTablesQueryConfigurationTable.findAll({
-          where: {
-            tablesQueryConfigurationId: tablesQueryConfig.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-        });
-
-        // Create MCP server configuration
         const mcpConfig = await AgentMCPServerConfiguration.create({
           sId: generateRandomModelSId(),
-          agentConfigurationId:
-            tablesQueryConfig.tablesQueryConfiguration.agentConfigurationId,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          agentConfigurationId: tablesQueryConfig.agentConfigurationId,
+          workspaceId: workspace.id,
           mcpServerViewId: mcpServerView.id,
           internalMCPServerId: mcpServerView.internalMCPServerId,
           additionalConfiguration: {},
@@ -107,45 +123,46 @@ async function migrateWorkspaceTablesQueryActions({
           appId: null,
         });
 
-        // Add revert SQL for the tables query configuration
-        revertSql += `UPDATE "agent_tables_query_configurations" SET "agentConfigurationId" = '${tablesQueryConfig.agentConfigurationId}' WHERE "id" = '${tablesQueryConfig.id}';\n`;
+        revertSql += `DELETE FROM "agent_mcp_server_configurations" WHERE "id" = '${mcpConfig.id}';\n`;
 
-        // Update the tables to link to the MCP server configuration
         for (const table of tables) {
+          revertSql +=
+            `UPDATE "agent_tables_query_configuration_tables" ` +
+            `SET "tablesQueryConfigurationId" = '${tablesQueryConfig.id}', "mcpServerConfigurationId" = NULL ` +
+            `WHERE "id" = '${table.id}';\n`;
+
           await table.update({
             mcpServerConfigurationId: mcpConfig.id,
             tablesQueryConfigurationId: null,
           });
-
-          // Add revert SQL for each table
-          revertSql += `UPDATE "agent_tables_query_configuration_tables" SET "tablesQueryConfigurationId" = '${tablesQueryConfig.id}', "mcpServerConfigurationId" = NULL WHERE "id" = '${table.id}';\n`;
         }
 
-        // Add revert SQL to delete the MCP server configuration
-        revertSql += `DELETE FROM "agent_mcp_server_configurations" WHERE "id" = '${mcpConfig.id}';\n`;
+        revertSql +=
+          `INSERT INTO "agent_tables_query_configurations" ` +
+          `("id", "agentConfigurationId", "workspaceId", "name", "description", "createdAt", "updatedAt") ` +
+          `VALUES ('${tablesQueryConfig.id}', '${tablesQueryConfig.agentConfigurationId}', ` +
+          `'${tablesQueryConfig.workspaceId}', '${tablesQueryConfig.name}', '${tablesQueryConfig.description}', ` +
+          `'${format(tablesQueryConfig.createdAt, "yyyy-MM-dd")}', ` +
+          `'${format(tablesQueryConfig.updatedAt, "yyyy-MM-dd")}');\n`;
 
-        // Log the model IDs for an easier rollback.
+        // Delete the tables query configuration
+        await tablesQueryConfig.destroy();
+
         logger.info(
           {
             tablesQueryConfigurationId: tablesQueryConfig.id,
             mcpServerConfigurationId: mcpConfig.id,
+            agentConfigurationId: tablesQueryConfig.agentConfigurationId,
             tablesCount: tables.length,
           },
           `Migrated tables query config to MCP server config.`
         );
       } else {
-        // Find count of tables for logging purposes
-        const tablesCount = await AgentTablesQueryConfigurationTable.count({
-          where: {
-            tablesQueryConfigurationId: tablesQueryConfig.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-        });
-
         logger.info(
           {
             tablesQueryConfigurationId: tablesQueryConfig.id,
-            tablesCount,
+            agentConfigurationId: tablesQueryConfig.agentConfigurationId,
+            tablesCount: tables.length,
           },
           `Would create MCP server config and migrate tables query config to it.`
         );
@@ -182,7 +199,7 @@ makeScript(
       parentLogger,
     });
 
-    if (execute) {
+    if (execute && revertSql) {
       const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
       fs.writeFileSync(`${now}_tables_query_to_mcp_revert.sql`, revertSql);
     }
