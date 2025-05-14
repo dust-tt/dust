@@ -29,12 +29,22 @@ export const isEnabledForWorkspace = async (
   return featureFlags.includes(flag);
 };
 
+export type ContextParams =
+  | {
+      agentLoopRunContext: AgentLoopRunContextType;
+      agentLoopListToolsContext?: never;
+    }
+  | {
+      agentLoopRunContext?: never;
+      agentLoopListToolsContext: AgentLoopListToolsContextType;
+    }
+  | { agentLoopRunContext?: never; agentLoopListToolsContext?: never };
+
 export const connectToInternalMCPServer = async (
   mcpServerId: string,
   transport: InMemoryTransport,
   auth: Authenticator,
-  agentLoopRunContext?: AgentLoopRunContextType,
-  agentLoopListToolsContext?: AgentLoopListToolsContextType
+  contextParams: ContextParams
 ): Promise<McpServer> => {
   const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
   if (res.isErr()) {
@@ -48,8 +58,8 @@ export const connectToInternalMCPServer = async (
       internalMCPServerName: res.value.name,
       mcpServerId,
     },
-    agentLoopRunContext,
-    agentLoopListToolsContext
+    contextParams.agentLoopRunContext,
+    contextParams.agentLoopListToolsContext
   );
 
   await server.connect(transport);
