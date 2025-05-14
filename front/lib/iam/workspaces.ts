@@ -2,7 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -85,7 +85,7 @@ export async function createWorkspaceInternal({
 
   if (verifiedDomain) {
     try {
-      await WorkspaceHasDomain.create({
+      await WorkspaceHasDomainModel.create({
         domain: verifiedDomain,
         domainAutoJoinEnabled: false,
         workspaceId: workspace.id,
@@ -110,13 +110,13 @@ export async function createWorkspaceInternal({
 export async function findWorkspaceWithVerifiedDomain(user: {
   email: string;
   email_verified: boolean;
-}): Promise<WorkspaceHasDomain | null> {
+}): Promise<WorkspaceHasDomainModel | null> {
   if (!user.email_verified) {
     return null;
   }
 
   const [, userEmailDomain] = user.email.split("@");
-  const workspaceWithVerifiedDomain = await WorkspaceHasDomain.findOne({
+  const workspaceWithVerifiedDomain = await WorkspaceHasDomainModel.findOne({
     where: {
       domain: userEmailDomain,
     },
