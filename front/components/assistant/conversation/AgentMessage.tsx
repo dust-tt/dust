@@ -77,11 +77,6 @@ import {
   removeNulls,
 } from "@app/types";
 
-function cleanUpCitations(message: string): string {
-  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
-  return message.replace(regex, "");
-}
-
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
