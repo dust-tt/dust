@@ -104,7 +104,7 @@ async function handler(
         });
       }
 
-      await cancelMessageGenerationEvent(r.data.messageIds);
+      await cancelMessageGenerationEvent(auth, r.data.messageIds);
       return res.status(200).json({ success: true });
 
     default:
