@@ -50,6 +50,8 @@ const TabsTrigger = React.forwardRef<
     icon?: React.ComponentType;
     isLoading?: boolean;
     buttonVariant?: React.ComponentProps<typeof Button>["variant"];
+    isCounter?: boolean;
+    counterValue?: string;
   } & Omit<LinkWrapperProps, "children" | "className">
 >(
   (
@@ -65,6 +67,8 @@ const TabsTrigger = React.forwardRef<
       shallow,
       disabled,
       buttonVariant = "ghost",
+      isCounter = false,
+      counterValue,
       ...props
     },
     ref
@@ -89,6 +93,8 @@ const TabsTrigger = React.forwardRef<
           rel={rel}
           replace={replace}
           shallow={shallow}
+          isCounter={isCounter}
+          counterValue={counterValue}
           className={cn(
             "s-relative",
             "after:s-absolute after:s-bottom-[-9px] after:s-left-1/2 after:s-h-[2px] after:s-w-full after:s--translate-x-1/2",
