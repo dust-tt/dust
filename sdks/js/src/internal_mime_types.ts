@@ -218,6 +218,7 @@ const TOOL_MIME_TYPES = {
       "REASONING_MODEL",
       "DUST_APP",
       "NULLABLE_TIME_FRAME",
+      "JSON_SCHEMA",
     ],
   }),
   TOOL_OUTPUT: generateToolMimeTypes({

@@ -10,6 +10,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_router",
   "ask_agent",
+  "extract_data",
   "file_generation",
   "github",
   "hubspot",
@@ -127,6 +128,12 @@ export const INTERNAL_MCP_SERVERS: Record<
       search: "never_ask",
     },
   },
+  extract_data: {
+    id: 12,
+    availability: "auto",
+    flag: "dev_mcp_actions",
+  },
+
 
   // Dev
   primitive_types_debugger: {

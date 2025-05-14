@@ -1,3 +1,4 @@
+import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
 import type { InternalToolInputMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -66,6 +67,12 @@ export const ConfigurableToolInputSchemas = {
     })
     .describe("An optional time frame to use for the tool.")
     .nullable(),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z
+    .string()
+    .refine(isValidJsonSchema, {
+      message: "Value must be a valid JSON schema string",
+    })
+    .optional(),
   // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Omit<
