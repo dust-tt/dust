@@ -3,7 +3,10 @@ import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentTablesQueryConfiguration, AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import {
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -34,22 +37,12 @@ async function migrateWorkspaceTablesQueryActions({
 
   // Find all existing tables query configurations that are linked to an agent configuration
   // (non-MCP version) and not yet linked to an MCP server configuration
-  const tablesQueryConfigs = await AgentTablesQueryConfiguration.findAll({
+  const tablesQueryConfigs = await AgentTablesQueryConfigurationTable.findAll({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
-      agentConfigurationId: { [Op.not]: null },
+      tablesQueryConfigurationId: { [Op.not]: null },
+      mcpServerConfigurationId: null,
     },
-    // Filter on active agents.
-    include: [
-      {
-        attributes: [],
-        model: AgentConfiguration,
-        required: true,
-        where: {
-          status: "active",
-        },
-      },
-    ],
     order: [["id", "ASC"]],
   });
 
@@ -81,8 +74,8 @@ async function migrateWorkspaceTablesQueryActions({
   await concurrentExecutor(
     tablesQueryConfigs,
     async (tablesQueryConfig) => {
-      if (!tablesQueryConfig.agentConfigurationId) {
-        // This should never happen since we fetch where agentConfigurationId is not null.
+      if (!tablesQueryConfig.tablesQueryConfigurationId) {
+        // This should never happen since we fetch where tablesQueryConfigurationId is not null.
         logger.info(
           { tablesQueryConfigurationId: tablesQueryConfig.id },
           `Already an MCP tables query config, skipping.`
@@ -96,13 +89,14 @@ async function migrateWorkspaceTablesQueryActions({
           where: {
             tablesQueryConfigurationId: tablesQueryConfig.id,
             workspaceId: auth.getNonNullableWorkspace().id,
-          }
+          },
         });
 
         // Create MCP server configuration
         const mcpConfig = await AgentMCPServerConfiguration.create({
           sId: generateRandomModelSId(),
-          agentConfigurationId: tablesQueryConfig.agentConfigurationId,
+          agentConfigurationId:
+            tablesQueryConfig.tablesQueryConfiguration.agentConfigurationId,
           workspaceId: auth.getNonNullableWorkspace().id,
           mcpServerViewId: mcpServerView.id,
           internalMCPServerId: mcpServerView.internalMCPServerId,
@@ -145,7 +139,7 @@ async function migrateWorkspaceTablesQueryActions({
           where: {
             tablesQueryConfigurationId: tablesQueryConfig.id,
             workspaceId: auth.getNonNullableWorkspace().id,
-          }
+          },
         });
 
         logger.info(
