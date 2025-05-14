@@ -84,10 +84,8 @@ async function migrateWorkspaceTablesQueryActions({
     `Found ${tablesQueryConfigs.length} tables query configurations to migrate.`
   );
 
-  if (execute) {
-    // Create the MCP server views in system and global spaces.
-    await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-  }
+  // Create the MCP server views in system and global spaces.
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   const mcpServerView =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
