@@ -42,14 +42,14 @@ import { Err } from "@app/types";
 import { CoreAPI } from "@app/types";
 
 export async function retrieveNewTranscriptsActivity(
-  transcriptsConfigurationId: string
+  transcriptsConfigurationId: ModelId
 ): Promise<string[]> {
   const localLogger = mainLogger.child({
-    transcriptsConfigurationId: transcriptsConfigurationId,
+    transcriptsConfigurationId,
   });
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchById(
+    await LabsTranscriptsConfigurationResource.fetchByModelId(
       transcriptsConfigurationId
     );
 
@@ -129,7 +129,7 @@ export async function retrieveNewTranscriptsActivity(
 }
 
 export async function processTranscriptActivity(
-  transcriptsConfigurationId: string,
+  transcriptsConfigurationId: ModelId,
   fileId: string
 ) {
   function convertCitationsToLinks(
@@ -187,7 +187,7 @@ export async function processTranscriptActivity(
   }
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchById(
+    await LabsTranscriptsConfigurationResource.fetchByModelId(
       transcriptsConfigurationId
     );
 
@@ -342,9 +342,10 @@ export async function processTranscriptActivity(
 
   try {
     await transcriptsConfiguration.recordHistory({
+      configurationId: transcriptsConfiguration.id,
       fileId,
       fileName: transcriptTitle.substring(0, 255),
-      workspace: owner,
+      workspaceId: owner.id,
     });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {

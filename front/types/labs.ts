@@ -24,7 +24,6 @@ export type LabsConnectionType = (typeof labsConnections)[number];
 
 export type LabsTranscriptsConfigurationType = {
   id: ModelId;
-  sId: string;
   workspaceId: ModelId;
   provider: LabsTranscriptsProviderType;
   agentConfigurationId: string | null;
