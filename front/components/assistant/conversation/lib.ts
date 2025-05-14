@@ -227,7 +227,6 @@ export async function createConversationWithMessage({
   messageData,
   visibility = "unlisted",
   title,
-  skipToolsValidation = false,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -239,7 +238,6 @@ export async function createConversationWithMessage({
   };
   visibility?: ConversationVisibility;
   title?: string;
-  skipToolsValidation?: boolean;
 }): Promise<Result<ConversationType, SubmitMessageError>> {
   const { input, mentions, contentFragments, clientSideMCPServerIds } =
     messageData;
