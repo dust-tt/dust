@@ -499,7 +499,7 @@ export default function AssistantBuilder({
       >
         <BuilderLayout
           leftPanel={
-            <div className="flex h-full flex-col gap-5 pb-6 pt-4">
+            <div className="flex h-full flex-col gap-4 pb-6 pt-4">
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
                 <Tabs
                   className="w-full"

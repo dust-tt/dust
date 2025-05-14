@@ -388,7 +388,6 @@ export default function SettingsScreen({
       />
 
       <div className="flex w-full flex-col gap-5">
-        <Page.Header title="Settings" />
         <div className="flex gap-8">
           <div className="flex flex-grow flex-col gap-4">
             <div>
