@@ -124,8 +124,8 @@ async function migrateWorkspaceTablesQueryActions({
         // Reverse: create the tables query configuration.
         revertSql +=
           `INSERT INTO "agent_tables_query_configurations" ` +
-          `("id", "agentConfigurationId", "workspaceId", "name", "description", "createdAt", "updatedAt") ` +
-          `VALUES ('${tablesQueryConfig.id}', '${tablesQueryConfig.agentConfigurationId}', ` +
+          `("id", "sId", "agentConfigurationId", "workspaceId", "name", "description", "createdAt", "updatedAt") ` +
+          `VALUES ('${tablesQueryConfig.id}', '${tablesQueryConfig.sId}', '${tablesQueryConfig.agentConfigurationId}', ` +
           `'${tablesQueryConfig.workspaceId}', '${tablesQueryConfig.name}', '${tablesQueryConfig.description}', ` +
           `'${format(tablesQueryConfig.createdAt, "yyyy-MM-dd")}', ` +
           `'${format(tablesQueryConfig.updatedAt, "yyyy-MM-dd")}');\n`;
