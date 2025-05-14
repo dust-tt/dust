@@ -167,6 +167,7 @@ export type AgentMessageType = {
   version: number;
   parentMessageId: string | null;
   configuration: LightAgentConfigurationType;
+  skipToolsValidation: boolean;
   status: AgentMessageStatus;
   actions: AgentActionType[];
   content: string | null;

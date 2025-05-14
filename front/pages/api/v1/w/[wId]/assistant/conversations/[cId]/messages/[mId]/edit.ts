@@ -146,13 +146,14 @@ async function handler(
           },
         });
       }
-      const { content, mentions } = r.data;
+      const { content, mentions, skipToolsValidation } = r.data;
 
       const editedMessageRes = await editUserMessageWithPubSub(auth, {
         conversation,
         message,
         content,
         mentions,
+        skipToolsValidation,
       });
       if (editedMessageRes.isErr()) {
         return apiError(req, res, editedMessageRes.error);

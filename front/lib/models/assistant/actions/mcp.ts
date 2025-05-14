@@ -363,7 +363,15 @@ AgentChildAgentConfiguration.init(
   },
   {
     modelName: "agent_child_agent_configuration",
-    indexes: [{ fields: ["mcpServerConfigurationId"] }],
+    indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index.
+      { fields: ["mcpServerConfigurationId"] },
+      {
+        fields: ["workspaceId", "mcpServerConfigurationId"],
+        name: "agent_child_agent_config_workspace_id_mcp_srv_config_id",
+        concurrently: true,
+      },
+    ],
     sequelize: frontSequelize,
   }
 );

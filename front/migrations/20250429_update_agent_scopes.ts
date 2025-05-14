@@ -6,38 +6,69 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
+import { TagResource } from "@app/lib/resources/tags_resource";
+import { Authenticator } from "@app/lib/auth";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 
 const migrateWorkspace = async (
   workspace: LightWorkspaceType,
   execute: boolean,
   logger: Logger
 ) => {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
   logger.info({ workspace: workspace.sId }, "Migrating agents");
   const agents = await AgentConfiguration.findAll({
     where: {
       workspaceId: workspace.id,
     },
+    order: [
+      ["sId", "ASC"],
+      ["version", "ASC"],
+    ],
   });
 
+  let companyTag = await TagResource.findByName(auth, "Company");
+  if (!companyTag) {
+    companyTag = await TagResource.makeNew(auth, { name: "Company" });
+  }
+
   for (const agent of agents) {
-    if (agent.scope === "private") {
+    const previousScope = agent.scope;
+    if (
+      previousScope === "workspace" ||
+      previousScope === "published" ||
+      previousScope === "private"
+    ) {
+      const newScope = previousScope === "private" ? "hidden" : "visible";
       logger.info(
-        { agent: agent.sId, scope: agent.scope },
-        "Migrating agent to scope hidden"
+        {
+          workspace: workspace.sId,
+          id: agent.id,
+          agent: agent.sId,
+          version: agent.version,
+          previousScope,
+          newScope,
+        },
+        "Migrating agent scope"
       );
+
       if (execute) {
-        await agent.update({ scope: "hidden" }, { hooks: false, silent: true });
-      }
-    } else if (agent.scope === "workspace" || agent.scope === "published") {
-      logger.info(
-        { agent: agent.sId, scope: agent.scope },
-        "Migrating agent to scope visible"
-      );
-      if (execute) {
-        await agent.update(
-          { scope: "visible" },
-          { hooks: false, silent: true }
-        );
+        await agent.update({ scope: newScope }, { hooks: false, silent: true });
+        if (previousScope === "workspace" && agent.status === "active") {
+          const agentConfigs = await getAgentConfigurations({
+            auth,
+            agentsGetView: { agentIds: [agent.sId] },
+            variant: "light",
+          });
+          const agentConfig = agentConfigs[0];
+          if (
+            agentConfig &&
+            !agentConfig.tags.some((tag) => tag.sId === companyTag.sId)
+          ) {
+            await companyTag.addToAgent(auth, agentConfig);
+          }
+        }
       }
     }
   }

@@ -136,8 +136,6 @@ async function handler(
 
       const conversation = conversationRes.value;
 
-      /* postUserMessageWithPubSub returns swiftly since it only waits for the
-        initial message creation event (or error) */
       const messageRes = await postUserMessageWithPubSub(
         auth,
         {
@@ -153,6 +151,8 @@ async function handler(
             origin: "web",
             clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
           },
+          // For now we never skip tools when interacting with agents from the web client.
+          skipToolsValidation: false,
         },
         { resolveAfterFullGeneration: false }
       );

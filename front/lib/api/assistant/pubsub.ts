@@ -47,11 +47,13 @@ export async function postUserMessageWithPubSub(
     content,
     mentions,
     context,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    skipToolsValidation: boolean;
   },
   { resolveAfterFullGeneration }: { resolveAfterFullGeneration: boolean }
 ): Promise<
@@ -68,6 +70,7 @@ export async function postUserMessageWithPubSub(
     content,
     mentions,
     context,
+    skipToolsValidation,
   });
 
   return handleUserMessageEvents(auth, {
@@ -84,11 +87,13 @@ export async function editUserMessageWithPubSub(
     message,
     content,
     mentions,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
+    skipToolsValidation: boolean;
   }
 ): Promise<
   Result<
@@ -104,6 +109,7 @@ export async function editUserMessageWithPubSub(
     message,
     content,
     mentions,
+    skipToolsValidation,
   });
   return handleUserMessageEvents(auth, {
     conversation,

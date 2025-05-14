@@ -1,6 +1,7 @@
 import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
+import { Tooltip } from "@sparkle/components";
 import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
@@ -240,8 +241,8 @@ const AVATAR_STACK_SIZES = ["xs", "sm", "md"] as const;
 type AvatarStackSizeType = (typeof AVATAR_STACK_SIZES)[number];
 
 interface AvatarStackProps {
-  children: React.ReactElement<AvatarProps> | React.ReactElement<AvatarProps>[];
-  nbMoreItems?: number;
+  avatars: AvatarProps[];
+  nbVisibleItems?: number;
   size?: AvatarStackSizeType;
   isRounded?: boolean;
   hasMagnifier?: boolean;
@@ -254,14 +255,28 @@ const sizeClassesPx: Record<AvatarStackSizeType, number> = {
 };
 
 Avatar.Stack = function ({
-  children,
-  nbMoreItems,
+  avatars,
+  nbVisibleItems,
   size = "sm",
   isRounded = false,
   hasMagnifier = true,
 }: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const childrenArray = React.Children.toArray(children);
+
+  // Get visible avatars and calculate remaining count
+  const shouldShowAll = !nbVisibleItems || avatars.length <= nbVisibleItems;
+  const visibleAvatars = shouldShowAll
+    ? avatars
+    : avatars.slice(0, nbVisibleItems - 1);
+  const remainingCount = shouldShowAll
+    ? 0
+    : avatars.length - (nbVisibleItems - 1);
+
+  // Get all names for tooltip
+  const avatarNames = avatars
+    .filter((avatar) => avatar.name)
+    .map((avatar) => avatar.name);
+  const tooltipLabel = avatarNames.join(", ");
 
   const sizeSetting = {
     marginLeft: 0,
@@ -270,77 +285,88 @@ Avatar.Stack = function ({
   };
 
   const collapsedWidth =
-    sizeSetting.width * (childrenArray.length + Number(Boolean(nbMoreItems))) +
+    sizeSetting.width *
+      (visibleAvatars.length + Number(Boolean(remainingCount))) +
     (sizeClassesPx[size] - sizeSetting.width);
 
   const openedWidth =
     sizeSetting.widthHovered *
-      (childrenArray.length + Number(Boolean(nbMoreItems))) +
+      (visibleAvatars.length + Number(Boolean(remainingCount))) +
     (sizeClassesPx[size] - sizeSetting.widthHovered);
 
   const transitionSettings = "width 200ms ease-out";
 
   return (
-    <div
-      className="s-flex s-flex-row"
-      onMouseEnter={() => childrenArray.length > 1 && setIsHovered(true)}
-      onMouseLeave={() => childrenArray.length > 1 && setIsHovered(false)}
-      style={{
-        width: `${isHovered ? openedWidth : collapsedWidth}px`,
-        transition: transitionSettings,
-      }}
-    >
-      {childrenArray.map((child, i) => {
-        if (React.isValidElement<AvatarProps>(child)) {
-          return (
-            <div
-              key={i}
-              className="s-cursor-pointer s-drop-shadow-md"
-              style={{
-                width: isHovered ? sizeSetting.widthHovered : sizeSetting.width,
-                transition: transitionSettings,
-              }}
-            >
-              {hasMagnifier ? (
-                <div
-                  style={{
-                    transform: `scale(${
-                      1 - (childrenArray.length - i) * 0.06
-                    })`,
-                  }}
-                >
-                  {React.cloneElement(child, {
-                    size: size,
-                    isRounded: isRounded,
-                  })}
-                </div>
-              ) : (
-                React.cloneElement(child, {
-                  size: size,
-                  isRounded: isRounded,
-                })
-              )}
-            </div>
-          );
-        }
-        return null;
-      })}
-      {Boolean(nbMoreItems) && (
-        <div
-          className="s-cursor-pointer s-drop-shadow-md"
-          style={{
-            width: isHovered ? sizeSetting.widthHovered : sizeSetting.width,
-            transition: transitionSettings,
-          }}
-        >
-          <Avatar
-            size={size}
-            name={"+" + String(Number(nbMoreItems) < 10 ? nbMoreItems : "")}
-            isRounded={isRounded}
-            clickable
-          />
-        </div>
-      )}
-    </div>
+    <Tooltip
+      label={tooltipLabel}
+      triggerAsChild
+      trigger={
+        <>
+          <div
+            className="s-flex s-flex-row"
+            onMouseEnter={() => visibleAvatars.length > 1 && setIsHovered(true)}
+            onMouseLeave={() =>
+              visibleAvatars.length > 1 && setIsHovered(false)
+            }
+            style={{
+              width: `${isHovered ? openedWidth : collapsedWidth}px`,
+              transition: transitionSettings,
+            }}
+          >
+            {visibleAvatars.map((avatarProps, i) => (
+              <div
+                key={i}
+                className="s-cursor-pointer s-drop-shadow-md"
+                style={{
+                  width: isHovered
+                    ? sizeSetting.widthHovered
+                    : sizeSetting.width,
+                  transition: transitionSettings,
+                }}
+              >
+                {hasMagnifier ? (
+                  <div
+                    style={{
+                      transform: `scale(${
+                        1 - (visibleAvatars.length - i) * 0.06
+                      })`,
+                    }}
+                  >
+                    <Avatar
+                      {...avatarProps}
+                      size={size}
+                      isRounded={isRounded}
+                    />
+                  </div>
+                ) : (
+                  <Avatar {...avatarProps} size={size} isRounded={isRounded} />
+                )}
+              </div>
+            ))}
+            {remainingCount > 0 && (
+              <div
+                className="s-cursor-pointer s-drop-shadow-md"
+                style={{
+                  width: isHovered
+                    ? sizeSetting.widthHovered
+                    : sizeSetting.width,
+                  transition: transitionSettings,
+                }}
+              >
+                <Avatar
+                  size={size}
+                  name={
+                    "+" +
+                    String(Number(remainingCount) < 10 ? remainingCount : "")
+                  }
+                  isRounded={isRounded}
+                  clickable
+                />
+              </div>
+            )}
+          </div>
+        </>
+      }
+    />
   );
 };
