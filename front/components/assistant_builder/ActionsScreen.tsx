@@ -364,7 +364,6 @@ export default function ActionsScreen({
       <div className="flex flex-col gap-8 text-sm text-muted-foreground dark:text-muted-foreground-night">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Page.Header title="Tools & Knowledge" />
             <Page.P>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Configure the tools that your agent is able to use, such as{" "}
