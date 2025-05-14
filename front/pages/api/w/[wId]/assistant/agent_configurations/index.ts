@@ -20,9 +20,11 @@ import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentConfigurationType,
@@ -80,8 +82,15 @@ async function handler(
         });
       }
 
-      const { view, limit, withUsage, withAuthors, withFeedbacks, sort } =
-        queryValidation.right;
+      const {
+        view,
+        limit,
+        withUsage,
+        withAuthors,
+        withFeedbacks,
+        withEditors,
+        sort,
+      } = queryValidation.right;
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
       viewParam = viewParam === "assistant-search" ? "list" : viewParam;
@@ -165,6 +174,29 @@ async function handler(
               )?.count ?? 0,
           },
         }));
+      }
+      if (withEditors === "true") {
+        const editorsGroups = await GroupResource.findEditorGroupsForAgents(
+          auth,
+          agentConfigurations
+        );
+        if (editorsGroups.isOk()) {
+          await concurrentExecutor(
+            agentConfigurations.filter((a) => a.scope !== "global"),
+            async (agentConfiguration) => {
+              console.log("agentConfiguration", editorsGroups.value);
+              const editorGroup = editorsGroups.value[agentConfiguration.sId];
+              if (editorGroup) {
+                const members = await editorGroup.getActiveMembers(auth);
+                const memberUsers = members.map((m) => m.toJSON());
+                agentConfiguration.editors = memberUsers;
+              }
+            },
+            {
+              concurrency: 10,
+            }
+          );
+        }
       }
 
       return res.status(200).json({

@@ -38,7 +38,7 @@ export const TableTagSelector = ({
   });
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
+      <DropdownMenuTrigger asChild>
         {agentTags.length === 0 ? (
           <Button
             variant="ghost"

@@ -157,7 +157,7 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
                 <DataTable data={rows} columns={columns} />
               </>
             )}
-            {rows.length === 0 && !isTagsLoading && (
+            {rows.length <= 1 && !isTagsLoading && (
               <EmptyCTA
                 action={
                   <div className="flex flex-row gap-2">

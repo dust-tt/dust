@@ -14,6 +14,8 @@ import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
+import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { useTags } from "@app/lib/swr/tags";
@@ -22,12 +24,11 @@ import type {
   AgentConfigurationScope,
   AgentUsageType,
   LightAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { isAdmin, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
-import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
-import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 
 type MoreMenuItem = {
   label: string;
@@ -123,6 +124,39 @@ const getTableColumns = ({
           )}
         </DataTable.CellContent>
       ),
+      meta: {
+        className: "w-32",
+      },
+    },
+    {
+      header: "Editors",
+      accessorKey: "editors",
+      cell: (info: CellContext<RowData, UserType[] | undefined>) => {
+        const editors = info.getValue();
+        if (!editors) {
+          return "-";
+        }
+        return (
+          <DataTable.CellContent>
+            <div className="w-32">
+              <Avatar.Stack
+                size="sm"
+                nbMoreItems={editors.length > 5 ? editors.length - 5 : 0}
+                isRounded
+              >
+                {editors.slice(0, 5).map((editor) => (
+                  <Avatar
+                    key={editor.sId}
+                    name={editor.fullName}
+                    visual={editor.image}
+                  />
+                ))}
+              </Avatar.Stack>
+            </div>
+          </DataTable.CellContent>
+        );
+      },
+      isSortable: false,
       meta: {
         className: "w-32",
       },
@@ -296,11 +330,12 @@ export function AssistantsTable({
           pictureUrl: agentConfiguration.pictureUrl,
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
+          editors: agentConfiguration.editors,
           scope: agentConfiguration.scope,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
             agentConfiguration.tags.length > 0
-              ? agentConfiguration.tags.map((t) => t.name).join(",")
+              ? agentConfiguration.tags.map((t) => t.name).join(", ")
               : "",
           isSelected: selection.includes(agentConfiguration.sId),
           canArchive,

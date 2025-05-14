@@ -22,10 +22,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteAssistantsDialog } from "@app/components/assistant/DeleteAssistantsDialog";
+import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -202,7 +202,7 @@ export default function WorkspaceAssistants({
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "manage",
-    includes: ["authors", "usage", "feedbacks"],
+    includes: ["authors", "usage", "feedbacks", "editors"],
   });
 
   const selectedAgents = agentConfigurations.filter((a) =>
