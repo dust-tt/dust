@@ -29,7 +29,7 @@ import {
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationType } from "@app/types";
+import type { AgentConfigurationType, AgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
@@ -304,7 +304,8 @@ export function getMCPApprovalKey({
 
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
-  actionConfiguration: MCPToolConfigurationType
+  actionConfiguration: MCPToolConfigurationType,
+  agentMessage: AgentMessageType
 ): Promise<{
   stake?: MCPToolStakeLevelType;
   status: "allowed_implicitly" | "pending";
@@ -312,6 +313,13 @@ export async function getExecutionStatusFromConfig(
 }> {
   if (!isServerSideMCPToolConfiguration(actionConfiguration)) {
     return { status: "pending" };
+  }
+
+  // If the agent message is marked as "skipToolsValidation" we skip all tools validation
+  // irrespective of the `actionConfiguration.permission`. This is set when the agent message was
+  // created by an API call where the caller explicitly set `skipToolsValidation` to true.
+  if (agentMessage.skipToolsValidation) {
+    return { status: "allowed_implicitly" };
   }
 
   /**

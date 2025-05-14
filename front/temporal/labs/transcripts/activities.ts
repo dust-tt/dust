@@ -632,6 +632,10 @@ export async function processTranscriptActivity(
         content: `Transcript: ${transcriptTitle}`,
         mentions: [{ configurationId: agentConfigurationId }],
         context: baseContext,
+        // When running an agent as trigger of a transcript we have no chance of validating tools so
+        // we skip all of them and run the tools by default. This is in tension with the admin
+        // settings and could be revisited if needed.
+        skipToolsValidation: true,
       },
       { resolveAfterFullGeneration: true }
     );
