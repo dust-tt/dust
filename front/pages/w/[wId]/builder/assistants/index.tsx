@@ -31,6 +31,7 @@ import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -173,7 +174,11 @@ export default function WorkspaceAssistants({
   hasAgentDiscovery,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const {
+    inputValue: assistantSearch,
+    debouncedValue: debouncedAssistantSearch,
+    setValue: setAssistantSearch,
+  } = useDebounce("", { delay: 300 });
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
@@ -182,7 +187,7 @@ export default function WorkspaceAssistants({
   const [selection, setSelection] = useState<string[]>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const activeTab = useMemo(() => {
-    if (assistantSearch.trim() !== "") {
+    if (debouncedAssistantSearch.trim() !== "") {
       return "search";
     }
 
@@ -191,7 +196,7 @@ export default function WorkspaceAssistants({
       : hasAgentDiscovery
         ? "all_custom"
         : "current_user";
-  }, [assistantSearch, selectedTab, hasAgentDiscovery]);
+  }, [debouncedAssistantSearch, selectedTab, hasAgentDiscovery]);
 
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
@@ -202,7 +207,7 @@ export default function WorkspaceAssistants({
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "manage",
-    includes: ["authors", "usage", "feedbacks", "editors"],
+    includes: ["authors", "usage", "feedbacks"],
   });
 
   const selectedAgents = agentConfigurations.filter((a) =>
@@ -245,11 +250,14 @@ export default function WorkspaceAssistants({
           (a) =>
             a.status === "active" &&
             // Filters on search query
-            subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
+            subFilter(
+              debouncedAssistantSearch.toLowerCase(),
+              getAgentSearchString(a)
+            )
         )
         .sort((a, b) => {
           return compareForFuzzySort(
-            assistantSearch,
+            debouncedAssistantSearch,
             getAgentSearchString(a),
             getAgentSearchString(b)
           );
@@ -259,7 +267,7 @@ export default function WorkspaceAssistants({
     agentConfigurations,
     archivedAgentConfigurations,
     selectedTags,
-    assistantSearch,
+    debouncedAssistantSearch,
   ]);
 
   const { uniqueTags } = useMemo(() => {
@@ -314,13 +322,13 @@ export default function WorkspaceAssistants({
       throw new Error("Unexpected: Search tab not found");
     }
 
-    return assistantSearch.trim() !== ""
+    return debouncedAssistantSearch.trim() !== ""
       ? [searchTab]
       : (hasAgentDiscovery
           ? AGENT_MANAGER_TABS
           : AGENT_MANAGER_TABS_LEGACY
         ).filter((tab) => tab.id !== "search");
-  }, [assistantSearch, hasAgentDiscovery]);
+  }, [debouncedAssistantSearch, hasAgentDiscovery]);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -457,7 +465,7 @@ export default function WorkspaceAssistants({
                         value={tab.id}
                         label={tab.label}
                         onClick={() =>
-                          !assistantSearch && setSelectedTab(tab.id)
+                          !debouncedAssistantSearch && setSelectedTab(tab.id)
                         }
                         tooltip={
                           AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
@@ -496,7 +504,7 @@ export default function WorkspaceAssistants({
                   mutateAgentConfigurations={mutateAgentConfigurations}
                 />
               ) : (
-                !assistantSearch && (
+                !debouncedAssistantSearch && (
                   <div className="pt-2">
                     <EmptyCallToAction
                       href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}

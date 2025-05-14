@@ -83,7 +83,7 @@ export function useAgentConfigurations({
 }: {
   workspaceId: string;
   agentsGetView: AgentsGetViewType | null;
-  includes?: ("authors" | "usage" | "feedbacks" | "editors")[];
+  includes?: ("authors" | "usage" | "feedbacks")[];
   limit?: number;
   sort?: "alphabetical" | "priority";
   disabled?: boolean;
@@ -103,9 +103,6 @@ export function useAgentConfigurations({
     }
     if (includes.includes("authors")) {
       params.append("withAuthors", "true");
-    }
-    if (includes.includes("editors")) {
-      params.append("withEditors", "true");
     }
     if (includes.includes("feedbacks")) {
       params.append("withFeedbacks", "true");
