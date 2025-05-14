@@ -12,8 +12,7 @@ import { toFileContentFragment } from "@app/lib/api/assistant/conversation/conte
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
-import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
+import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -42,6 +41,7 @@ import { Err } from "@app/types";
 import { CoreAPI } from "@app/types";
 
 export async function retrieveNewTranscriptsActivity(
+  auth: Authenticator,
   transcriptsConfigurationId: ModelId
 ): Promise<string[]> {
   const localLogger = mainLogger.child({
@@ -49,7 +49,8 @@ export async function retrieveNewTranscriptsActivity(
   });
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByModelId(
+    await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
+      auth,
       transcriptsConfigurationId
     );
 
@@ -57,30 +58,6 @@ export async function retrieveNewTranscriptsActivity(
     localLogger.error(
       {},
       "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
-    );
-    return [];
-  }
-
-  const workspace = await Workspace.findOne({
-    where: {
-      id: transcriptsConfiguration.workspaceId,
-    },
-  });
-
-  if (!workspace) {
-    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    throw new Error(
-      `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
-    );
-  }
-
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-  if (!auth.workspace()) {
-    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    localLogger.error(
-      {},
-      "[retrieveNewTranscripts] Workspace not found. Stopping."
     );
     return [];
   }
@@ -129,8 +106,14 @@ export async function retrieveNewTranscriptsActivity(
 }
 
 export async function processTranscriptActivity(
-  transcriptsConfigurationId: ModelId,
-  fileId: string
+  auth: Authenticator,
+  {
+    transcriptsConfigurationId,
+    fileId,
+  }: {
+    transcriptsConfigurationId: ModelId;
+    fileId: string;
+  }
 ) {
   function convertCitationsToLinks(
     markdown: string,
@@ -187,26 +170,14 @@ export async function processTranscriptActivity(
   }
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByModelId(
+    await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
+      auth,
       transcriptsConfigurationId
     );
 
   if (!transcriptsConfiguration) {
     throw new Error(
       `Could not find transcript configuration for id ${transcriptsConfigurationId}.`
-    );
-  }
-
-  const workspace = await Workspace.findOne({
-    where: {
-      id: transcriptsConfiguration.workspaceId,
-    },
-  });
-
-  if (!workspace) {
-    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    throw new Error(
-      `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
   }
 
@@ -221,10 +192,6 @@ export async function processTranscriptActivity(
     );
   }
 
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    workspace.sId
-  );
   const owner = auth.workspace();
   if (!owner) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
@@ -233,19 +200,12 @@ export async function processTranscriptActivity(
     );
   }
 
-  if (!auth.user() || !auth.isUser()) {
-    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    throw new Error(
-      `Could not find user for id ${transcriptsConfiguration.userId}.`
-    );
-  }
-
   const localLogger = mainLogger.child({
     fileId,
     transcriptsConfigurationId,
     type: "transcript",
     userId: user.id,
-    workspaceId: workspace.sId,
+    workspaceId: owner.sId,
   });
 
   localLogger.info(

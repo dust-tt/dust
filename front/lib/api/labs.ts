@@ -62,7 +62,7 @@ export async function startActiveLabsWorkflows(auth: Authenticator) {
       logger.info(
         `Starting Labs workflow for labs_transcripts_configuration_id ${config.id} on workspace_id ${config.workspaceId}`
       );
-      await launchRetrieveTranscriptsWorkflow(config);
+      await launchRetrieveTranscriptsWorkflow(auth, config);
       startedWorkflows++;
     },
     { concurrency: 3 }

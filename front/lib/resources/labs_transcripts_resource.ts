@@ -19,6 +19,7 @@ import type {
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
   LightWorkspaceType,
+  ModelId,
   Result,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -143,6 +144,35 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
           configuration.get()
         )
       : null;
+  }
+
+  static override async fetchByModelId(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _id: ModelId,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _transaction?: Transaction
+  ): Promise<null> {
+    // Workspace isolation is handled in `fetchByModelIdWithAuth`.
+    throw Error(
+      "Not implemented. `fetchByModelIdWithAuth` should be used instead"
+    );
+  }
+
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId | string,
+    transaction?: Transaction
+  ): Promise<LabsTranscriptsConfigurationResource | null> {
+    const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
+    const configuration = await this.model.findOne({
+      where: {
+        id: parsedId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+
+    return configuration ? new this(this.model, configuration.get()) : null;
   }
 
   async getUser(): Promise<UserResource | null> {
