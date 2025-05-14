@@ -467,6 +467,7 @@ export async function getSuggestedAgentsForConversation(
   // and this comes from a route so since we don't want to pass the model id in a route we use the conversation sId.
   const message = await Message.findOne({
     where: {
+      workspaceId: owner.id,
       conversationId: conversation.id,
     },
     order: [
@@ -1275,6 +1276,7 @@ export async function* editUserMessage(
         where: {
           sId: message.sId,
           conversationId: conversation.id,
+          workspaceId: owner.id,
         },
         include: [
           {
@@ -1292,6 +1294,7 @@ export async function* editUserMessage(
       }
       const newerMessage = await Message.findOne({
         where: {
+          workspaceId: owner.id,
           rank: messageRow.rank,
           conversationId: conversation.id,
           version: messageRow.version + 1,
@@ -1612,6 +1615,7 @@ export async function* retryAgentMessage(
 
       const messageRow = await Message.findOne({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           conversationId: conversation.id,
           id: message.id,
         },
@@ -1630,6 +1634,7 @@ export async function* retryAgentMessage(
       }
       const newerMessage = await Message.findOne({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           rank: messageRow.rank,
           conversationId: conversation.id,
           version: messageRow.version + 1,
