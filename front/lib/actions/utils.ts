@@ -311,10 +311,6 @@ export async function getExecutionStatusFromConfig(
   status: "allowed_implicitly" | "pending";
   serverId?: string;
 }> {
-  if (!isServerSideMCPToolConfiguration(actionConfiguration)) {
-    return { status: "pending" };
-  }
-
   // If the agent message is marked as "skipToolsValidation" we skip all tools validation
   // irrespective of the `actionConfiguration.permission`. This is set when the agent message was
   // created by an API call where the caller explicitly set `skipToolsValidation` to true.

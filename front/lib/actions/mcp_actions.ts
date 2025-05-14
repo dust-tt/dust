@@ -8,6 +8,7 @@ import type { JSONSchema7 } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
+  DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
 } from "@app/lib/actions/constants";
@@ -115,14 +116,16 @@ function makeClientSideMCPToolConfigurations(
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
-    name: tool.name,
-    description: tool.description ?? null,
-    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
-    id: config.id,
-    clientSideMcpServerId: config.clientSideMcpServerId,
     availability: "manual", // Can't be auto for client-side MCP servers.
-    originalName: tool.name,
+    clientSideMcpServerId: config.clientSideMcpServerId,
+    description: tool.description ?? null,
+    id: config.id,
+    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
     mcpServerName: config.name,
+    name: tool.name,
+    originalName: tool.name,
+    permission: tool.stakeLevel,
+    toolServerId: config.clientSideMcpServerId,
   }));
 }
 
@@ -518,7 +521,7 @@ async function listToolsForClientSideMCPServer(
       ...extractMetadataFromTools(tools).map((tool) => ({
         ...tool,
         availability: "manual" as const,
-        stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
+        stakeLevel: DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
       })),
     ];
   } while (nextPageCursor);
@@ -528,6 +531,7 @@ async function listToolsForClientSideMCPServer(
     config,
     allTools
   );
+
   return new Ok(clientSideToolConfigs);
 }
 

@@ -129,8 +129,10 @@ export type ClientSideMCPToolType = Omit<
   ClientSideMCPServerConfigurationType,
   "type"
 > & {
-  type: "mcp_configuration";
   inputSchema: JSONSchema;
+  permission: MCPToolStakeLevelType;
+  toolServerId: string;
+  type: "mcp_configuration";
 };
 
 type WithToolNameMetadata<T> = T & {
@@ -474,9 +476,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         action: mcpAction,
         inputs: rawInputs,
-        stake: isServerSideMCPToolConfiguration(actionConfiguration)
-          ? actionConfiguration.permission
-          : FALLBACK_MCP_TOOL_STAKE_LEVEL,
+        stake: actionConfiguration.permission,
         metadata: {
           toolName: actionConfiguration.originalName,
           mcpServerName: actionConfiguration.mcpServerName,
@@ -504,7 +504,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             data.type === "always_approved" &&
             data.actionId === mcpAction.id
           ) {
-            assert(isServerSideMCPToolConfiguration(actionConfiguration));
             const user = auth.getNonNullableUser();
             await user.appendToMetadata(
               `toolsValidations:${actionConfiguration.toolServerId}`,
