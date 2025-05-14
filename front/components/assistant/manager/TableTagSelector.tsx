@@ -45,14 +45,14 @@ export const TableTagSelector = ({
             size="xs"
             label="Add tags"
             isSelect
-            className="invisible text-muted-foreground group-hover:visible"
+            className="invisible text-muted-foreground group-hover:visible dark:text-muted-foreground-night"
           />
         ) : (
           <Button
             variant="ghost"
             icon={ChevronDownIcon}
             size="xmini"
-            className="invisible text-muted-foreground group-hover:visible"
+            className="invisible text-muted-foreground group-hover:visible dark:text-muted-foreground-night"
           />
         )}
       </DropdownMenuTrigger>

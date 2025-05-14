@@ -55,9 +55,9 @@ export function GlobalAgentAction({
     <>
       <SliderToggle
         size="xs"
-        onClick={async (e) => {
+        onClick={(e) => {
           e.stopPropagation();
-          await handleToggleAgentStatus(agent);
+          void handleToggleAgentStatus(agent);
         }}
         selected={agent.status === "active"}
         disabled={
