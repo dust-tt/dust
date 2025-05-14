@@ -40,9 +40,10 @@ import {
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
 import type { GoogleDriveObjectType } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { WithRetriesError } from "@connectors/types";
 
 async function handleGoogleDriveExport(
   oauth2client: OAuth2Client,
@@ -165,6 +166,7 @@ async function handleFileExport(
         }
       }
     }
+
     const maybeErrorWithCode = e as { code: string };
     if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {
       localLogger.info({}, "File too big to be downloaded. Skipping");
@@ -424,16 +426,26 @@ async function syncOneFileTextDocument(
       localLogger
     );
   } else if (mimeTypesToDownload.includes(file.mimeType)) {
-    documentContent = await handleFileExport(
-      oauth2client,
-      documentId,
-      file,
-      maxDocumentLen,
-      localLogger,
-      dataSourceConfig,
-      connectorId,
-      startSyncTs
-    );
+    try {
+      documentContent = await handleFileExport(
+        oauth2client,
+        documentId,
+        file,
+        maxDocumentLen,
+        localLogger,
+        dataSourceConfig,
+        connectorId,
+        startSyncTs
+      );
+    } catch (e) {
+      if (e instanceof WithRetriesError) {
+        logger.warn(
+          { error: e },
+          "Coulnd't export the file after multiple retries. Skipping."
+        );
+        return false;
+      }
+    }
   }
   if (documentContent) {
     const upsertTimestampMs = await upsertGdriveDocument(
